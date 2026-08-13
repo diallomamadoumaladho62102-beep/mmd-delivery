@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -9,35 +8,20 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
-import type { RootStackParamList } from "../navigation/AppNavigator";
-import { formatMoney, formatDateTime } from "../i18n/formatters";
-import { rowDirection, textAlignStart } from "../i18n/rtl";
+import { formatMoney } from "../i18n/formatters";
 import ScreenHeader from "../components/navigation/ScreenHeader";
-
-type ChartPoint = {
-  label: string;
-  gross: number;
-  net: number;
-};
-
-type StatementItem = {
-  id: string;
-  label: string;
-  status: string;
-  type: string;
-};
-
-type PayoutItem = {
-  id: string;
-  amount: number;
-  status: string;
-  date: string;
-};
+import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_TEXT,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type FinancialOverview = {
   currency: string;
@@ -50,75 +34,17 @@ type FinancialOverview = {
   lastPayoutDate: string | null;
   profileComplete: boolean;
   missingFields: string[];
-  chart: ChartPoint[];
-  recentStatements: StatementItem[];
-  recentPayouts: PayoutItem[];
 };
 
-function KpiCard({
-  title,
-  value,
-  subtitle,
-}: {
-  title: string;
-  value: string;
-  subtitle?: string;
-}) {
-  return (
-    <View style={styles.card}>
-      <Text style={[styles.cardTitle, { textAlign: textAlignStart() }]}>{title}</Text>
-      <Text style={[styles.cardValue, { textAlign: textAlignStart() }]}>{value}</Text>
-      {subtitle ? (
-        <Text style={[styles.cardSubtitle, { textAlign: textAlignStart() }]}>{subtitle}</Text>
-      ) : null}
-    </View>
-  );
-}
+const CARD_BORDER = "rgba(255,255,255,0.1)";
+const MUTED = "rgba(255,255,255,0.7)";
+const DEBIT = "#FCA5A5";
 
-function SectionCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.sectionCard}>
-      <Text style={[styles.sectionTitle, { textAlign: textAlignStart() }]}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
-function SimpleBarChart({ data }: { data: ChartPoint[] }) {
-  const maxGross = useMemo(() => {
-    if (!data.length) return 1;
-    return Math.max(...data.map((item) => item.gross), 1);
-  }, [data]);
-
-  return (
-    <View style={styles.chartContainer}>
-      <View style={[styles.chartBarsRow, { flexDirection: rowDirection() }]}>
-        {data.map((item) => {
-          const height = (item.gross / maxGross) * 140;
-
-          return (
-            <View key={item.label} style={styles.barItem}>
-              <View style={styles.barTrack}>
-                <View style={[styles.barFill, { height }]} />
-              </View>
-              <Text style={styles.barLabel}>{item.label}</Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
+/**
+ * Figma Lot 5 — 348:7145 Loading / 348:7156 Error / 348:7169 Default.
+ * Keeps /api/restaurant/financial/overview RPC.
+ */
 export default function RestaurantFinancialCenterScreen() {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -131,7 +57,8 @@ export default function RestaurantFinancialCenterScreen() {
   }, []);
 
   const fmtMoney = useCallback(
-    (value: number, currency = "USD") => formatMoney(value, currency, i18n.language),
+    (value: number, currency = "USD") =>
+      formatMoney(value, currency, i18n.language),
     [i18n.language]
   );
 
@@ -168,7 +95,7 @@ export default function RestaurantFinancialCenterScreen() {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        },
+        }
       );
 
       const json = await response.json().catch(() => null);
@@ -176,13 +103,18 @@ export default function RestaurantFinancialCenterScreen() {
       if (!response.ok || !json?.ok) {
         throw new Error(
           json?.error ||
-            t("restaurant.financial.loadFailed", "Failed to load restaurant financial overview")
+            t(
+              "restaurant.financial.loadFailed",
+              "Failed to load restaurant financial overview"
+            )
         );
       }
 
       setOverview(json.data as FinancialOverview);
     } catch (err: any) {
-      setError(err?.message || t("common.somethingWentWrong", "Something went wrong"));
+      setError(
+        err?.message || t("common.somethingWentWrong", "Something went wrong")
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -200,365 +132,262 @@ export default function RestaurantFinancialCenterScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <ScreenHeader
           title={t("restaurant.financial.title", "Financial Center")}
+          subtitle="💰"
           fallbackRoute="RestaurantCommandCenter"
-          variant="light"
+          variant="mmd"
         />
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>
-            {t("restaurant.financial.loading", "Loading financial center...")}
-          </Text>
-        </View>
+        <RestaurantBrandLoadingState
+          glass
+          title={t(
+            "restaurant.financial.loadingTitle",
+            "Loading Financials..."
+          )}
+          subtitle={t(
+            "restaurant.financial.loadingSubtitle",
+            "Fetching your financial overview"
+          )}
+        />
       </SafeAreaView>
     );
   }
 
   if (error || !overview) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <ScreenHeader
           title={t("restaurant.financial.title", "Financial Center")}
+          subtitle="💰"
           fallbackRoute="RestaurantCommandCenter"
-          variant="light"
+          variant="mmd"
         />
         <View style={styles.centered}>
-          <Text style={styles.errorText}>
-            {error ||
-              t(
-                "restaurant.financial.noData",
-                "No financial data available at the moment."
-              )}
-          </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => void loadOverview()}>
-            <Text style={styles.retryBtnText}>{t("common.retry", "Retry")}</Text>
-          </TouchableOpacity>
+          <View style={styles.errorCard}>
+            <View style={styles.iconCircle}>
+              <Text style={styles.emoji}>❌</Text>
+            </View>
+            <Text style={styles.errorTitle}>
+              {t("restaurant.financial.errorTitle", "Unable to Load")}
+            </Text>
+            <Text style={styles.errorBody}>
+              {error ||
+                t(
+                  "restaurant.financial.noData",
+                  "Financial overview unavailable. Please try again."
+                )}
+            </Text>
+            <TouchableOpacity
+              style={styles.cta}
+              onPress={() => {
+                setLoading(true);
+                void loadOverview();
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.ctaLabel}>{t("common.retry", "Retry")}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={t("restaurant.financial.title", "Financial Center")}
-        subtitle={t(
-          "restaurant.financial.subtitle",
-          "Restaurant revenue, payouts, statements, and taxes"
-        )}
+        title={t("restaurant.financial.title", "Financial center")}
+        subtitle="💰"
         fallbackRoute="RestaurantCommandCenter"
-        variant="light"
-        style={{ paddingHorizontal: 0 }}
+        variant="mmd"
       />
-
-      {!overview.profileComplete && overview.missingFields.length > 0 ? (
-        <View style={styles.alertBox}>
-          <Text style={[styles.alertTitle, { textAlign: textAlignStart() }]}>
-            {t("restaurant.financial.profileIncomplete", "Profile incomplete")}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={MMD_WHITE}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.heroCard}>
+          <Text style={styles.heroTitle}>
+            📊 {t("restaurant.financial.overview", "Financial Overview")}
           </Text>
-          <Text style={[styles.alertText, { textAlign: textAlignStart() }]}>
-            {t("restaurant.financial.missingFields", "Missing fields: {{fields}}", {
-              fields: overview.missingFields.join(", "),
-            })}
-          </Text>
-        </View>
-      ) : null}
-
-      <View style={[styles.grid, { flexDirection: rowDirection() }]}>
-        <KpiCard
-          title={t("restaurant.financial.grossSales", "Gross Sales")}
-          value={fmtMoney(overview.grossSales, overview.currency)}
-        />
-
-        <KpiCard
-          title={t("restaurant.financial.commission", "Commission")}
-          value={fmtMoney(overview.platformCommission, overview.currency)}
-          subtitle={t("restaurant.financial.platformFees", "Platform fees")}
-        />
-
-        <KpiCard
-          title={t("restaurant.financial.netRevenue", "Net Revenue")}
-          value={fmtMoney(overview.netRevenue, overview.currency)}
-        />
-
-        <KpiCard
-          title={t("restaurant.financial.orders", "Orders")}
-          value={String(overview.totalOrders)}
-        />
-      </View>
-
-      <SectionCard title={t("restaurant.financial.earningsGraph", "Earnings Graph")}>
-        <SimpleBarChart data={overview.chart} />
-      </SectionCard>
-
-      <SectionCard title={t("restaurant.financial.payouts", "Payouts")}>
-        <View style={[styles.rowBetween, { flexDirection: rowDirection() }]}>
-          <Text style={styles.label}>
-            {t("restaurant.financial.pendingPayout", "Pending payout")}
-          </Text>
-          <Text style={styles.value}>
-            {fmtMoney(overview.pendingPayout, overview.currency)}
+          <Text style={styles.heroBody}>
+            {t(
+              "restaurant.financial.overviewSubtitle",
+              "Net revenue and fees for the selected period."
+            )}
           </Text>
         </View>
 
-        <View style={[styles.rowBetween, { flexDirection: rowDirection() }]}>
-          <Text style={styles.label}>
-            {t("restaurant.financial.lastPayout", "Last payout")}
-          </Text>
-          <Text style={styles.value}>
-            {fmtMoney(overview.lastPayoutAmount, overview.currency)}
-          </Text>
-        </View>
-
-        <View style={[styles.rowBetween, { flexDirection: rowDirection() }]}>
-          <Text style={styles.label}>
-            {t("restaurant.financial.lastPayoutDate", "Last payout date")}
-          </Text>
-          <Text style={styles.value}>
-            {overview.lastPayoutDate
-              ? formatDateTime(overview.lastPayoutDate, i18n.language)
-              : t("common.dash", "-")}
-          </Text>
-        </View>
-
-        {overview.recentPayouts.map((item) => (
-          <View key={item.id} style={styles.listItem}>
-            <Text style={styles.listTitle}>
-              {fmtMoney(item.amount, overview.currency)}
+        <View style={styles.metricCard}>
+          <View style={styles.metricIcon}>
+            <Text style={styles.metricEmoji}>💵</Text>
+          </View>
+          <View style={styles.metricText}>
+            <Text style={styles.metricLabel}>
+              {t("restaurant.financial.grossSales", "Gross Sales")}
             </Text>
-            <Text style={styles.listMeta}>
-              {item.status} • {item.date}
+            <Text style={styles.metricValue}>
+              {fmtMoney(overview.grossSales, overview.currency)}
             </Text>
           </View>
-        ))}
-      </SectionCard>
+        </View>
 
-      <SectionCard title={t("restaurant.financial.monthlyStatements", "Monthly Statements")}>
-        {overview.recentStatements.length === 0 ? (
-          <Text style={styles.emptyText}>
-            {t("restaurant.financial.noStatements", "No statements available yet.")}
-          </Text>
-        ) : (
-          overview.recentStatements.map((item) => (
-            <View key={item.id} style={styles.listItem}>
-              <Text style={styles.listTitle}>{item.label}</Text>
-              <Text style={styles.listMeta}>
-                {item.type} • {item.status}
-              </Text>
-            </View>
-          ))
-        )}
-      </SectionCard>
+        <View style={styles.metricCard}>
+          <View style={styles.metricIcon}>
+            <Text style={styles.metricEmoji}>📉</Text>
+          </View>
+          <View style={styles.metricText}>
+            <Text style={styles.metricLabel}>
+              {t("restaurant.financial.platformFees", "Platform Fees")}
+            </Text>
+            <Text style={[styles.metricValue, { color: DEBIT }]}>
+              −{fmtMoney(overview.platformCommission, overview.currency)}
+            </Text>
+          </View>
+        </View>
 
-      <SectionCard title={t("restaurant.financial.taxDocuments", "Tax Documents")}>
-        <Text style={[styles.taxText, { textAlign: textAlignStart() }]}>
-          {t(
-            "restaurant.financial.taxSummaryNote",
-            "Your annual tax summary remains available from the Tax Center."
-          )}
-        </Text>
-      </SectionCard>
-    </ScrollView>
+        <View style={styles.metricCard}>
+          <View style={styles.metricIcon}>
+            <Text style={styles.metricEmoji}>💰</Text>
+          </View>
+          <View style={styles.metricText}>
+            <Text style={styles.metricLabel}>
+              {t("restaurant.financial.netRevenue", "Net Revenue")}
+            </Text>
+            <Text style={[styles.metricValueLg, { color: MMD_TAXI_GREEN }]}>
+              {fmtMoney(overview.netRevenue, overview.currency)}
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F6F7FB",
-  },
-  topBar: {
-    marginBottom: 8,
-  },
-  backBtn: {
-    alignSelf: "flex-start",
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  backBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#2563EB",
-  },
-  retryBtn: {
-    marginTop: 16,
-    backgroundColor: "#111827",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  retryBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#F6F7FB",
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 40,
-  },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: "#666",
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    gap: 16,
   },
-  errorText: {
-    fontSize: 14,
-    color: "#B00020",
+  errorCard: {
+    width: "100%",
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 24,
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+    alignItems: "center",
+    gap: 24,
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emoji: { fontSize: 32, color: MMD_WHITE },
+  errorTitle: {
+    color: MMD_TEXT,
+    fontSize: 22,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
     textAlign: "center",
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  headerSubtitle: {
-    marginTop: 6,
+  errorBody: {
+    color: MUTED,
     fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 16,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
   },
-  alertBox: {
-    backgroundColor: "#FFF7ED",
-    borderWidth: 1,
-    borderColor: "#FDBA74",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-  },
-  alertTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#9A3412",
-    marginBottom: 4,
-  },
-  alertText: {
-    fontSize: 13,
-    color: "#9A3412",
-  },
-  grid: {
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  card: {
-    width: "48%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 13,
-    color: "#6B7280",
-    marginBottom: 8,
-  },
-  cardValue: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  cardSubtitle: {
-    marginTop: 6,
-    fontSize: 12,
-    color: "#9CA3AF",
-  },
-  sectionCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 14,
-  },
-  chartContainer: {
-    paddingTop: 8,
-  },
-  chartBarsRow: {
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    height: 180,
-  },
-  barItem: {
+  cta: {
+    backgroundColor: MMD_TAXI_GREEN,
+    minHeight: 44,
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: "center",
-    flex: 1,
+    justifyContent: "center",
   },
-  barTrack: {
-    width: 24,
-    height: 140,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 999,
-    justifyContent: "flex-end",
-    overflow: "hidden",
-  },
-  barFill: {
-    width: "100%",
-    backgroundColor: "#111827",
-    borderRadius: 999,
-  },
-  barLabel: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#6B7280",
-  },
-  rowBetween: {
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  label: {
+  ctaLabel: {
+    color: MMD_WHITE,
     fontSize: 14,
-    color: "#6B7280",
-  },
-  value: {
-    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
     fontWeight: "600",
-    color: "#111827",
   },
-  listItem: {
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
+  heroCard: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    borderRadius: 24,
+    padding: 24,
+    gap: 12,
   },
-  listTitle: {
+  heroTitle: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  heroBody: {
+    color: MUTED,
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+  },
+  metricCard: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  metricIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: MMD_GLASS,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  metricEmoji: { fontSize: 20, color: MMD_WHITE },
+  metricText: { flex: 1, gap: 4 },
+  metricLabel: {
+    color: MUTED,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
+    fontFamily: MMD_FONT.regular,
   },
-  listMeta: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#6B7280",
+  metricValue: {
+    color: MMD_WHITE,
+    fontSize: 24,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
   },
-  emptyText: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  taxText: {
-    fontSize: 14,
-    color: "#374151",
-    lineHeight: 20,
+  metricValueLg: {
+    color: MMD_WHITE,
+    fontSize: 28,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
   },
 });

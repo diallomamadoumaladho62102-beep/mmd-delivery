@@ -7,17 +7,14 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  StyleSheet,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
-import {
-  UiEmptyState,
-  UiErrorState,
-  UiLoadingState,
-} from "../../components/ui/UiStates";
 import {
   fetchMarketplaceSellers,
   type MarketplaceSeller,
@@ -26,8 +23,16 @@ import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
+import { MarketplaceBrandState } from "../../components/marketplace/MarketplaceBrandState";
 import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
-import { APP_COLORS } from "../../theme/appTheme";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+} from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "MarketplaceHome">;
 
@@ -102,7 +107,7 @@ export default function MarketplaceHomeScreen() {
   const openCount = sellers.filter((s) => s.is_accepting_orders).length;
 
   const listHeader = (
-    <View style={{ gap: 12, marginBottom: 12 }}>
+    <View style={styles.headerBlock}>
       <MarketScopeCard
         market={market}
         areaLabel={t("marketplace.home.market", "Your market")}
@@ -111,7 +116,7 @@ export default function MarketplaceHomeScreen() {
       />
 
       {!loading && !error && sellers.length > 0 ? (
-        <Text style={{ color: APP_COLORS.textSubtle }}>
+        <Text style={styles.openCount}>
           {t("marketplace.home.openCount", "{{open}} open · {{total}} shops", {
             open: openCount,
             total: sellers.length,
@@ -121,9 +126,9 @@ export default function MarketplaceHomeScreen() {
 
       <TouchableOpacity
         onPress={() => navigation.navigate("SellerGate" as never)}
-        style={{ alignSelf: "flex-start", marginBottom: 8 }}
+        style={styles.sellCta}
       >
-        <Text style={{ color: APP_COLORS.accent }}>
+        <Text style={styles.sellCtaText}>
           {t("marketplace.home.sellCta", "Sell on MMD →")}
         </Text>
       </TouchableOpacity>
@@ -131,37 +136,70 @@ export default function MarketplaceHomeScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bgElevated }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("marketplace.home.title", "Marketplace")}
         subtitle={t("marketplace.home.subtitle", "Shop approved local sellers on MMD.")}
         fallbackRoute="ClientHome"
-        variant="dark"
+        variant="mmd"
       />
       <FlatList
         data={loading || error ? [] : sellers}
         keyExtractor={(item) => item.id}
         {...MARKETPLACE_LIST_PERF}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(true); }} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              void load(true);
+            }}
+            tintColor={MMD_LINK_BLUE}
+          />
         }
-        contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 12 }}
+        contentContainerStyle={styles.list}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
           loading ? (
-            <UiLoadingState />
+            <MarketplaceBrandState
+              mode="loading"
+              message={t(
+                "marketplace.home.loading",
+                "Loading marketplace..."
+              )}
+            />
           ) : error ? (
-            <UiErrorState title={error} />
+            <MarketplaceBrandState
+              mode="error"
+              title={t(
+                "marketplace.home.errorTitle",
+                "Couldn’t load marketplace"
+              )}
+              message={error}
+              onRetry={() => void load()}
+              retryLabel={t("common.retry", "Retry")}
+            />
           ) : (
-            <UiEmptyState
-              title={t("marketplace.home.emptyOpen", "No approved shops in your area yet.")}
+            <MarketplaceBrandState
+              mode="empty"
+              title={t(
+                "marketplace.home.emptyOpen",
+                "No approved shops in your area yet."
+              )}
+              message={t(
+                "marketplace.home.emptyHint",
+                "Try again later or check a nearby area."
+              )}
             />
           )
         }
         renderItem={({ item: seller }) => {
           const isOpen = Boolean(seller.is_accepting_orders);
           const productCount = seller.active_product_count ?? 0;
+          const logoUrl = String(
+            seller.logo_url || seller.cover_image_url || ""
+          ).trim();
 
           return (
             <TouchableOpacity
@@ -174,39 +212,36 @@ export default function MarketplaceHomeScreen() {
                   sellerIsOpen: isOpen,
                 })
               }
-              style={{
-                backgroundColor: isOpen ? APP_COLORS.accentSoft : "rgba(15,23,42,0.8)",
-                borderColor: isOpen ? "rgba(196,181,253,0.25)" : "rgba(100,116,139,0.35)",
-                borderWidth: 1,
-                borderRadius: 16,
-                padding: 16,
-                opacity: isOpen ? 1 : 0.85,
-              }}
+              style={[
+                styles.sellerCard,
+                isOpen ? styles.sellerOpen : styles.sellerClosed,
+              ]}
             >
-              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                <Text style={{ color: APP_COLORS.text, fontSize: 18, fontWeight: "600", flex: 1 }}>
+              {logoUrl ? (
+                <Image
+                  source={{ uri: logoUrl }}
+                  style={styles.sellerLogo}
+                  resizeMode="cover"
+                  accessibilityLabel={seller.business_name}
+                />
+              ) : null}
+              <View style={styles.titleRow}>
+                <Text style={styles.sellerName} numberOfLines={2}>
                   {seller.business_name}
                 </Text>
-                <Text
-                  style={{
-                    color: isOpen ? APP_COLORS.success : APP_COLORS.danger,
-                    fontWeight: "700",
-                    fontSize: 12,
-                    alignSelf: "flex-start",
-                  }}
-                >
+                <Text style={isOpen ? styles.statusOpen : styles.statusClosed}>
                   {isOpen
                     ? t("marketplace.home.shopOpen", "Open")
                     : t("marketplace.home.shopClosed", "Closed")}
                 </Text>
               </View>
-              <Text style={{ color: APP_COLORS.textSubtle, marginTop: 4 }}>
+              <Text style={styles.cityLine}>
                 {seller.city}, {seller.country_code}
               </Text>
-              <Text style={{ color: APP_COLORS.textMuted, marginTop: 4 }} numberOfLines={2}>
+              <Text style={styles.meta} numberOfLines={2}>
                 {seller.address}
               </Text>
-              <Text style={{ color: APP_COLORS.textMuted, marginTop: 6 }}>
+              <Text style={styles.meta}>
                 {t("marketplace.home.productCount", "{{count}} products available", {
                   count: productCount,
                 })}
@@ -218,3 +253,79 @@ export default function MarketplaceHomeScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  list: { padding: 20, paddingTop: 8, gap: 12 },
+  headerBlock: { gap: 12, marginBottom: 12 },
+  openCount: {
+    color: "#CBD5E1",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+  },
+  sellCta: { alignSelf: "flex-start", marginBottom: 8 },
+  sellCtaText: {
+    color: MMD_LINK_BLUE,
+    fontFamily: MMD_FONT.semibold,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  sellerCard: {
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    borderRadius: 16,
+    padding: 16,
+    gap: 4,
+  },
+  sellerOpen: {
+    backgroundColor: "rgba(114,159,250,0.15)",
+    opacity: 1,
+  },
+  sellerClosed: {
+    backgroundColor: "rgba(0,51,153,0.8)",
+    opacity: 0.85,
+  },
+  titleRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "flex-start",
+    width: "100%",
+  },
+  sellerLogo: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginBottom: 4,
+  },
+  sellerName: {
+    color: MMD_TEXT,
+    fontSize: 18,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    flex: 1,
+    minWidth: 0,
+  },
+  statusOpen: {
+    color: "#86EFAC",
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  statusClosed: {
+    color: "#FCA5A5",
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  cityLine: {
+    color: "#CBD5E1",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+  },
+  meta: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+  },
+});

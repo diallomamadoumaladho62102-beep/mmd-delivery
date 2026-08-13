@@ -16,7 +16,6 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../navigation/AppNavigator";
-import { V4, V4_RADIUS, V4_SHADOW } from "../components/client/home/clientHomeTheme";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import {
   type AiAction,
@@ -33,7 +32,19 @@ import {
   saveAiLocalHistory,
   type LocalAiMessage,
 } from "../lib/mmdAiLocalHistory";
-import { rowDirection, textAlignStart } from "../i18n/rtl";
+import { textAlignStart } from "../i18n/rtl";
+import {
+  MMD_BLUE,
+  MMD_CARD_ON_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_GOLD_BORDER,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "MmdAi">;
 type MmdAiRoute = RouteProp<RootStackParamList, "MmdAi">;
@@ -317,7 +328,7 @@ export default function MmdAiScreen() {
       />
 
       {market.scopeResolved ? (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <View style={styles.marketBand}>
           <MarketScopeCard
             market={market}
             areaLabel={tsFallback(ts, "mmd.ai.market", "Your market")}
@@ -332,6 +343,7 @@ export default function MmdAiScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.quickRow}
+        style={styles.quickBand}
       >
         {quickActions.map((action) => (
           <Pressable
@@ -363,7 +375,7 @@ export default function MmdAiScreen() {
           testID="mmd-ai-messages"
         >
           {loadingHistory ? (
-            <ActivityIndicator color={V4.green} style={{ marginTop: 24 }} />
+            <ActivityIndicator color={MMD_GOLD_CLASSIC} style={{ marginTop: 24 }} />
           ) : messages.length === 0 ? (
             <View style={styles.emptyCard}>
               <View style={styles.heroIcon}>
@@ -410,7 +422,7 @@ export default function MmdAiScreen() {
 
           {sending ? (
             <View style={[styles.bubble, styles.bubbleAssistant, styles.typingBubble]}>
-              <ActivityIndicator color={V4.green} size="small" />
+              <ActivityIndicator color={MMD_GOLD_CLASSIC} size="small" />
               <Text style={styles.typingText}>
                 {tsFallback(ts, "mmd.ai.typing", "MMD AI is thinking…")}
               </Text>
@@ -454,7 +466,7 @@ export default function MmdAiScreen() {
             value={input}
             onChangeText={setInput}
             placeholder={tsFallback(ts, "mmd.ai.input.placeholder", "Ask MMD anything…")}
-            placeholderTextColor={V4.textSecondary}
+            placeholderTextColor={MMD_LINK_BLUE}
             style={[styles.input, { textAlign: textAlignStart() }]}
             multiline
             maxLength={2000}
@@ -476,80 +488,90 @@ export default function MmdAiScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: V4.bg },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
   flex: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    gap: 10,
-  },
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: V4.card,
-    borderWidth: 1,
-    borderColor: V4.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backGlyph: { color: V4.textPrimary, fontSize: 20, fontWeight: "700" },
-  headerCopy: { flex: 1, minWidth: 0 },
-  headerTitle: { color: V4.textPrimary, fontSize: 20, fontWeight: "900" },
-  headerSub: { color: V4.textSecondary, fontSize: 12, marginTop: 2, fontWeight: "600" },
   clearButton: { paddingHorizontal: 8, paddingVertical: 8 },
-  clearText: { color: V4.textSecondary, fontWeight: "800", fontSize: 12 },
+  clearText: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontWeight: "800",
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+  },
+  marketBand: {
+    backgroundColor: MMD_WHITE,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  quickBand: { backgroundColor: MMD_WHITE, maxHeight: 55 },
   quickRow: { paddingHorizontal: 16, gap: 8, paddingBottom: 10 },
   quickChip: {
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: "rgba(0,217,95,0.12)",
-    borderWidth: 1,
-    borderColor: V4.borderGreen,
+    backgroundColor: "#DCFCE7",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
   },
-  quickChipText: { color: V4.green, fontWeight: "800", fontSize: 12 },
+  quickChipText: {
+    color: MMD_GOLD_CLASSIC,
+    fontWeight: "800",
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+  },
   messagesContent: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
   emptyCard: {
-    marginTop: 12,
-    backgroundColor: V4.card,
-    borderRadius: V4_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: V4.border,
+    marginTop: 0,
+    backgroundColor: MMD_WHITE,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     padding: 18,
     alignItems: "center",
-    ...V4_SHADOW,
+    gap: 8,
   },
   heroIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "rgba(0,217,95,0.14)",
+    backgroundColor: "#DCFCE7",
     borderWidth: 1,
-    borderColor: V4.borderGreen,
+    borderColor: MMD_GOLD_BORDER,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
   },
-  heroIconGlyph: { color: V4.green, fontSize: 22, fontWeight: "900" },
-  emptyTitle: { color: V4.textPrimary, fontWeight: "900", fontSize: 18 },
+  heroIconGlyph: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 22,
+    fontWeight: "900",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  emptyTitle: {
+    color: MMD_BLUE,
+    fontWeight: "900",
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+  },
   emptyBody: {
-    color: V4.textSecondary,
+    color: MMD_LINK_BLUE,
     fontSize: 13,
     lineHeight: 20,
-    marginTop: 8,
     textAlign: "center",
+    fontFamily: MMD_FONT.regular,
   },
   noticeCard: {
     backgroundColor: "rgba(120,53,15,0.22)",
-    borderRadius: V4_RADIUS.md,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "rgba(251,191,36,0.22)",
     padding: 12,
   },
-  noticeText: { color: "#FDE68A", fontWeight: "700", fontSize: 13, lineHeight: 19 },
+  noticeText: {
+    color: "#FDE68A",
+    fontWeight: "700",
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: MMD_FONT.bold,
+  },
   bubble: {
     maxWidth: "86%",
     borderRadius: 18,
@@ -558,48 +580,71 @@ const styles = StyleSheet.create({
   },
   bubbleUser: {
     alignSelf: "flex-end",
-    backgroundColor: V4.green,
+    backgroundColor: "rgba(114,159,250,0.32)",
+    borderWidth: 1,
+    borderColor: MMD_STROKE,
   },
   bubbleAssistant: {
     alignSelf: "flex-start",
-    backgroundColor: V4.card,
+    backgroundColor: MMD_CARD_ON_BLUE,
     borderWidth: 1,
-    borderColor: V4.border,
+    borderColor: MMD_STROKE,
   },
-  bubbleText: { fontSize: 15, lineHeight: 21, fontWeight: "600" },
-  bubbleTextUser: { color: V4.bg },
-  bubbleTextAssistant: { color: V4.textPrimary },
+  bubbleText: { fontSize: 15, lineHeight: 21, fontWeight: "600", fontFamily: MMD_FONT.semibold },
+  bubbleTextUser: { color: MMD_WHITE },
+  bubbleTextAssistant: { color: MMD_TEXT },
   typingBubble: { flexDirection: "row", alignItems: "center", gap: 10 },
-  typingText: { color: V4.textSecondary, fontWeight: "700", fontSize: 13 },
+  typingText: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontWeight: "700",
+    fontSize: 13,
+    fontFamily: MMD_FONT.bold,
+  },
   actionsBlock: { gap: 8, marginTop: 4 },
   actionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: V4.cardSecondary,
-    borderRadius: V4_RADIUS.sm,
+    backgroundColor: MMD_CARD_ON_BLUE,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: V4.border,
+    borderColor: MMD_STROKE,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  actionLabel: { flex: 1, color: V4.textPrimary, fontWeight: "800", fontSize: 14 },
-  actionChevron: { color: V4.textSecondary, fontSize: 18, fontWeight: "700" },
+  actionLabel: {
+    flex: 1,
+    color: MMD_TEXT,
+    fontWeight: "800",
+    fontSize: 14,
+    fontFamily: MMD_FONT.extrabold,
+  },
+  actionChevron: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 18,
+    fontWeight: "700",
+  },
   suggestionsBlock: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
   suggestionChip: {
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: V4.card,
+    backgroundColor: "#DCFCE7",
     borderWidth: 1,
-    borderColor: V4.border,
+    borderColor: MMD_STROKE,
   },
-  suggestionText: { color: V4.textSecondary, fontWeight: "700", fontSize: 12 },
+  suggestionText: {
+    color: MMD_GOLD_CLASSIC,
+    fontWeight: "700",
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+  },
   disclaimer: {
-    color: V4.textSecondary,
+    color: MMD_TEXT_MUTED_BLUE,
     fontSize: 11,
     lineHeight: 16,
     marginTop: 8,
     opacity: 0.85,
+    fontFamily: MMD_FONT.regular,
   },
   composer: {
     flexDirection: "row",
@@ -608,31 +653,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: V4.border,
-    backgroundColor: V4.bg,
+    borderTopColor: "#E2E8F0",
+    backgroundColor: MMD_WHITE,
   },
   input: {
     flex: 1,
-    minHeight: 46,
+    minHeight: 42,
     maxHeight: 120,
-    borderRadius: 18,
-    backgroundColor: V4.card,
-    borderWidth: 1,
-    borderColor: V4.border,
+    borderRadius: 8,
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === "android" ? 10 : 12,
-    color: V4.textPrimary,
-    fontSize: 15,
+    color: MMD_BLUE,
+    fontSize: 14,
     fontWeight: "600",
+    fontFamily: MMD_FONT.regular,
   },
   sendButton: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: V4.green,
+    backgroundColor: MMD_GOLD_CLASSIC,
     alignItems: "center",
     justifyContent: "center",
   },
   sendButtonDisabled: { opacity: 0.45 },
-  sendGlyph: { color: V4.bg, fontSize: 20, fontWeight: "900" },
+  sendGlyph: {
+    color: MMD_WHITE,
+    fontSize: 20,
+    fontWeight: "900",
+    fontFamily: MMD_FONT.extrabold,
+  },
 });

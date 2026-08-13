@@ -11,7 +11,10 @@ import {
   Platform,
   Image,
   ScrollView,
+  StyleSheet,
+  useWindowDimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../lib/supabase";
@@ -30,6 +33,14 @@ import {
   scoreClientProfileCompleteness,
 } from "../lib/profileCompleteness";
 import { toUserFacingError } from "../lib/userFacingError";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_DARK,
+  MMD_WHITE,
+} from "../theme/mmdUi";
+
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientProfile">;
 
@@ -643,25 +654,18 @@ export function ClientProfileScreen() {
     }
   }
 
+  const { width } = useWindowDimensions();
+  const logoSize = width >= 768 ? 96 : width < 340 ? 72 : 80;
+
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: "#020617",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-        edges={["bottom", "left", "right"]}
-      >
+      <SafeAreaView style={styles.loadingRoot} edges={["top", "bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" />
-        <ScreenHeader
-          title={t("client.profile.title", "Profil client")}
-          fallbackRoute="ClientHome"
-          variant="dark"
-        />
-        <ActivityIndicator color="#fff" />
-        <Text style={{ color: "#9CA3AF", marginTop: 10 }}>
+        <Image source={MMD_LOGO} style={styles.loadingLogo} resizeMode="contain" />
+        <Text style={styles.loadingBrand}>MMD DELIVERY</Text>
+        <Text style={styles.loadingTagline}>We Deliver With Heart</Text>
+        <ActivityIndicator color={MMD_GOLD_DARK} size="large" style={{ marginTop: 16 }} />
+        <Text style={styles.loadingCaption}>
           {t("client.profile.loading", "Chargement du profil...")}
         </Text>
       </SafeAreaView>
@@ -672,7 +676,7 @@ export function ClientProfileScreen() {
   const displayInitials = initials(fullName);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <ScreenHeader
         title={t("client.profile.title", "Profil client")}
@@ -690,288 +694,218 @@ export function ClientProfileScreen() {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 40 }}
+          contentContainerStyle={styles.scrollContent}
         >
-        <View
-          style={{
-            marginBottom: 14,
-            backgroundColor: "#431407",
-            borderColor: "#FDBA74",
-            borderWidth: 1,
-            borderRadius: 14,
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-          }}
-        >
-          <Text style={{ color: "#FFEDD5", fontWeight: "800", fontSize: 13 }}>
-            {t("client.profile.completeness", "Complétude du profil")} :{" "}
-            {completeness.percent}%
-          </Text>
-          <Text style={{ color: "#FED7AA", fontSize: 11, marginTop: 4 }}>
-            {completeness.missing.length
-              ? `${t("client.profile.missing", "Manquant")} : ${completeness.missing.join(", ")}`
-              : t("client.profile.complete", "Profil complet.")}
-          </Text>
-          {latitude != null && longitude != null ? (
-            <Text style={{ color: "#86EFAC", fontSize: 11, marginTop: 4 }}>
-              {t("client.profile.addressVerifiedBadge", "Adresse vérifiée")}
-            </Text>
-          ) : null}
-        </View>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate("ClientSettings")}
-          activeOpacity={0.85}
-          style={{
-            marginBottom: 14,
-            backgroundColor: "#0B1220",
-            borderColor: "#1E293B",
-            borderWidth: 1,
-            borderRadius: 14,
-            paddingVertical: 14,
-            paddingHorizontal: 14,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <View>
-            <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 15 }}>
-              {t("client.profile.openSettings", "Settings")}
-            </Text>
-            <Text style={{ color: "#94A3B8", fontWeight: "700", marginTop: 3, fontSize: 12 }}>
-              {t(
-                "client.profile.openSettingsHint",
-                "Language, notifications, security & more"
-              )}
-            </Text>
+          <View style={styles.logoWrap}>
+            <Image
+              source={MMD_LOGO}
+              style={{ width: logoSize, height: logoSize, borderRadius: logoSize / 2 }}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={{ color: "#93C5FD", fontWeight: "900", fontSize: 20 }}>›</Text>
-        </TouchableOpacity>
 
-        {/* Avatar */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-            marginBottom: 16,
-          }}
-        >
-          <View
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
-              backgroundColor: "#111827",
-              borderWidth: 1,
-              borderColor: "#374151",
-              overflow: "hidden",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            {avatarPreview ? (
-              <Image
-                source={{ uri: avatarPreview }}
-                style={{ width: 64, height: 64 }}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={{ alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ color: "#E5E7EB", fontSize: 18, fontWeight: "900" }}>
-                  {displayInitials}
-                </Text>
-                <Text style={{ color: "#9CA3AF", fontSize: 10, marginTop: 2 }}>
-                  {t("client.profile.photo", "Photo")}
-                </Text>
-              </View>
-            )}
+          <View style={styles.banner}>
+            <Text style={styles.bannerTitle}>
+              {t("client.profile.completeness", "Complétude du profil")} :{" "}
+              {completeness.percent}%
+            </Text>
+            <Text style={styles.bannerBody}>
+              {completeness.missing.length
+                ? `${t("client.profile.missing", "Manquant")} : ${completeness.missing.join(", ")}`
+                : t("client.profile.complete", "Profil complet.")}
+            </Text>
+            {latitude != null && longitude != null ? (
+              <Text style={styles.bannerOk}>
+                {t("client.profile.addressVerifiedBadge", "Adresse vérifiée")}
+              </Text>
+            ) : null}
           </View>
 
           <TouchableOpacity
-            onPress={pickAvatar}
-            disabled={saving}
-            style={{
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              borderRadius: 10,
-              backgroundColor: "#0B1220",
-              borderWidth: 1,
-              borderColor: "#334155",
-              opacity: saving ? 0.7 : 1,
-            }}
+            onPress={() => navigation.navigate("ClientSettings")}
+            activeOpacity={0.85}
+            style={styles.settingsLink}
           >
-            <Text style={{ color: "#93C5FD", fontWeight: "800" }}>
-              {avatarPreview
-                ? t("client.profile.changePhoto", "Changer la photo")
-                : t("client.profile.addPhoto", "Ajouter une photo")}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.settingsTitle}>
+                {t("client.profile.openSettings", "Settings")}
+              </Text>
+              <Text style={styles.settingsHint}>
+                {t(
+                  "client.profile.openSettingsHint",
+                  "Language, notifications, security & more"
+                )}
+              </Text>
+            </View>
+            <Text style={styles.settingsChevron}>›</Text>
+          </TouchableOpacity>
+
+          <View style={styles.avatarRow}>
+            <View style={styles.avatarCircle}>
+              {avatarPreview ? (
+                <Image
+                  source={{ uri: avatarPreview }}
+                  style={styles.avatarImg}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarInitials}>{displayInitials}</Text>
+                  <Text style={styles.avatarPhotoLabel}>
+                    {t("client.profile.photo", "Photo")}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              onPress={pickAvatar}
+              disabled={saving}
+              style={[styles.addPhotoBtn, saving ? { opacity: 0.7 } : null]}
+            >
+              <Text style={styles.addPhotoText}>
+                {avatarPreview
+                  ? t("client.profile.changePhoto", "Changer la photo")
+                  : t("client.profile.addPhoto", "Ajouter une photo")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Label t={tt} labelKey="client.profile.fields.fullName" fallback="Nom complet" />
+          <Field
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder={t("client.profile.placeholders.fullName", "Ex: Mamadou Diallo")}
+          />
+
+          <Label t={tt} labelKey="client.profile.fields.phone" fallback="Numéro de téléphone" />
+          <Field
+            value={phone}
+            onChangeText={setPhone}
+            placeholder={t("client.profile.placeholders.phone", "Ex: 929xxxxxxx")}
+            keyboardType="phone-pad"
+          />
+          <PhoneVerifyCard
+            phone={phone}
+            verified={phoneVerified}
+            onVerified={(e164) => {
+              setPhoneVerified(true);
+              setPhone(e164);
+            }}
+          />
+
+          <Label t={tt} labelKey="client.profile.fields.address" fallback="Adresse" />
+          <AddressAutocomplete
+            value={address}
+            onChangeText={(text) => {
+              setAddress(text);
+              setLatitude(null);
+              setLongitude(null);
+            }}
+            onSelect={(place) => {
+              setAddress(place.fullAddress);
+              setLatitude(place.latitude);
+              setLongitude(place.longitude);
+            }}
+            placeholder={t(
+              "client.profile.placeholders.address",
+              "Rechercher une adresse…",
+            )}
+            country={trimOrEmpty(country).toLowerCase() || undefined}
+            style={styles.addressField}
+          />
+
+          <View style={styles.rowFields}>
+            <View style={{ flex: 1 }}>
+              <Label t={tt} labelKey="client.profile.fields.city" fallback="Ville" />
+              <Field
+                value={city}
+                onChangeText={setCity}
+                placeholder={t("client.profile.placeholders.city", "Ex: Brooklyn")}
+              />
+            </View>
+            <View style={{ width: 90 }}>
+              <Label t={tt} labelKey="client.profile.fields.state" fallback="État" />
+              <Field
+                value={state}
+                onChangeText={setState}
+                placeholder={t("client.profile.placeholders.state", "NY")}
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+
+          <View style={styles.rowFields}>
+            <View style={{ flex: 1 }}>
+              <Label t={tt} labelKey="client.profile.fields.postalCode" fallback="Code postal" />
+              <Field
+                value={postalCode}
+                onChangeText={setPostalCode}
+                placeholder={t("client.profile.placeholders.postalCode", "11207")}
+                keyboardType="number-pad"
+              />
+            </View>
+            <View style={{ width: 90 }}>
+              <Label t={tt} labelKey="client.profile.fields.country" fallback="Pays" />
+              <Field
+                value={country}
+                onChangeText={setCountry}
+                placeholder={t("client.profile.placeholders.country", "US")}
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+
+          <Text style={styles.hint}>
+            {t('client.profile.hint', 'Astuce: État = "NY", Pays = "US".')}
+          </Text>
+
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving || !profileComplete}
+            activeOpacity={0.9}
+            style={[styles.saveWrap, (saving || !profileComplete) && { opacity: 0.7 }]}
+          >
+            <LinearGradient
+              colors={[MMD_BLUE, "rgba(11,18,32,0.88)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.saveBtn}
+            >
+              {saving ? (
+                <ActivityIndicator color="#F8FAFC" />
+              ) : (
+                <Text style={styles.saveText}>
+                  {t("client.profile.saveAndContinue", "Enregistrer et continuer")}
+                </Text>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleSignOut}
+            disabled={signingOut || saving}
+            style={[styles.signOutBtn, signingOut ? { opacity: 0.7 } : null]}
+          >
+            {signingOut ? (
+              <ActivityIndicator color={MMD_WHITE} />
+            ) : (
+              <Text style={styles.signOutText}>
+                {t("client.profile.signOut.button", "Sign Out")}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("DeleteAccount", { role: "client" })
+            }
+            style={styles.deleteBtn}
+          >
+            <Text style={styles.deleteText}>
+              {t("account.delete.title", "Delete account")}
             </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Champs */}
-        <Label t={tt} labelKey="client.profile.fields.fullName" fallback="Nom complet" />
-        <Field
-          value={fullName}
-          onChangeText={setFullName}
-          placeholder={t("client.profile.placeholders.fullName", "Ex: Mamadou Diallo")}
-        />
-
-        <Label t={tt} labelKey="client.profile.fields.phone" fallback="Numéro de téléphone" />
-        <Field
-          value={phone}
-          onChangeText={setPhone}
-          placeholder={t("client.profile.placeholders.phone", "Ex: 929xxxxxxx")}
-          keyboardType="phone-pad"
-        />
-        <PhoneVerifyCard
-          phone={phone}
-          verified={phoneVerified}
-          onVerified={(e164) => {
-            setPhoneVerified(true);
-            setPhone(e164);
-          }}
-        />
-
-        <Label t={tt} labelKey="client.profile.fields.address" fallback="Adresse" />
-        <AddressAutocomplete
-          value={address}
-          onChangeText={(text) => {
-            setAddress(text);
-            setLatitude(null);
-            setLongitude(null);
-          }}
-          onSelect={(place) => {
-            setAddress(place.fullAddress);
-            setLatitude(place.latitude);
-            setLongitude(place.longitude);
-          }}
-          placeholder={t(
-            "client.profile.placeholders.address",
-            "Rechercher une adresse…",
-          )}
-          country={trimOrEmpty(country).toLowerCase() || undefined}
-          style={{
-            borderWidth: 1,
-            borderColor: "#374151",
-            borderRadius: 10,
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-            color: "#E5E7EB",
-            backgroundColor: "#0B1220",
-            marginBottom: 4,
-          }}
-        />
-
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Label t={tt} labelKey="client.profile.fields.city" fallback="Ville" />
-            <Field
-              value={city}
-              onChangeText={setCity}
-              placeholder={t("client.profile.placeholders.city", "Ex: Brooklyn")}
-            />
-          </View>
-          <View style={{ width: 90 }}>
-            <Label t={tt} labelKey="client.profile.fields.state" fallback="État" />
-            <Field
-              value={state}
-              onChangeText={setState}
-              placeholder={t("client.profile.placeholders.state", "NY")}
-              autoCapitalize="characters"
-            />
-          </View>
-        </View>
-
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Label t={tt} labelKey="client.profile.fields.postalCode" fallback="Code postal" />
-            <Field
-              value={postalCode}
-              onChangeText={setPostalCode}
-              placeholder={t("client.profile.placeholders.postalCode", "11207")}
-              keyboardType="number-pad"
-            />
-          </View>
-          <View style={{ width: 90 }}>
-            <Label t={tt} labelKey="client.profile.fields.country" fallback="Pays" />
-            <Field
-              value={country}
-              onChangeText={setCountry}
-              placeholder={t("client.profile.placeholders.country", "US")}
-              autoCapitalize="characters"
-            />
-          </View>
-        </View>
-
-        <Text style={{ color: "#64748B", marginTop: 6 }}>
-          {t('client.profile.hint', 'Astuce: État = "NY", Pays = "US".')}
-        </Text>
-
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={saving || !profileComplete}
-          style={{
-            marginTop: 18,
-            backgroundColor: profileComplete ? "#3B82F6" : "#334155",
-            paddingVertical: 14,
-            borderRadius: 10,
-            alignItems: "center",
-            opacity: saving ? 0.7 : 1,
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>
-              {t("client.profile.saveAndContinue", "Enregistrer et continuer")}
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleSignOut}
-          disabled={signingOut || saving}
-          style={{
-            marginTop: 14,
-            borderWidth: 1,
-            borderColor: "rgba(148,163,184,0.35)",
-            borderRadius: 12,
-            paddingVertical: 12,
-            alignItems: "center",
-            backgroundColor: "rgba(15,23,42,0.9)",
-            opacity: signingOut ? 0.7 : 1,
-          }}
-        >
-          {signingOut ? (
-            <ActivityIndicator color="#E2E8F0" />
-          ) : (
-            <Text style={{ color: "#E2E8F0", fontWeight: "800" }}>
-              {t("client.profile.signOut.button", "Sign Out")}
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() =>
-            navigation.navigate("DeleteAccount", { role: "client" })
-          }
-          style={{
-            marginTop: 14,
-            borderWidth: 1,
-            borderColor: "rgba(220,38,38,0.45)",
-            borderRadius: 12,
-            paddingVertical: 12,
-            alignItems: "center",
-            backgroundColor: "rgba(220,38,38,0.12)",
-          }}
-        >
-          <Text style={{ color: "#FCA5A5", fontWeight: "800" }}>
-            {t("account.delete.title", "Delete account")}
-          </Text>
-        </TouchableOpacity>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -985,32 +919,220 @@ type LabelProps = {
 };
 
 function Label({ t, labelKey, fallback }: LabelProps) {
-  return (
-    <Text style={{ color: "#E5E7EB", marginBottom: 6, marginTop: 10 }}>
-      {t(labelKey, fallback)}
-    </Text>
-  );
+  return <Text style={styles.label}>{t(labelKey, fallback)}</Text>;
 }
 
 function Field(props: any) {
   return (
     <TextInput
       {...props}
-      placeholderTextColor="#6B7280"
+      placeholderTextColor="rgba(255,255,255,0.55)"
       autoCapitalize={props.autoCapitalize ?? "none"}
       autoCorrect={props.autoCorrect ?? false}
-      style={{
-        borderWidth: 1,
-        borderColor: "#374151",
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        color: "white",
-        backgroundColor: "#0B1220",
-        marginBottom: 4,
-      }}
+      style={styles.field}
     />
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: MMD_BLUE },
+  loadingRoot: {
+    flex: 1,
+    backgroundColor: MMD_BLUE,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  loadingLogo: { width: 100, height: 100, borderRadius: 50 },
+  loadingBrand: {
+    marginTop: 16,
+    color: MMD_WHITE,
+    fontSize: 28,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    textAlign: "center",
+  },
+  loadingTagline: {
+    marginTop: 8,
+    color: MMD_GOLD_DARK,
+    fontSize: 16,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+    textAlign: "center",
+  },
+  loadingCaption: {
+    marginTop: 12,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 15,
+    textAlign: "center",
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 40,
+  },
+  logoWrap: {
+    width: "100%",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  banner: {
+    marginBottom: 14,
+    backgroundColor: MMD_BLUE,
+    borderColor: "rgba(255,255,255,0.3)",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 4,
+  },
+  bannerTitle: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 16,
+  },
+  bannerBody: { color: MMD_WHITE, fontSize: 15 },
+  bannerOk: { color: "#86EFAC", fontSize: 13, marginTop: 2 },
+  settingsLink: {
+    marginBottom: 14,
+    backgroundColor: MMD_BLUE,
+    borderColor: "rgba(255,255,255,0.3)",
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  settingsTitle: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 18,
+  },
+  settingsHint: {
+    color: MMD_WHITE,
+    fontWeight: "700",
+    marginTop: 3,
+    fontSize: 15,
+  },
+  settingsChevron: { color: MMD_WHITE, fontWeight: "800", fontSize: 23 },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 16,
+  },
+  avatarCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1,
+    borderColor: MMD_WHITE,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarImg: { width: 64, height: 64 },
+  avatarFallback: { alignItems: "center", justifyContent: "center" },
+  avatarInitials: {
+    color: MMD_WHITE,
+    fontSize: 21,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  avatarPhotoLabel: { color: MMD_WHITE, fontSize: 13, marginTop: 2 },
+  addPhotoBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: MMD_WHITE,
+  },
+  addPhotoText: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 17,
+  },
+  label: {
+    color: MMD_WHITE,
+    marginBottom: 6,
+    marginTop: 10,
+    fontSize: 17,
+    fontFamily: MMD_FONT.regular,
+  },
+  field: {
+    borderWidth: 2.5,
+    borderColor: MMD_WHITE,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    color: MMD_WHITE,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    marginBottom: 4,
+    fontSize: 17,
+  },
+  addressField: {
+    borderWidth: 2.5,
+    borderColor: MMD_WHITE,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    color: MMD_WHITE,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    marginBottom: 4,
+    fontSize: 17,
+  },
+  rowFields: { flexDirection: "row", gap: 10 },
+  hint: { color: MMD_WHITE, marginTop: 6, fontSize: 15 },
+  saveWrap: { marginTop: 18, borderRadius: 10, overflow: "hidden" },
+  saveBtn: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveText: {
+    color: "#F8FAFC",
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 19,
+  },
+  signOutBtn: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.35)",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "rgba(11,14,32,0.52)",
+  },
+  signOutText: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 17,
+  },
+  deleteBtn: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: "rgba(220,38,38,0.87)",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "rgba(220,38,38,0.95)",
+  },
+  deleteText: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 17,
+  },
+});
 
 export default ClientProfileScreen;

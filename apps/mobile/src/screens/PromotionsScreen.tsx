@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -17,18 +19,23 @@ import ScreenHeader from "../components/navigation/ScreenHeader";
 import { toUserFacingError } from "../lib/userFacingError";
 import { fetchMarketingSummary, validateMarketingCode } from "../lib/marketingApi";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import {
+  MMD_BLUE,
+  MMD_CARD_ON_BLUE_STRONG,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_GREEN,
+  MMD_GREEN_SOFT,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Promotions">;
 
-const COLORS = {
-  bg: "#0B1220",
-  surface: "rgba(15,23,42,0.95)",
-  border: "#334155",
-  accent: "#34D399",
-  textStrong: "#F8FAFC",
-  textMuted: "#94A3B8",
-  textSoft: "#CBD5E1",
-};
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 
 export default function PromotionsScreen() {
   const navigation = useNavigation<Nav>();
@@ -39,13 +46,15 @@ export default function PromotionsScreen() {
   const [coupons, setCoupons] = useState<Array<Record<string, unknown>>>([]);
   const [code, setCode] = useState("");
 
+  // List offers/coupons without inventing a demo cart. Eligibility amounts
+  // are computed at real checkout (food/marketplace) with live totals.
   const load = useCallback(async () => {
     setError(null);
     try {
       const res = await fetchMarketingSummary({
         service: "food",
-        subtotalCents: 2500,
-        deliveryFeeCents: 500,
+        subtotalCents: 0,
+        deliveryFeeCents: 0,
       });
       setOffers((res.offers as Array<Record<string, unknown>>) ?? []);
       setCoupons((res.coupons as Array<Record<string, unknown>>) ?? []);
@@ -72,16 +81,16 @@ export default function PromotionsScreen() {
       const res = await validateMarketingCode({
         service: "food",
         promo_code: code,
-        subtotal_cents: 2500,
-        delivery_fee_cents: 500,
+        subtotal_cents: 0,
+        delivery_fee_cents: 0,
       });
       const disc = Number(res.resolve?.order_discount_cents ?? 0);
       const fee = Number(res.resolve?.delivery_fee_discount_cents ?? 0);
       Alert.alert(
         "Promotions",
         disc + fee > 0
-          ? `Code accepté (−${(disc / 100).toFixed(2)} $ / −${(fee / 100).toFixed(2)} $ livraison)`
-          : "Code accepté."
+          ? `Code accepté (−${(disc / 100).toFixed(2)} $ / −${(fee / 100).toFixed(2)} $ livraison). Le montant exact s’applique au checkout.`
+          : "Code accepté. Le montant exact s’applique au checkout selon votre panier."
       );
     } catch (e: unknown) {
       Alert.alert("Promotions", toUserFacingError(e, "Code refusé."));
@@ -90,17 +99,34 @@ export default function PromotionsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <ScreenHeader title="Promotions" fallbackRoute="ClientHome" />
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+      <ScreenHeader title="Promotions" fallbackRoute="ClientHome" variant="dark" />
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={COLORS.accent} />
+        <View style={styles.stateWrap}>
+          <ActivityIndicator color={MMD_GREEN_SOFT} />
+          <View style={styles.stateSpacer} />
+          <Image
+            source={MMD_LOGO}
+            style={styles.footerLogo}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.footerBrand}>MMD Delivery</Text>
         </View>
       ) : error ? (
-        <View style={styles.center}>
+        <View style={styles.stateWrap}>
           <Text style={styles.error}>{error}</Text>
           <TouchableOpacity style={styles.btn} onPress={() => void load()}>
             <Text style={styles.btnText}>Réessayer</Text>
           </TouchableOpacity>
+          <View style={styles.stateSpacer} />
+          <Image
+            source={MMD_LOGO}
+            style={styles.footerLogo}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.footerBrand}>MMD Delivery</Text>
         </View>
       ) : (
         <ScrollView
@@ -112,31 +138,31 @@ export default function PromotionsScreen() {
                 setRefreshing(true);
                 void load();
               }}
-              tintColor={COLORS.accent}
+              tintColor={MMD_GREEN_SOFT}
             />
           }
         >
           <View style={styles.card}>
-            <Text style={styles.section}>Code promo</Text>
+            <Text style={styles.cardSection}>Promo Code</Text>
             <TextInput
               style={styles.input}
               value={code}
               onChangeText={setCode}
               autoCapitalize="characters"
               placeholder="CODEPROMO"
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={MMD_LINK_BLUE}
             />
             <TouchableOpacity style={styles.btn} onPress={() => void onValidate()}>
-              <Text style={styles.btnText}>Vérifier</Text>
+              <Text style={styles.btnText}>Verify</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.section}>Mes coupons</Text>
+          <Text style={styles.section}>My Coupons</Text>
           {coupons.length === 0 ? (
             <Text style={styles.muted}>Aucun coupon.</Text>
           ) : (
             coupons.map((c) => (
-              <View key={String(c.id)} style={styles.card}>
+              <View key={String(c.id)} style={styles.listCard}>
                 <Text style={styles.title}>
                   {String(
                     (c.marketing_campaigns as { name?: string } | null)?.name ?? "Coupon"
@@ -145,19 +171,19 @@ export default function PromotionsScreen() {
                 <Text style={styles.muted}>
                   {c.value_percent != null ? `${c.value_percent}%` : ""}
                   {c.expires_at
-                    ? ` · expire ${new Date(String(c.expires_at)).toLocaleDateString()}`
+                    ? ` · expires ${new Date(String(c.expires_at)).toLocaleDateString()}`
                     : ""}
                 </Text>
               </View>
             ))
           )}
 
-          <Text style={styles.section}>Offres</Text>
+          <Text style={styles.section}>Offers</Text>
           {offers.length === 0 ? (
             <Text style={styles.muted}>Aucune offre.</Text>
           ) : (
             offers.map((o) => (
-              <View key={String(o.id)} style={styles.card}>
+              <View key={String(o.id)} style={styles.listCard}>
                 <Text style={styles.title}>{String(o.name)}</Text>
                 <Text style={styles.muted}>{String(o.description ?? "")}</Text>
               </View>
@@ -168,7 +194,7 @@ export default function PromotionsScreen() {
             style={styles.link}
             onPress={() => navigation.navigate("MmdPlus")}
           >
-            <Text style={styles.linkText}>Voir aussi MMD+</Text>
+            <Text style={styles.linkText}>See also MMD+</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -177,37 +203,97 @@ export default function PromotionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 10 },
+  stateWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 24,
+    paddingBottom: 50,
+  },
+  stateSpacer: { flex: 1, minHeight: 24, width: "100%" },
+  footerLogo: { width: 50, height: 50, borderRadius: 25 },
+  footerBrand: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
   card: {
-    backgroundColor: COLORS.surface,
-    borderColor: COLORS.border,
-    borderWidth: 1,
+    backgroundColor: MMD_CARD_ON_BLUE_STRONG,
+    borderColor: MMD_STROKE,
+    borderWidth: 1.5,
     borderRadius: 14,
     padding: 14,
-    marginBottom: 10,
+    gap: 8,
   },
-  section: { color: COLORS.textStrong, fontSize: 16, fontWeight: "700", marginBottom: 8, marginTop: 8 },
-  title: { color: COLORS.textStrong, fontWeight: "700", fontSize: 15 },
-  muted: { color: COLORS.textMuted, fontSize: 13, marginTop: 4 },
-  error: { color: "#FCA5A5" },
+  listCard: {
+    backgroundColor: MMD_CARD_ON_BLUE_STRONG,
+    borderColor: MMD_STROKE,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+  },
+  cardSection: {
+    color: MMD_TEXT,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+  },
+  section: {
+    color: MMD_TEXT,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    marginTop: 4,
+  },
+  title: {
+    color: MMD_TEXT,
+    fontWeight: "700",
+    fontSize: 15,
+    fontFamily: MMD_FONT.bold,
+  },
+  muted: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 13,
+    marginTop: 0,
+    fontFamily: MMD_FONT.regular,
+  },
+  error: { color: "#FCA5A5", fontFamily: MMD_FONT.bold },
   input: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    height: 42,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    borderRadius: 8,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    color: COLORS.textStrong,
-    marginBottom: 10,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 14,
   },
   btn: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: MMD_GREEN,
     borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     paddingVertical: 10,
+    paddingHorizontal: 14,
     alignItems: "center",
   },
-  btnText: { color: "#0B1220", fontWeight: "700" },
-  link: { marginTop: 16, alignItems: "center" },
-  linkText: { color: COLORS.accent, fontWeight: "600" },
+  btnText: {
+    color: MMD_BLUE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 14,
+  },
+  link: { marginTop: 8, alignItems: "flex-start", paddingTop: 8 },
+  linkText: {
+    color: MMD_GREEN_SOFT,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 14,
+  },
 });

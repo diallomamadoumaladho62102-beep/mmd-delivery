@@ -10,9 +10,12 @@ import {
   Alert,
   Image,
   Platform,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { DriverBrandLoadingState } from "../../components/driver/DriverBrandLoadingState";
+import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system/legacy";
@@ -37,6 +40,22 @@ import {
   resolveChatTargetUserId,
   type ChatSourceTable,
 } from "../../lib/orderChatAccess";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_CARD_ON_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_GREEN,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TAXI_GREEN,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
 type ChatTargetRole = "client" | "driver" | "restaurant" | "admin" | "";
 
@@ -287,9 +306,13 @@ export function OrderChatBaseScreen(props: {
   sourceTable?: ChatSourceTable | string;
   onBack: () => void;
   titlePrefix?: string;
+  /** Figma Driver App Lot 7 / Restaurant App Lot 3 chat chrome */
+  appearance?: "default" | "driver" | "restaurant";
 }) {
   const { orderId, onBack, titlePrefix } = props;
   const { t } = useTranslation();
+  const isDriverUi = props.appearance === "driver";
+  const isRestaurantUi = props.appearance === "restaurant";
 
   const targetRole = normalizeTargetRole(props.targetRole);
   const sourceTable = normalizeChatSourceTable(props.sourceTable);
@@ -1007,29 +1030,96 @@ export function OrderChatBaseScreen(props: {
 
   const title = useMemo(() => {
     const short = orderId ? orderId.slice(0, 8) : "—";
+    if (isRestaurantUi) {
+      return t("restaurants.chat.title", "Chat");
+    }
+    if (isDriverUi) {
+      const target = targetRole
+        ? targetRoleLabel(targetRole, t)
+        : t("shared.orderChat.sender.unknown", "Participant");
+      return t("driver.chat.withTitle", "Chat with {{role}}", { role: target });
+    }
     const prefix = titlePrefix ? `${titlePrefix} • ` : "";
     const target = targetRole ? ` → ${targetRoleLabel(targetRole, t)}` : "";
 
     return `${prefix}${t("shared.orderChat.header.title", "Chat")}${target} • #${short}`;
-  }, [orderId, titlePrefix, targetRole, t]);
+  }, [orderId, titlePrefix, targetRole, t, isDriverUi, isRestaurantUi]);
+
+  const driverSubtitle = useMemo(() => {
+    const short = orderId ? orderId.slice(0, 8) : "—";
+    return t("driver.chat.orderSubtitle", "Order #{{id}}", { id: short });
+  }, [orderId, t]);
+
+  const restaurantSubtitle = useMemo(
+    () => t("restaurants.chat.subtitle", "Order chat"),
+    [t]
+  );
+
+  const headerVariant = isDriverUi || isRestaurantUi ? "mmd" : "dark";
+
+  const brandFooter = (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+        paddingBottom: 16,
+        minHeight: 48,
+      }}
+    >
+      <Image
+        source={MMD_LOGO}
+        style={{ width: 40, height: 40, borderRadius: 12 }}
+        resizeMode="contain"
+        accessibilityLabel="MMD Delivery"
+      />
+      <Text
+        style={{
+          color: MMD_GOLD_CLASSIC,
+          fontSize: 14,
+          fontFamily: MMD_FONT.semibold,
+          fontWeight: "600",
+        }}
+      >
+        MMD Delivery
+      </Text>
+    </View>
+  );
 
   if (!orderId || !isValidOrderId) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
-        <ScreenHeader title={title} onBack={onBack} variant="dark" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+        {isDriverUi || isRestaurantUi ? (
+          <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        ) : null}
+        <ScreenHeader
+          title={title}
+          subtitle={
+            isDriverUi
+              ? driverSubtitle
+              : isRestaurantUi
+                ? restaurantSubtitle
+                : undefined
+          }
+          onBack={onBack}
+          variant={headerVariant}
+        />
 
-        <View style={{ paddingHorizontal: 16 }}>
-        <Text style={{ color: "white", marginTop: 16, fontWeight: "900" }}>
+        <View style={{ paddingHorizontal: 16, flex: 1 }}>
+        <Text style={{ color: MMD_WHITE, marginTop: 16, fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
           {t("shared.orderChat.errors.invalidOrderIdTitle", "Discussion indisponible")}
         </Text>
 
-        <Text style={{ color: "#CBD5E1", marginTop: 8, lineHeight: 20, fontWeight: "700" }}>
+        <Text style={{ color: MMD_TEXT_MUTED_BLUE, marginTop: 8, lineHeight: 20, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
           {t(
             "shared.orderChat.errors.invalidOrderIdUi",
             "Cette discussion doit être ouverte depuis une vraie commande. Le support général sera corrigé séparément pour ne plus envoyer orderId = support."
           )}
         </Text>
         </View>
+        {isDriverUi ? brandFooter : null}
       </SafeAreaView>
     );
   }
@@ -1037,27 +1127,847 @@ export function OrderChatBaseScreen(props: {
 
   if (accessDenied) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
-        <ScreenHeader title={title} onBack={onBack} variant="dark" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+        {isDriverUi || isRestaurantUi ? (
+          <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        ) : null}
+        <ScreenHeader
+          title={title}
+          subtitle={
+            isDriverUi
+              ? driverSubtitle
+              : isRestaurantUi
+                ? restaurantSubtitle
+                : undefined
+          }
+          onBack={onBack}
+          variant={headerVariant}
+        />
 
-        <View style={{ paddingHorizontal: 16 }}>
-        <Text style={{ color: "#FCA5A5", marginTop: 16, fontWeight: "900" }}>
+        <View style={{ paddingHorizontal: 16, flex: 1 }}>
+        <Text style={{ color: "#FCA5A5", marginTop: 16, fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
           {t("shared.orderChat.errors.accessDeniedTitle", "Accès refusé")}
         </Text>
 
-        <Text style={{ color: "#CBD5E1", marginTop: 8, lineHeight: 20, fontWeight: "700" }}>
+        <Text style={{ color: MMD_TEXT_MUTED_BLUE, marginTop: 8, lineHeight: 20, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
           {t(
             "shared.orderChat.errors.accessDeniedUi",
             "Tu ne peux pas ouvrir cette discussion avec ce compte ou cette commande est déjà terminée."
           )}
         </Text>
         </View>
+        {isDriverUi ? brandFooter : null}
+      </SafeAreaView>
+    );
+  }
+
+  if (isDriverUi) {
+    const roleLabel = targetRole
+      ? targetRoleLabel(targetRole, t)
+      : t("shared.orderChat.sender.unknown", "Participant");
+
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <ScreenHeader
+          title={title}
+          subtitle={driverSubtitle}
+          onBack={onBack}
+          variant="mmd"
+        />
+
+        {targetRole ? (
+          <View
+            style={{
+              backgroundColor: MMD_ACTION_NAVY,
+              height: 36,
+              paddingHorizontal: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: MMD_TAXI_GREEN,
+              }}
+            />
+            <Text
+              numberOfLines={1}
+              style={{
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 11,
+                fontFamily: MMD_FONT.regular,
+              }}
+            >
+              {t(
+                "driver.chat.privateBanner",
+                "Private conversation with {{role}}",
+                { role: roleLabel }
+              )}
+            </Text>
+          </View>
+        ) : null}
+
+        {loading ? (
+          <DriverBrandLoadingState
+            title={t("driver.chat.loading", "Loading Messages...")}
+            logoAtBottom
+          />
+        ) : (
+          <>
+            <ScrollView
+              ref={(r) => {
+                scrollRef.current = r;
+              }}
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                flexGrow: 1,
+                paddingHorizontal: 16,
+                paddingTop: 12,
+                paddingBottom: 24,
+                gap: 12,
+              }}
+              onContentSizeChange={scrollToEnd}
+            >
+              {rows.length === 0 ? (
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 12,
+                    paddingVertical: 24,
+                  }}
+                >
+                  <Text style={{ fontSize: 48 }}>💬</Text>
+                  <Text
+                    style={{
+                      color: MMD_WHITE,
+                      fontSize: 18,
+                      fontFamily: MMD_FONT.bold,
+                      fontWeight: "700",
+                    }}
+                  >
+                    {t("driver.chat.empty.title", "No Messages Yet")}
+                  </Text>
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.4)",
+                      fontSize: 13,
+                      fontFamily: MMD_FONT.regular,
+                    }}
+                  >
+                    {t(
+                      "driver.chat.empty.body",
+                      "Start the conversation below"
+                    )}
+                  </Text>
+                </View>
+              ) : (
+                rows.map((r) => {
+                  const isHeicMessage = !!r.image_path && isHeicLike(r.image_path);
+                  const isMine = !!currentUserId && r.user_id === currentUserId;
+                  const participant = getParticipant(r);
+                  const pRole = participant.role
+                    ? targetRoleLabel(participant.role, t)
+                    : "";
+                  const canDelete = isMine || currentRole === "admin";
+
+                  return (
+                    <View
+                      key={r.id}
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: isMine ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 260,
+                          maxWidth: "82%",
+                          padding: 12,
+                          gap: 4,
+                          backgroundColor: isMine
+                            ? MMD_TAXI_GREEN
+                            : MMD_ACTION_NAVY,
+                          borderTopLeftRadius: 16,
+                          borderTopRightRadius: 16,
+                          borderBottomLeftRadius: isMine ? 16 : 4,
+                          borderBottomRightRadius: isMine ? 4 : 16,
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <Text
+                            numberOfLines={1}
+                            style={{
+                              color: MMD_WHITE,
+                              fontSize: 12,
+                              fontFamily: MMD_FONT.bold,
+                              fontWeight: "700",
+                            }}
+                          >
+                            {isMine
+                              ? t("shared.orderChat.sender.you", "You")
+                              : participant.name}
+                          </Text>
+                          <Text
+                            numberOfLines={1}
+                            style={{
+                              color: "rgba(255,255,255,0.4)",
+                              fontSize: 10,
+                              fontFamily: MMD_FONT.regular,
+                            }}
+                          >
+                            {pRole ? `${pRole} · ` : ""}
+                            {fmtDateTime(r.created_at)}
+                          </Text>
+                        </View>
+
+                        {!!r.text ? (
+                          <Text
+                            style={{
+                              color: MMD_WHITE,
+                              fontSize: 14,
+                              fontFamily: MMD_FONT.regular,
+                              lineHeight: 19,
+                            }}
+                          >
+                            {r.text}
+                          </Text>
+                        ) : null}
+
+                        {isMine ? (
+                          <Text
+                            style={{
+                              color: "rgba(255,255,255,0.5)",
+                              fontSize: 10,
+                              fontFamily: MMD_FONT.regular,
+                              textAlign: "right",
+                            }}
+                          >
+                            {r.delivery_status === "read"
+                              ? t("shared.orderChat.receipt.read", "Read")
+                              : r.delivery_status === "delivered"
+                                ? t(
+                                    "driver.chat.receipt.delivered",
+                                    "Delivered ✓"
+                                  )
+                                : t("shared.orderChat.receipt.sent", "Sent")}
+                          </Text>
+                        ) : null}
+
+                        {!!r._signedUrl ? (
+                          <Image
+                            source={{ uri: r._signedUrl }}
+                            style={{
+                              width: "100%",
+                              height: 180,
+                              borderRadius: 12,
+                              backgroundColor: MMD_BLUE,
+                              marginTop: 4,
+                            }}
+                            resizeMode="cover"
+                          />
+                        ) : null}
+
+                        {!r._signedUrl && isHeicMessage ? (
+                          <Text
+                            style={{
+                              color: "#FCA5A5",
+                              fontWeight: "700",
+                              fontFamily: MMD_FONT.bold,
+                              fontSize: 11,
+                            }}
+                          >
+                            {t(
+                              "shared.orderChat.heic.oldMessageTitle",
+                              "Image HEIC détectée — peut ne pas s'afficher."
+                            )}
+                          </Text>
+                        ) : null}
+
+                        {canDelete ? (
+                          <TouchableOpacity
+                            onPress={() =>
+                              Alert.alert(
+                                t(
+                                  "shared.orderChat.actions.deleteTitle",
+                                  "Supprimer"
+                                ),
+                                t(
+                                  "shared.orderChat.actions.deleteConfirm",
+                                  "Tu veux supprimer ce message ?"
+                                ),
+                                [
+                                  {
+                                    text: t("shared.common.cancel", "Annuler"),
+                                    style: "cancel",
+                                  },
+                                  {
+                                    text: t("shared.common.delete", "Supprimer"),
+                                    style: "destructive",
+                                    onPress: () =>
+                                      void del(r.id, r.image_path, r.user_id),
+                                  },
+                                ]
+                              )
+                            }
+                            style={{
+                              marginTop: 4,
+                              alignSelf: isMine ? "flex-end" : "flex-start",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#FCA5A5",
+                                fontWeight: "700",
+                                fontSize: 11,
+                                fontFamily: MMD_FONT.bold,
+                              }}
+                            >
+                              {t(
+                                "shared.orderChat.actions.deleteLower",
+                                "supprimer"
+                              )}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View
+              style={{
+                backgroundColor: MMD_ACTION_NAVY,
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                gap: 10,
+              }}
+            >
+              {pickedImage ? (
+                <View>
+                  <Text
+                    style={{
+                      color: "rgba(255,255,255,0.5)",
+                      fontFamily: MMD_FONT.regular,
+                      fontSize: 12,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {t(
+                      "shared.orderChat.image.selectedPrefix",
+                      "Image sélectionnée :"
+                    )}{" "}
+                    {pickedImage.fileName}
+                  </Text>
+                  <Image
+                    source={{ uri: pickedImage.uri }}
+                    style={{
+                      width: "100%",
+                      height: 120,
+                      borderRadius: 10,
+                      backgroundColor: MMD_BLUE,
+                    }}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setPickedImage(null)}
+                    style={{ marginTop: 6 }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FCA5A5",
+                        fontFamily: MMD_FONT.bold,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {t("shared.orderChat.image.remove", "Retirer l'image")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              <TextInput
+                value={text}
+                onChangeText={setText}
+                placeholder={t(
+                  "driver.chat.placeholder",
+                  "Type a message..."
+                )}
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                multiline
+                style={{
+                  minHeight: 40,
+                  maxHeight: 100,
+                  color: MMD_WHITE,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.25)",
+                  fontFamily: MMD_FONT.regular,
+                  fontSize: 14,
+                }}
+              />
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => void pickImage()}
+                  disabled={sending || accessDenied}
+                  style={{
+                    flex: 1,
+                    height: 40,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(255,255,255,0.12)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.2)",
+                    opacity: sending || accessDenied ? 0.6 : 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: MMD_WHITE,
+                      fontFamily: MMD_FONT.extrabold,
+                      fontWeight: "800",
+                      fontSize: 14,
+                    }}
+                  >
+                    {t("driver.chat.actions.image", "📷 Image")}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => void send()}
+                  disabled={
+                    sending ||
+                    accessDenied ||
+                    (text.trim() === "" && !pickedImage)
+                  }
+                  style={{
+                    flex: 1,
+                    height: 40,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: MMD_TAXI_GREEN,
+                    opacity:
+                      sending ||
+                      accessDenied ||
+                      (text.trim() === "" && !pickedImage)
+                        ? 0.5
+                        : 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: MMD_TEXT,
+                      fontFamily: MMD_FONT.extrabold,
+                      fontWeight: "800",
+                      fontSize: 14,
+                    }}
+                  >
+                    {sending
+                      ? t("shared.orderChat.actions.sending", "Envoi...")
+                      : t("driver.chat.actions.send", "📤 Send")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {brandFooter}
+          </>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  if (isRestaurantUi) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <ScreenHeader
+          title={title}
+          subtitle={restaurantSubtitle}
+          onBack={onBack}
+          variant="mmd"
+        />
+
+        {loading ? (
+          <RestaurantBrandLoadingState
+            variant="card"
+            showLogo={false}
+            title={t("restaurants.chat.loading", "Loading Chat...")}
+          />
+        ) : (
+          <>
+            <ScrollView
+              ref={(r) => {
+                scrollRef.current = r;
+              }}
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                flexGrow: 1,
+                padding: 12,
+                gap: 16,
+              }}
+              onContentSizeChange={scrollToEnd}
+            >
+              {rows.length === 0 ? (
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingHorizontal: 24,
+                    paddingVertical: 24,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 320,
+                      maxWidth: "100%",
+                      borderRadius: 24,
+                      padding: 24,
+                      gap: 16,
+                      backgroundColor: "rgba(255,255,255,0.1)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.2)",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 24,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.2)",
+                      }}
+                    >
+                      <Text style={{ fontSize: 24 }}>💬</Text>
+                    </View>
+                    <Text
+                      style={{
+                        color: MMD_WHITE,
+                        fontSize: 20,
+                        fontFamily: MMD_FONT.bold,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {t("restaurants.chat.empty.title", "No Messages")}
+                    </Text>
+                    <Text
+                      style={{
+                        color: "rgba(255,255,255,0.8)",
+                        fontSize: 14,
+                        fontFamily: MMD_FONT.regular,
+                        lineHeight: 20,
+                      }}
+                    >
+                      {t(
+                        "restaurants.chat.empty.body",
+                        "Start the conversation with the customer or driver."
+                      )}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                rows.map((r) => {
+                  const isHeicMessage = !!r.image_path && isHeicLike(r.image_path);
+                  const isMine = !!currentUserId && r.user_id === currentUserId;
+                  const participant = getParticipant(r);
+                  const pRole = participant.role
+                    ? targetRoleLabel(participant.role, t)
+                    : "";
+                  const canDelete = isMine || currentRole === "admin";
+                  // Figma Restaurant Chat: restaurant (mine) left, customer right
+                  const alignEnd = !isMine;
+
+                  return (
+                    <View
+                      key={r.id}
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: alignEnd ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 260,
+                          maxWidth: "82%",
+                          padding: 10,
+                          gap: 6,
+                          backgroundColor: alignEnd
+                            ? "rgba(255,255,255,0.15)"
+                            : "rgba(255,255,255,0.1)",
+                          borderWidth: 1,
+                          borderColor: "rgba(255,255,255,0.2)",
+                          borderRadius: 16,
+                        }}
+                      >
+                        <Text
+                          numberOfLines={1}
+                          style={{
+                            color: MMD_WHITE,
+                            fontSize: 12,
+                            fontFamily: MMD_FONT.bold,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {isMine
+                            ? t("shared.roles.restaurant", "Restaurant")
+                            : pRole || participant.name}
+                        </Text>
+                        <Text
+                          numberOfLines={1}
+                          style={{
+                            color: "rgba(255,255,255,0.8)",
+                            fontSize: 10,
+                            fontFamily: MMD_FONT.bold,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {fmtDateTime(r.created_at)}
+                        </Text>
+
+                        {!!r.text ? (
+                          <Text
+                            style={{
+                              color: MMD_WHITE,
+                              fontSize: 14,
+                              fontFamily: MMD_FONT.bold,
+                              fontWeight: "700",
+                              lineHeight: 19,
+                            }}
+                          >
+                            {r.text}
+                          </Text>
+                        ) : null}
+
+                        <Text
+                          style={{
+                            color: "rgba(255,255,255,0.8)",
+                            fontSize: 10,
+                            fontFamily: MMD_FONT.bold,
+                            fontWeight: "700",
+                            textAlign: "right",
+                          }}
+                        >
+                          {r.delivery_status === "read"
+                            ? t("shared.orderChat.receipt.read", "Read")
+                            : r.delivery_status === "delivered"
+                              ? t("shared.orderChat.receipt.delivered", "Delivered")
+                              : t("shared.orderChat.receipt.sent", "Sent")}
+                        </Text>
+
+                        {!!r._signedUrl ? (
+                          <Image
+                            source={{ uri: r._signedUrl }}
+                            style={{
+                              width: "100%",
+                              height: 180,
+                              borderRadius: 12,
+                              backgroundColor: MMD_BLUE,
+                              marginTop: 4,
+                            }}
+                            resizeMode="cover"
+                          />
+                        ) : null}
+
+                        {!r._signedUrl && isHeicMessage ? (
+                          <Text
+                            style={{
+                              color: "#FCA5A5",
+                              fontWeight: "700",
+                              fontFamily: MMD_FONT.bold,
+                              fontSize: 11,
+                            }}
+                          >
+                            {t(
+                              "shared.orderChat.heic.oldMessageTitle",
+                              "Image HEIC détectée — peut ne pas s'afficher."
+                            )}
+                          </Text>
+                        ) : null}
+
+                        {canDelete ? (
+                          <TouchableOpacity
+                            onPress={() =>
+                              Alert.alert(
+                                t(
+                                  "shared.orderChat.actions.deleteTitle",
+                                  "Supprimer"
+                                ),
+                                t(
+                                  "shared.orderChat.actions.deleteConfirm",
+                                  "Tu veux supprimer ce message ?"
+                                ),
+                                [
+                                  {
+                                    text: t("shared.common.cancel", "Annuler"),
+                                    style: "cancel",
+                                  },
+                                  {
+                                    text: t("shared.common.delete", "Supprimer"),
+                                    style: "destructive",
+                                    onPress: () =>
+                                      void del(r.id, r.image_path, r.user_id),
+                                  },
+                                ]
+                              )
+                            }
+                            style={{ marginTop: 4 }}
+                          >
+                            <Text
+                              style={{
+                                color: "#FCA5A5",
+                                fontWeight: "700",
+                                fontSize: 11,
+                                fontFamily: MMD_FONT.bold,
+                              }}
+                            >
+                              {t(
+                                "shared.orderChat.actions.deleteLower",
+                                "supprimer"
+                              )}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            <View
+              style={{
+                backgroundColor: "#002BBA",
+                borderTopWidth: 1,
+                borderTopColor: "rgba(255,255,255,0.15)",
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                gap: 10,
+              }}
+            >
+              {pickedImage ? (
+                <View>
+                  <Image
+                    source={{ uri: pickedImage.uri }}
+                    style={{
+                      width: "100%",
+                      height: 100,
+                      borderRadius: 10,
+                      backgroundColor: MMD_BLUE,
+                    }}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setPickedImage(null)}
+                    style={{ marginTop: 6 }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FCA5A5",
+                        fontFamily: MMD_FONT.bold,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {t("shared.orderChat.image.remove", "Retirer l'image")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                <TextInput
+                  value={text}
+                  onChangeText={setText}
+                  placeholder={t(
+                    "restaurants.chat.placeholder",
+                    "Write a message..."
+                  )}
+                  placeholderTextColor="rgba(255,255,255,0.8)"
+                  multiline
+                  style={{
+                    flex: 1,
+                    minHeight: 44,
+                    maxHeight: 100,
+                    color: MMD_WHITE,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: "rgba(255,255,255,0.15)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.25)",
+                    fontFamily: MMD_FONT.regular,
+                    fontSize: 15,
+                  }}
+                />
+                <TouchableOpacity
+                  onPress={() => void send()}
+                  disabled={
+                    sending ||
+                    accessDenied ||
+                    (text.trim() === "" && !pickedImage)
+                  }
+                  style={{
+                    paddingHorizontal: 18,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: MMD_TAXI_GREEN,
+                    opacity:
+                      sending ||
+                      accessDenied ||
+                      (text.trim() === "" && !pickedImage)
+                        ? 0.5
+                        : 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: MMD_WHITE,
+                      fontFamily: MMD_FONT.semibold,
+                      fontWeight: "600",
+                      fontSize: 15,
+                    }}
+                  >
+                    {sending
+                      ? t("shared.orderChat.actions.sending", "Envoi...")
+                      : t("restaurants.chat.send", "Send")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        )}
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={title}
         subtitle={t("shared.orderChat.header.subtitle", "Messages & pièces jointes")}
@@ -1071,13 +1981,13 @@ export function OrderChatBaseScreen(props: {
               paddingVertical: 8,
               paddingHorizontal: 12,
               borderRadius: 999,
-              backgroundColor: "rgba(15,23,42,0.7)",
+              backgroundColor: MMD_CARD_ON_BLUE,
               borderWidth: 1,
-              borderColor: "#1F2937",
+              borderColor: MMD_STROKE,
               opacity: loading ? 0.6 : 1,
             }}
           >
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+            <Text style={{ color: MMD_TEXT, fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
               {loading
                 ? t("shared.common.loadingEllipsis", "...")
                 : t("shared.common.refresh", "Rafraîchir")}
@@ -1091,7 +2001,7 @@ export function OrderChatBaseScreen(props: {
           <Text
             numberOfLines={1}
             ellipsizeMode="tail"
-            style={{ color: "#64748B", fontWeight: "800", fontSize: 11 }}
+            style={{ color: MMD_LINK_BLUE, fontWeight: "800", fontSize: 11, fontFamily: MMD_FONT.extrabold }}
           >
             {t("shared.orderChat.header.privateWith", "Conversation avec")}{" "}
             {targetRoleLabel(targetRole, t)}
@@ -1102,8 +2012,8 @@ export function OrderChatBaseScreen(props: {
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
         {loading ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 }}>
-            <ActivityIndicator color="#fff" />
-            <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
+            <ActivityIndicator color={MMD_WHITE} />
+            <Text style={{ color: MMD_TEXT_MUTED_BLUE, fontWeight: "800", fontFamily: MMD_FONT.extrabold }}>
               {t("shared.common.loading", "Chargement...")}
             </Text>
           </View>
@@ -1116,16 +2026,16 @@ export function OrderChatBaseScreen(props: {
           style={{
             flex: 1,
             borderRadius: 18,
-            backgroundColor: "rgba(15,23,42,0.65)",
-            borderWidth: 1,
-            borderColor: "#1F2937",
+            backgroundColor: MMD_CARD_ON_BLUE,
+            borderWidth: 1.5,
+            borderColor: MMD_STROKE,
             padding: 12,
           }}
-          contentContainerStyle={{ paddingBottom: 14 }}
+          contentContainerStyle={{ paddingBottom: 14, gap: 14 }}
           onContentSizeChange={scrollToEnd}
         >
           {rows.length === 0 ? (
-            <Text style={{ color: "#9CA3AF" }}>
+            <Text style={{ color: MMD_TEXT_MUTED_BLUE, fontFamily: MMD_FONT.bold, fontWeight: "700" }}>
               {t("shared.orderChat.empty", "Aucun message pour le moment.")}
             </Text>
           ) : (
@@ -1154,9 +2064,9 @@ export function OrderChatBaseScreen(props: {
                           height: 36,
                           borderRadius: 18,
                           marginRight: 8,
-                          backgroundColor: "#0B1220",
+                          backgroundColor: MMD_BLUE,
                           borderWidth: 1,
-                          borderColor: "rgba(148,163,184,0.22)",
+                          borderColor: MMD_STROKE,
                         }}
                       />
                     ) : (
@@ -1166,9 +2076,9 @@ export function OrderChatBaseScreen(props: {
                           height: 36,
                           borderRadius: 18,
                           marginRight: 8,
-                          backgroundColor: "#0B1220",
+                          backgroundColor: MMD_BLUE,
                           borderWidth: 1,
-                          borderColor: "rgba(148,163,184,0.22)",
+                          borderColor: MMD_STROKE,
                           alignItems: "center",
                           justifyContent: "center",
                         }}
@@ -1182,11 +2092,13 @@ export function OrderChatBaseScreen(props: {
                     style={{
                       maxWidth: "82%",
                       minWidth: 120,
+                      width: 260,
                       borderRadius: 16,
                       padding: 10,
-                      backgroundColor: isMine ? "rgba(37,99,235,0.32)" : "rgba(2,6,23,0.56)",
+                      backgroundColor: isMine ? "rgba(114,159,250,0.32)" : "rgba(0,51,153,0.56)",
                       borderWidth: 1,
-                      borderColor: isMine ? "rgba(96,165,250,0.32)" : "rgba(148,163,184,0.16)",
+                      borderColor: MMD_STROKE,
+                      gap: 6,
                     }}
                   >
                     <View
@@ -1201,7 +2113,7 @@ export function OrderChatBaseScreen(props: {
                         <Text
                           numberOfLines={1}
                           ellipsizeMode="tail"
-                          style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}
+                          style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900", fontFamily: MMD_FONT.extrabold }}
                         >
                           {isMine
                             ? t("shared.orderChat.sender.you", "You")
@@ -1211,7 +2123,7 @@ export function OrderChatBaseScreen(props: {
                         <Text
                           numberOfLines={1}
                           ellipsizeMode="tail"
-                          style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800", marginTop: 1 }}
+                          style={{ color: MMD_TEXT_MUTED_BLUE, fontSize: 10, fontWeight: "800", marginTop: 1, fontFamily: MMD_FONT.bold }}
                         >
                           {roleLabel ? `${roleLabel} • ` : ""}
                           {fmtDateTime(r.created_at)}
@@ -1226,9 +2138,9 @@ export function OrderChatBaseScreen(props: {
                               width: 28,
                               height: 28,
                               borderRadius: 14,
-                              backgroundColor: "#0B1220",
+                              backgroundColor: MMD_BLUE,
                               borderWidth: 1,
-                              borderColor: "rgba(148,163,184,0.22)",
+                              borderColor: MMD_STROKE,
                             }}
                           />
                         ) : (
@@ -1237,14 +2149,14 @@ export function OrderChatBaseScreen(props: {
                               width: 28,
                               height: 28,
                               borderRadius: 14,
-                              backgroundColor: "#0B1220",
+                              backgroundColor: MMD_BLUE,
                               borderWidth: 1,
-                              borderColor: "rgba(148,163,184,0.22)",
+                              borderColor: MMD_STROKE,
                               alignItems: "center",
                               justifyContent: "center",
                             }}
                           >
-                            <Text style={{ color: "#E5E7EB", fontSize: 10, fontWeight: "900" }}>
+                            <Text style={{ color: "#E5E7EB", fontSize: 10, fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
                               {initials(participant.name)}
                             </Text>
                           </View>
@@ -1253,7 +2165,7 @@ export function OrderChatBaseScreen(props: {
                     </View>
 
                     {!!r.text && (
-                      <Text style={{ color: "white", marginTop: 8, lineHeight: 19, fontWeight: "700" }}>
+                      <Text style={{ color: MMD_WHITE, marginTop: 2, lineHeight: 19, fontWeight: "700", fontFamily: MMD_FONT.bold, fontSize: 14 }}>
                         {r.text}
                       </Text>
                     )}
@@ -1264,8 +2176,9 @@ export function OrderChatBaseScreen(props: {
                           color: "#BFDBFE",
                           fontSize: 10,
                           fontWeight: "800",
-                          marginTop: 6,
+                          marginTop: 2,
                           textAlign: "right",
+                          fontFamily: MMD_FONT.bold,
                         }}
                       >
                         {r.delivery_status === "read"
@@ -1283,7 +2196,7 @@ export function OrderChatBaseScreen(props: {
                           width: "100%",
                           height: 220,
                           borderRadius: 14,
-                          backgroundColor: "#0B1220",
+                          backgroundColor: MMD_BLUE,
                           marginTop: 10,
                         }}
                         resizeMode="cover"
@@ -1299,7 +2212,7 @@ export function OrderChatBaseScreen(props: {
 
                     {!r._signedUrl && isHeicMessage ? (
                       <View style={{ marginTop: 10 }}>
-                        <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
+                        <Text style={{ color: "#FCA5A5", fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
                           {t(
                             "shared.orderChat.heic.oldMessageTitle",
                             "Image HEIC détectée — peut ne pas s'afficher."
@@ -1326,7 +2239,7 @@ export function OrderChatBaseScreen(props: {
                         }
                         style={{ marginTop: 8, alignSelf: isMine ? "flex-end" : "flex-start" }}
                       >
-                        <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 12 }}>
+                        <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 12, fontFamily: MMD_FONT.extrabold }}>
                           {t("shared.orderChat.actions.deleteLower", "supprimer")}
                         </Text>
                       </TouchableOpacity>
@@ -1343,15 +2256,16 @@ export function OrderChatBaseScreen(props: {
             marginTop: 10,
             marginBottom: 14,
             borderRadius: 18,
-            backgroundColor: "rgba(15,23,42,0.65)",
-            borderWidth: 1,
-            borderColor: "#1F2937",
+            backgroundColor: MMD_CARD_ON_BLUE,
+            borderWidth: 1.5,
+            borderColor: MMD_STROKE,
             padding: 12,
+            gap: 10,
           }}
         >
           {pickedImage ? (
             <View style={{ marginBottom: 10 }}>
-              <Text style={{ color: "#94A3B8", fontWeight: "800", marginBottom: 8 }}>
+              <Text style={{ color: MMD_TEXT_MUTED_BLUE, fontWeight: "800", marginBottom: 8, fontFamily: MMD_FONT.extrabold }}>
                 {t("shared.orderChat.image.selectedPrefix", "Image sélectionnée :")}{" "}
                 {pickedImage.fileName}
               </Text>
@@ -1362,13 +2276,13 @@ export function OrderChatBaseScreen(props: {
                   width: "100%",
                   height: 160,
                   borderRadius: 14,
-                  backgroundColor: "#0B1220",
+                  backgroundColor: MMD_BLUE,
                 }}
                 resizeMode="cover"
               />
 
               <TouchableOpacity onPress={() => setPickedImage(null)} style={{ marginTop: 8 }}>
-                <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
+                <Text style={{ color: "#FCA5A5", fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
                   {t("shared.orderChat.image.remove", "Retirer l'image")}
                 </Text>
               </TouchableOpacity>
@@ -1379,23 +2293,25 @@ export function OrderChatBaseScreen(props: {
             value={text}
             onChangeText={setText}
             placeholder={t("shared.orderChat.placeholders.message", "Écrire un message...")}
-            placeholderTextColor="#64748B"
+            placeholderTextColor={MMD_LINK_BLUE}
             multiline
             style={{
-              minHeight: 44,
+              minHeight: 42,
               maxHeight: 120,
-              color: "white",
-              paddingHorizontal: 12,
+              color: MMD_WHITE,
+              paddingHorizontal: 14,
               paddingVertical: 10,
-              borderRadius: 14,
-              backgroundColor: "rgba(2,6,23,0.55)",
+              borderRadius: 8,
+              backgroundColor: "transparent",
               borderWidth: 1,
-              borderColor: "#1F2937",
+              borderColor: MMD_STROKE,
               fontWeight: "700",
+              fontFamily: MMD_FONT.regular,
+              fontSize: 14,
             }}
           />
 
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 0 }}>
             <TouchableOpacity
               onPress={() => void pickImage()}
               disabled={sending || accessDenied}
@@ -1405,13 +2321,13 @@ export function OrderChatBaseScreen(props: {
                 borderRadius: 14,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "rgba(15,23,42,0.35)",
+                backgroundColor: MMD_BLUE,
                 borderWidth: 1,
-                borderColor: "#1F2937",
+                borderColor: MMD_STROKE,
                 opacity: sending || accessDenied ? 0.6 : 1,
               }}
             >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+              <Text style={{ color: "#E5E7EB", fontWeight: "900", fontFamily: MMD_FONT.extrabold, fontSize: 14 }}>
                 {t("shared.orderChat.actions.image", "Image")}
               </Text>
             </TouchableOpacity>
@@ -1425,13 +2341,13 @@ export function OrderChatBaseScreen(props: {
                 borderRadius: 14,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "rgba(2,6,23,0.75)",
+                backgroundColor: MMD_GREEN,
                 borderWidth: 1,
-                borderColor: "#1F2937",
+                borderColor: MMD_STROKE,
                 opacity: sending || accessDenied || (text.trim() === "" && !pickedImage) ? 0.5 : 1,
               }}
             >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+              <Text style={{ color: MMD_TEXT, fontWeight: "900", fontFamily: MMD_FONT.extrabold, fontSize: 14 }}>
                 {sending
                   ? t("shared.orderChat.actions.sending", "Envoi...")
                   : t("shared.orderChat.actions.send", "Envoyer")}

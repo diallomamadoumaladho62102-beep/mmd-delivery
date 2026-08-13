@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   StyleSheet,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -29,6 +30,14 @@ import type { AppLanguageCode } from "../i18n/languageOptions";
 import { supabase } from "../lib/supabase";
 import { toUserFacingError } from "../lib/userFacingError";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import {
+  MMD_BLUE,
+  MMD_CARD_BORDER,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_NAVY,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientSettings">;
 
@@ -51,13 +60,11 @@ function Row({
   label,
   value,
   onPress,
-  danger,
   last,
 }: {
   label: string;
   value?: string;
   onPress?: () => void;
-  danger?: boolean;
   last?: boolean;
 }) {
   return (
@@ -68,12 +75,10 @@ function Row({
       style={[styles.row, last ? null : styles.rowBorder]}
     >
       <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, danger ? styles.danger : null]}>{label}</Text>
+        <Text style={styles.rowLabel}>{label}</Text>
         {value ? <Text style={styles.rowValue}>{value}</Text> : null}
       </View>
-      {onPress ? (
-        <Text style={[styles.chevron, danger ? styles.danger : null]}>›</Text>
-      ) : null}
+      {onPress ? <Text style={styles.chevron}>›</Text> : null}
     </TouchableOpacity>
   );
 }
@@ -163,6 +168,7 @@ export function ClientSettingsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("client.settings.title", "Settings")}
         fallbackRoute="ClientHome"
@@ -215,7 +221,6 @@ export function ClientSettingsScreen() {
           <Row
             label={t("account.delete.title", "Delete account")}
             onPress={() => navigation.navigate("DeleteAccount", { role: "client" })}
-            danger
           />
           <TouchableOpacity
             onPress={handleSignOut}
@@ -224,9 +229,9 @@ export function ClientSettingsScreen() {
             style={[styles.row, styles.signOutRow]}
           >
             {signingOut ? (
-              <ActivityIndicator color="#FCA5A5" />
+              <ActivityIndicator color={MMD_GOLD_BRIGHT} />
             ) : (
-              <Text style={[styles.rowLabel, styles.danger]}>
+              <Text style={styles.signOutLabel}>
                 {t("client.profile.signOut.button", "Sign Out")}
               </Text>
             )}
@@ -268,23 +273,23 @@ export function ClientSettingsScreen() {
 export default ClientSettingsScreen;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#020617" },
-  content: { padding: 16, paddingBottom: 40 },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  content: { padding: 16, paddingBottom: 40, gap: 0 },
   section: { marginBottom: 18 },
   sectionTitle: {
-    color: "#94A3B8",
+    color: MMD_GOLD_BRIGHT,
+    fontFamily: MMD_FONT.extrabold,
     fontWeight: "800",
     fontSize: 12,
     letterSpacing: 0.6,
     textTransform: "uppercase",
     marginBottom: 8,
-    marginLeft: 4,
   },
   sectionCard: {
-    backgroundColor: "#0B1220",
-    borderColor: "#111827",
+    backgroundColor: MMD_NAVY,
+    borderColor: MMD_CARD_BORDER,
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: "hidden",
   },
   row: {
@@ -300,13 +305,36 @@ const styles = StyleSheet.create({
     borderBottomColor: "#1E293B",
   },
   rowText: { flex: 1, paddingRight: 12 },
-  rowLabel: { color: "#E5E7EB", fontWeight: "800", fontSize: 15 },
-  rowValue: { color: "#94A3B8", fontWeight: "700", marginTop: 3, fontSize: 12 },
-  chevron: { color: "#93C5FD", fontWeight: "900", fontSize: 20 },
-  danger: { color: "#FCA5A5" },
+  rowLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 15,
+  },
+  rowValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    marginTop: 3,
+    fontSize: 12,
+  },
+  chevron: {
+    color: MMD_GOLD_BRIGHT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "900",
+    fontSize: 20,
+  },
   signOutRow: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#1E293B",
     justifyContent: "center",
+  },
+  signOutLabel: {
+    color: MMD_GOLD_BRIGHT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 15,
+    textAlign: "center",
+    width: "100%",
   },
 });

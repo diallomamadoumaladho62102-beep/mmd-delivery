@@ -18,6 +18,10 @@ type Props = {
   currentCode?: string;
   onSelect: (code: AppLanguageCode) => void | Promise<void>;
   compact?: boolean;
+  /** Hide the built-in title when a parent sheet already shows one. */
+  hideTitle?: boolean;
+  /** `mmdHome` matches Client Home language sheet (Figma navy / gold). */
+  variant?: "default" | "mmdHome";
   style?: StyleProp<ViewStyle>;
 };
 
@@ -25,6 +29,8 @@ export function LanguagePicker({
   currentCode,
   onSelect,
   compact = false,
+  hideTitle = false,
+  variant = "default",
   style,
 }: Props) {
   const { t } = useTranslation();
@@ -65,11 +71,15 @@ export function LanguagePicker({
     );
   }
 
+  const isHome = variant === "mmdHome";
+
   return (
     <View style={[styles.list, style]}>
-      <Text style={[styles.title, { textAlign: textAlignStart() }]}>
-        {t("language.pickerTitle", "Language")}
-      </Text>
+      {hideTitle ? null : (
+        <Text style={[styles.title, { textAlign: textAlignStart() }]}>
+          {t("language.pickerTitle", "Language")}
+        </Text>
+      )}
       {options.map((lang) => {
         const selected = active === lang.code;
         return (
@@ -77,19 +87,32 @@ export function LanguagePicker({
             key={lang.code}
             activeOpacity={0.85}
             onPress={() => handlePress(lang.code)}
-            style={[styles.row, selected && styles.rowActive, { flexDirection: direction }]}
+            style={[
+              styles.row,
+              isHome && styles.rowHome,
+              selected && (isHome ? styles.rowHomeActive : styles.rowActive),
+              { flexDirection: direction },
+            ]}
           >
             <Text style={styles.flag}>{lang.flag}</Text>
             <View style={styles.labels}>
               <Text style={[styles.native, { textAlign: textAlignStart() }]}>
                 {lang.nativeLabel}
               </Text>
-              <Text style={[styles.sub, { textAlign: textAlignStart() }]}>
+              <Text
+                style={[
+                  styles.sub,
+                  isHome && styles.subHome,
+                  { textAlign: textAlignStart() },
+                ]}
+              >
                 {lang.label} · {lang.code.toUpperCase()}
                 {lang.rtl ? " · RTL" : ""}
               </Text>
             </View>
-            {selected ? <Text style={styles.check}>✓</Text> : null}
+            {selected ? (
+              <Text style={[styles.check, isHome && styles.checkHome]}>✓</Text>
+            ) : null}
           </TouchableOpacity>
         );
       })}
@@ -169,6 +192,20 @@ const styles = StyleSheet.create({
     color: "#60A5FA",
     fontSize: 16,
     fontWeight: "800",
+  },
+  rowHome: {
+    borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "#0D2666",
+  },
+  rowHomeActive: {
+    borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "#003399",
+  },
+  subHome: {
+    color: "rgba(255,255,255,0.85)",
+  },
+  checkHome: {
+    color: "#FFD700",
   },
 });
 

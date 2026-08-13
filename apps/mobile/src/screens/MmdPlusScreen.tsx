@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Linking,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -23,18 +25,21 @@ import {
   type MmdPlusPlan,
 } from "../lib/mmdPlusApi";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import {
+  MMD_BLUE,
+  MMD_CARD_ON_BLUE_STRONG,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_TEXT_SOFT_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "MmdPlus">;
 
-const COLORS = {
-  bg: "#0B1220",
-  surface: "rgba(15,23,42,0.95)",
-  border: "#334155",
-  accent: "#F59E0B",
-  textStrong: "#F8FAFC",
-  textMuted: "#94A3B8",
-  textSoft: "#CBD5E1",
-};
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 
 function formatMoney(cents: number, currency: string) {
   return `${(Math.max(0, cents) / 100).toFixed(2)} ${currency || "USD"}`;
@@ -101,22 +106,40 @@ export default function MmdPlusScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title="MMD+"
         onBack={() => navigation.goBack()}
         fallbackRoute="ClientHome"
+        variant="dark"
       />
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={COLORS.accent} />
+        <View style={styles.stateWrap}>
+          <ActivityIndicator color={MMD_GOLD_CLASSIC} />
           <Text style={styles.muted}>Chargement…</Text>
+          <View style={styles.stateSpacer} />
+          <Image
+            source={MMD_LOGO}
+            style={styles.footerLogo}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.footerBrand}>MMD Delivery</Text>
         </View>
       ) : error ? (
-        <View style={styles.center}>
+        <View style={styles.stateWrap}>
           <Text style={styles.error}>{error}</Text>
           <TouchableOpacity style={styles.btn} onPress={() => void load()}>
             <Text style={styles.btnText}>Réessayer</Text>
           </TouchableOpacity>
+          <View style={styles.stateSpacer} />
+          <Image
+            source={MMD_LOGO}
+            style={styles.footerLogo}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.footerBrand}>MMD Delivery</Text>
         </View>
       ) : (
         <ScrollView
@@ -128,7 +151,7 @@ export default function MmdPlusScreen() {
                 setRefreshing(true);
                 void load();
               }}
-              tintColor={COLORS.accent}
+              tintColor={MMD_GOLD_CLASSIC}
             />
           }
         >
@@ -247,9 +270,9 @@ export default function MmdPlusScreen() {
             })
           )}
 
-          <Text style={styles.section}>Facturation</Text>
+          <Text style={styles.section}>Billing</Text>
           {invoices.length === 0 ? (
-            <Text style={styles.muted}>Aucune facture.</Text>
+            <Text style={styles.muted}>No invoices.</Text>
           ) : (
             invoices.map((inv) => (
               <View key={inv.id} style={styles.invoiceRow}>
@@ -274,60 +297,137 @@ export default function MmdPlusScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 12 },
+  stateWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 24,
+    paddingBottom: 50,
+  },
+  stateSpacer: { flex: 1, minHeight: 24, width: "100%" },
+  footerLogo: { width: 50, height: 50, borderRadius: 25 },
+  footerBrand: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
   hero: {
-    backgroundColor: COLORS.surface,
-    borderColor: COLORS.border,
-    borderWidth: 1,
+    backgroundColor: MMD_CARD_ON_BLUE_STRONG,
+    borderColor: MMD_STROKE,
+    borderWidth: 1.5,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    gap: 6,
   },
-  heroLabel: { color: COLORS.accent, fontSize: 12, fontWeight: "600", textTransform: "uppercase" },
-  heroTitle: { color: COLORS.textStrong, fontSize: 20, fontWeight: "700", marginTop: 4 },
-  section: { color: COLORS.textStrong, fontSize: 16, fontWeight: "700", marginTop: 8, marginBottom: 10 },
+  heroLabel: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 12,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+  },
+  heroTitle: {
+    color: MMD_TEXT,
+    fontSize: 20,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+  },
+  section: {
+    color: MMD_TEXT,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    marginTop: 4,
+  },
   card: {
-    backgroundColor: COLORS.surface,
-    borderColor: COLORS.border,
-    borderWidth: 1,
+    backgroundColor: MMD_CARD_ON_BLUE_STRONG,
+    borderColor: MMD_STROKE,
+    borderWidth: 1.5,
     borderRadius: 14,
     padding: 14,
-    marginBottom: 12,
+    gap: 6,
   },
-  cardTitle: { color: COLORS.textStrong, fontSize: 17, fontWeight: "700" },
-  price: { color: COLORS.accent, fontSize: 18, fontWeight: "700", marginVertical: 8 },
-  feature: { color: COLORS.textSoft, fontSize: 13, marginTop: 2 },
-  muted: { color: COLORS.textMuted, fontSize: 13, marginTop: 4 },
-  textSoft: { color: COLORS.textSoft, fontSize: 13 },
-  textStrong: { color: COLORS.textStrong, fontWeight: "600" },
-  error: { color: "#FCA5A5", textAlign: "center" },
-  row: { flexDirection: "row", gap: 8, marginTop: 12 },
+  cardTitle: {
+    color: MMD_TEXT,
+    fontSize: 17,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+  },
+  price: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 18,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    marginVertical: 2,
+  },
+  feature: {
+    color: MMD_TEXT_SOFT_BLUE,
+    fontSize: 13,
+    marginTop: 2,
+    fontFamily: MMD_FONT.regular,
+  },
+  muted: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 13,
+    marginTop: 0,
+    fontFamily: MMD_FONT.regular,
+  },
+  textSoft: {
+    color: MMD_TEXT_SOFT_BLUE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+  },
+  textStrong: {
+    color: MMD_TEXT,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+  },
+  error: {
+    color: "#FCA5A5",
+    textAlign: "center",
+    fontFamily: MMD_FONT.bold,
+  },
+  row: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
   btn: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: MMD_GOLD_CLASSIC,
     borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    marginTop: 10,
+    marginTop: 6,
     alignItems: "center",
   },
   btnDisabled: { opacity: 0.5 },
-  btnText: { color: "#0B1220", fontWeight: "700" },
+  btnText: {
+    color: MMD_BLUE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 14,
+  },
   btnOutline: {
-    borderColor: COLORS.border,
-    borderWidth: 1,
+    borderColor: MMD_STROKE,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    marginTop: 10,
+    marginTop: 6,
   },
-  btnOutlineText: { color: COLORS.textStrong, fontWeight: "600" },
+  btnOutlineText: {
+    color: MMD_WHITE,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+  },
   invoiceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 10,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: 0,
+    borderBottomColor: MMD_STROKE,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
 });

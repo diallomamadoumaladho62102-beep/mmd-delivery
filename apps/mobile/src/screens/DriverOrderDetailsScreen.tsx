@@ -44,7 +44,16 @@ import {
 } from "../lib/driverMarketplaceApi";
 import { applyMarketplaceCoordsToOrder } from "../lib/marketplaceDriverNavigation";
 import { DriverWaitTimerPanel } from "../components/driver/DriverWaitTimerPanel";
+import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
 import { OtpDigitInput } from "../components/shared/OtpDigitInput";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_MUTED,
+  MMD_TEXT_SOFT_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverOrderDetails">;
 type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails">;
@@ -902,18 +911,18 @@ export function DriverOrderDetailsScreen() {
       return { bg: "#422006", border: "#F59E0B", text: "#FDE68A" };
     }
     if (status === "picked_up") {
-      return { bg: "#312E81", border: "#818CF8", text: "#E0E7FF" };
+      return { bg: "#1E3A8A", border: "#60A5FA", text: MMD_WHITE };
     }
     if (status === "ready") {
-      return { bg: "#1E293B", border: "#60A5FA", text: "#BFDBFE" };
+      return { bg: "#1E3A8A", border: "#60A5FA", text: MMD_WHITE };
     }
     if (status === "accepted" || status === "prepared") {
-      return { bg: "#172554", border: "#3B82F6", text: "#BFDBFE" };
+      return { bg: "#1E3A8A", border: "#60A5FA", text: MMD_WHITE };
     }
     if (status === "canceled") {
       return { bg: "#7F1D1D", border: "#FCA5A5", text: "#FECACA" };
     }
-    return { bg: "#111827", border: "#374151", text: "#E5E7EB" };
+    return { bg: "#1E3A8A", border: "#60A5FA", text: MMD_WHITE };
   }
 
   useEffect(() => {
@@ -2311,26 +2320,25 @@ export function DriverOrderDetailsScreen() {
 
   if (loading && !order) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-        <StatusBar barStyle="light-content" />
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" />
-          <Text style={{ marginTop: 8, color: "#9CA3AF" }}>
-            {t("shared.common.loading", "Chargement…")}
-          </Text>
-        </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <DriverBrandLoadingState
+          title={t("shared.common.loading", "Loading…")}
+          logoAtBottom={false}
+        />
       </SafeAreaView>
     );
   }
 
   if (!order) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
-        <StatusBar barStyle="light-content" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
-          title={t("driver.orderDetails.header.title", "Course")}
+          title={t("driver.orderDetails.header.order", "Order")}
           fallbackRoute="DriverTabs"
-          variant="dark"
+          variant="mmd"
+          style={{ backgroundColor: MMD_BLUE }}
         />
         <View
           style={{
@@ -2338,23 +2346,77 @@ export function DriverOrderDetailsScreen() {
             alignItems: "center",
             justifyContent: "center",
             paddingHorizontal: 24,
+            gap: 16,
           }}
         >
-          <Text style={{ color: "#F9FAFB", fontSize: 16, marginBottom: 12 }}>
-            {t("driver.orderDetails.notFoundShort", "Course introuvable.")}
-          </Text>
+          <View style={{ width: 280, padding: 20, alignItems: "center", gap: 8 }}>
+            <Text
+              style={{
+                color: "#FCA5A5",
+                fontSize: 20,
+                fontFamily: MMD_FONT.bold,
+                fontWeight: "700",
+                textAlign: "center",
+              }}
+            >
+              {t("driver.orderDetails.notFoundShort", "Order not found.")}
+            </Text>
+            <Text
+              style={{
+                color: MMD_MUTED,
+                fontSize: 15,
+                fontFamily: MMD_FONT.regular,
+                textAlign: "center",
+                lineHeight: 22,
+              }}
+            >
+              {t(
+                "driver.orderDetails.notFoundBody",
+                "This order does not exist or is no longer available."
+              )}
+            </Text>
+          </View>
           <TouchableOpacity
             onPress={safeBack}
             style={{
-              borderRadius: 999,
-              borderWidth: 1,
-              borderColor: "#4B5563",
-              paddingHorizontal: 20,
+              minHeight: 44,
+              borderRadius: 12,
+              backgroundColor: MMD_GOLD_CLASSIC,
+              paddingHorizontal: 16,
               paddingVertical: 10,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            <Text style={{ color: "#E5E7EB" }}>{t("common.back", "← Retour")}</Text>
+            <Text
+              style={{
+                color: "#6D28D9",
+                fontSize: 14,
+                fontFamily: MMD_FONT.semibold,
+                fontWeight: "600",
+              }}
+            >
+              {t("common.back", "← Back")}
+            </Text>
           </TouchableOpacity>
+          <View style={{ alignItems: "center", gap: 8 }}>
+            <Image
+              source={require("../../assets/brand/mmd-logo-ui.png")}
+              style={{ width: 40, height: 40, borderRadius: 20 }}
+              resizeMode="contain"
+              accessibilityLabel="MMD Delivery"
+            />
+            <Text
+              style={{
+                color: MMD_GOLD_CLASSIC,
+                fontSize: 12,
+                fontFamily: MMD_FONT.bold,
+                fontWeight: "700",
+              }}
+            >
+              MMD Delivery
+            </Text>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -2470,19 +2532,20 @@ export function DriverOrderDetailsScreen() {
       });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
 
       <ScreenHeader
         title={headerTitle}
-        subtitle={t("driver.orderDetails.header.createdAt", "Créée le : {{date}}", {
+        subtitle={t("driver.orderDetails.header.createdAt", "Created: {{date}}", {
           date: formatDate(order.created_at),
         })}
         fallbackRoute="DriverTabs"
-        variant="dark"
+        variant="mmd"
+        style={{ backgroundColor: MMD_BLUE }}
       />
 
-      <View style={{ height: 265, width: "100%" }}>
+      <View style={{ height: 300, width: "100%" }}>
         <Mapbox.MapView style={{ flex: 1 }} styleURL={getMapStyleStreets()}
           logoEnabled={false}
           attributionEnabled={false}
@@ -2502,21 +2565,44 @@ export function DriverOrderDetailsScreen() {
               id={`pickup-${order.id}`}
               coordinate={coordinateToMapbox(pickupCoord)}
             >
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  backgroundColor: "#1D4ED8",
-                  borderWidth: 2,
-                  borderColor: "#FFFFFF",
-                }}
-              >
-                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>
-                  {isPickupDropoff
-                    ? t("driver.orderDetails.map.pickupGeneric", "Pickup")
-                    : t("driver.orderDetails.map.pickupTitle", "Restaurant")}
-                </Text>
+              <View style={{ alignItems: "center" }}>
+                <View
+                  style={{
+                    width: 28,
+                    height: 36,
+                    borderTopLeftRadius: 14,
+                    borderTopRightRadius: 14,
+                    backgroundColor: "#F97316",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 14 }}>🍽️</Text>
+                </View>
+                <View
+                  style={{
+                    marginTop: 2,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor: MMD_WHITE,
+                    borderWidth: 1,
+                    borderColor: "#E5E7EB",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#111827",
+                      fontSize: 11,
+                      fontFamily: MMD_FONT.extrabold,
+                      fontWeight: "800",
+                    }}
+                  >
+                    {isPickupDropoff
+                      ? t("driver.orderDetails.map.pickupGeneric", "Pickup")
+                      : t("driver.orderDetails.map.pickupTitle", "Restaurant")}
+                  </Text>
+                </View>
               </View>
             </Mapbox.PointAnnotation>
           )}
@@ -2526,21 +2612,44 @@ export function DriverOrderDetailsScreen() {
               id={`dropoff-${order.id}`}
               coordinate={coordinateToMapbox(dropoffCoord)}
             >
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  backgroundColor: "#16A34A",
-                  borderWidth: 2,
-                  borderColor: "#FFFFFF",
-                }}
-              >
-                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>
-                  {isPickupDropoff
-                    ? t("driver.orderDetails.map.dropoffGeneric", "Dropoff")
-                    : t("driver.orderDetails.map.dropoffTitle", "Client")}
-                </Text>
+              <View style={{ alignItems: "center" }}>
+                <View
+                  style={{
+                    width: 28,
+                    height: 36,
+                    borderTopLeftRadius: 14,
+                    borderTopRightRadius: 14,
+                    backgroundColor: "#16A34A",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 14 }}>📍</Text>
+                </View>
+                <View
+                  style={{
+                    marginTop: 2,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor: MMD_WHITE,
+                    borderWidth: 1,
+                    borderColor: "#E5E7EB",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#111827",
+                      fontSize: 11,
+                      fontFamily: MMD_FONT.extrabold,
+                      fontWeight: "800",
+                    }}
+                  >
+                    {isPickupDropoff
+                      ? t("driver.orderDetails.map.dropoffGeneric", "Dropoff")
+                      : t("driver.orderDetails.map.dropoffTitle", "Customer")}
+                  </Text>
+                </View>
               </View>
             </Mapbox.PointAnnotation>
           )}
@@ -2574,24 +2683,25 @@ export function DriverOrderDetailsScreen() {
               fitMapToTrip();
             }}
             style={{
-              paddingVertical: 8,
-              paddingHorizontal: 12,
+              width: 32,
+              height: 32,
               borderRadius: 999,
-              backgroundColor: "rgba(2,6,23,0.85)",
+              backgroundColor: "rgba(0,51,153,0.85)",
               borderWidth: 1,
-              borderColor: "#1F2937",
+              borderColor: "#0037A0",
+              alignItems: "center",
+              justifyContent: "center",
             }}
+            accessibilityLabel={t("driver.orderDetails.rezoom", "Re-zoom")}
           >
-            <Text style={{ color: "#93C5FD", fontWeight: "700", fontSize: 12 }}>
-              {t("driver.orderDetails.rezoom", "Re-zoom")}
-            </Text>
+            <Text style={{ color: MMD_WHITE, fontWeight: "700", fontSize: 14 }}>⌖</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
+        contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 8, paddingBottom: 140, gap: 8 }}
       >
         <View
           style={{
@@ -2621,50 +2731,68 @@ export function DriverOrderDetailsScreen() {
 
         <View
           style={{
-            marginTop: 14,
             borderRadius: 22,
             borderWidth: 1,
-            borderColor: "rgba(148,163,184,0.14)",
-            backgroundColor: "rgba(15,23,42,0.78)",
+            borderColor: "rgba(170,190,230,0.14)",
+            backgroundColor: "rgba(0,51,153,0.78)",
             padding: 14,
+            gap: 8,
           }}
         >
-          <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 8 }}>
+          <Text
+            style={{
+              color: MMD_GOLD_CLASSIC,
+              fontSize: 15,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+            }}
+          >
             {isPickupDropoff
               ? t("driver.orderDetails.steps.stops", "Stops")
-              : t("driver.orderDetails.steps.title", "Étapes")}
+              : t("driver.orderDetails.steps.title", "Steps")}
           </Text>
 
           {!!order.restaurant_name && !isPickupDropoff && (
-            <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 8 }}>
-              {t("driver.orderDetails.steps.restaurant", "Restaurant : ")}
-              <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
-                {order.restaurant_name}
-              </Text>
+            <Text
+              style={{
+                color: MMD_TEXT_SOFT_BLUE,
+                fontSize: 12,
+                fontFamily: MMD_FONT.semibold,
+                fontWeight: "600",
+              }}
+            >
+              {t("driver.orderDetails.steps.restaurant", "Restaurant: ")}
+              {order.restaurant_name}
             </Text>
           )}
 
-          <View style={{ marginBottom: 10 }}>
-            <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-              {isPickupDropoff
-                ? t("driver.orderDetails.steps.pickupPoint", "Pickup ")
-                : t("driver.orderDetails.steps.pickup", "Retrait ")}
-              <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
-                {order.pickup_address ?? "—"}
-              </Text>
-            </Text>
-          </View>
+          <Text
+            style={{
+              color: "#E5E7EB",
+              fontSize: 12,
+              fontFamily: MMD_FONT.semibold,
+              fontWeight: "600",
+            }}
+          >
+            {isPickupDropoff
+              ? t("driver.orderDetails.steps.pickupPoint", "Pickup  ")
+              : t("driver.orderDetails.steps.pickup", "Pickup  ")}
+            {order.pickup_address ?? "—"}
+          </Text>
 
-          <View style={{ marginBottom: 12 }}>
-            <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-              {isPickupDropoff
-                ? t("driver.orderDetails.steps.dropoffPoint", "Dropoff ")
-                : t("driver.orderDetails.steps.dropoff", "Livraison ")}
-              <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
-                {order.dropoff_address ?? "—"}
-              </Text>
-            </Text>
-          </View>
+          <Text
+            style={{
+              color: "#E5E7EB",
+              fontSize: 12,
+              fontFamily: MMD_FONT.semibold,
+              fontWeight: "600",
+            }}
+          >
+            {isPickupDropoff
+              ? t("driver.orderDetails.steps.dropoffPoint", "Delivery  ")
+              : t("driver.orderDetails.steps.dropoff", "Delivery  ")}
+            {order.dropoff_address ?? "—"}
+          </Text>
 
           {isDeliveryRequest && order.dropoff_location_id ? (
             <DriverTripLocationCard
@@ -2682,28 +2810,50 @@ export function DriverOrderDetailsScreen() {
               onPress={openMmdNavigation}
               activeOpacity={0.9}
               style={{
-                marginBottom: 12,
                 borderRadius: 999,
                 paddingVertical: 14,
+                paddingHorizontal: 12,
                 alignItems: "center",
-                backgroundColor: "#7C3AED",
+                backgroundColor: "#16A34A",
                 borderWidth: 1,
-                borderColor: "rgba(196,181,253,0.65)",
+                borderColor: "#C4B5FD",
               }}
             >
-              <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "900" }}>
-                {t("driver.orderDetails.actions.mmdNavigation", "Navigation MMD")}
+              <Text
+                style={{
+                  color: MMD_WHITE,
+                  fontSize: 14,
+                  fontFamily: MMD_FONT.extrabold,
+                  fontWeight: "800",
+                }}
+              >
+                {t("driver.orderDetails.actions.mmdNavigation", "MMD Navigation")}
               </Text>
-              <Text style={{ color: "#DDD6FE", fontSize: 11, fontWeight: "700", marginTop: 2 }}>
+              <Text
+                style={{
+                  color: MMD_WHITE,
+                  fontSize: 11,
+                  fontFamily: MMD_FONT.bold,
+                  fontWeight: "700",
+                  marginTop: 2,
+                }}
+              >
                 {canDeliver
-                  ? t("driver.orderDetails.actions.mmdNavigationDropoff", "Route vers le client")
-                  : t("driver.orderDetails.actions.mmdNavigationPickup", "Route vers le pickup")}
+                  ? t("driver.orderDetails.actions.mmdNavigationDropoff", "Route to customer")
+                  : t("driver.orderDetails.actions.mmdNavigationPickup", "Route to pickup")}
               </Text>
             </TouchableOpacity>
           )}
 
-          <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "800", marginBottom: 8 }}>
-            {t("driver.orderDetails.actions.backupNavigation", "Options de secours")}
+          <Text
+            style={{
+              color: MMD_GOLD_CLASSIC,
+              fontSize: 11,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+            }}
+          >
+            {t("driver.orderDetails.actions.backupNavigation", "Backup Options")}
           </Text>
 
           <View style={{ flexDirection: "row", marginBottom: 8 }}>
@@ -2720,7 +2870,14 @@ export function DriverOrderDetailsScreen() {
                 borderColor: "#1D4ED8",
               }}
             >
-              <Text style={{ color: "#BFDBFE", fontSize: 12, fontWeight: "800" }}>
+              <Text
+                style={{
+                  color: MMD_WHITE,
+                  fontSize: 11,
+                  fontFamily: MMD_FONT.extrabold,
+                  fontWeight: "800",
+                }}
+              >
                 {t("driver.orderDetails.actions.googlePickup", "Google / Apple pickup")}
               </Text>
             </TouchableOpacity>
@@ -2737,7 +2894,14 @@ export function DriverOrderDetailsScreen() {
                 borderColor: "#16A34A",
               }}
             >
-              <Text style={{ color: "#BBF7D0", fontSize: 12, fontWeight: "800" }}>
+              <Text
+                style={{
+                  color: MMD_WHITE,
+                  fontSize: 11,
+                  fontFamily: MMD_FONT.extrabold,
+                  fontWeight: "800",
+                }}
+              >
                 {t("driver.orderDetails.actions.googleDropoff", "Google / Apple dropoff")}
               </Text>
             </TouchableOpacity>
@@ -2783,60 +2947,95 @@ export function DriverOrderDetailsScreen() {
 
         <View
           style={{
-            marginTop: 12,
             borderRadius: 22,
             borderWidth: 1,
-            borderColor: "rgba(148,163,184,0.14)",
-            backgroundColor: "rgba(15,23,42,0.78)",
+            borderColor: "rgba(170,190,230,0.14)",
+            backgroundColor: "rgba(0,51,153,0.78)",
             padding: 14,
+            gap: 8,
           }}
         >
-          <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 8 }}>
+          <Text
+            style={{
+              color: MMD_GOLD_CLASSIC,
+              fontSize: 15,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+            }}
+          >
             {isPickupDropoff
-              ? t("driver.orderDetails.summary.transportTitle", "Summary")
-              : t("driver.orderDetails.summary.title", "Résumé transport")}
+              ? t("driver.orderDetails.summary.transportTitle", "Transport Summary")
+              : t("driver.orderDetails.summary.title", "Transport Summary")}
           </Text>
 
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
+            <Text
+              style={{
+                color: MMD_TEXT_SOFT_BLUE,
+                fontSize: 12,
+                fontFamily: MMD_FONT.semibold,
+                fontWeight: "600",
+              }}
+            >
               {t("driver.orderDetails.summary.distance", "Distance")}
             </Text>
-            <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "700" }}>
+            <Text
+              style={{
+                color: "#E5E7EB",
+                fontSize: 12,
+                fontFamily: MMD_FONT.bold,
+                fontWeight: "700",
+              }}
+            >
               {formatMiles(order.distance_miles)}
             </Text>
           </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginTop: 6,
-            }}
-          >
-            <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-              {t("driver.orderDetails.summary.eta", "Temps estimé")}
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text
+              style={{
+                color: MMD_TEXT_SOFT_BLUE,
+                fontSize: 12,
+                fontFamily: MMD_FONT.semibold,
+                fontWeight: "600",
+              }}
+            >
+              {t("driver.orderDetails.summary.eta", "Estimated Time")}
             </Text>
-            <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "700" }}>
+            <Text
+              style={{
+                color: "#E5E7EB",
+                fontSize: 12,
+                fontFamily: MMD_FONT.bold,
+                fontWeight: "700",
+              }}
+            >
               {formatMinutes(order.eta_minutes)}
             </Text>
           </View>
-
         </View>
 
         <View
           style={{
-            marginTop: 12,
             borderRadius: 22,
             borderWidth: 1,
-            borderColor: "rgba(148,163,184,0.14)",
-            backgroundColor: "rgba(15,23,42,0.78)",
+            borderColor: "rgba(170,190,230,0.14)",
+            backgroundColor: "rgba(0,51,153,0.78)",
             padding: 14,
+            gap: 8,
           }}
         >
-          <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 8 }}>
+          <Text
+            style={{
+              color: MMD_GOLD_CLASSIC,
+              fontSize: 15,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+            }}
+          >
             {isPickupDropoff
-              ? t("driver.orderDetails.earnings.estimateTitle", "Earnings (estimate)")
-              : t("driver.orderDetails.earnings.title", "Rémunération (transport)")}
+              ? t("driver.orderDetails.earnings.estimateTitle", "Earnings (transport)")
+              : t("driver.orderDetails.earnings.title", "Earnings (transport)")}
           </Text>
 
           <View
@@ -2846,20 +3045,27 @@ export function DriverOrderDetailsScreen() {
               alignItems: "center",
             }}
           >
-            <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-              {t("driver.orderDetails.earnings.yourPart", "Ta part")}
+            <Text
+              style={{
+                color: MMD_TEXT_SOFT_BLUE,
+                fontSize: 12,
+                fontFamily: MMD_FONT.semibold,
+                fontWeight: "600",
+              }}
+            >
+              {t("driver.orderDetails.earnings.yourPart", "Your Share")}
             </Text>
-            <Text style={{ color: "#22C55E", fontSize: 16, fontWeight: "900" }}>
+            <Text
+              style={{
+                color: MMD_GOLD_CLASSIC,
+                fontSize: 16,
+                fontFamily: MMD_FONT.extrabold,
+                fontWeight: "800",
+              }}
+            >
               {formatMoneyUSD(driverPart)}
             </Text>
           </View>
-
-          <Text style={{ marginTop: 6, color: "#6B7280", fontSize: 11 }}>
-            {t(
-              "driver.orderDetails.earnings.note",
-              "Montant estimé basé uniquement sur le transport MMD Delivery."
-            )}
-          </Text>
         </View>
 
         {canCancelAsDriver && (
@@ -2907,16 +3113,23 @@ export function DriverOrderDetailsScreen() {
 
         <View
           style={{
-            marginTop: 12,
             borderRadius: 22,
             borderWidth: 1,
-            borderColor: "rgba(148,163,184,0.14)",
-            backgroundColor: "rgba(15,23,42,0.78)",
+            borderColor: "rgba(170,190,230,0.14)",
+            backgroundColor: "rgba(0,51,153,0.78)",
             padding: 14,
+            gap: 8,
           }}
         >
-          <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 10 }}>
-            {t("driver.orderDetails.verify.title", "Vérification")}
+          <Text
+            style={{
+              color: MMD_GOLD_CLASSIC,
+              fontSize: 15,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+            }}
+          >
+            {t("driver.orderDetails.verify.title", "Verification")}
           </Text>
 
           <TouchableOpacity
@@ -2924,19 +3137,20 @@ export function DriverOrderDetailsScreen() {
             onPress={() => openCodeModal("pickup")}
             style={{
               borderRadius: 999,
-              paddingVertical: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 12,
               alignItems: "center",
-              marginBottom: 10,
-              backgroundColor: canPickup ? "#1D4ED8" : "#111827",
+              backgroundColor: canPickup ? MMD_BLUE : MMD_BLUE,
               opacity: canPickup ? 1 : 0.55,
               borderWidth: 1,
-              borderColor: canPickup ? "#60A5FA" : "#374151",
+              borderColor: "#0037A0",
             }}
           >
             <Text
               style={{
-                color: canPickup ? "white" : "#6B7280",
-                fontSize: 13,
+                color: canPickup ? MMD_WHITE : "#B4C8FF",
+                fontSize: 14,
+                fontFamily: MMD_FONT.extrabold,
                 fontWeight: "800",
               }}
             >
@@ -2951,18 +3165,20 @@ export function DriverOrderDetailsScreen() {
             onPress={() => openCodeModal("dropoff")}
             style={{
               borderRadius: 999,
-              paddingVertical: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 12,
               alignItems: "center",
-              backgroundColor: canDeliver ? "#16A34A" : "#111827",
+              backgroundColor: canDeliver ? "#16A34A" : "#16A34A",
               opacity: canDeliver ? 1 : 0.55,
               borderWidth: 1,
-              borderColor: canDeliver ? "#34D399" : "#374151",
+              borderColor: canDeliver ? "#34D399" : "#34D399",
             }}
           >
             <Text
               style={{
-                color: canDeliver ? "white" : "#6B7280",
-                fontSize: 13,
+                color: MMD_WHITE,
+                fontSize: 14,
+                fontFamily: MMD_FONT.extrabold,
                 fontWeight: "800",
               }}
             >
@@ -2972,30 +3188,44 @@ export function DriverOrderDetailsScreen() {
             </Text>
           </TouchableOpacity>
 
-          <Text style={{ marginTop: 10, color: "#6B7280", fontSize: 11 }}>
+          <Text
+            style={{
+              color: "#B4C8FF",
+              fontSize: 11,
+              fontFamily: MMD_FONT.semibold,
+              fontWeight: "600",
+            }}
+          >
             {isPickupDropoff
               ? t(
                   "driver.orderDetails.verify.autoHintPd",
-                  "Pour les courses pickup/dropoff, le code et la photo sont obligatoires au pickup et au dropoff."
+                  "Buttons activate automatically at the right time based on status."
                 )
               : t(
                   "driver.orderDetails.verify.autoHint",
-                  "Les boutons s’activent automatiquement au bon moment selon le statut."
+                  "Buttons activate automatically at the right time based on status."
                 )}
           </Text>
         </View>
 
         <View
           style={{
-            marginTop: 12,
             borderRadius: 22,
             borderWidth: 1,
-            borderColor: "rgba(148,163,184,0.14)",
-            backgroundColor: "rgba(15,23,42,0.78)",
+            borderColor: "rgba(170,190,230,0.14)",
+            backgroundColor: "rgba(0,51,153,0.78)",
             padding: 14,
           }}
         >
-          <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 8 }}>
+          <Text
+            style={{
+              color: MMD_GOLD_CLASSIC,
+              fontSize: 15,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+              marginBottom: 8,
+            }}
+          >
             {t("driver.orderDetails.communication.title", "Communication")}
           </Text>
 
@@ -3216,17 +3446,23 @@ export function DriverOrderDetailsScreen() {
           onPress={openDriverChat}
           activeOpacity={0.9}
           style={{
-            marginTop: 14,
             borderRadius: 999,
             borderWidth: 1,
-            borderColor: "#1F2937",
+            borderColor: "#0037A0",
             paddingVertical: 12,
             alignItems: "center",
             backgroundColor: "rgba(139,92,246,0.16)",
           }}
         >
-          <Text style={{ color: "#C4B5FD", fontSize: 13, fontWeight: "900" }}>
-            {t("driver.orderDetails.chat.open", "Ouvrir le chat 💬")}
+          <Text
+            style={{
+              color: MMD_WHITE,
+              fontSize: 13,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+            }}
+          >
+            {t("driver.orderDetails.chat.open", "Open chat 💬")}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -3284,12 +3520,12 @@ export function DriverOrderDetailsScreen() {
         <View
           style={{
             position: "absolute",
-            left: 16,
-            right: 16,
+            left: 10,
+            right: 10,
             bottom: 16,
             borderRadius: 18,
             padding: 12,
-            backgroundColor: "rgba(2,6,23,0.985)",
+            backgroundColor: "rgba(0,51,153,0.99)",
             borderWidth: 1,
             borderColor: "rgba(124,58,237,0.35)",
           }}
@@ -3302,16 +3538,26 @@ export function DriverOrderDetailsScreen() {
             activeOpacity={0.9}
             style={{
               borderRadius: 999,
-              paddingVertical: 12,
+              paddingVertical: 14,
+              paddingHorizontal: 12,
               alignItems: "center",
-              backgroundColor: "#7C3AED",
+              backgroundColor: MMD_GOLD_CLASSIC,
+              borderWidth: 1,
+              borderColor: "#7C3AED",
               opacity: accepting ? 0.7 : 1,
             }}
           >
-            <Text style={{ color: "white", fontSize: 14, fontWeight: "900" }}>
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontSize: 14,
+                fontFamily: MMD_FONT.extrabold,
+                fontWeight: "800",
+              }}
+            >
               {canMarketplacePickup
                 ? t("driver.marketplace.confirmPickup", "Confirm marketplace pickup")
-                : t("driver.marketplace.confirmDelivered", "Confirm marketplace delivered")}
+                : t("driver.marketplace.confirmDelivered", "Confirm delivery complete")}
             </Text>
           </TouchableOpacity>
         </View>

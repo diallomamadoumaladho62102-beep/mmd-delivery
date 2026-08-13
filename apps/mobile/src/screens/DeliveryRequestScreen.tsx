@@ -46,7 +46,20 @@ import {
   type DeliveryRequestPricingPayload,
 } from "../lib/deliveryRequestApi";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { ClientServiceBottomNav } from "../components/navigation/ClientServiceBottomNav";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_WHITE,
+} from "../theme/mmdUi";
+
+const MMD_GREEN = "#22C55E";
+const MMD_GLASS = "rgba(255,255,255,0.08)";
+const MMD_GLASS_BORDER = "rgba(255,255,255,0.2)";
+const MMD_FIELD_BG = "rgba(255,255,255,0.06)";
+const MMD_MUTED_70 = "rgba(255,255,255,0.7)";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type DeliveryRequestRoute = RouteProp<RootStackParamList, "DeliveryRequest">;
@@ -320,25 +333,17 @@ export function DeliveryRequestScreen() {
     );
   }, [lastCreatedId, requestPaid, submitting, estimating, pricingLoading, paying]);
 
-  const requestCardStyle = (active: boolean) => ({
-    backgroundColor: active ? "rgba(37,99,235,0.20)" : "#0F172A",
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: active
-      ? "rgba(96,165,250,0.40)"
-      : "rgba(255,255,255,0.08)",
-  });
-
   const inputStyle = {
-    backgroundColor: "#0F172A",
-    borderRadius: 16,
+    backgroundColor: MMD_FIELD_BG,
+    borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    color: "white" as const,
-    fontSize: 15,
+    borderColor: MMD_GLASS_BORDER,
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+    minHeight: 42,
   };
 
   const resetEstimateState = useCallback(() => {
@@ -1099,9 +1104,25 @@ export function DeliveryRequestScreen() {
     ]
   );
 
+  const fieldLabelStyle = {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontWeight: "600" as const,
+    fontFamily: MMD_FONT.semibold,
+    marginBottom: 8,
+  };
+
+  const sectionTitleStyle = {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontWeight: "600" as const,
+    fontFamily: MMD_FONT.semibold,
+    marginBottom: 12,
+  };
+
   return (
     <>
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["left", "right"]}>
       <StatusBar barStyle="light-content" />
 
       <ScreenHeader
@@ -1111,7 +1132,7 @@ export function DeliveryRequestScreen() {
           "Crée une livraison de colis ou une course privée sans passer par le restaurant."
         )}
         fallbackRoute="ClientHome"
-        variant="dark"
+        variant="brand"
       />
 
       <KeyboardAvoidingView
@@ -1122,20 +1143,16 @@ export function DeliveryRequestScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingTop: 18,
-            paddingBottom: 32,
+            paddingTop: 24,
+            paddingBottom: 112,
+            gap: 24,
           }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={{ marginBottom: 26 }}>
-            <Text style={{ fontSize: 40, marginBottom: 10 }}>🚀</Text>
-          </View>
-
           {deliveryBlocked ? (
             <View
               style={{
-                marginBottom: 20,
                 padding: 16,
                 borderRadius: 16,
                 backgroundColor: "rgba(239,68,68,0.12)",
@@ -1143,98 +1160,97 @@ export function DeliveryRequestScreen() {
                 borderColor: "rgba(239,68,68,0.35)",
               }}
             >
-              <Text style={{ color: "#FCA5A5", fontWeight: "700", marginBottom: 6 }}>
+              <Text style={{ color: "#FCA5A5", fontWeight: "700", fontFamily: MMD_FONT.bold, marginBottom: 6 }}>
                 {tr("deliveryRequest.unavailable.title", "Delivery unavailable")}
               </Text>
-              <Text style={{ color: "#FECACA", lineHeight: 20 }}>
+              <Text style={{ color: "#FECACA", lineHeight: 20, fontFamily: MMD_FONT.regular }}>
                 {deliveryBlockedMessage}
               </Text>
             </View>
           ) : null}
 
-          <View style={{ marginBottom: 20 }}>
-            <Text
+          <View>
+            <Text style={sectionTitleStyle}>
+              {tr("deliveryRequest.type.title", "Request type")}
+            </Text>
+
+            <View
               style={{
-                color: "white",
-                fontSize: 16,
-                fontWeight: "800",
-                marginBottom: 12,
+                flexDirection: "row",
+                gap: 4,
+                height: 52,
+                padding: 4,
+                borderRadius: 24,
+                backgroundColor: "rgba(255,255,255,0.1)",
+                borderWidth: 1,
+                borderColor: MMD_GLASS_BORDER,
               }}
             >
-                {tr("deliveryRequest.type.title", "Choisis le type de demande")}
-              </Text>
-
-            <View style={{ gap: 14 }}>
               <TouchableOpacity
                 activeOpacity={0.9}
-                style={requestCardStyle(requestType === "package")}
                 onPress={() => setRequestType("package")}
+                style={{
+                  flex: 1,
+                  borderRadius: 20,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: requestType === "package" ? MMD_GREEN : "transparent",
+                }}
               >
-                <Text style={{ fontSize: 28, marginBottom: 8 }}>📦</Text>
-
                 <Text
                   style={{
-                    color: "white",
-                    fontSize: 18,
-                    fontWeight: "800",
-                    marginBottom: 4,
+                    color: MMD_WHITE,
+                    fontSize: 16,
+                    fontWeight: requestType === "package" ? "700" : "600",
+                    fontFamily: requestType === "package" ? MMD_FONT.bold : MMD_FONT.semibold,
                   }}
                 >
-                {tr("deliveryRequest.type.packageTitle", "Envoyer un colis")}
-              </Text>
-
-                <Text style={{ color: "#94A3B8", fontSize: 14 }}>
-                {tr("deliveryRequest.type.packageBody", "Livre des documents, colis ou objets personnels.")}
-              </Text>
+                  {tr("deliveryRequest.type.packageShort", "Package")}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.9}
-                style={requestCardStyle(requestType === "ride")}
                 onPress={() => setRequestType("ride")}
+                style={{
+                  flex: 1,
+                  borderRadius: 20,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: requestType === "ride" ? MMD_GREEN : "transparent",
+                }}
               >
-                <Text style={{ fontSize: 28, marginBottom: 8 }}>🚗</Text>
-
                 <Text
                   style={{
-                    color: "white",
-                    fontSize: 18,
-                    fontWeight: "800",
-                    marginBottom: 4,
+                    color: MMD_WHITE,
+                    fontSize: 16,
+                    fontWeight: requestType === "ride" ? "700" : "600",
+                    fontFamily: requestType === "ride" ? MMD_FONT.bold : MMD_FONT.semibold,
                   }}
                 >
-                {tr("deliveryRequest.type.rideTitle", "Demander une course")}
-              </Text>
-
-                <Text style={{ color: "#94A3B8", fontSize: 14 }}>
-                {tr("deliveryRequest.type.rideBody", "Réserve directement un chauffeur privé.")}
-              </Text>
+                  {tr("deliveryRequest.type.rideShort", "Ride")}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View
-            style={{
-              borderRadius: 20,
-              backgroundColor: "#081121",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.08)",
-              padding: 16,
-              marginBottom: 20,
-            }}
-          >
-            <Text
+          <View>
+            <Text style={sectionTitleStyle}>
+              {tr("deliveryRequest.details.title", "Delivery Details")}
+            </Text>
+
+            <View
               style={{
-                color: "white",
-                fontSize: 16,
-                fontWeight: "800",
-                marginBottom: 14,
+                borderRadius: 24,
+                backgroundColor: MMD_GLASS,
+                borderWidth: 1,
+                borderColor: MMD_GLASS_BORDER,
+                padding: 20,
+                gap: 16,
               }}
             >
-                {tr("deliveryRequest.details.title", "Détails de la demande")}
-              </Text>
-
-            <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
+            <View>
+            <Text style={fieldLabelStyle}>
                 {tr("deliveryRequest.fields.title", "Titre")}
               </Text>
             <TextInput
@@ -1245,11 +1261,13 @@ export function DeliveryRequestScreen() {
                   ? tr("deliveryRequest.fields.titleRidePlaceholder", "Exemple : course aéroport")
                   : tr("deliveryRequest.fields.titlePackagePlaceholder", "Exemple : documents importants")
               }
-              placeholderTextColor="#64748B"
-              style={[inputStyle, { marginBottom: 14 }]}
+              placeholderTextColor={MMD_MUTED_70}
+              style={inputStyle}
             />
+            </View>
 
-            <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
+            <View>
+            <Text style={fieldLabelStyle}>
                 {tr("deliveryRequest.fields.pickupAddress", "Adresse pickup")}
               </Text>
             <TextInput
@@ -1259,11 +1277,13 @@ export function DeliveryRequestScreen() {
                 lastEstimateKeyRef.current = "";
               }}
               placeholder={tr("deliveryRequest.fields.pickupPlaceholder", "Entre l’adresse pickup")}
-              placeholderTextColor="#64748B"
-              style={[inputStyle, { marginBottom: 14 }]}
+              placeholderTextColor={MMD_MUTED_70}
+              style={inputStyle}
             />
+            </View>
 
-            <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
+            <View>
+            <Text style={fieldLabelStyle}>
                 {tr("deliveryRequest.fields.dropoffAddress", "Adresse dropoff")}
               </Text>
             <TextInput
@@ -1273,24 +1293,25 @@ export function DeliveryRequestScreen() {
                 lastEstimateKeyRef.current = "";
               }}
               placeholder={tr("deliveryRequest.fields.dropoffPlaceholder", "Entre l’adresse dropoff")}
-              placeholderTextColor="#64748B"
-              style={[inputStyle, { marginBottom: 10 }]}
+              placeholderTextColor={MMD_MUTED_70}
+              style={inputStyle}
             />
+            </View>
             <TouchableOpacity
               onPress={openDropoffLocationPicker}
               style={{
-                borderRadius: 12,
-                paddingVertical: 12,
+                borderRadius: 16,
+                height: 52,
                 alignItems: "center",
-                marginBottom: 14,
-                borderWidth: 1,
-                borderColor: dropoffLocationId ? "#22C55E" : "#334155",
+                justifyContent: "center",
+                borderWidth: dropoffLocationId ? 1 : 0,
+                borderColor: MMD_GREEN,
                 backgroundColor: dropoffLocationId
                   ? "rgba(34,197,94,0.12)"
-                  : "rgba(15,23,42,0.8)",
+                  : MMD_GREEN,
               }}
             >
-              <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+              <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold, fontSize: 18 }}>
                 {dropoffLocationId
                   ? tr("deliveryRequest.fields.dropoffPinned", "Dropoff pinned on map")
                   : tr("deliveryRequest.fields.pinDropoff", "Pin exact dropoff on map")}
@@ -1303,20 +1324,18 @@ export function DeliveryRequestScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  borderRadius: 12,
+                  borderRadius: 16,
                   borderWidth: 1,
-                  borderColor: "#334155",
-                  backgroundColor: "rgba(15,23,42,0.8)",
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  marginBottom: 14,
+                  borderColor: MMD_GLASS_BORDER,
+                  backgroundColor: MMD_FIELD_BG,
+                  padding: 16,
                 }}
               >
                 <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text style={{ color: "#F8FAFC", fontSize: 14, fontWeight: "700" }}>
+                  <Text style={{ color: MMD_WHITE, fontSize: 16, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {tr("deliveryRequest.leaveAtDoor.title", "Laisser devant la porte")}
                   </Text>
-                  <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 4, lineHeight: 18 }}>
+                  <Text style={{ color: MMD_MUTED_70, fontSize: 13, marginTop: 4, lineHeight: 18, fontFamily: MMD_FONT.regular }}>
                     {tr(
                       "deliveryRequest.leaveAtDoor.hint",
                       "Autorise le livreur à déposer le colis devant la porte après l’attente maximale (photo obligatoire)."
@@ -1327,57 +1346,67 @@ export function DeliveryRequestScreen() {
                   value={leaveAtDoor}
                   onValueChange={setLeaveAtDoor}
                   trackColor={{ false: "#475569", true: "#166534" }}
-                  thumbColor={leaveAtDoor ? "#22C55E" : "#CBD5E1"}
+                  thumbColor={leaveAtDoor ? MMD_GREEN : "#CBD5E1"}
                 />
               </View>
             ) : null}
 
-            <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
+            <View>
+            <Text style={fieldLabelStyle}>
+                {tr("deliveryRequest.fields.pickupContactName", "Pickup Contact Name")}
               </Text>
             <TextInput
               value={pickupContactName}
               onChangeText={setPickupContactName}
               placeholder={tr("common.optional", "Optionnel")}
-              placeholderTextColor="#64748B"
-              style={[inputStyle, { marginBottom: 14 }]}
+              placeholderTextColor={MMD_MUTED_70}
+              style={inputStyle}
             />
+            </View>
 
-            <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
+            <View>
+            <Text style={fieldLabelStyle}>
                 {tr("deliveryRequest.fields.pickupPhone", "Téléphone pickup")}
               </Text>
             <TextInput
               value={pickupPhone}
               onChangeText={setPickupPhone}
               placeholder={tr("common.optional", "Optionnel")}
-              placeholderTextColor="#64748B"
+              placeholderTextColor={MMD_MUTED_70}
               keyboardType="phone-pad"
-              style={[inputStyle, { marginBottom: 14 }]}
+              style={inputStyle}
             />
+            </View>
 
-            <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
+            <View>
+            <Text style={fieldLabelStyle}>
                 {tr("deliveryRequest.fields.dropoffContactName", "Nom du contact dropoff")}
               </Text>
             <TextInput
               value={dropoffContactName}
               onChangeText={setDropoffContactName}
               placeholder={tr("common.optional", "Optionnel")}
-              placeholderTextColor="#64748B"
-              style={[inputStyle, { marginBottom: 14 }]}
+              placeholderTextColor={MMD_MUTED_70}
+              style={inputStyle}
             />
+            </View>
 
-            <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
+            <View>
+            <Text style={fieldLabelStyle}>
                 {tr("deliveryRequest.fields.dropoffPhone", "Téléphone dropoff")}
               </Text>
             <TextInput
               value={dropoffPhone}
               onChangeText={setDropoffPhone}
               placeholder={tr("common.optional", "Optionnel")}
-              placeholderTextColor="#64748B"
+              placeholderTextColor={MMD_MUTED_70}
               keyboardType="phone-pad"
-              style={[inputStyle, { marginBottom: 14 }]}
+              style={inputStyle}
             />
+            </View>
 
-            <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
+            <View>
+            <Text style={fieldLabelStyle}>
               {requestType === "ride"
                 ? tr("deliveryRequest.fields.rideNotes", "Notes pour la course")
                 : tr("deliveryRequest.fields.packageDescription", "Description du colis")}
@@ -1390,110 +1419,115 @@ export function DeliveryRequestScreen() {
                   ? tr("deliveryRequest.fields.rideNotesPlaceholder", "Notes optionnelles pour la course")
                   : tr("deliveryRequest.fields.packageDescriptionPlaceholder", "Décris le colis")
               }
-              placeholderTextColor="#64748B"
+              placeholderTextColor={MMD_MUTED_70}
               multiline
               textAlignVertical="top"
               style={[
                 inputStyle,
                 {
                   minHeight: 110,
-                  marginBottom: 4,
                 },
               ]}
             />
+            </View>
+            </View>
           </View>
+
+          <View>
+            <Text style={sectionTitleStyle}>
+              {tr("deliveryRequest.pricing.title", "Price Summary")}
+            </Text>
 
           <View
             style={{
-              borderRadius: 20,
-              backgroundColor: "#0F172A",
+              borderRadius: 24,
+              backgroundColor: MMD_GLASS,
               borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.08)",
-              padding: 18,
-              marginBottom: 18,
+              borderColor: MMD_GLASS_BORDER,
+              padding: 20,
             }}
           >
-            <Text
-              style={{
-                color: "white",
-                fontSize: 16,
-                fontWeight: "800",
-                marginBottom: 10,
-              }}
-            >
-                {tr("deliveryRequest.pricing.title", "Résumé du prix")}
-              </Text>
-
             {pricingLoading ? (
-              <Text style={{ color: "#93C5FD", fontSize: 14 }}>
+              <Text style={{ color: MMD_GOLD_BRIGHT, fontSize: 14, fontFamily: MMD_FONT.regular }}>
                 {tr("deliveryRequest.pricing.loading", "Chargement des prix admin...")}
               </Text>
             ) : estimating ? (
-              <Text style={{ color: "#93C5FD", fontSize: 14 }}>
+              <Text style={{ color: MMD_GOLD_BRIGHT, fontSize: 14, fontFamily: MMD_FONT.regular }}>
                 {tr("deliveryRequest.pricing.calculating", "Calcul de l’estimation...")}
               </Text>
             ) : estimateError ? (
-              <Text style={{ color: "#FCA5A5", fontSize: 14, lineHeight: 21 }}>
+              <Text style={{ color: "#FCA5A5", fontSize: 14, lineHeight: 21, fontFamily: MMD_FONT.regular }}>
                 {estimateError}
               </Text>
             ) : estimateReady ? (
               <>
-                <Text style={{ color: "#86EFAC", fontSize: 14, fontWeight: "800" }}>
-                {tr("deliveryRequest.pricing.ready", "Estimation prête.")}
-              </Text>
+                <View
+                  style={{
+                    alignSelf: "flex-start",
+                    backgroundColor: MMD_BLUE,
+                    borderRadius: 999,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    marginBottom: 12,
+                  }}
+                >
+                  <Text style={{ color: MMD_WHITE, fontSize: 14, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
+                    {tr("deliveryRequest.pricing.ready", "Estimation ready")}
+                  </Text>
+                </View>
 
-                <View style={{ height: 10 }} />
-
-                <Text style={{ color: "#CBD5E1", fontSize: 14 }}>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 14, fontFamily: MMD_FONT.regular }}>
                   Distance:{" "}
-                  <Text style={{ color: "white", fontWeight: "800" }}>
+                  <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {distanceMiles != null ? `${distanceMiles.toFixed(2)} mi` : "—"}
                   </Text>
                 </Text>
 
-                <Text style={{ color: "#CBD5E1", fontSize: 14, marginTop: 6 }}>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
                   ETA:{" "}
-                  <Text style={{ color: "white", fontWeight: "800" }}>
+                  <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {etaMinutes != null ? `${Math.round(etaMinutes)} min` : "—"}
                   </Text>
                 </Text>
 
-                <Text style={{ color: "#CBD5E1", fontSize: 14, marginTop: 6 }}>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
                   Delivery fee:{" "}
-                  <Text style={{ color: "white", fontWeight: "800" }}>
+                  <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {money(deliveryFee, currency)}
                   </Text>
                 </Text>
 
-                <Text style={{ color: "#CBD5E1", fontSize: 14, marginTop: 6 }}>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
                   Tax:{" "}
-                  <Text style={{ color: "white", fontWeight: "800" }}>
+                  <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {money(tax, currency)}
                   </Text>
                 </Text>
 
-                <Text style={{ color: "#CBD5E1", fontSize: 14, marginTop: 6 }}>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
                   Service fee:{" "}
-                  <Text style={{ color: "white", fontWeight: "800" }}>
+                  <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {money(serviceFee, currency)}
                   </Text>
                 </Text>
 
-                <Text style={{ color: "#CBD5E1", fontSize: 14, marginTop: 6 }}>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
                   Total:{" "}
-                  <Text style={{ color: "white", fontWeight: "800" }}>
+                  <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {money(total, currency)}
                   </Text>
                 </Text>
 
-                <Text style={{ color: "#64748B", fontSize: 12, marginTop: 12 }}>
+                <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", marginVertical: 12 }} />
+
+                <Text style={{ color: MMD_MUTED_70, fontSize: 13, fontFamily: MMD_FONT.regular }}>
                   Pickup GPS:{" "}
                   {pickupCoords
                     ? `${pickupCoords.lat.toFixed(5)}, ${pickupCoords.lng.toFixed(5)}`
                     : "—"}
                 </Text>
 
-                <Text style={{ color: "#64748B", fontSize: 12, marginTop: 4 }}>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 13, marginTop: 8, fontFamily: MMD_FONT.regular }}>
                   Dropoff GPS:{" "}
                   {dropoffCoords
                     ? `${dropoffCoords.lat.toFixed(5)}, ${dropoffCoords.lng.toFixed(5)}`
@@ -1501,13 +1535,14 @@ export function DeliveryRequestScreen() {
                 </Text>
               </>
             ) : (
-              <Text style={{ color: "#94A3B8", fontSize: 14, lineHeight: 22 }}>
+              <Text style={{ color: MMD_WHITE, fontSize: 14, lineHeight: 22, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                 {tr(
                   "deliveryRequest.pricing.emptyHint",
-                  "Entre des adresses pickup et dropoff complètes. L’estimation sera calculée automatiquement avec les prix admin de pricing_config."
+                  "Enter pickup and dropoff addresses to calculate the estimate automatically."
                 )}
               </Text>
             )}
+          </View>
           </View>
 
           {lastCreatedId ? (
@@ -1518,18 +1553,17 @@ export function DeliveryRequestScreen() {
                 borderWidth: 1,
                 borderColor: "rgba(34,197,94,0.28)",
                 padding: 14,
-                marginBottom: 14,
               }}
             >
-              <Text style={{ color: "#86EFAC", fontSize: 14, fontWeight: "800" }}>
+              <Text style={{ color: "#86EFAC", fontSize: 14, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                 {requestPaid
                   ? tr("deliveryRequest.created.paidCardTitle", "Demande de livraison payée")
                   : tr("deliveryRequest.created.cardTitle", "Demande de livraison créée")}
               </Text>
-              <Text style={{ color: "#D1FAE5", fontSize: 13, marginTop: 6 }}>
+              <Text style={{ color: "#D1FAE5", fontSize: 13, marginTop: 6, fontFamily: MMD_FONT.regular }}>
                 ID: {lastCreatedId.slice(0, 8)}
               </Text>
-              <Text style={{ color: "#D1FAE5", fontSize: 13, marginTop: 6 }}>
+              <Text style={{ color: "#D1FAE5", fontSize: 13, marginTop: 6, fontFamily: MMD_FONT.regular }}>
                 {requestPaid
                   ? tr(
                       "deliveryRequest.created.paidHint",
@@ -1540,6 +1574,7 @@ export function DeliveryRequestScreen() {
             </View>
           ) : null}
 
+          <View style={{ gap: 12 }}>
           <TouchableOpacity
             onPress={() => void handleEstimate({ silent: false })}
             activeOpacity={0.9}
@@ -1548,23 +1583,23 @@ export function DeliveryRequestScreen() {
               backgroundColor:
                 estimating || submitting || pricingLoading || paying
                   ? "#475569"
-                  : "#1D4ED8",
+                  : MMD_GREEN,
               paddingVertical: 16,
               borderRadius: 16,
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 14,
               minHeight: 56,
             }}
           >
             {estimating ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={MMD_WHITE} />
             ) : (
               <Text
                 style={{
-                  color: "white",
-                  fontSize: 17,
-                  fontWeight: "800",
+                  color: MMD_WHITE,
+                  fontSize: 18,
+                  fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                 }}
               >
                 {tr("deliveryRequest.actions.calculate", "Calculer le prix de livraison")}
@@ -1577,26 +1612,31 @@ export function DeliveryRequestScreen() {
             activeOpacity={0.9}
             disabled={submitting || estimating || pricingLoading || paying}
             style={{
-              backgroundColor:
+              backgroundColor: "transparent",
+              borderWidth: 1,
+              borderColor:
                 submitting || estimating || pricingLoading || paying
                   ? "#64748B"
-                  : "#2563EB",
+                  : MMD_GREEN,
               paddingVertical: 16,
               borderRadius: 16,
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 14,
               minHeight: 56,
             }}
           >
             {submitting ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={MMD_GREEN} />
             ) : (
               <Text
                 style={{
-                  color: "white",
+                  color:
+                    submitting || estimating || pricingLoading || paying
+                      ? "#64748B"
+                      : MMD_GREEN,
                   fontSize: 18,
-                  fontWeight: "800",
+                  fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                 }}
               >
                 {market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)
@@ -1615,23 +1655,23 @@ export function DeliveryRequestScreen() {
             activeOpacity={0.9}
             disabled={!canPay}
             style={{
-              backgroundColor: !canPay ? "#64748B" : "#22C55E",
+              backgroundColor: !canPay ? "#64748B" : MMD_GREEN,
               paddingVertical: 16,
               borderRadius: 16,
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 14,
               minHeight: 56,
             }}
           >
             {paying ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={MMD_WHITE} />
             ) : (
               <Text
                 style={{
-                  color: "white",
+                  color: MMD_WHITE,
                   fontSize: 18,
-                  fontWeight: "800",
+                  fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                 }}
               >
                 {tr("deliveryRequest.actions.payNow", "Payer maintenant")}
@@ -1645,24 +1685,31 @@ export function DeliveryRequestScreen() {
             activeOpacity={0.85}
             disabled={submitting || estimating || paying}
             style={{
-              backgroundColor: "#FACC15",
+              backgroundColor: MMD_FIELD_BG,
+              borderWidth: 1,
+              borderColor: MMD_GLASS_BORDER,
               paddingVertical: 16,
               borderRadius: 16,
               alignItems: "center",
+              minHeight: 56,
+              justifyContent: "center",
             }}
           >
             <Text
               style={{
-                color: "#111827",
+                color: MMD_WHITE,
                 fontSize: 18,
-                fontWeight: "800",
+                fontWeight: "700",
+                fontFamily: MMD_FONT.bold,
               }}
             >
                 {tr("common.back", "Retour")}
               </Text>
           </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <ClientServiceBottomNav active="orders" />
     </SafeAreaView>
     <PaymentMethodPicker
       visible={paymentPickerVisible}

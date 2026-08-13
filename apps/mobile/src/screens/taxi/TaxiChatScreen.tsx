@@ -27,6 +27,14 @@ import {
 import { formatDateTime } from "../../i18n/formatters";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiChat">;
 type ChatRoute = RouteProp<RootStackParamList, "TaxiChat">;
@@ -181,8 +189,8 @@ export default function TaxiChatScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("taxi.chat.title", "Taxi chat")}
         fallbackRoute="ClientHome"
@@ -190,11 +198,12 @@ export default function TaxiChatScreen() {
       />
 
       {loading ? (
-        <ActivityIndicator color="#F59E0B" style={{ marginTop: 20 }} />
+        <ActivityIndicator color={MMD_TAXI_GREEN} style={{ marginTop: 20 }} />
       ) : (
         <ScrollView
           ref={scrollRef}
-          style={{ flex: 1, paddingHorizontal: 12 }}
+          style={{ flex: 1, paddingHorizontal: 16 }}
+          contentContainerStyle={{ paddingVertical: 16, gap: 16 }}
           onContentSizeChange={() =>
             scrollRef.current?.scrollToEnd({ animated: true })
           }
@@ -206,15 +215,28 @@ export default function TaxiChatScreen() {
                 key={msg.id}
                 style={{
                   alignSelf: mine ? "flex-end" : "flex-start",
-                  backgroundColor: mine ? "#1D4ED8" : "#1E293B",
-                  padding: 10,
-                  borderRadius: 12,
-                  marginBottom: 8,
+                  backgroundColor: mine ? MMD_TAXI_GREEN : MMD_GLASS,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderTopLeftRadius: mine ? 18 : 4,
+                  borderTopRightRadius: mine ? 4 : 18,
+                  borderBottomLeftRadius: 18,
+                  borderBottomRightRadius: 18,
                   maxWidth: "82%",
+                  gap: 4,
                 }}
               >
                 {msg.text ? (
-                  <Text style={{ color: "#F8FAFC" }}>{msg.text}</Text>
+                  <Text
+                    style={{
+                      color: MMD_WHITE,
+                      fontSize: 15,
+                      fontFamily: MMD_FONT.regular,
+                      textAlign: textAlignStart(),
+                    }}
+                  >
+                    {msg.text}
+                  </Text>
                 ) : null}
                 {msg._signedUrl ? (
                   <Image
@@ -222,7 +244,14 @@ export default function TaxiChatScreen() {
                     style={{ width: 180, height: 180, borderRadius: 8, marginTop: 4 }}
                   />
                 ) : null}
-                <Text style={{ color: "#94A3B8", fontSize: 10, marginTop: 4 }}>
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.3)",
+                    fontSize: 11,
+                    fontFamily: MMD_FONT.regular,
+                    textAlign: mine ? "right" : "left",
+                  }}
+                >
                   {formatDateTime(msg.created_at, i18n.language, {
                     timeStyle: "short",
                     dateStyle: undefined,
@@ -237,32 +266,54 @@ export default function TaxiChatScreen() {
       <View
         style={{
           flexDirection: rowDirection(),
-          gap: 8,
-          padding: 12,
-          borderTopWidth: 1,
-          borderTopColor: "#334155",
+          gap: 12,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 24,
+          backgroundColor: MMD_GLASS,
         }}
       >
         <TouchableOpacity onPress={sendImageMessage} disabled={sending}>
-          <Text style={{ color: "#93C5FD", fontSize: 22 }}>📷</Text>
+          <Text style={{ color: MMD_GOLD_CLASSIC, fontSize: 22 }}>📷</Text>
         </TouchableOpacity>
         <TextInput
           value={text}
           onChangeText={setText}
-          placeholder={t("taxi.chat.driverPlaceholder", "Message driver…")}
-          placeholderTextColor="#64748B"
+          placeholder={t("taxi.chat.driverPlaceholder", "Message driver...")}
+          placeholderTextColor="rgba(255,255,255,0.3)"
           style={{
             flex: 1,
-            backgroundColor: "#111827",
-            color: "#F8FAFC",
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 10,
+            backgroundColor: "rgba(255,255,255,0.06)",
+            color: MMD_WHITE,
+            borderRadius: 24,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            height: 44,
+            fontFamily: MMD_FONT.regular,
+            fontSize: 14,
           }}
         />
-        <TouchableOpacity onPress={sendTextMessage} disabled={sending || !text.trim()}>
-          <Text style={{ color: "#F59E0B", fontWeight: "800", fontSize: 16 }}>
-            {t("taxi.common.send", "Send")}
+        <TouchableOpacity
+          onPress={sendTextMessage}
+          disabled={sending || !text.trim()}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: MMD_TAXI_GREEN,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: MMD_WHITE,
+              fontWeight: "800",
+              fontFamily: MMD_FONT.extrabold,
+              fontSize: 18,
+            }}
+          >
+            ➤
           </Text>
         </TouchableOpacity>
       </View>

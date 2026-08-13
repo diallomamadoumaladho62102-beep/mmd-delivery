@@ -12,7 +12,10 @@ import {
   Platform,
   Image,
   ScrollView,
+  StyleSheet,
+  useWindowDimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -25,6 +28,12 @@ import { useTranslation } from "react-i18next";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_WHITE,
+  mmdLogoSize,
+} from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientAuth">;
 
@@ -638,109 +647,63 @@ export function ClientAuthScreen() {
     }
   };
 
+  const { width, height } = useWindowDimensions();
+  const logoSize = mmdLogoSize(width, height);
+  const fieldStyle = styles.field;
+  const labelStyle = styles.label;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={{
-            padding: 24,
-            justifyContent: "center",
-            flexGrow: 1,
-          }}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <View>
-            <Image
-              source={require("../../assets/brand/mmd-logo-ui.png")}
-              style={{
-                width: 180,
-                height: 116,
-                alignSelf: "center",
-                marginBottom: 20,
-              }}
-              resizeMode="contain"
-              accessibilityLabel="MMD Delivery"
-            />
-            <Text
-              style={{
-                fontSize: 26,
-                fontWeight: "700",
-                color: "white",
-                marginBottom: 12,
-              }}
-            >
-              {title}
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 14,
-                color: "#9CA3AF",
-                marginBottom: 24,
-              }}
-            >
-              {subtitle}
-            </Text>
+          <View style={styles.content}>
+            <View style={styles.logoWrap}>
+              <Image
+                source={require("../../assets/brand/mmd-logo-ui.png")}
+                style={{
+                  width: logoSize,
+                  height: logoSize,
+                  borderRadius: logoSize / 2,
+                }}
+                resizeMode="contain"
+                accessibilityLabel="MMD Delivery"
+              />
+            </View>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
 
             {mode === "signup" ? (
               <View style={{ marginBottom: 18 }}>
-                <Text
-                  style={{
-                    color: "#E5E7EB",
-                    marginBottom: 10,
-                    fontWeight: "700",
-                  }}
-                >
-                  {t("client.auth.profilePhoto")}
-                </Text>
+                <Text style={labelStyle}>{t("client.auth.profilePhoto")}</Text>
 
                 <View
                   style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
                 >
-                  <View
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 999,
-                      borderWidth: 1,
-                      borderColor: "#374151",
-                      backgroundColor: "rgba(15,23,42,0.6)",
-                      overflow: "hidden",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <View style={styles.avatarCircle}>
                     {avatar?.uri ? (
                       <Image
                         source={{ uri: avatar.uri }}
                         style={{ width: 64, height: 64 }}
                       />
                     ) : (
-                      <Text style={{ color: "#94A3B8", fontWeight: "900" }}>
-                        +
-                      </Text>
+                      <Text style={styles.avatarPlus}>+</Text>
                     )}
                   </View>
 
                   <TouchableOpacity
                     onPress={onPickAvatar}
                     disabled={loading}
-                    style={{
-                      paddingVertical: 12,
-                      paddingHorizontal: 14,
-                      borderRadius: 10,
-                      backgroundColor: "rgba(59,130,246,0.15)",
-                      borderWidth: 1,
-                      borderColor: "#3B82F6",
-                      opacity: loading ? 0.7 : 1,
-                    }}
+                    style={[styles.photoBtn, loading && { opacity: 0.7 }]}
                   >
-                    <Text style={{ color: "#93C5FD", fontWeight: "800" }}>
+                    <Text style={styles.photoBtnText}>
                       {avatar?.uri
                         ? t("client.auth.changePhoto")
                         : t("client.auth.addPhoto")}
@@ -750,80 +713,42 @@ export function ClientAuthScreen() {
 
                 <View style={{ height: 16 }} />
 
-                <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
-                  {t("client.auth.fullName")}
-                </Text>
+                <Text style={labelStyle}>{t("client.auth.fullName")}</Text>
                 <TextInput
                   value={fullName}
                   onChangeText={setFullName}
                   placeholder={t("client.auth.fullNamePlaceholder")}
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor="rgba(255,255,255,0.55)"
                   autoCapitalize="words"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#374151",
-                    borderRadius: 8,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    color: "white",
-                    marginBottom: 16,
-                  }}
+                  style={[fieldStyle, { marginBottom: 16 }]}
                 />
 
-                <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
-                  {t("client.auth.phone")}
-                </Text>
+                <Text style={labelStyle}>{t("client.auth.phone")}</Text>
                 <TextInput
                   value={phone}
                   onChangeText={setPhone}
                   placeholder={t("client.auth.phonePlaceholder")}
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor="rgba(255,255,255,0.55)"
                   keyboardType="phone-pad"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#374151",
-                    borderRadius: 8,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    color: "white",
-                    marginBottom: 16,
-                  }}
+                  style={[fieldStyle, { marginBottom: 16 }]}
                 />
 
-                <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
-                  {t("client.auth.address")}
-                </Text>
+                <Text style={labelStyle}>{t("client.auth.address")}</Text>
                 <TextInput
                   value={addressLine1}
                   onChangeText={setAddressLine1}
                   placeholder={t("client.auth.address1Placeholder")}
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor="rgba(255,255,255,0.55)"
                   autoCapitalize="words"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#374151",
-                    borderRadius: 8,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    color: "white",
-                    marginBottom: 10,
-                  }}
+                  style={[fieldStyle, { marginBottom: 10 }]}
                 />
                 <TextInput
                   value={addressLine2}
                   onChangeText={setAddressLine2}
                   placeholder={t("client.auth.address2Placeholder")}
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor="rgba(255,255,255,0.55)"
                   autoCapitalize="words"
-                  style={{
-                    borderWidth: 1,
-                    borderColor: "#374151",
-                    borderRadius: 8,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    color: "white",
-                    marginBottom: 10,
-                  }}
+                  style={[fieldStyle, { marginBottom: 10 }]}
                 />
 
                 <View style={{ flexDirection: "row", gap: 10 }}>
@@ -832,17 +757,9 @@ export function ClientAuthScreen() {
                       value={city}
                       onChangeText={setCity}
                       placeholder={t("client.auth.cityPlaceholder")}
-                      placeholderTextColor="#6B7280"
+                      placeholderTextColor="rgba(255,255,255,0.55)"
                       autoCapitalize="words"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "#374151",
-                        borderRadius: 8,
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        color: "white",
-                        marginBottom: 10,
-                      }}
+                      style={[fieldStyle, { marginBottom: 10 }]}
                     />
                   </View>
 
@@ -851,17 +768,9 @@ export function ClientAuthScreen() {
                       value={stateRegion}
                       onChangeText={setStateRegion}
                       placeholder={t("client.auth.statePlaceholder")}
-                      placeholderTextColor="#6B7280"
+                      placeholderTextColor="rgba(255,255,255,0.55)"
                       autoCapitalize="characters"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "#374151",
-                        borderRadius: 8,
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        color: "white",
-                        marginBottom: 10,
-                      }}
+                      style={[fieldStyle, { marginBottom: 10 }]}
                     />
                   </View>
                 </View>
@@ -872,17 +781,9 @@ export function ClientAuthScreen() {
                       value={postalCode}
                       onChangeText={setPostalCode}
                       placeholder={t("client.auth.postalPlaceholder")}
-                      placeholderTextColor="#6B7280"
+                      placeholderTextColor="rgba(255,255,255,0.55)"
                       keyboardType="numbers-and-punctuation"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "#374151",
-                        borderRadius: 8,
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        color: "white",
-                        marginBottom: 6,
-                      }}
+                      style={[fieldStyle, { marginBottom: 6 }]}
                     />
                   </View>
 
@@ -891,67 +792,37 @@ export function ClientAuthScreen() {
                       value={country}
                       onChangeText={setCountry}
                       placeholder={t("client.auth.countryPlaceholder")}
-                      placeholderTextColor="#6B7280"
+                      placeholderTextColor="rgba(255,255,255,0.55)"
                       autoCapitalize="characters"
-                      style={{
-                        borderWidth: 1,
-                        borderColor: "#374151",
-                        borderRadius: 8,
-                        paddingHorizontal: 14,
-                        paddingVertical: 10,
-                        color: "white",
-                        marginBottom: 6,
-                      }}
+                      style={[fieldStyle, { marginBottom: 6 }]}
                     />
                   </View>
                 </View>
 
-                <Text
-                  style={{
-                    color: "#64748B",
-                    fontSize: 12,
-                    marginTop: 6,
-                    fontWeight: "700",
-                  }}
-                >
-                  {t("client.auth.tipStateCountry")}
-                </Text>
-
-
+                <Text style={styles.hint}>{t("client.auth.tipStateCountry")}</Text>
 
                 <View style={{ height: 16 }} />
 
-                <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
+                <Text style={labelStyle}>
                   {t("client.auth.referral.title", "Referral code")}
                 </Text>
                 <TextInput
                   value={referralCode}
                   onChangeText={setReferralCode}
-                  placeholder={t("client.auth.referral.placeholder", "MMD referral code")}
-                  placeholderTextColor="#6B7280"
+                  placeholder={t(
+                    "client.auth.referral.placeholder",
+                    "MMD referral code",
+                  )}
+                  placeholderTextColor="rgba(255,255,255,0.55)"
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: referralCode ? "#8B5CF6" : "#374151",
-                    borderRadius: 8,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    color: "white",
-                    marginBottom: 8,
-                  }}
+                  style={[fieldStyle, { marginBottom: 8 }]}
                 />
 
-                <Text
-                  style={{
-                    color: "#64748B",
-                    fontSize: 12,
-                    fontWeight: "700",
-                  }}
-                >
+                <Text style={styles.hint}>
                   {t(
                     "client.auth.referral.autoFillHint",
-                    "If you opened an MMD referral link, the code appears here automatically."
+                    "If you opened an MMD referral link, the code appears here automatically.",
                   )}
                 </Text>
 
@@ -959,64 +830,39 @@ export function ClientAuthScreen() {
               </View>
             ) : null}
 
-            <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
-              {t("client.auth.email")}
-            </Text>
+            <Text style={labelStyle}>{t("client.auth.email")}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
               placeholder={t("client.auth.emailPlaceholder")}
-              placeholderTextColor="#6B7280"
+              placeholderTextColor="rgba(255,255,255,0.55)"
               autoCapitalize="none"
               keyboardType="email-address"
-              style={{
-                borderWidth: 1,
-                borderColor: "#374151",
-                borderRadius: 8,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                color: "white",
-                marginBottom: 16,
-              }}
+              style={[fieldStyle, { marginBottom: 16 }]}
             />
 
-            <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
-              {t("client.auth.password")}
-            </Text>
-            <View style={{ position: "relative", marginBottom: 24 }}>
+            <Text style={labelStyle}>{t("client.auth.password")}</Text>
+            <View style={{ position: "relative", marginBottom: 16 }}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 placeholder={t("client.auth.passwordPlaceholder")}
-                placeholderTextColor="#6B7280"
+                placeholderTextColor="rgba(255,255,255,0.55)"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!loading}
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#374151",
-                  borderRadius: 8,
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  paddingRight: 88,
-                  color: "white",
-                  opacity: loading ? 0.8 : 1,
-                }}
+                style={[
+                  fieldStyle,
+                  { paddingRight: 88, opacity: loading ? 0.8 : 1 },
+                ]}
               />
               <TouchableOpacity
                 disabled={loading}
                 onPress={() => setShowPassword((value) => !value)}
-                style={{
-                  position: "absolute",
-                  right: 12,
-                  top: 0,
-                  bottom: 0,
-                  justifyContent: "center",
-                  opacity: loading ? 0.6 : 1,
-                }}
+                style={styles.showPasswordBtn}
               >
-                <Text style={{ color: "#93C5FD", fontWeight: "800", fontSize: 12 }}>
+                <Text style={styles.showPasswordText}>
                   {showPassword ? "Cacher" : "Voir"}
                 </Text>
               </TouchableOpacity>
@@ -1026,11 +872,9 @@ export function ClientAuthScreen() {
               <TouchableOpacity
                 onPress={handleForgotPassword}
                 disabled={loading}
-                style={{ alignItems: "flex-end", marginTop: -12, marginBottom: 18 }}
+                style={styles.forgotBtn}
               >
-                <Text style={{ color: "#93C5FD", fontWeight: "800" }}>
-                  Mot de passe oublié ?
-                </Text>
+                <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
               </TouchableOpacity>
             ) : null}
 
@@ -1039,31 +883,28 @@ export function ClientAuthScreen() {
             <TouchableOpacity
               onPress={mode === "login" ? handleLogin : handleSignup}
               disabled={loading}
-              style={{
-                backgroundColor: "#3B82F6",
-                paddingVertical: 14,
-                borderRadius: 8,
-                alignItems: "center",
-                opacity: loading ? 0.7 : 1,
-              }}
+              style={[styles.ctaWrap, loading && { opacity: 0.7 }]}
             >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text
-                  style={{ color: "white", fontSize: 16, fontWeight: "600" }}
-                >
-                  {primaryBtnLabel}
-                </Text>
-              )}
+              <LinearGradient
+                colors={["#93C5FD", "#3B82F6", "#93C5FD"]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.ctaGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#1A0D00" />
+                ) : (
+                  <Text style={styles.ctaText}>{primaryBtnLabel}</Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setMode(mode === "login" ? "signup" : "login")}
               disabled={loading}
-              style={{ marginTop: 14, alignItems: "center" }}
+              style={styles.switchModeBtn}
             >
-              <Text style={{ color: "#93C5FD", fontWeight: "700" }}>
+              <Text style={styles.switchModeText}>
                 {mode === "login"
                   ? t("client.auth.noAccount")
                   : t("client.auth.haveAccount")}
@@ -1075,5 +916,151 @@ export function ClientAuthScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: MMD_BLUE,
+  },
+  scrollContent: {
+    padding: 24,
+    justifyContent: "center",
+    flexGrow: 1,
+  },
+  content: {
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center",
+  },
+  logoWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 100,
+    marginBottom: 48,
+  },
+  title: {
+    fontSize: 42,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    color: MMD_WHITE,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 19,
+    fontFamily: MMD_FONT.regular,
+    fontWeight: "400",
+    color: MMD_WHITE,
+    marginBottom: 40,
+    lineHeight: 26,
+  },
+  label: {
+    color: MMD_WHITE,
+    marginBottom: 8,
+    fontSize: 17,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  field: {
+    borderWidth: 2.5,
+    borderColor: MMD_WHITE,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.regular,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  avatarCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 999,
+    borderWidth: 2.5,
+    borderColor: MMD_WHITE,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarPlus: {
+    color: MMD_WHITE,
+    fontWeight: "900",
+    fontSize: 28,
+  },
+  photoBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 2.5,
+    borderColor: MMD_WHITE,
+  },
+  photoBtnText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  hint: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    marginTop: 6,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  showPasswordBtn: {
+    position: "absolute",
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+  },
+  showPasswordText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 17,
+  },
+  forgotBtn: {
+    alignItems: "flex-end",
+    marginBottom: 18,
+  },
+  forgotText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 18,
+    textAlign: "right",
+  },
+  ctaWrap: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  ctaGradient: {
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 60,
+  },
+  ctaText: {
+    color: "#1A0D00",
+    fontSize: 22,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  switchModeBtn: {
+    marginTop: 24,
+    alignItems: "center",
+    paddingTop: 14,
+  },
+  switchModeText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 18,
+    textAlign: "center",
+  },
+});
 
 export default ClientAuthScreen;

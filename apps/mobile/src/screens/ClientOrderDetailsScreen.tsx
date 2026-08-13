@@ -56,6 +56,12 @@ import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { startMaskedCall } from "../lib/maskedCall";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { VerificationCodeCard } from "../components/shared/VerificationCodeCard";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_NAVY,
+} from "../theme/mmdUi";
 
 function isValidCoordinate(latValue: unknown, lngValue: unknown) {
   const lat = Number(latValue);
@@ -160,6 +166,7 @@ type RestaurantPublicProfile = {
   user_id: string;
   restaurant_name: string | null;
   avatar_url?: string | null;
+  logo_url?: string | null;
 };
 
 // =========================
@@ -452,7 +459,7 @@ export function ClientOrderDetailsScreen() {
           nextRestaurantId
             ? supabase
                 .from("restaurant_profiles")
-                .select("user_id, restaurant_name")
+                .select("user_id, restaurant_name, logo_url, avatar_url")
                 .eq("user_id", nextRestaurantId)
                 .maybeSingle()
             : Promise.resolve({ data: null, error: null } as any),
@@ -485,13 +492,23 @@ export function ClientOrderDetailsScreen() {
 
         const driverRow = driverRes.data as PublicProfile | null;
         const restaurantRow = restaurantRes.data as
-          | { user_id: string; restaurant_name: string | null }
+          | {
+              user_id: string;
+              restaurant_name: string | null;
+              logo_url?: string | null;
+              avatar_url?: string | null;
+            }
           | null;
         const restaurantAccount = restaurantAccountRes.data as PublicProfile | null;
 
         setDriverProfile(driverRow ?? null);
 
         if (nextRestaurantId || fallbackRestaurantName) {
+          const restaurantImage =
+            restaurantRow?.logo_url ??
+            restaurantRow?.avatar_url ??
+            restaurantAccount?.avatar_url ??
+            null;
           setRestaurantProfile({
             user_id: nextRestaurantId,
             restaurant_name:
@@ -499,7 +516,8 @@ export function ClientOrderDetailsScreen() {
               fallbackRestaurantName ??
               restaurantAccount?.full_name ??
               null,
-            avatar_url: restaurantAccount?.avatar_url ?? null,
+            logo_url: restaurantRow?.logo_url ?? null,
+            avatar_url: restaurantImage,
           });
         } else {
           setRestaurantProfile(null);
@@ -1423,9 +1441,9 @@ export function ClientOrderDetailsScreen() {
         {
           borderRadius: 16,
           borderWidth: 1,
-          borderColor: "#111827",
-          backgroundColor: "rgba(2,6,23,0.60)",
-          padding: 14,
+          borderColor: "rgba(255,215,0,0.15)",
+          backgroundColor: MMD_NAVY,
+          padding: 16,
         },
         style,
       ]}
@@ -1497,7 +1515,7 @@ export function ClientOrderDetailsScreen() {
             borderRadius: 23,
             borderWidth: 1,
             borderColor,
-            backgroundColor: "#0B1220",
+            backgroundColor: MMD_NAVY,
           }}
         />
       );
@@ -1511,7 +1529,7 @@ export function ClientOrderDetailsScreen() {
           borderRadius: 23,
           borderWidth: 1,
           borderColor,
-          backgroundColor: "rgba(15,23,42,0.95)",
+          backgroundColor: MMD_NAVY,
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -1545,7 +1563,7 @@ export function ClientOrderDetailsScreen() {
         borderRadius: 14,
         borderWidth: 1,
         borderColor: "rgba(148,163,184,0.14)",
-        backgroundColor: "rgba(15,23,42,0.45)",
+        backgroundColor: "rgba(0,51,153,0.45)",
         padding: 12,
       }}
     >
@@ -1587,7 +1605,7 @@ export function ClientOrderDetailsScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
       <View style={{ flex: 1 }}>
@@ -1595,7 +1613,7 @@ export function ClientOrderDetailsScreen() {
           title={order ? meta.title : ts("client.orderDetails.loadingTitle", "Order")}
           subtitle={`🕒 ${createdCompact}`}
           fallbackRoute="ClientHome"
-          variant="dark"
+          variant="brand"
           rightSlot={
             <View
               style={{
@@ -1617,9 +1635,9 @@ export function ClientOrderDetailsScreen() {
               style={{
                 height: 6,
                 borderRadius: 999,
-                backgroundColor: "rgba(148,163,184,0.10)",
-                borderWidth: 1,
-                borderColor: "rgba(148,163,184,0.14)",
+                backgroundColor: "#334066",
+                borderWidth: 0,
+                borderColor: "transparent",
                 marginTop: 10,
                 overflow: "hidden",
               }}
@@ -1628,7 +1646,7 @@ export function ClientOrderDetailsScreen() {
                 style={{
                   height: 6,
                   width: `${Math.round(progress * 100)}%`,
-                  backgroundColor: order?.status === "canceled" ? "rgba(248,113,113,0.55)" : "rgba(34,197,94,0.55)",
+                  backgroundColor: order?.status === "canceled" ? "rgba(248,113,113,0.55)" : MMD_GOLD_BRIGHT,
                 }}
               />
             </View>
@@ -1657,7 +1675,7 @@ export function ClientOrderDetailsScreen() {
                   overflow: "hidden",
                   borderWidth: 1,
                   borderColor: "rgba(148,163,184,0.14)",
-                  backgroundColor: "rgba(2,6,23,0.7)",
+                  backgroundColor: MMD_NAVY,
                 }}
               >
                 <Mapbox.MapView
@@ -1765,7 +1783,7 @@ export function ClientOrderDetailsScreen() {
                       paddingVertical: 9,
                       paddingHorizontal: 12,
                       borderRadius: 999,
-                      backgroundColor: "rgba(2,6,23,0.86)",
+                      backgroundColor: MMD_NAVY,
                       borderWidth: 1,
                       borderColor: "rgba(148,163,184,0.18)",
                     }}
@@ -1782,7 +1800,7 @@ export function ClientOrderDetailsScreen() {
                       borderRadius: 14,
                       paddingVertical: 10,
                       paddingHorizontal: 12,
-                      backgroundColor: "rgba(2,6,23,0.82)",
+                      backgroundColor: "#002673",
                       borderWidth: 1,
                       borderColor: "rgba(148,163,184,0.14)",
                     }}
@@ -1831,7 +1849,7 @@ export function ClientOrderDetailsScreen() {
 
         {loading && (
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            <ActivityIndicator size="large" color="#22C55E" />
+            <ActivityIndicator size="large" color={MMD_GOLD_BRIGHT} />
             <Text style={{ marginTop: 8, color: "#9CA3AF", fontWeight: "800" }}>
               {ts("shared.common.loading", "Loading…")}
             </Text>
@@ -1845,7 +1863,7 @@ export function ClientOrderDetailsScreen() {
                 borderRadius: 16,
                 borderWidth: 1,
                 borderColor: "rgba(248,113,113,0.35)",
-                backgroundColor: "rgba(2,6,23,0.60)",
+                backgroundColor: MMD_NAVY,
                 padding: 14,
               }}
             >
@@ -2041,7 +2059,9 @@ export function ClientOrderDetailsScreen() {
                     order.restaurant_name ??
                     ts("client.orderDetails.restaurantContact", "Restaurant")
                   }
-                  avatarUrl={restaurantProfile?.avatar_url ?? null}
+                  avatarUrl={normalizeAvatarUrl(
+                    restaurantProfile?.logo_url ?? restaurantProfile?.avatar_url ?? null
+                  )}
                   status={ts("client.orderDetails.restaurantVisible", "Restaurant profile visible")}
                   accent="#FBBF24"
                 >
@@ -2051,19 +2071,20 @@ export function ClientOrderDetailsScreen() {
                       onPress={callRestaurant}
                       style={{
                         flex: 1,
-                        backgroundColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(37,99,235,0.95)",
+                        backgroundColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "#DAAA20",
                         paddingVertical: 12,
-                        borderRadius: 12,
+                        borderRadius: 10,
                         alignItems: "center",
                         borderWidth: 1,
-                        borderColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(59,130,246,0.35)",
+                        borderColor: communicationDisabled ? "rgba(148,163,184,0.18)" : MMD_GOLD_BRIGHT,
+                        minHeight: 44,
                       }}
                     >
                       {calling === "restaurant" ? (
-                        <ActivityIndicator color="white" />
+                        <ActivityIndicator color={MMD_NAVY} />
                       ) : (
-                        <Text style={{ color: "white", fontWeight: "900" }}>
-                          📞 {ts("client.orderDetails.callRestaurant", "Call")}
+                        <Text style={{ color: MMD_NAVY, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
+                          {ts("client.orderDetails.callRestaurant", "Call")}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -2074,16 +2095,17 @@ export function ClientOrderDetailsScreen() {
                       style={{
                         flex: 1,
                         opacity: communicationDisabled ? 0.5 : 1,
-                        backgroundColor: "rgba(15,23,42,0.95)",
+                        backgroundColor: MMD_NAVY,
                         paddingVertical: 12,
-                        borderRadius: 12,
+                        borderRadius: 10,
                         alignItems: "center",
-                        borderWidth: 1,
-                        borderColor: "rgba(148,163,184,0.20)",
+                        borderWidth: 1.5,
+                        borderColor: MMD_GOLD_BRIGHT,
+                        minHeight: 44,
                       }}
                     >
-                      <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-                        💬 {ts("client.orderDetails.message", "Message")}
+                      <Text style={{ color: MMD_GOLD_BRIGHT, fontWeight: "600", fontFamily: MMD_FONT.semibold }}>
+                        {ts("client.orderDetails.message", "Message")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -2140,7 +2162,7 @@ export function ClientOrderDetailsScreen() {
                         style={{
                           flex: 1,
                           opacity: !order.driver_id || communicationDisabled ? 0.5 : 1,
-                          backgroundColor: "rgba(15,23,42,0.95)",
+                          backgroundColor: MMD_NAVY,
                           paddingVertical: 12,
                           borderRadius: 12,
                           alignItems: "center",
@@ -2198,7 +2220,7 @@ export function ClientOrderDetailsScreen() {
                       style={{
                         flex: 1,
                         opacity: communicationDisabled ? 0.5 : 1,
-                        backgroundColor: "rgba(15,23,42,0.95)",
+                        backgroundColor: MMD_NAVY,
                         paddingVertical: 12,
                         borderRadius: 12,
                         alignItems: "center",
@@ -2221,7 +2243,7 @@ export function ClientOrderDetailsScreen() {
                   onPress={handleCancelOrder}
                   disabled={canceling}
                   style={{
-                    backgroundColor: canceling ? "rgba(148,163,184,0.18)" : "rgba(248,113,113,0.92)",
+                    backgroundColor: canceling ? "rgba(148,163,184,0.18)" : "#CC2626",
                     paddingVertical: 15,
                     borderRadius: 14,
                     alignItems: "center",
@@ -2506,7 +2528,7 @@ export function ClientOrderDetailsScreen() {
                     backgroundColor:
                       paying || verifyingPay || paymentPending
                         ? "rgba(148,163,184,0.18)"
-                        : "rgba(34,197,94,0.95)",
+                        : "#DAAA20",
                     paddingVertical: 16,
                     borderRadius: 14,
                     alignItems: "center",
@@ -2514,13 +2536,14 @@ export function ClientOrderDetailsScreen() {
                     borderColor:
                       paying || verifyingPay || paymentPending
                         ? "rgba(148,163,184,0.18)"
-                        : "rgba(34,197,94,0.35)",
+                        : MMD_GOLD_BRIGHT,
+                    minHeight: 44,
                   }}
                 >
                   {paying || verifyingPay || paymentPending ? (
-                    <ActivityIndicator color="white" />
+                    <ActivityIndicator color={MMD_NAVY} />
                   ) : (
-                    <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>
+                    <Text style={{ color: MMD_NAVY, fontSize: 16, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                       {ts("client.orderDetails.pay", "Pay")} {money(payableAmount)}
                     </Text>
                   )}

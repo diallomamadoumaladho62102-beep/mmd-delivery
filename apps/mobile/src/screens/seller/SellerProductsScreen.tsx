@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  StatusBar,
+  StyleSheet,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -21,10 +24,20 @@ import {
 import { formatMoney, type SellerProductRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
-import ScreenHeader from "../../components/navigation/ScreenHeader";
-import { UiEmptyState, UiLoadingState } from "../../components/ui/UiStates";
 import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
-import { APP_COLORS } from "../../theme/appTheme";
+import {
+  SellerBottomNav,
+  SellerBrandHeader,
+  SellerFeedbackCard,
+  SellerGlassCard,
+} from "../../components/seller/SellerChrome";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Props = { navigation: any };
 
@@ -62,6 +75,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [products, setProducts] = useState<SellerProductRow[]>([]);
+  const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<ProductDraft>(EMPTY_DRAFT);
   const [saving, setSaving] = useState(false);
@@ -96,6 +110,17 @@ export default function SellerProductsScreen({ navigation }: Props) {
       void refresh();
     }, [refresh])
   );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q)
+    );
+  }, [products, query]);
 
   const openCreate = () => {
     setDraft(EMPTY_DRAFT);
@@ -203,148 +228,367 @@ export default function SellerProductsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bg }} edges={["bottom", "left", "right"]}>
-      <ScreenHeader
-        title={t("seller.products.title", "Products")}
+    <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" />
+      <SellerBrandHeader
+        subtitle={t("seller.products.title", "Products")}
+        showBack
         fallbackRoute="SellerDashboard"
-        variant="dark"
-        rightSlot={
-          <TouchableOpacity onPress={openCreate}>
-            <Text style={{ color: APP_COLORS.accent, fontSize: 24, fontWeight: "700" }}>+</Text>
-          </TouchableOpacity>
-        }
       />
 
       {loading ? (
-        <UiLoadingState style={{ marginTop: 24 }} />
-      ) : (
-        <FlatList
-          data={products}
-          keyExtractor={(item) => item.id}
-          {...MARKETPLACE_LIST_PERF}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
-          ListEmptyComponent={
-            <UiEmptyState
-              title={t("seller.products.empty", "No products yet.")}
-              style={{ marginTop: 24 }}
-            />
-          }
-          renderItem={({ item }) => (
-            <View
-              style={{
-                backgroundColor: APP_COLORS.surface,
-                borderRadius: 14,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: APP_COLORS.border,
-              }}
-            >
-              <Text style={{ color: APP_COLORS.text, fontWeight: "700" }}>{item.title}</Text>
-              <Text style={{ color: APP_COLORS.textMuted, marginVertical: 4 }}>
-                {formatMoney(item.price_cents, item.currency)} · {item.category}
-                {item.stock_qty != null ? ` · stock ${item.stock_qty}` : ""}
-              </Text>
-              <Text style={{ color: APP_COLORS.textSubtle }} numberOfLines={2}>
-                {item.description}
-              </Text>
-              <View style={{ flexDirection: rowDirection(), gap: 10, marginTop: 10 }}>
-                <TouchableOpacity onPress={() => openEdit(item)}>
-                  <Text style={{ color: APP_COLORS.accent }}>{t("common.edit", "Edit")}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => void toggleActive(item)}>
-                  <Text style={{ color: item.active ? APP_COLORS.danger : APP_COLORS.success }}>
-                    {item.active
-                      ? t("seller.products.deactivate", "Deactivate")
-                      : t("seller.products.activate", "Activate")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+        <SellerFeedbackCard
+          loading
+          title={t("common.loading", "Loading...")}
+          message={t("seller.products.loading", "Fetching your products")}
         />
+      ) : products.length === 0 ? (
+        <SellerFeedbackCard
+          icon="📦"
+          title={t("seller.products.emptyTitle", "No Products Yet")}
+          message={t(
+            "seller.products.emptyBody",
+            "Start building your catalog by adding your first product"
+          )}
+          actionLabel={t("seller.products.addFirst", "+ Add First Product")}
+          onAction={openCreate}
+        />
+      ) : (
+        <>
+          <View style={styles.searchWrap}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t("seller.products.search", "Search products...")}
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              style={styles.search}
+            />
+          </View>
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => item.id}
+            {...MARKETPLACE_LIST_PERF}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }) => {
+              const outOfStock = item.stock_qty != null && item.stock_qty <= 0;
+              return (
+                <TouchableOpacity onPress={() => openEdit(item)} activeOpacity={0.85}>
+                  <SellerGlassCard style={styles.productCard}>
+                    <View style={styles.thumb}>
+                      <Text style={{ fontSize: 22 }}>📦</Text>
+                    </View>
+                    <View style={{ flex: 1, gap: 6 }}>
+                      <Text style={styles.productTitle}>{item.title}</Text>
+                      <Text style={styles.productPrice}>
+                        {formatMoney(item.price_cents, item.currency)}
+                      </Text>
+                      <View style={styles.stockRow}>
+                        <View
+                          style={[
+                            styles.dot,
+                            {
+                              backgroundColor: outOfStock
+                                ? "#EF4444"
+                                : item.active
+                                  ? MMD_TAXI_GREEN
+                                  : "#F59E0B",
+                            },
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.stockText,
+                            outOfStock && { color: "rgba(239,68,68,0.85)" },
+                          ]}
+                        >
+                          {outOfStock
+                            ? t("seller.products.outOfStock", "Out of stock")
+                            : item.stock_qty != null
+                              ? t("seller.products.inStock", "{{n}} in stock", {
+                                  n: item.stock_qty,
+                                })
+                              : item.active
+                                ? t("seller.products.active", "Active")
+                                : t("seller.products.inactive", "Inactive")}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: rowDirection(), gap: 12, marginTop: 4 }}>
+                        <TouchableOpacity onPress={() => openEdit(item)}>
+                          <Text style={styles.link}>{t("common.edit", "Edit")}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => void toggleActive(item)}>
+                          <Text
+                            style={[
+                              styles.link,
+                              { color: item.active ? "#FCA5A5" : MMD_TAXI_GREEN },
+                            ]}
+                          >
+                            {item.active
+                              ? t("seller.products.deactivate", "Deactivate")
+                              : t("seller.products.activate", "Activate")}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </SellerGlassCard>
+                </TouchableOpacity>
+              );
+            }}
+          />
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={openCreate}
+            accessibilityRole="button"
+            accessibilityLabel={t("seller.products.createTitle", "New product")}
+          >
+            <Text style={styles.fabPlus}>+</Text>
+          </TouchableOpacity>
+        </>
       )}
 
       <Modal visible={modalOpen} animationType="slide" transparent>
-        <View style={{ flex: 1, backgroundColor: APP_COLORS.overlay, justifyContent: "flex-end" }}>
-          <View style={{ backgroundColor: APP_COLORS.surface, padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 10 }}>
-            <Text style={{ color: APP_COLORS.text, fontSize: 18, fontWeight: "700" }}>
-              {draft.id
-                ? t("seller.products.editTitle", "Edit product")
-                : t("seller.products.createTitle", "New product")}
-            </Text>
-            {(
-              [
-                ["title", draft.title, (v: string) => setDraft((d) => ({ ...d, title: v }))],
-                ["description", draft.description, (v: string) => setDraft((d) => ({ ...d, description: v }))],
-                ["price", draft.price, (v: string) => setDraft((d) => ({ ...d, price: v }))],
-                ["promoPrice", draft.promoPrice, (v: string) => setDraft((d) => ({ ...d, promoPrice: v }))],
-                ["currency", draft.currency, (v: string) => setDraft((d) => ({ ...d, currency: v }))],
-                ["category", draft.category, (v: string) => setDraft((d) => ({ ...d, category: v }))],
-                ["stockQty", draft.stockQty, (v: string) => setDraft((d) => ({ ...d, stockQty: v }))],
-                ["optionsText", draft.optionsText, (v: string) => setDraft((d) => ({ ...d, optionsText: v }))],
-                ["variantsText", draft.variantsText, (v: string) => setDraft((d) => ({ ...d, variantsText: v }))],
-                ["imageUrl", draft.imageUrl, (v: string) => setDraft((d) => ({ ...d, imageUrl: v }))],
-              ] as const
-            ).map(([key, value, onChangeText]) => (
-              <TextInput
-                key={key}
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={
-                  key === "optionsText"
-                    ? "options (one per line)"
-                    : key === "variantsText"
-                      ? "variants (one per line)"
-                      : key === "stockQty"
-                        ? "stock qty (optional)"
-                        : key === "promoPrice"
-                          ? "promo price (optional)"
-                          : key
-                }
-                placeholderTextColor="#64748B"
-                multiline={
-                  key === "optionsText" ||
-                  key === "variantsText" ||
-                  key === "description"
-                }
-                style={{
-                  backgroundColor: APP_COLORS.surfaceAlt,
-                  color: APP_COLORS.text,
-                  borderRadius: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  minHeight:
-                    key === "optionsText" || key === "variantsText" ? 72 : undefined,
-                }}
-              />
-            ))}
-            <View style={{ flexDirection: rowDirection(), alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ color: APP_COLORS.textSubtle }}>{t("seller.products.active", "Active")}</Text>
-              <Switch value={draft.active} onValueChange={(active) => setDraft((d) => ({ ...d, active }))} />
-            </View>
-            <TouchableOpacity
-              onPress={() => void save()}
-              disabled={saving}
-              style={{
-                backgroundColor: APP_COLORS.accentStrong,
-                borderRadius: 12,
-                paddingVertical: 12,
-                alignItems: "center",
-                marginTop: 8,
-              }}
-            >
-              {saving ? (
-                <ActivityIndicator color={APP_COLORS.onAccent} />
-              ) : (
-                <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>{t("common.save", "Save")}</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setModalOpen(false)}>
-              <Text style={{ color: APP_COLORS.textMuted, textAlign: "center" }}>{t("common.cancel", "Cancel")}</Text>
-            </TouchableOpacity>
+        <View style={styles.modalRoot}>
+          <View style={styles.sheet}>
+            <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 24 }}>
+              <View style={styles.sheetTitleRow}>
+                <View style={styles.sheetIcon}>
+                  <Text>{draft.id ? "✏️" : "✨"}</Text>
+                </View>
+                <Text style={styles.sheetTitle}>
+                  {draft.id
+                    ? t("seller.products.editTitle", "Edit Product")
+                    : t("seller.products.createTitle", "New Product")}
+                </Text>
+              </View>
+
+              {(
+                [
+                  ["title", draft.title, (v: string) => setDraft((d) => ({ ...d, title: v })), "Product Title"],
+                  ["description", draft.description, (v: string) => setDraft((d) => ({ ...d, description: v })), "Description"],
+                  ["price", draft.price, (v: string) => setDraft((d) => ({ ...d, price: v })), "Price"],
+                  ["promoPrice", draft.promoPrice, (v: string) => setDraft((d) => ({ ...d, promoPrice: v })), "Promo Price"],
+                  ["currency", draft.currency, (v: string) => setDraft((d) => ({ ...d, currency: v })), "Currency"],
+                  ["category", draft.category, (v: string) => setDraft((d) => ({ ...d, category: v })), "Category"],
+                  ["stockQty", draft.stockQty, (v: string) => setDraft((d) => ({ ...d, stockQty: v })), "Stock Quantity"],
+                  ["optionsText", draft.optionsText, (v: string) => setDraft((d) => ({ ...d, optionsText: v })), "Options (one per line)"],
+                  ["variantsText", draft.variantsText, (v: string) => setDraft((d) => ({ ...d, variantsText: v })), "Variants (one per line)"],
+                  ["imageUrl", draft.imageUrl, (v: string) => setDraft((d) => ({ ...d, imageUrl: v })), "Image URL"],
+                ] as const
+              ).map(([key, value, onChangeText, label]) => (
+                <View key={key} style={{ gap: 6 }}>
+                  <Text style={styles.fieldLabel}>{label}</Text>
+                  <TextInput
+                    value={value}
+                    onChangeText={onChangeText}
+                    placeholder={label}
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    multiline={
+                      key === "optionsText" ||
+                      key === "variantsText" ||
+                      key === "description"
+                    }
+                    style={[
+                      styles.fieldInput,
+                      (key === "optionsText" ||
+                        key === "variantsText" ||
+                        key === "description") && { minHeight: 80, textAlignVertical: "top" },
+                    ]}
+                  />
+                </View>
+              ))}
+
+              <View style={styles.toggleRow}>
+                <Text style={styles.fieldLabel}>{t("seller.products.active", "Active")}</Text>
+                <Switch
+                  value={draft.active}
+                  onValueChange={(active) => setDraft((d) => ({ ...d, active }))}
+                  trackColor={{ false: "rgba(255,255,255,0.25)", true: MMD_TAXI_GREEN }}
+                  thumbColor={MMD_WHITE}
+                />
+              </View>
+
+              <TouchableOpacity
+                onPress={() => void save()}
+                disabled={saving}
+                style={styles.saveBtn}
+              >
+                {saving ? (
+                  <ActivityIndicator color={MMD_WHITE} />
+                ) : (
+                  <Text style={styles.saveLabel}>{t("common.save", "Save")}</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setModalOpen(false)}
+                style={styles.cancelBtn}
+              >
+                <Text style={styles.cancelLabel}>{t("common.cancel", "Cancel")}</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
+
+      <SellerBottomNav active="products" />
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: MMD_BLUE },
+  searchWrap: { paddingHorizontal: 16, paddingVertical: 8 },
+  search: {
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 14,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 14,
+  },
+  list: { padding: 16, gap: 14, paddingBottom: 100 },
+  productCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    borderRadius: 22,
+    padding: 20,
+  },
+  thumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  productTitle: {
+    color: MMD_WHITE,
+    fontSize: 17,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  productPrice: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  stockRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  stockText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+  },
+  link: { color: MMD_WHITE, fontFamily: MMD_FONT.semibold, fontWeight: "600" },
+  chevron: { color: "rgba(255,255,255,0.5)", fontSize: 28, fontWeight: "300" },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 110,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: MMD_TAXI_GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+  },
+  fabPlus: {
+    color: MMD_WHITE,
+    fontSize: 32,
+    fontWeight: "600",
+    marginTop: -2,
+  },
+  modalRoot: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: MMD_BLUE,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    padding: 24,
+    maxHeight: "92%",
+  },
+  sheetTitleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  sheetIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: MMD_GLASS,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetTitle: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  fieldLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+  },
+  fieldInput: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+    minHeight: 48,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: 16,
+    padding: 16,
+  },
+  saveBtn: {
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 16,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  saveLabel: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  cancelBtn: {
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: 16,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 16,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+});

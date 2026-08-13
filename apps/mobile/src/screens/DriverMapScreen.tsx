@@ -124,6 +124,7 @@ import { NAV_CAMERA, NAV_ROUTE_ICON_LEAD_METERS } from "../lib/driverNavigationV
 import { pointAtRouteDistance } from "../lib/driverNavigationRouteStyle";
 import { resolveNavigationLocale } from "../lib/navigationLocale";
 import { upsertDriverLiveLocation } from "../lib/driverLocationTracker";
+import { MMD_BLUE } from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverMap">;
 
@@ -1017,7 +1018,7 @@ export default function DriverMapScreen() {
 
   if (!mapboxReady) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
         <DriverMapFallbackStates
           variant="missing_token"
           onGoBack={() => navigation.goBack()}
@@ -1028,7 +1029,7 @@ export default function DriverMapScreen() {
 
   if (orderLoading && !trip) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
         <DriverMapFallbackStates variant="loading" />
       </SafeAreaView>
     );
@@ -1036,7 +1037,7 @@ export default function DriverMapScreen() {
 
   if (orderError && !trip) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
         <DriverMapFallbackStates
           variant={routeOrderId ? "missing_order" : "missing_order"}
           message={orderError}
@@ -1049,7 +1050,7 @@ export default function DriverMapScreen() {
 
   if (trip && !activeDestination) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
         <DriverMapFallbackStates
           variant="missing_coords"
           onGoBack={() => navigation.goBack()}
@@ -1060,7 +1061,7 @@ export default function DriverMapScreen() {
 
   if (location.permissionStatus !== "granted" && location.errorMessage) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
         <DriverMapFallbackStates
           variant="permission_denied"
           onGoBack={() => navigation.goBack()}
@@ -1071,7 +1072,7 @@ export default function DriverMapScreen() {
 
   if (routeStatus === "error" && !navigationRoute && !previewMode) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
         <DriverMapFallbackStates
           variant="route_error"
           onGoBack={() => navigation.goBack()}

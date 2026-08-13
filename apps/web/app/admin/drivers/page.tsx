@@ -24,7 +24,7 @@ function DriversFallback() {
 
 export default function AdminDriversPage() {
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-w-0">
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         <Suspense fallback={<DriversFallback />}>
           <AdminDriversManager />

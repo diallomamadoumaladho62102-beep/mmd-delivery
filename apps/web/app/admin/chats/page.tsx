@@ -324,7 +324,7 @@ export default function AdminChatsPage() {
 
   if (loading || !authChecked) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-2xl font-bold text-slate-900">Admin chats</h1>
           <p className="mt-2 text-sm text-slate-600">Chargement…</p>
@@ -335,7 +335,7 @@ export default function AdminChatsPage() {
 
   if (!isAdmin) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-6xl rounded-2xl border border-red-200 bg-red-50 p-8 text-red-700 shadow-sm">
           {err || "Accès réservé aux administrateurs."}
         </div>
@@ -344,7 +344,7 @@ export default function AdminChatsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-w-0">
       <div className="mx-auto w-full max-w-screen-xl space-y-6 px-6 py-6">
         <header className="space-y-3">
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">

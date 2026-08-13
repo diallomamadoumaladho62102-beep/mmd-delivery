@@ -9,19 +9,29 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
-import { textAlignStart } from "../../i18n/rtl";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   addTaxiFavoriteDriver,
   fetchTaxiFavoriteDrivers,
   removeTaxiFavoriteDriver,
 } from "../../lib/taxiClientApi";
+import {
+  MMD_BLUE,
+  MMD_CARD_ON_BLUE_STRONG,
+  MMD_FONT,
+  MMD_GREEN,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiFavorites">;
 
@@ -92,64 +102,42 @@ export default function TaxiFavoritesScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("taxi.favorites.title", "Favorite drivers")}
         fallbackRoute="ClientHome"
         variant="dark"
       />
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
+      <ScrollView contentContainerStyle={styles.scroll}>
         <TextInput
           value={driverId}
           onChangeText={setDriverId}
           placeholder={t("taxi.favorites.driverId", "Driver user ID")}
-          placeholderTextColor="#64748B"
-          style={{
-            backgroundColor: "rgba(15,23,42,0.95)",
-            borderWidth: 1,
-            borderColor: "#334155",
-            borderRadius: 14,
-            padding: 14,
-            color: "#F8FAFC",
-          }}
+          placeholderTextColor={MMD_TEXT_MUTED_BLUE}
+          style={styles.input}
         />
 
         <TouchableOpacity
           onPress={handleAdd}
           disabled={saving}
-          style={{
-            backgroundColor: "#F59E0B",
-            paddingVertical: 14,
-            borderRadius: 14,
-            alignItems: "center",
-          }}
+          style={styles.cta}
+          activeOpacity={0.85}
         >
-          <Text style={{ color: "#111827", fontWeight: "800" }}>
+          <Text style={styles.ctaText}>
             {saving
               ? t("taxi.favorites.saving", "Saving…")
               : t("taxi.favorites.add", "Add favorite")}
           </Text>
         </TouchableOpacity>
 
-        {loading ? <ActivityIndicator color="#F59E0B" /> : null}
+        {loading ? <ActivityIndicator color={MMD_GREEN} /> : null}
 
         {favorites.map((row) => (
-          <View
-            key={row.id}
-            style={{
-              padding: 14,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: "#334155",
-              backgroundColor: "rgba(15,23,42,0.95)",
-            }}
-          >
-            <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
-              {row.driver_user_id}
-            </Text>
+          <View key={row.id} style={styles.row}>
+            <Text style={styles.rowId}>{row.driver_user_id}</Text>
             <TouchableOpacity onPress={() => handleRemove(row.driver_user_id)}>
-              <Text style={{ color: "#FCA5A5", marginTop: 8 }}>
+              <Text style={styles.remove}>
                 {t("taxi.favorites.remove", "Remove")}
               </Text>
             </TouchableOpacity>
@@ -159,3 +147,52 @@ export default function TaxiFavoritesScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  scroll: { padding: 20, gap: 14 },
+  input: {
+    height: 42,
+    borderWidth: 1,
+    borderColor: MMD_STROKE,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 14,
+  },
+  cta: {
+    backgroundColor: MMD_GREEN,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  ctaText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  row: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    backgroundColor: MMD_CARD_ON_BLUE_STRONG,
+    gap: 8,
+  },
+  rowId: {
+    color: "#E2E8F0",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  remove: {
+    color: "#FCA5A5",
+    fontFamily: MMD_FONT.semibold,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+});

@@ -16,6 +16,8 @@ export type MarketplaceSeller = {
   region_code: string | null;
   status: string;
   is_accepting_orders: boolean;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
   active_product_count?: number;
   created_at: string;
 };

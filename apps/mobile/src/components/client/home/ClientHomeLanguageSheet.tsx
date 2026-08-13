@@ -55,7 +55,12 @@ export function ClientHomeLanguageSheet({
             {ts("client.home.v4.language.subtitle", "Choose your preferred language for MMD.")}
           </Text>
 
-          <LanguagePicker currentCode={currentLang} onSelect={handleSelect} />
+          <LanguagePicker
+            currentCode={currentLang}
+            onSelect={handleSelect}
+            hideTitle
+            variant="mmdHome"
+          />
 
           {onSignOut ? (
             <Pressable
@@ -98,11 +103,11 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    borderTopLeftRadius: V4_RADIUS.lg,
-    borderTopRightRadius: V4_RADIUS.lg,
-    backgroundColor: V4.card,
+    borderTopLeftRadius: V4_RADIUS.xl,
+    borderTopRightRadius: V4_RADIUS.xl,
+    backgroundColor: V4.navBg,
     borderWidth: 1,
-    borderColor: V4.border,
+    borderColor: "#E2E8F0",
     paddingHorizontal: 18,
     paddingTop: 12,
     maxHeight: "82%",
@@ -111,7 +116,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 4,
     borderRadius: 999,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: V4.gold,
     alignSelf: "center",
     marginBottom: 16,
   },
@@ -119,17 +124,22 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#DBEAFE",
+    backgroundColor: V4.gold,
     borderWidth: 1,
     borderColor: "#BFDBFE",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 14,
   },
-  heroIconGlyph: { fontSize: 24 },
-  title: { color: V4.textPrimary, fontSize: 22, fontWeight: "900" },
+  heroIconGlyph: { fontSize: 24, color: V4.navBg },
+  title: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "800",
+    fontFamily: V4.font.extrabold,
+  },
   subtitle: {
-    color: V4.textSecondary,
+    color: "#CCCCD9",
     fontSize: 13,
     lineHeight: 20,
     marginTop: 8,
@@ -141,7 +151,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
   },
-  dismissText: { color: V4.green, fontSize: 15, fontWeight: "700" },
+  dismissText: { color: V4.gold, fontSize: 15, fontWeight: "700" },
   signOutButton: {
     marginTop: 10,
     alignItems: "center",
@@ -149,7 +159,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.35)",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#0D2666",
   },
-  signOutText: { color: "#334155", fontSize: 15, fontWeight: "800" },
+  signOutText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
 });

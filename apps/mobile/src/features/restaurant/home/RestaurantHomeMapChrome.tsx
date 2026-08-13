@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { MMD_FONT } from "../../../theme/mmdUi";
 import {
   RESTAURANT_MAP_STATUS_FILTERS,
   type RestaurantMapStatusFilter,
@@ -36,6 +37,8 @@ export type MapSelection =
       name: string;
     };
 
+type OpsMode = "online" | "offline" | "busy";
+
 type Props = {
   statusFilter: RestaurantMapStatusFilter;
   onChangeStatusFilter: (key: RestaurantMapStatusFilter) => void;
@@ -52,6 +55,8 @@ type Props = {
   formatMoney: (amount: number | null) => string;
   statusLabel: (status: string | null) => string;
   t: (key: string, fallback: string) => string;
+  /** Figma Lot 2 bottom ops banner mode */
+  opsMode?: OpsMode;
 };
 
 export function RestaurantHomeMapChrome({
@@ -70,14 +75,47 @@ export function RestaurantHomeMapChrome({
   formatMoney,
   statusLabel,
   t,
+  opsMode = "online",
 }: Props) {
   const insets = useSafeAreaInsets();
   const [filterOpen, setFilterOpen] = useState(false);
+  const bottomPad = Math.max(insets.bottom, RH_BOTTOM_SAFE) + 16;
 
   const filterLabel = useMemo(() => {
     const row = RESTAURANT_MAP_STATUS_FILTERS.find((f) => f.key === statusFilter);
     return t(row?.labelKey ?? "restaurant.home.filter.all", row?.labelFallback ?? "Tous les statuts");
   }, [statusFilter, t]);
+
+  const opsCopy = useMemo(() => {
+    if (opsMode === "offline") {
+      return {
+        title: t("restaurant.home.map.offlineTitle", "Restaurant Offline"),
+        titleColor: RH.offline,
+        subtitle: t(
+          "restaurant.home.map.offlineSubtitle",
+          "Go online to show drivers and heat."
+        ),
+      };
+    }
+    if (opsMode === "busy") {
+      return {
+        title: t("restaurant.home.map.busyTitle", "Busy Mode"),
+        titleColor: RH.busy,
+        subtitle: t(
+          "restaurant.home.map.opsSubtitle",
+          "Drivers nearby • Pending orders visible"
+        ),
+      };
+    }
+    return {
+      title: t("restaurant.home.map.liveTitle", "Live Operations Map"),
+      titleColor: RH.online,
+      subtitle: t(
+        "restaurant.home.map.opsSubtitle",
+        "Drivers nearby • Pending orders visible"
+      ),
+    };
+  }, [opsMode, t]);
 
   return (
     <>
@@ -88,7 +126,7 @@ export function RestaurantHomeMapChrome({
           accessibilityRole="button"
           accessibilityLabel={filterLabel}
         >
-          <Ionicons name="funnel-outline" size={15} color={RH.text} />
+          <Ionicons name="funnel-outline" size={15} color={RH.white} />
           <Text style={styles.filterText} numberOfLines={1}>
             {filterLabel}
           </Text>
@@ -96,19 +134,13 @@ export function RestaurantHomeMapChrome({
         </Pressable>
       </View>
 
-      <View
-        style={[
-          styles.controls,
-          { bottom: Math.max(insets.bottom, RH_BOTTOM_SAFE) + 12 },
-        ]}
-        pointerEvents="box-none"
-      >
+      <View style={[styles.controls, { bottom: bottomPad + (selection ? 0 : 96) }]} pointerEvents="box-none">
         <Pressable
           onPress={onRecenter}
           style={styles.controlBtn}
           accessibilityLabel={t("restaurant.home.map.recenter", "Recentrer")}
         >
-          <Ionicons name="locate-outline" size={20} color={RH.text} />
+          <Ionicons name="locate-outline" size={20} color={RH.white} />
         </Pressable>
         <View style={styles.zoomStack}>
           <Pressable
@@ -116,15 +148,14 @@ export function RestaurantHomeMapChrome({
             style={styles.zoomBtn}
             accessibilityLabel={t("restaurant.home.map.zoomIn", "Zoom +")}
           >
-            <Ionicons name="add" size={22} color={RH.text} />
+            <Ionicons name="add" size={20} color={RH.white} />
           </Pressable>
-          <View style={styles.zoomDivider} />
           <Pressable
             onPress={onZoomOut}
             style={styles.zoomBtn}
             accessibilityLabel={t("restaurant.home.map.zoomOut", "Zoom −")}
           >
-            <Ionicons name="remove" size={22} color={RH.text} />
+            <Ionicons name="remove" size={20} color={RH.white} />
           </Pressable>
         </View>
         <Pressable
@@ -132,24 +163,23 @@ export function RestaurantHomeMapChrome({
           style={[styles.controlBtn, layersActive && styles.controlBtnActive]}
           accessibilityLabel={t("restaurant.home.map.layers", "Couches")}
         >
-          <Ionicons name="layers-outline" size={20} color={layersActive ? RH.greenDark : RH.text} />
+          <Ionicons
+            name="layers-outline"
+            size={20}
+            color={layersActive ? RH.green : RH.white}
+          />
         </Pressable>
         <Pressable
           onPress={onRefresh}
           style={[styles.controlBtn, refreshing && { opacity: 0.6 }]}
           accessibilityLabel={t("restaurant.home.map.refresh", "Actualiser")}
         >
-          <Ionicons name="refresh-outline" size={20} color={RH.text} />
+          <Ionicons name="refresh-outline" size={20} color={RH.white} />
         </Pressable>
       </View>
 
       {selection ? (
-        <View
-          style={[
-            styles.selectionWrap,
-            { bottom: Math.max(insets.bottom, RH_BOTTOM_SAFE) + 12 },
-          ]}
-        >
+        <View style={[styles.selectionWrap, { bottom: bottomPad }]}>
           <View style={styles.selectionCard}>
             <View style={styles.selectionTop}>
               <View style={{ flex: 1, minWidth: 0 }}>
@@ -218,15 +248,20 @@ export function RestaurantHomeMapChrome({
 
             {selection.kind === "order" && onOpenSelection ? (
               <Pressable onPress={onOpenSelection} style={styles.openBtn}>
-                <Text style={styles.openBtnText}>
-                  {t("common.view", "Voir")}
-                </Text>
-                <Ionicons name="arrow-forward" size={14} color="#fff" />
+                <Text style={styles.openBtnText}>{t("common.view", "Voir")}</Text>
+                <Ionicons name="arrow-forward" size={14} color={RH.white} />
               </Pressable>
             ) : null}
           </View>
         </View>
-      ) : null}
+      ) : (
+        <View style={[styles.opsBannerWrap, { bottom: bottomPad }]} pointerEvents="none">
+          <View style={styles.opsBanner}>
+            <Text style={[styles.opsTitle, { color: opsCopy.titleColor }]}>{opsCopy.title}</Text>
+            <Text style={styles.opsSubtitle}>{opsCopy.subtitle}</Text>
+          </View>
+        </View>
+      )}
 
       <Modal
         visible={filterOpen}
@@ -262,12 +297,15 @@ export function RestaurantHomeMapChrome({
                       accessibilityState={{ selected }}
                     >
                       <Text
-                        style={[styles.filterOptionText, selected && styles.filterOptionTextActive]}
+                        style={[
+                          styles.filterOptionText,
+                          selected && styles.filterOptionTextActive,
+                        ]}
                       >
                         {t(row.labelKey, row.labelFallback)}
                       </Text>
                       {selected ? (
-                        <Ionicons name="checkmark" size={18} color={RH.greenDark} />
+                        <Ionicons name="checkmark" size={18} color={RH.green} />
                       ) : null}
                     </Pressable>
                   );
@@ -296,20 +334,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 12,
-    backgroundColor: RH.surface,
+    backgroundColor: RH.glass,
     borderWidth: 1,
-    borderColor: RH.border,
+    borderColor: RH.borderStrong,
     ...RH_SHADOW_SOFT,
   },
   filterText: {
     flexShrink: 1,
     fontSize: 12,
-    fontWeight: "700",
-    color: RH.text,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    color: RH.white,
   },
   controls: {
     position: "absolute",
-    right: 12,
+    right: 16,
     zIndex: 20,
     gap: 8,
     alignItems: "center",
@@ -317,10 +356,10 @@ const styles = StyleSheet.create({
   controlBtn: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: RH.surface,
+    borderRadius: 22,
+    backgroundColor: RH.glass,
     borderWidth: 1,
-    borderColor: RH.border,
+    borderColor: RH.borderStrong,
     alignItems: "center",
     justifyContent: "center",
     ...RH_SHADOW_SOFT,
@@ -330,20 +369,50 @@ const styles = StyleSheet.create({
     backgroundColor: RH.greenSoft,
   },
   zoomStack: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: RH.surface,
+    backgroundColor: RH.glass,
     borderWidth: 1,
-    borderColor: RH.border,
+    borderColor: RH.borderStrong,
+    padding: 6,
+    gap: 8,
     ...RH_SHADOW_SOFT,
   },
   zoomBtn: {
-    width: 44,
-    height: 40,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: RH.glassInner,
     alignItems: "center",
     justifyContent: "center",
   },
-  zoomDivider: { height: StyleSheet.hairlineWidth, backgroundColor: RH.border },
+  opsBannerWrap: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    zIndex: 22,
+  },
+  opsBanner: {
+    minHeight: 90,
+    borderRadius: 18,
+    backgroundColor: RH.glass,
+    borderWidth: 1,
+    borderColor: RH.borderStrong,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 6,
+    ...RH_SHADOW,
+  },
+  opsTitle: {
+    fontSize: 13,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  opsSubtitle: {
+    fontSize: 11,
+    fontFamily: MMD_FONT.regular,
+    color: RH.online,
+  },
   selectionWrap: {
     position: "absolute",
     left: 12,
@@ -352,24 +421,26 @@ const styles = StyleSheet.create({
   },
   selectionCard: {
     borderRadius: 16,
-    backgroundColor: RH.surface,
+    backgroundColor: RH.glass,
     borderWidth: 1,
-    borderColor: RH.border,
+    borderColor: RH.borderStrong,
     padding: 12,
     ...RH_SHADOW,
   },
   selectionTop: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   selectionKind: {
     fontSize: 10,
-    fontWeight: "800",
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
     color: RH.green,
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   selectionTitle: {
     fontSize: 16,
-    fontWeight: "900",
-    color: RH.text,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    color: RH.white,
     marginTop: 2,
   },
   closeSel: {
@@ -383,7 +454,8 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   metaChip: {
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
     color: RH.textSecondary,
     backgroundColor: RH.muted,
     paddingHorizontal: 8,
@@ -402,16 +474,23 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
-  openBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  openBtnText: {
+    color: RH.white,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
   filterBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15,23,42,0.35)",
+    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
     padding: 24,
   },
   filterSheet: {
-    backgroundColor: RH.surface,
+    backgroundColor: RH.bg,
     borderRadius: 18,
+    borderWidth: 1,
+    borderColor: RH.border,
     padding: 16,
     maxHeight: "70%",
     zIndex: 2,
@@ -419,8 +498,9 @@ const styles = StyleSheet.create({
   },
   filterSheetTitle: {
     fontSize: 15,
-    fontWeight: "800",
-    color: RH.text,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    color: RH.white,
     marginBottom: 10,
   },
   filterOption: {
@@ -432,6 +512,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   filterOptionActive: { backgroundColor: RH.accentSoft },
-  filterOptionText: { fontSize: 14, fontWeight: "600", color: RH.textSecondary },
-  filterOptionTextActive: { color: RH.greenDark, fontWeight: "800" },
+  filterOptionText: {
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    color: RH.textSecondary,
+  },
+  filterOptionTextActive: {
+    color: RH.green,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
 });

@@ -6,6 +6,11 @@ import { adminFetch } from "@/lib/adminBrowserAuth";
 import { hasPermission } from "@/lib/adminRbac";
 import { supabase } from "@/lib/supabaseBrowser";
 import { normalizeUserRole } from "@/lib/roles";
+import {
+  AdminEmptyState,
+  AdminErrorState,
+  AdminLoadingState,
+} from "@/components/admin/AdminPageStates";
 
 type ClientRow = {
   id: string;
@@ -378,11 +383,25 @@ export default function AdminClientsManager() {
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <AdminErrorState
+          title="Unable to load clients"
+          message={error}
+          onRetry={() => void load()}
+        />
       ) : null}
 
+      {loading && rows.length === 0 ? (
+        <AdminLoadingState title="Loading clients…" subtitle="Fetching real profiles" />
+      ) : null}
+
+      {!loading && !error && rows.length === 0 ? (
+        <AdminEmptyState
+          title="No clients found"
+          description="No clients match these filters."
+        />
+      ) : null}
+
+      {rows.length > 0 || (loading && rows.length > 0) ? (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -402,12 +421,6 @@ export default function AdminClientsManager() {
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     Loading…
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
-                    No clients match these filters.
                   </td>
                 </tr>
               ) : (
@@ -549,6 +562,7 @@ export default function AdminClientsManager() {
           </div>
         </div>
       </div>
+      ) : null}
 
       {selected ? (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 p-4">

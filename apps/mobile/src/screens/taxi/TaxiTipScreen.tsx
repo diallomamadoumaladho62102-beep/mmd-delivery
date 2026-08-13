@@ -18,8 +18,16 @@ import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { payTaxiTipWithPaymentSheet } from "../../utils/stripe";
 import { formatTaxiCents, fetchTaxiRide } from "../../lib/taxiClientApi";
 import { toUserFacingError } from "../../lib/userFacingError";
-import { APP_COLORS } from "../../theme/appTheme";
 import { useFocusEffect } from "@react-navigation/native";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiTip">;
 type TipRoute = RouteProp<RootStackParamList, "TaxiTip">;
@@ -152,7 +160,7 @@ export default function TaxiTipScreen() {
           variant="dark"
         />
         <View style={styles.centered}>
-          <ActivityIndicator color={APP_COLORS.accent} />
+          <ActivityIndicator color={MMD_TAXI_GREEN} />
         </View>
       </SafeAreaView>
     );
@@ -161,7 +169,7 @@ export default function TaxiTipScreen() {
   return (
     <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title={t("taxi.tip.title", "Tip your driver")}
+        title={t("taxi.tip.title", "⭐ Thank your driver")}
         subtitle={t(
           "taxi.tip.subtitle",
           "100% of your tip goes to the driver via Stripe."
@@ -232,12 +240,12 @@ export default function TaxiTipScreen() {
               />
             </View>
 
-            <Text style={styles.summary}>
-              {t("taxi.tip.youPay", "You pay")}:{" "}
+            <View style={{ alignItems: "center", marginTop: 18, gap: 6 }}>
+              <Text style={styles.summary}>{t("taxi.tip.youPay", "You pay:")}</Text>
               <Text style={styles.summaryStrong}>
                 {formatTaxiCents(tipCents, currency)}
               </Text>
-            </Text>
+            </View>
 
             <TouchableOpacity
               style={[styles.payBtn, paying && { opacity: 0.7 }]}
@@ -245,10 +253,10 @@ export default function TaxiTipScreen() {
               onPress={() => void onPayTip()}
             >
               {paying ? (
-                <ActivityIndicator color="#0F172A" />
+                <ActivityIndicator color={MMD_WHITE} />
               ) : (
                 <Text style={styles.payLabel}>
-                  {t("taxi.tip.payCta", "Pay tip with card")}
+                  💳 {t("taxi.tip.payCta", "Pay tip with card")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -272,48 +280,73 @@ export default function TaxiTipScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: APP_COLORS.bg },
+  root: { flex: 1, backgroundColor: MMD_BLUE },
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-  content: { padding: 16, paddingBottom: 40 },
-  label: { color: "#94A3B8", fontWeight: "700", fontSize: 13, marginBottom: 10 },
+  content: { padding: 24, paddingBottom: 40, gap: 4 },
+  label: {
+    color: MMD_GOLD_CLASSIC,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 14,
+    marginBottom: 10,
+    textAlign: "center",
+  },
   rowWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    flexGrow: 1,
+    minWidth: 54,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.25)",
+    backgroundColor: MMD_ACTION_NAVY,
   },
   chipSelected: {
-    borderColor: "rgba(34,197,94,0.55)",
-    backgroundColor: "rgba(34,197,94,0.12)",
+    backgroundColor: MMD_TAXI_GREEN,
   },
-  chipText: { color: "#94A3B8", fontWeight: "800" },
-  chipTextSelected: { color: "#86EFAC" },
+  chipText: { color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold, fontSize: 18 },
+  chipTextSelected: { color: MMD_WHITE },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.22)",
-    paddingHorizontal: 14,
+    borderColor: MMD_GOLD_CLASSIC,
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "rgba(2,6,23,0.45)",
+    backgroundColor: "rgba(255,255,255,0.02)",
   },
-  dollar: { color: "#94A3B8", fontWeight: "900", marginRight: 8 },
-  input: { flex: 1, color: "#F8FAFC", fontSize: 18, fontWeight: "700" },
-  summary: { color: "#CBD5E1", marginTop: 18, fontSize: 14, fontWeight: "600" },
-  summaryStrong: { color: "#F8FAFC", fontWeight: "900" },
+  dollar: { color: MMD_WHITE, fontWeight: "900", fontFamily: MMD_FONT.bold, marginRight: 8, fontSize: 28 },
+  input: { flex: 1, color: MMD_WHITE, fontSize: 28, fontWeight: "700", fontFamily: MMD_FONT.bold },
+  summary: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 16,
+    fontWeight: "400",
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+  },
+  summaryStrong: {
+    color: MMD_WHITE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 42,
+    textAlign: "center",
+  },
   payBtn: {
     marginTop: 18,
-    backgroundColor: "#F59E0B",
-    borderRadius: 16,
-    paddingVertical: 16,
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 20,
+    paddingVertical: 18,
     alignItems: "center",
   },
-  payLabel: { color: "#0F172A", fontWeight: "900", fontSize: 16 },
+  payLabel: { color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold, fontSize: 20 },
   skipBtn: { marginTop: 14, alignItems: "center", padding: 12 },
-  skipLabel: { color: "#94A3B8", fontWeight: "700" },
+  skipLabel: {
+    color: "rgba(255,255,255,0.4)",
+    fontWeight: "400",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 14,
+  },
   errorBox: {
     padding: 14,
     borderRadius: 14,
@@ -322,14 +355,27 @@ const styles = StyleSheet.create({
     borderColor: "rgba(239,68,68,0.35)",
     marginBottom: 14,
   },
-  errorText: { color: "#FCA5A5", fontWeight: "700" },
+  errorText: { color: "#FCA5A5", fontWeight: "700", fontFamily: MMD_FONT.bold },
   successBox: {
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: "rgba(34,197,94,0.12)",
+    padding: 24,
+    borderRadius: 28,
+    backgroundColor: MMD_GLASS,
     borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.35)",
+    borderColor: MMD_GOLD_CLASSIC,
+    alignItems: "center",
   },
-  successTitle: { color: "#86EFAC", fontWeight: "900", fontSize: 16 },
-  successBody: { color: "#CBD5E1", marginTop: 8, fontWeight: "600" },
+  successTitle: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 22,
+    textAlign: "center",
+  },
+  successBody: {
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 8,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+    textAlign: "center",
+  },
 });

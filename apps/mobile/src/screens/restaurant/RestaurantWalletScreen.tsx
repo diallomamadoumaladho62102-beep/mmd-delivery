@@ -5,19 +5,13 @@ import {
   ScrollView,
   StyleSheet,
   RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
-import {
-  WalletEmptyState,
-  WalletErrorState,
-  WalletHistoryRow,
-  WalletLoadingState,
-  WalletSummaryCard,
-} from "../../components/wallet/WalletPrimitives";
-import { financialStatusColor } from "../../components/wallet/walletStatusColor";
+import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
 import { supabase } from "../../lib/supabase";
 import {
   fetchWalletHistory,
@@ -27,11 +21,22 @@ import {
 } from "../../lib/walletApi";
 import { formatDateTime } from "../../i18n/formatters";
 import { toUserFacingError } from "../../lib/userFacingError";
-import { APP_COLORS } from "../../theme/appTheme";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_TEXT,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const CARD_BORDER = "rgba(255,255,255,0.12)";
+const MUTED = "rgba(255,255,255,0.7)";
+const DEBIT = "#FCA5A5";
 
 /**
- * Restaurant wallet — same summary/history APIs + shared UI primitives
- * as Seller/Driver (unified wallet architecture).
+ * Restaurant wallet — Figma Lot 5 (348:7083 Loading / 348:7094 Empty /
+ * 348:7105 Error / 348:7118 Populated). Keeps summary/history wallet APIs.
  */
 export default function RestaurantWalletScreen() {
   const { t, i18n } = useTranslation();
@@ -80,7 +85,7 @@ export default function RestaurantWalletScreen() {
       setError(
         toUserFacingError(
           e,
-          t("restaurant.wallet.loadFailed", "Unable to load restaurant wallet")
+          t("restaurant.wallet.loadFailed", "Unable to load wallet activity.")
         )
       );
       setItems([]);
@@ -101,104 +106,285 @@ export default function RestaurantWalletScreen() {
     }, [refresh])
   );
 
-  const buckets = useMemo(() => {
-    const pending = items.filter((i) =>
-      ["pending", "processing"].includes(String(i.reference_type).toLowerCase())
+  const lastPayoutLabel = useMemo(() => {
+    const payout = items.find(
+      (i) =>
+        i.direction === "debit" &&
+        /payout/i.test(String(i.description || i.reference_type || ""))
     );
-    return { pending, all: items };
-  }, [items]);
+    if (!payout?.created_at) {
+      if (paidOutCents > 0) {
+        return t("restaurant.wallet.paidOutHint", "Paid out: {{amount}}", {
+          amount: fmt(paidOutCents),
+        });
+      }
+      if (note) return note;
+      if (awaitingCents > 0) {
+        return t("restaurant.wallet.awaitingHint", "Awaiting transfer: {{amount}}", {
+          amount: fmt(awaitingCents),
+        });
+      }
+      return null;
+    }
+    return t("restaurant.wallet.lastPayoutAt", "Last payout {{when}}", {
+      when: formatDateTime(payout.created_at, i18n.language),
+    });
+  }, [items, paidOutCents, note, awaitingCents, fmt, t, i18n.language]);
 
   if (loading && items.length === 0 && !error) {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <ScreenHeader title={t("restaurant.wallet.title", "Restaurant wallet")} />
-        <WalletLoadingState label={t("common.loading", "Loading…")} />
+        <ScreenHeader
+          title={t("restaurant.wallet.title", "Wallet")}
+          subtitle="💰"
+          variant="mmd"
+        />
+        <RestaurantBrandLoadingState
+          glass
+          title={t("restaurant.wallet.loadingTitle", "Loading Wallet...")}
+          subtitle={t(
+            "restaurant.wallet.loadingSubtitle",
+            "Fetching your balance data"
+          )}
+        />
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <ScreenHeader title={t("restaurant.wallet.title", "Restaurant wallet")} />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={async () => {
-              setRefreshing(true);
-              await refresh();
-              setRefreshing(false);
-            }}
-            tintColor={APP_COLORS.accent}
-          />
-        }
-      >
-        {error ? (
-          <WalletErrorState
-            message={error}
-            retryLabel={t("common.retry", "Retry")}
-            onRetry={() => void refresh()}
-          />
-        ) : null}
-
-        <WalletSummaryCard
-          label={t("restaurant.wallet.available", "Available")}
-          amount={fmt(availableCents || balanceCents)}
-          footnote={note}
-        >
-          <View style={styles.stats}>
-            <Text style={styles.stat}>
-              {t("restaurant.wallet.awaiting", "Awaiting transfer")}:{" "}
-              {fmt(awaitingCents)}
+  if (error && items.length === 0) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <ScreenHeader
+          title={t("restaurant.wallet.title", "Wallet")}
+          subtitle="💰"
+          variant="mmd"
+        />
+        <View style={styles.centered}>
+          <View style={styles.glassCardWide}>
+            <Text style={styles.emoji}>❌</Text>
+            <Text style={styles.cardTitle}>
+              {t("restaurant.wallet.errorTitle", "Wallet Error")}
             </Text>
-            <Text style={styles.stat}>
-              {t("restaurant.wallet.paidOut", "Paid out")}: {fmt(paidOutCents)}
+            <Text style={styles.cardBody}>
+              {error ||
+                t(
+                  "restaurant.wallet.errorBody",
+                  "Unable to load wallet activity."
+                )}
             </Text>
           </View>
-        </WalletSummaryCard>
+          <TouchableOpacity
+            style={styles.cta}
+            onPress={() => {
+              setLoading(true);
+              void refresh().finally(() => setLoading(false));
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={styles.ctaLabel}>{t("common.retry", "Retry")}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-        <Text style={styles.section}>
-          {t("restaurant.wallet.history", "History")}
-        </Text>
-        {buckets.all.length === 0 ? (
-          <WalletEmptyState
-            title={t("restaurant.wallet.emptyTitle", "No activity yet")}
-            body={t(
-              "restaurant.wallet.emptyBody",
-              "Completed orders and payouts will appear here."
-            )}
-          />
-        ) : (
-          buckets.all.map((item) => (
-            <WalletHistoryRow
-              key={item.id}
-              title={item.description || item.reference_type}
-              meta={formatDateTime(item.created_at, i18n.language)}
-              amount={`${item.direction === "debit" ? "−" : "+"}${fmt(item.amount_cents)}`}
-              amountColor={financialStatusColor(
-                item.direction === "debit" ? "pending" : "paid"
+  const empty = items.length === 0;
+
+  return (
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <ScreenHeader
+        title={t("restaurant.wallet.title", "Wallet")}
+        subtitle="💰"
+        variant="mmd"
+      />
+      {empty ? (
+        <View style={styles.centered}>
+          <View style={styles.glassCard}>
+            <Text style={styles.emoji}>💳</Text>
+            <Text style={styles.cardTitle}>
+              {t("restaurant.wallet.emptyTitle", "No Activity Yet")}
+            </Text>
+            <Text style={styles.cardBody}>
+              {t(
+                "restaurant.wallet.emptyBody",
+                "Payouts and wallet activity will appear here."
               )}
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true);
+                await refresh();
+                setRefreshing(false);
+              }}
+              tintColor={MMD_WHITE}
             />
-          ))
-        )}
-      </ScrollView>
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.balanceCard}>
+            <Text style={styles.balanceLabel}>
+              {t("restaurant.wallet.available", "Available")}
+            </Text>
+            <Text style={styles.balanceAmount}>
+              {fmt(availableCents || balanceCents)}
+            </Text>
+            {lastPayoutLabel ? (
+              <Text style={styles.balanceFoot}>{lastPayoutLabel}</Text>
+            ) : null}
+          </View>
+
+          <Text style={styles.section}>
+            📋 {t("restaurant.wallet.recentTransactions", "Recent Transactions")}
+          </Text>
+          {items.map((item) => {
+            const debit = item.direction === "debit";
+            return (
+              <View key={item.id} style={styles.txRow}>
+                <View style={styles.txLeft}>
+                  <Text style={styles.txTitle} numberOfLines={1}>
+                    {item.description || item.reference_type}
+                  </Text>
+                  <Text style={styles.txMeta}>
+                    {formatDateTime(item.created_at, i18n.language)}
+                  </Text>
+                </View>
+                <Text style={[styles.txAmount, { color: debit ? DEBIT : MMD_TAXI_GREEN }]}>
+                  {debit ? "−" : "+"}
+                  {fmt(item.amount_cents)}
+                </Text>
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#020617" },
-  content: { padding: 16, paddingBottom: 40 },
-  stats: { marginTop: 12, gap: 4 },
-  stat: { color: "#94A3B8", fontSize: 12 },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 32,
+  },
+  content: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40, gap: 12 },
+  glassCard: {
+    width: 280,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    borderRadius: 20,
+    padding: 32,
+    alignItems: "center",
+    gap: 24,
+  },
+  glassCardWide: {
+    width: "100%",
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    borderRadius: 20,
+    padding: 32,
+    alignItems: "center",
+    gap: 16,
+  },
+  emoji: { fontSize: 40, color: MMD_WHITE },
+  cardTitle: {
+    color: MMD_TEXT,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  cardBody: {
+    color: MUTED,
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+  },
+  cta: {
+    backgroundColor: MMD_TAXI_GREEN,
+    minHeight: 44,
+    paddingHorizontal: 48,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  balanceCard: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    borderRadius: 20,
+    padding: 24,
+    gap: 8,
+    marginBottom: 12,
+  },
+  balanceLabel: {
+    color: MUTED,
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
+  balanceAmount: {
+    color: MMD_WHITE,
+    fontSize: 32,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  balanceFoot: {
+    color: MMD_TAXI_GREEN,
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
   section: {
-    color: "#94A3B8",
-    fontWeight: "800",
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  txRow: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  txLeft: { flex: 1, gap: 2 },
+  txTitle: {
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  txMeta: {
+    color: MUTED,
     fontSize: 12,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-    marginBottom: 8,
-    marginTop: 8,
+    fontFamily: MMD_FONT.regular,
+  },
+  txAmount: {
+    fontSize: 15,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
   },
 });

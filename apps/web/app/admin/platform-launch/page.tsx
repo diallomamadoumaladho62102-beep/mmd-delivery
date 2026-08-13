@@ -231,7 +231,7 @@ export default function AdminPlatformLaunchPage() {
 
   return (
     <AdminGate requiredPermission="platform_launch.read">
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>

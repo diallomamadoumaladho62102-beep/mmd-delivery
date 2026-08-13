@@ -2,6 +2,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import Constants from "expo-constants";
 import { ActivityIndicator, Image, Text, View } from "react-native";
+import {
+  useFonts,
+  Sora_400Regular,
+  Sora_600SemiBold,
+  Sora_700Bold,
+  Sora_800ExtraBold,
+} from "@expo-google-fonts/sora";
 
 // i18n boot (no AppNavigator import — defer Mapbox/native stack)
 import "./src/i18n";
@@ -74,6 +81,13 @@ function Splash(): React.JSX.Element {
 
 function App(): React.JSX.Element {
   initMobileSentry();
+
+  const [fontsLoaded] = useFonts({
+    Sora_400Regular,
+    Sora_600SemiBold,
+    Sora_700Bold,
+    Sora_800ExtraBold,
+  });
 
   const [session, setSession] = useState<SessionLike>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -216,7 +230,7 @@ function App(): React.JSX.Element {
 
   const navKey = session?.user?.id ? `authed-${session.user.id}` : "guest";
 
-  if (authLoading) {
+  if (authLoading || !fontsLoaded) {
     return <Splash />;
   }
 

@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
@@ -28,6 +29,16 @@ import {
   type MmdZone,
 } from "../../lib/mmdLocationApi";
 import { defaultTaxiAddressConfig } from "../../lib/taxiAddressConfig";
+import {
+  MMD_BLUE,
+  MMD_CARD_BORDER,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_GOLD_DARK,
+  MMD_MUTED,
+  MMD_NAVY,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 const DEFAULT_GN_CENTER = {
   latitude: 9.6412,
@@ -60,7 +71,15 @@ type Props = {
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <Text style={{ color: "#94A3B8", fontSize: 12, marginBottom: 4, fontWeight: "600" }}>
+    <Text
+      style={{
+        color: MMD_GOLD_BRIGHT,
+        fontSize: 14,
+        marginBottom: 4,
+        fontWeight: "600",
+        fontFamily: MMD_FONT.semibold,
+      }}
+    >
       {children}
     </Text>
   );
@@ -70,16 +89,19 @@ function FieldInput(props: React.ComponentProps<typeof TextInput>) {
   return (
     <TextInput
       {...props}
-      placeholderTextColor="#64748B"
+      placeholderTextColor="#9999A6"
       style={[
         {
-          borderWidth: 1,
-          borderColor: "#334155",
-          borderRadius: 12,
-          paddingHorizontal: 12,
+          borderWidth: 1.5,
+          borderColor: "rgba(255,255,255,0.5)",
+          borderRadius: 10,
+          paddingHorizontal: 14,
           paddingVertical: 10,
-          color: "#E2E8F0",
-          backgroundColor: "rgba(15,23,42,0.95)",
+          minHeight: 48,
+          color: MMD_WHITE,
+          backgroundColor: MMD_NAVY,
+          fontFamily: MMD_FONT.regular,
+          fontSize: 16,
         },
         props.style,
       ]}
@@ -98,8 +120,8 @@ export default function MMDLocationPicker({
 
   if (!countryCode?.trim()) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", padding: 20 }}>
-        <Text style={{ color: "#FCA5A5", textAlign: "center" }}>
+      <View style={{ flex: 1, justifyContent: "center", padding: 20, backgroundColor: MMD_BLUE }}>
+        <Text style={{ color: "#FCA5A5", textAlign: "center", fontFamily: MMD_FONT.semibold }}>
           Market scope is required before choosing a location.
         </Text>
       </View>
@@ -349,20 +371,37 @@ export default function MMDLocationPicker({
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#0F172A" }}
-      contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 32 }}
+      style={{ flex: 1, backgroundColor: MMD_BLUE }}
+      contentContainerStyle={{ padding: 16, gap: 18, paddingBottom: 32 }}
       keyboardShouldPersistTaps="handled"
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ color: "#F8FAFC", fontSize: 20, fontWeight: "700" }}>{title}</Text>
+        <Text
+          style={{
+            color: MMD_WHITE,
+            fontSize: 24,
+            fontWeight: "700",
+            fontFamily: MMD_FONT.bold,
+          }}
+        >
+          {title}
+        </Text>
         {onCancel ? (
           <TouchableOpacity onPress={onCancel}>
-            <Text style={{ color: "#94A3B8" }}>Cancel</Text>
+            <Text
+              style={{
+                color: MMD_GOLD_BRIGHT,
+                fontSize: 16,
+                fontFamily: MMD_FONT.regular,
+              }}
+            >
+              Cancel
+            </Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
-      <Text style={{ color: "#64748B", fontSize: 13 }}>
+      <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.regular }}>
         {structuredMode
           ? "Enter your street number, city, and ZIP, then place the pin on the exact entrance."
           : requirePinConfirm
@@ -370,10 +409,18 @@ export default function MMDLocationPicker({
             : "Tap the map to place your exact pin. Describe the place so the driver can find you even without a street number."}
       </Text>
 
-      <View style={{ height: 240, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "#334155" }}>
+      <View
+        style={{
+          height: 240,
+          borderRadius: 12,
+          overflow: "hidden",
+          borderWidth: 1,
+          borderColor: "rgba(255,215,0,0.3)",
+        }}
+      >
         {!mapReady || !isMapboxConfigured() ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16 }}>
-            <Text style={{ color: "#94A3B8", textAlign: "center" }}>
+            <Text style={{ color: MMD_MUTED, textAlign: "center", fontFamily: MMD_FONT.regular }}>
               Map unavailable. Configure EXPO_PUBLIC_MAPBOX_TOKEN to use the location picker.
             </Text>
           </View>
@@ -395,9 +442,9 @@ export default function MMDLocationPicker({
                   width: 18,
                   height: 18,
                   borderRadius: 9,
-                  backgroundColor: "#38BDF8",
+                  backgroundColor: MMD_GOLD_BRIGHT,
                   borderWidth: 2,
-                  borderColor: "#FFFFFF",
+                  borderColor: MMD_WHITE,
                 }}
               />
             </Mapbox.PointAnnotation>
@@ -409,27 +456,38 @@ export default function MMDLocationPicker({
         onPress={() => void handleUseGps()}
         disabled={loadingGps}
         style={{
-          backgroundColor: "#1E293B",
-          borderRadius: 12,
+          backgroundColor: MMD_WHITE,
+          borderRadius: 10,
           paddingVertical: 12,
+          minHeight: 44,
           alignItems: "center",
+          justifyContent: "center",
           borderWidth: 1,
-          borderColor: "#334155",
+          borderColor: "#E2E8F0",
         }}
       >
         {loadingGps ? (
-          <ActivityIndicator color="#38BDF8" />
+          <ActivityIndicator color={MMD_NAVY} />
         ) : (
-          <Text style={{ color: "#E2E8F0", fontWeight: "600" }}>Use my current GPS</Text>
+          <Text
+            style={{
+              color: "#0F172A",
+              fontWeight: "600",
+              fontFamily: MMD_FONT.semibold,
+              fontSize: 15,
+            }}
+          >
+            Use my current GPS
+          </Text>
         )}
       </TouchableOpacity>
 
       {accuracyM != null ? (
-        <Text style={{ color: "#64748B", fontSize: 12 }}>
+        <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
           GPS accuracy: ~{Math.round(accuracyM)} m · Pin: {pinLat.toFixed(5)}, {pinLng.toFixed(5)}
         </Text>
       ) : (
-        <Text style={{ color: "#64748B", fontSize: 12 }}>
+        <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
           Pin: {pinLat.toFixed(5)}, {pinLng.toFixed(5)} · source: {locationSource}
         </Text>
       )}
@@ -438,15 +496,21 @@ export default function MMDLocationPicker({
         <TouchableOpacity
           onPress={() => setPinConfirmed(true)}
           style={{
-            backgroundColor: pinConfirmed ? "rgba(34,197,94,0.15)" : "#1E293B",
+            backgroundColor: pinConfirmed ? "rgba(34,197,94,0.15)" : MMD_NAVY,
             borderRadius: 12,
             paddingVertical: 12,
             alignItems: "center",
             borderWidth: 1,
-            borderColor: pinConfirmed ? "#22C55E" : "#F59E0B",
+            borderColor: pinConfirmed ? "#22C55E" : MMD_GOLD_BRIGHT,
           }}
         >
-          <Text style={{ color: pinConfirmed ? "#86EFAC" : "#FDE68A", fontWeight: "700" }}>
+          <Text
+            style={{
+              color: pinConfirmed ? "#86EFAC" : MMD_GOLD_BRIGHT,
+              fontWeight: "700",
+              fontFamily: MMD_FONT.bold,
+            }}
+          >
             {pinConfirmed
               ? "Pin confirmed"
               : "Confirm pin location"}
@@ -466,13 +530,20 @@ export default function MMDLocationPicker({
                   style={{
                     paddingHorizontal: 10,
                     paddingVertical: 8,
-                    borderRadius: 10,
+                    borderRadius: 8,
                     borderWidth: 1,
-                    borderColor: "#334155",
-                    backgroundColor: "#111827",
+                    borderColor: "rgba(255,215,0,0.4)",
+                    backgroundColor: MMD_NAVY,
                   }}
                 >
-                  <Text style={{ color: "#E2E8F0", fontSize: 12, fontWeight: "600" }}>
+                  <Text
+                    style={{
+                      color: MMD_WHITE,
+                      fontSize: 14,
+                      fontWeight: "600",
+                      fontFamily: MMD_FONT.semibold,
+                    }}
+                  >
                     {zone.zone_name}
                   </Text>
                 </TouchableOpacity>
@@ -542,7 +613,9 @@ export default function MMDLocationPicker({
           }}
           placeholder="Station Total, mosquée, marché..."
         />
-        {loadingLandmarks ? <ActivityIndicator color="#38BDF8" style={{ marginTop: 8 }} /> : null}
+        {loadingLandmarks ? (
+          <ActivityIndicator color={MMD_GOLD_BRIGHT} style={{ marginTop: 8 }} />
+        ) : null}
         {landmarks.length > 0 ? (
           <View style={{ marginTop: 8, gap: 6 }}>
             {landmarks.map((landmark) => (
@@ -554,12 +627,22 @@ export default function MMDLocationPicker({
                   borderRadius: 10,
                   borderWidth: 1,
                   borderColor:
-                    selectedLandmark?.id === landmark.id ? "#38BDF8" : "#334155",
-                  backgroundColor: "#111827",
+                    selectedLandmark?.id === landmark.id
+                      ? MMD_GOLD_BRIGHT
+                      : MMD_CARD_BORDER,
+                  backgroundColor: MMD_NAVY,
                 }}
               >
-                <Text style={{ color: "#E2E8F0", fontWeight: "600" }}>{landmark.name}</Text>
-                <Text style={{ color: "#64748B", fontSize: 11, marginTop: 2 }}>
+                <Text
+                  style={{
+                    color: MMD_WHITE,
+                    fontWeight: "600",
+                    fontFamily: MMD_FONT.semibold,
+                  }}
+                >
+                  {landmark.name}
+                </Text>
+                <Text style={{ color: MMD_MUTED, fontSize: 11, marginTop: 2 }}>
                   {landmark.landmark_type}
                   {landmark.commune_name ? ` · ${landmark.commune_name}` : ""}
                 </Text>
@@ -590,7 +673,14 @@ export default function MMDLocationPicker({
           style={{ minHeight: 96 }}
         />
         {!directionsValid ? (
-          <Text style={{ color: "#F87171", fontSize: 11, marginTop: 4 }}>
+          <Text
+            style={{
+              color: "#F87171",
+              fontSize: 12,
+              marginTop: 4,
+              fontFamily: MMD_FONT.regular,
+            }}
+          >
             Minimum 8 characters required.
           </Text>
         ) : null}
@@ -603,15 +693,24 @@ export default function MMDLocationPicker({
         <TouchableOpacity
           onPress={() => void handlePickPhoto()}
           style={{
-            borderRadius: 12,
+            borderRadius: 10,
             borderWidth: 1,
-            borderColor: "#334155",
+            borderColor: MMD_CARD_BORDER,
             padding: 12,
+            minHeight: 48,
             alignItems: "center",
-            backgroundColor: "#111827",
+            justifyContent: "center",
+            backgroundColor: MMD_NAVY,
           }}
         >
-          <Text style={{ color: "#E2E8F0", fontWeight: "600" }}>
+          <Text
+            style={{
+              color: MMD_WHITE,
+              fontWeight: "600",
+              fontFamily: MMD_FONT.semibold,
+              fontSize: 15,
+            }}
+          >
             {photoUri ? "Retake location photo" : "Add photo of gate, shop, or building"}
           </Text>
         </TouchableOpacity>
@@ -627,19 +726,36 @@ export default function MMDLocationPicker({
       <TouchableOpacity
         onPress={() => void handleSave()}
         disabled={!canSave || saving}
-        style={{
-          marginTop: 8,
-          backgroundColor: canSave ? "#0284C7" : "#334155",
-          borderRadius: 14,
-          paddingVertical: 14,
-          alignItems: "center",
-        }}
+        activeOpacity={0.85}
+        style={{ marginTop: 8, opacity: canSave ? 1 : 0.55 }}
       >
-        {saving ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{submitLabel}</Text>
-        )}
+        <LinearGradient
+          colors={canSave ? [MMD_GOLD_DARK, MMD_GOLD_BRIGHT] : ["#64748B", "#94A3B8"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            borderRadius: 10,
+            paddingVertical: 14,
+            minHeight: 44,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {saving ? (
+            <ActivityIndicator color={MMD_NAVY} />
+          ) : (
+            <Text
+              style={{
+                color: MMD_NAVY,
+                fontWeight: "700",
+                fontFamily: MMD_FONT.semibold,
+                fontSize: 16,
+              }}
+            >
+              {submitLabel}
+            </Text>
+          )}
+        </LinearGradient>
       </TouchableOpacity>
     </ScrollView>
   );

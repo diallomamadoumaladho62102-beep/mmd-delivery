@@ -8,21 +8,36 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  StyleSheet,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_DARK,
+  MMD_MUTED,
+  MMD_WHITE,
+} from "../theme/mmdUi";
+
+const BG = "#F8FAFF";
+const CARD_BORDER = "#E2E8F0";
+const TEXT_DARK = "#0F172A";
+const TEXT_SLATE = "#475569";
+const TEXT_MUTED = "#64748B";
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-// ✅ wrapper pour convertir i18next t(key, options) en t(key, fallback, vars)
 const tf =
   (t: TFunction) =>
   (k: string, fb?: string, vars?: Record<string, any>) =>
@@ -36,7 +51,6 @@ function formatRating(n: number | null, count: number, t: TSimple) {
   return n.toFixed(2);
 }
 
-// "21 h 00 – 00 h 00" => 21*60
 function parseStartMinutes(timeRange: string): number {
   try {
     const first = timeRange.split("–")[0]?.trim() ?? "";
@@ -62,7 +76,7 @@ function toLocalDateForOpp(todayStart: Date, dayOffset: number, startMinutes: nu
 function StarsRow({
   rating,
   count,
-  size = 14,
+  size = 28,
 }: {
   rating: number | null | undefined;
   count: number;
@@ -70,11 +84,9 @@ function StarsRow({
 }) {
   if (!count) {
     return (
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={{ color: "#374151", fontSize: size, fontWeight: "900" }}>
-          {"☆".repeat(5)}
-        </Text>
-      </View>
+      <Text style={{ color: MMD_GOLD_DARK, fontSize: 14, fontFamily: MMD_FONT.extrabold, fontWeight: "800" }}>
+        {"☆".repeat(5)} New
+      </Text>
     );
   }
 
@@ -83,51 +95,24 @@ function StarsRow({
   const empty = 5 - full;
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <Text style={{ color: "#FBBF24", fontSize: size, fontWeight: "900" }}>
-        {"★".repeat(full)}
-      </Text>
-      <Text style={{ color: "#374151", fontSize: size, fontWeight: "900" }}>
-        {"☆".repeat(empty)}
-      </Text>
-    </View>
+    <Text
+      style={{
+        color: MMD_GOLD_DARK,
+        fontSize: size,
+        fontFamily: MMD_FONT.extrabold,
+        fontWeight: "800",
+      }}
+    >
+      {"★".repeat(full)}
+      {"☆".repeat(empty)} {v.toFixed(2)}
+    </Text>
   );
 }
 
 function Pill({ label }: { label: string }) {
   return (
-    <View
-      style={{
-        alignSelf: "flex-start",
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 999,
-        backgroundColor: "#0A1730",
-        borderWidth: 1,
-        borderColor: "#111827",
-        marginTop: 10,
-      }}
-    >
-      <Text style={{ color: "#93C5FD", fontWeight: "900" }}>{label}</Text>
-    </View>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View
-      style={{
-        backgroundColor: "#0B1220",
-        borderColor: "#111827",
-        borderWidth: 1,
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 14,
-      }}
-    >
-      <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>{title}</Text>
-      <View style={{ height: 10 }} />
-      {children}
+    <View style={styles.pill}>
+      <Text style={styles.pillLabel}>{label}</Text>
     </View>
   );
 }
@@ -170,17 +155,11 @@ function Chip({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={{
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: active ? "#2563EB" : "#111827",
-        backgroundColor: active ? "#0A1730" : "#0B1220",
-        marginRight: 10,
-      }}
+      style={[styles.chip, active ? styles.chipActive : styles.chipIdle]}
     >
-      <Text style={{ color: active ? "#93C5FD" : "#CBD5E1", fontWeight: "900" }}>{label}</Text>
+      <Text style={[styles.chipLabel, active ? styles.chipLabelActive : styles.chipLabelIdle]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -197,21 +176,12 @@ function DayChip({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={{
-        width: 56,
-        paddingVertical: 10,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: active ? "#2563EB" : "#111827",
-        backgroundColor: active ? "#0A1730" : "#0B1220",
-        alignItems: "center",
-        marginRight: 10,
-      }}
+      style={[styles.dayChip, active ? styles.dayChipActive : styles.dayChipIdle]}
     >
-      <Text style={{ color: active ? "#93C5FD" : "#94A3B8", fontWeight: "900" }}>
+      <Text style={[styles.dayWeek, active ? styles.dayWeekActive : styles.dayWeekIdle]}>
         {new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date).toUpperCase()}
       </Text>
-      <Text style={{ color: "white", fontSize: 16, fontWeight: "900", marginTop: 4 }}>
+      <Text style={[styles.dayNum, active ? styles.dayNumActive : styles.dayNumIdle]}>
         {date.getDate()}
       </Text>
     </TouchableOpacity>
@@ -242,78 +212,35 @@ function OpportunityCard({
     : null;
 
   return (
-    <View
-      style={{
-        backgroundColor: "#0B1220",
-        borderColor: "#111827",
-        borderWidth: 1,
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 14,
-        opacity: joined ? 0.92 : 1,
-      }}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View style={{ flex: 1, paddingRight: 12 }}>
-          <Text style={{ color: "#94A3B8", fontWeight: "900" }}>{opp.timeRange}</Text>
-          <Text style={{ color: "white", fontSize: 18, fontWeight: "900", marginTop: 6 }}>{opp.title}</Text>
-          <Text style={{ color: "#9CA3AF", fontWeight: "800", marginTop: 6, lineHeight: 20 }}>
-            {opp.subtitle}
-          </Text>
-
-          <Text style={{ color: "#64748B", fontWeight: "800", marginTop: 8 }}>{opp.distanceText}</Text>
-
+    <View style={[styles.oppCard, joined ? { opacity: 0.92 } : null]}>
+      <View style={styles.oppTop}>
+        <View style={styles.oppLeft}>
+          <Text style={styles.oppTime}>{opp.timeRange}</Text>
+          <Text style={styles.oppTitle}>{opp.title}</Text>
+          <Text style={styles.oppSub}>{opp.subtitle}</Text>
+          <Text style={styles.oppDist}>{opp.distanceText}</Text>
           {pillLabel ? <Pill label={pillLabel} /> : null}
         </View>
-
-        <View
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: "#111827",
-            backgroundColor: "#071022",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontSize: 34 }}>{opp.emoji ?? "🗺️"}</Text>
+        <View style={styles.emojiBox}>
+          <Text style={{ fontSize: 34 }}>{opp.emoji ?? "✈️"}</Text>
         </View>
       </View>
 
-      <View style={{ height: 12 }} />
-
-      <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-        <TouchableOpacity
-          onPress={onToggleSave}
-          style={{
-            paddingVertical: 10,
-            paddingHorizontal: 14,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: "#1F2937",
-            backgroundColor: "#0A1730",
-          }}
-        >
-          <Text style={{ color: "#CBD5E1", fontWeight: "900" }}>
-            {saved ? t("driver.opps.actions.saved", "Enregistré ✅") : t("driver.opps.actions.save", "Enregistrer")}
+      <View style={styles.oppActions}>
+        <TouchableOpacity onPress={onToggleSave} style={styles.saveBtn}>
+          <Text style={styles.saveBtnLabel}>
+            {saved
+              ? t("driver.opps.actions.saved", "Enregistré ✅")
+              : t("driver.opps.actions.save", "Enregistrer")}
           </Text>
         </TouchableOpacity>
-
         <View style={{ flex: 1 }} />
-
         <TouchableOpacity
           onPress={onJoin}
           disabled={joined}
-          style={{
-            paddingVertical: 10,
-            paddingHorizontal: 14,
-            borderRadius: 14,
-            backgroundColor: joined ? "#111827" : "#2563EB",
-          }}
+          style={[styles.joinBtn, joined ? styles.joinBtnDone : null]}
         >
-          <Text style={{ color: "white", fontWeight: "900" }}>
+          <Text style={styles.joinBtnLabel}>
             {joined
               ? t("driver.opps.actions.joined", "Inscrit ✅")
               : opp.ctaLabel ?? t("driver.opps.actions.join", "S’inscrire")}
@@ -325,7 +252,6 @@ function OpportunityCard({
 }
 
 export function DriverOpportunitiesScreen() {
-  const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
 
   const tt = useMemo(() => tf(t), [t]);
@@ -402,7 +328,6 @@ export function DriverOpportunitiesScreen() {
     [getKey]
   );
 
-  // Notifications
   const notifReadyRef = useRef(false);
 
   const ensureNotifPermissions = useCallback(async () => {
@@ -474,7 +399,6 @@ export function DriverOpportunitiesScreen() {
           }),
           sound: true,
         },
-        // ✅ FIX TS: utiliser l'enum (pas "date")
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: fireDate,
@@ -509,7 +433,6 @@ export function DriverOpportunitiesScreen() {
     [persistNotifMap]
   );
 
-  // Supabase: SAVED
   const fetchSavedFromServer = useCallback(async (uid: string) => {
     const { data, error } = await supabase
       .from("driver_saved_opportunities")
@@ -545,7 +468,6 @@ export function DriverOpportunitiesScreen() {
     }
   }, []);
 
-  // JOINED
   const fetchJoinedFromServer = useCallback(async (uid: string) => {
     const { data, error } = await supabase
       .from("driver_opportunity_signups")
@@ -734,92 +656,119 @@ export function DriverOpportunitiesScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("driver.opps.title", "Opportunités")}
         fallbackRoute="DriverTabs"
-        variant="dark"
+        variant="mmd"
+        style={styles.header}
       />
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator />
-          <Text style={{ color: "#9CA3AF", marginTop: 10 }}>{t("shared.common.loading", "Chargement…")}</Text>
+        <View style={styles.loadingBody}>
+          <ActivityIndicator color={MMD_BLUE} size="large" />
+          <Text style={styles.loadingLabel}>
+            {t("shared.common.loading", "Loading...")}
+          </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
-          <Card title={t("driver.opps.scoreCard.title", "Ton score")}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <StarsRow rating={avgRating} count={ratingCount} size={14} />
-                  <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                    {scoreLabel}
-                    {ratingCount ? ` (${ratingCount})` : ""}
-                  </Text>
-                </View>
-                <Pill label={platformLabel} />
-              </View>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          style={{ backgroundColor: BG }}
+        >
+          <View style={styles.scoreCard}>
+            <Text style={styles.scoreTitle}>
+              {t("driver.opps.scoreCard.title", "Your score")}
+            </Text>
+            <StarsRow rating={avgRating} count={ratingCount} />
+            {ratingCount ? (
+              <Text style={styles.scoreMeta}>
+                {scoreLabel} ({ratingCount})
+              </Text>
+            ) : null}
+          </View>
 
-              <View
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: "#111827",
-                  backgroundColor: "#0B1220",
-                }}
-              >
-                <Text style={{ color: "#CBD5E1", fontWeight: "900" }}>{t("driver.opps.scoreCard.badge", "Occasions")}</Text>
-              </View>
-            </View>
-          </Card>
-
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+          <View style={styles.chipRow}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <Chip
-                label={t("driver.opps.tabs.savedWithCount", "Occasions enregistrées ({{count}})", { count: savedCount })}
+                label={t("driver.opps.tabs.savedWithCount", "Saved ({{count}})", {
+                  count: savedCount,
+                })}
                 active={category === "saved"}
                 onPress={() => setCategory("saved")}
               />
-              <Chip label={t("driver.opps.tabs.promotions", "Promotions")} active={category === "promotions"} onPress={() => setCategory("promotions")} />
-              <Chip label={t("driver.opps.tabs.airports", "Aéroports")} active={category === "airports"} onPress={() => setCategory("airports")} />
-              <Chip label={t("driver.opps.tabs.reservations", "Réservations")} active={category === "reservations"} onPress={() => setCategory("reservations")} />
-              <Chip label={t("driver.opps.tabs.events", "Événements")} active={category === "events"} onPress={() => setCategory("events")} />
+              <Chip
+                label={t("driver.opps.tabs.promotions", "Promotions")}
+                active={category === "promotions"}
+                onPress={() => setCategory("promotions")}
+              />
+              <Chip
+                label={t("driver.opps.tabs.airports", "Airports")}
+                active={category === "airports"}
+                onPress={() => setCategory("airports")}
+              />
+              <Chip
+                label={t("driver.opps.tabs.reservations", "Reservations")}
+                active={category === "reservations"}
+                onPress={() => setCategory("reservations")}
+              />
+              <Chip
+                label={t("driver.opps.tabs.events", "Events")}
+                active={category === "events"}
+                onPress={() => setCategory("events")}
+              />
             </ScrollView>
           </View>
 
           <View style={{ marginBottom: 10 }}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {days.map((d) => (
-                <DayChip key={String(d.offset)} date={d.date} active={selectedDayOffset === d.offset} onPress={() => setSelectedDayOffset(d.offset)} />
+                <DayChip
+                  key={String(d.offset)}
+                  date={d.date}
+                  active={selectedDayOffset === d.offset}
+                  onPress={() => setSelectedDayOffset(d.offset)}
+                />
               ))}
             </ScrollView>
           </View>
 
-          <View style={{ paddingVertical: 8 }}>
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>{headerDateLabel}</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.dateHeading}>{headerDateLabel}</Text>
+            {filteredOpps.length > 0 ? (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeLabel}>
+                  {filteredOpps.length}{" "}
+                  {filteredOpps.length === 1 ? "shift" : "shifts"}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           {filteredOpps.length === 0 ? (
-            <View
-              style={{
-                backgroundColor: "#0B1220",
-                borderColor: "#111827",
-                borderWidth: 1,
-                borderRadius: 18,
-                padding: 14,
-                marginTop: 8,
-              }}
-            >
-              <Text style={{ color: "#9CA3AF", fontWeight: "900", lineHeight: 20 }}>
-                {t("driver.opps.empty", "Aucune opportunité pour ce jour dans cet onglet.")}
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="search" size={32} color={MMD_BLUE} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {t("driver.opps.emptyTitle", "No opportunity for today")}
               </Text>
-              <Pill label={t("driver.opps.tags.soon", "Bientôt")} />
+              <Text style={styles.emptyBody}>
+                {t(
+                  "driver.opps.empty",
+                  "We haven't found any opportunity matching your criteria. Try adjusting your filters or check back later."
+                )}
+              </Text>
+              <View style={styles.soonPill}>
+                <Text style={styles.soonPillLabel}>
+                  {t("driver.opps.tags.soon", "Soon")}
+                </Text>
+              </View>
             </View>
           ) : (
-            <View style={{ marginTop: 8 }}>
+            <View style={{ marginTop: 4, gap: 12 }}>
               {filteredOpps.map((opp) => (
                 <OpportunityCard
                   key={opp.id}
@@ -834,11 +783,273 @@ export function DriverOpportunitiesScreen() {
             </View>
           )}
 
-          <Text style={{ color: "#6B7280", marginTop: 16, fontWeight: "700" }}>
-            {t("driver.opps.footer", "{{platform}} • Opportunités Chauffeur MMD", { platform: platformLabel })}
+          <Text style={styles.footer}>
+            {t("driver.opps.footer", "{{platform}} • Opportunities Driver MMD", {
+              platform: platformLabel,
+            })}
           </Text>
         </ScrollView>
       )}
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: MMD_BLUE },
+  header: { backgroundColor: MMD_BLUE },
+  loadingBody: {
+    flex: 1,
+    backgroundColor: BG,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+  },
+  loadingLabel: {
+    color: MMD_BLUE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  scroll: {
+    padding: 16,
+    paddingBottom: 28,
+    gap: 16,
+    backgroundColor: BG,
+  },
+  scoreCard: {
+    backgroundColor: MMD_WHITE,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    padding: 16,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  scoreTitle: {
+    color: TEXT_SLATE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  scoreMeta: {
+    color: TEXT_MUTED,
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  chipRow: { flexDirection: "row", alignItems: "center" },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    marginRight: 10,
+  },
+  chipActive: { backgroundColor: MMD_BLUE },
+  chipIdle: {
+    backgroundColor: MMD_WHITE,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+  },
+  chipLabel: { fontSize: 13, fontFamily: MMD_FONT.bold, fontWeight: "700" },
+  chipLabelActive: { color: MMD_WHITE },
+  chipLabelIdle: { color: TEXT_MUTED },
+  dayChip: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+    gap: 4,
+  },
+  dayChipActive: { backgroundColor: MMD_BLUE },
+  dayChipIdle: {
+    backgroundColor: MMD_WHITE,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+  },
+  dayWeek: { fontSize: 11, fontFamily: MMD_FONT.bold, fontWeight: "700" },
+  dayWeekActive: { color: "rgba(255,255,255,0.7)" },
+  dayWeekIdle: { color: TEXT_MUTED },
+  dayNum: { fontSize: 16, fontFamily: MMD_FONT.extrabold, fontWeight: "800" },
+  dayNumActive: { color: MMD_WHITE },
+  dayNumIdle: { color: TEXT_DARK },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dateHeading: {
+    color: TEXT_DARK,
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  countBadge: {
+    backgroundColor: "#DBEAFE",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  countBadgeLabel: {
+    color: MMD_BLUE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  emptyCard: {
+    backgroundColor: MMD_WHITE,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    padding: 24,
+    alignItems: "center",
+    gap: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#E0E7FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyTitle: {
+    color: TEXT_DARK,
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  emptyBody: {
+    color: TEXT_MUTED,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  soonPill: {
+    backgroundColor: MMD_BLUE,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  soonPillLabel: {
+    color: MMD_WHITE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  footer: {
+    color: MMD_MUTED,
+    marginTop: 8,
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  oppCard: {
+    backgroundColor: MMD_WHITE,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    padding: 14,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  oppTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  oppLeft: { flex: 1, gap: 6, minWidth: 0 },
+  oppTime: {
+    color: TEXT_MUTED,
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  oppTitle: {
+    color: TEXT_DARK,
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  oppSub: {
+    color: TEXT_SLATE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  oppDist: {
+    color: TEXT_MUTED,
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  emojiBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: "#DBEAFE",
+    borderWidth: 1,
+    borderColor: MMD_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  oppActions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  saveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+    backgroundColor: MMD_WHITE,
+  },
+  saveBtnLabel: {
+    color: TEXT_SLATE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  joinBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: MMD_BLUE,
+  },
+  joinBtnDone: { opacity: 0.85 },
+  joinBtnLabel: {
+    color: MMD_WHITE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  pill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#DBEAFE",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    marginTop: 4,
+  },
+  pillLabel: {
+    color: MMD_BLUE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+});

@@ -6,9 +6,9 @@ import {
   Text,
   StatusBar,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -18,6 +18,7 @@ import { supabase } from "../lib/supabase";
 import { getApiBaseUrl } from "../lib/apiBase";
 import { clearSelectedRole } from "../lib/authRole";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
 import { startStripeOnboarding } from "../utils/stripe";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 import {
@@ -26,6 +27,14 @@ import {
   stripeConnectUserMessage,
   type StripeConnectStatusCode,
 } from "../lib/stripeConnectStatus";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_TEXT,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type OrderStatus =
   | "pending"
@@ -85,7 +94,8 @@ export function RestaurantEarningsScreen() {
   const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -779,906 +789,444 @@ export function RestaurantEarningsScreen() {
     }
   }, [t]);
 
-  const monthUi = useMemo(() => {
-    const a = monthBounds("this_month");
-    const b = monthBounds("prev_month");
-    return { a, b };
-  }, [monthBounds]);
+  const periodStats = useMemo(() => {
+    const now = new Date();
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const day = startToday.getDay();
+    const mondayOffset = day === 0 ? 6 : day - 1;
+    const startWeek = new Date(startToday);
+    startWeek.setDate(startWeek.getDate() - mondayOffset);
+    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const inRange = (r: Row, start: Date) => {
+      const iso = getBestDate(r);
+      if (!iso) return false;
+      const d = new Date(iso);
+      return d.getTime() >= start.getTime();
+    };
+
+    const sumNet = (list: Row[]) =>
+      list.reduce((acc, r) => {
+        const n = Number(r.restaurant_net_amount ?? 0);
+        return acc + (Number.isFinite(n) ? n : 0);
+      }, 0);
+
+    const todayRows = delivered.filter((r) => inRange(r, startToday));
+    const weekRows = delivered.filter((r) => inRange(r, startWeek));
+    const monthRows = delivered.filter((r) => inRange(r, startMonth));
+
+    return {
+      todayNet: sumNet(todayRows),
+      todayCount: todayRows.length,
+      weekNet: sumNet(weekRows),
+      monthNet: sumNet(monthRows),
+    };
+  }, [delivered]);
+
+  const fmtUsd = useCallback(
+    (n: number) => {
+      try {
+        return new Intl.NumberFormat(locale, {
+          style: "currency",
+          currency: currency || "USD",
+          maximumFractionDigits: 2,
+        }).format(n);
+      } catch {
+        return money(n, currency);
+      }
+    },
+    [locale, currency, money]
+  );
+
+  const stripeNotConnected = !payoutStatus.ok;
+
+  if (initialLoad && loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <ScreenHeader
+          title={t("restaurant.earnings.header.title", "Earnings")}
+          subtitle="💰"
+          fallbackRoute="RestaurantCommandCenter"
+          variant="mmd"
+        />
+        <RestaurantBrandLoadingState
+          glass
+          title={t("restaurant.earnings.loadingTitle", "Loading Earnings...")}
+          subtitle={t(
+            "restaurant.earnings.loadingSubtitle",
+            "Fetching your revenue data"
+          )}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (error && !loading && rows.length === 0) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <ScreenHeader
+          title={t("restaurant.earnings.header.title", "Earnings")}
+          subtitle="💰"
+          fallbackRoute="RestaurantCommandCenter"
+          variant="mmd"
+        />
+        <View style={styles.centered}>
+          <View style={styles.glassCard}>
+            <Text style={styles.emoji}>❌</Text>
+            <Text style={styles.cardTitle}>
+              {t("restaurant.earnings.errorTitle", "Unable to Load")}
+            </Text>
+            <Text style={styles.cardBody}>
+              {error ||
+                t(
+                  "restaurant.earnings.errorBody",
+                  "Could not load earnings. Please try again."
+                )}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.cta}
+            onPress={() => void refreshAll()}
+            accessibilityRole="button"
+          >
+            <Text style={styles.ctaLabel}>{t("common.retry", "Retry")}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (stripeNotConnected && !loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <ScreenHeader
+          title={t("restaurant.earnings.header.title", "Earnings")}
+          subtitle="💰"
+          fallbackRoute="RestaurantCommandCenter"
+          variant="mmd"
+        />
+        <View style={styles.stripeBody}>
+          <View style={styles.stripeCard}>
+            <Text style={styles.emoji}>💳</Text>
+            <View style={{ gap: 8, width: "100%" }}>
+              <Text style={[styles.cardTitle, { textAlign: "left" }]}>
+                {t("restaurant.earnings.stripe.title", "Stripe Connect")}
+              </Text>
+              <Text style={[styles.cardBody, { textAlign: "left" }]}>
+                {t(
+                  "restaurant.earnings.stripe.body",
+                  "Connect Stripe to receive payouts and track your earnings."
+                )}
+              </Text>
+            </View>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {t("restaurant.earnings.stripe.notConnected", "Not Connected")}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.ctaFull, payoutLoading && { opacity: 0.7 }]}
+            disabled={payoutLoading}
+            onPress={() => void openRestaurantStripe()}
+            accessibilityRole="button"
+          >
+            <Text style={styles.ctaLabel}>
+              {payoutLoading
+                ? t("common.loading", "Loading…")
+                : t("restaurant.earnings.stripe.connect", "Connect Stripe")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
-
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("restaurant.earnings.header.title", "Earnings")}
-        subtitle={t("restaurant.earnings.header.subtitle", "Restaurant")}
+        subtitle="💰"
         fallbackRoute="RestaurantCommandCenter"
-        variant="dark"
+        variant="mmd"
         rightSlot={
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <TouchableOpacity
-              onPress={() => {
-                void refreshAll();
-              }}
-              style={{
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderRadius: 999,
-                backgroundColor: "rgba(15,23,42,0.7)",
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {loading
-                  ? t("common.ellipsis", "...")
-                  : t("common.refresh", "Rafraîchir")}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => void doLogout()}
-              style={{
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderRadius: 999,
-                backgroundColor: "rgba(15,23,42,0.7)",
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {t("auth.logoutShort", "Log out")}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            onPress={() => void refreshAll()}
+            style={styles.refreshBtn}
+            accessibilityRole="button"
+          >
+            <Text style={styles.refreshText}>
+              {loading
+                ? t("common.ellipsis", "…")
+                : t("common.refresh", "Refresh")}
+            </Text>
+          </TouchableOpacity>
         }
       />
-
-      {error ? (
-        <View style={{ paddingHorizontal: 16 }}>
-          <Text style={{ color: "#F97373", marginTop: 10, fontWeight: "800" }}>
-            {error}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.heroCard}>
+          <Text style={styles.heroLabel}>
+            {t("restaurant.earnings.today", "Today")}
           </Text>
-        </View>
-      ) : null}
-
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        {loading || payoutLoading ? (
-          <View
-            style={{
-              marginTop: 10,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
-            <ActivityIndicator />
-            <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-              {loading
-                ? t("common.loading", "Chargement…")
-                : t("restaurant.earnings.loading.openStripe", "Ouverture Stripe…")}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* ✅ FINANCIAL SNAPSHOT */}
-        <View
-          style={{
-            backgroundColor: "#020617",
-            borderRadius: 16,
-            padding: 14,
-            borderWidth: 1,
-            borderColor: "#1F2937",
-            marginBottom: 12,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-                {t("restaurant.earnings.financial.title", "Financial snapshot")}
-              </Text>
-              <Text
-                style={{
-                  color: "#64748B",
-                  marginTop: 6,
-                  fontWeight: "800",
-                }}
-              >
-                {monthFilter === "this_month" ? monthUi.a.label : monthUi.b.label}
-              </Text>
-            </View>
-
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate("RestaurantFinancialCenter")}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: "#059669",
-                  backgroundColor: "rgba(16,185,129,0.12)",
-                  opacity: payoutLoading ? 0.65 : 1,
-                }}
-              >
-                <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                  {t(
-                    "restaurant.earnings.financial.center",
-                    "Financial Center",
-                  )}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => navigation.navigate("RestaurantTax")}
-                style={{
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: "#1D4ED8",
-                  backgroundColor: "rgba(59,130,246,0.12)",
-                  opacity: payoutLoading ? 0.65 : 1,
-                }}
-              >
-                <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                  {t("restaurant.earnings.financial.taxCenter", "Open Tax Center")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(15,23,42,0.65)",
-                borderRadius: 14,
-                padding: 12,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                {t("restaurant.earnings.financial.grossSales", "Gross sales")}
-              </Text>
-              <Text
-                style={{
-                  color: "#E5E7EB",
-                  fontWeight: "900",
-                  fontSize: 18,
-                  marginTop: 6,
-                }}
-              >
-                {money(financialSnapshot.grossSales, currency)}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(15,23,42,0.65)",
-                borderRadius: 14,
-                padding: 12,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                {t("restaurant.earnings.financial.commission", "Commission")}
-              </Text>
-              <Text
-                style={{
-                  color: "#FCA5A5",
-                  fontWeight: "900",
-                  fontSize: 18,
-                  marginTop: 6,
-                }}
-              >
-                {money(financialSnapshot.platformCommission, currency)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(15,23,42,0.65)",
-                borderRadius: 14,
-                padding: 12,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                {t("restaurant.earnings.financial.net", "Restaurant net")}
-              </Text>
-              <Text
-                style={{
-                  color: "#22C55E",
-                  fontWeight: "900",
-                  fontSize: 18,
-                  marginTop: 6,
-                }}
-              >
-                {money(financialSnapshot.restaurantNet, currency)}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(15,23,42,0.65)",
-                borderRadius: 14,
-                padding: 12,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                {t("restaurant.earnings.financial.orders", "Total orders")}
-              </Text>
-              <Text
-                style={{
-                  color: "#E5E7EB",
-                  fontWeight: "900",
-                  fontSize: 18,
-                  marginTop: 6,
-                }}
-              >
-                {financialSnapshot.totalOrders}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ✅ HISTORIQUE MENSUEL */}
-        <View
-          style={{
-            backgroundColor: "#020617",
-            borderRadius: 16,
-            padding: 14,
-            borderWidth: 1,
-            borderColor: "#1F2937",
-            marginBottom: 12,
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-            {t("restaurant.earnings.monthly.title", "Historique mensuel")}
-          </Text>
-          <Text style={{ color: "#64748B", marginTop: 6, fontWeight: "800" }}>
-            {monthFilter === "this_month" ? monthUi.a.short : monthUi.b.short}
-          </Text>
-
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-            <TouchableOpacity
-              onPress={() => setMonthFilter("this_month")}
-              style={{
-                flex: 1,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor:
-                  monthFilter === "this_month" ? "#2563EB" : "#1F2937",
-                backgroundColor:
-                  monthFilter === "this_month"
-                    ? "rgba(59,130,246,0.18)"
-                    : "rgba(15,23,42,0.65)",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "900" }}>
-                {t("restaurant.earnings.filters.thisMonth", "Ce mois")}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setMonthFilter("prev_month")}
-              style={{
-                flex: 1,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor:
-                  monthFilter === "prev_month" ? "#2563EB" : "#1F2937",
-                backgroundColor:
-                  monthFilter === "prev_month"
-                    ? "rgba(59,130,246,0.18)"
-                    : "rgba(15,23,42,0.65)",
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "900" }}>
-                {t("restaurant.earnings.filters.prevMonth", "Mois précédent")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(15,23,42,0.65)",
-                borderRadius: 14,
-                padding: 12,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                {t("restaurant.earnings.monthly.totalNet", "Net total")}
-              </Text>
-              <Text
-                style={{
-                  color: "#22C55E",
-                  fontWeight: "900",
-                  fontSize: 18,
-                  marginTop: 6,
-                }}
-              >
-                {money(monthSummary.totalNet, currency)}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(15,23,42,0.65)",
-                borderRadius: 14,
-                padding: 12,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text
-                numberOfLines={1}
-                style={{ color: "#9CA3AF", fontWeight: "900" }}
-              >
-                {t("restaurant.earnings.monthly.ordersShort", "Cmds")}
-              </Text>
-              <Text
-                style={{
-                  color: "#E5E7EB",
-                  fontWeight: "900",
-                  fontSize: 18,
-                  marginTop: 6,
-                }}
-              >
-                {delivered.length}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(15,23,42,0.65)",
-                borderRadius: 14,
-                padding: 12,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                {t("restaurant.earnings.monthly.avgNet", "Net moyen")}
-              </Text>
-              <Text
-                style={{
-                  color: "#93C5FD",
-                  fontWeight: "900",
-                  fontSize: 18,
-                  marginTop: 6,
-                }}
-              >
-                {money(monthSummary.avgNet, currency)}
-              </Text>
-            </View>
-          </View>
-
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "rgba(15,23,42,0.65)",
-              borderRadius: 14,
-              padding: 12,
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
-            <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-              {t("restaurant.earnings.monthly.activity", "Activité (6 dernières)")}
-            </Text>
-
-            {monthSummary.bars.length === 0 ? (
-              <Text style={{ color: "#64748B", marginTop: 8, fontWeight: "800" }}>
-                {t("restaurant.earnings.monthly.none", "Aucune livraison sur la période.")}
-              </Text>
-            ) : (
-              <View
-                style={{
-                  flexDirection: "row",
-                  gap: 10,
-                  marginTop: 10,
-                  alignItems: "flex-end",
-                }}
-              >
-                {monthSummary.bars.map((b) => {
-                  const h = 64;
-                  const barH = Math.round(h * b.pct);
-
-                  return (
-                    <View key={b.key} style={{ flex: 1, alignItems: "center" }}>
-                      <View
-                        style={{
-                          width: "100%",
-                          height: h,
-                          justifyContent: "flex-end",
-                          borderRadius: 10,
-                          overflow: "hidden",
-                          backgroundColor: "rgba(2,6,23,0.6)",
-                          borderWidth: 1,
-                          borderColor: "#111827",
-                        }}
-                      >
-                        <Animated.View
-                          style={{
-                            height: barAnim.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [0, barH],
-                            }),
-                            borderRadius: 10,
-                            backgroundColor: "rgba(59,130,246,0.55)",
-                            borderWidth: 1,
-                            borderColor: "rgba(59,130,246,0.9)",
-                          }}
-                        />
-                      </View>
-
-                      <Text
-                        style={{
-                          color: "#64748B",
-                          fontWeight: "900",
-                          fontSize: 11,
-                          marginTop: 6,
-                        }}
-                      >
-                        {b.label}
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: "#9CA3AF",
-                          fontWeight: "800",
-                          fontSize: 11,
-                          marginTop: 2,
-                        }}
-                      >
-                        {Number.isFinite(b.value) ? b.value.toFixed(0) : "0"}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
+          <Text style={styles.heroAmount}>{fmtUsd(periodStats.todayNet)}</Text>
+          <Text style={styles.heroFoot}>
+            {t(
+              "restaurant.earnings.todayMeta",
+              "{{n}} orders • Stripe ready",
+              { n: periodStats.todayCount }
             )}
+          </Text>
+        </View>
+
+        <View style={styles.grid}>
+          <View style={styles.halfCard}>
+            <Text style={styles.halfLabel}>
+              {t("restaurant.earnings.thisWeek", "This Week")}
+            </Text>
+            <Text style={styles.halfAmount}>{fmtUsd(periodStats.weekNet)}</Text>
+          </View>
+          <View style={styles.halfCard}>
+            <Text style={styles.halfLabel}>
+              {t("restaurant.earnings.thisMonth", "This Month")}
+            </Text>
+            <Text style={styles.halfAmount}>{fmtUsd(periodStats.monthNet)}</Text>
           </View>
         </View>
 
-        {/* ✅ PAIEMENTS */}
-        <View
-          style={{
-            backgroundColor: "#020617",
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: "#1F2937",
-            marginBottom: 12,
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-            {t("restaurant.earnings.payments.title", "Paiements")}
+        <Text style={styles.section}>
+          📋 {t("restaurant.earnings.recentOrders", "Recent Orders")}
+        </Text>
+        {recentDelivered.length === 0 ? (
+          <Text style={styles.empty}>
+            {t(
+              "restaurant.earnings.list.empty",
+              "Aucune commande livrée pour le moment."
+            )}
           </Text>
-
-          <Text style={{ color: "#9CA3AF", marginTop: 8, fontWeight: "800" }}>
-            {t("restaurant.earnings.payments.statusLabel", "Statut virement :")}{" "}
-            <Text
-              style={{
-                color: payoutStatus.ok
-                  ? "#22C55E"
-                  : payoutStatus.code === "restricted" || payoutStatus.code === "disabled"
-                    ? "#FCA5A5"
-                    : "#EAB308",
-                fontWeight: "900",
-              }}
-            >
-              {payoutStatus.label}
-            </Text>
-          </Text>
-
-          <Text style={{ color: "#64748B", marginTop: 8, fontWeight: "800" }}>
-            {payoutStatus.message}
-          </Text>
-
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+        ) : (
+          recentDelivered.slice(0, 10).map((r) => (
             <TouchableOpacity
-              onPress={() => void openRestaurantStripe()}
-              disabled={payoutLoading}
-              style={{
-                alignSelf: "flex-start",
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-                backgroundColor: "rgba(59,130,246,0.12)",
-              }}
+              key={r.id}
+              activeOpacity={0.85}
+              onPress={() =>
+                navigation.navigate("RestaurantOrderDetails", { orderId: r.id })
+              }
+              style={styles.orderRow}
             >
-              <Text style={{ color: "white", fontWeight: "900" }}>
-                {payoutStatus.ok
-                  ? t("restaurant.earnings.payments.manage", "Gérer le compte bancaire")
-                  : t("restaurant.earnings.payments.setup", "Configurer mon virement")}
+              <Text style={styles.orderId}>
+                #{String(r.id).slice(0, 4).toUpperCase()}
+              </Text>
+              <Text style={styles.orderAmt}>
+                {fmtUsd(Number(r.restaurant_net_amount ?? 0))}
               </Text>
             </TouchableOpacity>
+          ))
+        )}
 
-            <TouchableOpacity
-              onPress={() => navigation.navigate("RestaurantMenu")}
-              style={{
-                alignSelf: "flex-start",
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: "#1F2937",
-                backgroundColor: "rgba(96,165,250,0.12)",
-              }}
-            >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {t("restaurant.earnings.payments.editMenu", "Modifier le menu")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* KPI CARDS */}
-        <View style={{ gap: 12 }}>
-          <View
-            style={{
-              backgroundColor: "#020617",
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
-            <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-              {t("restaurant.earnings.kpi.available.title", "Disponible (non payé)")}
-            </Text>
-            <Text
-              style={{
-                color: "#22C55E",
-                fontWeight: "900",
-                fontSize: 26,
-                marginTop: 6,
-              }}
-            >
-              {money(displayAvailableNet, currency)}
-            </Text>
-            <Text style={{ color: "#64748B", marginTop: 6, fontWeight: "800" }}>
-              {t(
-                "restaurant.earnings.kpi.available.subtitle",
-                "Basé sur {{n}} commande(s) livrée(s) non payée(s)",
-                { n: unpaidDelivered.length }
-              )}
-              {serverPendingPayout != null
-                ? ` · ${t(
-                    "restaurant.earnings.kpi.available.serverHint",
-                    "source: serveur",
-                  )}`
-                : ""}
-            </Text>
-          </View>
-
-          <View
-            style={{
-              backgroundColor: "#020617",
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
-            <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-              {t("restaurant.earnings.kpi.paid.title", "Payé (Stripe payout)")}
-            </Text>
-            <Text
-              style={{
-                color: "#E5E7EB",
-                fontWeight: "900",
-                fontSize: 24,
-                marginTop: 6,
-              }}
-            >
-              {money(paidNet, currency)}
-            </Text>
-            <Text style={{ color: "#64748B", marginTop: 6, fontWeight: "800" }}>
-              {paidDeliveredManual.length > 0
-                ? t(
-                    "restaurant.earnings.kpi.paid.subtitleWithManual",
-                    "Basé sur {{n}} commande(s) payée(s) (+{{m}} marquée(s) payée(s) sans transfert)",
-                    { n: paidDeliveredReal.length, m: paidDeliveredManual.length }
-                  )
-                : t(
-                    "restaurant.earnings.kpi.paid.subtitle",
-                    "Basé sur {{n}} commande(s) payée(s)",
-                    { n: paidDeliveredReal.length }
-                  )}
-            </Text>
-          </View>
-
-          <View
-            style={{
-              backgroundColor: "#020617",
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
-            <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-              {t("restaurant.earnings.kpi.delivered.title", "Commandes livrées")}
-            </Text>
-            <Text
-              style={{
-                color: "#E5E7EB",
-                fontWeight: "900",
-                fontSize: 22,
-                marginTop: 6,
-              }}
-            >
-              {deliveredCount}
-            </Text>
-          </View>
-        </View>
-
-        {/* LIST */}
-        <View style={{ marginTop: 18 }}>
-          <Text
-            style={{
-              color: "white",
-              fontWeight: "900",
-              fontSize: 18,
-              marginBottom: 10,
-            }}
-          >
-            {t("restaurant.earnings.list.title", "Dernières livraisons")}
-          </Text>
-
-          {recentDelivered.length === 0 ? (
-            <Text style={{ color: "#9CA3AF" }}>
-              {t("restaurant.earnings.list.empty", "Aucune commande livrée pour le moment.")}
-            </Text>
-          ) : (
-            <View style={{ gap: 10 }}>
-              {recentDelivered.map((r) => {
-                const commissionRate = r.restaurant_commission_rate;
-                const commissionAmt = r.restaurant_commission_amount;
-                const net = r.restaurant_net_amount;
-
-                const isPaid = r.restaurant_paid_out === true;
-                const isStripePaid =
-                  isPaid && (!!r.restaurant_transfer_id || !!r.restaurant_payout_id);
-                const isManualPaid =
-                  isPaid && !r.restaurant_transfer_id && !r.restaurant_payout_id;
-
-                const isUnpaid = !isPaid;
-
-                const pillBg = isStripePaid
-                  ? "rgba(34,197,94,0.12)"
-                  : isManualPaid
-                  ? "rgba(234,179,8,0.12)"
-                  : "rgba(59,130,246,0.12)";
-
-                const pillBorder = isStripePaid
-                  ? "#14532D"
-                  : isManualPaid
-                  ? "#92400E"
-                  : "#1D4ED8";
-
-                const pillText = isStripePaid
-                  ? t("restaurant.earnings.pill.paid", "Payé")
-                  : isManualPaid
-                  ? t("restaurant.earnings.pill.markedPaid", "Marqué payé")
-                  : t("restaurant.earnings.pill.available", "Disponible");
-
-                const pillColor = isStripePaid
-                  ? "#BBF7D0"
-                  : isManualPaid
-                  ? "#FDE68A"
-                  : "#BFDBFE";
-
-                const shownDate = getBestDate(r);
-
-                return (
-                  <TouchableOpacity
-                    key={r.id}
-                    activeOpacity={0.8}
-                    onPress={() =>
-                      navigation.navigate("RestaurantOrderDetails", {
-                        orderId: r.id,
-                      })
-                    }
-                    style={{
-                      backgroundColor: "rgba(15,23,42,0.65)",
-                      borderRadius: 16,
-                      padding: 14,
-                      borderWidth: 1,
-                      borderColor: "#1F2937",
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                      }}
-                    >
-                      <View style={{ flex: 1, paddingRight: 10 }}>
-                        <Text
-                          style={{
-                            color: "#E5E7EB",
-                            fontWeight: "900",
-                            fontSize: 16,
-                          }}
-                        >
-                          {t("restaurant.earnings.order.title", "Commande #{{id}}", {
-                            id: r.id.slice(0, 8),
-                          })}
-                        </Text>
-                        <Text
-                          style={{
-                            color: "#64748B",
-                            marginTop: 4,
-                            fontWeight: "800",
-                          }}
-                        >
-                          {fmtDateTime(shownDate)}
-                        </Text>
-                      </View>
-
-                      <View
-                        style={{
-                          paddingHorizontal: 10,
-                          paddingVertical: 6,
-                          borderRadius: 999,
-                          backgroundColor: pillBg,
-                          borderWidth: 1,
-                          borderColor: pillBorder,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: pillColor,
-                            fontWeight: "900",
-                            fontSize: 12,
-                          }}
-                        >
-                          {pillText}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={{ marginTop: 10 }}>
-                      <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-                        {t("restaurant.earnings.order.subtotalTaxes", "Subtotal + taxes :")}{" "}
-                        <Text style={{ color: "#E5E7EB" }}>
-                          {money((r.subtotal ?? 0) + (r.tax ?? 0), currency)}
-                        </Text>
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: "#9CA3AF",
-                          fontWeight: "800",
-                          marginTop: 6,
-                        }}
-                      >
-                        {t("restaurant.earnings.order.commission", "Commission :")}{" "}
-                        <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
-                          {money(commissionAmt, currency)}
-                        </Text>{" "}
-                        {commissionRate != null ? (
-                          <Text style={{ color: "#64748B" }}>
-                            ({Math.round(Number(commissionRate) * 100)}%)
-                          </Text>
-                        ) : null}
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: "#9CA3AF",
-                          fontWeight: "800",
-                          marginTop: 6,
-                        }}
-                      >
-                        {t("restaurant.earnings.order.net", "Net restaurant :")}{" "}
-                        <Text style={{ color: "#22C55E", fontWeight: "900" }}>
-                          {money(net, currency)}
-                        </Text>
-                      </Text>
-
-                      {IS_DEV && isUnpaid && (
-                        <TouchableOpacity
-                          onPress={() => {
-                            Alert.alert(
-                              t("restaurant.earnings.markPaid.title", "Marquer comme payé"),
-                              t(
-                                "restaurant.earnings.markPaid.body",
-                                "Confirmer le payout (mode test) ? (Sans transfert Stripe)"
-                              ),
-                              [
-                                { text: t("common.cancel", "Annuler"), style: "cancel" },
-                                {
-                                  text: t("restaurant.earnings.markPaid.confirm", "Oui, marqué payé"),
-                                  style: "destructive",
-                                  onPress: async () => {
-                                    try {
-                                      await markOrderPaid(r.id);
-                                      await fetchEarnings();
-                                    } catch (e: any) {
-                                      Alert.alert(
-                                        t("common.error", "Erreur"),
-                                        e?.message ??
-                                          t(
-                                            "restaurant.earnings.markPaid.fail",
-                                            "Update impossible."
-                                          )
-                                      );
-                                    }
-                                  },
-                                },
-                              ]
-                            );
-                          }}
-                          style={{
-                            marginTop: 10,
-                            alignSelf: "flex-start",
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            borderRadius: 999,
-                            borderWidth: 1,
-                            borderColor: "#1F2937",
-                            backgroundColor: "rgba(15,23,42,0.7)",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: "white",
-                              fontWeight: "900",
-                              fontSize: 12,
-                            }}
-                          >
-                            {t("restaurant.earnings.markPaid.button", "Marquer comme payé")}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
+        {IS_DEV ? (
+          <TouchableOpacity onPress={() => void debugCopyJwt()} style={styles.devBtn}>
+            <Text style={styles.devText}>DEV: copy JWT</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 24,
+  },
+  stripeBody: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 40,
+    gap: 24,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  glassCard: {
+    width: 320,
+    maxWidth: "100%",
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    borderRadius: 20,
+    padding: 32,
+    alignItems: "center",
+    gap: 24,
+  },
+  stripeCard: {
+    width: "100%",
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    padding: 24,
+    gap: 16,
+  },
+  emoji: { fontSize: 40, color: MMD_WHITE },
+  cardTitle: {
+    color: MMD_TEXT,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  cardBody: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+  },
+  badge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(245,158,11,0.2)",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  badgeText: {
+    color: "#F59E0B",
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  cta: {
+    backgroundColor: MMD_TAXI_GREEN,
+    minHeight: 44,
+    paddingHorizontal: 48,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  ctaFull: {
+    backgroundColor: MMD_TAXI_GREEN,
+    minHeight: 44,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  refreshBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  refreshText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  heroCard: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+    padding: 24,
+    gap: 8,
+  },
+  heroLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
+  heroAmount: {
+    color: MMD_WHITE,
+    fontSize: 32,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  heroFoot: {
+    color: MMD_TAXI_GREEN,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  grid: { flexDirection: "row", gap: 12 },
+  halfCard: {
+    flex: 1,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    padding: 16,
+    gap: 4,
+  },
+  halfLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+  },
+  halfAmount: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  section: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  empty: {
+    color: "rgba(255,255,255,0.7)",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 14,
+  },
+  orderRow: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  orderId: {
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  orderAmt: {
+    color: MMD_TAXI_GREEN,
+    fontSize: 15,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  devBtn: { marginTop: 16, alignSelf: "flex-start" },
+  devText: { color: "rgba(255,255,255,0.5)", fontSize: 12 },
+});
 
 export default RestaurantEarningsScreen;

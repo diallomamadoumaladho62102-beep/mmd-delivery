@@ -199,7 +199,7 @@ export default function AdminOrderChatPage() {
 
   if (!orderId) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-w-0">
         <div className="mx-auto max-w-4xl p-4">
           <div className="rounded-2xl border bg-white p-4 shadow-sm">
             <p className="text-sm text-red-600">
@@ -212,7 +212,7 @@ export default function AdminOrderChatPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-w-0">
       <div className="mx-auto max-w-4xl space-y-4 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link

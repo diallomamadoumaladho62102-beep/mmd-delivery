@@ -10,13 +10,27 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Platform,
+  StatusBar,
+  StyleSheet,
+  useWindowDimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import {
+  MMD_BLUE,
+  MMD_CARD_BORDER,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
 type Props = { navigation: any };
 type DocType = "license" | "tax" | "id";
@@ -612,274 +626,464 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     }
   };
 
+  const { width } = useWindowDimensions();
+  const contentMax = width >= 768 ? 560 : undefined;
+
   const docButton = (docType: DocType, label: string) => (
     <TouchableOpacity
+      key={docType}
       disabled={loading}
       onPress={() => pickDocument(docType)}
-      style={{
-        borderWidth: 1,
-        borderColor: "#2563EB",
-        borderRadius: 10,
-        padding: 12,
-        backgroundColor: "rgba(37,99,235,0.08)",
-        opacity: loading ? 0.6 : 1,
-      }}
+      style={[styles.docCard, loading && styles.disabled]}
+      activeOpacity={0.85}
     >
-      <Text style={{ color: "#1D4ED8", fontWeight: "800" }}>{label}</Text>
-      <Text style={{ marginTop: 4, color: "#475569", fontWeight: "600" }}>
-        {docs[docType]?.name || "Aucun fichier choisi"}
+      <Text style={styles.docTitle}>{label}</Text>
+      <Text style={styles.docMeta}>
+        {docs[docType]?.name ||
+          t("restaurant.setup.docs.none", "No file chosen")}
       </Text>
     </TouchableOpacity>
   );
 
-  return (
-    <ScrollView
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 36 }}
-    >
-      <Text style={{ fontSize: 20, fontWeight: "700" }}>
-        {t("restaurant.setup.title", "Profil restaurant")}
-      </Text>
-
-      <View
-        style={{
-          borderWidth: 1,
-          borderColor: "#CBD5E1",
-          borderRadius: 16,
-          padding: 14,
-          backgroundColor: "#F8FAFC",
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-          <View
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 36,
-              backgroundColor: "#E2E8F0",
-              overflow: "hidden",
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor: "#CBD5E1",
-            }}
-          >
-            {logoPreview ? (
-              <Image
-                source={{ uri: logoPreview }}
-                style={{ width: 72, height: 72 }}
-                resizeMode="cover"
-              />
-            ) : (
-              <Text style={{ color: "#0F172A", fontSize: 18, fontWeight: "900" }}>
-                {initials(restaurantName)}
-              </Text>
-            )}
-          </View>
-
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ color: "#0F172A", fontWeight: "900", fontSize: 15 }}>
-              {t("restaurant.setup.logo.title", "Logo / photo du restaurant")}
-            </Text>
-            <Text style={{ color: "#475569", marginTop: 4, fontWeight: "600" }}>
-              {t(
-                "restaurant.setup.logo.subtitle",
-                "Cette image sera visible par le client, le driver et dans le chat."
-              )}
-            </Text>
-            <TouchableOpacity
-              disabled={loading}
-              onPress={pickRestaurantLogo}
-              style={{
-                alignSelf: "flex-start",
-                marginTop: 10,
-                paddingVertical: 9,
-                paddingHorizontal: 12,
-                borderRadius: 10,
-                backgroundColor: "#0F172A",
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "900" }}>
-                {logoPreview
-                  ? t("restaurant.setup.logo.change", "Changer l’image")
-                  : t("restaurant.setup.logo.add", "Ajouter une image")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+  const iconField = (
+    emoji: string,
+    label: string,
+    value: string,
+    onChangeText: (v: string) => void,
+    opts?: {
+      placeholder?: string;
+      keyboardType?: "default" | "phone-pad" | "numbers-and-punctuation";
+      multiline?: boolean;
+    },
+  ) => (
+    <View style={styles.fieldRow}>
+      <View style={styles.iconBox}>
+        <Text style={styles.iconEmoji}>{emoji}</Text>
       </View>
+      <View style={[styles.inputShell, opts?.multiline && styles.inputShellTall]}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          editable={!loading}
+          placeholder={opts?.placeholder}
+          placeholderTextColor="rgba(255,255,255,0.4)"
+          keyboardType={opts?.keyboardType}
+          multiline={opts?.multiline}
+          style={[styles.fieldInput, opts?.multiline && { minHeight: 36 }]}
+        />
+      </View>
+    </View>
+  );
 
+  return (
+    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <View
-        style={{
-          borderWidth: 1,
-          borderColor: "#CBD5E1",
-          borderRadius: 16,
-          padding: 14,
-          backgroundColor: "#F8FAFC",
-        }}
+        style={[
+          styles.inner,
+          contentMax ? { maxWidth: contentMax, alignSelf: "center", width: "100%" } : null,
+        ]}
       >
-        <View
-          style={{
-            width: "100%",
-            height: 120,
-            borderRadius: 12,
-            backgroundColor: "#E2E8F0",
-            overflow: "hidden",
-            alignItems: "center",
-            justifyContent: "center",
-            borderWidth: 1,
-            borderColor: "#CBD5E1",
-          }}
-        >
-          {coverPreview ? (
-            <Image
-              source={{ uri: coverPreview }}
-              style={{ width: "100%", height: 120 }}
-              resizeMode="cover"
-            />
-          ) : (
-            <Text style={{ color: "#64748B", fontWeight: "700" }}>
-              {t("restaurant.setup.cover.placeholder", "Couverture")}
-            </Text>
-          )}
+        <View style={styles.header}>
+          <Image
+            source={MMD_LOGO}
+            style={styles.headerLogo}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.brandTitle}>MMD Delivery</Text>
+          <Text style={styles.screenTitle}>
+            {t("restaurant.setup.title", "Restaurant Profile")}
+          </Text>
         </View>
-        <Text style={{ color: "#0F172A", fontWeight: "900", fontSize: 15, marginTop: 12 }}>
-          {t("restaurant.setup.cover.title", "Image de couverture")}
-        </Text>
-        <Text style={{ color: "#475569", marginTop: 4, fontWeight: "600" }}>
-          {t(
-            "restaurant.setup.cover.subtitle",
-            "Bannière affichée aux clients sur la fiche restaurant."
-          )}
-        </Text>
+
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+        >
+          <View style={styles.card}>
+            <View style={styles.mediaRow}>
+              <View style={styles.iconBox}>
+                <Text style={styles.iconEmoji}>📸</Text>
+              </View>
+              <View style={styles.mediaText}>
+                <Text style={styles.mediaTitle}>
+                  {t("restaurant.setup.logo.title", "Logo / Photo")}
+                </Text>
+                <Text style={styles.mediaSub}>
+                  {t(
+                    "restaurant.setup.logo.subtitle",
+                    "Visible to customers, drivers, and in chat.",
+                  )}
+                </Text>
+              </View>
+              <TouchableOpacity
+                disabled={loading}
+                onPress={() => void pickRestaurantLogo()}
+                style={[styles.logoThumb, loading && styles.disabled]}
+                activeOpacity={0.85}
+              >
+                {logoPreview ? (
+                  <Image
+                    source={{ uri: logoPreview }}
+                    style={styles.logoThumbImg}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.logoThumbInitials}>
+                    {initials(restaurantName)}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.mediaRow}>
+              <View style={styles.iconBox}>
+                <Text style={styles.iconEmoji}>🖼️</Text>
+              </View>
+              <View style={styles.mediaText}>
+                <Text style={styles.mediaTitle}>
+                  {t("restaurant.setup.cover.title", "Cover Image")}
+                </Text>
+                <Text style={styles.mediaSub}>
+                  {t(
+                    "restaurant.setup.cover.subtitle",
+                    "Banner shown to customers on the restaurant page.",
+                  )}
+                </Text>
+              </View>
+              <TouchableOpacity
+                disabled={loading}
+                onPress={() => void pickRestaurantCover()}
+                style={[styles.addBtn, loading && styles.disabled]}
+                activeOpacity={0.85}
+              >
+                {coverPreview ? (
+                  <Image
+                    source={{ uri: coverPreview }}
+                    style={styles.coverThumb}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.addBtnText}>
+                    {t("restaurant.setup.cover.addShort", "Add")}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {iconField(
+              "🍽️",
+              t("restaurant.setup.fields.restaurantName", "Restaurant Name"),
+              restaurantName,
+              setRestaurantName,
+            )}
+            {iconField(
+              "📞",
+              t("restaurant.setup.fields.phone", "Phone"),
+              phone,
+              setPhone,
+              { keyboardType: "phone-pad", placeholder: "+1 212 555 0100" },
+            )}
+            {iconField(
+              "📍",
+              t("restaurant.setup.fields.address", "Address"),
+              address,
+              setAddress,
+              { placeholder: "123 Main St" },
+            )}
+            {iconField(
+              "🏙️",
+              t("restaurant.setup.fields.city", "City"),
+              city,
+              setCity,
+              { placeholder: "New York" },
+            )}
+            {iconField(
+              "📮",
+              t("restaurant.setup.fields.postalCode", "Zip Code"),
+              postalCode,
+              setPostalCode,
+              {
+                keyboardType: "numbers-and-punctuation",
+                placeholder: "10001",
+              },
+            )}
+            {iconField(
+              "🍳",
+              t("restaurant.setup.fields.cuisineType", "Cuisine Type"),
+              cuisineType,
+              setCuisineType,
+            )}
+            {iconField(
+              "📝",
+              t("restaurant.setup.fields.description", "Description"),
+              description,
+              setDescription,
+              { multiline: true },
+            )}
+
+            <View style={styles.offerings}>
+              <Text style={styles.offeringsTitle}>
+                {t("restaurant.setup.offerings", "Offerings")}
+              </Text>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>
+                  {t("restaurant.setup.options.delivery", "Delivery")}
+                </Text>
+                <Switch
+                  disabled={loading}
+                  value={offersDelivery}
+                  onValueChange={setOffersDelivery}
+                  trackColor={{ false: "rgba(255,255,255,0.2)", true: MMD_TAXI_GREEN }}
+                  thumbColor={MMD_WHITE}
+                />
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>
+                  {t("restaurant.setup.options.pickup", "Takeout")}
+                </Text>
+                <Switch
+                  disabled={loading}
+                  value={offersPickup}
+                  onValueChange={setOffersPickup}
+                  trackColor={{ false: "rgba(255,255,255,0.2)", true: MMD_TAXI_GREEN }}
+                  thumbColor={MMD_WHITE}
+                />
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>
+                  {t("restaurant.setup.options.dineIn", "Dine-in")}
+                </Text>
+                <Switch
+                  disabled={loading}
+                  value={offersDineIn}
+                  onValueChange={setOffersDineIn}
+                  trackColor={{ false: "rgba(255,255,255,0.2)", true: MMD_TAXI_GREEN }}
+                  thumbColor={MMD_WHITE}
+                />
+              </View>
+            </View>
+
+            {docButton(
+              "license",
+              t("restaurant.setup.docs.license", "License / Permit"),
+            )}
+            {docButton(
+              "tax",
+              t("restaurant.setup.docs.tax", "Tax Document"),
+            )}
+            {docButton("id", t("restaurant.setup.docs.id", "ID Card"))}
+          </View>
+        </ScrollView>
+
         <TouchableOpacity
           disabled={loading}
-          onPress={pickRestaurantCover}
-          style={{
-            alignSelf: "flex-start",
-            marginTop: 10,
-            paddingVertical: 9,
-            paddingHorizontal: 12,
-            borderRadius: 10,
-            backgroundColor: "#0F172A",
-            opacity: loading ? 0.6 : 1,
-          }}
+          onPress={() => void onSave()}
+          style={[styles.cta, loading && { opacity: 0.85 }]}
+          activeOpacity={0.9}
         >
-          <Text style={{ color: "white", fontWeight: "900" }}>
-            {coverPreview
-              ? t("restaurant.setup.cover.change", "Changer la couverture")
-              : t("restaurant.setup.cover.add", "Ajouter une couverture")}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color={MMD_WHITE} />
+          ) : (
+            <Text style={styles.ctaText}>
+              {t(
+                "restaurant.setup.actions.save",
+                "Save Restaurant Profile",
+              )}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
-
-      <Text>{t("restaurant.setup.fields.restaurantName", "Nom du restaurant")}</Text>
-      <TextInput
-        value={restaurantName}
-        onChangeText={setRestaurantName}
-        editable={!loading}
-        style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
-      />
-
-      <Text>{t("restaurant.setup.fields.phone", "Téléphone")}</Text>
-      <TextInput
-        value={phone}
-        onChangeText={setPhone}
-        editable={!loading}
-        keyboardType="phone-pad"
-        style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
-      />
-
-      <Text>{t("restaurant.setup.fields.address", "Adresse")}</Text>
-      <TextInput
-        value={address}
-        onChangeText={setAddress}
-        editable={!loading}
-        placeholder="123 Main St"
-        style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
-      />
-
-      <Text>{t("restaurant.setup.fields.city", "Ville")}</Text>
-      <TextInput
-        value={city}
-        onChangeText={setCity}
-        editable={!loading}
-        placeholder="New York"
-        style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
-      />
-
-      <Text>{t("restaurant.setup.fields.postalCode", "Code postal")}</Text>
-      <TextInput
-        value={postalCode}
-        onChangeText={setPostalCode}
-        editable={!loading}
-        keyboardType="numbers-and-punctuation"
-        placeholder="10001"
-        style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
-      />
-
-      <Text>{t("restaurant.setup.fields.cuisineType", "Type de cuisine")}</Text>
-      <TextInput
-        value={cuisineType}
-        onChangeText={setCuisineType}
-        editable={!loading}
-        style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
-      />
-
-      <Text>{t("restaurant.setup.fields.description", "Description")}</Text>
-      <TextInput
-        value={description}
-        onChangeText={setDescription}
-        editable={!loading}
-        multiline
-        style={{ borderWidth: 1, padding: 10, borderRadius: 8, minHeight: 80 }}
-      />
-
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text>{t("restaurant.setup.options.delivery", "Livraison")}</Text>
-        <Switch disabled={loading} value={offersDelivery} onValueChange={setOffersDelivery} />
-      </View>
-
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text>{t("restaurant.setup.options.pickup", "À emporter")}</Text>
-        <Switch disabled={loading} value={offersPickup} onValueChange={setOffersPickup} />
-      </View>
-
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text>{t("restaurant.setup.options.dineIn", "Sur place")}</Text>
-        <Switch disabled={loading} value={offersDineIn} onValueChange={setOffersDineIn} />
-      </View>
-
-      <Text style={{ fontSize: 18, fontWeight: "800", marginTop: 10 }}>
-        Documents restaurant
-      </Text>
-
-      {docButton("license", "Ajouter licence / permis")}
-      {docButton("tax", "Ajouter document fiscal")}
-      {docButton("id", "Ajouter pièce d’identité")}
-
-      <TouchableOpacity
-        disabled={loading}
-        onPress={onSave}
-        style={{
-          marginTop: 8,
-          backgroundColor: "#2563EB",
-          paddingVertical: 14,
-          borderRadius: 12,
-          alignItems: "center",
-          opacity: loading ? 0.7 : 1,
-        }}
-      >
-        {loading ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={{ color: "white", fontWeight: "900" }}>
-            {t("restaurant.setup.actions.save", "Enregistrer mon profil restaurant")}
-          </Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: MMD_BLUE },
+  inner: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
+  header: { alignItems: "center", gap: 12, marginBottom: 16 },
+  headerLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MMD_CARD_BORDER,
+  },
+  brandTitle: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 22,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  screenTitle: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  scroll: { paddingBottom: 88, gap: 0 },
+  card: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_CARD_BORDER,
+    borderRadius: 16,
+    padding: 16,
+    gap: 16,
+  },
+  mediaRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  mediaText: { flex: 1, minWidth: 0, gap: 2 },
+  mediaTitle: {
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  mediaSub: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_CARD_BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconEmoji: { fontSize: 18 },
+  logoThumb: {
+    width: 51,
+    height: 32,
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_CARD_BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoThumbImg: { width: "100%", height: "100%" },
+  logoThumbInitials: {
+    color: MMD_WHITE,
+    fontSize: 11,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  addBtn: {
+    minWidth: 51,
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: MMD_GOLD_CLASSIC,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  addBtnText: {
+    color: MMD_BLUE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  coverThumb: { width: 51, height: 32 },
+  fieldRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  inputShell: {
+    flex: 1,
+    minHeight: 50,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 3,
+    justifyContent: "center",
+  },
+  inputShellTall: { minHeight: 72 },
+  fieldLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 10,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  fieldInput: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    padding: 0,
+    margin: 0,
+  },
+  offerings: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_CARD_BORDER,
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+  },
+  offeringsTitle: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  switchLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  docCard: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_CARD_BORDER,
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  docTitle: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  docMeta: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  cta: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 24,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: MMD_TAXI_GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaText: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  disabled: { opacity: 0.6 },
+});

@@ -9,6 +9,7 @@ import {
   Share,
   Linking,
   RefreshControl,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -30,7 +31,14 @@ import {
   formatDurationMinutes,
 } from "../i18n/formatters";
 import { toUserFacingError } from "../lib/userFacingError";
-import { APP_COLORS } from "../theme/appTheme";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_NAVY,
+  MMD_WHITE,
+  mmdLogoSizeCompact,
+} from "../theme/mmdUi";
 
 type Props = {
   entityId: string;
@@ -46,6 +54,8 @@ export function EntityReceiptScreenBody({
   entityLabelFallback,
 }: Props) {
   const { t, i18n } = useTranslation();
+  const { width, height } = useWindowDimensions();
+  const logoSize = mmdLogoSizeCompact(width, height);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,8 +144,17 @@ export function EntityReceiptScreenBody({
   if (loading && !receipt) {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <ScreenHeader title={t("order.receipt.title", "Receipt")} />
-        <WalletLoadingState label={t("common.loading", "Loading…")} />
+        <ScreenHeader title={t("order.receipt.title", "Receipt")} variant="brand" />
+        <View style={styles.loadingWrap}>
+          <Image
+            source={require("../../assets/brand/mmd-logo-ui.png")}
+            style={{ width: logoSize, height: logoSize, borderRadius: logoSize / 2 }}
+            resizeMode="contain"
+            accessibilityLabel="MMD"
+          />
+          <Text style={styles.loadingBrand}>MMD DELIVERY</Text>
+          <WalletLoadingState label={t("common.loading", "Loading…")} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -143,7 +162,7 @@ export function EntityReceiptScreenBody({
   if (error && !receipt) {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <ScreenHeader title={t("order.receipt.title", "Receipt")} />
+        <ScreenHeader title={t("order.receipt.title", "Receipt")} variant="brand" />
         <WalletErrorState
           message={error}
           retryLabel={t("common.retry", "Retry")}
@@ -159,7 +178,7 @@ export function EntityReceiptScreenBody({
   if (!receipt) {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <ScreenHeader title={t("order.receipt.title", "Receipt")} />
+        <ScreenHeader title={t("order.receipt.title", "Receipt")} variant="brand" />
         <WalletEmptyState
           title={t("order.receipt.emptyTitle", "No receipt")}
           body={t("order.receipt.emptyBody", "This order has no receipt yet.")}
@@ -177,18 +196,28 @@ export function EntityReceiptScreenBody({
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <ScreenHeader title={t("order.receipt.title", "Receipt")} />
+      <ScreenHeader
+        title={t("order.receipt.title", "Receipt")}
+        subtitle={`${t(entityLabelKey, entityLabelFallback)} #${receipt.invoice.entity_number}`}
+        variant="brand"
+      />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={APP_COLORS.accent}
+            tintColor={MMD_GOLD_BRIGHT}
           />
         }
       >
         <View style={styles.headerCard} accessibilityRole="header">
+          <Image
+            source={require("../../assets/brand/mmd-logo-ui.png")}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="MMD"
+          />
           <Text style={styles.brand}>{receipt.company.brand}</Text>
           <Text style={styles.legal}>{receipt.company.legal_name}</Text>
           <Text style={styles.meta}>
@@ -449,8 +478,22 @@ function ActionBtn({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#020617" },
-  content: { padding: 16, paddingBottom: 40 },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  loadingWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  loadingBrand: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    marginBottom: 8,
+  },
+  content: { padding: 20, paddingBottom: 40 },
   headerCard: {
     backgroundColor: "rgba(15,23,42,0.9)",
     borderRadius: 16,
@@ -458,16 +501,36 @@ const styles = StyleSheet.create({
     borderColor: "rgba(148,163,184,0.14)",
     padding: 16,
     marginBottom: 16,
+    alignItems: "flex-start",
   },
-  brand: { color: "#F8FAFC", fontSize: 28, fontWeight: "900" },
-  legal: { color: "#94A3B8", marginTop: 4, fontWeight: "600" },
-  meta: { color: "#94A3B8", marginTop: 6, fontSize: 12, lineHeight: 18 },
+  logo: { width: 72, height: 72, borderRadius: 36, marginBottom: 8, alignSelf: "center" },
+  brand: {
+    color: MMD_WHITE,
+    fontSize: 28,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  legal: {
+    color: "#94A3B8",
+    marginTop: 4,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+    fontSize: 13,
+  },
+  meta: {
+    color: "#94A3B8",
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: MMD_FONT.regular,
+  },
   status: {
     marginTop: 10,
     color: "#22C55E",
     fontWeight: "800",
     textTransform: "uppercase",
     fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
   },
   sectionTitle: {
     color: "#94A3B8",
@@ -477,9 +540,10 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 8,
     marginTop: 8,
+    fontFamily: MMD_FONT.extrabold,
   },
   card: {
-    backgroundColor: "rgba(15,23,42,0.86)",
+    backgroundColor: "rgba(15,23,42,0.9)",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.14)",
@@ -489,7 +553,7 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: "row",
     gap: 12,
-    backgroundColor: "rgba(15,23,42,0.86)",
+    backgroundColor: "rgba(15,23,42,0.9)",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.14)",
@@ -502,7 +566,7 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 14,
     marginBottom: 12,
-    backgroundColor: "#0f172a",
+    backgroundColor: MMD_NAVY,
   },
   mapFallback: {
     width: "100%",
@@ -516,24 +580,45 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 16,
   },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  avatarFallback: { backgroundColor: "#1e293b" },
-  label: { color: "#94A3B8", fontWeight: "700", fontSize: 12 },
-  value: { color: "#F8FAFC", fontWeight: "700", marginTop: 4, lineHeight: 20 },
+  avatar: { width: 40, height: 40, borderRadius: 20 },
+  avatarFallback: { backgroundColor: "#E5E7EB" },
+  label: {
+    color: "#94A3B8",
+    fontWeight: "700",
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+  },
+  value: {
+    color: MMD_WHITE,
+    fontWeight: "700",
+    marginTop: 4,
+    lineHeight: 20,
+    fontFamily: MMD_FONT.bold,
+  },
   fareRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.1)",
+    borderBottomColor: "rgba(148,163,184,0.14)",
   },
-  fareLabel: { color: "#E2E8F0", flex: 1, paddingRight: 12 },
-  fareAmount: { color: "#F8FAFC", fontWeight: "800" },
+  fareLabel: { color: MMD_WHITE, flex: 1, paddingRight: 12, fontFamily: MMD_FONT.regular },
+  fareAmount: { color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold },
   discount: { color: "#22C55E" },
   totalRow: { borderBottomWidth: 0, marginTop: 4 },
-  totalLabel: { color: "#F8FAFC", fontWeight: "900", fontSize: 16 },
-  totalValue: { color: "#F8FAFC", fontWeight: "900", fontSize: 16 },
-  link: { color: "#93C5FD", fontWeight: "700", marginTop: 8 },
+  totalLabel: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontSize: 16,
+    fontFamily: MMD_FONT.extrabold,
+  },
+  totalValue: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontSize: 16,
+    fontFamily: MMD_FONT.extrabold,
+  },
+  link: { color: "#93C5FD", fontWeight: "700", marginTop: 8, fontFamily: MMD_FONT.bold },
   actions: { gap: 10, marginBottom: 24 },
   actionBtn: {
     backgroundColor: "rgba(15,23,42,0.9)",
@@ -543,6 +628,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     alignItems: "center",
+    minHeight: 46,
+    justifyContent: "center",
   },
-  actionText: { color: "#F8FAFC", fontWeight: "800" },
+  actionText: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 14,
+  },
 });

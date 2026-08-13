@@ -147,7 +147,7 @@ export default function AdminTaxiDispatchPreferencesPage() {
 
   return (
     <AdminGate requiredPermission="taxi_drivers.read">
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-8">
           <header>
             <h1 className="text-2xl font-bold text-slate-900">Taxi Dispatch Preferences</h1>

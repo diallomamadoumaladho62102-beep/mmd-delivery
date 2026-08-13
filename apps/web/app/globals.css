@@ -14,7 +14,7 @@
   --mmd-radius: 14px;
   --mmd-tap: 44px;
 
-  /* Control Center Enterprise (light ops surface) */
+  /* Control Center — defaults; Admin Figma Desktop 1280 overrides via .admin-figma */
   --cc-bg: #f4f6f8;
   --cc-surface: #ffffff;
   --cc-elevated: #fbfcfd;
@@ -30,8 +30,102 @@
   --cc-sidebar: #0b1220;
   --cc-sidebar-text: #e2e8f0;
   --cc-sidebar-muted: #94a3b8;
+  --cc-gold: #fbbf24;
   --cc-radius: 18px;
   --cc-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+/* Figma Admin App Desktop 1280 — m1YPra9RLUz38tGTPmYczj */
+.admin-figma {
+  --cc-bg: #0033cc;
+  --cc-surface: rgba(255, 255, 255, 0.04);
+  --cc-elevated: rgba(255, 255, 255, 0.08);
+  --cc-border: rgba(255, 255, 255, 0.12);
+  --cc-text: #ffffff;
+  --cc-muted: rgba(255, 255, 255, 0.7);
+  --cc-success: #22c55e;
+  --cc-info: #2563eb;
+  --cc-warn: #d97706;
+  --cc-critical: #dc2626;
+  --cc-ai: #7c3aed;
+  --cc-disabled: rgba(255, 255, 255, 0.45);
+  --cc-sidebar: rgba(255, 255, 255, 0.04);
+  --cc-sidebar-text: #ffffff;
+  --cc-sidebar-muted: #fbbf24;
+  --cc-gold: #fbbf24;
+  --cc-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font-family: var(--font-sora), "Sora", system-ui, sans-serif;
+}
+
+.admin-figma .bg-white,
+.admin-figma .bg-slate-50,
+.admin-figma .bg-gray-50,
+.admin-figma .bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.admin-figma .text-slate-900,
+.admin-figma .text-gray-900,
+.admin-figma .text-slate-800,
+.admin-figma .text-slate-700,
+.admin-figma .text-gray-800,
+.admin-figma .text-gray-700 {
+  color: #ffffff !important;
+}
+
+.admin-figma .text-slate-600,
+.admin-figma .text-slate-500,
+.admin-figma .text-gray-600,
+.admin-figma .text-gray-500 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.admin-figma .border-slate-200,
+.admin-figma .border-gray-200,
+.admin-figma .border-slate-100,
+.admin-figma .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+.admin-figma .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.admin-figma input,
+.admin-figma select,
+.admin-figma textarea {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.admin-figma input::placeholder,
+.admin-figma textarea::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.admin-figma table thead {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.admin-figma .hover\:bg-slate-50:hover,
+.admin-figma .hover\:bg-gray-50:hover,
+.admin-figma .hover\:bg-gray-100:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-figma .ring-slate-200,
+.admin-figma .ring-1.ring-slate-200 {
+  --tw-ring-color: rgba(255, 255, 255, 0.12);
+}
+
+.admin-figma .shadow-sm,
+.admin-figma .shadow-2xl {
+  box-shadow: var(--cc-shadow) !important;
+}
+
+.admin-figma button:not([class*="bg-"]):not([class*="text-"]) {
+  color: #fff;
 }
 
 @layer base {

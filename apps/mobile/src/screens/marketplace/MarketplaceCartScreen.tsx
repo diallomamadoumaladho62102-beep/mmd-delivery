@@ -7,13 +7,15 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
+  StatusBar,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
-import { UiEmptyState, UiLoadingState } from "../../components/ui/UiStates";
+import { MarketplaceBrandState } from "../../components/marketplace/MarketplaceBrandState";
 import {
   fetchMarketplaceDraft,
   fetchMarketplaceLiveCheckoutCapabilities,
@@ -35,7 +37,17 @@ import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import { rowDirection } from "../../i18n/rtl";
-import { APP_COLORS } from "../../theme/appTheme";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_GREEN,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Props = {
   route: RouteProp<RootStackParamList, "MarketplaceCart">;
@@ -237,55 +249,52 @@ export default function MarketplaceCartScreen({ route }: Props) {
   const checkoutEnabled = Boolean(draft?.checkout_shadow?.checkout_enabled);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bgElevated }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("marketplace.cart.title", "Marketplace draft")}
         subtitle={sellerName}
         fallbackRoute="MarketplaceHome"
-        variant="dark"
+        variant="mmd"
       />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 14 }}>
-
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          loading || !draft || !(draft.items ?? []).length
+            ? styles.scrollFill
+            : null,
+        ]}
+      >
         {loading ? (
-          <UiLoadingState />
+          <MarketplaceBrandState
+            mode="loading"
+            message={t("marketplace.cart.loading", "Loading draft cart...")}
+          />
         ) : !draft || !(draft.items ?? []).length ? (
-          <UiEmptyState
+          <MarketplaceBrandState
+            mode="empty"
             title={t("marketplace.cart.empty", "Your draft cart is empty.")}
+            message={t(
+              "marketplace.cart.emptyHint",
+              "Browse a shop and add products to continue."
+            )}
           />
         ) : (
           <>
             {(draft.items ?? []).map((item) => (
-              <View
-                key={item.id}
-                style={{
-                  borderWidth: 1,
-                  borderColor: APP_COLORS.borderMuted,
-                  borderRadius: 12,
-                  padding: 12,
-                  backgroundColor: APP_COLORS.surface,
-                }}
-              >
-                <Text style={{ color: APP_COLORS.text, fontWeight: "600" }}>{item.title}</Text>
-                <Text style={{ color: APP_COLORS.textMuted, marginTop: 4 }}>
+              <View key={item.id} style={styles.itemCard}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemMeta}>
                   {item.quantity} × {formatMarketplaceMoney(item.price_cents, item.currency)}
                 </Text>
               </View>
             ))}
 
-            <View
-              style={{
-                borderWidth: 1,
-                borderColor: APP_COLORS.borderMuted,
-                borderRadius: 12,
-                padding: 12,
-                gap: 8,
-                backgroundColor: APP_COLORS.surface,
-              }}
-            >
-              <Text style={{ color: APP_COLORS.text, fontWeight: "600" }}>
+            <View style={styles.dropoffCard}>
+              <Text style={styles.itemTitle}>
                 {t("marketplace.cart.dropoffTitle", "Delivery dropoff")}
               </Text>
-              <Text style={{ color: dropoffAddress ? APP_COLORS.textSubtle : "#64748B" }}>
+              <Text style={styles.dropoffHint}>
                 {dropoffAddress ||
                   t(
                     "marketplace.cart.dropoffPlaceholder",
@@ -307,29 +316,21 @@ export default function MarketplaceCartScreen({ route }: Props) {
                     pickerContext: "marketplace_dropoff",
                   })
                 }
-                style={{
-                  backgroundColor: "#312E81",
-                  padding: 10,
-                  borderRadius: 10,
-                  alignItems: "center",
-                }}
+                style={styles.chooseDropoff}
               >
-                <Text style={{ color: "#E9D5FF", fontWeight: "600" }}>
+                <Text style={styles.chooseDropoffText}>
                   {t("marketplace.cart.chooseDropoff", "Choose dropoff on map")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 disabled={savingLocation || !dropoffLocationId}
                 onPress={() => void handleApplyDropoffLocation()}
-                style={{
-                  backgroundColor: "#475569",
-                  padding: 10,
-                  borderRadius: 10,
-                  alignItems: "center",
-                  opacity: savingLocation || !dropoffLocationId ? 0.6 : 1,
-                }}
+                style={[
+                  styles.applyDropoff,
+                  { opacity: savingLocation || !dropoffLocationId ? 0.6 : 1 },
+                ]}
               >
-                <Text style={{ color: APP_COLORS.onAccent, fontWeight: "600" }}>
+                <Text style={styles.applyDropoffText}>
                   {savingLocation
                     ? t("marketplace.cart.savingLocation", "Saving location…")
                     : t("marketplace.cart.applyDropoff", "Apply dropoff to draft")}
@@ -337,7 +338,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
               </TouchableOpacity>
             </View>
 
-            <View style={{ gap: 6, marginTop: 8 }}>
+            <View style={styles.totals}>
               <Line
                 label={t("marketplace.cart.subtotal", "Subtotal")}
                 value={formatMarketplaceMoney(draft.subtotal_cents, draft.currency)}
@@ -359,27 +360,18 @@ export default function MarketplaceCartScreen({ route }: Props) {
 
             {draft.delivery_status_shadow &&
             draft.delivery_status_shadow !== "not_started" ? (
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#4338CA",
-                  borderRadius: 12,
-                  padding: 12,
-                  backgroundColor: "rgba(67,56,202,0.12)",
-                  gap: 4,
-                }}
-              >
-                <Text style={{ color: "#C4B5FD", fontWeight: "700" }}>
+              <View style={styles.shadowCard}>
+                <Text style={styles.shadowTitle}>
                   {t("marketplace.cart.deliveryShadowTitle", "Estimated delivery (shadow)")}
                 </Text>
                 {draft.estimated_distance_miles != null ? (
-                  <Text style={{ color: APP_COLORS.textSubtle }}>
+                  <Text style={styles.shadowMeta}>
                     {Number(draft.estimated_distance_miles).toFixed(1)} mi ·{" "}
                     {Math.round(Number(draft.estimated_minutes ?? 0))} min
                   </Text>
                 ) : null}
                 {draft.delivery_quote_shadow?.customer_delivery_total_cents != null ? (
-                  <Text style={{ color: APP_COLORS.textMuted }}>
+                  <Text style={styles.shadowMeta}>
                     {t("marketplace.cart.deliveryShadowFee", "Delivery quote shadow")}:{" "}
                     {formatMarketplaceMoney(
                       draft.delivery_quote_shadow.customer_delivery_total_cents,
@@ -387,7 +379,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
                     )}
                   </Text>
                 ) : null}
-                <Text style={{ color: "#64748B", fontSize: 12 }}>
+                <Text style={styles.shadowNote}>
                   {t(
                     "marketplace.cart.deliveryShadowNote",
                     "Shadow only — checkout and driver dispatch are not live yet."
@@ -396,7 +388,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
               </View>
             ) : null}
 
-            <Text style={{ color: "#64748B", fontSize: 12 }}>
+            <Text style={styles.comingSoonNote}>
               {t(
                 "marketplace.cart.checkoutStillComingSoon",
                 "Checkout still coming soon — no live marketplace payment."
@@ -406,15 +398,15 @@ export default function MarketplaceCartScreen({ route }: Props) {
             <TouchableOpacity
               disabled={checkingOut}
               onPress={() => void handleCheckoutShadow()}
-              style={{
-                backgroundColor: checkoutEnabled ? "#059669" : "#475569",
-                padding: 14,
-                borderRadius: 12,
-                alignItems: "center",
-                opacity: checkingOut ? 0.7 : 1,
-              }}
+              style={[
+                styles.checkoutBtn,
+                {
+                  backgroundColor: checkoutEnabled ? MMD_GREEN : "#475569",
+                  opacity: checkingOut ? 0.7 : 1,
+                },
+              ]}
             >
-              <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>
+              <Text style={styles.checkoutBtnText}>
                 {checkingOut
                   ? t("marketplace.cart.processing", "Processing…")
                   : checkoutEnabled
@@ -428,15 +420,9 @@ export default function MarketplaceCartScreen({ route }: Props) {
               <TouchableOpacity
                 disabled={checkingOut}
                 onPress={() => void handleLiveCheckout()}
-                style={{
-                  backgroundColor: APP_COLORS.accentStrong,
-                  padding: 14,
-                  borderRadius: 12,
-                  alignItems: "center",
-                  opacity: checkingOut ? 0.7 : 1,
-                }}
+                style={[styles.liveBtn, { opacity: checkingOut ? 0.7 : 1 }]}
               >
-                <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>
+                <Text style={styles.checkoutBtnText}>
                   {t("marketplace.cart.payLive", "Pay Marketplace Order")}
                 </Text>
               </TouchableOpacity>
@@ -459,12 +445,138 @@ function Line({
 }) {
   return (
     <View style={{ flexDirection: rowDirection(), justifyContent: "space-between" }}>
-      <Text style={{ color: bold ? APP_COLORS.text : APP_COLORS.textMuted, fontWeight: bold ? "700" : "400" }}>
+      <Text
+        style={{
+          color: bold ? MMD_TEXT : MMD_TEXT_MUTED_BLUE,
+          fontWeight: bold ? "700" : "400",
+          fontFamily: bold ? MMD_FONT.bold : MMD_FONT.regular,
+          fontSize: 13,
+        }}
+      >
         {label}
       </Text>
-      <Text style={{ color: bold ? "#C4B5FD" : APP_COLORS.textSubtle, fontWeight: bold ? "700" : "400" }}>
+      <Text
+        style={{
+          color: MMD_GOLD_CLASSIC,
+          fontWeight: bold ? "700" : "400",
+          fontFamily: bold ? MMD_FONT.bold : MMD_FONT.regular,
+          fontSize: 13,
+        }}
+      >
         {value}
       </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  scroll: { padding: 20, paddingTop: 8, gap: 14 },
+  scrollFill: { flexGrow: 1 },
+  itemCard: {
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: MMD_BLUE,
+    gap: 4,
+  },
+  itemTitle: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.semibold,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  itemMeta: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+  },
+  dropoffCard: {
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    backgroundColor: MMD_BLUE,
+  },
+  dropoffHint: {
+    color: MMD_LINK_BLUE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+  },
+  chooseDropoff: {
+    backgroundColor: "#312E81",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  chooseDropoffText: {
+    color: "#E9D5FF",
+    fontFamily: MMD_FONT.semibold,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  applyDropoff: {
+    backgroundColor: "#475569",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  applyDropoffText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  totals: { gap: 6 },
+  shadowCard: {
+    borderWidth: 1,
+    borderColor: MMD_STROKE,
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "rgba(114,159,250,0.12)",
+    gap: 4,
+  },
+  shadowTitle: {
+    color: MMD_LINK_BLUE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  shadowMeta: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.regular,
+  },
+  shadowNote: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.regular,
+  },
+  comingSoonNote: {
+    color: MMD_LINK_BLUE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.regular,
+  },
+  checkoutBtn: {
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  checkoutBtnText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  liveBtn: {
+    backgroundColor: MMD_LINK_BLUE,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+});

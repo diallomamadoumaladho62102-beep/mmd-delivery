@@ -19,9 +19,17 @@ import { supabase } from "../../lib/supabase";
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { formatWalletAmount } from "../../lib/walletApi";
 import { toUserFacingError } from "../../lib/userFacingError";
-import { APP_COLORS } from "../../theme/appTheme";
 import { financialStatusColor } from "../../components/wallet/walletStatusColor";
 import * as WebBrowser from "expo-web-browser";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_GOLD_DARK,
+  MMD_MUTED,
+  MMD_NAVY,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Summary = {
   balance_cents?: number;
@@ -235,7 +243,7 @@ export default function BusinessWalletScreen() {
           variant="dark"
         />
         <View style={styles.centered}>
-          <ActivityIndicator color={APP_COLORS.accent} />
+          <ActivityIndicator color={MMD_GOLD_BRIGHT} />
         </View>
       </SafeAreaView>
     );
@@ -256,7 +264,11 @@ export default function BusinessWalletScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={MMD_GOLD_BRIGHT}
+          />
         }
       >
         {error ? (
@@ -430,35 +442,54 @@ export default function BusinessWalletScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: APP_COLORS.bg },
+  root: { flex: 1, backgroundColor: MMD_BLUE },
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
   content: { padding: 16, paddingBottom: 40 },
   card: {
-    backgroundColor: "rgba(15,23,42,0.86)",
+    backgroundColor: MMD_NAVY,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderWidth: 1.5,
+    borderColor: MMD_GOLD_BRIGHT,
     padding: 16,
     marginBottom: 14,
   },
-  muted: { color: "#94A3B8", fontWeight: "700", fontSize: 12 },
-  mutedSmall: { color: "#64748B", fontWeight: "600", fontSize: 12, marginTop: 8 },
-  balance: { color: "#F8FAFC", fontSize: 32, fontWeight: "900", marginTop: 6 },
+  muted: {
+    color: MMD_WHITE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 12,
+  },
+  mutedSmall: {
+    color: MMD_MUTED,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+    fontSize: 12,
+    marginTop: 8,
+  },
+  balance: {
+    color: MMD_WHITE,
+    fontSize: 32,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    marginTop: 6,
+  },
   sectionTitle: {
     color: "#E2E8F0",
-    fontWeight: "900",
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
     fontSize: 15,
     marginBottom: 10,
   },
   input: {
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.22)",
+    borderColor: MMD_GOLD_BRIGHT,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    color: "#F8FAFC",
+    color: MMD_WHITE,
     marginBottom: 10,
-    backgroundColor: "rgba(2,6,23,0.4)",
+    backgroundColor: MMD_BLUE,
+    fontFamily: MMD_FONT.regular,
   },
   primaryBtn: {
     backgroundColor: "#F59E0B",
@@ -466,7 +497,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  primaryLabel: { color: "#0F172A", fontWeight: "900" },
+  primaryLabel: {
+    color: "#0F172A",
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
   secondaryBtn: {
     borderRadius: 14,
     paddingVertical: 14,
@@ -474,9 +509,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.3)",
   },
-  secondaryLabel: { color: "#E2E8F0", fontWeight: "800" },
+  secondaryLabel: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
   linkBtn: { marginTop: 12, alignItems: "center" },
-  linkLabel: { color: "#93C5FD", fontWeight: "700" },
+  linkLabel: {
+    color: MMD_WHITE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+  },
   txRow: {
     flexDirection: "row",
     gap: 12,
@@ -484,25 +527,54 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "rgba(148,163,184,0.12)",
   },
-  txTitle: { color: "#F8FAFC", fontWeight: "800", textTransform: "capitalize" },
-  txMeta: { color: "#94A3B8", fontSize: 12, marginTop: 3 },
-  txAmount: { fontWeight: "900", fontSize: 14 },
+  txTitle: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    textTransform: "capitalize",
+  },
+  txMeta: {
+    color: MMD_MUTED,
+    fontSize: 12,
+    marginTop: 3,
+    fontFamily: MMD_FONT.regular,
+  },
+  txAmount: {
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 14,
+    color: MMD_GOLD_DARK,
+  },
   errorBox: {
     padding: 14,
     borderRadius: 14,
     backgroundColor: "rgba(239,68,68,0.12)",
     marginBottom: 12,
   },
-  errorText: { color: "#FCA5A5", fontWeight: "700" },
+  errorText: { color: "#FCA5A5", fontWeight: "700", fontFamily: MMD_FONT.bold },
   retry: { marginTop: 10 },
-  retryText: { color: "#F59E0B", fontWeight: "800" },
+  retryText: {
+    color: MMD_GOLD_BRIGHT,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
   emptyBox: {
     padding: 18,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.16)",
     marginBottom: 12,
+    backgroundColor: MMD_NAVY,
   },
-  emptyTitle: { color: "#F8FAFC", fontWeight: "900", marginBottom: 6 },
-  emptyBody: { color: "#94A3B8", lineHeight: 20 },
+  emptyTitle: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    marginBottom: 6,
+  },
+  emptyBody: {
+    color: MMD_MUTED,
+    lineHeight: 20,
+    fontFamily: MMD_FONT.regular,
+  },
 });

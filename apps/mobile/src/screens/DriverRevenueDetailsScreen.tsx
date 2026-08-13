@@ -6,6 +6,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  StyleSheet,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
@@ -13,6 +15,18 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_MUTED,
+  MMD_TEXT,
+  MMD_WHITE,
+} from "../theme/mmdUi";
+
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 
 type RangeKey = "week" | "today" | "month";
 
@@ -100,6 +114,20 @@ function fmtDurationFromSeconds(secs: number) {
   return `${h} h ${String(m).padStart(2, "0")} m ${String(ss).padStart(2, "0")} s`;
 }
 
+/** Stable pastel-ish hex from order id (color pills in Figma). */
+function hashColorFromId(id: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const r = 96 + (h & 0x7f);
+  const g = 96 + ((h >>> 8) & 0x7f);
+  const b = 96 + ((h >>> 16) & 0x7f);
+  const hex = (n: number) => Math.min(255, n).toString(16).padStart(2, "0").toUpperCase();
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
 // ✅ RPC renvoie des SECONDES
 type DriverStatsRow = {
   online_seconds: number | null;
@@ -108,6 +136,20 @@ type DriverStatsRow = {
   points?: number | null;
 };
 
+function BrandFooter() {
+  return (
+    <View style={styles.footer}>
+      <Image
+        source={MMD_LOGO}
+        style={styles.footerLogo}
+        resizeMode="contain"
+        accessibilityLabel="MMD Delivery"
+      />
+      <Text style={styles.footerBrand}>MMD Delivery</Text>
+    </View>
+  );
+}
+
 export function DriverRevenueDetailsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -115,7 +157,8 @@ export function DriverRevenueDetailsScreen() {
 
   const range: RangeKey = (route?.params?.range as RangeKey) ?? "week";
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [driverId, setDriverId] = useState<string | null>(null);
 
@@ -280,6 +323,7 @@ export function DriverRevenueDetailsScreen() {
       } finally {
         if (!aliveRef.alive) return;
         setLoading(false);
+        setInitialLoad(false);
       }
     },
     [fromISO, toISO, t]
@@ -351,18 +395,23 @@ export function DriverRevenueDetailsScreen() {
     return { trips, baseEarnings, tips, totalEarnings, points };
   }, [orders]);
 
+  const weekDayLabels = useMemo(
+    () => [
+      t("driver.revenue.details.week.mon", "Mon"),
+      t("driver.revenue.details.week.tue", "Tue"),
+      t("driver.revenue.details.week.wed", "Wed"),
+      t("driver.revenue.details.week.thu", "Thu"),
+      t("driver.revenue.details.week.fri", "Fri"),
+      t("driver.revenue.details.week.sat", "Sat"),
+      t("driver.revenue.details.week.sun", "Sun"),
+    ],
+    [t],
+  );
+
   // ✅ Bars: week => Mon..Sun, sinon => last 7 days
   const bars = useMemo(() => {
     if (range === "week") {
-      const days = [
-        t("driver.revenue.details.week.mon", "Mon"),
-        t("driver.revenue.details.week.tue", "Tue"),
-        t("driver.revenue.details.week.wed", "Wed"),
-        t("driver.revenue.details.week.thu", "Thu"),
-        t("driver.revenue.details.week.fri", "Fri"),
-        t("driver.revenue.details.week.sat", "Sat"),
-        t("driver.revenue.details.week.sun", "Sun"),
-      ];
+      const days = weekDayLabels;
       const map: Record<string, number> = {};
       for (const d of days) map[d] = 0;
 
@@ -379,7 +428,7 @@ export function DriverRevenueDetailsScreen() {
       return days.map((label) => ({
         label,
         value: map[label],
-        h: Math.max(10, Math.round((map[label] / max) * 140)),
+        h: Math.max(4, Math.round((map[label] / max) * 100)),
       }));
     }
 
@@ -413,9 +462,9 @@ export function DriverRevenueDetailsScreen() {
     return days.map((d) => ({
       label: d.label,
       value: map[d.key],
-      h: Math.max(10, Math.round((map[d.key] / max) * 140)),
+      h: Math.max(4, Math.round((map[d.key] / max) * 100)),
     }));
-  }, [orders, range, toISO, t, localeForDates]);
+  }, [orders, range, toISO, weekDayLabels, localeForDates]);
 
   const stats = useMemo(() => {
     return {
@@ -442,29 +491,39 @@ export function DriverRevenueDetailsScreen() {
     void fetchStats(aliveRef);
   }, [fetchDetails, fetchStats]);
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
-      <View style={{ flex: 1 }}>
+  const showEmpty = !loading && orders.length === 0;
+  const showPopulated = !loading && orders.length > 0;
+
+  if (initialLoad && loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
         <ScreenHeader
           title={titleLabel}
           subtitle={daysLabel}
           fallbackRoute="DriverTabs"
-          variant="dark"
+          variant="mmd"
+        />
+        <DriverBrandLoadingState title={t("common.loading", "Loading…")} />
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <View style={styles.root}>
+        <ScreenHeader
+          title={titleLabel}
+          subtitle={daysLabel}
+          fallbackRoute="DriverTabs"
+          variant="mmd"
           rightSlot={
             <TouchableOpacity
               onPress={onRefresh}
               disabled={loading}
-              style={{
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderRadius: 999,
-                backgroundColor: "rgba(15,23,42,0.7)",
-                borderWidth: 1,
-                borderColor: "#1F2937",
-                opacity: loading ? 0.65 : 1,
-              }}
+              style={[styles.refreshButton, loading && styles.refreshDisabled]}
+              activeOpacity={0.85}
             >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+              <Text style={styles.refreshText}>
                 {loading
                   ? t("shared.common.loadingEllipsis", "…")
                   : t("common.refresh", "Refresh")}
@@ -473,327 +532,582 @@ export function DriverRevenueDetailsScreen() {
           }
         />
 
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
-          {/* Graph (Uber-style top) */}
-          <View
-            style={{
-              borderRadius: 18,
-              backgroundColor: "rgba(15,23,42,0.65)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-              padding: 16,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "flex-end",
-              }}
-            >
-              <View>
-                <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                  {t("driver.revenue.details.earnings", "Earnings")}
-                </Text>
-
-                <Text
-                  style={{
-                    color: "white",
-                    fontSize: 40,
-                    fontWeight: "900",
-                    marginTop: 6,
-                  }}
-                >
-                  {fmtMoney(totals.totalEarnings)}
-                </Text>
-
-                <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "800" }}>
-                  {t("driver.revenue.details.tripsLabel", "Trips")} : {totals.trips}
-                </Text>
-              </View>
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "flex-end",
-                  gap: 10,
-                  paddingBottom: 4,
-                }}
-              >
-                {bars.map((b) => (
-                  <View key={b.label} style={{ alignItems: "center" }}>
-                    <View
-                      style={{
-                        width: 18,
-                        height: b.h,
-                        borderRadius: 10,
-                        backgroundColor: "rgba(59,130,246,0.95)",
-                      }}
-                    />
-                    <Text
-                      style={{
-                        color: "#94A3B8",
-                        fontSize: 11,
-                        marginTop: 8,
-                        fontWeight: "800",
-                      }}
-                    >
-                      {b.label}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          {/* Statistiques */}
-          <Text
-            style={{
-              color: "white",
-              fontSize: 26,
-              fontWeight: "900",
-              marginTop: 18,
-            }}
-          >
-            {t("driver.revenue.details.stats.title", "Stats")}
-          </Text>
-
-          <View
-            style={{
-              marginTop: 10,
-              borderRadius: 18,
-              backgroundColor: "rgba(15,23,42,0.65)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-              padding: 16,
-            }}
-          >
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <View style={{ width: "48%" }}>
-                <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                  {t("driver.revenue.details.stats.online", "Online")}
-                </Text>
-                <Text style={{ color: "white", fontSize: 20, fontWeight: "900", marginTop: 6 }}>
-                  {stats.online}
-                </Text>
-              </View>
-
-              <View style={{ width: "48%" }}>
-                <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                  {t("driver.revenue.details.stats.driving", "Driving")}
-                </Text>
-                <Text style={{ color: "white", fontSize: 20, fontWeight: "900", marginTop: 6 }}>
-                  {stats.driving}
-                </Text>
-              </View>
-            </View>
-
-            <View style={{ height: 1, backgroundColor: "#1F2937", marginVertical: 14 }} />
-
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <View style={{ width: "48%" }}>
-                <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                  {t("driver.revenue.details.stats.trips", "Trips")}
-                </Text>
-                <Text style={{ color: "white", fontSize: 20, fontWeight: "900", marginTop: 6 }}>
-                  {totals.trips}
-                </Text>
-              </View>
-
-              <View style={{ width: "48%" }}>
-                <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                  {t("driver.revenue.details.stats.points", "Points")}
-                </Text>
-                <Text style={{ color: "white", fontSize: 20, fontWeight: "900", marginTop: 6 }}>
-                  {totals.points}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert(
-                  t("driver.revenue.details.calc.title", "Calculation"),
-                  t(
-                    "driver.revenue.details.calc.body",
-                    "Online/Driving come from RPC get_driver_stats(from_ts,to_ts). Trips = delivered. Points = number of trips."
-                  )
-                )
-              }
-              style={{ marginTop: 14 }}
-            >
-              <Text
-                style={{
-                  color: "#93C5FD",
-                  fontWeight: "900",
-                  textDecorationLine: "underline",
-                }}
-              >
-                {t("driver.revenue.details.calc.link", "How we calculate stats")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Détail */}
-          <Text style={{ color: "white", fontSize: 26, fontWeight: "900", marginTop: 18 }}>
-            {t("driver.revenue.details.breakdown.title", "Breakdown")}
-          </Text>
-
-          <View
-            style={{
-              marginTop: 10,
-              borderRadius: 18,
-              backgroundColor: "rgba(15,23,42,0.65)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-              padding: 16,
-            }}
-          >
-            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 10 }}>
-              <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                {t("driver.revenue.details.breakdown.netPrice", "Net price")}
-              </Text>
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {fmtMoney(totals.baseEarnings)}
-              </Text>
-            </View>
-
-            <View style={{ height: 1, backgroundColor: "#1F2937" }} />
-
-            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 10 }}>
-              <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-                {t("driver.revenue.details.breakdown.tip", "Tip")}
-              </Text>
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {fmtMoney(totals.tips)}
-              </Text>
-            </View>
-
-            <View style={{ height: 1, backgroundColor: "#1F2937" }} />
-
-            <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 10 }}>
-              <Text style={{ color: "white", fontWeight: "900" }}>
-                {t("driver.revenue.details.breakdown.total", "Total earnings")}
-              </Text>
-              <Text style={{ color: "white", fontWeight: "900" }}>
-                {fmtMoney(totals.totalEarnings)}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={openLastPriceDetails}
-              style={{
-                marginTop: 12,
-                height: 52,
-                borderRadius: 14,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(2,6,23,0.55)",
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {t("driver.revenue.details.breakdown.viewLastTripPrice", "View trip price details")}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigation.navigate("DriverRevenueHistory", { range })}
-              style={{
-                marginTop: 10,
-                height: 52,
-                borderRadius: 14,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(15,23,42,0.35)",
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {t("driver.revenue.details.breakdown.viewHistory", "View earnings history")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Courses terminées */}
-          <Text style={{ color: "white", fontSize: 26, fontWeight: "900", marginTop: 18 }}>
-            {t("driver.revenue.details.completed.title", "Completed trips")}
-          </Text>
-
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           {loading ? (
-            <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <ActivityIndicator color="#fff" />
-              <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-                {t("common.loading", "Loading…")}
+            <View style={styles.loadingCard}>
+              <Text style={styles.loadingLabel}>
+                {t("driver.revenue.details.earnings", "Earnings")}
               </Text>
+              <View style={styles.loadingFeedback}>
+                <ActivityIndicator color={MMD_WHITE} />
+                <Text style={styles.loadingText}>
+                  {t("common.loading", "Loading…")}
+                </Text>
+              </View>
             </View>
-          ) : orders.length === 0 ? (
-            <Text style={{ color: "#9CA3AF", marginTop: 10 }}>
-              {t("driver.revenue.details.completed.empty", "No delivered trip in this period.")}
-            </Text>
-          ) : (
-            <View style={{ marginTop: 10, gap: 10 }}>
-              {orders.slice(0, 30).map((o) => {
-                const gain = getGain(o);
-                const tip = getTip(o);
+          ) : null}
 
-                return (
-                  <TouchableOpacity
-                    key={`${o.source_table}:${o.id}`}
-                    onPress={() =>
-                      Alert.alert(
-                        t("driver.revenue.details.tripAlert.title", "Trip"),
-                        t(
-                          "driver.revenue.details.shareText",
-                          "ID: {{id}}\nDate: {{date}} {{time}}\nNet price: {{net}}\nTip: {{tip}}\nTotal: {{total}}\nRestaurant: {{restaurant}}",
-                          {
-                            id: o.id,
-                            date: fmtShortDate(o.created_at, localeForDates),
-                            time: fmtTime(o.created_at, localeForDates),
-                            net: fmtMoney(gain),
-                            tip: fmtMoney(tip),
-                            total: fmtMoney(gain + tip),
-                            restaurant: o.source_table === "delivery_requests" ? "Delivery" : o.restaurant_name ?? "—",
-                          }
-                        )
-                      )
-                    }
-                    style={{
-                      borderRadius: 18,
-                      padding: 14,
-                      backgroundColor: "rgba(15,23,42,0.65)",
-                      borderWidth: 1,
-                      borderColor: "#1F2937",
-                    }}
-                  >
-                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                      <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>
-                        {fmtMoney(gain + tip)}
-                      </Text>
-                      <Text style={{ color: "#94A3B8", fontWeight: "900" }}>
-                        {fmtShortDate(o.created_at, localeForDates)}
-                      </Text>
+          {showEmpty ? (
+            <>
+              <View style={styles.earningsCard}>
+                <Text style={styles.earningsTitle}>
+                  📊 {t("driver.revenue.details.earnings", "Earnings")}
+                </Text>
+                <View style={styles.emptyChart}>
+                  {weekDayLabels.map((label) => (
+                    <View key={label} style={styles.barCol}>
+                      <View style={styles.emptyBar} />
+                      <Text style={styles.barLabel}>{label}</Text>
                     </View>
+                  ))}
+                </View>
+                <Text style={styles.tripsMeta}>
+                  {t("driver.revenue.details.tripsLabel", "Trips")}: 0
+                </Text>
+              </View>
 
-                    <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "800" }}>
-                      {fmtTime(o.created_at, localeForDates)} · #{o.id.slice(0, 8)}
-                      {o.source_table === "delivery_requests" ? " · Delivery" : ""}{o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+              <View style={styles.statsRow}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>
+                    {t("driver.revenue.details.stats.online", "Online")}
+                  </Text>
+                  <Text style={styles.statValue}>{stats.online}</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>
+                    {t("driver.revenue.details.stats.driving", "Driving")}
+                  </Text>
+                  <Text style={styles.statValue}>{stats.driving}</Text>
+                </View>
+              </View>
 
-          {driverId && (
-            <Text style={{ color: "#334155", marginTop: 18, fontSize: 11 }}>
-              {t("driver.revenue.details.driverId", "Driver")} : {driverId.slice(0, 8)}…
-            </Text>
-          )}
+              <View style={styles.emptyTripsCard}>
+                <Text style={styles.emptyEmoji}>📭</Text>
+                <Text style={styles.emptyTitle}>
+                  {t("driver.revenue.details.completed.emptyShort", "No trips")}
+                </Text>
+                <Text style={styles.emptyBody}>
+                  {t(
+                    "driver.revenue.details.completed.empty",
+                    "No delivered trip in this period.",
+                  )}
+                </Text>
+              </View>
+
+              <BrandFooter />
+            </>
+          ) : null}
+
+          {showPopulated ? (
+            <>
+              <View style={styles.earningsCard}>
+                <Text style={styles.earningsTitle}>
+                  📊 {t("driver.revenue.details.earnings", "Earnings")}
+                </Text>
+                <View style={styles.chart}>
+                  {bars.map((b) => (
+                    <View key={b.label} style={styles.barCol}>
+                      <View style={[styles.bar, { height: b.h }]} />
+                      <Text style={styles.barLabel}>{b.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.tripsMeta}>
+                  {t("driver.revenue.details.tripsLabel", "Trips")}: {totals.trips}
+                </Text>
+              </View>
+
+              <View style={styles.statsRow}>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>
+                    {t("driver.revenue.details.stats.online", "Online")}
+                  </Text>
+                  <Text style={styles.statValue}>{stats.online}</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <Text style={styles.statLabel}>
+                    {t("driver.revenue.details.stats.driving", "Driving")}
+                  </Text>
+                  <Text style={styles.statValue}>{stats.driving}</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert(
+                    t("driver.revenue.details.calc.title", "Calculation"),
+                    t(
+                      "driver.revenue.details.calc.body",
+                      "Online/Driving come from RPC get_driver_stats(from_ts,to_ts). Trips = delivered. Points = number of trips.",
+                    ),
+                  )
+                }
+                style={styles.calcLinkWrap}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.calcLink}>
+                  {t("driver.revenue.details.calc.link", "How we calculate stats")}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.breakdownCard}>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>
+                    💰 {t("driver.revenue.details.breakdown.netPrice", "Net price")}
+                  </Text>
+                  <Text style={styles.breakdownValue}>
+                    {fmtMoney(totals.baseEarnings)}
+                  </Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>
+                    💵 {t("driver.revenue.details.breakdown.tip", "Tip")}
+                  </Text>
+                  <Text style={styles.breakdownValue}>{fmtMoney(totals.tips)}</Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownTotalLabel}>
+                    {t("driver.revenue.details.breakdown.total", "Total earnings")}
+                  </Text>
+                  <Text style={styles.breakdownTotalValue}>
+                    {fmtMoney(totals.totalEarnings)}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={openLastPriceDetails}
+                  style={styles.ghostButton}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.ghostButtonText}>
+                    {t(
+                      "driver.revenue.details.breakdown.viewLastTripPrice",
+                      "View trip price details",
+                    )}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("DriverRevenueHistory", { range })}
+                  style={styles.ghostButton}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.ghostButtonText}>
+                    {t(
+                      "driver.revenue.details.breakdown.viewHistory",
+                      "View earnings history",
+                    )}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.sectionTitle}>
+                {t("driver.revenue.details.completed.title", "Completed trips")}
+              </Text>
+
+              <View style={styles.tripList}>
+                {orders.slice(0, 30).map((o) => {
+                  const gain = getGain(o);
+                  const tip = getTip(o);
+                  const pill = hashColorFromId(o.id);
+                  const restaurant =
+                    o.source_table === "delivery_requests"
+                      ? "Delivery"
+                      : o.restaurant_name ?? "—";
+
+                  return (
+                    <TouchableOpacity
+                      key={`${o.source_table}:${o.id}`}
+                      onPress={() =>
+                        Alert.alert(
+                          t("driver.revenue.details.tripAlert.title", "Trip"),
+                          t(
+                            "driver.revenue.details.shareText",
+                            "ID: {{id}}\nDate: {{date}} {{time}}\nNet price: {{net}}\nTip: {{tip}}\nTotal: {{total}}\nRestaurant: {{restaurant}}",
+                            {
+                              id: o.id,
+                              date: fmtShortDate(o.created_at, localeForDates),
+                              time: fmtTime(o.created_at, localeForDates),
+                              net: fmtMoney(gain),
+                              tip: fmtMoney(tip),
+                              total: fmtMoney(gain + tip),
+                              restaurant,
+                            },
+                          ),
+                        )
+                      }
+                      style={styles.tripCard}
+                      activeOpacity={0.86}
+                    >
+                      <View style={styles.tripTopRow}>
+                        <View style={styles.tripAmountRow}>
+                          <Text style={styles.tripAmount}>
+                            {fmtMoney(gain + tip)}
+                          </Text>
+                          <View style={[styles.colorPill, { backgroundColor: pill }]}>
+                            <Text style={styles.colorPillText}>{pill}</Text>
+                          </View>
+                        </View>
+                        <View style={[styles.datePill, { backgroundColor: pill }]}>
+                          <Text style={styles.datePillText}>
+                            {fmtShortDate(o.created_at, localeForDates)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.restaurantName}>{restaurant}</Text>
+                      <Text style={styles.tripMeta}>
+                        {fmtTime(o.created_at, localeForDates)} · #{o.id.slice(0, 8)}
+                      </Text>
+
+                      <View style={styles.tripBreakdownRow}>
+                        <Text style={styles.tripBreakdownText}>
+                          {t(
+                            "driver.revenue.details.list.netTipLine",
+                            "Net price: {{net}} · Tip: {{tip}}",
+                            {
+                              net: fmtMoney(gain),
+                              tip: fmtMoney(tip),
+                            },
+                          )}
+                        </Text>
+                        <Text style={styles.chevron}>›</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {driverId ? (
+                <Text style={styles.driverIdHint}>
+                  {t("driver.revenue.details.driverId", "Driver")} :{" "}
+                  {driverId.slice(0, 8)}…
+                </Text>
+              ) : null}
+
+              <BrandFooter />
+            </>
+          ) : null}
         </ScrollView>
       </View>
     </SafeAreaView>
   );
 }
+
+const BORDER = "rgba(148,163,184,0.18)";
+const MUTED_SOFT = "rgba(255,255,255,0.7)";
+const BAR_BLUE = "rgba(59,130,246,0.95)";
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  root: { flex: 1, backgroundColor: MMD_BLUE },
+  refreshButton: {
+    minWidth: 82,
+    height: 42,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  refreshDisabled: { opacity: 0.65 },
+  refreshText: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 30,
+    gap: 16,
+  },
+  loadingCard: {
+    borderRadius: 18,
+    backgroundColor: "rgba(0,51,204,0.65)",
+    borderWidth: 1,
+    borderColor: MMD_ACTION_NAVY,
+    padding: 16,
+    gap: 10,
+  },
+  loadingLabel: {
+    color: MMD_MUTED,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  loadingFeedback: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 20,
+  },
+  loadingText: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 20,
+    textAlign: "center",
+  },
+  earningsCard: {
+    borderRadius: 14,
+    backgroundColor: MMD_ACTION_NAVY,
+    padding: 16,
+    gap: 12,
+  },
+  earningsTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  emptyChart: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    height: 80,
+  },
+  chart: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    height: 120,
+  },
+  barCol: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 6,
+    height: "100%",
+  },
+  emptyBar: {
+    width: "100%",
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  bar: {
+    width: 18,
+    borderRadius: 10,
+    backgroundColor: BAR_BLUE,
+  },
+  barLabel: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  tripsMeta: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  statsRow: { flexDirection: "row", gap: 12 },
+  statCard: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: MMD_ACTION_NAVY,
+    padding: 14,
+    gap: 6,
+  },
+  statLabel: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  statValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 18,
+  },
+  calcLinkWrap: { alignItems: "center" },
+  calcLink: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 13,
+    textDecorationLine: "underline",
+  },
+  breakdownCard: {
+    borderRadius: 14,
+    backgroundColor: MMD_ACTION_NAVY,
+    padding: 16,
+    gap: 12,
+  },
+  breakdownRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  breakdownLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  breakdownValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  breakdownTotalLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  breakdownTotalValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  ghostButton: {
+    minHeight: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  ghostButtonText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  sectionTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 18,
+  },
+  emptyTripsCard: {
+    borderRadius: 14,
+    backgroundColor: MMD_ACTION_NAVY,
+    padding: 16,
+    alignItems: "center",
+    gap: 8,
+  },
+  emptyEmoji: {
+    fontSize: 14,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  emptyTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 18,
+    textAlign: "center",
+  },
+  emptyBody: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  tripList: { gap: 12 },
+  tripCard: {
+    borderRadius: 12,
+    backgroundColor: MMD_ACTION_NAVY,
+    padding: 16,
+    gap: 12,
+  },
+  tripTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  tripAmountRow: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
+  tripAmount: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 20,
+  },
+  colorPill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  colorPillText: {
+    color: MMD_BLUE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 10,
+  },
+  datePill: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  datePillText: {
+    color: MMD_BLUE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 11,
+  },
+  restaurantName: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  tripMeta: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  tripBreakdownRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  tripBreakdownText: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+    flex: 1,
+  },
+  chevron: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 24,
+  },
+  driverIdHint: {
+    color: "rgba(255,255,255,0.35)",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 11,
+  },
+  footer: {
+    alignItems: "center",
+    gap: 12,
+    paddingTop: 8,
+  },
+  footerLogo: { width: 44, height: 44, borderRadius: 10 },
+  footerBrand: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+});

@@ -2,6 +2,7 @@
  * First-run / incomplete Driver setup hub.
  * Does NOT edit legacy vehicle_brand/plate on driver_profiles.
  * Vehicle fleet → DriverVehicles; payouts → DriverWallet; docs → DriverProfile.
+ * UI aligned to Figma 265:5920 (Loading) / 265:5921 (Setup).
  */
 import React, { useCallback, useState } from "react";
 import {
@@ -11,12 +12,15 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
 import {
   changeDriverTransportMode,
 } from "../lib/driverServicePreferencesApi";
@@ -25,12 +29,27 @@ import {
   nextDriverSetupStep,
   type DriverSetupProgress,
 } from "../lib/driverSetupProgress";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type TransportMode = "bike" | "car" | "moto";
+
+const SELECTED_MODE_BG = "#1D4ED8";
+const CTA_GREEN = "#37d456";
+const CTA_TEXT = "#052e16";
 
 export function DriverOnboardingScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const contentMax = width >= 768 ? 560 : undefined;
   const [loading, setLoading] = useState(true);
   const [savingMode, setSavingMode] = useState(false);
   const [transportMode, setTransportMode] = useState<TransportMode>("bike");
@@ -124,99 +143,83 @@ export function DriverOnboardingScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: "#020617",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        edges={["bottom", "left", "right"]}
-      >
-        <ActivityIndicator />
+      <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
+        <DriverBrandLoadingState title="Driver Setup" logoAtBottom />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title={t("driver.onboarding.title", "Configuration chauffeur")}
+        title={t("driver.onboarding.title", "Driver Setup")}
         fallbackRoute="DriverTabs"
         variant="dark"
       />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 12 }}>
-        <View
-          style={{
-            backgroundColor: "#0B1220",
-            borderRadius: 16,
-            padding: 14,
-            borderWidth: 1,
-            borderColor: "#111827",
-          }}
-        >
-          <Text style={{ color: "#F8FAFC", fontWeight: "900", fontSize: 18 }}>
-            {t("driver.onboarding.progress", "Progression")} · {progress.progress}%
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          contentMax ? { maxWidth: contentMax, alignSelf: "center", width: "100%" } : null,
+        ]}
+      >
+        <View style={styles.card}>
+          <Text style={styles.progressTitle}>
+            {t("driver.onboarding.progress", "Progress")} · {progress.progress}%
           </Text>
-          <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "700" }}>
+          <Text style={styles.progressNext}>
             {step === "addVehicle"
-              ? t("driver.onboarding.next.vehicle", "Ajoutez et activez un véhicule")
+              ? t("driver.onboarding.next.vehicle", "Add and activate a vehicle")
               : step === "addDocs"
-                ? t("driver.onboarding.next.docs", "Complétez vos documents")
+                ? t("driver.onboarding.next.docs", "Complete your documents")
                 : step === "setupPayment"
-                  ? t("driver.onboarding.next.payout", "Activez Stripe Connect (Wallet)")
-                  : t("driver.onboarding.next.ready", "Prêt — retournez à l'accueil")}
+                  ? t("driver.onboarding.next.payout", "Activate Stripe Connect (Wallet)")
+                  : t("driver.onboarding.next.ready", "Ready — return to Home")}
           </Text>
-          <Text style={{ color: "#64748B", marginTop: 8, fontSize: 12 }}>
+          <Text style={styles.progressMeta}>
             Véhicule: {progress.vehicleOk ? "OK" : "manquant"} · Docs:{" "}
             {progress.docsDone}/{progress.docsTotal} · Payout:{" "}
             {progress.payoutOk ? "Ready" : "Setup required"}
           </Text>
         </View>
 
-        <View
-          style={{
-            backgroundColor: "#0B1220",
-            borderRadius: 16,
-            padding: 14,
-            gap: 10,
-          }}
-        >
-          <Text style={{ color: "#F8FAFC", fontWeight: "800" }}>
-            {t("driver.onboarding.transport", "Type de véhicule")}
+        <View style={[styles.card, styles.transportCard]}>
+          <Text style={styles.sectionTitle}>
+            {t("driver.onboarding.transport", "Vehicle Type")}
           </Text>
-          {(["car", "moto", "bike"] as TransportMode[]).map((mode) => (
-            <TouchableOpacity
-              key={mode}
-              disabled={savingMode}
-              onPress={() => void saveTransportMode(mode)}
-              style={{
-                padding: 12,
-                borderRadius: 12,
-                backgroundColor: transportMode === mode ? "#1D4ED8" : "#111827",
-              }}
-            >
-              <Text style={{ color: "#fff", fontWeight: "800" }}>
-                {mode === "car" ? "Car" : mode === "moto" ? "Motorcycle" : "Bicycle"}
-                {transportMode === mode ? " ✓" : ""}
-              </Text>
-            </TouchableOpacity>
-          ))}
-          {savingMode ? <ActivityIndicator color="#fff" /> : null}
+          {(["car", "moto", "bike"] as TransportMode[]).map((mode) => {
+            const selected = transportMode === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                disabled={savingMode}
+                onPress={() => void saveTransportMode(mode)}
+                style={[
+                  styles.modeRow,
+                  selected ? styles.modeRowSelected : null,
+                ]}
+              >
+                <Text style={styles.modeLabel}>
+                  {mode === "car" ? "Car" : mode === "moto" ? "Motorcycle" : "Bicycle"}
+                  {selected ? " ✓" : ""}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          {savingMode ? <ActivityIndicator color={MMD_WHITE} /> : null}
         </View>
 
         <HubRow
-          label={t("driver.onboarding.go.vehicles", "Mon véhicule")}
+          label={t("driver.onboarding.go.vehicles", "My Vehicle")}
           hint={
             progress.vehicleOk
-              ? t("driver.onboarding.go.vehiclesOk", "Flotte configurée")
-              : t("driver.onboarding.go.vehiclesNeed", "Ajouter Car / Motorcycle")
+              ? t("driver.onboarding.go.vehiclesOk", "Fleet configured")
+              : t("driver.onboarding.go.vehiclesNeed", "Add Car / Motorcycle")
           }
           onPress={() => navigation.navigate("DriverVehicles")}
         />
         <HubRow
-          label={t("driver.onboarding.go.profile", "Profil & documents")}
-          hint={t("driver.onboarding.go.profileHint", "Identité, permis, assurance")}
+          label={t("driver.onboarding.go.profile", "Profile & Documents")}
+          hint={t("driver.onboarding.go.profileHint", "Identity, license, insurance")}
           onPress={() => navigation.navigate("DriverProfile")}
         />
         <HubRow
@@ -229,23 +232,18 @@ export function DriverOnboardingScreen() {
           onPress={() => navigation.navigate("DriverWallet")}
         />
         <HubRow
-          label={t("driver.onboarding.go.services", "Mes services")}
-          hint={t("driver.onboarding.go.servicesHint", "Food, colis, taxi")}
+          label={t("driver.onboarding.go.services", "My Services")}
+          hint={t("driver.onboarding.go.servicesHint", "Food, packages, taxi")}
           onPress={() => navigation.navigate("DriverServices")}
         />
 
         <TouchableOpacity
           onPress={() => navigation.navigate("DriverTabs")}
-          style={{
-            marginTop: 8,
-            backgroundColor: "#22C55E",
-            borderRadius: 14,
-            paddingVertical: 14,
-            alignItems: "center",
-          }}
+          style={styles.cta}
+          activeOpacity={0.85}
         >
-          <Text style={{ color: "#052e16", fontWeight: "900" }}>
-            {t("driver.onboarding.continue", "Continuer vers l'accueil")}
+          <Text style={styles.ctaText}>
+            {t("driver.onboarding.continue", "Continue to Home")}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -255,22 +253,108 @@ export function DriverOnboardingScreen() {
 
 function HubRow(props: { label: string; hint: string; onPress: () => void }) {
   return (
-    <TouchableOpacity
-      onPress={props.onPress}
-      style={{
-        backgroundColor: "#0B1220",
-        borderRadius: 14,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: "#1E293B",
-      }}
-    >
-      <Text style={{ color: "#F8FAFC", fontWeight: "800" }}>{props.label}</Text>
-      <Text style={{ color: "#94A3B8", marginTop: 4, fontWeight: "600" }}>
-        {props.hint}
-      </Text>
+    <TouchableOpacity onPress={props.onPress} style={styles.hubRow} activeOpacity={0.85}>
+      <Text style={styles.hubLabel}>{props.label}</Text>
+      <Text style={styles.hubHint}>{props.hint}</Text>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: MMD_BLUE,
+  },
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 28,
+    gap: 12,
+  },
+  card: {
+    backgroundColor: MMD_BLUE,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    gap: 6,
+  },
+  transportCard: {
+    gap: 10,
+  },
+  progressTitle: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 18,
+  },
+  progressNext: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  progressMeta: {
+    color: MMD_LINK_BLUE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
+  },
+  sectionTitle: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  modeRow: {
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+  },
+  modeRowSelected: {
+    backgroundColor: SELECTED_MODE_BG,
+  },
+  modeLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  hubRow: {
+    backgroundColor: MMD_BLUE,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    gap: 4,
+  },
+  hubLabel: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  hubHint: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  cta: {
+    backgroundColor: CTA_GREEN,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+  },
+  ctaText: {
+    color: CTA_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+});
 
 export default DriverOnboardingScreen;

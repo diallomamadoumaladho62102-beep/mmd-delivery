@@ -95,7 +95,7 @@ export default function AdminDriverOffersPage() {
 
   return (
     <AdminGate requiredPermission="driver_offers.read">
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-8">
           <header className="flex items-center justify-between gap-4">
             <div>

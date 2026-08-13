@@ -10,13 +10,24 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { deleteMyAccount } from "../lib/deleteAccountApi";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_GOLD_DARK,
+  MMD_MUTED,
+  MMD_NAVY,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type Role = "client" | "driver" | "restaurant";
 
@@ -111,9 +122,11 @@ export function DeleteAccountScreen(props: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("account.delete.title", "Delete account")}
         onBack={onCancel}
+        variant="dark"
       />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -161,12 +174,20 @@ export function DeleteAccountScreen(props: Props) {
                 )}
               </Text>
               <TouchableOpacity
-                style={styles.primaryBtn}
+                style={styles.primaryOuter}
                 onPress={() => setStep("confirm")}
+                activeOpacity={0.85}
               >
-                <Text style={styles.primaryBtnText}>
-                  {t("account.delete.continue", "Continue")}
-                </Text>
+                <LinearGradient
+                  colors={[MMD_GOLD_DARK, MMD_GOLD_BRIGHT]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.primaryBtn}
+                >
+                  <Text style={styles.primaryBtnText}>
+                    {t("account.delete.continue", "Continue")}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryBtn} onPress={onCancel}>
                 <Text style={styles.secondaryBtnText}>
@@ -185,36 +206,40 @@ export function DeleteAccountScreen(props: Props) {
               <Text style={styles.label}>
                 {t("common.password", "Password")}
               </Text>
-              <TextInput
-                style={styles.input}
-                secureTextEntry
-                autoCapitalize="none"
-                value={password}
-                onChangeText={setPassword}
-                editable={!busy}
-                placeholder={t(
-                  "account.delete.passwordPlaceholder",
-                  "Current password"
-                )}
-              />
+              <View style={styles.inputShell}>
+                <TextInput
+                  style={styles.input}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!busy}
+                  placeholder={t(
+                    "account.delete.passwordPlaceholder",
+                    "Current password"
+                  )}
+                  placeholderTextColor="#6B7280"
+                />
+              </View>
               <Text style={styles.label}>
                 {t("account.delete.typeDelete", 'Type "DELETE"')}
               </Text>
-              <TextInput
-                style={styles.input}
-                autoCapitalize="characters"
-                value={phrase}
-                onChangeText={setPhrase}
-                editable={!busy}
-                placeholder={CONFIRM_WORD}
-              />
+              <View style={styles.inputShell}>
+                <TextInput
+                  style={styles.input}
+                  autoCapitalize="characters"
+                  value={phrase}
+                  onChangeText={setPhrase}
+                  editable={!busy}
+                  placeholder={CONFIRM_WORD}
+                  placeholderTextColor="#6B7280"
+                />
+              </View>
               <TouchableOpacity
-                style={[
-                  styles.dangerBtn,
-                  !canSubmit && styles.btnDisabled,
-                ]}
+                style={[styles.dangerBtn, !canSubmit && styles.btnDisabled]}
                 disabled={!canSubmit}
                 onPress={onFinalConfirm}
+                activeOpacity={0.85}
               >
                 {busy ? (
                   <ActivityIndicator color="#fff" />
@@ -242,58 +267,100 @@ export function DeleteAccountScreen(props: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#F8FAFC" },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
   content: { padding: 20, paddingBottom: 40 },
-  lead: { fontSize: 15, color: "#334155", lineHeight: 22, marginBottom: 16 },
+  lead: {
+    fontSize: 15,
+    color: MMD_MUTED,
+    fontFamily: MMD_FONT.regular,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 13,
+    fontFamily: MMD_FONT.bold,
     fontWeight: "700",
-    color: "#0F172A",
+    color: MMD_GOLD_BRIGHT,
     marginBottom: 8,
     textTransform: "uppercase",
     letterSpacing: 0.6,
   },
-  bullet: { fontSize: 14, color: "#475569", lineHeight: 22, marginBottom: 4 },
+  bullet: {
+    fontSize: 14,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    lineHeight: 22,
+    marginBottom: 4,
+  },
   label: {
     fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
     fontWeight: "600",
-    color: "#64748B",
+    color: MMD_GOLD_BRIGHT,
     marginTop: 12,
     marginBottom: 6,
   },
+  inputShell: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 2,
+    borderColor: MMD_WHITE,
+    borderRadius: 10,
+    padding: 4,
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 12,
+    borderColor: "#374151",
+    borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-    fontSize: 15,
-    color: "#0F172A",
+    paddingVertical: 10,
+    backgroundColor: "transparent",
+    fontSize: 14,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    minHeight: 42,
   },
+  primaryOuter: { marginTop: 24 },
   primaryBtn: {
-    marginTop: 24,
-    backgroundColor: "#0F172A",
-    borderRadius: 12,
+    borderRadius: 10,
     paddingVertical: 14,
+    minHeight: 44,
     alignItems: "center",
+    justifyContent: "center",
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  primaryBtnText: {
+    color: MMD_NAVY,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
   secondaryBtn: {
     marginTop: 12,
     borderRadius: 12,
     paddingVertical: 14,
+    minHeight: 44,
     alignItems: "center",
   },
-  secondaryBtnText: { color: "#475569", fontWeight: "600", fontSize: 15 },
+  secondaryBtnText: {
+    color: MMD_GOLD_BRIGHT,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 14,
+  },
   dangerBtn: {
     marginTop: 24,
-    backgroundColor: "#DC2626",
-    borderRadius: 12,
+    backgroundColor: "#B91C1C",
+    borderRadius: 10,
     paddingVertical: 14,
+    minHeight: 44,
     alignItems: "center",
+    justifyContent: "center",
   },
-  dangerBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  dangerBtnText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
   btnDisabled: { opacity: 0.45 },
 });
 

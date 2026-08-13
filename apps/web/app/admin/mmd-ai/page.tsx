@@ -100,7 +100,7 @@ export default function AdminMmdAiPage() {
 
   return (
     <AdminGate requiredPermission="mmd_ai.read">
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-w-0">
         <div className="mx-auto max-w-6xl space-y-6 p-6">
           <header className="space-y-3">
             <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">

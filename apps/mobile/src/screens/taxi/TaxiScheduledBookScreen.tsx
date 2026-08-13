@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   Text,
@@ -7,13 +7,15 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  StatusBar,
+  Image,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
-import { textAlignStart } from "../../i18n/rtl";
 import * as WebBrowser from "expo-web-browser";
 import {
   confirmTaxiPaid,
@@ -25,8 +27,18 @@ import MarketScopeCard from "../../components/market/MarketScopeCard";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GREEN,
+  MMD_STROKE,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiScheduledBook">;
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
 export default function TaxiScheduledBookScreen() {
   const navigation = useNavigation<Nav>();
@@ -95,13 +107,22 @@ export default function TaxiScheduledBookScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("taxi.scheduledBook.title", "Schedule a ride")}
         fallbackRoute="ClientHome"
         variant="dark"
       />
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Image
+          source={MMD_LOGO}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="MMD Delivery"
+        />
+        <Text style={styles.brand}>MMD Delivery</Text>
+
         <MarketScopeCard
           market={market}
           areaLabel={t("taxi.home.yourArea", "Your area")}
@@ -112,15 +133,15 @@ export default function TaxiScheduledBookScreen() {
           value={pickup}
           onChangeText={setPickup}
           placeholder={t("taxi.home.pickupPlaceholder", "Pickup address")}
-          placeholderTextColor="#64748B"
-          style={inputStyle}
+          placeholderTextColor={MMD_TEXT_MUTED_BLUE}
+          style={styles.input}
         />
         <TextInput
           value={dropoff}
           onChangeText={setDropoff}
           placeholder={t("taxi.home.dropoffPlaceholder", "Dropoff address")}
-          placeholderTextColor="#64748B"
-          style={inputStyle}
+          placeholderTextColor={MMD_TEXT_MUTED_BLUE}
+          style={styles.input}
         />
         <TextInput
           value={when}
@@ -129,23 +150,19 @@ export default function TaxiScheduledBookScreen() {
             "taxi.scheduledBook.pickupTimePlaceholder",
             "Pickup time (ISO, e.g. 2026-06-15T14:30:00Z)"
           )}
-          placeholderTextColor="#64748B"
-          style={inputStyle}
+          placeholderTextColor={MMD_TEXT_MUTED_BLUE}
+          style={styles.input}
         />
         <TouchableOpacity
           onPress={handleBook}
           disabled={loading}
-          style={{
-            backgroundColor: "#22C55E",
-            padding: 16,
-            borderRadius: 14,
-            alignItems: "center",
-          }}
+          style={styles.cta}
+          activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator color="#052e16" />
+            <ActivityIndicator color={MMD_WHITE} />
           ) : (
-            <Text style={{ color: "#052e16", fontWeight: "800" }}>
+            <Text style={styles.ctaText}>
               {t("taxi.scheduledBook.reserve", "Reserve & prepay")}
             </Text>
           )}
@@ -155,11 +172,45 @@ export default function TaxiScheduledBookScreen() {
   );
 }
 
-const inputStyle = {
-  backgroundColor: "rgba(15,23,42,0.95)",
-  borderWidth: 1,
-  borderColor: "#334155",
-  borderRadius: 14,
-  padding: 14,
-  color: "#F8FAFC",
-} as const;
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  scroll: {
+    padding: 20,
+    gap: 16,
+    alignItems: "center",
+  },
+  logo: { width: 56, height: 56, borderRadius: 28 },
+  brand: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  input: {
+    width: "100%",
+    height: 42,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.35)",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 14,
+  },
+  cta: {
+    width: "100%",
+    backgroundColor: MMD_GREEN,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  ctaText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+});

@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
   Platform,
   StyleSheet,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -22,6 +23,17 @@ import { Ionicons } from "@expo/vector-icons";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { textAlignStart } from "../../i18n/rtl";
 import * as WebBrowser from "expo-web-browser";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC,
+  MMD_GOLD_CLASSIC_BORDER,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 import {
   cancelTaxiRide,
   confirmTaxiPaid,
@@ -516,10 +528,16 @@ export default function TaxiRideTrackingScreen() {
           translucent={Platform.OS === "android"}
           backgroundColor="transparent"
         />
-        <ActivityIndicator color="#F59E0B" size="large" />
+        <ActivityIndicator color={MMD_TAXI_GREEN} size="large" />
         <Text style={styles.loadingHint}>
           {t("taxi.tracking.loading", "Loading your ride…")}
         </Text>
+        <Image
+          source={MMD_LOGO}
+          style={{ width: 48, height: 48, borderRadius: 14, marginTop: 24 }}
+          resizeMode="contain"
+          accessibilityLabel="MMD"
+        />
       </View>
     );
   }
@@ -532,41 +550,61 @@ export default function TaxiRideTrackingScreen() {
           translucent={Platform.OS === "android"}
           backgroundColor="transparent"
         />
-        <Ionicons name="alert-circle-outline" size={40} color="#FCA5A5" />
-        <Text style={styles.errorTitle}>
-          {t("taxi.ride.unavailableTitle", "Ride unavailable")}
-        </Text>
-        <Text style={styles.errorBody}>
-          {loadError ||
-            t(
-              "taxi.ride.unavailableBody",
-              "We could not load this ride. Check your connection and try again.",
-            )}
-        </Text>
-        <TouchableOpacity
-          onPress={() => {
-            setLoading(true);
-            void load();
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 342,
+            borderRadius: 28,
+            padding: 24,
+            backgroundColor: MMD_GLASS,
+            borderWidth: 1,
+            borderColor: MMD_GOLD_CLASSIC,
+            alignItems: "center",
+            gap: 16,
           }}
-          style={styles.retryBtn}
-          accessibilityRole="button"
         >
-          <Text style={styles.retryLabel}>
-            {t("common.retry", "Retry")}
+          <Ionicons name="warning-outline" size={28} color={MMD_GOLD_CLASSIC} />
+          <Text style={styles.errorTitle}>
+            {t("taxi.ride.unavailableTitle", "Ride unavailable")}
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            if (navigation.canGoBack()) navigation.goBack();
-            else navigation.navigate("ClientHome");
-          }}
-          style={styles.backLink}
-          accessibilityRole="button"
-        >
-          <Text style={styles.backLinkLabel}>
-            {t("common.back", "Go back")}
+          <Text style={styles.errorBody}>
+            {loadError ||
+              t(
+                "taxi.ride.unavailableBody",
+                "We could not load this ride. Check your connection and try again.",
+              )}
           </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setLoading(true);
+              void load();
+            }}
+            style={styles.retryBtn}
+            accessibilityRole="button"
+          >
+            <Text style={styles.retryLabel}>
+              {t("common.retry", "Retry")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (navigation.canGoBack()) navigation.goBack();
+              else navigation.navigate("ClientHome");
+            }}
+            style={styles.backLink}
+            accessibilityRole="button"
+          >
+            <Text style={styles.backLinkLabel}>
+              {t("common.back", "Go back")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Image
+          source={MMD_LOGO}
+          style={{ width: 48, height: 48, borderRadius: 14, position: "absolute", bottom: 60 }}
+          resizeMode="contain"
+          accessibilityLabel="MMD"
+        />
       </View>
     );
   }
@@ -852,85 +890,97 @@ export default function TaxiRideTrackingScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#0B1220",
+    backgroundColor: MMD_BLUE,
   },
   sheet: {
     flex: 1,
+    backgroundColor: MMD_BLUE,
   },
   centered: {
     flex: 1,
-    backgroundColor: "#0B1220",
+    backgroundColor: MMD_BLUE,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
   },
   loadingHint: {
-    color: "#94A3B8",
+    color: "rgba(255,255,255,0.7)",
     fontSize: 13,
     fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
     marginTop: 4,
   },
   errorTitle: {
-    color: "#F8FAFC",
-    fontSize: 18,
+    color: MMD_WHITE,
+    fontSize: 28,
     fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
     textAlign: "center",
   },
   errorBody: {
-    color: "#94A3B8",
-    fontSize: 14,
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 16,
     fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
     lineHeight: 20,
     textAlign: "center",
   },
   retryBtn: {
     marginTop: 8,
-    backgroundColor: "#F59E0B",
-    paddingVertical: 12,
+    backgroundColor: MMD_TAXI_GREEN,
+    paddingVertical: 14,
     paddingHorizontal: 22,
-    borderRadius: 14,
+    borderRadius: 16,
+    width: "100%",
+    maxWidth: 294,
+    alignItems: "center",
   },
   retryLabel: {
-    color: "#1F2937",
+    color: MMD_WHITE,
     fontWeight: "800",
-    fontSize: 14,
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 18,
   },
   backLink: {
     paddingVertical: 8,
   },
   backLinkLabel: {
-    color: "#94A3B8",
+    color: "rgba(255,255,255,0.6)",
     fontWeight: "700",
-    fontSize: 13,
+    fontFamily: MMD_FONT.bold,
+    fontSize: 16,
+    textDecorationLine: "underline",
   },
   tipBtn: {
     marginTop: 14,
-    backgroundColor: "#22C55E",
+    backgroundColor: MMD_TAXI_GREEN,
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: "center",
   },
   tipLabel: {
-    color: "#052E16",
+    color: MMD_WHITE,
     fontWeight: "900",
+    fontFamily: MMD_FONT.extrabold,
     fontSize: 15,
   },
   fareChip: {
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: "rgba(245,158,11,0.12)",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: MMD_GLASS,
     borderWidth: 1,
-    borderColor: "rgba(245,158,11,0.28)",
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
   },
   fareLabel: {
-    color: "#FDE68A",
-    fontSize: 13,
+    color: MMD_WHITE,
+    fontSize: 28,
     fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
   },
   inlineError: {
     flexDirection: "row",
@@ -998,13 +1048,17 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   cancelBtn: {
-    backgroundColor: "#7F1D1D",
+    backgroundColor: "#DC2626",
+    borderWidth: 1,
+    borderColor: "#CC0D0D",
     paddingVertical: 14,
     borderRadius: 16,
     alignItems: "center",
   },
   cancelLabel: {
-    color: "#fff",
+    color: MMD_WHITE,
     fontWeight: "800",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 16,
   },
 });

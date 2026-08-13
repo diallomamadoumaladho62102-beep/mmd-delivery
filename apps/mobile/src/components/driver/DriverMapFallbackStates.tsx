@@ -1,5 +1,23 @@
 import React from "react";
-import { View, Text, ActivityIndicator, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  useWindowDimensions,
+} from "react-native";
+import { DriverBrandLoadingState } from "./DriverBrandLoadingState";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_MUTED,
+  MMD_WHITE,
+  mmdLogoSizeCompact,
+} from "../../theme/mmdUi";
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
 type Props = {
   variant:
@@ -14,117 +32,179 @@ type Props = {
   onRetry?: () => void;
 };
 
+/**
+ * Figma Driver Map fallback surfaces (286:5883 Loading, 286:5887 Error).
+ */
 export function DriverMapFallbackStates({
   variant,
   message,
   onGoBack,
   onRetry,
 }: Props) {
+  const { width, height } = useWindowDimensions();
+  const logoSize = Math.min(40, mmdLogoSizeCompact(width, height));
+
+  if (variant === "loading") {
+    return (
+      <DriverBrandLoadingState
+        title="Preparing navigation…"
+        logoAtBottom={false}
+      />
+    );
+  }
+
   const content = getContent(variant, message);
 
   return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 24,
-        backgroundColor: "#020617",
-      }}
-    >
-      {variant === "loading" && <ActivityIndicator size="large" color="#60A5FA" />}
-      <Text
-        style={{
-          color: "#FFFFFF",
-          fontSize: 18,
-          fontWeight: "900",
-          marginTop: variant === "loading" ? 16 : 0,
-          textAlign: "center",
-        }}
-      >
-        {content.title}
-      </Text>
-      <Text
-        style={{
-          color: "#94A3B8",
-          fontSize: 13,
-          marginTop: 10,
-          textAlign: "center",
-          lineHeight: 20,
-        }}
-      >
-        {content.body}
-      </Text>
+    <View style={styles.root}>
+      <View style={styles.content}>
+        <View style={styles.feedback}>
+          <Text style={styles.title}>{content.title}</Text>
+          <Text style={styles.body}>{content.body}</Text>
+        </View>
 
-      <View style={{ flexDirection: "row", marginTop: 18 }}>
-        {onGoBack && (
-          <TouchableOpacity
-            onPress={onGoBack}
-            style={buttonStyle("rgba(15,23,42,0.95)")}
-          >
-            <Text style={{ color: "#E2E8F0", fontWeight: "800" }}>Retour</Text>
-          </TouchableOpacity>
-        )}
-        {onRetry && (
-          <TouchableOpacity
-            onPress={onRetry}
-            style={buttonStyle("#2563EB")}
-          >
-            <Text style={{ color: "#FFFFFF", fontWeight: "800" }}>Réessayer</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.actions}>
+          {onGoBack ? (
+            <TouchableOpacity
+              onPress={onGoBack}
+              style={styles.btn}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+            >
+              <Text style={styles.btnBackLabel}>Back</Text>
+            </TouchableOpacity>
+          ) : null}
+          {onRetry ? (
+            <TouchableOpacity
+              onPress={onRetry}
+              style={styles.btn}
+              accessibilityRole="button"
+              accessibilityLabel="Retry"
+            >
+              <Text style={styles.btnRetryLabel}>Retry</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <View style={styles.brandBlock}>
+          <Image
+            source={MMD_LOGO}
+            style={{
+              width: logoSize,
+              height: logoSize,
+              borderRadius: logoSize / 2,
+            }}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.brandLabel}>MMD Delivery</Text>
+        </View>
       </View>
     </View>
   );
 }
 
-function buttonStyle(backgroundColor: string) {
-  return {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 999,
-    backgroundColor,
-    marginHorizontal: 6,
-  };
-}
-
 function getContent(variant: Props["variant"], message?: string) {
   switch (variant) {
-    case "loading":
-      return {
-        title: "Préparation de la navigation",
-        body: "Localisation sécurisée en cours…",
-      };
     case "missing_token":
       return {
-        title: "Navigation indisponible",
-        body:
-          "Le token Mapbox est absent. Contacte le support MMD avant d'utiliser la carte chauffeur.",
+        title: "Navigation unavailable",
+        body: "Mapbox token is missing. Contact MMD support before using driver navigation.",
       };
     case "missing_order":
       return {
-        title: "Course introuvable",
-        body: message || "Impossible de charger cette course.",
+        title: "Order not found",
+        body: message || "Unable to load this trip.",
       };
     case "missing_coords":
       return {
-        title: "Coordonnées GPS manquantes",
-        body:
-          "Cette course n'a pas encore de coordonnées valides. Retourne aux détails de commande.",
+        title: "GPS coordinates missing",
+        body: "This trip has no valid coordinates yet. Return to order details.",
       };
     case "permission_denied":
       return {
-        title: "Permission GPS refusée",
-        body: "Active la localisation pour utiliser la navigation MMD.",
+        title: "Location permission denied",
+        body: "Enable location access to use MMD navigation.",
       };
     case "route_error":
       return {
-        title: "Route indisponible",
+        title: "Route unavailable",
         body:
           message ||
-          "Impossible de calculer l'itinéraire pour le moment. Tu peux réessayer ou ouvrir une app externe depuis les détails.",
+          "Unable to calculate the route at this time. You can retry or open an external app from the details.",
       };
     default:
-      return { title: "Erreur", body: message || "Une erreur est survenue." };
+      return { title: "Error", body: message || "Something went wrong." };
   }
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: MMD_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  content: {
+    alignItems: "center",
+    gap: 18,
+    maxWidth: 320,
+  },
+  feedback: {
+    width: 280,
+    padding: 20,
+    alignItems: "center",
+    gap: 8,
+  },
+  title: {
+    color: "#FCA5A5",
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  body: {
+    color: MMD_MUTED,
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  btn: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: MMD_GOLD_CLASSIC,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnBackLabel: {
+    color: "#6D28D9",
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  btnRetryLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  brandBlock: {
+    alignItems: "center",
+    gap: 8,
+  },
+  brandLabel: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+});

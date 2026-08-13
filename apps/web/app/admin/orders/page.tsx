@@ -22,7 +22,7 @@ function OrdersFallback() {
 export default function AdminOrdersPage() {
   return (
     <AdminGate requiredPermission="orders.read">
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-w-0">
         <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
           <Suspense fallback={<OrdersFallback />}>
             <AdminFoodOrdersManager />

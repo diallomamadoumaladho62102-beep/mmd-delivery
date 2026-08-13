@@ -200,7 +200,7 @@ export async function loadApprovedSellers(supabaseAdmin: SupabaseClient) {
   const { data, error } = await supabaseAdmin
     .from("sellers")
     .select(
-      "id,business_name,country_code,city,address,region_code,status,is_accepting_orders,created_at"
+      "id,business_name,country_code,city,address,region_code,status,is_accepting_orders,logo_url,cover_image_url,created_at"
     )
     .eq("status", "approved")
     .order("business_name", { ascending: true })

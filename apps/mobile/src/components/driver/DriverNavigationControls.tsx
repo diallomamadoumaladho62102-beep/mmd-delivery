@@ -175,25 +175,7 @@ export function DriverNavigationControls({
     >
       <MapFloatingButton
         scheme="day"
-        icon="flash"
-        caption={navLocale === "fr" ? "Trafic" : navLocale === "es" ? "Tráfico" : "Traffic"}
-        state={trafficEnabled ? "active" : "default"}
-        accessibilityLabel={
-          trafficEnabled
-            ? navLocale === "fr"
-              ? "Masquer le trafic"
-              : "Hide traffic"
-            : navLocale === "fr"
-              ? "Afficher le trafic"
-              : "Show traffic"
-        }
-        onPress={onToggleTraffic}
-      />
-
-      <MapFloatingButton
-        scheme="day"
         icon={voiceEnabled ? "volume-high" : "volume-mute"}
-        caption={navLocale === "fr" ? "Voix" : navLocale === "es" ? "Voz" : "Voice"}
         state={voiceEnabled ? "active" : "default"}
         accessibilityLabel={
           voiceEnabled
@@ -210,9 +192,6 @@ export function DriverNavigationControls({
       <MapFloatingButton
         scheme="day"
         icon="locate"
-        caption={
-          navLocale === "fr" ? "Recentrer" : navLocale === "es" ? "Centrar" : "Center"
-        }
         accessibilityLabel={
           navLocale === "fr" ? "Recentrer la carte" : "Center on vehicle"
         }
@@ -221,8 +200,23 @@ export function DriverNavigationControls({
 
       <MapFloatingButton
         scheme="day"
-        icon="ellipsis-horizontal"
-        caption={labels.title}
+        icon="flash"
+        state={trafficEnabled ? "active" : "default"}
+        accessibilityLabel={
+          trafficEnabled
+            ? navLocale === "fr"
+              ? "Masquer le trafic"
+              : "Hide traffic"
+            : navLocale === "fr"
+              ? "Afficher le trafic"
+              : "Show traffic"
+        }
+        onPress={onToggleTraffic}
+      />
+
+      <MapFloatingButton
+        scheme="day"
+        icon="add"
         accessibilityLabel={labels.title}
         onPress={openMore}
       />

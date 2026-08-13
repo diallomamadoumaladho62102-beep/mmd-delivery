@@ -1,17 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
 import {
   fetchRestaurantAutomationSettings,
   requestRestaurantTestPrint,
@@ -20,20 +20,40 @@ import {
 } from "../../lib/restaurantOrderAutomationApi";
 import { useRestaurantAutoPrint } from "../../hooks/useRestaurantAutoPrint";
 import { toUserFacingError } from "../../lib/userFacingError";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const SOUND_ALERT_KEY = "@mmd/restaurant_sound_alert";
+const PREP_OPTIONS = [10, 15, 20] as const;
+const GLASS_BORDER = "rgba(255,255,255,0.12)";
+
+type Draft = {
+  auto_accept_orders_enabled: boolean;
+  auto_print_enabled: boolean;
+  default_prep_minutes: number;
+  sound_alert: boolean;
+};
 
 function ToggleRow(props: {
   label: string;
-  description?: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
 }) {
   return (
-    <View style={styles.row}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.rowLabel}>{props.label}</Text>
-        {props.description ? <Text style={styles.rowHint}>{props.description}</Text> : null}
-      </View>
-      <Switch value={props.value} onValueChange={props.onValueChange} />
+    <View style={styles.toggleRow}>
+      <Text style={styles.toggleLabel}>{props.label}</Text>
+      <Switch
+        value={props.value}
+        onValueChange={props.onValueChange}
+        trackColor={{ false: "rgba(255,255,255,0.25)", true: MMD_TAXI_GREEN }}
+        thumbColor={MMD_WHITE}
+        ios_backgroundColor="rgba(255,255,255,0.25)"
+      />
     </View>
   );
 }
@@ -42,12 +62,28 @@ export function RestaurantOrderAutomationScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<RestaurantAutomationSettings | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await fetchRestaurantAutomationSettings();
+      const [result, soundRaw] = await Promise.all([
+        fetchRestaurantAutomationSettings(),
+        AsyncStorage.getItem(SOUND_ALERT_KEY),
+      ]);
       setSettings(result.settings);
+      const prep = Number(result.settings.default_prep_minutes) || 15;
+      const nearest =
+        PREP_OPTIONS.find((n) => n === prep) ??
+        PREP_OPTIONS.reduce((best, n) =>
+          Math.abs(n - prep) < Math.abs(best - prep) ? n : best,
+        );
+      setDraft({
+        auto_accept_orders_enabled: Boolean(result.settings.auto_accept_orders_enabled),
+        auto_print_enabled: Boolean(result.settings.auto_print_enabled),
+        default_prep_minutes: nearest,
+        sound_alert: soundRaw === "1",
+      });
     } catch (error) {
       Alert.alert("Erreur", toUserFacingError(error, "Chargement impossible"));
     } finally {
@@ -61,24 +97,25 @@ export function RestaurantOrderAutomationScreen() {
 
   useRestaurantAutoPrint(Boolean(settings?.auto_print_enabled));
 
-  const patch = useCallback(
-    async (next: Partial<RestaurantAutomationSettings>) => {
-      if (!settings) return;
-      const merged = { ...settings, ...next };
-      setSettings(merged);
-      setSaving(true);
-      try {
-        const saved = await updateRestaurantAutomationSettings(next);
-        setSettings(saved);
-      } catch (error) {
-        Alert.alert("Erreur", toUserFacingError(error, "Enregistrement impossible"));
-        await load();
-      } finally {
-        setSaving(false);
-      }
-    },
-    [load, settings],
-  );
+  const handleSave = useCallback(async () => {
+    if (!draft || !settings) return;
+    setSaving(true);
+    try {
+      const saved = await updateRestaurantAutomationSettings({
+        auto_accept_orders_enabled: draft.auto_accept_orders_enabled,
+        auto_print_enabled: draft.auto_print_enabled,
+        default_prep_minutes: draft.default_prep_minutes,
+      });
+      setSettings(saved);
+      await AsyncStorage.setItem(SOUND_ALERT_KEY, draft.sound_alert ? "1" : "0");
+      Alert.alert("Saved", "Automation settings updated.");
+    } catch (error) {
+      Alert.alert("Erreur", toUserFacingError(error, "Enregistrement impossible"));
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  }, [draft, load, settings]);
 
   const handleTestPrint = useCallback(async () => {
     try {
@@ -89,17 +126,20 @@ export function RestaurantOrderAutomationScreen() {
     }
   }, []);
 
-  if (loading || !settings) {
+  if (loading || !settings || !draft) {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
         <ScreenHeader
-          title="Commandes & impression"
-          variant="light"
+          title="Order Automation"
+          subtitle="Settings"
+          variant="mmd"
           fallbackRoute="RestaurantCommandCenter"
         />
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#EA580C" />
-        </View>
+        <RestaurantBrandLoadingState
+          title="Loading Settings..."
+          subtitle="Fetching your automation preferences"
+          glass
+        />
       </SafeAreaView>
     );
   }
@@ -107,175 +147,205 @@ export function RestaurantOrderAutomationScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title="Commandes & impression"
-        subtitle="Acceptation automatique, temps de préparation et tickets thermiques 58/80 mm."
-        variant="light"
+        title="Order Automation"
+        subtitle="Settings"
+        variant="mmd"
         fallbackRoute="RestaurantCommandCenter"
       />
-      <ScrollView contentContainerStyle={styles.container}>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Acceptation automatique</Text>
-          <ToggleRow
-            label="Acceptation automatique des commandes"
-            description="Accepte les commandes payées sans action manuelle."
-            value={settings.auto_accept_orders_enabled}
-            onValueChange={(value) => patch({ auto_accept_orders_enabled: value })}
-          />
-          <ToggleRow
-            label="Uniquement pendant les horaires d'ouverture"
-            value={settings.auto_accept_only_during_hours}
-            onValueChange={(value) => patch({ auto_accept_only_during_hours: value })}
-          />
-          <ToggleRow
-            label="Pause auto si fermé"
-            value={settings.auto_pause_when_closed}
-            onValueChange={(value) => patch({ auto_pause_when_closed: value })}
-          />
-          <ToggleRow
-            label="Pause auto si trop occupé"
-            value={settings.auto_pause_when_busy}
-            onValueChange={(value) => patch({ auto_pause_when_busy: value })}
-          />
-
-          <Text style={styles.fieldLabel}>Temps de préparation par défaut (minutes)</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="number-pad"
-            value={String(settings.default_prep_minutes)}
-            onChangeText={(text) => patch({ default_prep_minutes: Number(text) || 20 })}
-          />
-
-          <Text style={styles.fieldLabel}>Seuil commandes actives (occupé)</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="number-pad"
-            value={String(settings.busy_order_threshold)}
-            onChangeText={(text) => patch({ busy_order_threshold: Number(text) || 12 })}
-          />
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Impression automatique</Text>
-          <ToggleRow
-            label="Impression automatique après acceptation"
-            value={settings.auto_print_enabled}
-            onValueChange={(value) => patch({ auto_print_enabled: value })}
-          />
-          <ToggleRow
-            label="Ticket cuisine"
-            value={settings.print_kitchen_ticket}
-            onValueChange={(value) => patch({ print_kitchen_ticket: value })}
-          />
-          <ToggleRow
-            label="Ticket client"
-            value={settings.print_customer_ticket}
-            onValueChange={(value) => patch({ print_customer_ticket: value })}
-          />
-          <ToggleRow
-            label="Ticket chauffeur"
-            value={settings.print_driver_ticket}
-            onValueChange={(value) => patch({ print_driver_ticket: value })}
-          />
-          <ToggleRow
-            label="QR / numéro de commande"
-            value={settings.print_show_qr_code}
-            onValueChange={(value) => patch({ print_show_qr_code: value })}
-          />
-          <ToggleRow
-            label="Instructions spéciales"
-            value={settings.print_special_instructions}
-            onValueChange={(value) => patch({ print_special_instructions: value })}
-          />
-
-          <Text style={styles.fieldLabel}>Nombre de copies</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="number-pad"
-            value={String(settings.print_copies)}
-            onChangeText={(text) => patch({ print_copies: Number(text) || 1 })}
-          />
-
-          <Text style={styles.fieldLabel}>Largeur papier</Text>
-          <View style={styles.segmentRow}>
-            {(["58mm", "80mm"] as const).map((width) => (
-              <TouchableOpacity
-                key={width}
-                style={[
-                  styles.segmentBtn,
-                  settings.print_paper_width === width && styles.segmentBtnActive,
-                ]}
-                onPress={() => patch({ print_paper_width: width })}
-              >
-                <Text
-                  style={[
-                    styles.segmentText,
-                    settings.print_paper_width === width && styles.segmentTextActive,
-                  ]}
-                >
-                  {width}
-                </Text>
-              </TouchableOpacity>
-            ))}
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.infoCard}>
+          <Text style={styles.infoIcon}>⚙️</Text>
+          <View style={styles.infoText}>
+            <Text style={styles.infoTitle}>Auto-accept & Kitchen Print</Text>
+            <Text style={styles.infoBody}>
+              Control how new orders are accepted and printed.
+            </Text>
           </View>
-
-          <TouchableOpacity style={styles.primaryBtn} onPress={handleTestPrint}>
-            <Text style={styles.primaryBtnText}>Test impression</Text>
-          </TouchableOpacity>
         </View>
 
-        {saving ? <Text style={styles.saving}>Enregistrement…</Text> : null}
+        <View style={styles.toggles}>
+          <ToggleRow
+            label="Auto-accept new orders"
+            value={draft.auto_accept_orders_enabled}
+            onValueChange={(value) =>
+              setDraft((s) => (s ? { ...s, auto_accept_orders_enabled: value } : s))
+            }
+          />
+          <ToggleRow
+            label="Auto-print on accept"
+            value={draft.auto_print_enabled}
+            onValueChange={(value) =>
+              setDraft((s) => (s ? { ...s, auto_print_enabled: value } : s))
+            }
+          />
+          <ToggleRow
+            label="Sound alert"
+            value={draft.sound_alert}
+            onValueChange={(value) =>
+              setDraft((s) => (s ? { ...s, sound_alert: value } : s))
+            }
+          />
+        </View>
+
+        <View style={styles.prepBlock}>
+          <Text style={styles.prepTitle}>⏱️ Default Prep Time</Text>
+          <View style={styles.pillRow}>
+            {PREP_OPTIONS.map((mins) => {
+              const selected = draft.default_prep_minutes === mins;
+              return (
+                <TouchableOpacity
+                  key={mins}
+                  style={[styles.pill, selected && styles.pillSelected]}
+                  onPress={() =>
+                    setDraft((s) => (s ? { ...s, default_prep_minutes: mins } : s))
+                  }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                >
+                  <Text style={styles.pillText}>{mins} min</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.spacer} />
+
+        <TouchableOpacity
+          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+          accessibilityRole="button"
+        >
+          <Text style={styles.saveBtnText}>
+            {saving ? "Saving…" : "Save Settings"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.testBtn}
+          onPress={handleTestPrint}
+          accessibilityRole="button"
+        >
+          <Text style={styles.testBtnText}>Test print</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#FFF7ED" },
-  container: { padding: 20, paddingTop: 8, gap: 16 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 16,
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    gap: 16,
+  },
+  infoCard: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: MMD_GLASS,
     borderWidth: 1,
-    borderColor: "#FED7AA",
+    borderColor: GLASS_BORDER,
   },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: "#9A3412", marginBottom: 4 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  rowLabel: { fontSize: 15, fontWeight: "600", color: "#1F2937" },
-  rowHint: { fontSize: 12, color: "#6B7280", marginTop: 4 },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: "#374151", marginTop: 4 },
-  input: {
+  infoIcon: { fontSize: 24, color: MMD_WHITE },
+  infoText: { flex: 1, gap: 4 },
+  infoTitle: {
+    color: MMD_WHITE,
+    fontSize: 17,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  infoBody: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
+  toggles: { gap: 12 },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: MMD_GLASS,
     borderWidth: 1,
-    borderColor: "#FDBA74",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: "#FFFBEB",
+    borderColor: GLASS_BORDER,
+    gap: 12,
   },
-  segmentRow: { flexDirection: "row", gap: 10 },
-  segmentBtn: {
+  toggleLabel: {
     flex: 1,
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.regular,
+  },
+  prepBlock: { gap: 12 },
+  prepTitle: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  pillRow: { flexDirection: "row", gap: 8 },
+  pill: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 12,
+    backgroundColor: MMD_GLASS,
     borderWidth: 1,
-    borderColor: "#FDBA74",
-    paddingVertical: 12,
-    alignItems: "center",
+    borderColor: GLASS_BORDER,
   },
-  segmentBtnActive: { backgroundColor: "#EA580C", borderColor: "#EA580C" },
-  segmentText: { fontWeight: "700", color: "#9A3412" },
-  segmentTextActive: { color: "#fff" },
-  primaryBtn: {
-    marginTop: 8,
-    backgroundColor: "#EA580C",
+  pillSelected: {
+    backgroundColor: MMD_TAXI_GREEN,
+    borderColor: MMD_TAXI_GREEN,
+  },
+  pillText: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  spacer: { flexGrow: 1, minHeight: 24 },
+  saveBtn: {
+    backgroundColor: MMD_TAXI_GREEN,
     borderRadius: 14,
-    paddingVertical: 14,
+    padding: 16,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
-  saving: { textAlign: "center", color: "#6B7280" },
+  saveBtnDisabled: { opacity: 0.7 },
+  saveBtnText: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  testBtn: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  testBtnText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
 });
 
 export default RestaurantOrderAutomationScreen;

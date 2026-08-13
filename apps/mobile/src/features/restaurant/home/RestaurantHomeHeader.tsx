@@ -1,8 +1,19 @@
 import React from "react";
-import { View, Text, Image, Pressable, StyleSheet, ActivityIndicator, Platform } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { RH, RH_HEADER_HEIGHT, RH_SHADOW_SOFT } from "./restaurantHomeTheme";
+import { MMD_FONT } from "../../../theme/mmdUi";
+import { RH, RH_HEADER_HEIGHT } from "./restaurantHomeTheme";
+
+const MMD_LOGO = require("../../../../assets/brand/mmd-logo-ui.png");
 
 type Props = {
   restaurantName: string;
@@ -25,7 +36,6 @@ type Props = {
 
 export function RestaurantHomeHeader({
   restaurantName,
-  restaurantIdShort,
   logoUrl,
   initials,
   online,
@@ -49,33 +59,35 @@ export function RestaurantHomeHeader({
       style={[
         styles.bar,
         {
-          paddingTop: Math.max(insets.top, Platform.OS === "ios" ? 12 : 6),
-          minHeight: RH_HEADER_HEIGHT + Math.max(insets.top, Platform.OS === "ios" ? 12 : 6),
-          paddingBottom: 8,
+          paddingTop: Math.max(insets.top, Platform.OS === "ios" ? 14 : 8),
+          minHeight: RH_HEADER_HEIGHT + Math.max(insets.top, Platform.OS === "ios" ? 14 : 8),
         },
       ]}
     >
       <View style={styles.row}>
-        <View style={styles.left}>
-          {compact && onPressMenu ? (
-            <Pressable
-              onPress={onPressMenu}
-              style={styles.iconBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Menu"
-              hitSlop={8}
-            >
-              <Ionicons name="menu" size={22} color={RH.text} />
-            </Pressable>
-          ) : null}
-          <View style={styles.brandBlock}>
-            <Text style={styles.brandTitle} numberOfLines={1}>
-              {brandTitle}
-            </Text>
-            <Text style={styles.brandSubtitle} numberOfLines={1}>
-              {brandSubtitle}
-            </Text>
+        {compact && onPressMenu ? (
+          <Pressable
+            onPress={onPressMenu}
+            style={styles.logoBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Menu"
+            hitSlop={8}
+          >
+            <Image source={MMD_LOGO} style={styles.logo} resizeMode="contain" />
+          </Pressable>
+        ) : (
+          <View style={styles.logoBtn}>
+            <Image source={MMD_LOGO} style={styles.logo} resizeMode="contain" />
           </View>
+        )}
+
+        <View style={styles.brandBlock}>
+          <Text style={styles.brandTitle} numberOfLines={1}>
+            {brandTitle}
+          </Text>
+          <Text style={styles.brandSubtitle} numberOfLines={1}>
+            {brandSubtitle}
+          </Text>
         </View>
 
         <Pressable
@@ -93,54 +105,41 @@ export function RestaurantHomeHeader({
           <Text style={[styles.statusText, { color: statusColor }]} numberOfLines={1}>
             {statusLabel}
           </Text>
-          <Ionicons name="chevron-down" size={14} color={RH.textSecondary} />
+          <Text style={styles.chevron}>▾</Text>
         </Pressable>
 
-        <View style={styles.right}>
-          <Pressable
-            onPress={onPressNotifications}
-            style={styles.iconBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
-          >
-            <Ionicons name="notifications-outline" size={20} color={RH.text} />
-            {notificationCount > 0 ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {notificationCount > 99 ? "99+" : String(notificationCount)}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
-
-          <Pressable
-            onPress={onPressAccount}
-            style={styles.account}
-            accessibilityRole="button"
-            accessibilityLabel={restaurantName}
-          >
-            <View style={styles.avatar}>
-              {logoUrl ? (
-                <Image source={{ uri: logoUrl }} style={styles.avatarImg} resizeMode="cover" />
-              ) : (
-                <Text style={styles.avatarInitials}>{initials.slice(0, 1)}</Text>
-              )}
+        <Pressable
+          onPress={onPressNotifications}
+          style={styles.notifBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Notifications"
+        >
+          <Ionicons name="notifications" size={18} color={RH.brandGold} />
+          {notificationCount > 0 ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {notificationCount > 99 ? "99+" : String(notificationCount)}
+              </Text>
             </View>
-            {!compact ? (
-              <View style={styles.accountMeta}>
-                <Text style={styles.accountName} numberOfLines={1}>
-                  {restaurantName}
-                </Text>
-                {restaurantIdShort ? (
-                  <Text style={styles.accountId} numberOfLines={1}>
-                    ID: {restaurantIdShort}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-            <Ionicons name="chevron-down" size={14} color={RH.textSecondary} />
-          </Pressable>
-        </View>
+          ) : null}
+        </Pressable>
+
+        <Pressable
+          onPress={onPressAccount}
+          style={styles.account}
+          accessibilityRole="button"
+          accessibilityLabel={restaurantName}
+        >
+          {logoUrl ? (
+            <Image source={{ uri: logoUrl }} style={styles.avatarImg} resizeMode="cover" />
+          ) : initials ? (
+            <View style={styles.avatarFallback}>
+              <Text style={styles.avatarInitials}>{initials.slice(0, 1)}</Text>
+            </View>
+          ) : (
+            <Image source={MMD_LOGO} style={styles.avatarImg} resizeMode="contain" />
+          )}
+        </Pressable>
       </View>
     </View>
   );
@@ -149,77 +148,82 @@ export function RestaurantHomeHeader({
 const styles = StyleSheet.create({
   bar: {
     backgroundColor: RH.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: RH.border,
     paddingHorizontal: 12,
     paddingBottom: 8,
     zIndex: 40,
-    ...RH_SHADOW_SOFT,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    minHeight: 44,
+    minHeight: 36,
   },
-  left: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexShrink: 1,
+  logoBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  logo: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+  },
+  brandBlock: {
+    flex: 1,
     minWidth: 0,
-    maxWidth: "30%",
+    gap: 2,
   },
-  brandBlock: { minWidth: 0, flexShrink: 1 },
   brandTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: RH.greenDark,
-    letterSpacing: 0.3,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    color: RH.brandGold,
   },
   brandSubtitle: {
-    fontSize: 8,
-    fontWeight: "800",
-    color: RH.green,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginTop: 1,
+    fontSize: 10,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    color: RH.textSecondary,
   },
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
+    gap: 6,
+    paddingLeft: 10,
+    paddingRight: 8,
     paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: RH.muted,
     borderWidth: 1,
-    borderColor: RH.border,
-    flexShrink: 1,
-    maxWidth: 140,
+    borderColor: RH.borderStrong,
+    flexShrink: 0,
   },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.3, flexShrink: 1 },
-  right: {
-    flexShrink: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 4,
-    marginLeft: "auto",
+  statusText: {
+    fontSize: 11,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  chevron: {
+    fontSize: 10,
+    color: RH.textSecondary,
+    fontFamily: MMD_FONT.regular,
+  },
+  notifBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: RH.muted,
   },
   badge: {
     position: "absolute",
-    top: 4,
-    right: 4,
+    top: -2,
+    right: -2,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
@@ -228,32 +232,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { color: "#fff", fontSize: 9, fontWeight: "800" },
-  account: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingLeft: 4,
-    paddingRight: 6,
-    paddingVertical: 4,
-    borderRadius: 14,
-    maxWidth: 200,
-    minWidth: 0,
+  badgeText: {
+    color: RH.white,
+    fontSize: 9,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
   },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: RH.greenSoft,
+  account: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  avatarImg: { width: "100%", height: "100%", borderRadius: 8 },
+  avatarFallback: {
+    width: "100%",
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
-    borderWidth: 1.5,
-    borderColor: RH.green,
+    backgroundColor: RH.muted,
   },
-  avatarImg: { width: "100%", height: "100%" },
-  avatarInitials: { color: RH.greenDark, fontWeight: "900", fontSize: 14 },
-  accountMeta: { minWidth: 0, flexShrink: 1, maxWidth: 110 },
-  accountName: { fontSize: 12, fontWeight: "800", color: RH.text },
-  accountId: { fontSize: 9, fontWeight: "600", color: RH.textSoft, marginTop: 1 },
+  avatarInitials: {
+    color: RH.brandGold,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
 });

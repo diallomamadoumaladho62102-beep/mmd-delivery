@@ -3,15 +3,14 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   Alert,
-  FlatList,
   Image,
   Switch,
   ScrollView,
   TouchableOpacity,
   Modal,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
@@ -19,7 +18,17 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
 import { toUserFacingError } from "../../lib/userFacingError";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const GLASS_BORDER = "rgba(255,255,255,0.2)";
 
 type Category = {
   id: string;
@@ -226,6 +235,9 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
   const [uploading, setUploading] = useState(false);
   const [savingAction, setSavingAction] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const [addItemOpen, setAddItemOpen] = useState(false);
 
   const MENU_BUCKET = "restaurant-menu";
   const AVATAR_BUCKET = "avatars";
@@ -248,8 +260,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
           .order("created_at", { ascending: true }),
       ]);
 
-      if (catsRes.error) console.log("❌ load categories:", catsRes.error);
-      if (itemsRes.error) console.log("❌ load items:", itemsRes.error);
+      if (catsRes.error) console.log("âŒ load categories:", catsRes.error);
+      if (itemsRes.error) console.log("âŒ load items:", itemsRes.error);
 
       const cats = ((catsRes.data as any) ?? []) as Category[];
       const its = (((itemsRes.data as any) ?? []) as Item[]).map((it) => ({
@@ -259,8 +271,12 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
       setCategories(cats);
       setItems(its);
+      setSelectedCategoryId((prev) => {
+        if (prev && cats.some((c) => c.id === prev)) return prev;
+        return cats[0]?.id ?? null;
+      });
     } catch (e) {
-      console.log("❌ refreshAll exception:", e);
+      console.log("âŒ refreshAll exception:", e);
     }
   };
 
@@ -293,7 +309,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
           .maybeSingle();
 
         if (roleError) {
-          console.log("❌ RestaurantMenuScreen role check:", roleError);
+          console.log("âŒ RestaurantMenuScreen role check:", roleError);
         }
 
         const role = String((roleProfile as any)?.role || "")
@@ -327,7 +343,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
           .maybeSingle();
 
         if (profileError) {
-          console.log("❌ RestaurantMenuScreen profile check:", profileError);
+          console.log("âŒ RestaurantMenuScreen profile check:", profileError);
         }
 
         if (!restaurantProfile) {
@@ -339,7 +355,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
         setRestaurantUserId(uid);
         await refreshAll(uid);
       } catch (e) {
-        console.log("❌ RestaurantMenuScreen boot exception:", e);
+        console.log("âŒ RestaurantMenuScreen boot exception:", e);
         if (mounted) {
           setRestaurantUserId(null);
         }
@@ -365,10 +381,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
   const selectedCategoryName = (categoryId: string) => {
     if (!categoryId) {
-      return t("restaurant.menu.categories.uncategorized", "Sans catégorie");
+      return t("restaurant.menu.categories.uncategorized", "Uncategorized");
     }
     const c = categories.find((x) => x.id === categoryId);
-    return c?.name ?? t("restaurant.menu.categories.uncategorized", "Sans catégorie");
+    return c?.name ?? t("restaurant.menu.categories.uncategorized", "Uncategorized");
   };
 
   const addCategory = async () => {
@@ -378,7 +394,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     if (!name) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        t("restaurant.menu.categories.nameRequired", "Nom de catégorie obligatoire")
+        t("restaurant.menu.categories.nameRequired", "Category name required")
       );
     }
 
@@ -389,7 +405,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     if (exists) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        t("restaurant.menu.categories.duplicate", "Cette catégorie existe déjà.")
+        t("restaurant.menu.categories.duplicate", "This category already exists.")
       );
     }
 
@@ -407,10 +423,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       setNewCategoryName("");
       await refreshAll(restaurantUserId);
     } catch (error: any) {
-      console.log("❌ add category:", error);
+      console.log("âŒ add category:", error);
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        error?.message ?? t("restaurant.menu.alerts.createFailed", "Création impossible.")
+        error?.message ?? t("restaurant.menu.alerts.createFailed", "Create failed.")
       );
     } finally {
       setSavingAction(false);
@@ -421,10 +437,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     if (!restaurantUserId || savingAction) return;
 
     Alert.alert(
-      t("restaurant.menu.categories.deleteTitle", "Supprimer la catégorie"),
+      t("restaurant.menu.categories.deleteTitle", "Delete category"),
       t(
         "restaurant.menu.categories.deleteConfirm",
-        "Les produits de cette catégorie resteront dans Sans catégorie. Continuer ?"
+        "Items in this category will become uncategorized. Continue?"
       ),
       [
         { text: t("shared.common.cancel", "Annuler"), style: "cancel" },
@@ -453,7 +469,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
               await refreshAll(restaurantUserId);
             } catch (error: any) {
-              console.log("❌ delete category:", error);
+              console.log("âŒ delete category:", error);
               Alert.alert(
                 t("restaurant.menu.alerts.errorTitle", "Erreur"),
                 error?.message ?? t("restaurant.menu.alerts.deleteFailed", "Suppression impossible")
@@ -475,7 +491,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       if (!perm.granted) {
         Alert.alert(
           t("restaurant.menu.alerts.permissionTitle", "Permission requise"),
-          t("restaurant.menu.alerts.permissionPhotosBody", "Autorise l'accès aux photos.")
+          t("restaurant.menu.alerts.permissionPhotosBody", "Allow photo access.")
         );
         return null;
       }
@@ -530,13 +546,13 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       });
 
       if (upErr) {
-        console.log("❌ menu image upload error", upErr);
+        console.log("âŒ menu image upload error", upErr);
 
         Alert.alert(
           t("restaurant.menu.alerts.errorTitle", "Erreur"),
           `${t(
             "restaurant.menu.alerts.imageNotUploaded",
-            "Image non envoyée. Vérifie les policies Storage du bucket:"
+            "Image not uploaded. Check Storage policies for bucket:"
           )} '${MENU_BUCKET}'.`
         );
 
@@ -548,7 +564,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
       return publicUrl;
     } catch (e: any) {
-      console.log("❌ pickAndUploadMenuImage error", e);
+      console.log("âŒ pickAndUploadMenuImage error", e);
       Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
         e?.message ?? t("restaurant.menu.alerts.uploadFailed", "Upload impossible")
@@ -578,12 +594,12 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       );
     }
 
-    const selectedCategoryId = newItem.category_id || null;
+    const selectedCatId = newItem.category_id || selectedCategoryId || null;
 
-    if (!isValidCategoryId(selectedCategoryId, categories)) {
+    if (!isValidCategoryId(selectedCatId, categories)) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        t("restaurant.menu.categories.invalid", "Catégorie invalide.")
+        t("restaurant.menu.categories.invalid", "Categorie invalide.")
       );
     }
 
@@ -610,7 +626,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     const payload: Partial<Item> & any = {
       restaurant_user_id: restaurantUserId,
-      category_id: selectedCategoryId,
+      category_id: selectedCatId,
       name,
       description: cleanText(newItem.description, MAX_DESCRIPTION_LENGTH) || null,
       price_cents: priceCents,
@@ -644,10 +660,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
       await refreshAll(restaurantUserId);
     } catch (error: any) {
-      console.log("❌ add item:", error);
+      console.log("âŒ add item:", error);
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        error?.message ?? t("restaurant.menu.alerts.createFailed", "Création impossible.")
+        error?.message ?? t("restaurant.menu.alerts.createFailed", "Create failed.")
       );
     } finally {
       setSavingAction(false);
@@ -662,7 +678,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       .eq("restaurant_user_id", restaurantUserId);
 
     if (error) {
-      console.log("❌ toggle available:", error);
+      console.log("âŒ toggle available:", error);
       return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), toUserFacingError(error, "Action impossible pour le moment."));
     }
     if (restaurantUserId) await refreshAll(restaurantUserId);
@@ -693,10 +709,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
                 if (menuPath) {
                   const { error: rmErr } = await supabase.storage.from(MENU_BUCKET).remove([menuPath]);
-                  if (rmErr) console.log("⚠️ remove storage image error (menu):", rmErr);
+                  if (rmErr) console.log("âš ï¸ remove storage image error (menu):", rmErr);
                 } else if (avatarPath) {
                   const { error: rmErr } = await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath]);
-                  if (rmErr) console.log("⚠️ remove storage image error (avatars):", rmErr);
+                  if (rmErr) console.log("âš ï¸ remove storage image error (avatars):", rmErr);
                 }
               }
 
@@ -710,7 +726,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
               await refreshAll(restaurantUserId);
             } catch (error: any) {
-              console.log("❌ deleteItem exception:", error);
+              console.log("âŒ deleteItem exception:", error);
               Alert.alert(
                 t("restaurant.menu.alerts.errorTitle", "Erreur"),
                 error?.message ?? t("restaurant.menu.alerts.deleteFailed", "Suppression impossible")
@@ -772,7 +788,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     if (!isValidCategoryId(selectedCategoryId, categories)) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        t("restaurant.menu.categories.invalid", "Catégorie invalide.")
+        t("restaurant.menu.categories.invalid", "Invalid category.")
       );
     }
 
@@ -820,7 +836,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
         .eq("restaurant_user_id", restaurantUserId);
 
       if (error) {
-        console.log("❌ edit item:", error);
+        console.log("âŒ edit item:", error);
         return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), toUserFacingError(error, "Action impossible pour le moment."));
       }
 
@@ -835,639 +851,638 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       setEditSaving(false);
     }
   };
+  const activeCategoryId = selectedCategoryId ?? categories[0]?.id ?? null;
+  const visibleItems = useMemo(() => {
+    if (!activeCategoryId) return [];
+    return items.filter((it) => it.category_id === activeCategoryId);
+  }, [activeCategoryId, items]);
+
+  const formatPrice = (it: Item) =>
+    `$${(Number(it.price_cents || 0) / 100).toFixed(2)}`;
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom", "left", "right"]}>
-        <ScreenHeader
-          title={t("restaurant.menu.header.title", "Menu / Produits")}
-          variant="light"
-          fallbackRoute="RestaurantCommandCenter"
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScreenHeader title="Menu" variant="mmd" fallbackRoute="RestaurantCommandCenter" />
+        <RestaurantBrandLoadingState
+          title="Loading Menu..."
+          subtitle="Fetching your menu items"
+          glass
         />
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <Text>{t("restaurant.menu.loading", "Chargement…")}</Text>
-        </View>
       </SafeAreaView>
     );
   }
 
   if (!restaurantUserId) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom", "left", "right"]}>
-        <ScreenHeader
-          title={t("restaurant.menu.header.title", "Menu / Produits")}
-          variant="light"
-          fallbackRoute="RestaurantCommandCenter"
-        />
-        <View style={{ flex: 1, padding: 16 }}>
-          <Text style={{ fontSize: 16 }}>
-            {t("restaurant.menu.errors.accountRequired", "❌ Compte restaurant requis")}
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScreenHeader title="Menu" variant="mmd" fallbackRoute="RestaurantCommandCenter" />
+        <View style={styles.emptyPad}>
+          <Text style={styles.emptyTitle}>
+            {t("restaurant.menu.errors.accountRequired", "Restaurant account required")}
           </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const Section = ({ title, list }: { title: string; list: Item[] }) => {
-    if (!list.length) return null;
-
-    return (
-      <View style={{ marginTop: 14 }}>
-        <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 8 }}>{title}</Text>
-
-        <FlatList
-          data={list}
-          keyExtractor={(it) => it.id}
-          scrollEnabled={false}
-          renderItem={({ item }) => (
-            <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 10 }}>
-              <View style={{ flexDirection: "row", gap: 12 }}>
-                {item.image_url ? (
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={{ width: 72, height: 72, borderRadius: 10, backgroundColor: "#eee" }}
-                    resizeMode="cover"
-                    onError={(e) =>
-                      console.log("⚠️ image render error:", item.image_url, e.nativeEvent)
-                    }
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 10,
-                      backgroundColor: "#eee",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text style={{ fontSize: 10, color: "#666" }}>
-                      {t("restaurant.menu.items.noPhoto", "No photo")}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "700" }}>{item.name}</Text>
-                  {!!item.description && (
-                    <Text style={{ marginTop: 2, color: "#444" }}>{item.description}</Text>
-                  )}
-
-                  <Text style={{ marginTop: 6 }}>
-                    {t("restaurant.menu.items.pricePrefix", "💰")} $
-                    {(item.price_cents / 100).toFixed(2)} {item.currency}
-                  </Text>
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginTop: 8,
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                      <Text>
-                        {item.is_available
-                          ? t("restaurant.menu.items.available", "✅ Disponible")
-                          : t("restaurant.menu.items.unavailable", "⛔ Indispo")}
-                      </Text>
-                      <Switch
-                        value={Boolean(item.is_available)}
-                        disabled={savingAction}
-                        onValueChange={(v) => toggleAvailable(item.id, v)}
-                      />
-                    </View>
-
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                      <TouchableOpacity onPress={() => openEdit(item)}>
-                        <Text style={{ color: "#2563EB", fontWeight: "800" }}>
-                          {t("restaurant.menu.actions.edit", "Modifier")}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity onPress={() => deleteItem(item.id)}>
-                        <Text style={{ color: "#dc2626", fontWeight: "700" }}>
-                          {t("restaurant.menu.actions.delete", "Supprimer")}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
-        />
-      </View>
-    );
-  };
+  const emptyCategories = categories.length === 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title={t("restaurant.menu.header.title", "Menu / Produits")}
-        variant="light"
+        title="Menu"
+        variant="mmd"
         fallbackRoute="RestaurantCommandCenter"
         rightSlot={
-          <TouchableOpacity
-            onPress={() => navigation?.navigate("RestaurantEarnings")}
-            style={{
-              backgroundColor: "#22C55E",
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: 12,
-            }}
-          >
-            <Text style={{ color: "white", fontWeight: "800" }}>
-              {t("restaurant.menu.header.earnings", "Earnings")}
-            </Text>
-          </TouchableOpacity>
+          emptyCategories ? null : (
+            <TouchableOpacity
+              onPress={() => {
+                setNewItem((s) => ({
+                  ...s,
+                  category_id: selectedCategoryId ?? categories[0]?.id ?? "",
+                }));
+                setAddItemOpen(true);
+              }}
+              style={styles.headerAction}
+              accessibilityRole="button"
+            >
+              <Text style={styles.headerActionText}>+ Item</Text>
+            </TouchableOpacity>
+          )
         }
       />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 50 }}>
 
-      <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 14 }}>
-        <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 10 }}>
-          {t("restaurant.menu.categories.title", "Catégories")}
-        </Text>
-
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <TextInput
-            value={newCategoryName}
-            onChangeText={setNewCategoryName}
-            placeholder={t(
-              "restaurant.menu.categories.placeholder",
-              "Ex: Pizzas, Boissons, Snacks..."
-            )}
-            style={{ flex: 1, borderWidth: 1, borderRadius: 10, padding: 10 }}
-          />
-          <Button title={t("restaurant.menu.actions.add", "Ajouter")} onPress={addCategory} disabled={savingAction} />
-        </View>
-
-        {categories.map((c) => (
-          <View
-            key={c.id}
-            style={{
-              marginTop: 10,
-              borderWidth: 1,
-              borderRadius: 10,
-              padding: 10,
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontWeight: "700" }}>{c.name}</Text>
-            <TouchableOpacity onPress={() => deleteCategory(c.id)}>
-              <Text style={{ color: "#dc2626", fontWeight: "700" }}>
-                {t("restaurant.menu.actions.delete", "Supprimer")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-
-        {categories.length === 0 && (
-          <Text style={{ marginTop: 10, color: "#666" }}>
-            {t("restaurant.menu.categories.empty", "Aucune catégorie pour l’instant.")}
-          </Text>
-        )}
-      </View>
-
-      <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 14 }}>
-        <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 10 }}>
-          {t("restaurant.menu.items.addTitle", "Ajouter un produit")}
-        </Text>
-
-        <Text style={{ marginTop: 6 }}>
-          {t("restaurant.menu.items.categoryLabel", "Catégorie")}
-        </Text>
-        <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      {emptyCategories ? (
+        <View style={styles.emptyContent}>
           <TouchableOpacity
-            onPress={() => setNewItem((s) => ({ ...s, category_id: "" }))}
-            style={{
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 999,
-              borderWidth: 1,
-              backgroundColor: newItem.category_id === "" ? "#111827" : "transparent",
-            }}
+            style={styles.addCategoryBtn}
+            onPress={() => setAddCategoryOpen(true)}
+            accessibilityRole="button"
           >
-            <Text
-              style={{
-                fontWeight: "800",
-                color: newItem.category_id === "" ? "white" : "#111827",
-              }}
-            >
-              {t("restaurant.menu.categories.uncategorized", "Sans catégorie")}
-            </Text>
+            <Text style={styles.addCategoryBtnText}>+ Add Category</Text>
           </TouchableOpacity>
-
-          {categories.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              onPress={() => setNewItem((s) => ({ ...s, category_id: c.id }))}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 999,
-                borderWidth: 1,
-                backgroundColor: newItem.category_id === c.id ? "#111827" : "transparent",
-              }}
-            >
-              <Text
-                style={{
-                  fontWeight: "800",
-                  color: newItem.category_id === c.id ? "white" : "#111827",
-                }}
-              >
-                {c.name}
+          <View style={styles.emptyCard}>
+            <View style={styles.emptyIconWrap}>
+              <Text style={styles.emptyIcon}>ðŸ“‚</Text>
+            </View>
+            <View style={styles.emptyTextStack}>
+              <Text style={styles.emptyTitle}>No Categories</Text>
+              <Text style={styles.emptySubtitle}>
+                No categories yet. Add one to get started.
               </Text>
-            </TouchableOpacity>
-          ))}
+            </View>
+          </View>
         </View>
-
-        <Text style={{ marginTop: 8, color: "#444" }}>
-          {t("restaurant.menu.items.selectionLabel", "Sélection :")}{" "}
-          <Text style={{ fontWeight: "800" }}>{selectedCategoryName(newItem.category_id)}</Text>
-        </Text>
-
-        <Text style={{ marginTop: 6 }}>{t("restaurant.menu.items.nameLabel", "Nom")}</Text>
-        <TextInput
-          value={newItem.name}
-          onChangeText={(v) => setNewItem((s) => ({ ...s, name: v }))}
-          style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-        />
-
-        <Text style={{ marginTop: 6 }}>
-          {t("restaurant.menu.items.descriptionLabel", "Description")}
-        </Text>
-        <TextInput
-          value={newItem.description}
-          onChangeText={(v) => setNewItem((s) => ({ ...s, description: v }))}
-          style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-        />
-
-        <Text style={{ marginTop: 6 }}>
-          {t("restaurant.menu.items.priceLabel", "Prix (ex: 12.99)")}
-        </Text>
-        <TextInput
-          value={newItem.price}
-          onChangeText={(v) => setNewItem((s) => ({ ...s, price: v }))}
-          keyboardType="decimal-pad"
-          style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-        />
-
-        <Text style={{ marginTop: 6 }}>{t("restaurant.menu.items.currencyLabel", "Devise")}</Text>
-        <TextInput
-          value={newItem.currency}
-          onChangeText={(v) => setNewItem((s) => ({ ...s, currency: v }))}
-          style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-        />
-
-        <Text style={{ marginTop: 6 }}>{t("restaurant.menu.items.imageLabel", "Image")}</Text>
-        <TouchableOpacity
-          disabled={uploading}
-          onPress={async () => {
-            const url = await pickAndUploadMenuImage();
-            if (url) setNewItem((s) => ({ ...s, image_url: url }));
-          }}
-          style={{
-            marginTop: 8,
-            borderWidth: 1,
-            borderRadius: 10,
-            padding: 12,
-            alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "center",
-            gap: 10,
-            opacity: uploading ? 0.6 : 1,
-          }}
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.menuContent}
+          showsVerticalScrollIndicator={false}
         >
-          {uploading ? <ActivityIndicator /> : null}
-          <Text style={{ fontWeight: "700" }}>
-            {newItem.image_url
-              ? t("restaurant.menu.items.changeImage", "Changer l’image")
-              : t("restaurant.menu.items.chooseImage", "Choisir une image")}
-          </Text>
-        </TouchableOpacity>
-
-        {newItem.image_url ? (
-          <Image
-            source={{ uri: newItem.image_url.trim() }}
-            style={{ width: 120, height: 120, borderRadius: 12, marginTop: 10 }}
-            resizeMode="cover"
-            onError={(e) =>
-              console.log("⚠️ preview image error (newItem):", newItem.image_url, e.nativeEvent)
-            }
-          />
-        ) : null}
-
-        <Text style={{ marginTop: 6 }}>
-          {t("restaurant.menu.items.positionLabel", "Position (optionnel)")}
-        </Text>
-        <TextInput
-          value={newItem.position}
-          onChangeText={(v) => setNewItem((s) => ({ ...s, position: v }))}
-          keyboardType="number-pad"
-          placeholder={t("restaurant.menu.items.positionPlaceholder", "ex: 1")}
-          style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-        />
-
-        <Text style={{ marginTop: 6 }}>
-          {t("restaurant.menu.items.stockLabel", "Stock (vide = illimité)")}
-        </Text>
-        <TextInput
-          value={newItem.stock_qty}
-          onChangeText={(v) => setNewItem((s) => ({ ...s, stock_qty: v }))}
-          keyboardType="number-pad"
-          placeholder={t("restaurant.menu.items.stockPlaceholder", "ex: 12")}
-          style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-        />
-
-        <Text style={{ marginTop: 6 }}>
-          {t(
-            "restaurant.menu.items.optionsLabel",
-            "Options / suppléments (une par ligne: Nom:1.50)"
-          )}
-        </Text>
-        <TextInput
-          value={newItem.options_text}
-          onChangeText={(v) => setNewItem((s) => ({ ...s, options_text: v }))}
-          multiline
-          placeholder={t(
-            "restaurant.menu.items.optionsPlaceholder",
-            "Extra fromage:1.50\nSans oignon:0.00"
-          )}
-          style={{ borderWidth: 1, borderRadius: 10, padding: 10, minHeight: 72 }}
-        />
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginTop: 10,
-          }}
-        >
-          <Text>{t("restaurant.menu.items.availableLabel", "Disponible")}</Text>
-          <Switch
-            value={Boolean(newItem.is_available)}
-            disabled={savingAction}
-            onValueChange={(v) => setNewItem((s) => ({ ...s, is_available: v }))}
-          />
-        </View>
-
-        <View style={{ marginTop: 10 }}>
-          <Button
-            title={savingAction ? t("shared.common.saving", "Enregistrement…") : t("restaurant.menu.items.addButton", "Ajouter le produit")}
-            onPress={addItem}
-            disabled={savingAction || uploading}
-          />
-        </View>
-      </View>
-
-      <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 14 }}>
-        <Text style={{ fontSize: 16, fontWeight: "700" }}>
-          {t("restaurant.menu.list.title", "Ton menu")}
-        </Text>
-
-        <Section
-          title={t("restaurant.menu.categories.uncategorized", "Sans catégorie")}
-          list={itemsByCategory.get("uncategorized") ?? []}
-        />
-
-        {categories.map((c) => (
-          <Section key={c.id} title={c.name} list={itemsByCategory.get(c.id) ?? []} />
-        ))}
-      </View>
-
-      <Modal visible={editOpen} transparent animationType="fade" onRequestClose={closeEdit}>
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <View style={{ backgroundColor: "white", borderRadius: 14, padding: 14 }}>
-            <Text style={{ fontSize: 18, fontWeight: "800" }}>
-              {t("restaurant.menu.edit.title", "Modifier le produit")}
-            </Text>
-
-            <Text style={{ marginTop: 10 }}>
-              {t("restaurant.menu.items.categoryLabel", "Catégorie")}
-            </Text>
-            <View style={{ marginTop: 8, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => setEditForm((s) => ({ ...s, category_id: "" }))}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  backgroundColor: editForm.category_id === "" ? "#111827" : "transparent",
-                }}
-              >
-                <Text
-                  style={{
-                    fontWeight: "800",
-                    color: editForm.category_id === "" ? "white" : "#111827",
-                  }}
-                >
-                  {t("restaurant.menu.categories.uncategorized", "Sans catégorie")}
-                </Text>
-              </TouchableOpacity>
-
-              {categories.map((c) => (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsRow}
+          >
+            {categories.map((c) => {
+              const active = c.id === activeCategoryId;
+              return (
                 <TouchableOpacity
                   key={c.id}
-                  onPress={() => setEditForm((s) => ({ ...s, category_id: c.id }))}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 999,
-                    borderWidth: 1,
-                    backgroundColor: editForm.category_id === c.id ? "#111827" : "transparent",
-                  }}
+                  style={[styles.tab, active && styles.tabActive]}
+                  onPress={() => setSelectedCategoryId(c.id)}
+                  onLongPress={() => deleteCategory(c.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
                 >
-                  <Text
-                    style={{
-                      fontWeight: "800",
-                      color: editForm.category_id === c.id ? "white" : "#111827",
-                    }}
-                  >
+                  <Text style={[styles.tabText, active && styles.tabTextActive]}>
                     {c.name}
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={{ marginTop: 8, color: "#444" }}>
-              {t("restaurant.menu.items.selectionLabel", "Sélection :")}{" "}
-              <Text style={{ fontWeight: "800" }}>{selectedCategoryName(editForm.category_id)}</Text>
-            </Text>
-
-            <Text style={{ marginTop: 10 }}>{t("restaurant.menu.items.nameLabel", "Nom")}</Text>
-            <TextInput
-              value={editForm.name}
-              onChangeText={(v) => setEditForm((s) => ({ ...s, name: v }))}
-              style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <Text style={{ marginTop: 10 }}>
-              {t("restaurant.menu.items.descriptionLabel", "Description")}
-            </Text>
-            <TextInput
-              value={editForm.description}
-              onChangeText={(v) => setEditForm((s) => ({ ...s, description: v }))}
-              style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <Text style={{ marginTop: 10 }}>
-              {t("restaurant.menu.items.priceLabel", "Prix (ex: 12.99)")}
-            </Text>
-            <TextInput
-              value={editForm.price}
-              onChangeText={(v) => setEditForm((s) => ({ ...s, price: v }))}
-              keyboardType="decimal-pad"
-              style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <Text style={{ marginTop: 10 }}>
-              {t("restaurant.menu.items.currencyLabel", "Devise")}
-            </Text>
-            <TextInput
-              value={editForm.currency}
-              onChangeText={(v) => setEditForm((s) => ({ ...s, currency: v }))}
-              style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <Text style={{ marginTop: 10 }}>{t("restaurant.menu.items.imageLabel", "Image")}</Text>
+              );
+            })}
             <TouchableOpacity
-              disabled={uploading}
-              onPress={async () => {
-                const url = await pickAndUploadMenuImage();
-                if (url) setEditForm((s) => ({ ...s, image_url: url }));
-              }}
-              style={{
-                marginTop: 8,
-                borderWidth: 1,
-                borderRadius: 10,
-                padding: 12,
-                alignItems: "center",
-                flexDirection: "row",
-                justifyContent: "center",
-                gap: 10,
-                opacity: uploading ? 0.6 : 1,
-              }}
+              style={styles.tab}
+              onPress={() => setAddCategoryOpen(true)}
+              accessibilityRole="button"
             >
-              {uploading ? <ActivityIndicator /> : null}
-              <Text style={{ fontWeight: "700" }}>
-                {editForm.image_url
-                  ? t("restaurant.menu.items.changeImage", "Changer l’image")
-                  : t("restaurant.menu.items.chooseImage", "Choisir une image")}
-              </Text>
+              <Text style={styles.tabText}>+</Text>
             </TouchableOpacity>
+          </ScrollView>
 
-            {editForm.image_url ? (
-              <Image
-                source={{ uri: editForm.image_url.trim() }}
-                style={{ width: 120, height: 120, borderRadius: 12, marginTop: 10 }}
-                resizeMode="cover"
-                onError={(e) =>
-                  console.log("⚠️ preview image error (edit):", editForm.image_url, e.nativeEvent)
-                }
-              />
-            ) : null}
-
-            <Text style={{ marginTop: 10 }}>
-              {t("restaurant.menu.items.positionLabel", "Position (optionnel)")}
-            </Text>
-            <TextInput
-              value={editForm.position}
-              onChangeText={(v) => setEditForm((s) => ({ ...s, position: v }))}
-              keyboardType="number-pad"
-              placeholder={t("restaurant.menu.items.positionPlaceholder", "ex: 1")}
-              style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <Text style={{ marginTop: 10 }}>
-              {t("restaurant.menu.items.stockLabel", "Stock (vide = illimité)")}
-            </Text>
-            <TextInput
-              value={editForm.stock_qty}
-              onChangeText={(v) => setEditForm((s) => ({ ...s, stock_qty: v }))}
-              keyboardType="number-pad"
-              placeholder={t("restaurant.menu.items.stockPlaceholder", "ex: 12")}
-              style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
-            />
-
-            <Text style={{ marginTop: 10 }}>
-              {t(
-                "restaurant.menu.items.optionsLabel",
-                "Options / suppléments (une par ligne: Nom:1.50)"
-              )}
-            </Text>
-            <TextInput
-              value={editForm.options_text}
-              onChangeText={(v) => setEditForm((s) => ({ ...s, options_text: v }))}
-              multiline
-              placeholder={t(
-                "restaurant.menu.items.optionsPlaceholder",
-                "Extra fromage:1.50\nSans oignon:0.00"
-              )}
-              style={{ borderWidth: 1, borderRadius: 10, padding: 10, minHeight: 72 }}
-            />
-
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginTop: 12,
-              }}
-            >
-              <Text>{t("restaurant.menu.items.availableLabel", "Disponible")}</Text>
-              <Switch
-                value={Boolean(editForm.is_available)}
-                disabled={editSaving || uploading}
-                onValueChange={(v) => setEditForm((s) => ({ ...s, is_available: v }))}
-              />
-            </View>
-
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
-              <TouchableOpacity onPress={closeEdit} disabled={editSaving || uploading}>
-                <Text style={{ color: "#111827", fontWeight: "800", padding: 8 }}>
-                  {t("shared.common.cancel", "Annuler")}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={saveEdit} disabled={editSaving || uploading}>
-                <View
-                  style={{
-                    backgroundColor: "#2563EB",
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderRadius: 10,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                    opacity: editSaving || uploading ? 0.7 : 1,
-                  }}
-                >
-                  {editSaving ? <ActivityIndicator /> : null}
-                  <Text style={{ color: "white", fontWeight: "900" }}>
-                    {t("shared.common.save", "Enregistrer")}
+          <View style={styles.itemsCol}>
+            {visibleItems.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <View style={styles.emptyTextStack}>
+                  <Text style={styles.emptyTitle}>No items</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Add a product to this category.
                   </Text>
                 </View>
+                <TouchableOpacity
+                  style={[styles.addCategoryBtn, { marginTop: 8 }]}
+                  onPress={() => {
+                    setNewItem((s) => ({
+                      ...s,
+                      category_id: activeCategoryId ?? "",
+                    }));
+                    setAddItemOpen(true);
+                  }}
+                >
+                  <Text style={styles.addCategoryBtnText}>+ Add Item</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              visibleItems.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.itemCard}
+                  onPress={() => openEdit(item)}
+                  activeOpacity={0.85}
+                >
+                  {item.image_url ? (
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={styles.itemThumb}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.itemThumbPlaceholder}>
+                      <Text style={styles.itemThumbEmoji}>ðŸ½ï¸</Text>
+                    </View>
+                  )}
+                  <View style={styles.itemMeta}>
+                    <Text style={styles.itemName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.itemPrice}>{formatPrice(item)}</Text>
+                    <View style={styles.statusRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.badge,
+                          item.is_available ? styles.badgeOn : styles.badgeOff,
+                        ]}
+                        onPress={() => toggleAvailable(item.id, !item.is_available)}
+                        disabled={savingAction}
+                      >
+                        <Text
+                          style={[
+                            styles.badgeText,
+                            item.is_available ? styles.badgeTextOn : styles.badgeTextOff,
+                          ]}
+                        >
+                          {item.is_available ? "Available" : "Unavailable"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </ScrollView>
+      )}
+
+      <Modal
+        visible={addCategoryOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddCategoryOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Add Category</Text>
+            <TextInput
+              value={newCategoryName}
+              onChangeText={setNewCategoryName}
+              placeholder="Category name"
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              style={styles.input}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setAddCategoryOpen(false)}>
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSave}
+                onPress={async () => {
+                  await addCategory();
+                  setAddCategoryOpen(false);
+                }}
+                disabled={savingAction}
+              >
+                <Text style={styles.modalSaveText}>Add</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-      </ScrollView>
+
+      <Modal
+        visible={addItemOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddItemOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <ScrollView contentContainerStyle={styles.modalScroll}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Add Item</Text>
+              <Text style={styles.fieldLabel}>Name</Text>
+              <TextInput
+                value={newItem.name}
+                onChangeText={(v) => setNewItem((s) => ({ ...s, name: v }))}
+                style={styles.input}
+                placeholderTextColor="rgba(255,255,255,0.45)"
+              />
+              <Text style={styles.fieldLabel}>Price</Text>
+              <TextInput
+                value={newItem.price}
+                onChangeText={(v) => setNewItem((s) => ({ ...s, price: v }))}
+                keyboardType="decimal-pad"
+                style={styles.input}
+                placeholderTextColor="rgba(255,255,255,0.45)"
+              />
+              <Text style={styles.fieldLabel}>Description</Text>
+              <TextInput
+                value={newItem.description}
+                onChangeText={(v) => setNewItem((s) => ({ ...s, description: v }))}
+                style={styles.input}
+                placeholderTextColor="rgba(255,255,255,0.45)"
+              />
+              <View style={styles.switchRow}>
+                <Text style={styles.fieldLabelInline}>Available</Text>
+                <Switch
+                  value={Boolean(newItem.is_available)}
+                  onValueChange={(v) => setNewItem((s) => ({ ...s, is_available: v }))}
+                  trackColor={{ false: "rgba(255,255,255,0.25)", true: MMD_TAXI_GREEN }}
+                  thumbColor={MMD_WHITE}
+                />
+              </View>
+              <TouchableOpacity
+                disabled={uploading}
+                onPress={async () => {
+                  const url = await pickAndUploadMenuImage();
+                  if (url) setNewItem((s) => ({ ...s, image_url: url }));
+                }}
+                style={styles.secondaryBtn}
+              >
+                {uploading ? <ActivityIndicator color={MMD_WHITE} /> : null}
+                <Text style={styles.secondaryBtnText}>
+                  {newItem.image_url ? "Change image" : "Choose image"}
+                </Text>
+              </TouchableOpacity>
+              <View style={styles.modalActions}>
+                <TouchableOpacity onPress={() => setAddItemOpen(false)}>
+                  <Text style={styles.modalCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalSave}
+                  onPress={async () => {
+                    await addItem();
+                    setAddItemOpen(false);
+                  }}
+                  disabled={savingAction || uploading}
+                >
+                  <Text style={styles.modalSaveText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal visible={editOpen} transparent animationType="fade" onRequestClose={closeEdit}>
+        <View style={styles.modalBackdrop}>
+          <ScrollView contentContainerStyle={styles.modalScroll}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Edit Item</Text>
+              <Text style={styles.fieldLabel}>Name</Text>
+              <TextInput
+                value={editForm.name}
+                onChangeText={(v) => setEditForm((s) => ({ ...s, name: v }))}
+                style={styles.input}
+                placeholderTextColor="rgba(255,255,255,0.45)"
+              />
+              <Text style={styles.fieldLabel}>Price</Text>
+              <TextInput
+                value={editForm.price}
+                onChangeText={(v) => setEditForm((s) => ({ ...s, price: v }))}
+                keyboardType="decimal-pad"
+                style={styles.input}
+                placeholderTextColor="rgba(255,255,255,0.45)"
+              />
+              <Text style={styles.fieldLabel}>Description</Text>
+              <TextInput
+                value={editForm.description}
+                onChangeText={(v) => setEditForm((s) => ({ ...s, description: v }))}
+                style={styles.input}
+                placeholderTextColor="rgba(255,255,255,0.45)"
+              />
+              <View style={styles.switchRow}>
+                <Text style={styles.fieldLabelInline}>Available</Text>
+                <Switch
+                  value={Boolean(editForm.is_available)}
+                  onValueChange={(v) => setEditForm((s) => ({ ...s, is_available: v }))}
+                  trackColor={{ false: "rgba(255,255,255,0.25)", true: MMD_TAXI_GREEN }}
+                  thumbColor={MMD_WHITE}
+                />
+              </View>
+              <TouchableOpacity
+                disabled={uploading}
+                onPress={async () => {
+                  const url = await pickAndUploadMenuImage();
+                  if (url) setEditForm((s) => ({ ...s, image_url: url }));
+                }}
+                style={styles.secondaryBtn}
+              >
+                {uploading ? <ActivityIndicator color={MMD_WHITE} /> : null}
+                <Text style={styles.secondaryBtnText}>
+                  {editForm.image_url ? "Change image" : "Choose image"}
+                </Text>
+              </TouchableOpacity>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (editItemId) void deleteItem(editItemId);
+                    closeEdit();
+                  }}
+                >
+                  <Text style={styles.modalDelete}>Delete</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={closeEdit}>
+                  <Text style={styles.modalCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalSave}
+                  onPress={saveEdit}
+                  disabled={editSaving || uploading}
+                >
+                  {editSaving ? <ActivityIndicator color={MMD_WHITE} /> : null}
+                  <Text style={styles.modalSaveText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  emptyPad: { flex: 1, padding: 16, justifyContent: "center" },
+  emptyContent: {
+    flex: 1,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    gap: 24,
+    alignItems: "flex-start",
+  },
+  addCategoryBtn: {
+    width: "100%",
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  addCategoryBtnText: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  emptyCard: {
+    width: 320,
+    maxWidth: "100%",
+    alignSelf: "center",
+    alignItems: "center",
+    gap: 20,
+    padding: 32,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  emptyIcon: { fontSize: 28, color: MMD_WHITE },
+  emptyTextStack: { width: "100%", alignItems: "center", gap: 8 },
+  emptyTitle: {
+    color: MMD_WHITE,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+  },
+  menuContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 32,
+    gap: 24,
+  },
+  tabsRow: { gap: 12, paddingRight: 8 },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  tabActive: {
+    backgroundColor: MMD_WHITE,
+    borderColor: MMD_WHITE,
+  },
+  tabText: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  tabTextActive: {
+    color: MMD_BLUE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  itemsCol: { gap: 16 },
+  itemCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  itemThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  itemThumbPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+  },
+  itemThumbEmoji: { fontSize: 28 },
+  itemMeta: { flex: 1, gap: 6, minWidth: 0 },
+  itemName: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  itemPrice: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
+  statusRow: { flexDirection: "row", alignItems: "center" },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  badgeOn: { backgroundColor: "rgba(34,197,94,0.2)" },
+  badgeOff: { backgroundColor: "rgba(239,68,68,0.2)" },
+  badgeText: {
+    fontSize: 11,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  badgeTextOn: { color: MMD_TAXI_GREEN },
+  badgeTextOff: { color: "#EF4444" },
+  headerAction: {
+    backgroundColor: MMD_TAXI_GREEN,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  headerActionText: {
+    color: MMD_WHITE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalScroll: { flexGrow: 1, justifyContent: "center", paddingVertical: 24 },
+  modalCard: {
+    backgroundColor: MMD_BLUE,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    gap: 10,
+  },
+  modalTitle: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  fieldLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  fieldLabelInline: {
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    backgroundColor: MMD_GLASS,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  secondaryBtn: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: GLASS_BORDER,
+    borderRadius: 10,
+    padding: 12,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  secondaryBtnText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 8,
+  },
+  modalCancel: {
+    color: "rgba(255,255,255,0.8)",
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    padding: 8,
+  },
+  modalDelete: {
+    color: "#FCA5A5",
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    padding: 8,
+  },
+  modalSave: {
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  modalSaveText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+});

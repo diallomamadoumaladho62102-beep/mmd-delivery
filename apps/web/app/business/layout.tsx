@@ -1,58 +1,38 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
-import SocialLinks from "@/components/site/SocialLinks";
+import { useEffect, useState, type ReactNode } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import { BusinessShell } from "@/components/business/BusinessShell";
 
-const NAV = [
-  { href: "/business", label: "Overview" },
-  { href: "/taxi/business/wallet", label: "Wallet" },
-  { href: "/business/members", label: "Members" },
-  { href: "/business/approvals", label: "Approvals" },
-] as const;
+function initialsFrom(email?: string | null, name?: string | null) {
+  const fromName = String(name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("");
+  if (fromName) return fromName;
+  const local = String(email ?? "").split("@")[0] ?? "";
+  return local.slice(0, 2) || "MM";
+}
 
 export default function BusinessLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const [initials, setInitials] = useState("MM");
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/80">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-4">
-          <Link href="/business" className="text-lg font-black tracking-tight text-amber-400">
-            MMD Business
-          </Link>
-          <nav className="flex flex-wrap gap-1">
-            {NAV.map((item) => {
-              const active =
-                item.href === "/business"
-                  ? pathname === "/business"
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={[
-                    "rounded-lg px-3 py-2 text-sm font-semibold transition",
-                    active
-                      ? "bg-amber-500/20 text-amber-300"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-100",
-                  ].join(" ")}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-      </header>
-      <div className="mx-auto max-w-5xl px-4 py-8">{children}</div>
-      <footer className="border-t border-slate-800 px-4 py-6">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-slate-500">Follow MMD Delivery</p>
-          <SocialLinks variant="icons" showLabels={false} />
-        </div>
-      </footer>
-    </div>
-  );
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => {
+      const user = data.user;
+      if (!user) return;
+      const meta = user.user_metadata ?? {};
+      setInitials(
+        initialsFrom(
+          user.email,
+          String(meta.full_name ?? meta.name ?? "")
+        )
+      );
+    });
+  }, []);
+
+  return <BusinessShell avatarInitials={initials}>{children}</BusinessShell>;
 }

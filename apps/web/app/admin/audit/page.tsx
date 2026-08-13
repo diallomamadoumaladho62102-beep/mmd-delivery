@@ -272,7 +272,7 @@ export default function AdminAuditPage() {
 
   if (loading || !authChecked) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-w-0">
         <div className="mx-auto max-w-7xl p-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="mb-4 text-2xl font-bold text-slate-900">
@@ -287,7 +287,7 @@ export default function AdminAuditPage() {
 
   if ((!isAdmin || err) && rows.length === 0) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-w-0">
         <div className="mx-auto max-w-7xl p-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="mb-4 text-2xl font-bold text-slate-900">
@@ -301,7 +301,7 @@ export default function AdminAuditPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-w-0">
       <div className="mx-auto max-w-7xl space-y-6 p-6">
         <header className="space-y-3">
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">

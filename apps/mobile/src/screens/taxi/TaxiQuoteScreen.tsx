@@ -46,6 +46,14 @@ import { supabase } from "../../lib/supabase";
 import { PaymentMethodPicker } from "../../components/PaymentMethodPicker";
 import { type PaymentMethodOption } from "../../lib/paymentMethodsApi";
 import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+import {
   loadLocalPaymentMethods,
   shouldOfferLocalMobileMoney,
   startLocalPaymentForMethod,
@@ -471,10 +479,14 @@ export default function TaxiQuoteScreen() {
 
   return (
     <>
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={getTaxiUiString("estimate", countryCode)}
+        subtitle={t(
+          "taxi.quote.subtitle",
+          "Review your ride details before confirming",
+        )}
         fallbackRoute="ClientHome"
         variant="dark"
       />
@@ -516,14 +528,20 @@ export default function TaxiQuoteScreen() {
             }
             style={{
               flex: 1,
-              paddingVertical: 12,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: pickupLocationId ? "#22C55E" : "#334155",
+              paddingVertical: 14,
+              borderRadius: 14,
+              backgroundColor: MMD_TAXI_GREEN,
               alignItems: "center",
             }}
           >
-            <Text style={{ color: "#E2E8F0", fontWeight: "700", fontSize: 12 }}>
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontWeight: "800",
+                fontSize: 15,
+                fontFamily: MMD_FONT.extrabold,
+              }}
+            >
               {pickupLocationId
                 ? t("taxi.quote.pickupPinned", "Pickup pinned")
                 : t("taxi.quote.pinPickup", "Pin pickup")}
@@ -541,14 +559,20 @@ export default function TaxiQuoteScreen() {
             }
             style={{
               flex: 1,
-              paddingVertical: 12,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: dropoffLocationId ? "#22C55E" : "#334155",
+              paddingVertical: 14,
+              borderRadius: 14,
+              backgroundColor: MMD_TAXI_GREEN,
               alignItems: "center",
             }}
           >
-            <Text style={{ color: "#E2E8F0", fontWeight: "700", fontSize: 12 }}>
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontWeight: "800",
+                fontSize: 15,
+                fontFamily: MMD_FONT.extrabold,
+              }}
+            >
               {dropoffLocationId
                 ? t("taxi.quote.dropoffPinned", "Dropoff pinned")
                 : t("taxi.quote.pinDropoff", "Pin dropoff")}
@@ -559,16 +583,24 @@ export default function TaxiQuoteScreen() {
         <View
           style={{
             marginTop: 8,
-            padding: 16,
-            borderRadius: 16,
-            backgroundColor: "rgba(15,23,42,0.95)",
+            padding: 20,
+            borderRadius: 24,
+            backgroundColor: MMD_GLASS,
             borderWidth: 1,
-            borderColor: "#334155",
-            gap: 8,
+            borderColor: "rgba(212,175,55,0.7)",
+            gap: 12,
           }}
         >
-          <Text style={{ color: "#94A3B8", fontWeight: "700", textAlign: textAlignStart() }}>
-            {t("taxi.quote.priceBreakdown", "Price breakdown")}
+          <Text
+            style={{
+              color: MMD_GOLD_CLASSIC,
+              fontWeight: "800",
+              fontFamily: MMD_FONT.extrabold,
+              fontSize: 18,
+              textAlign: textAlignStart(),
+            }}
+          >
+            💰 {t("taxi.quote.priceBreakdown", "Price breakdown")}
           </Text>
           <Row label={getTaxiUiString("subtotal", countryCode)} value={subtotal} />
           {taxCents > 0 ? (
@@ -663,25 +695,32 @@ export default function TaxiQuoteScreen() {
               autoCapitalize="characters"
               style={{
                 flex: 1,
-                backgroundColor: "rgba(15,23,42,0.95)",
+                backgroundColor: MMD_GLASS,
                 borderWidth: 1,
-                borderColor: "#334155",
+                borderColor: "rgba(212,175,55,0.7)",
                 borderRadius: 14,
                 paddingHorizontal: 14,
                 paddingVertical: 12,
-                color: "#F8FAFC",
+                color: MMD_WHITE,
+                fontFamily: MMD_FONT.regular,
               }}
             />
             <TouchableOpacity
               onPress={handleApplyPromo}
               style={{
-                backgroundColor: "#334155",
-                paddingHorizontal: 16,
+                backgroundColor: MMD_TAXI_GREEN,
+                paddingHorizontal: 18,
                 borderRadius: 14,
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>
+              <Text
+                style={{
+                  color: MMD_WHITE,
+                  fontWeight: "800",
+                  fontFamily: MMD_FONT.extrabold,
+                }}
+              >
                 {t("taxi.quote.apply", "Apply")}
               </Text>
             </TouchableOpacity>
@@ -787,19 +826,26 @@ export default function TaxiQuoteScreen() {
           disabled={paying || !quoteState}
           style={{
             marginTop: 12,
-            backgroundColor: quoteState ? "#22C55E" : "#475569",
+            backgroundColor: quoteState ? MMD_TAXI_GREEN : "#475569",
             paddingVertical: 16,
-            borderRadius: 16,
+            borderRadius: 18,
             alignItems: "center",
             opacity: quoteState ? 1 : 0.6,
           }}
         >
           {paying ? (
-            <ActivityIndicator color="#052e16" />
+            <ActivityIndicator color={MMD_WHITE} />
           ) : (
-            <Text style={{ color: "#052e16", fontWeight: "800", fontSize: 16 }}>
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontWeight: "800",
+                fontSize: 19,
+                fontFamily: MMD_FONT.extrabold,
+              }}
+            >
               {quoteState
-                ? t("taxi.quote.confirmPayTotal", "Confirm & pay {{total}}", { total })
+                ? `✅ ${t("taxi.quote.confirmPayTotal", "Confirm & pay {{total}}", { total })}`
                 : t("taxi.quote.quoteUnavailable", "Estimate unavailable — check addresses")}
             </Text>
           )}
@@ -825,17 +871,38 @@ function Card({ label, value }: { label: string; value: string }) {
   return (
     <View
       style={{
-        padding: 14,
-        borderRadius: 14,
-        backgroundColor: "rgba(15,23,42,0.9)",
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 24,
+        backgroundColor: MMD_GLASS,
         borderWidth: 1,
-        borderColor: "#1E293B",
+        borderColor: "rgba(212,175,55,0.7)",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
       }}
     >
-      <Text style={{ color: "#64748B", fontSize: 12, fontWeight: "700", textAlign: textAlignStart() }}>
+      <Text
+        style={{
+          color: MMD_GOLD_CLASSIC,
+          fontSize: 15,
+          fontWeight: "700",
+          fontFamily: MMD_FONT.bold,
+          textAlign: textAlignStart(),
+        }}
+      >
         {label}
       </Text>
-      <Text style={{ color: "#F8FAFC", marginTop: 4, fontSize: 15 }}>{value}</Text>
+      <Text
+        style={{
+          color: MMD_WHITE,
+          fontSize: 16,
+          fontWeight: "700",
+          fontFamily: MMD_FONT.bold,
+        }}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -851,11 +918,21 @@ function Row({
 }) {
   return (
     <View style={{ flexDirection: rowDirection(), justifyContent: "space-between" }}>
-      <Text style={{ color: "#CBD5E1" }}>{label}</Text>
       <Text
         style={{
-          color: bold ? "#FDE68A" : "#F8FAFC",
-          fontWeight: bold ? "800" : "600",
+          color: MMD_GOLD_CLASSIC,
+          fontFamily: bold ? MMD_FONT.extrabold : MMD_FONT.regular,
+          fontWeight: bold ? "800" : "400",
+        }}
+      >
+        {label}
+      </Text>
+      <Text
+        style={{
+          color: bold ? MMD_TAXI_GREEN : MMD_WHITE,
+          fontWeight: bold ? "800" : "700",
+          fontFamily: bold ? MMD_FONT.extrabold : MMD_FONT.bold,
+          fontSize: bold ? 24 : 15,
         }}
       >
         {value}
@@ -877,15 +954,42 @@ function OptionToggle({
     <TouchableOpacity
       onPress={onPress}
       style={{
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderRadius: 14,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 24,
         borderWidth: 1,
-        borderColor: active ? "#38BDF8" : "#334155",
-        backgroundColor: active ? "rgba(56,189,248,0.12)" : "rgba(15,23,42,0.95)",
+        borderColor: "rgba(212,175,55,0.7)",
+        backgroundColor: MMD_GLASS,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
       }}
     >
-      <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>{label}</Text>
+      <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold, fontSize: 16 }}>
+        {label}
+      </Text>
+      <View
+        style={{
+          width: 44,
+          height: 24,
+          borderRadius: 12,
+          padding: 2,
+          backgroundColor: active ? MMD_TAXI_GREEN : MMD_GLASS,
+          borderWidth: active ? 0 : 1,
+          borderColor: "rgba(212,175,55,0.7)",
+          justifyContent: "center",
+          alignItems: active ? "flex-end" : "flex-start",
+        }}
+      >
+        <View
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 10,
+            backgroundColor: active ? "#94A3B8" : MMD_WHITE,
+          }}
+        />
+      </View>
     </TouchableOpacity>
   );
 }

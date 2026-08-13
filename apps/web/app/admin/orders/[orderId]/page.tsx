@@ -441,7 +441,7 @@ export default function AdminOrderPage() {
 
   if (loading || !authChecked) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-w-0">
         <div className="mx-auto max-w-5xl px-4 py-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <p className="text-sm text-slate-600">Chargement de la commande…</p>
@@ -453,7 +453,7 @@ export default function AdminOrderPage() {
 
   if (err || !order || !isAdmin) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-w-0">
         <div className="mx-auto max-w-5xl space-y-4 px-4 py-6">
           <button
             type="button"
@@ -474,7 +474,7 @@ export default function AdminOrderPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-w-0">
       <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button

@@ -32,6 +32,20 @@ import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { shouldOfferLocalMobileMoney } from "../lib/localPayments";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_MUTED,
+  MMD_NAVY,
+  MMD_WHITE,
+} from "../theme/mmdUi";
+
+const SECTION_BG = "#002673";
+const CARD_BORDER = "rgba(255,215,0,0.25)";
+const SECTION_BORDER = "rgba(255,215,0,0.15)";
+const ADD_PURPLE = "#7C3AED";
+const CTA_GOLD = "#DAAA20";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientRestaurantMenu">;
 type Route = RouteProp<RootStackParamList, "ClientRestaurantMenu">;
@@ -56,7 +70,21 @@ type RestaurantProfile = {
   is_accepting_orders: boolean | null;
   location_lat: number | string | null;
   location_lng: number | string | null;
+  logo_url?: string | null;
+  avatar_url?: string | null;
+  cover_image_url?: string | null;
 };
+
+const AVATARS_BUCKET = "avatars";
+
+function resolveRestaurantImageUrl(value: string | null | undefined): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const normalized = raw.replace(/^\/+/, "");
+  const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(normalized);
+  return data?.publicUrl || null;
+}
 
 
 type CartItem = {
@@ -331,7 +359,7 @@ export function ClientRestaurantMenuScreen() {
         const { data: profileData, error: profileError } = await supabase
           .from("restaurant_profiles")
           .select(
-            "user_id, restaurant_name, address, status, is_accepting_orders, location_lat, location_lng"
+            "user_id, restaurant_name, address, status, is_accepting_orders, location_lat, location_lng, logo_url, avatar_url, cover_image_url"
           )
           .eq("user_id", restaurantId)
           .eq("status", "approved")
@@ -1139,7 +1167,7 @@ export function ClientRestaurantMenuScreen() {
     !!dropoffCoords;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <ScreenHeader
         title={restaurantProfile?.restaurant_name || restaurantName}
@@ -1148,42 +1176,74 @@ export function ClientRestaurantMenuScreen() {
           "Parcours le menu et ajoute des plats à ta commande MMD."
         )}
         fallbackRoute="ClientRestaurantList"
-        variant="dark"
+        variant="brand"
       />
 
       <ScrollView
         contentContainerStyle={{
-          paddingHorizontal: 20,
+          paddingHorizontal: 24,
           paddingTop: 8,
-          paddingBottom: 24,
+          paddingBottom: 32,
+          gap: 20,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {(() => {
+          const headerImage =
+            resolveRestaurantImageUrl(restaurantProfile?.cover_image_url) ||
+            resolveRestaurantImageUrl(restaurantProfile?.logo_url) ||
+            resolveRestaurantImageUrl(restaurantProfile?.avatar_url);
+          if (!headerImage) return null;
+          return (
+            <Image
+              source={{ uri: headerImage }}
+              style={{
+                width: "100%",
+                height: 160,
+                borderRadius: 16,
+                backgroundColor: SECTION_BG,
+              }}
+              resizeMode="cover"
+              accessibilityLabel={
+                restaurantProfile?.restaurant_name || restaurantName || "Restaurant"
+              }
+            />
+          );
+        })()}
 
         <View
           style={{
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: "#111827",
-            backgroundColor: "#020617",
-            padding: 14,
-            marginBottom: 16,
+            borderColor: SECTION_BORDER,
+            backgroundColor: SECTION_BG,
+            paddingHorizontal: 16,
+            paddingVertical: 18,
+            marginBottom: 0,
+            gap: 14,
           }}
         >
-          <Text style={{ color: "#F9FAFB", fontSize: 16, fontWeight: "700", marginBottom: 8 }}>
+          <Text
+            style={{
+              color: MMD_GOLD_BRIGHT,
+              fontSize: 20,
+              fontWeight: "700",
+              fontFamily: MMD_FONT.bold,
+            }}
+          >
             {tr("clientRestaurantMenu.menu.title", "Menu du restaurant")}
           </Text>
 
           {loading ? (
             <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 16 }}>
-              <ActivityIndicator size="small" color="#22C55E" />
-              <Text style={{ marginTop: 8, color: "#9CA3AF", fontSize: 13 }}>
+              <ActivityIndicator size="small" color={MMD_GOLD_BRIGHT} />
+              <Text style={{ marginTop: 8, color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
                 {tr("clientRestaurantMenu.menu.loading", "Chargement du menu…")}
               </Text>
             </View>
           ) : items.length === 0 ? (
-            <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
+            <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
               {tr(
                 "clientRestaurantMenu.menu.empty",
                 "Aucun plat pour l’instant. Le restaurant n’a pas encore configuré son menu dans MMD Delivery."
@@ -1197,18 +1257,20 @@ export function ClientRestaurantMenuScreen() {
                 <View
                   key={item.id}
                   style={{
-                    borderRadius: 16,
+                    borderRadius: 14,
                     borderWidth: 1,
-                    borderColor: "#111827",
-                    backgroundColor: "#020617",
+                    borderColor: CARD_BORDER,
+                    backgroundColor: MMD_NAVY,
                     overflow: "hidden",
-                    marginBottom: 12,
+                    marginBottom: 0,
+                    padding: 14,
+                    gap: 8,
                   }}
                 >
                   {item.image_url ? (
                     <Image
                       source={{ uri: item.image_url }}
-                      style={{ width: "100%", height: 170, backgroundColor: "#111827" }}
+                      style={{ width: "100%", height: 120, backgroundColor: MMD_NAVY, borderRadius: 10 }}
                       resizeMode="cover"
                       onError={(e) =>
                         console.log("⚠️ menu image error:", item.image_url, e.nativeEvent)
@@ -1216,49 +1278,77 @@ export function ClientRestaurantMenuScreen() {
                     />
                   ) : null}
 
-                  <View style={{ padding: 12 }}>
-                    <Text style={{ color: "#F9FAFB", fontSize: 15, fontWeight: "800" }}>
-                      {item.name}
-                    </Text>
+                  <Text
+                    style={{
+                      color: MMD_WHITE,
+                      fontSize: 19,
+                      fontWeight: "700",
+                      fontFamily: MMD_FONT.bold,
+                    }}
+                  >
+                    {item.name}
+                  </Text>
 
-                    {!!item.category && (
-                      <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 2 }}>
-                        {item.category}
-                      </Text>
-                    )}
-
-                    {!!item.description && (
-                      <Text style={{ color: "#6B7280", fontSize: 12, marginTop: 6 }}>
-                        {item.description}
-                      </Text>
-                    )}
-
-                    <View
+                  {!!item.category && (
+                    <Text
                       style={{
-                        marginTop: 10,
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        color: MMD_GOLD_BRIGHT,
+                        fontSize: 14,
+                        fontWeight: "600",
+                        fontFamily: MMD_FONT.semibold,
                       }}
                     >
-                      <Text style={{ color: "#F9FAFB", fontSize: 14, fontWeight: "900" }}>
-                        {money(price)} {currency}
-                      </Text>
+                      {item.category}
+                    </Text>
+                  )}
 
-                      <TouchableOpacity
-                        onPress={() => addToCart(item)}
+                  {!!item.description && (
+                    <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.regular }}>
+                      {item.description}
+                    </Text>
+                  )}
+
+                  <View
+                    style={{
+                      marginTop: 2,
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: MMD_WHITE,
+                        fontSize: 18,
+                        fontWeight: "700",
+                        fontFamily: MMD_FONT.bold,
+                      }}
+                    >
+                      {money(price)} {currency}
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => addToCart(item)}
+                      style={{
+                        backgroundColor: ADD_PURPLE,
+                        borderRadius: 12,
+                        paddingVertical: 10,
+                        paddingHorizontal: 16,
+                        minHeight: 44,
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text
                         style={{
-                          backgroundColor: "#22C55E",
-                          borderRadius: 999,
-                          paddingVertical: 8,
-                          paddingHorizontal: 20,
+                          color: MMD_WHITE,
+                          fontSize: 16,
+                          fontWeight: "700",
+                          fontFamily: MMD_FONT.bold,
                         }}
                       >
-                        <Text style={{ color: "white", fontSize: 13, fontWeight: "800" }}>
-                          {tr("clientRestaurantMenu.menu.add", "Ajouter")}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+                        {tr("clientRestaurantMenu.menu.add", "Ajouter")}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               );
@@ -1270,18 +1360,28 @@ export function ClientRestaurantMenuScreen() {
           style={{
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: "#111827",
-            backgroundColor: "#020617",
-            padding: 14,
-            marginBottom: 16,
+            borderColor: SECTION_BORDER,
+            backgroundColor: SECTION_BG,
+            paddingHorizontal: 16,
+            paddingVertical: 18,
+            marginBottom: 0,
+            gap: 14,
           }}
         >
-          <Text style={{ color: "#F9FAFB", fontSize: 15, fontWeight: "700", marginBottom: 8 }}>
+          <Text
+            style={{
+              color: MMD_GOLD_BRIGHT,
+              fontSize: 20,
+              fontWeight: "700",
+              fontFamily: MMD_FONT.bold,
+              marginBottom: 0,
+            }}
+          >
             {tr("clientRestaurantMenu.addresses.title", "Adresses pour la livraison")}
           </Text>
 
-          <View style={{ marginBottom: 10 }}>
-            <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 4 }}>
+          <View style={{ marginBottom: 0, gap: 4 }}>
+            <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
               {tr(
                 "clientRestaurantMenu.addresses.pickupLabel",
                 "Adresse pickup (restaurant / point de départ)"
@@ -1296,22 +1396,24 @@ export function ClientRestaurantMenuScreen() {
                 "clientRestaurantMenu.addresses.pickupPlaceholder",
                 "Ex : 686 Vermont St Brooklyn NY 11207"
               )}
-              placeholderTextColor="#4B5563"
+              placeholderTextColor={MMD_MUTED}
               style={{
-                backgroundColor: pickupLocked ? "#0B1220" : "#020617",
+                backgroundColor: MMD_NAVY,
                 borderRadius: 12,
-                borderWidth: 1,
-                borderColor: pickupLocked ? "#1F2937" : "#374151",
-                paddingHorizontal: 12,
+                borderWidth: 1.5,
+                borderColor: "rgba(255,255,255,0.3)",
+                paddingHorizontal: 16,
                 paddingVertical: 10,
-                color: "white",
-                fontSize: 14,
-                opacity: pickupLocked ? 0.95 : 1,
+                color: MMD_WHITE,
+                fontSize: 15,
+                fontFamily: MMD_FONT.regular,
+                minHeight: 42,
+                opacity: pickupLocked ? 0.8 : 1,
               }}
             />
 
             {pickupLocked && (
-              <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 6 }}>
+              <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
                 {tr(
                   "clientRestaurantMenu.addresses.pickupLockedHint",
                   "Adresse du restaurant remplie automatiquement."
@@ -1320,8 +1422,8 @@ export function ClientRestaurantMenuScreen() {
             )}
           </View>
 
-          <View>
-            <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 4 }}>
+          <View style={{ gap: 4 }}>
+            <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
               {tr("clientRestaurantMenu.addresses.dropoffLabel", "Adresse de livraison (client)")}
             </Text>
 
@@ -1332,41 +1434,41 @@ export function ClientRestaurantMenuScreen() {
                 "clientRestaurantMenu.addresses.dropoffPlaceholder",
                 "Ex : 1112 Flatbush Ave Brooklyn NY 11226"
               )}
-              placeholderTextColor="#4B5563"
+              placeholderTextColor={MMD_MUTED}
               autoCapitalize="words"
               autoCorrect={false}
               style={{
-                backgroundColor: "#020617",
+                backgroundColor: MMD_NAVY,
                 borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#374151",
-                paddingHorizontal: 12,
+                borderWidth: 1.5,
+                borderColor: "rgba(255,255,255,0.3)",
+                paddingHorizontal: 16,
                 paddingVertical: 10,
-                color: "white",
-                fontSize: 14,
+                color: MMD_WHITE,
+                fontSize: 15,
+                fontFamily: MMD_FONT.regular,
+                minHeight: 42,
               }}
             />
           </View>
 
           <View
             style={{
-              marginTop: 12,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: "#1F2937",
-              backgroundColor: "#07111F",
-              paddingHorizontal: 12,
-              paddingVertical: 10,
+              borderColor: SECTION_BORDER,
+              backgroundColor: MMD_NAVY,
+              padding: 14,
             }}
           >
             <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={{ color: "white", fontSize: 14, fontWeight: "700" }}>
+              <Text style={{ color: MMD_WHITE, fontSize: 14, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                 {tr("clientRestaurantMenu.leaveAtDoor.title", "Laisser devant la porte")}
               </Text>
-              <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 4, lineHeight: 18 }}>
+              <Text style={{ color: MMD_MUTED, fontSize: 13, marginTop: 4, lineHeight: 18, fontFamily: MMD_FONT.regular }}>
                 {tr(
                   "clientRestaurantMenu.leaveAtDoor.hint",
                   "Autorise le livreur à déposer la commande devant la porte après l’attente maximale (photo obligatoire)."
@@ -1376,30 +1478,30 @@ export function ClientRestaurantMenuScreen() {
             <Switch
               value={leaveAtDoor}
               onValueChange={setLeaveAtDoor}
-              trackColor={{ false: "#374151", true: "#166534" }}
-              thumbColor={leaveAtDoor ? "#22C55E" : "#9CA3AF"}
+              trackColor={{ false: "#CCD1D9", true: "#166534" }}
+              thumbColor={leaveAtDoor ? "#22C55E" : "#F8FAFC"}
             />
           </View>
 
           <View
             style={{
-              marginTop: 12,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: "#1F2937",
-              backgroundColor: "#07111F",
-              padding: 12,
+              borderColor: "rgba(255,215,0,0.2)",
+              backgroundColor: MMD_NAVY,
+              padding: 14,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               {estimating ? (
                 <>
-                  <ActivityIndicator size="small" color="#22C55E" />
+                  <ActivityIndicator size="small" color={MMD_GOLD_BRIGHT} />
                   <Text
                     style={{
-                      color: "#D1FAE5",
-                      fontSize: 12,
-                      fontWeight: "700",
+                      color: MMD_MUTED,
+                      fontSize: 14,
+                      fontWeight: "600",
+                      fontFamily: MMD_FONT.semibold,
                       marginLeft: 8,
                     }}
                   >
@@ -1410,18 +1512,18 @@ export function ClientRestaurantMenuScreen() {
                   </Text>
                 </>
               ) : estimateError ? (
-                <Text style={{ color: "#FCA5A5", fontSize: 12, fontWeight: "700" }}>
+                <Text style={{ color: "#FCA5A5", fontSize: 14, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                   {estimateError}
                 </Text>
               ) : distanceMiles != null && etaMinutes != null && deliveryFee != null ? (
-                <Text style={{ color: "#86EFAC", fontSize: 12, fontWeight: "700" }}>
+                <Text style={{ color: "#4DE58C", fontSize: 14, fontWeight: "600", fontFamily: MMD_FONT.semibold }}>
                   {tr(
                     "clientRestaurantMenu.addresses.estimateReady",
                     "Estimation de livraison prête."
                   )}
                 </Text>
               ) : (
-                <Text style={{ color: "#94A3B8", fontSize: 12 }}>
+                <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
                   {tr(
                     "clientRestaurantMenu.addresses.autoEstimateHint",
                     "L’estimation se lance automatiquement quand l’adresse est complète."
@@ -1473,18 +1575,27 @@ export function ClientRestaurantMenuScreen() {
           style={{
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: "#111827",
-            backgroundColor: "#020617",
-            padding: 14,
-            marginBottom: 16,
+            borderColor: SECTION_BORDER,
+            backgroundColor: SECTION_BG,
+            paddingHorizontal: 16,
+            paddingVertical: 18,
+            marginBottom: 0,
+            gap: 14,
           }}
         >
-          <Text style={{ color: "#F9FAFB", fontSize: 15, fontWeight: "800", marginBottom: 10 }}>
+          <Text
+            style={{
+              color: MMD_GOLD_BRIGHT,
+              fontSize: 20,
+              fontWeight: "700",
+              fontFamily: MMD_FONT.bold,
+            }}
+          >
             {tr("clientRestaurantMenu.cart.title", "Panier")}
           </Text>
 
           {cart.length === 0 ? (
-            <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
+            <Text style={{ color: MMD_MUTED, fontSize: 15, fontFamily: MMD_FONT.regular }}>
               {tr(
                 "clientRestaurantMenu.cart.empty",
                 "Ton panier est vide. Ajoute des plats depuis le menu."
@@ -1664,21 +1775,25 @@ export function ClientRestaurantMenuScreen() {
           onPress={handleCreateOrder}
           disabled={!canCreateOrder}
           style={{
-            backgroundColor: canCreateOrder ? "#3B82F6" : "#4B5563",
-            borderRadius: 999,
-            paddingVertical: 12,
+            backgroundColor: CTA_GOLD,
+            borderRadius: 14,
+            paddingVertical: 14,
+            paddingHorizontal: 16,
             alignItems: "center",
             flexDirection: "row",
             justifyContent: "center",
             marginBottom: 12,
+            minHeight: 44,
+            opacity: canCreateOrder ? 1 : 0.55,
           }}
         >
-          {creating && <ActivityIndicator color="#ffffff" />}
+          {creating && <ActivityIndicator color={MMD_NAVY} />}
           <Text
             style={{
-              color: "white",
-              fontSize: 14,
-              fontWeight: "900",
+              color: MMD_NAVY,
+              fontSize: 16,
+              fontWeight: "700",
+              fontFamily: MMD_FONT.bold,
               marginLeft: creating ? 8 : 0,
             }}
           >

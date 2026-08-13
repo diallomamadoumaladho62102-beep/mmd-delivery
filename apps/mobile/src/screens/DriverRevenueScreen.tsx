@@ -19,7 +19,15 @@ import {
   type TaxiEarningsSummary,
 } from "../lib/taxiEarnings";
 import { formatDriverPayout } from "../lib/taxiDriverApi";
-import { APP_COLORS } from "../theme/appTheme";
+import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
+import {
+  MMD_BLUE,
+  MMD_GOLD_CLASSIC,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type RangeKey = "week" | "today" | "month";
 
@@ -44,17 +52,18 @@ type QuickActionProps = {
   onPress: () => void;
 };
 
-const BG = "#020617";
-const CARD = "rgba(15,23,42,0.86)";
-const CARD_SOFT = "rgba(2,6,23,0.72)";
-const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = APP_COLORS.accent;
+const BG = MMD_BLUE;
+const CARD = "rgba(0,51,153,0.86)";
+const CARD_SOFT = "rgba(0,51,153,0.72)";
+const BORDER = "rgba(170,190,230,0.14)";
+const PURPLE = "#A78BFA";
 const PURPLE_DARK = "#8B5CF6";
 const BLUE = "#60A5FA";
-const GREEN = "#22C55E";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
+const GREEN = "#16A34A";
+const TEXT = MMD_TEXT;
+const MUTED = MMD_TEXT_MUTED_BLUE;
 const DANGER = "#FCA5A5";
+const HERO_NAVY = "#001E64";
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -503,14 +512,18 @@ export function DriverRevenueScreen() {
           </View>
 
           {loading ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color="#fff" />
-              <Text style={styles.loadingText}>{t("shared.common.loading", "Loading…")}</Text>
+            <View style={styles.loadingBrand}>
+              <DriverBrandLoadingState title={t("shared.common.loading", "Loading")} />
             </View>
           ) : orders.length === 0 ? (
             <View style={styles.emptyCard}>
-              <Text style={styles.emptyTitle}>{t("driver.revenue.no_trips", "No delivered trips in this period.")}</Text>
-              <Text style={styles.emptySub}>{t("driver.revenue.no_trips_hint", "Completed deliveries will appear here after they are delivered.")}</Text>
+              <Text style={styles.emptyTitle}>{t("driver.revenue.no_trips_title", "No trips")}</Text>
+              <Text style={styles.emptySub}>
+                {t(
+                  "driver.revenue.no_trips_hint",
+                  "No delivered trips in this period. Completed deliveries will appear here after they are delivered.",
+                )}
+              </Text>
             </View>
           ) : (
             <View style={styles.sessionsList}>
@@ -618,72 +631,97 @@ const styles = StyleSheet.create({
   helpText: { color: "#E5E7EB", fontWeight: "900" },
   title: { color: TEXT, fontSize: 36, fontWeight: "900", marginTop: 10, letterSpacing: -0.8 },
   subtitle: { color: MUTED, marginTop: 4, fontSize: 13, fontWeight: "800" },
-  tabsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
+  tabsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    borderRadius: 12,
+    padding: 4,
+    backgroundColor: "rgba(0,55,160,0.3)",
+  },
   tabPill: { paddingVertical: 9, paddingHorizontal: 15, borderRadius: 999, backgroundColor: CARD_SOFT, borderWidth: 1, borderColor: BORDER },
-  tabPillActive: { backgroundColor: "rgba(139,92,246,0.18)", borderColor: "rgba(167,139,250,0.65)" },
-  tabText: { color: "#E5E7EB", fontWeight: "900" },
-  tabTextActive: { color: PURPLE },
+  tabPillActive: { backgroundColor: MMD_BLUE, borderColor: MMD_WHITE },
+  tabText: { color: "#E5E7EB", fontWeight: "800" },
+  tabTextActive: { color: MMD_WHITE },
   content: { padding: 18, paddingBottom: 34 },
-  heroCard: { borderRadius: 30, padding: 18, backgroundColor: CARD, borderWidth: 1, borderColor: "rgba(167,139,250,0.20)", shadowColor: PURPLE_DARK, shadowOpacity: 0.18, shadowRadius: 26, shadowOffset: { width: 0, height: 12 }, elevation: 10, overflow: "hidden" },
-  heroTopRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
-  heroLeft: { flex: 1, paddingRight: 14 },
-  mutedLabel: { color: MUTED, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.5 },
-  totalAmount: { color: TEXT, fontSize: 44, fontWeight: "900", marginTop: 4, letterSpacing: -1.2 },
-  netLine: { color: MUTED, marginTop: 7, fontWeight: "800", lineHeight: 18 },
-  graphWrap: { minWidth: 105, flexDirection: "row", alignItems: "flex-end", gap: 6, paddingBottom: 2 },
-  barWrap: { alignItems: "center" },
-  bar: { width: 10, borderRadius: 999, backgroundColor: PURPLE },
-  barLabel: { color: MUTED, fontSize: 9, marginTop: 6, fontWeight: "800" },
-  divider: { height: 1, backgroundColor: BORDER, marginVertical: 16 },
+  heroCard: {
+    borderRadius: 16,
+    padding: 20,
+    backgroundColor: MMD_WHITE,
+    overflow: "hidden",
+    gap: 16,
+  },
+  heroTopRow: { flexDirection: "column", alignItems: "stretch", gap: 16 },
+  heroLeft: { width: "100%" },
+  mutedLabel: { color: "#646E82", fontSize: 13, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
+  totalAmount: { color: HERO_NAVY, fontSize: 44, fontWeight: "800", marginTop: 4, letterSpacing: -1.2 },
+  netLine: { color: "#64748B", marginTop: 7, fontWeight: "700", lineHeight: 18 },
+  graphWrap: { width: "100%", flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 2 },
+  barWrap: { alignItems: "center", flex: 1 },
+  bar: { width: 12, borderRadius: 4, backgroundColor: GREEN },
+  barLabel: { color: "#505A6E", fontSize: 10, marginTop: 6, fontWeight: "700" },
+  divider: { height: 1, backgroundColor: "#DCE1EB", marginVertical: 0 },
   metricsGrid: { flexDirection: "row", gap: 10 },
-  metricCard: { flex: 1, minHeight: 70, borderRadius: 20, padding: 12, backgroundColor: "rgba(2,6,23,0.52)", borderWidth: 1, borderColor: BORDER, justifyContent: "center" },
-  metricValue: { color: TEXT, fontSize: 19, fontWeight: "900" },
-  metricLabel: { color: MUTED, fontSize: 11, fontWeight: "800", marginTop: 4 },
-  primaryButton: { marginTop: 16, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(139,92,246,0.18)", borderWidth: 1, borderColor: "rgba(167,139,250,0.54)" },
-  primaryButtonText: { color: "#DDD6FE", fontWeight: "900", fontSize: 15 },
-  quickGrid: { flexDirection: "row", gap: 10, marginTop: 14 },
+  metricCard: { flex: 1, minHeight: 70, borderRadius: 12, padding: 12, backgroundColor: "#F0F4FF", justifyContent: "center" },
+  metricValue: { color: HERO_NAVY, fontSize: 24, fontWeight: "800" },
+  metricLabel: { color: "#64748B", fontSize: 12, fontWeight: "700", marginTop: 4 },
+  primaryButton: { marginTop: 0, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: GREEN },
+  primaryButtonText: { color: MMD_WHITE, fontWeight: "800", fontSize: 15 },
+  quickGrid: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    borderRadius: 12,
+    padding: 8,
+    backgroundColor: "rgba(0,55,160,0.3)",
+  },
   taxiCard: {
     marginTop: 14,
     borderRadius: 22,
     backgroundColor: CARD,
     borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.35)",
+    borderColor: BORDER,
     padding: 16,
   },
   taxiCurrencyLabel: {
-    color: PURPLE,
+    color: MMD_GOLD_CLASSIC,
     fontSize: 12,
-    fontWeight: "900",
+    fontWeight: "800",
     marginBottom: 8,
     letterSpacing: 0.6,
   },
   quickCard: { flex: 1, minHeight: 110, borderRadius: 24, padding: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, justifyContent: "space-between" },
   quickIconBox: { width: 38, height: 38, borderRadius: 14, backgroundColor: "rgba(139,92,246,0.14)", alignItems: "center", justifyContent: "center" },
-  quickTitle: { color: TEXT, fontSize: 13, fontWeight: "900", marginTop: 8 },
-  quickSub: { color: MUTED, fontSize: 11, fontWeight: "700", marginTop: 3, lineHeight: 15 },
+  quickTitle: { color: TEXT, fontSize: 13, fontWeight: "800", marginTop: 8 },
+  quickSub: { color: MUTED, fontSize: 11, fontWeight: "600", marginTop: 3, lineHeight: 15 },
   sectionHeaderRow: { marginTop: 20, marginBottom: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { color: TEXT, fontSize: 22, fontWeight: "900" },
+  sectionTitle: { color: TEXT, fontSize: 22, fontWeight: "800" },
   refreshPill: { minWidth: 76, height: 36, borderRadius: 999, paddingHorizontal: 12, backgroundColor: CARD_SOFT, borderWidth: 1, borderColor: BORDER, alignItems: "center", justifyContent: "center" },
-  refreshText: { color: PURPLE, fontWeight: "900", fontSize: 12 },
+  refreshText: { color: PURPLE, fontWeight: "800", fontSize: 12 },
+  loadingBrand: { minHeight: 220, marginTop: 6 },
   loadingRow: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, borderRadius: 18, padding: 14 },
   loadingText: { color: MUTED, fontWeight: "800" },
-  emptyCard: { borderRadius: 22, padding: 16, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER },
-  emptyTitle: { color: TEXT, fontSize: 15, fontWeight: "900" },
-  emptySub: { color: MUTED, marginTop: 6, fontWeight: "700", lineHeight: 18 },
+  emptyCard: { borderRadius: 22, padding: 20, backgroundColor: "transparent", alignItems: "center" },
+  emptyTitle: { color: TEXT, fontSize: 20, fontWeight: "700", textAlign: "center" },
+  emptySub: { color: MUTED, marginTop: 8, fontWeight: "400", lineHeight: 20, textAlign: "center", fontSize: 15 },
   sessionsList: { gap: 10 },
   sessionCard: { borderRadius: 22, padding: 15, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER },
   sessionTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  sessionAmount: { color: TEXT, fontSize: 22, fontWeight: "900" },
-  sessionMeta: { color: MUTED, marginTop: 7, fontWeight: "800" },
+  sessionAmount: { color: TEXT, fontSize: 22, fontWeight: "800" },
+  sessionMeta: { color: MUTED, marginTop: 7, fontWeight: "700" },
   datePill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "rgba(96,165,250,0.12)", borderWidth: 1, borderColor: "rgba(96,165,250,0.28)" },
-  datePillText: { color: "#BFDBFE", fontSize: 11, fontWeight: "900" },
+  datePillText: { color: "#BFDBFE", fontSize: 11, fontWeight: "800" },
   sessionBreakdown: { flexDirection: "row", gap: 10, marginTop: 11, flexWrap: "wrap" },
-  breakdownText: { color: "#CBD5E1", fontSize: 12, fontWeight: "800" },
-  driverDebug: { color: "#334155", marginTop: 18, fontSize: 11 },
+  breakdownText: { color: "#C8D7F5", fontSize: 12, fontWeight: "700" },
+  driverDebug: { color: "rgba(170,190,230,0.45)", marginTop: 18, fontSize: 11 },
   walletIcon: { width: 24, height: 18, justifyContent: "center" },
   walletBody: { position: "absolute", width: 24, height: 18, borderRadius: 5, borderWidth: 2, borderColor: PURPLE },
   walletDot: { position: "absolute", right: 4, width: 6, height: 6, borderRadius: 3, backgroundColor: PURPLE },
   activityIcon: { width: 25, height: 25, flexDirection: "row", alignItems: "flex-end", gap: 4 },
   activityBar: { width: 5, borderRadius: 999, backgroundColor: PURPLE },
-  iconGlyph: { color: PURPLE, fontSize: 22, fontWeight: "900", marginTop: -2 },
+  iconGlyph: { color: MMD_GOLD_CLASSIC, fontSize: 22, fontWeight: "800", marginTop: -2 },
 });

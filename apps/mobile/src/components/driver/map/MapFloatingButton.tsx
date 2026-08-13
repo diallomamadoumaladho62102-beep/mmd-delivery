@@ -91,11 +91,11 @@ export function MapFloatingButton({
         style={{
           width: size,
           height: size,
-          borderRadius: size / 2,
+          borderRadius: scheme === "day" ? 14 : size / 2,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: background,
-          borderWidth: 1,
+          borderWidth: scheme === "day" ? 2 : 1,
           borderColor,
           opacity: disabled ? 0.55 : 1,
           ...NAV_ELEVATION.medium,

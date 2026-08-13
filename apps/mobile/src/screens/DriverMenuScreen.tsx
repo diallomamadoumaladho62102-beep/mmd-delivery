@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  ActivityIndicator,
   Alert,
   StyleSheet,
 } from "react-native";
@@ -17,7 +16,13 @@ import { supabase } from "../lib/supabase";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import { startStripeOnboarding } from "../utils/stripe";
 import ScreenHeader from "../components/navigation/ScreenHeader";
-import { APP_COLORS } from "../theme/appTheme";
+import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
+import {
+  MMD_BLUE,
+  MMD_GOLD_CLASSIC,
+  MMD_GOLD_CLASSIC_BORDER,
+  MMD_TEXT,
+} from "../theme/mmdUi";
 
 type MenuIconName =
   | "gift"
@@ -37,15 +42,15 @@ type MenuItemProps = {
   subtitle?: string;
 };
 
-const BG = "#020617";
-const CARD = "rgba(15,23,42,0.86)";
-const CARD_2 = "rgba(2,6,23,0.72)";
-const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = APP_COLORS.accent;
+const BG = MMD_BLUE;
+const CARD = "rgba(0,51,153,0.86)";
+const CARD_2 = "#002882";
+const BORDER = "rgba(170,190,230,0.14)";
+const PURPLE = "#A78BFA";
 const PURPLE_DARK = "#8B5CF6";
 const GREEN = "#22C55E";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
+const TEXT = MMD_TEXT;
+const MUTED = "#DCE6FA";
 
 function MenuItem({ label, onPress, badge, icon, subtitle }: MenuItemProps) {
   return (
@@ -441,6 +446,20 @@ export function DriverMenuScreen() {
     }
   }, [t]);
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("driver.menu.title", "Menu")}
+          fallbackRoute="DriverTabs"
+          showBack={navigation.canGoBack()}
+          variant="dark"
+        />
+        <DriverBrandLoadingState title={t("shared.common.loading", "Loading")} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScreenHeader
@@ -463,7 +482,6 @@ export function DriverMenuScreen() {
         <TouchableOpacity
           style={styles.profileCard}
           onPress={() => navigation.navigate("DriverProfile")}
-          disabled={loading}
           activeOpacity={0.88}
         >
           <View style={styles.avatarWrap}>
@@ -476,7 +494,6 @@ export function DriverMenuScreen() {
               <Text style={styles.nameText} numberOfLines={1}>
                 {displayName}
               </Text>
-              {loading ? <ActivityIndicator color={PURPLE} size="small" /> : null}
             </View>
 
             <View style={styles.ratingRow}>
@@ -698,36 +715,31 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   profileCard: {
-    marginTop: 18,
+    marginTop: 12,
     marginBottom: 16,
     borderRadius: 28,
     padding: 16,
     backgroundColor: CARD,
     borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.18)",
+    borderColor: "rgba(212,175,55,0.15)",
     flexDirection: "row",
     alignItems: "center",
-    shadowColor: PURPLE_DARK,
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
+    gap: 14,
   },
   avatarWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 14,
   },
   avatarGlow: {
     position: "absolute",
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 2,
-    borderColor: "rgba(167,139,250,0.7)",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 0,
+    borderColor: "transparent",
   },
   avatar: {
     width: 64,
@@ -747,18 +759,24 @@ const styles = StyleSheet.create({
   nameText: {
     color: TEXT,
     fontSize: 20,
-    fontWeight: "900",
+    fontWeight: "800",
     flex: 1,
   },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 7,
+    marginTop: 6,
     gap: 8,
+    borderWidth: 1,
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: "flex-start",
   },
   ratingText: {
     color: MUTED,
-    fontWeight: "900",
+    fontWeight: "800",
   },
   tipsPill: {
     alignSelf: "flex-start",
@@ -776,7 +794,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   profileArrow: {
-    color: "#CBD5E1",
+    color: MMD_GOLD_CLASSIC,
     fontSize: 28,
     fontWeight: "700",
     marginLeft: 8,
@@ -789,37 +807,39 @@ const styles = StyleSheet.create({
   quickCard: {
     flex: 1,
     minHeight: 118,
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 15,
-    backgroundColor: CARD,
+    backgroundColor: CARD_2,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: "rgba(212,175,55,0.3)",
     justifyContent: "space-between",
   },
   quickIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 16,
-    backgroundColor: "rgba(139,92,246,0.14)",
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(212,175,55,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.3)",
     alignItems: "center",
     justifyContent: "center",
   },
   quickTitle: {
     color: TEXT,
     fontSize: 14,
-    fontWeight: "900",
-    marginTop: 10,
+    fontWeight: "800",
+    marginTop: 8,
   },
   quickSub: {
-    color: MUTED,
-    fontSize: 12,
-    fontWeight: "700",
+    color: "#B4C8F0",
+    fontSize: 11,
+    fontWeight: "600",
     marginTop: 4,
   },
   sectionTitle: {
-    color: "#CBD5E1",
+    color: MMD_GOLD_CLASSIC,
     fontSize: 14,
-    fontWeight: "900",
+    fontWeight: "800",
     marginTop: 14,
     marginBottom: 10,
     letterSpacing: 0.3,
@@ -855,12 +875,12 @@ const styles = StyleSheet.create({
   menuLabel: {
     color: TEXT,
     fontSize: 16,
-    fontWeight: "900",
+    fontWeight: "800",
   },
   menuSub: {
     color: MUTED,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: 4,
   },
   menuRight: {
@@ -874,12 +894,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: "#60A5FA",
     marginRight: 10,
-    shadowColor: "#60A5FA",
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
   },
   chevron: {
-    color: "#CBD5E1",
+    color: MMD_GOLD_CLASSIC,
     fontSize: 28,
     fontWeight: "600",
     marginTop: -2,

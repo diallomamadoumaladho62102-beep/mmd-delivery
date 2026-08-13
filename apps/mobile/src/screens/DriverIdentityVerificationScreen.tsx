@@ -1,3 +1,7 @@
+/**
+ * Driver identity selfie verification flow.
+ * UI aligned to Figma 265:5922–5925 (Loading / Capture / Waiting / Success).
+ */
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,11 +13,13 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
 import {
   fetchDriverIdentityStatus,
   identityBlocksDriverOnline,
@@ -26,14 +32,41 @@ import {
   getDriverIdentityPhotoErrorMessage,
   uploadDriverIdentitySelfie,
 } from "../lib/driverIdentityPhoto";
+import {
+  MMD_BLUE,
+  MMD_DRIVER_LINK,
+  MMD_FONT,
+  MMD_GREEN_SOFT,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_TEXT_SOFT_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 const IDENTITY_MESSAGE =
-  "Pour protéger les clients, les chauffeurs et la plateforme MMD Delivery, nous devons confirmer votre identité. Veuillez prendre un selfie clair de votre visage.";
+  "To protect clients, drivers and the MMD Delivery platform, we need to confirm your identity. Please take a clear selfie of your face.";
 
-type ScreenPhase = "loading" | "capture" | "uploading" | "submitting" | "waiting" | "success" | "error";
+const SHIELD_BG = "#4f46e5";
+const CAPTURE_BTN = "#d43737";
+const WAITING_BTN = "#a78bfa";
+const WAITING_BTN_TEXT = "#0f172a";
+const SUCCESS_BTN = "#34d399";
+
+type ScreenPhase =
+  | "loading"
+  | "capture"
+  | "uploading"
+  | "submitting"
+  | "waiting"
+  | "success"
+  | "error";
 
 export function DriverIdentityVerificationScreen() {
   const navigation = useNavigation<any>();
+  const { width } = useWindowDimensions();
+  const contentMax = width >= 768 ? 560 : undefined;
   const [gateStatus, setGateStatus] = useState<DriverIdentityGateStatus>("required");
   const [reason, setReason] = useState<string | null>(null);
   const [checkId, setCheckId] = useState<string | null>(null);
@@ -93,15 +126,15 @@ export function DriverIdentityVerificationScreen() {
     switch (gateStatus) {
       case "submitted":
       case "manual_review":
-        return "Vérification en cours";
+        return "Verification in progress";
       case "rejected":
-        return "Vérification refusée";
+        return "Verification refused";
       case "verified":
-        return "Identité confirmée";
+        return "Identity Confirmed";
       case "expired":
-        return "Vérification expirée";
+        return "Verification expired";
       default:
-        return "Vérification d'identité";
+        return "Identity Verification";
     }
   }, [gateStatus]);
 
@@ -114,23 +147,19 @@ export function DriverIdentityVerificationScreen() {
     } catch (error) {
       const message = getDriverIdentityPhotoErrorMessage(error);
       if (String((error as Error).message) === "CAMERA_PERMISSION_DENIED") {
-        Alert.alert(
-          "Caméra requise",
-          message,
-          [
-            { text: "Annuler", style: "cancel" },
-            { text: "Ouvrir réglages", onPress: () => Linking.openSettings() },
-          ],
-        );
+        Alert.alert("Camera required", message, [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open settings", onPress: () => Linking.openSettings() },
+        ]);
         return;
       }
-      Alert.alert("Erreur", message);
+      Alert.alert("Error", message);
     }
   }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!checkId || !photoUri) {
-      Alert.alert("Selfie requis", "Prenez un selfie avant de continuer.");
+      Alert.alert("Selfie required", "Take a selfie before continuing.");
       return;
     }
 
@@ -151,7 +180,7 @@ export function DriverIdentityVerificationScreen() {
     } catch (error) {
       setPhase("capture");
       setErrorMessage(getDriverIdentityPhotoErrorMessage(error));
-      Alert.alert("Envoi impossible", getDriverIdentityPhotoErrorMessage(error));
+      Alert.alert("Upload failed", getDriverIdentityPhotoErrorMessage(error));
     }
   }, [checkId, photoUri]);
 
@@ -163,53 +192,68 @@ export function DriverIdentityVerificationScreen() {
     void refreshStatus();
   }, [gateStatus, navigation, refreshStatus]);
 
+  if (phase === "loading") {
+    return (
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title="Identity Verification"
+          subtitle="Identity Verification"
+          fallbackRoute="DriverTabs"
+          variant="dark"
+        />
+        <Text style={styles.waitHint}>
+          Please wait while we verify your identity.{"\n"}This may take a few moments.
+        </Text>
+        <DriverBrandLoadingState title="Loading..." logoAtBottom />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          contentMax ? { maxWidth: contentMax, alignSelf: "center", width: "100%" } : null,
+        ]}
+      >
         <ScreenHeader
-          title="Vérification d'identité"
+          title="Identity Verification"
           subtitle={statusTitle}
           fallbackRoute="DriverTabs"
           variant="dark"
-          style={{ paddingHorizontal: 0, marginHorizontal: -4 }}
+          style={{ paddingHorizontal: 0 }}
         />
 
         <View style={styles.hero}>
           <View style={styles.iconCircle}>
-            <Ionicons name="shield-checkmark" size={34} color="#fff" />
+            <Ionicons name="shield-checkmark" size={34} color={MMD_WHITE} />
           </View>
           <Text style={styles.subtitle}>{IDENTITY_MESSAGE}</Text>
           {reason ? <Text style={styles.reason}>{reason}</Text> : null}
         </View>
 
-        {phase === "loading" ? (
-          <View style={styles.centerBox}>
-            <ActivityIndicator size="large" color="#6366f1" />
-            <Text style={styles.helper}>Chargement…</Text>
-          </View>
-        ) : null}
-
         {phase === "waiting" ? (
           <View style={styles.card}>
-            <Ionicons name="time-outline" size={28} color="#a5b4fc" />
-            <Text style={styles.cardTitle}>En attente de validation</Text>
+            <Text style={styles.emojiIcon}>⏳</Text>
+            <Text style={styles.cardTitle}>Pending Validation</Text>
             <Text style={styles.cardBody}>
-              Votre selfie a été reçu. Notre équipe ou le système automatique valide votre identité.
-              Vous pourrez passer en ligne dès que la vérification est terminée.
+              Your selfie has been received. Our team or automated system is validating your
+              identity. You can go online once verification is complete.
             </Text>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={refreshStatus}>
-              <Text style={styles.secondaryBtnText}>Actualiser le statut</Text>
+            <TouchableOpacity style={styles.waitingBtn} onPress={refreshStatus} activeOpacity={0.85}>
+              <Text style={styles.waitingBtnText}>Refresh Status</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
         {phase === "success" ? (
           <View style={styles.card}>
-            <Ionicons name="checkmark-circle" size={36} color="#34d399" />
-            <Text style={styles.cardTitle}>Identité confirmée</Text>
-            <Text style={styles.cardBody}>Vous pouvez maintenant passer en ligne.</Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleDone}>
-              <Text style={styles.primaryBtnText}>Continuer</Text>
+            <Text style={[styles.emojiIcon, { color: MMD_GREEN_SOFT }]}>✓</Text>
+            <Text style={styles.cardTitle}>Identity Confirmed</Text>
+            <Text style={styles.cardBody}>You can now go online.</Text>
+            <TouchableOpacity style={styles.successBtn} onPress={handleDone} activeOpacity={0.85}>
+              <Text style={styles.primaryBtnText}>Continue</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -217,10 +261,10 @@ export function DriverIdentityVerificationScreen() {
         {phase === "error" ? (
           <View style={styles.card}>
             <Ionicons name="alert-circle-outline" size={32} color="#fca5a5" />
-            <Text style={styles.cardTitle}>Problème de vérification</Text>
-            <Text style={styles.cardBody}>{errorMessage ?? "Une erreur est survenue."}</Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={refreshStatus}>
-              <Text style={styles.primaryBtnText}>Réessayer</Text>
+            <Text style={styles.cardTitle}>Verification problem</Text>
+            <Text style={styles.cardBody}>{errorMessage ?? "Something went wrong."}</Text>
+            <TouchableOpacity style={styles.successBtn} onPress={refreshStatus} activeOpacity={0.85}>
+              <Text style={styles.primaryBtnText}>Retry</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -231,30 +275,41 @@ export function DriverIdentityVerificationScreen() {
               <Image source={{ uri: photoUri }} style={styles.preview} resizeMode="cover" />
             ) : (
               <View style={styles.previewPlaceholder}>
-                <Ionicons name="person-circle-outline" size={72} color="#64748b" />
-                <Text style={styles.previewHint}>Selfie requis — visage centré, bonne lumière</Text>
+                <Text style={styles.previewCircle}>◯</Text>
+                <Text style={styles.previewHint}>
+                  Selfie required — centered face, good lighting
+                </Text>
               </View>
             )}
 
             {phase === "uploading" || phase === "submitting" ? (
               <View style={styles.centerBox}>
-                <ActivityIndicator size="large" color="#6366f1" />
+                <ActivityIndicator size="large" color={MMD_WHITE} />
                 <Text style={styles.helper}>
-                  {phase === "uploading" ? "Envoi sécurisé du selfie…" : "Soumission en cours…"}
+                  {phase === "uploading"
+                    ? "Secure selfie upload…"
+                    : "Submitting…"}
                 </Text>
               </View>
             ) : (
               <>
-                <TouchableOpacity style={styles.primaryBtn} onPress={handleCapture}>
-                  <Ionicons name="camera" size={18} color="#fff" />
+                <TouchableOpacity
+                  style={styles.captureBtn}
+                  onPress={handleCapture}
+                  activeOpacity={0.85}
+                >
                   <Text style={styles.primaryBtnText}>
-                    {photoUri ? "Reprendre le selfie" : "Prendre un selfie"}
+                    {photoUri ? "Retake selfie" : "Take a Selfie"}
                   </Text>
                 </TouchableOpacity>
 
                 {photoUri ? (
-                  <TouchableOpacity style={styles.primaryBtn} onPress={handleSubmit}>
-                    <Text style={styles.primaryBtnText}>Envoyer pour vérification</Text>
+                  <TouchableOpacity
+                    style={styles.successBtn}
+                    onPress={handleSubmit}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.primaryBtnText}>Submit for verification</Text>
                   </TouchableOpacity>
                 ) : null}
 
@@ -262,12 +317,12 @@ export function DriverIdentityVerificationScreen() {
                   style={styles.linkBtn}
                   onPress={() =>
                     Alert.alert(
-                      "Besoin d'aide ?",
-                      "Contactez le support MMD Delivery si vous ne pouvez pas utiliser la caméra.",
+                      "Need help?",
+                      "Contact MMD Delivery support if you cannot use the camera.",
                     )
                   }
                 >
-                  <Text style={styles.linkBtnText}>Problème avec la caméra ?</Text>
+                  <Text style={styles.linkBtnText}>Camera issue?</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -279,87 +334,158 @@ export function DriverIdentityVerificationScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0b1020" },
-  container: { padding: 20, paddingBottom: 40 },
-  hero: { alignItems: "center", marginBottom: 20, marginTop: 4 },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  container: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, gap: 12 },
+  waitHint: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: "center",
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  hero: { alignItems: "center", gap: 16, paddingVertical: 20, paddingHorizontal: 4 },
   iconCircle: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#4f46e5",
+    backgroundColor: SHIELD_BG,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
   },
-  title: { color: "#f8fafc", fontSize: 26, fontWeight: "700", textAlign: "center" },
   subtitle: {
-    color: "#cbd5e1",
-    fontSize: 15,
+    color: MMD_TEXT_SOFT_BLUE,
+    fontSize: 18,
     lineHeight: 22,
     textAlign: "center",
-    marginTop: 10,
+    fontFamily: MMD_FONT.regular,
   },
   reason: {
-    color: "#a5b4fc",
+    color: MMD_LINK_BLUE,
     fontSize: 13,
-    marginTop: 12,
     textAlign: "center",
+    fontFamily: MMD_FONT.regular,
   },
-  banner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#451a1a",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
-  bannerText: { color: "#fecaca", flex: 1, fontSize: 13 },
   card: {
-    backgroundColor: "#111827",
+    backgroundColor: MMD_BLUE,
     borderRadius: 18,
     padding: 18,
-    borderWidth: 1,
-    borderColor: "#1f2937",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     gap: 14,
-    alignItems: "stretch",
+    alignItems: "center",
   },
-  cardTitle: { color: "#f8fafc", fontSize: 18, fontWeight: "700", textAlign: "center" },
-  cardBody: { color: "#94a3b8", fontSize: 14, lineHeight: 21, textAlign: "center" },
+  emojiIcon: {
+    fontSize: 28,
+    textAlign: "center",
+    color: "#a5b4fc",
+  },
+  cardTitle: {
+    color: MMD_TEXT,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  cardBody: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 16,
+    lineHeight: 21,
+    textAlign: "center",
+    fontFamily: MMD_FONT.regular,
+  },
   centerBox: { alignItems: "center", gap: 10, paddingVertical: 20 },
-  helper: { color: "#94a3b8", fontSize: 14 },
-  preview: { width: "100%", height: 280, borderRadius: 16, backgroundColor: "#0f172a" },
+  helper: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
+  preview: {
+    width: "100%",
+    height: 280,
+    borderRadius: 16,
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+  },
   previewPlaceholder: {
     width: "100%",
     height: 280,
     borderRadius: 16,
-    backgroundColor: "#0f172a",
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
+    gap: 16,
   },
-  previewHint: { color: "#64748b", marginTop: 8, textAlign: "center", fontSize: 13 },
-  primaryBtn: {
-    backgroundColor: "#4f46e5",
-    borderRadius: 14,
-    paddingVertical: 14,
+  previewCircle: {
+    color: MMD_LINK_BLUE,
+    fontSize: 48,
+    fontFamily: MMD_FONT.regular,
+  },
+  previewHint: {
+    color: MMD_LINK_BLUE,
+    textAlign: "center",
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+  },
+  captureBtn: {
+    backgroundColor: CAPTURE_BTN,
+    borderRadius: 12,
+    minHeight: 44,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
   },
-  primaryBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  secondaryBtn: {
-    borderRadius: 14,
+  successBtn: {
+    backgroundColor: SUCCESS_BTN,
+    borderRadius: 12,
+    minHeight: 44,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "#334155",
+    paddingHorizontal: 16,
     alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
   },
-  secondaryBtnText: { color: "#cbd5e1", fontSize: 15, fontWeight: "600" },
+  waitingBtn: {
+    backgroundColor: WAITING_BTN,
+    borderRadius: 12,
+    minHeight: 44,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+  },
+  waitingBtnText: {
+    color: WAITING_BTN_TEXT,
+    fontSize: 16,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  primaryBtnText: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
   linkBtn: { alignItems: "center", paddingVertical: 8 },
-  linkBtnText: { color: "#93c5fd", fontSize: 14 },
+  linkBtnText: {
+    color: MMD_DRIVER_LINK,
+    fontSize: 16,
+    fontFamily: MMD_FONT.regular,
+  },
 });
 
 export default DriverIdentityVerificationScreen;

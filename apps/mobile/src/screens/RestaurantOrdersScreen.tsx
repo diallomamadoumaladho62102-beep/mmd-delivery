@@ -4,12 +4,12 @@ import {
   View,
   Text,
   StatusBar,
-  ActivityIndicator,
   FlatList,
   TouchableOpacity,
   AppState,
   AppStateStatus,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
@@ -17,11 +17,18 @@ import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
-import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 import { useRestaurantAutoPrint } from "../hooks/useRestaurantAutoPrint";
 import { fetchRestaurantAutomationSettings } from "../lib/restaurantOrderAutomationApi";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 const ACCEPT_WINDOW_SECONDS = 180;
 
@@ -51,7 +58,7 @@ type OrderStatus =
   | "delivered"
   | "canceled";
 
-type FilterKey = "all" | "pending" | "prepared" | "ready";
+type FilterKey = "all" | "pending" | "ready";
 
 type OrderRow = {
   id: string;
@@ -63,6 +70,7 @@ type OrderRow = {
   grand_total: number | null;
   total_cents: number | null;
   restaurant_accept_expires_at: string | null;
+  items_json?: unknown;
 };
 
 type Order = {
@@ -72,6 +80,7 @@ type Order = {
   created_at: string | null;
   currency: string | null;
   restaurant_accept_expires_at: string | null;
+  itemCount: number;
 };
 
 const ACTIVE_STATUSES_UI: OrderStatus[] = [
@@ -126,6 +135,19 @@ function pickTotal(row: Partial<OrderRow>): number | null {
   return null;
 }
 
+function countItems(value: unknown): number {
+  if (Array.isArray(value)) return value.length;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.length : 0;
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
 function remainingAcceptSeconds(
   expiresAt: string | null,
   createdAt: string | null
@@ -155,169 +177,69 @@ function fmtCountdown(seconds: number): string {
   return `${mm}:${ss}`;
 }
 
-function formatTimeAgo(iso: string | null): string {
-  if (!iso) return "—";
-
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-
-  const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-
-  if (diff < 60) return "now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
-}
-
-function statusColors(status: OrderStatus) {
+function statusBadgeColor(status: OrderStatus | "expired"): string {
   switch (status) {
     case "pending":
-      return {
-        bg: "rgba(239,68,68,0.12)",
-        border: "rgba(239,68,68,0.35)",
-        text: "#FCA5A5",
-      };
-    case "accepted":
-      return {
-        bg: "rgba(59,130,246,0.12)",
-        border: "rgba(59,130,246,0.35)",
-        text: "#BFDBFE",
-      };
+      return "#EF4444";
     case "prepared":
-      return {
-        bg: "rgba(245,158,11,0.14)",
-        border: "rgba(245,158,11,0.35)",
-        text: "#FCD34D",
-      };
+    case "accepted":
+      return "#F59E0B";
     case "ready":
-      return {
-        bg: "rgba(16,185,129,0.14)",
-        border: "rgba(16,185,129,0.35)",
-        text: "#A7F3D0",
-      };
-    case "dispatched":
-      return {
-        bg: "rgba(168,85,247,0.14)",
-        border: "rgba(168,85,247,0.35)",
-        text: "#DDD6FE",
-      };
+      return MMD_TAXI_GREEN;
+    case "expired":
+      return "rgba(229,231,235,0.1)";
     default:
-      return {
-        bg: "rgba(75,85,99,0.16)",
-        border: "rgba(75,85,99,0.35)",
-        text: "#D1D5DB",
-      };
+      return "rgba(255,255,255,0.2)";
   }
 }
 
 function FilterChip({
   label,
-  count,
   active,
   onPress,
   tone = "default",
 }: {
   label: string;
-  count: number;
   active: boolean;
   onPress: () => void;
-  tone?: "default" | "danger" | "warning" | "success";
+  tone?: "default" | "danger" | "success";
 }) {
-  const palette =
+  const bg =
     tone === "danger"
-      ? {
-          border: active ? "#EF4444" : "#3F1A1A",
-          bg: active ? "rgba(239,68,68,0.18)" : "#08112A",
-          text: active ? "#FECACA" : "#E5E7EB",
-          badgeBg: active ? "#EF4444" : "#1F2937",
-        }
-      : tone === "warning"
-        ? {
-            border: active ? "#F59E0B" : "#3A2A10",
-            bg: active ? "rgba(245,158,11,0.18)" : "#08112A",
-            text: active ? "#FDE68A" : "#E5E7EB",
-            badgeBg: active ? "#D97706" : "#1F2937",
-          }
-        : tone === "success"
-          ? {
-              border: active ? "#10B981" : "#153428",
-              bg: active ? "rgba(16,185,129,0.18)" : "#08112A",
-              text: active ? "#A7F3D0" : "#E5E7EB",
-              badgeBg: active ? "#059669" : "#1F2937",
-            }
-          : {
-              border: active ? "#2563EB" : "#1F2937",
-              bg: active ? "rgba(37,99,235,0.18)" : "#08112A",
-              text: active ? "#DBEAFE" : "#E5E7EB",
-              badgeBg: active ? "#2563EB" : "#1F2937",
-            };
+      ? "#EF4444"
+      : tone === "success"
+        ? MMD_TAXI_GREEN
+        : active
+          ? MMD_WHITE
+          : "rgba(255,255,255,0.12)";
+  const color =
+    tone === "default" && active
+      ? MMD_BLUE
+      : tone === "default"
+        ? MMD_WHITE
+        : MMD_WHITE;
 
   return (
     <TouchableOpacity
       activeOpacity={0.88}
       onPress={onPress}
-      style={{
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: palette.border,
-        backgroundColor: palette.bg,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-      }}
+      style={[
+        styles.filterChip,
+        {
+          backgroundColor: bg,
+          borderColor: tone === "default" && !active ? "rgba(255,255,255,0.2)" : bg,
+          borderWidth: 1,
+        },
+      ]}
     >
-      <Text style={{ color: palette.text, fontWeight: "900", fontSize: 13 }}>
-        {label}
-      </Text>
-
-      <View
+      <Text
         style={{
-          minWidth: 24,
-          height: 24,
-          borderRadius: 12,
-          paddingHorizontal: 7,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: palette.badgeBg,
+          color,
+          fontFamily: active || tone !== "default" ? MMD_FONT.bold : MMD_FONT.semibold,
+          fontWeight: active || tone !== "default" ? "700" : "600",
+          fontSize: 13,
         }}
       >
-        <Text style={{ color: "white", fontWeight: "900", fontSize: 12 }}>
-          {count}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function HeaderAction({
-  label,
-  onPress,
-  borderColor,
-  backgroundColor,
-  textColor,
-}: {
-  label: string;
-  onPress: () => void;
-  borderColor: string;
-  backgroundColor: string;
-  textColor: string;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.88}
-      style={{
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor,
-        backgroundColor,
-      }}
-    >
-      <Text style={{ color: textColor, fontSize: 13, fontWeight: "900" }}>
         {label}
       </Text>
     </TouchableOpacity>
@@ -366,9 +288,6 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   }, []);
 
   useEffect(() => {
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
 
     (async () => {
@@ -406,7 +325,16 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
           navigation.reset({
             index: 0,
-            routes: [{ name: role === "driver" ? "DriverTabs" : role === "client" ? "ClientHome" : "RoleSelect" }],
+            routes: [
+              {
+                name:
+                  role === "driver"
+                    ? "DriverTabs"
+                    : role === "client"
+                      ? "ClientHome"
+                      : "RoleSelect",
+              },
+            ],
           });
           return;
         }
@@ -444,10 +372,6 @@ export function RestaurantOrdersScreen({ navigation }: any) {
       cancelled = true;
     };
   }, [navigation]);
-
-  // Long-ring / alerts are owned by global restaurantOrderAlertService
-  // (works on every restaurant screen + push foreground). Do not start/stop
-  // mmdAudio here or leaving this page would silence the kitchen alarm.
 
   const isPendingValid = useCallback((o: Order) => {
     if (o.status !== "pending") return false;
@@ -489,11 +413,13 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         const { data, error } = await supabase
           .from("orders")
           .select(
-            "id,kind,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at"
+            "id,kind,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at,items_json"
           )
           .eq("kind", "food")
           .eq("payment_status", "paid")
-          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
+          .or(
+            `restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`
+          )
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -501,17 +427,18 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         const mapped: Order[] = ((data || []) as OrderRow[])
           .filter((row) => String(row?.kind ?? "food").toLowerCase() === "food")
           .map((row: OrderRow) => {
-          const uiStatus = mapDbStatusToUiStatus(row.status);
+            const uiStatus = mapDbStatusToUiStatus(row.status);
 
-          return {
-            id: String(row.id),
-            status: uiStatus,
-            created_at: row.created_at ?? null,
-            currency: row.currency ?? "USD",
-            total: pickTotal(row),
-            restaurant_accept_expires_at: row.restaurant_accept_expires_at ?? null,
-          };
-        });
+            return {
+              id: String(row.id),
+              status: uiStatus,
+              created_at: row.created_at ?? null,
+              currency: row.currency ?? "USD",
+              total: pickTotal(row),
+              restaurant_accept_expires_at: row.restaurant_accept_expires_at ?? null,
+              itemCount: countItems(row.items_json),
+            };
+          });
 
         let active = mapped.filter((o) => ACTIVE_STATUSES_UI.includes(o.status));
 
@@ -560,11 +487,15 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
         const { data: current, error: ce } = await supabase
           .from("orders")
-          .select("id,kind,status,created_at,restaurant_accept_expires_at,restaurant_user_id,restaurant_id")
+          .select(
+            "id,kind,status,created_at,restaurant_accept_expires_at,restaurant_user_id,restaurant_id"
+          )
           .eq("id", orderId)
           .eq("kind", "food")
           .eq("payment_status", "paid")
-          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
+          .or(
+            `restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`
+          )
           .maybeSingle();
 
         if (ce) throw ce;
@@ -578,7 +509,9 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           );
         }
 
-        const oldStatus = mapDbStatusToUiStatus(String((current as any)?.status ?? ""));
+        const oldStatus = mapDbStatusToUiStatus(
+          String((current as any)?.status ?? "")
+        );
 
         if (!canMoveToStatus(oldStatus, nextStatus)) {
           throw new Error(
@@ -606,10 +539,14 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         }
 
         if (nextStatus === "canceled") {
-          const { postRestaurantOrderReject } = await import("../lib/restaurantOrderStatusApi");
+          const { postRestaurantOrderReject } = await import(
+            "../lib/restaurantOrderStatusApi"
+          );
           await postRestaurantOrderReject({ orderId });
         } else {
-          const { postRestaurantOrderStatus } = await import("../lib/restaurantOrderStatusApi");
+          const { postRestaurantOrderStatus } = await import(
+            "../lib/restaurantOrderStatusApi"
+          );
           await postRestaurantOrderStatus({
             orderId,
             status: nextStatus as "accepted" | "prepared" | "ready",
@@ -666,45 +603,6 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     },
     [t, updateOrderStatus]
   );
-
-  const handleLogout = useCallback(() => {
-    Alert.alert(
-      t("auth.logoutTitle", "Log out"),
-      t("auth.logoutConfirm", "Do you really want to log out?"),
-      [
-        { text: t("common.cancel", "Cancel"), style: "cancel" },
-        {
-          text: t("common.yes", "Yes"),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearSelectedRole();
-
-              const { error } = await supabase.auth.signOut();
-              if (error) throw error;
-
-              if (mountedRef.current) {
-                setOrders([]);
-                setLoading(false);
-                setRestaurantUserId(null);
-                setResolveDone(true);
-              }
-
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "RoleSelect" }],
-              });
-            } catch (e: any) {
-              Alert.alert(
-                t("common.errorTitle", "Error"),
-                e?.message ?? t("auth.logoutError", "Unable to log out.")
-              );
-            }
-          },
-        },
-      ]
-    );
-  }, [navigation, t]);
 
   useEffect(() => {
     if (!restaurantUserId) return;
@@ -764,22 +662,24 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   }, [computeHasPendingValid]);
 
   const statusLabel = useCallback(
-    (s: OrderStatus) => {
+    (s: OrderStatus | "expired") => {
       switch (s) {
         case "pending":
-          return t("order.status.pending", "Pending");
+          return t("order.status.pendingLower", "pending");
         case "accepted":
-          return t("order.status.accepted", "Accepted");
+          return t("order.status.acceptedLower", "accepted");
         case "prepared":
-          return t("order.status.prepared", "Preparing");
+          return t("order.status.preparedLower", "prepared");
         case "ready":
-          return t("order.status.readyPickup", "Ready");
+          return t("order.status.readyLower", "ready");
         case "dispatched":
-          return t("order.status.dispatched", "Dispatched");
+          return t("order.status.dispatchedLower", "dispatched");
         case "delivered":
-          return t("order.status.delivered", "Delivered");
+          return t("order.status.deliveredLower", "delivered");
         case "canceled":
-          return t("order.status.canceled", "Canceled");
+          return t("order.status.canceledLower", "canceled");
+        case "expired":
+          return t("order.status.expiredLower", "expired");
         default:
           return String(s);
       }
@@ -787,26 +687,9 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     [t]
   );
 
-  const counts = useMemo(() => {
-    const pending = orders.filter((o) => o.status === "pending").length;
-    const preparing = orders.filter(
-      (o) => o.status === "accepted" || o.status === "prepared"
-    ).length;
-    const ready = orders.filter((o) => o.status === "ready").length;
-    const all = orders.length;
-
-    return { all, pending, preparing, ready };
-  }, [orders]);
-
   const filteredOrders = useMemo(() => {
     if (selectedFilter === "pending") {
       return orders.filter((o) => o.status === "pending");
-    }
-
-    if (selectedFilter === "prepared") {
-      return orders.filter(
-        (o) => o.status === "accepted" || o.status === "prepared"
-      );
     }
 
     if (selectedFilter === "ready") {
@@ -815,6 +698,10 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
     return orders;
   }, [orders, selectedFilter]);
+
+  const alertOrder = useMemo(() => {
+    return orders.find((o) => isPendingValid(o)) ?? null;
+  }, [orders, isPendingValid]);
 
   const renderItem = ({ item }: { item: Order }) => {
     const rem =
@@ -828,7 +715,19 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     const expired = item.status === "pending" && rem <= 0;
     const currency = (item.currency ?? "USD").toUpperCase();
     const showActions = item.status === "pending" && !expired;
-    const pill = statusColors(item.status);
+    const badgeStatus: OrderStatus | "expired" = expired ? "expired" : item.status;
+    const shortId = item.id.slice(0, 8);
+    const totalLabel =
+      item.total != null
+        ? `${currency === "USD" ? "$" : ""}${Number(item.total).toFixed(2)}${
+            currency !== "USD" ? ` ${currency}` : ""
+          }`
+        : t("common.na", "—");
+    const metaLine = t("restaurant.orders.cardMeta", {
+      defaultValue: "{{count}} items • {{total}}",
+      count: item.itemCount,
+      total: totalLabel,
+    });
 
     return (
       <TouchableOpacity
@@ -837,164 +736,79 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           navigation.navigate("RestaurantOrderDetails", { orderId: item.id })
         }
       >
-        <View
-          style={{
-            position: "relative",
-            backgroundColor: "#07101F",
-            borderRadius: 20,
-            padding: 16,
-            marginBottom: 14,
-            borderWidth: 1,
-            borderColor: "#1F2937",
-            shadowColor: "#000",
-            shadowOpacity: 0.18,
-            shadowRadius: 16,
-            shadowOffset: { width: 0, height: 10 },
-            elevation: 2,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              paddingRight: 54,
-            }}
-          >
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text
-                numberOfLines={1}
-                style={{ color: "white", fontWeight: "900", fontSize: 18 }}
-              >
-                {t("order.card.title", {
-                  defaultValue: "Order #{{id}}",
-                  id: item.id.slice(0, 8),
-                })}
-              </Text>
-
-              <Text style={{ color: "#64748B", marginTop: 6, fontWeight: "800" }}>
-                {t("restaurant.orders.received", "Received")} •{" "}
-                {formatTimeAgo(item.created_at)}
-              </Text>
-            </View>
-
+        <View style={styles.orderCard}>
+          <View style={styles.orderTop}>
+            <Text style={styles.orderNumber}>📋 #{shortId}</Text>
             <View
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: pill.bg,
-                borderWidth: 1,
-                borderColor: pill.border,
-              }}
+              style={[
+                styles.statusPill,
+                {
+                  backgroundColor: statusBadgeColor(badgeStatus),
+                  borderColor:
+                    badgeStatus === "expired"
+                      ? "rgba(229,231,235,0.2)"
+                      : statusBadgeColor(badgeStatus),
+                },
+              ]}
             >
-              <Text style={{ color: pill.text, fontWeight: "900", fontSize: 12 }}>
-                {statusLabel(item.status)}
+              <Text
+                style={[
+                  styles.statusPillText,
+                  badgeStatus === "expired" ? { color: "#E5E7EB" } : null,
+                ]}
+              >
+                {statusLabel(badgeStatus)}
               </Text>
             </View>
           </View>
 
-          {item.status === "pending" && (
+          <Text style={styles.metaLine}>{metaLine}</Text>
+
+          {item.status === "pending" ? (
             <View
-              style={{
-                marginTop: 12,
-                paddingVertical: 12,
-                paddingHorizontal: 14,
-                borderRadius: 14,
-                borderWidth: 2,
-                borderColor: expired ? "#6B7280" : "#EF4444",
-                backgroundColor: expired ? "#111827" : "#1F0B0B",
-                alignItems: "center",
-              }}
+              style={[
+                styles.countdownRow,
+                expired ? styles.countdownExpired : styles.countdownActive,
+              ]}
             >
               <Text
-                style={{
-                  color: expired ? "#D1D5DB" : "#FCA5A5",
-                  fontSize: 12,
-                  fontWeight: "900",
-                  marginBottom: 6,
-                }}
-              >
-                {t("order.card.acceptTimeTitle", "TIME TO ACCEPT")}
-              </Text>
-
-              <Text
-                style={{
-                  color: expired ? "#E5E7EB" : "#EF4444",
-                  fontSize: 34,
-                  fontWeight: "900",
-                  letterSpacing: 1,
-                }}
-              >
-                {expired ? "00:00" : fmtCountdown(rem)}
-              </Text>
-
-              <Text
-                style={{
-                  color: expired ? "#9CA3AF" : "#FCA5A5",
-                  fontSize: 12,
-                  marginTop: 6,
-                }}
+                style={[
+                  styles.countdownLabel,
+                  expired ? styles.countdownTextMuted : styles.countdownTextAmber,
+                ]}
               >
                 {expired
                   ? t("order.card.expired", "Expired")
-                  : t("order.card.ringingActive", "Ringing active")}
+                  : t("order.card.acceptWithin", "⏱️ Accept within")}
+              </Text>
+              <View
+                style={[
+                  styles.countdownRule,
+                  expired ? styles.countdownRuleMuted : styles.countdownRuleAmber,
+                ]}
+              />
+              <Text
+                style={[
+                  styles.countdownValue,
+                  expired ? styles.countdownTextMuted : styles.countdownTextAmber,
+                ]}
+              >
+                {expired ? "00:00" : fmtCountdown(rem)}
               </Text>
             </View>
-          )}
+          ) : null}
 
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#020617",
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#111827",
-              padding: 14,
-            }}
-          >
-            <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-              {t("order.card.totalLabel", "Total")}
-            </Text>
-
-            <Text
-              style={{
-                color: "#F9FAFB",
-                fontWeight: "900",
-                fontSize: 22,
-                marginTop: 6,
-              }}
-            >
-              {item.total != null
-                ? `${Number(item.total).toFixed(2)} ${currency}`
-                : t("common.na", "—")}
-            </Text>
-          </View>
-
-          {showActions && (
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 10,
-                marginTop: 14,
-              }}
-            >
+          {showActions ? (
+            <View style={styles.actionsRow}>
               <TouchableOpacity
                 onPress={(e: any) => {
                   e?.stopPropagation?.();
                   confirmAccept(item.id);
                 }}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 14,
-                  backgroundColor: "rgba(34,197,94,0.15)",
-                  borderWidth: 1,
-                  borderColor: "rgba(34,197,94,0.45)",
-                  alignItems: "center",
-                }}
+                style={[styles.actionBtn, styles.acceptBtn]}
+                activeOpacity={0.88}
               >
-                <Text style={{ color: "#BBF7D0", fontWeight: "900", fontSize: 14 }}>
+                <Text style={styles.actionBtnText}>
                   {t("order.actions.accept", "Accept")}
                 </Text>
               </TouchableOpacity>
@@ -1004,46 +818,15 @@ export function RestaurantOrdersScreen({ navigation }: any) {
                   e?.stopPropagation?.();
                   confirmReject(item.id);
                 }}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 14,
-                  backgroundColor: "rgba(239,68,68,0.12)",
-                  borderWidth: 1,
-                  borderColor: "rgba(239,68,68,0.45)",
-                  alignItems: "center",
-                }}
+                style={[styles.actionBtn, styles.refuseBtn]}
+                activeOpacity={0.88}
               >
-                <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 14 }}>
-                  {t("order.actions.reject", "Reject")}
+                <Text style={styles.actionBtnText}>
+                  {t("order.actions.refuse", "Refuse")}
                 </Text>
               </TouchableOpacity>
             </View>
-          )}
-
-          <TouchableOpacity
-            onPress={(e: any) => {
-              e?.stopPropagation?.();
-              navigation.navigate("RestaurantChat", { orderId: item.id });
-            }}
-            style={{
-              position: "absolute",
-              right: 14,
-              top: 14,
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "rgba(2,6,23,0.96)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
-            <Text style={{ color: "#E5E7EB", fontSize: 17, fontWeight: "900" }}>
-              💬
-            </Text>
-          </TouchableOpacity>
+          ) : null}
         </View>
       </TouchableOpacity>
     );
@@ -1051,192 +834,328 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
   const showLoadingUser = !resolveDone;
   const showNoRestaurant = resolveDone && !restaurantUserId;
-
-  const headerTitle = useMemo(
-    () => t("restaurant.orders.title", "Restaurant orders"),
-    [t]
-  );
+  const showLoadingOrders = resolveDone && !!restaurantUserId && loading;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
 
-      <View style={{ flex: 1, paddingHorizontal: 16 }}>
-        <ScreenHeader
-          title={headerTitle}
-          subtitle={t("restaurant.orders.subtitle", "Manage live incoming orders")}
-          fallbackRoute="RestaurantCommandCenter"
-          variant="dark"
+      <ScreenHeader
+        title={t("restaurant.orders.title", "Orders")}
+        fallbackRoute="RestaurantCommandCenter"
+        variant="mmd"
+      />
+
+      {showLoadingUser || showLoadingOrders ? (
+        <RestaurantBrandLoadingState
+          variant="card"
+          showLogo
+          glass
+          title={t("restaurant.orders.loadingOrders", "Loading Orders...")}
+          subtitle={t(
+            "restaurant.orders.loadingOrdersSubtitle",
+            "Fetching your orders"
+          )}
         />
-
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 10,
-            marginTop: 14,
-          }}
-        >
-            <HeaderAction
-              label={t("restaurant.orders.earningsBtn", "Earnings")}
-              onPress={() => navigation.navigate("RestaurantEarnings")}
-              borderColor="#2563EB"
-              backgroundColor="rgba(37,99,235,0.12)"
-              textColor="#E5E7EB"
-            />
-
-            <HeaderAction
-              label={t("auth.logoutShort", "Log out")}
-              onPress={handleLogout}
-              borderColor="#EF4444"
-              backgroundColor="rgba(239,68,68,0.10)"
-              textColor="#FCA5A5"
-            />
-
-            <HeaderAction
-              label={t("common.refresh", "Refresh")}
-              onPress={() => void fetchOrders()}
-              borderColor="#4B5563"
-              backgroundColor="transparent"
-              textColor="#E5E7EB"
-            />
-          </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 16,
-            backgroundColor: "#08112A",
-            borderRadius: 18,
-            borderWidth: 1,
-            borderColor: "#1F2937",
-            paddingHorizontal: 14,
-            paddingVertical: 14,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            <View
-              style={{
-                minWidth: 30,
-                height: 30,
-                borderRadius: 15,
-                paddingHorizontal: 8,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#DC2626",
-                marginRight: 10,
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "900", fontSize: 12 }}>
-                {counts.pending}
-              </Text>
-            </View>
-
-            <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 15 }}>
-              {t("restaurant.orders.pendingBadge", "Pending orders")}
-            </Text>
-          </View>
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 10,
-            marginBottom: 16,
-            flexWrap: "wrap",
-          }}
-        >
-          <FilterChip
-            label={t("common.all", "All")}
-            count={counts.all}
-            active={selectedFilter === "all"}
-            onPress={() => setSelectedFilter("all")}
-          />
-
-          <FilterChip
-            label={t("order.status.pending", "Pending")}
-            count={counts.pending}
-            active={selectedFilter === "pending"}
-            onPress={() => setSelectedFilter("pending")}
-            tone="danger"
-          />
-
-          <FilterChip
-            label={t("order.status.prepared", "Preparing")}
-            count={counts.preparing}
-            active={selectedFilter === "prepared"}
-            onPress={() => setSelectedFilter("prepared")}
-            tone="warning"
-          />
-
-          <FilterChip
-            label={t("order.status.readyPickup", "Ready")}
-            count={counts.ready}
-            active={selectedFilter === "ready"}
-            onPress={() => setSelectedFilter("ready")}
-            tone="success"
-          />
-        </View>
-
-        {showLoadingUser ? (
-          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            <ActivityIndicator />
-            <Text style={{ color: "white", marginTop: 8 }}>
-              {t("restaurant.orders.loadingAccount", "Loading restaurant account…")}
-            </Text>
-          </View>
-        ) : showNoRestaurant ? (
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#1F0B0B",
-              borderColor: "#7F1D1D",
-              borderWidth: 1,
-              borderRadius: 16,
-              padding: 14,
-            }}
-          >
-            <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
+      ) : showNoRestaurant ? (
+        <View style={styles.bodyPad}>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>
               {t("restaurant.orders.noProfile", "Restaurant account not found.")}
             </Text>
           </View>
-        ) : loading ? (
-          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            <ActivityIndicator />
-            <Text style={{ color: "white", marginTop: 8 }}>
-              {t("restaurant.orders.loadingOrders", "Loading orders…")}
-            </Text>
+        </View>
+      ) : (
+        <View style={styles.content}>
+          {alertOrder ? (
+            <View style={styles.alertBanner}>
+              <View style={styles.alertIconWrap}>
+                <Text style={styles.alertIcon}>🔔</Text>
+              </View>
+              <View style={styles.alertCopy}>
+                <Text style={styles.alertTitle}>
+                  {t("restaurant.orders.alertTitle", "New order")}
+                </Text>
+                <Text style={styles.alertBody} numberOfLines={2}>
+                  {t("restaurant.orders.alertBody", {
+                    defaultValue: "Order #{{id}} waiting - tap to review",
+                    id: alertOrder.id.slice(0, 8),
+                  })}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.alertOpen}
+                activeOpacity={0.88}
+                onPress={() =>
+                  navigation.navigate("RestaurantOrderDetails", {
+                    orderId: alertOrder.id,
+                  })
+                }
+              >
+                <Text style={styles.alertOpenText}>
+                  {t("restaurant.orders.alertOpen", "Open")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          <View style={styles.filters}>
+            <FilterChip
+              label={t("common.all", "All")}
+              active={selectedFilter === "all"}
+              onPress={() => setSelectedFilter("all")}
+            />
+            <FilterChip
+              label={t("order.status.pending", "Pending")}
+              active={selectedFilter === "pending"}
+              onPress={() => setSelectedFilter("pending")}
+              tone="danger"
+            />
+            <FilterChip
+              label={t("order.status.readyPickup", "Ready")}
+              active={selectedFilter === "ready"}
+              onPress={() => setSelectedFilter("ready")}
+              tone="success"
+            />
           </View>
-        ) : filteredOrders.length === 0 ? (
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#08112A",
-              borderColor: "#1F2937",
-              borderWidth: 1,
-              borderRadius: 16,
-              padding: 16,
-            }}
-          >
-            <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-              {t("restaurant.orders.empty", "No active orders right now.")}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredOrders}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 22 }}
-          />
-        )}
-      </View>
+
+          {filteredOrders.length === 0 ? (
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyCard}>
+                <View style={styles.emptyIconWrap}>
+                  <Text style={styles.emptyIcon}>📦</Text>
+                </View>
+                <Text style={styles.emptyTitle}>
+                  {t("restaurant.orders.emptyTitle", "No Active Orders")}
+                </Text>
+                <Text style={styles.emptyBody}>
+                  {t(
+                    "restaurant.orders.emptyBody",
+                    "New orders will appear here automatically"
+                  )}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredOrders}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.listContent}
+            />
+          )}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 12,
+  },
+  bodyPad: {
+    flex: 1,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filters: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  alertBanner: {
+    backgroundColor: "#10B981",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.13)",
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  alertIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  alertIcon: { fontSize: 14 },
+  alertCopy: { flex: 1, gap: 2 },
+  alertTitle: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  alertBody: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+  },
+  alertOpen: {
+    backgroundColor: MMD_WHITE,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  alertOpenText: {
+    color: MMD_BLUE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  orderCard: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    marginBottom: 12,
+  },
+  orderTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  orderNumber: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  statusPillText: {
+    color: MMD_WHITE,
+    fontSize: 11,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  metaLine: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+  },
+  countdownRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  countdownActive: {
+    backgroundColor: "rgba(245,158,11,0.1)",
+    borderColor: "rgba(245,158,11,0.4)",
+  },
+  countdownExpired: {
+    backgroundColor: "rgba(229,231,235,0.1)",
+    borderColor: "rgba(229,231,235,0.2)",
+  },
+  countdownLabel: {
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  countdownValue: {
+    fontSize: 14,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  countdownTextAmber: { color: "#F59E0B" },
+  countdownTextMuted: { color: "#E5E7EB" },
+  countdownRule: { flex: 1, height: 1 },
+  countdownRuleAmber: { backgroundColor: "rgba(245,158,11,0.4)", opacity: 0.6 },
+  countdownRuleMuted: { backgroundColor: "rgba(229,231,235,0.2)" },
+  actionsRow: {
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    padding: 4,
+  },
+  actionBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  acceptBtn: { backgroundColor: MMD_TAXI_GREEN },
+  refuseBtn: {
+    backgroundColor: "#EF4444",
+    borderWidth: 1,
+    borderColor: "#EF4444",
+  },
+  actionBtnText: {
+    color: MMD_WHITE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  emptyWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 24,
+  },
+  emptyCard: {
+    width: 280,
+    maxWidth: "100%",
+    borderRadius: 24,
+    padding: 24,
+    gap: 16,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  emptyIcon: { fontSize: 32 },
+  emptyTitle: {
+    color: MMD_WHITE,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  emptyBody: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+  },
+  listContent: { paddingBottom: 32 },
+});
 
 export default RestaurantOrdersScreen;

@@ -25,7 +25,7 @@ export const NAV_SPACE = {
 
 /** Minimum accessible tactile target (>= 44 iOS / 48 Android HIG). */
 export const NAV_HIT = {
-  button: 52,
+  button: 56,
   buttonCompact: 44,
   iconSm: 18,
   iconMd: 22,
@@ -89,19 +89,20 @@ type NavPalette = {
   overlayScrim: string;
 };
 
+/** Figma Driver Map Active (286:6042) — navy + gold control chrome */
 const DAY_PALETTE: NavPalette = {
-  surface: "rgba(255,255,255,0.96)",
-  surfaceElevated: "#FFFFFF",
-  surfaceBorder: "rgba(15,23,42,0.10)",
-  onSurface: "#0F172A",
-  onSurfaceMuted: "#5B6472",
-  accent: "#0B84FF",
-  accentOn: "#FFFFFF",
-  active: "#00B34D",
+  surface: "#002B8C",
+  surfaceElevated: "#002B8C",
+  surfaceBorder: "#D4AF37",
+  onSurface: "#FFFFFF",
+  onSurfaceMuted: "#AABEE6",
+  accent: "#D4AF37",
+  accentOn: "#0B1F3A",
+  active: "#37D451",
   activeOn: "#FFFFFF",
   danger: "#DC2626",
   dangerSurface: "#FEE2E2",
-  warning: "#B45309",
+  warning: "#FFBF1A",
   warningSurface: "#FEF3C7",
   overlayScrim: "rgba(15,23,42,0.06)",
 };

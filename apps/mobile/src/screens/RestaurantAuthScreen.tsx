@@ -6,19 +6,36 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
-  Alert,
   Platform,
   ScrollView,
   KeyboardAvoidingView,
   Image,
+  StatusBar,
+  StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { validatePassword } from "../lib/authValidation";
 
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
-import LegalSignupLinks from "../components/LegalSignupLinks";
+import {
+  getLegalPrivacyUrl,
+  getLegalTermsUrl,
+  openLegalUrl,
+} from "../lib/legalUrls";
+import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
+import {
+  MMD_BLUE,
+  MMD_CARD_BORDER,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../theme/mmdUi";
+
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 
 const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
 
@@ -91,22 +108,6 @@ export function RestaurantAuthScreen() {
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-
-  const title = useMemo(
-    () =>
-      mode === "login"
-        ? t("restaurant.auth.titleLogin", "Connexion Restaurant")
-        : t("restaurant.auth.titleSignup", "Créer un compte Restaurant"),
-    [mode, t]
-  );
-
-  const subtitle = useMemo(
-    () =>
-      mode === "login"
-        ? t("restaurant.auth.subtitleLogin", "Connecte-toi avec ton compte restaurant.")
-        : t("restaurant.auth.subtitleSignup", "Crée ton compte restaurant avec son adresse complète."),
-    [mode, t]
-  );
 
   async function ensureRestaurantAccount(params: {
     userId: string;
@@ -397,286 +398,391 @@ export function RestaurantAuthScreen() {
   const primaryLabel = useMemo(
     () =>
       mode === "login"
-        ? t("restaurant.auth.actions.signIn", "Se connecter")
-        : t("restaurant.auth.actions.signUp", "Créer un compte"),
+        ? t("restaurant.auth.actions.signIn", "Sign In")
+        : t("restaurant.auth.actions.signUp", "Create Account"),
     [mode, t]
   );
 
   const secondaryLabel = useMemo(
     () =>
       mode === "login"
-        ? t("restaurant.auth.actions.switchToSignup", "Je n’ai pas de compte → Créer un compte")
-        : t("restaurant.auth.actions.switchToLogin", "J’ai déjà un compte → Se connecter"),
+        ? t(
+            "restaurant.auth.actions.switchToSignup",
+            "Don't have an account? Sign Up",
+          )
+        : t(
+            "restaurant.auth.actions.switchToLogin",
+            "Already have an account? Sign In",
+          ),
     [mode, t]
   );
 
   const onPrimary = mode === "login" ? signIn : signUp;
+  const { width } = useWindowDimensions();
+  const contentMax = width >= 768 ? 560 : undefined;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <RestaurantBrandLoadingState
+          title={t("restaurant.auth.loading", "Connecting...")}
+          logoAtBottom
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0b1220" }}>
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={{
-            flexGrow: 1,
-            padding: 24,
-            justifyContent: "center",
-          }}
+          contentContainerStyle={[
+            styles.scroll,
+            contentMax ? { maxWidth: contentMax, alignSelf: "center", width: "100%" } : null,
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View>
+          <View style={styles.header}>
             <Image
-              source={require("../../assets/brand/mmd-logo-ui.png")}
-              style={{
-                width: 180,
-                height: 116,
-                alignSelf: "center",
-                marginBottom: 20,
-              }}
+              source={MMD_LOGO}
+              style={styles.headerLogo}
               resizeMode="contain"
               accessibilityLabel="MMD Delivery"
             />
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "700", marginBottom: 8 }}>
-              {title}
+            <Text style={styles.brandTitle}>MMD Delivery</Text>
+            <Text style={styles.screenTitle}>
+              {mode === "login"
+                ? t("restaurant.auth.titleLogin", "Restaurant Login")
+                : t(
+                    "restaurant.auth.titleSignup",
+                    "Create Restaurant Account",
+                  )}
             </Text>
+          </View>
 
-            <Text
-              style={{
-                color: "#94A3B8",
-                fontSize: 13,
-                fontWeight: "700",
-                marginBottom: 16,
-                lineHeight: 18,
-              }}
-            >
-              {subtitle}
-            </Text>
+          <View style={{ height: 32 }} />
 
-            <Text style={{ color: "#9CA3AF", fontWeight: "900", marginBottom: 8 }}>
-              {t("restaurant.auth.fields.email", "Email")}
-            </Text>
-
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t("restaurant.auth.placeholders.email", "Email")}
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoCorrect={false}
-              editable={!loading}
-              style={{
-                backgroundColor: "#111827",
-                color: "white",
-                padding: 12,
-                borderRadius: 10,
-                marginBottom: 12,
-                borderWidth: 1,
-                borderColor: "#1f2937",
-                opacity: loading ? 0.8 : 1,
-              }}
-            />
-
-            <Text style={{ color: "#9CA3AF", fontWeight: "900", marginBottom: 8 }}>
-              {t("restaurant.auth.fields.password", "Mot de passe")}
-            </Text>
-
-            <View style={{ position: "relative", marginBottom: mode === "login" ? 8 : 12 }}>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder={t("restaurant.auth.placeholders.password", "Mot de passe (min 6)")}
-                placeholderTextColor="#94A3B8"
-                secureTextEntry={!showPassword}
-                autoCorrect={false}
-                editable={!loading}
-                style={{
-                  backgroundColor: "#111827",
-                  color: "white",
-                  padding: 12,
-                  paddingRight: 92,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: "#1f2937",
-                  opacity: loading ? 0.8 : 1,
-                }}
-              />
-
-              <TouchableOpacity
-                disabled={loading}
-                onPress={() => setShowPassword((value) => !value)}
-                style={{
-                  position: "absolute",
-                  right: 10,
-                  top: 0,
-                  bottom: 0,
-                  justifyContent: "center",
-                  opacity: loading ? 0.6 : 1,
-                }}
-              >
-                <Text style={{ color: "#93C5FD", fontWeight: "900", fontSize: 12 }}>
-                  {showPassword
-                    ? t("restaurant.auth.actions.hidePassword", "Cacher")
-                    : t("restaurant.auth.actions.showPassword", "Voir")}
+          <View style={styles.card}>
+            <View style={styles.fieldBlock}>
+              <View style={styles.labelRow}>
+                <Text style={styles.labelEmoji}>📧</Text>
+                <Text style={styles.label}>
+                  {t("restaurant.auth.fields.email", "Email")}
                 </Text>
-              </TouchableOpacity>
+              </View>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder={t("restaurant.auth.placeholders.email", "you@email.com")}
+                placeholderTextColor="rgba(255,255,255,0.55)"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoCorrect={false}
+                style={styles.field}
+              />
+            </View>
+
+            <View style={styles.fieldBlock}>
+              <View style={styles.labelRow}>
+                <Text style={styles.labelEmoji}>🔒</Text>
+                <Text style={styles.label}>
+                  {t("restaurant.auth.fields.password", "Password")}
+                </Text>
+              </View>
+              <View style={{ position: "relative" }}>
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••••"
+                  placeholderTextColor="rgba(255,255,255,0.55)"
+                  secureTextEntry={!showPassword}
+                  autoCorrect={false}
+                  style={[styles.field, { paddingRight: 72 }]}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword((v) => !v)}
+                  style={styles.showBtn}
+                >
+                  <Text style={styles.showText}>
+                    {showPassword
+                      ? t("restaurant.auth.actions.hidePassword", "Hide")
+                      : t("restaurant.auth.actions.showPassword", "Show")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {mode === "signup" ? (
               <>
-                <Text style={{ color: "#9CA3AF", fontWeight: "900", marginBottom: 8 }}>
-                  {t("restaurant.auth.fields.restaurantName", "Nom du restaurant")}
-                </Text>
+                <View style={styles.fieldBlock}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.labelEmoji}>🍽️</Text>
+                    <Text style={styles.label}>
+                      {t(
+                        "restaurant.auth.fields.restaurantName",
+                        "Restaurant Name",
+                      )}
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={restaurantName}
+                    onChangeText={setRestaurantName}
+                    placeholder={t(
+                      "restaurant.auth.placeholders.restaurantName",
+                      "Example: Fouta Halal",
+                    )}
+                    placeholderTextColor="rgba(255,255,255,0.55)"
+                    autoCorrect={false}
+                    style={styles.field}
+                  />
+                </View>
+                <View style={styles.fieldBlock}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.labelEmoji}>📍</Text>
+                    <Text style={styles.label}>
+                      {t(
+                        "restaurant.auth.fields.restaurantAddress",
+                        "Full Address",
+                      )}
+                    </Text>
+                  </View>
+                  <TextInput
+                    value={restaurantAddress}
+                    onChangeText={setRestaurantAddress}
+                    placeholder={t(
+                      "restaurant.auth.placeholders.restaurantAddress",
+                      "Example: 123 Main St, New York, NY 10001",
+                    )}
+                    placeholderTextColor="rgba(255,255,255,0.55)"
+                    autoCorrect={false}
+                    style={styles.field}
+                  />
+                </View>
 
-                <TextInput
-                  value={restaurantName}
-                  onChangeText={setRestaurantName}
-                  placeholder={t("restaurant.auth.placeholders.restaurantName", "Exemple : Fouta Halal")}
-                  placeholderTextColor="#94A3B8"
-                  autoCorrect={false}
-                  editable={!loading}
-                  style={{
-                    backgroundColor: "#111827",
-                    color: "white",
-                    padding: 12,
-                    borderRadius: 10,
-                    marginBottom: 12,
-                    borderWidth: 1,
-                    borderColor: "#1f2937",
-                    opacity: loading ? 0.8 : 1,
-                  }}
-                />
-
-                <Text style={{ color: "#9CA3AF", fontWeight: "900", marginBottom: 8 }}>
-                  {t("restaurant.auth.fields.restaurantAddress", "Adresse complète")}
-                </Text>
-
-                <TextInput
-                  value={restaurantAddress}
-                  onChangeText={setRestaurantAddress}
-                  placeholder={t(
-                    "restaurant.auth.placeholders.restaurantAddress",
-                    "Exemple : 123 Main St, New York, NY 10001"
-                  )}
-                  placeholderTextColor="#94A3B8"
-                  autoCorrect={false}
-                  editable={!loading}
-                  style={{
-                    backgroundColor: "#111827",
-                    color: "white",
-                    padding: 12,
-                    borderRadius: 10,
-                    marginBottom: 12,
-                    borderWidth: 1,
-                    borderColor: "#1f2937",
-                    opacity: loading ? 0.8 : 1,
-                  }}
-                />
+                <View style={styles.termsRow}>
+                  <View style={styles.checkbox}>
+                    <Text style={styles.checkmark}>✓</Text>
+                  </View>
+                  <Text style={styles.termsText}>
+                    {t("restaurant.auth.terms.prefix", "I accept the")}{" "}
+                    <Text
+                      style={styles.termsLink}
+                      onPress={() => void openLegalUrl(getLegalTermsUrl())}
+                    >
+                      {t("legal.terms", "Terms")}
+                    </Text>
+                    {" & "}
+                    <Text
+                      style={styles.termsLink}
+                      onPress={() => void openLegalUrl(getLegalPrivacyUrl())}
+                    >
+                      {t("legal.privacy", "Privacy Policy")}
+                    </Text>
+                  </Text>
+                </View>
               </>
             ) : null}
 
             {mode === "login" ? (
-              <TouchableOpacity
-                disabled={loading}
-                onPress={forgotPassword}
-                style={{
-                  alignItems: "flex-end",
-                  marginBottom: 12,
-                  paddingVertical: 4,
-                  opacity: loading ? 0.6 : 1,
-                }}
-              >
-                <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-                  {t("restaurant.auth.actions.forgotPassword", "Mot de passe oublié ?")}
+              <TouchableOpacity onPress={() => void forgotPassword()} style={styles.forgot}>
+                <Text style={[styles.linkGold, { textAlign: "right" }]}>
+                  {t("restaurant.auth.actions.forgotPassword", "Forgot password?")}
                 </Text>
               </TouchableOpacity>
             ) : null}
 
-            {!!msg && (
+            {!!msg ? (
               <Text
-                style={{
-                  color: msg.startsWith("❌") ? "#FCA5A5" : "#93C5FD",
-                  marginBottom: 12,
-                  fontWeight: "700",
-                  lineHeight: 18,
-                }}
+                style={[
+                  styles.msg,
+                  { color: msg.startsWith("❌") ? "#FCA5A5" : MMD_GOLD_CLASSIC },
+                ]}
               >
                 {msg}
               </Text>
-            )}
-
-            {mode === "signup" ? <LegalSignupLinks disabled={loading} /> : null}
+            ) : null}
 
             <TouchableOpacity
-              disabled={loading}
-              onPress={onPrimary}
-              style={{
-                backgroundColor: mode === "login" ? "#22C55E" : "#0EA5E9",
-                paddingVertical: 12,
-                borderRadius: 12,
-                alignItems: "center",
-                marginBottom: 10,
-                opacity: loading ? 0.7 : 1,
-              }}
+              onPress={() => void onPrimary()}
+              style={styles.cta}
+              activeOpacity={0.85}
             >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={{ color: "white", fontWeight: "800" }}>
-                  {primaryLabel}
-                </Text>
-              )}
+              <Text style={styles.ctaText}>{primaryLabel}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              disabled={loading}
               onPress={() => {
                 setMsg(null);
                 setShowPassword(false);
-                setMode((currentMode) =>
-                  currentMode === "login" ? "signup" : "login"
-                );
+                setMode((m) => (m === "login" ? "signup" : "login"));
               }}
-              style={{
-                paddingVertical: 10,
-                alignItems: "center",
-                opacity: loading ? 0.6 : 1,
-              }}
+              style={styles.switchBtn}
             >
-              <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-                {secondaryLabel}
-              </Text>
+              <Text style={styles.linkGold}>{secondaryLabel}</Text>
             </TouchableOpacity>
+          </View>
 
-            <TouchableOpacity
-              disabled={loading}
-              onPress={() =>
-                Alert.alert(
-                  t("restaurant.auth.debug.title", "Info"),
-                  t(
-                    "restaurant.auth.debug.note",
-                    "Si la confirmation email est activée dans Supabase, tu dois confirmer ton email avant de te connecter."
-                  )
-                )
-              }
-              style={{
-                marginTop: 8,
-                alignItems: "center",
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              <Text style={{ color: "#64748B", fontWeight: "800", fontSize: 12 }}>
-                {t("restaurant.auth.debug.help", "Besoin d’aide ?")}
-              </Text>
-            </TouchableOpacity>
+          <View style={styles.spacer} />
+
+          <View style={styles.footer}>
+            <Image
+              source={MMD_LOGO}
+              style={styles.footerLogo}
+              resizeMode="contain"
+              accessibilityLabel="MMD Delivery"
+            />
+            <Text style={styles.footerLabel}>MMD Delivery</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: MMD_BLUE },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 44,
+    paddingBottom: 24,
+  },
+  header: { alignItems: "center", gap: 12 },
+  headerLogo: { width: 64, height: 64, borderRadius: 14 },
+  brandTitle: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 24,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  screenTitle: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  card: {
+    backgroundColor: MMD_GLASS,
+    borderColor: MMD_CARD_BORDER,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 24,
+    gap: 20,
+  },
+  fieldBlock: { gap: 8 },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  labelEmoji: { fontSize: 18 },
+  label: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: MMD_CARD_BORDER,
+    backgroundColor: MMD_GLASS,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkmark: {
+    color: MMD_WHITE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    lineHeight: 14,
+  },
+  termsText: {
+    flex: 1,
+    color: MMD_WHITE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  termsLink: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
+  field: {
+    backgroundColor: MMD_GLASS,
+    borderColor: MMD_CARD_BORDER,
+    borderWidth: 1,
+    borderRadius: 10,
+    minHeight: 42,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 11 : 10,
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
+  showBtn: {
+    position: "absolute",
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+  },
+  showText: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  forgot: { alignItems: "flex-end" },
+  linkGold: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  msg: {
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    lineHeight: 18,
+    fontSize: 13,
+  },
+  cta: {
+    backgroundColor: MMD_TAXI_GREEN,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  switchBtn: { alignItems: "center", paddingVertical: 4 },
+  spacer: { flex: 1, minHeight: 24 },
+  footer: { alignItems: "center", gap: 8 },
+  footerLogo: { width: 40, height: 40, borderRadius: 10 },
+  footerLabel: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+});
 
 export default RestaurantAuthScreen;

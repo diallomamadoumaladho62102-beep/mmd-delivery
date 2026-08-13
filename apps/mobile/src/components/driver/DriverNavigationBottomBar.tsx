@@ -1,6 +1,5 @@
 import React from "react";
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   formatPostedSpeedLimit,
@@ -13,6 +12,13 @@ import {
 } from "../../lib/navigationLocale";
 import { computeSpeedClusterLayout } from "../../lib/driverNavigationVisual";
 import { resolveBottomBarPadding } from "../../lib/navigationSafeArea";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Props = {
   etaMinutes: number;
@@ -45,24 +51,22 @@ function formatRemainingTime(minutes: number): string {
 }
 
 function StatCell({
-  icon,
   value,
   label,
+  large,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
   value: string;
   label: string;
+  large?: boolean;
 }) {
   return (
-    <View style={{ flex: 1, alignItems: "center", minWidth: 0 }}>
-      <Ionicons name={icon} size={16} color="#2F7BFF" />
+    <View style={{ flex: 1, alignItems: "center", minWidth: 0, gap: 4 }}>
       <Text
         style={{
-          marginTop: 4,
-          color: "#0F172A",
-          fontSize: 17,
+          color: MMD_WHITE,
+          fontSize: large ? 20 : 16,
+          fontFamily: MMD_FONT.extrabold,
           fontWeight: "800",
-          letterSpacing: -0.2,
         }}
         numberOfLines={1}
       >
@@ -70,9 +74,9 @@ function StatCell({
       </Text>
       <Text
         style={{
-          marginTop: 1,
-          color: "#94A3B8",
+          color: MMD_TEXT_MUTED_BLUE,
           fontSize: 11,
+          fontFamily: MMD_FONT.semibold,
           fontWeight: "600",
         }}
         numberOfLines={1}
@@ -84,7 +88,7 @@ function StatCell({
 }
 
 /**
- * Premium trip footer — ETA / Distance / Time / End + US-style speed cluster.
+ * Figma Driver Map Active bottom panel (286:6042) — ETA / Distance / Time + End.
  */
 export function DriverNavigationBottomBar({
   etaMinutes,
@@ -112,11 +116,18 @@ export function DriverNavigationBottomBar({
   const speedLabel = formatSpeedValue(speedMps, units);
   const unitLabel = speedUnitLabel(units);
 
-  const etaCaption = navLocale === "fr" ? "Arrivée" : navLocale === "es" ? "ETA" : "ETA";
+  const etaCaption =
+    navLocale === "fr" ? "Arrivée" : navLocale === "es" ? "Llegada" : "Arrival";
   const distCaption =
     navLocale === "fr" ? "Distance" : navLocale === "es" ? "Distancia" : "Distance";
-  const timeCaption = navLocale === "fr" ? "Temps" : navLocale === "es" ? "Tiempo" : "Time";
-  const endCaption = navLocale === "fr" ? "Terminer" : navLocale === "es" ? "Fin" : "End";
+  const timeCaption =
+    navLocale === "fr" ? "Temps" : navLocale === "es" ? "Tiempo" : "Time";
+  const endCaption =
+    navLocale === "fr"
+      ? "Terminer la navigation"
+      : navLocale === "es"
+        ? "Finalizar navegación"
+        : "End Navigation";
 
   return (
     <>
@@ -127,71 +138,69 @@ export function DriverNavigationBottomBar({
           right: 0,
           bottom: 0,
           zIndex: 25,
-          flexDirection: "row",
-          alignItems: "center",
+          gap: 12,
           paddingTop: 14,
-          paddingLeft: 14 + Math.max(0, insets.left),
-          paddingRight: 14 + Math.max(0, insets.right),
-          // Background flush to bottom edge; inset only pads content.
+          paddingLeft: 16 + Math.max(0, insets.left),
+          paddingRight: 16 + Math.max(0, insets.right),
           paddingBottom: resolveBottomBarPadding(insets.bottom),
-          backgroundColor: "#FFFFFF",
-          borderTopLeftRadius: 22,
-          borderTopRightRadius: 22,
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
-          shadowColor: "#000",
-          shadowOpacity: 0.14,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: -3 },
-          elevation: 8,
+          backgroundColor: MMD_BLUE,
         }}
       >
-        <StatCell icon="time-outline" value={arrivalLabel} label={etaCaption} />
-        <StatCell icon="location-outline" value={distanceLabel} label={distCaption} />
-        <StatCell icon="stopwatch-outline" value={timeLabel} label={timeCaption} />
+        <View
+          style={{
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: "rgba(51,51,102,0.5)",
+            overflow: "hidden",
+            flexDirection: "row",
+          }}
+        >
+          <View style={{ flex: 3, backgroundColor: "#33D966", borderRadius: 3 }} />
+          <View style={{ flex: 1.5, backgroundColor: "#FFB226" }} />
+          <View style={{ flex: 1, backgroundColor: "#E53333", borderRadius: 3 }} />
+        </View>
 
-        <View style={{ alignItems: "center", marginLeft: 4, width: 56 }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={endCaption}
-            onPress={onEndNavigation}
-            hitSlop={8}
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: "#E11D48",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#E11D48",
-              shadowOpacity: 0.35,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 6,
-            }}
-          >
-            <Ionicons name="close" size={26} color="#FFFFFF" />
-          </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <StatCell value={arrivalLabel} label={etaCaption} large />
+          <View
+            style={{ width: 1, height: 28, backgroundColor: MMD_GOLD_CLASSIC }}
+          />
+          <StatCell value={distanceLabel} label={distCaption} />
+          <View
+            style={{ width: 1, height: 28, backgroundColor: MMD_GOLD_CLASSIC }}
+          />
+          <StatCell value={timeLabel} label={timeCaption} />
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={endCaption}
+          onPress={onEndNavigation}
+          style={{
+            height: 48,
+            borderRadius: 16,
+            backgroundColor: "#DC2626",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <Text
             style={{
-              marginTop: 4,
-              color: "#94A3B8",
-              fontSize: 11,
-              fontWeight: "600",
+              color: "#0B1F3A",
+              fontSize: 15,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
             }}
           >
             {endCaption}
           </Text>
-        </View>
+        </Pressable>
       </View>
 
       <View
         style={{
           position: "absolute",
           left: cluster.left,
-          // Keep the speed-limit sign at its previous absolute bottom.
-          // Old stack (bottom→top): speedometer @ cluster.bottom, limit above it.
-          // New stack: limit stays at that same absolute Y; current speed sits above.
           bottom: showSpeedLimit
             ? cluster.bottom + cluster.speedSize + cluster.gap
             : cluster.bottom,
@@ -204,88 +213,76 @@ export function DriverNavigationBottomBar({
           ),
         }}
       >
+        {showSpeedLimit && postedLabel ? (
           <View
             style={{
-              width: cluster.speedSize,
-              height: cluster.speedSize,
-              borderRadius: cluster.speedSize / 2,
-              backgroundColor: "#FFFFFF",
+              width: 52,
+              height: 52,
+              borderRadius: 26,
+              backgroundColor: MMD_WHITE,
               borderWidth: 3,
-              borderColor: isSpeeding ? "#DC2626" : "#2F7BFF",
-              shadowColor: "#000",
-              shadowOpacity: 0.18,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 12,
+              borderColor: "#DC2626",
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: showSpeedLimit ? cluster.gap : 0,
+              marginBottom: cluster.gap,
+              shadowColor: "#000",
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 10,
             }}
           >
             <Text
               style={{
-                color: "#0F172A",
-                fontSize: Math.max(16, Math.round(cluster.speedSize * 0.3)),
-                fontWeight: "900",
+                color: "#0B1F3A",
+                fontSize: 18,
+                fontFamily: MMD_FONT.extrabold,
+                fontWeight: "800",
               }}
             >
-              {speedLabel}
-            </Text>
-            <Text
-              style={{
-                color: "#64748B",
-                fontSize: Math.max(9, Math.round(cluster.speedSize * 0.14)),
-                fontWeight: "700",
-              }}
-            >
-              {unitLabel}
+              {postedLabel}
             </Text>
           </View>
+        ) : null}
 
-          {showSpeedLimit && postedLabel ? (
-            <View
-              style={{
-                width: Math.max(44, cluster.limitSize),
-                minHeight: Math.max(54, Math.round(cluster.limitSize * 1.15)),
-                borderRadius: 6,
-                backgroundColor: "#FFFFFF",
-                borderWidth: 2.5,
-                borderColor: isSpeeding ? "#DC2626" : "#0F172A",
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 4,
-                paddingHorizontal: 4,
-                shadowColor: "#000",
-                shadowOpacity: 0.16,
-                shadowRadius: 5,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 10,
-              }}
-            >
-              <Text
-                style={{
-                  color: "#0F172A",
-                  fontSize: 7,
-                  fontWeight: "800",
-                  letterSpacing: 0.4,
-                  textAlign: "center",
-                  lineHeight: 9,
-                }}
-              >
-                {units === "imperial" ? "SPEED\nLIMIT" : "LIMITE"}
-              </Text>
-              <Text
-                style={{
-                  color: isSpeeding ? "#DC2626" : "#0F172A",
-                  fontSize: Math.max(18, Math.round(cluster.limitSize * 0.42)),
-                  fontWeight: "900",
-                  marginTop: 1,
-                }}
-              >
-                {postedLabel}
-              </Text>
-            </View>
-          ) : null}
+        <View
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            backgroundColor: isSpeeding ? "#FFBF1A" : "#FFBF1A",
+            borderWidth: 3,
+            borderColor: "#0066FF",
+            shadowColor: "#FFB200",
+            shadowOpacity: 0.35,
+            shadowRadius: 5,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 12,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: "#000000",
+              fontSize: 18,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+            }}
+          >
+            {speedLabel}
+          </Text>
+          <Text
+            style={{
+              color: "#646464",
+              fontSize: 8,
+              fontFamily: MMD_FONT.bold,
+              fontWeight: "700",
+            }}
+          >
+            {unitLabel}
+          </Text>
+        </View>
       </View>
     </>
   );

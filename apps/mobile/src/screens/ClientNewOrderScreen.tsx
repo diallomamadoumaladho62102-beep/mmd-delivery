@@ -10,6 +10,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -23,6 +25,14 @@ import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { payOrderWithPaymentSheet } from "../utils/stripe";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_NAVY,
+  MMD_WHITE,
+  mmdLogoSizeCompact,
+} from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientNewOrder">;
 
@@ -215,6 +225,8 @@ export function ClientNewOrderScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<any>();
   const { t } = useTranslation();
+  const { width, height } = useWindowDimensions();
+  const logoSize = mmdLogoSizeCompact(width, height);
   const safeBack = useSafeBackNavigation("ClientHome");
 
   const restaurantIdFromParams: string | null =
@@ -1069,7 +1081,7 @@ export function ClientNewOrderScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
       <ScreenHeader
@@ -1079,7 +1091,7 @@ export function ClientNewOrderScreen() {
           "Saisie des adresses pickup / dropoff (mobile MMD Delivery) avec la même formule que sur le site web."
         )}
         fallbackRoute="ClientHome"
-        variant="dark"
+        variant="brand"
       />
 
       <KeyboardAvoidingView
@@ -1097,25 +1109,29 @@ export function ClientNewOrderScreen() {
         >
           <View
             style={{
-              borderRadius: 30,
+              borderRadius: 24,
               borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.06)",
-              backgroundColor: "#050a1d",
-              padding: 16,
-              shadowColor: "#000",
-              shadowOpacity: 0.32,
-              shadowRadius: 22,
-              shadowOffset: { width: 0, height: 10 },
-              elevation: 8,
+              borderColor: "rgba(255,215,0,0.15)",
+              backgroundColor: MMD_NAVY,
+              paddingHorizontal: 16,
+              paddingTop: 20,
+              paddingBottom: 24,
+              gap: 18,
             }}
           >
-            <View style={{ marginBottom: 18 }}>
+            <View style={{ marginBottom: 0, alignItems: "flex-start", gap: 8 }}>
+              <Image
+                source={require("../../assets/brand/mmd-logo-ui.png")}
+                style={{ width: logoSize, height: logoSize, borderRadius: logoSize / 2 }}
+                resizeMode="contain"
+                accessibilityLabel="MMD"
+              />
               <Text
                 style={{
-                  color: "#4ADE80",
-                  fontSize: 13,
-                  fontWeight: "700",
-                  marginBottom: 6,
+                  color: MMD_GOLD_BRIGHT,
+                  fontSize: 16,
+                  fontWeight: "800",
+                  fontFamily: MMD_FONT.extrabold,
                   letterSpacing: 0.3,
                 }}
               >
@@ -1192,17 +1208,18 @@ export function ClientNewOrderScreen() {
               style={{
                 borderRadius: 24,
                 borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.08)",
-                backgroundColor: "rgba(8,12,31,0.96)",
-                padding: 16,
-                marginBottom: 16,
+                borderColor: "rgba(255,215,0,0.15)",
+                backgroundColor: "#002673",
+                padding: 14,
+                marginBottom: 0,
               }}
             >
               <Text
                 style={{
-                  color: "white",
-                  fontSize: 16,
-                  fontWeight: "900",
+                  color: MMD_GOLD_BRIGHT,
+                  fontSize: 19,
+                  fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                   marginBottom: 12,
                 }}
               >
@@ -1221,22 +1238,25 @@ export function ClientNewOrderScreen() {
                     "client.newOrder.fields.pickupPlaceholder",
                     "Ex: 686 Vermont St Brooklyn NY 11207"
                   )}
-                  placeholderTextColor="#4B5563"
+                  placeholderTextColor="#B2B2BF"
                   autoCapitalize="words"
                   autoCorrect={false}
                   style={{
-                    backgroundColor: pickupLocked ? "#0B1220" : "#020617",
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: pickupLocked ? "#1F2937" : "#374151",
+                    backgroundColor: MMD_NAVY,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: "rgba(255,255,255,0.3)",
                     paddingHorizontal: 14,
                     paddingVertical: 13,
-                    color: "white",
-                    fontSize: 14,
+                    color: MMD_WHITE,
+                    fontSize: 16,
+                    fontFamily: MMD_FONT.regular,
+                    minHeight: 42,
+                    opacity: pickupLocked ? 0.8 : 1,
                   }}
                 />
                 {pickupLocked && (
-                  <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 6 }}>
+                  <Text style={{ color: "#D9D9E5", fontSize: 13, marginTop: 6, fontFamily: MMD_FONT.regular }}>
                     {t(
                       "client.newOrder.fields.pickupLockedHint",
                       "Adresse restaurant remplie automatiquement."
@@ -1246,7 +1266,7 @@ export function ClientNewOrderScreen() {
               </View>
 
               <View style={{ marginBottom: 6 }}>
-                <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 6 }}>
+                <Text style={{ color: MMD_WHITE, fontSize: 15, marginBottom: 6, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
                   {t("client.newOrder.fields.dropoffLabel", "Adresse de livraison")}
                 </Text>
                 <TextInput
@@ -1256,18 +1276,20 @@ export function ClientNewOrderScreen() {
                     "client.newOrder.fields.dropoffPlaceholder",
                     "Ex: Adresse du client"
                   )}
-                  placeholderTextColor="#4B5563"
+                  placeholderTextColor="#B2B2BF"
                   autoCapitalize="words"
                   autoCorrect={false}
                   style={{
-                    backgroundColor: "#020617",
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: "#374151",
+                    backgroundColor: MMD_NAVY,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderColor: "rgba(255,255,255,0.3)",
                     paddingHorizontal: 14,
                     paddingVertical: 13,
-                    color: "white",
-                    fontSize: 14,
+                    color: MMD_WHITE,
+                    fontSize: 16,
+                    fontFamily: MMD_FONT.regular,
+                    minHeight: 42,
                   }}
                 />
               </View>
@@ -1291,17 +1313,18 @@ export function ClientNewOrderScreen() {
               style={{
                 borderRadius: 24,
                 borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.08)",
-                backgroundColor: "rgba(7,11,28,0.98)",
-                padding: 16,
-                marginBottom: 16,
+                borderColor: "rgba(255,215,0,0.15)",
+                backgroundColor: "#002673",
+                padding: 14,
+                marginBottom: 0,
               }}
             >
               <Text
                 style={{
-                  color: "white",
-                  fontSize: 16,
-                  fontWeight: "900",
+                  color: MMD_GOLD_BRIGHT,
+                  fontSize: 19,
+                  fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                   marginBottom: 10,
                 }}
               >
@@ -1313,17 +1336,17 @@ export function ClientNewOrderScreen() {
 
               {loading ? (
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-                  <ActivityIndicator size="small" color="#22C55E" />
-                  <Text style={{ color: "#D1FAE5", fontSize: 12, fontWeight: "700", marginLeft: 8 }}>
+                  <ActivityIndicator size="small" color={MMD_GOLD_BRIGHT} />
+                  <Text style={{ color: "#4DE58C", fontSize: 15, fontWeight: "600", fontFamily: MMD_FONT.semibold, marginLeft: 8 }}>
                     {t("client.newOrder.status.autoCalculating", "Calcul automatique en cours...")}
                   </Text>
                 </View>
               ) : estimateError ? (
-                <Text style={{ color: "#FCA5A5", fontSize: 12, fontWeight: "700", marginBottom: 8 }}>
+                <Text style={{ color: "#FCA5A5", fontSize: 15, fontWeight: "700", fontFamily: MMD_FONT.bold, marginBottom: 8 }}>
                   {estimateError}
                 </Text>
               ) : (
-                <Text style={{ color: "#86EFAC", fontSize: 12, fontWeight: "700", marginBottom: 8 }}>
+                <Text style={{ color: "#4DE58C", fontSize: 15, fontWeight: "600", fontFamily: MMD_FONT.semibold, marginBottom: 8 }}>
                   {distanceMiles != null && etaMinutes != null && deliveryFee != null
                     ? t("client.newOrder.status.estimateReady", "Estimation prête.")
                     : t("client.newOrder.status.waitingCompleteAddress", "En attente d’une adresse complète.")}
@@ -1394,7 +1417,7 @@ export function ClientNewOrderScreen() {
                 borderRadius: 24,
                 borderWidth: 1,
                 borderColor: "rgba(255,255,255,0.08)",
-                backgroundColor: "rgba(7,11,28,0.98)",
+                backgroundColor: "#002673",
                 padding: 16,
                 marginBottom: 16,
               }}
@@ -1492,22 +1515,25 @@ export function ClientNewOrderScreen() {
               onPress={handleCreateOrder}
               disabled={!canCreate}
               style={{
-                backgroundColor: !canCreate ? "#4B5563" : "#3B82F6",
-                borderRadius: 999,
+                backgroundColor: "#DAAA20",
+                opacity: !canCreate ? 0.55 : 1,
+                borderRadius: 14,
                 paddingVertical: 14,
                 alignItems: "center",
                 flexDirection: "row",
                 justifyContent: "center",
                 marginBottom: 10,
+                minHeight: 44,
               }}
               activeOpacity={0.85}
             >
-              {creating && <ActivityIndicator color="#ffffff" />}
+              {creating && <ActivityIndicator color={MMD_NAVY} />}
               <Text
                 style={{
-                  color: "white",
-                  fontSize: 14,
-                  fontWeight: "800",
+                  color: MMD_NAVY,
+                  fontSize: 16,
+                  fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                   marginLeft: creating ? 8 : 0,
                 }}
               >
@@ -1521,12 +1547,16 @@ export function ClientNewOrderScreen() {
               onPress={handlePayNow}
               disabled={!canPay}
               style={{
-                backgroundColor: !canPay ? "#4B5563" : "#F59E0B",
-                borderRadius: 999,
+                backgroundColor: !canPay ? "#4B5563" : "#33D970",
+                opacity: !canPay ? 0.55 : 1,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: !canPay ? "#4B5563" : "#33D946",
                 paddingVertical: 14,
                 alignItems: "center",
                 flexDirection: "row",
                 justifyContent: "center",
+                minHeight: 44,
               }}
               activeOpacity={0.85}
             >
@@ -1534,8 +1564,9 @@ export function ClientNewOrderScreen() {
               <Text
                 style={{
                   color: "white",
-                  fontSize: 14,
-                  fontWeight: "900",
+                  fontSize: 16,
+                  fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                   marginLeft: paying ? 8 : 0,
                 }}
               >

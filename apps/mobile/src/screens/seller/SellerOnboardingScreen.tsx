@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  StatusBar,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -19,9 +21,17 @@ import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
-import ScreenHeader from "../../components/navigation/ScreenHeader";
-import { UiLoadingState } from "../../components/ui/UiStates";
-import { APP_COLORS } from "../../theme/appTheme";
+import {
+  SellerBrandHeader,
+  SellerFeedbackCard,
+  SellerGlassCard,
+} from "../../components/seller/SellerChrome";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Props = { navigation: any; route?: { params?: { mode?: "edit" } } };
 
@@ -150,30 +160,88 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
     }
   };
 
+  const fields = (
+    [
+      [
+        t("seller.fields.businessName", "Shop Name"),
+        businessName,
+        setBusinessName,
+        t("seller.fields.businessNamePh", "Enter shop name"),
+        false,
+      ],
+      [
+        t("seller.fields.address", "Address"),
+        address,
+        setAddress,
+        t("seller.fields.addressPh", "Describe your shop address"),
+        false,
+      ],
+      [
+        t("seller.fields.city", "City"),
+        city,
+        setCity,
+        t("seller.fields.cityPh", "Enter city"),
+        false,
+      ],
+      [
+        t("seller.fields.phone", "Phone"),
+        phone,
+        setPhone,
+        t("seller.fields.phonePh", "Enter phone"),
+        false,
+      ],
+      [
+        t("seller.fields.logoUrl", "Logo URL"),
+        logoUrl,
+        setLogoUrl,
+        t("seller.fields.logoUrlPh", "https://…"),
+        false,
+      ],
+      [
+        t("seller.fields.coverUrl", "Cover image URL"),
+        coverUrl,
+        setCoverUrl,
+        t("seller.fields.coverUrlPh", "https://…"),
+        false,
+      ],
+      [
+        t("seller.fields.documentUrls", "Document URLs (one per line)"),
+        documentUrlsText,
+        setDocumentUrlsText,
+        t("seller.fields.documentUrlsPh", "https://…"),
+        true,
+      ],
+    ] as const
+  );
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bg }} edges={["bottom", "left", "right"]}>
-      <ScreenHeader
-        title={
-          editMode
-            ? t("seller.onboarding.editTitle", "Edit seller profile")
-            : t("seller.onboarding.title", "Become a Seller")
-        }
-        subtitle={
-          editMode
-            ? t("seller.onboarding.editSubtitle", "Update business details and image URLs.")
-            : t(
-                "seller.onboarding.subtitle",
-                "Register your business to sell on MMD Marketplace."
-              )
-        }
+    <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" />
+      <SellerBrandHeader
+        subtitle={t("seller.onboarding.headerSubtitle", "Seller Setup")}
+        showBack
         fallbackRoute="SellerDashboard"
-        variant="dark"
       />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 14 }}>
-        {hydrating ? (
-          <UiLoadingState />
-        ) : (
-          <>
+      {hydrating ? (
+        <SellerFeedbackCard
+          loading
+          title={t("common.loading", "Loading...")}
+          message={t("seller.onboarding.loadingProfile", "Loading profile")}
+        />
+      ) : (
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <SellerGlassCard style={styles.formCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.shopIcon}>
+                <Text style={styles.shopEmoji}>🏪</Text>
+              </View>
+              <Text style={styles.cardTitle}>
+                {editMode
+                  ? t("seller.onboarding.editCardTitle", "Edit Your Shop")
+                  : t("seller.onboarding.createCardTitle", "Create Your Shop")}
+              </Text>
+            </View>
+
             {!editMode ? (
               <MarketScopeCard
                 market={market}
@@ -183,66 +251,97 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
               />
             ) : null}
 
-            {(
-              [
-                [t("seller.fields.businessName", "Business name"), businessName, setBusinessName, false],
-                [t("seller.fields.city", "City"), city, setCity, false],
-                [t("seller.fields.address", "Address"), address, setAddress, false],
-                [t("seller.fields.phone", "Phone"), phone, setPhone, false],
-                [t("seller.fields.logoUrl", "Logo URL"), logoUrl, setLogoUrl, false],
-                [t("seller.fields.coverUrl", "Cover image URL"), coverUrl, setCoverUrl, false],
-                [
-                  t("seller.fields.documentUrls", "Document URLs (one per line)"),
-                  documentUrlsText,
-                  setDocumentUrlsText,
-                  true,
-                ],
-              ] as const
-            ).map(([label, value, setter, multiline]) => (
-              <View key={label}>
-                <Text style={{ color: APP_COLORS.textSubtle, marginBottom: 6 }}>{label}</Text>
+            {fields.map(([label, value, setter, placeholder, multiline]) => (
+              <View key={label} style={styles.field}>
+                <Text style={styles.label}>{label}</Text>
                 <TextInput
                   value={value}
                   onChangeText={setter}
                   autoCapitalize="none"
                   multiline={multiline}
-                  style={{
-                    backgroundColor: APP_COLORS.surface,
-                    borderRadius: 12,
-                    padding: 14,
-                    color: APP_COLORS.text,
-                    borderWidth: 1,
-                    borderColor: APP_COLORS.border,
-                    minHeight: multiline ? 88 : undefined,
-                  }}
+                  placeholder={placeholder}
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  style={[styles.input, multiline ? styles.inputMultiline : null]}
                 />
               </View>
             ))}
+          </SellerGlassCard>
 
-            <TouchableOpacity
-              onPress={submit}
-              disabled={loading || (!editMode && !market.scopeResolved)}
-              style={{
-                backgroundColor: APP_COLORS.accentStrong,
-                padding: 16,
-                borderRadius: 14,
-                alignItems: "center",
-                opacity: loading || (!editMode && !market.scopeResolved) ? 0.6 : 1,
-              }}
-            >
-              {loading ? (
-                <ActivityIndicator color={APP_COLORS.onAccent} />
-              ) : (
-                <Text style={{ color: APP_COLORS.onAccent, fontWeight: "800" }}>
-                  {editMode
-                    ? t("seller.onboarding.save", "Save profile")
-                    : t("seller.onboarding.submit", "Submit application")}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
+          <TouchableOpacity
+            onPress={submit}
+            disabled={loading || (!editMode && !market.scopeResolved)}
+            style={[
+              styles.submit,
+              (loading || (!editMode && !market.scopeResolved)) && styles.submitDisabled,
+            ]}
+            accessibilityRole="button"
+          >
+            {loading ? (
+              <ActivityIndicator color={MMD_WHITE} />
+            ) : (
+              <Text style={styles.submitLabel}>
+                {editMode
+                  ? t("seller.onboarding.save", "Save profile")
+                  : t("seller.onboarding.submit", "Create Seller Profile")}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: MMD_BLUE },
+  content: { padding: 16, paddingBottom: 40, gap: 24 },
+  formCard: { gap: 16, padding: 24, borderRadius: 24 },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  shopIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shopEmoji: { fontSize: 20 },
+  cardTitle: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  field: { gap: 6, width: "100%" },
+  label: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+  },
+  input: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    borderRadius: 14,
+    padding: 14,
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+  },
+  inputMultiline: { minHeight: 88, textAlignVertical: "top" },
+  submit: {
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  submitDisabled: { opacity: 0.6 },
+  submitLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+});

@@ -1,7 +1,10 @@
 import React, { useEffect } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { StatusBar } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
+import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
+import { MMD_BLUE } from "../../theme/mmdUi";
 
 type Props = { navigation: any };
 
@@ -41,6 +44,7 @@ function isProfileComplete(profile: RestaurantProfileGate | null) {
   );
 }
 
+/** Figma Restaurant Gate / Loading 343:5489 — routing logic unchanged. */
 export default function RestaurantGateScreen({ navigation }: Props) {
   const { t } = useTranslation();
 
@@ -153,11 +157,13 @@ export default function RestaurantGateScreen({ navigation }: Props) {
   }, [navigation]);
 
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <ActivityIndicator />
-      <Text style={{ marginTop: 8 }}>
-        {t("restaurant.gate.loading", "Chargement restaurant…")}
-      </Text>
-    </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+      <RestaurantBrandLoadingState
+        title={t("restaurant.gate.loading", "Loading Restaurant...")}
+        logoAtBottom
+        showCardLogo
+      />
+    </SafeAreaView>
   );
 }

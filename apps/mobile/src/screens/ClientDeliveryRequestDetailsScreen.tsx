@@ -34,8 +34,18 @@ import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { toCoordinatePoint } from "../lib/coordinates";
 import { getApiBaseUrl } from "../lib/apiBase";
 import { VerificationCodeCard } from "../components/shared/VerificationCodeCard";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_NAVY,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 const API_URL = getApiBaseUrl();
+const MMD_GREEN = "#22C55E";
+const MMD_CARD_BG = "rgba(15,23,42,0.92)";
+const MMD_CARD_BORDER = "rgba(255,255,255,0.08)";
 
 const AVATARS_BUCKET = "avatars";
 
@@ -220,8 +230,8 @@ function InfoCard({
       style={{
         borderRadius: 18,
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.08)",
-        backgroundColor: "rgba(15,23,42,0.92)",
+        borderColor: MMD_CARD_BORDER,
+        backgroundColor: MMD_CARD_BG,
         padding: 14,
         marginBottom: 12,
       }}
@@ -231,6 +241,7 @@ function InfoCard({
           color: "#94A3B8",
           fontSize: 12,
           fontWeight: "700",
+          fontFamily: MMD_FONT.bold,
           marginBottom: 6,
         }}
       >
@@ -238,9 +249,10 @@ function InfoCard({
       </Text>
       <Text
         style={{
-          color: valueColor ?? "white",
+          color: valueColor ?? MMD_WHITE,
           fontSize: 15,
           fontWeight: "800",
+          fontFamily: MMD_FONT.extrabold,
         }}
       >
         {value || "—"}
@@ -992,7 +1004,7 @@ export function ClientDeliveryRequestDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
       <ScreenHeader
@@ -1002,7 +1014,7 @@ export function ClientDeliveryRequestDetailsScreen() {
           "Delivery request details, codes and tracking status"
         )}
         fallbackRoute="ClientHome"
-        variant="dark"
+        variant="brand"
       />
 
       {loading ? (
@@ -1011,10 +1023,23 @@ export function ClientDeliveryRequestDetailsScreen() {
             flex: 1,
             justifyContent: "center",
             alignItems: "center",
+            paddingHorizontal: 24,
+            gap: 12,
           }}
         >
-          <ActivityIndicator color="white" />
-          <Text style={{ color: "#94A3B8", marginTop: 12 }}>
+          <ActivityIndicator size="large" color={MMD_GOLD_BRIGHT} />
+          <Text
+            style={{
+              color: MMD_WHITE,
+              fontSize: 20,
+              fontWeight: "700",
+              fontFamily: MMD_FONT.bold,
+              textAlign: "center",
+            }}
+          >
+            {t("client.deliveryRequest.loadingTitle", "Loading delivery…")}
+          </Text>
+          <Text style={{ color: MMD_WHITE, fontSize: 14, fontFamily: MMD_FONT.regular }}>
             {t("client.deliveryRequest.loading", "Loading request...")}
           </Text>
         </View>
@@ -1032,6 +1057,7 @@ export function ClientDeliveryRequestDetailsScreen() {
               color: "#FCA5A5",
               fontSize: 15,
               fontWeight: "800",
+              fontFamily: MMD_FONT.extrabold,
               textAlign: "center",
               marginBottom: 8,
             }}
@@ -1043,6 +1069,7 @@ export function ClientDeliveryRequestDetailsScreen() {
               color: "#94A3B8",
               fontSize: 13,
               textAlign: "center",
+              fontFamily: MMD_FONT.regular,
             }}
           >
             {error}
@@ -1057,7 +1084,7 @@ export function ClientDeliveryRequestDetailsScreen() {
             padding: 24,
           }}
         >
-          <Text style={{ color: "white", fontSize: 16, fontWeight: "800" }}>
+          <Text style={{ color: MMD_WHITE, fontSize: 16, fontWeight: "800", fontFamily: MMD_FONT.extrabold }}>
             {t("client.deliveryRequest.noRequest", "No request found")}
           </Text>
         </View>
@@ -1137,17 +1164,18 @@ export function ClientDeliveryRequestDetailsScreen() {
             style={{
               borderRadius: 24,
               borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.08)",
-              backgroundColor: "rgba(15,23,42,0.96)",
+              borderColor: "rgba(245,158,11,0.35)",
+              backgroundColor: MMD_NAVY,
               padding: 16,
               marginBottom: 14,
             }}
           >
             <Text
               style={{
-                color: "#94A3B8",
+                color: MMD_WHITE,
                 fontSize: 12,
                 marginBottom: 6,
+                fontFamily: MMD_FONT.regular,
               }}
             >
               {t("client.deliveryRequest.currentStatus", "Current status")}
@@ -1156,7 +1184,8 @@ export function ClientDeliveryRequestDetailsScreen() {
               style={{
                 color: statusColor(data.status),
                 fontSize: 18,
-                fontWeight: "900",
+                fontWeight: "800",
+                fontFamily: MMD_FONT.extrabold,
                 marginBottom: 14,
               }}
             >
@@ -1165,9 +1194,10 @@ export function ClientDeliveryRequestDetailsScreen() {
 
             <Text
               style={{
-                color: "#94A3B8",
+                color: MMD_WHITE,
                 fontSize: 12,
                 marginBottom: 6,
+                fontFamily: MMD_FONT.regular,
               }}
             >
               {t("client.deliveryRequest.paymentStatus", "Payment status")}
@@ -1176,7 +1206,8 @@ export function ClientDeliveryRequestDetailsScreen() {
               style={{
                 color: paymentColor(data.payment_status),
                 fontSize: 16,
-                fontWeight: "900",
+                fontWeight: "800",
+                fontFamily: MMD_FONT.extrabold,
                 marginBottom: 14,
               }}
             >
@@ -1185,25 +1216,27 @@ export function ClientDeliveryRequestDetailsScreen() {
 
             <Text
               style={{
-                color: "#94A3B8",
+                color: MMD_WHITE,
                 fontSize: 12,
                 marginBottom: 6,
+                fontFamily: MMD_FONT.regular,
               }}
             >
               {t("client.deliveryRequest.driverStatus", "Driver status")}
             </Text>
             <Text
               style={{
-                color: "#E2E8F0",
+                color: MMD_WHITE,
                 fontSize: 15,
                 fontWeight: "800",
+                fontFamily: MMD_FONT.extrabold,
                 marginBottom: 14,
               }}
             >
               {driverState}
             </Text>
             {liveDriverLocation ? (
-              <Text style={{ color: "#93C5FD", fontSize: 13, marginBottom: 10 }}>
+              <Text style={{ color: "#93C5FD", fontSize: 13, marginBottom: 10, fontFamily: MMD_FONT.regular }}>
                 {t(
                   "client.deliveryRequest.driverLiveLocation",
                   "Driver location updated {{time}}",
@@ -1226,8 +1259,8 @@ export function ClientDeliveryRequestDetailsScreen() {
                   marginBottom: 14,
                   borderRadius: 16,
                   borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.08)",
-                  backgroundColor: "rgba(255,255,255,0.03)",
+                  borderColor: "rgba(245,158,11,0.35)",
+                  backgroundColor: MMD_BLUE,
                   padding: 12,
                 }}
               >
@@ -1235,28 +1268,28 @@ export function ClientDeliveryRequestDetailsScreen() {
                   <Image
                     source={{ uri: driverAvatarUri }}
                     style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: 23,
+                      width: 48,
+                      height: 48,
+                      borderRadius: 999,
                       borderWidth: 1,
-                      borderColor: "rgba(147,197,253,0.45)",
-                      backgroundColor: "#0B1220",
+                      borderColor: "#E2E8F0",
+                      backgroundColor: "#E5E7EB",
                     }}
                   />
                 ) : (
                   <View
                     style={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: 23,
+                      width: 48,
+                      height: 48,
+                      borderRadius: 999,
                       borderWidth: 1,
-                      borderColor: "rgba(147,197,253,0.45)",
-                      backgroundColor: "rgba(15,23,42,0.95)",
+                      borderColor: "#E2E8F0",
+                      backgroundColor: "#E5E7EB",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 13 }}>
+                    <Text style={{ color: "#374151", fontWeight: "700", fontFamily: MMD_FONT.bold, fontSize: 12 }}>
                       {driverInitials}
                     </Text>
                   </View>
@@ -1265,9 +1298,10 @@ export function ClientDeliveryRequestDetailsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      color: "#94A3B8",
+                      color: MMD_WHITE,
                       fontSize: 12,
                       fontWeight: "700",
+                      fontFamily: MMD_FONT.bold,
                       marginBottom: 4,
                     }}
                   >
@@ -1275,9 +1309,10 @@ export function ClientDeliveryRequestDetailsScreen() {
                   </Text>
                   <Text
                     style={{
-                      color: "white",
+                      color: MMD_WHITE,
                       fontSize: 16,
-                      fontWeight: "900",
+                      fontWeight: "800",
+                      fontFamily: MMD_FONT.extrabold,
                     }}
                   >
                     {driverDisplayName}
@@ -1290,8 +1325,8 @@ export function ClientDeliveryRequestDetailsScreen() {
               style={{
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.08)",
-                backgroundColor: "rgba(255,255,255,0.03)",
+                borderColor: "rgba(245,158,11,0.35)",
+                backgroundColor: MMD_BLUE,
                 padding: 14,
               }}
             >
@@ -1300,6 +1335,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                   color: "#94A3B8",
                   fontSize: 12,
                   fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                   marginBottom: 6,
                 }}
               >
@@ -1307,9 +1343,10 @@ export function ClientDeliveryRequestDetailsScreen() {
               </Text>
               <Text
                 style={{
-                  color: "white",
+                  color: MMD_WHITE,
                   fontSize: 18,
-                  fontWeight: "900",
+                  fontWeight: "800",
+                  fontFamily: MMD_FONT.extrabold,
                   marginBottom: 12,
                 }}
               >
@@ -1321,6 +1358,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                   color: "#94A3B8",
                   fontSize: 12,
                   fontWeight: "700",
+                  fontFamily: MMD_FONT.bold,
                   marginBottom: 6,
                 }}
               >
@@ -1328,9 +1366,10 @@ export function ClientDeliveryRequestDetailsScreen() {
               </Text>
               <Text
                 style={{
-                  color: "#CBD5E1",
+                  color: "#E2E8F0",
                   fontSize: 14,
                   fontWeight: "800",
+                  fontFamily: MMD_FONT.extrabold,
                 }}
               >
                 #{shortRef(data.requestId)}
@@ -1353,13 +1392,15 @@ export function ClientDeliveryRequestDetailsScreen() {
               activeOpacity={0.85}
               style={{
                 marginBottom: 14,
-                backgroundColor: "#22C55E",
+                backgroundColor: MMD_GREEN,
                 borderRadius: 16,
                 paddingVertical: 14,
                 alignItems: "center",
+                minHeight: 49,
+                justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#052E16", fontWeight: "900", fontSize: 15 }}>
+              <Text style={{ color: "#052E16", fontWeight: "800", fontFamily: MMD_FONT.extrabold, fontSize: 15 }}>
                 {t("order.receipt.view", "View receipt")}
               </Text>
             </TouchableOpacity>
@@ -1381,14 +1422,14 @@ export function ClientDeliveryRequestDetailsScreen() {
                 }}
               >
                 {canceling ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color={MMD_WHITE} />
                 ) : (
-                  <Text style={{ color: "white", fontWeight: "900", fontSize: 15 }}>
+                  <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold, fontSize: 15 }}>
                     ❌ {t("client.deliveryRequest.cancelTrip", "Cancel trip")}
                   </Text>
                 )}
               </TouchableOpacity>
-              <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 9, lineHeight: 17 }}>
+              <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 9, lineHeight: 17, fontFamily: MMD_FONT.regular }}>
                 {normalizeStatus(data.status) === "pending"
                   ? t(
                       "client.deliveryRequest.cancelPendingHint",
@@ -1469,8 +1510,25 @@ export function ClientDeliveryRequestDetailsScreen() {
                 ? t("client.deliveryRequest.saved", "Saved")
                 : t("client.deliveryRequest.notUploaded", "Not uploaded yet")
             }
-            valueColor={data.pickup_photo_url ? "#86EFAC" : "#CBD5E1"}
+            valueColor={data.pickup_photo_url ? "#86EFAC" : "#A78BFA"}
           />
+          {data.pickup_photo_url ? (
+            <Image
+              source={{ uri: data.pickup_photo_url }}
+              style={{
+                width: "100%",
+                height: 180,
+                borderRadius: 12,
+                marginBottom: 10,
+                backgroundColor: "rgba(255,255,255,0.08)",
+              }}
+              resizeMode="cover"
+              accessibilityLabel={t(
+                "client.deliveryRequest.pickupPhoto",
+                "Pickup proof photo"
+              )}
+            />
+          ) : null}
           <InfoCard
             label={t("client.deliveryRequest.dropoffPhoto", "Dropoff proof photo")}
             value={
@@ -1478,8 +1536,25 @@ export function ClientDeliveryRequestDetailsScreen() {
                 ? t("client.deliveryRequest.saved", "Saved")
                 : t("client.deliveryRequest.notUploaded", "Not uploaded yet")
             }
-            valueColor={data.dropoff_photo_url ? "#86EFAC" : "#CBD5E1"}
+            valueColor={data.dropoff_photo_url ? "#86EFAC" : "#A78BFA"}
           />
+          {data.dropoff_photo_url ? (
+            <Image
+              source={{ uri: data.dropoff_photo_url }}
+              style={{
+                width: "100%",
+                height: 180,
+                borderRadius: 12,
+                marginBottom: 10,
+                backgroundColor: "rgba(255,255,255,0.08)",
+              }}
+              resizeMode="cover"
+              accessibilityLabel={t(
+                "client.deliveryRequest.dropoffPhoto",
+                "Dropoff proof photo"
+              )}
+            />
+          ) : null}
 
           <InfoCard
             label={t("client.deliveryRequest.stripeSession", "Stripe session ID")}

@@ -55,7 +55,7 @@ export default function AdminTaxiExchangeRatesPage() {
 
   return (
     <AdminGate requiredPermission="taxi_exchange_rates.read">
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-5xl space-y-6">
           <header>
             <h1 className="text-2xl font-bold">Taxi Exchange Rates</h1>

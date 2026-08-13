@@ -15,7 +15,6 @@ import {
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -24,6 +23,18 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole, setSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
+import {
+  MMD_BLUE,
+  MMD_BLUE_SOFT,
+  MMD_FONT,
+  MMD_GOLD,
+  MMD_GOLD_BORDER,
+  MMD_GOLD_BORDER_SOFT,
+  MMD_GOLD_DARK,
+  MMD_TEXT,
+  MMD_WHITE,
+  mmdLogoSize,
+} from "../theme/mmdUi";
 
 type RoleSelectNav = NativeStackNavigationProp<RootStackParamList, "RoleSelect">;
 
@@ -37,16 +48,11 @@ type DriverStatus =
   | "suspended"
   | null;
 
-const GOLD = "#F5C542";
-const GOLD_SOFT = "#E8C547";
-const BG = "#000000";
-
 type RoleCardConfig = {
   role: PublicRole;
   title: string;
   subtitle: string;
-  colors: [string, string, string];
-  glow: string;
+  iconBg: string;
   icon: React.ReactNode;
 };
 
@@ -161,44 +167,34 @@ function PremiumRoleCard({
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.roleCardShell,
-        compact && styles.roleCardShellCompact,
-        {
-          transform: [{ scale }],
-          shadowColor: config.glow,
-        },
-      ]}
-    >
+    <Animated.View style={{ transform: [{ scale }] }}>
       <Pressable
         onPress={onPress}
         onPressIn={pressIn}
         onPressOut={pressOut}
         accessibilityRole="button"
         accessibilityLabel={config.title}
-        style={styles.roleCardPressable}
+        style={[styles.roleCard, compact && styles.roleCardCompact]}
       >
-        <LinearGradient
-          colors={config.colors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.roleCard, compact && styles.roleCardCompact]}
-        >
-          <View style={styles.roleIconCircle}>{config.icon}</View>
-          <View style={styles.roleTextBlock}>
-            <Text style={[styles.roleTitle, compact && styles.roleTitleCompact]}>
-              {config.title}
-            </Text>
-            <Text
-              style={[styles.roleSubtitle, compact && styles.roleSubtitleCompact]}
-              numberOfLines={2}
-            >
-              {config.subtitle}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={compact ? 18 : 20} color="#FFFFFF" />
-        </LinearGradient>
+        <View style={[styles.roleIconCircle, { backgroundColor: config.iconBg }]}>
+          {config.icon}
+        </View>
+        <View style={styles.roleTextBlock}>
+          <Text style={[styles.roleTitle, compact && styles.roleTitleCompact]}>
+            {config.title}
+          </Text>
+          <Text
+            style={[styles.roleSubtitle, compact && styles.roleSubtitleCompact]}
+            numberOfLines={2}
+          >
+            {config.subtitle}
+          </Text>
+        </View>
+        <Ionicons
+          name="chevron-forward"
+          size={compact ? 18 : 20}
+          color={MMD_GOLD_DARK}
+        />
       </Pressable>
     </Animated.View>
   );
@@ -213,26 +209,16 @@ export function RoleSelectScreen() {
     const compact = height < 740 || width < 360;
     const tiny = height < 680 || width < 340;
     const tablet = width >= 768;
-    const contentWidth = Math.min(width, tablet ? 520 : width);
     const horizontalPad = tablet ? 28 : tiny ? 14 : compact ? 16 : 20;
-    const logoWidth = tiny
-      ? Math.min(140, contentWidth * 0.42)
-      : compact
-        ? Math.min(160, contentWidth * 0.44)
-        : tablet
-          ? 236
-          : Math.min(214, contentWidth * 0.56);
-    const logoHeight = logoWidth * (615 / 960);
+    const logoSize = mmdLogoSize(width, height);
     return {
       compact,
       tiny,
       tablet,
-      contentWidth,
       horizontalPad,
-      logoWidth,
-      logoHeight,
-      titleSize: tiny ? 26 : compact ? 30 : tablet ? 40 : 36,
-      panelRadius: tiny ? 24 : compact ? 28 : 34,
+      logoSize,
+      titleSize: tiny ? 28 : compact ? 32 : tablet ? 40 : 36,
+      panelTitleSize: tiny ? 26 : compact ? 28 : 32,
     };
   }, [height, width]);
 
@@ -250,14 +236,14 @@ export function RoleSelectScreen() {
           label: t("roleSelect.advantages.fast", "Fast Delivery"),
         },
         {
-          key: "tracking",
-          icon: "location" as const,
-          label: t("roleSelect.advantages.tracking", "Live Tracking"),
-        },
-        {
           key: "support",
           icon: "headset" as const,
           label: t("roleSelect.advantages.support", "24/7 Support"),
+        },
+        {
+          key: "tracking",
+          icon: "location" as const,
+          label: t("roleSelect.advantages.tracking", "Live Tracking"),
         },
       ] as const,
     [t],
@@ -272,9 +258,8 @@ export function RoleSelectScreen() {
           "roleSelect.roleSubtitles.client",
           "Order a taxi, delivery or anything",
         ),
-        colors: ["#F04444", "#C81E1E", "#8B1010"],
-        glow: "#EF4444",
-        icon: <Ionicons name="person" size={18} color="#FFFFFF" />,
+        iconBg: "#3366FF",
+        icon: <Ionicons name="person" size={22} color={MMD_WHITE} />,
       },
       {
         role: "driver",
@@ -283,10 +268,9 @@ export function RoleSelectScreen() {
           "roleSelect.roleSubtitles.driver",
           "Drive, deliver and earn with us",
         ),
-        colors: ["#2F80ED", "#1B5FBF", "#0F3F8A"],
-        glow: "#3B82F6",
+        iconBg: "#33CC33",
         icon: (
-          <MaterialCommunityIcons name="steering" size={20} color="#FFFFFF" />
+          <MaterialCommunityIcons name="steering" size={24} color={MMD_WHITE} />
         ),
       },
       {
@@ -296,9 +280,8 @@ export function RoleSelectScreen() {
           "roleSelect.roleSubtitles.restaurant",
           "Manage your restaurant",
         ),
-        colors: ["#2FBF6B", "#1B8F4A", "#0F5F30"],
-        glow: "#22C55E",
-        icon: <Ionicons name="restaurant" size={18} color="#FFFFFF" />,
+        iconBg: "#FFB200",
+        icon: <Ionicons name="restaurant" size={22} color={MMD_WHITE} />,
       },
       {
         role: "seller",
@@ -307,9 +290,8 @@ export function RoleSelectScreen() {
           "roleSelect.roleSubtitles.seller",
           "Sell and grow your business",
         ),
-        colors: ["#8B5CF6", "#6D28D9", "#4C1D95"],
-        glow: "#8B5CF6",
-        icon: <Ionicons name="storefront" size={18} color="#FFFFFF" />,
+        iconBg: "#E52626",
+        icon: <Ionicons name="storefront" size={22} color={MMD_WHITE} />,
       },
     ],
     [t],
@@ -494,33 +476,7 @@ export function RoleSelectScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BG} />
-      <LinearGradient
-        colors={["#0A0000", "#000000", "#050208", "#000000"]}
-        locations={[0, 0.28, 0.62, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-      <View pointerEvents="none" style={styles.ambianceLayer}>
-        <LinearGradient
-          colors={["rgba(220,38,38,0.22)", "rgba(220,38,38,0)", "transparent"]}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 0.9, y: 1 }}
-          style={styles.glowLeft}
-        />
-        <LinearGradient
-          colors={["rgba(245,197,66,0.12)", "transparent"]}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0.2, y: 0.8 }}
-          style={styles.glowRight}
-        />
-        <LinearGradient
-          colors={["transparent", "rgba(127,29,29,0.18)", "transparent"]}
-          start={{ x: 0, y: 0.2 }}
-          end={{ x: 1, y: 0.55 }}
-          style={styles.glowWave}
-        />
-      </View>
-
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <ScrollView
           style={styles.scroll}
@@ -528,8 +484,8 @@ export function RoleSelectScreen() {
             styles.scrollContent,
             {
               paddingHorizontal: layout.horizontalPad,
-              paddingTop: layout.tiny ? 4 : layout.compact ? 8 : 16,
-              paddingBottom: layout.tiny ? 12 : layout.compact ? 16 : 24,
+              paddingTop: layout.tiny ? 8 : 16,
+              paddingBottom: layout.tiny ? 16 : 24,
               maxWidth: layout.tablet ? 560 : undefined,
               alignSelf: "center",
               width: "100%",
@@ -537,22 +493,15 @@ export function RoleSelectScreen() {
           ]}
           showsVerticalScrollIndicator={false}
           bounces
+          keyboardShouldPersistTaps="handled"
         >
           <FadeIn delay={40} style={styles.brandBlock}>
-            <View
-              style={[
-                styles.logoGlow,
-                {
-                  width: layout.logoWidth + 36,
-                  height: layout.logoHeight + 36,
-                },
-              ]}
-            />
             <Image
               source={require("../../assets/brand/mmd-logo-ui.png")}
               style={{
-                width: layout.logoWidth,
-                height: layout.logoHeight,
+                width: layout.logoSize,
+                height: layout.logoSize,
+                borderRadius: layout.logoSize / 2,
               }}
               resizeMode="contain"
               accessibilityLabel="MMD Delivery"
@@ -565,7 +514,7 @@ export function RoleSelectScreen() {
                 styles.appTitle,
                 {
                   fontSize: layout.titleSize,
-                  lineHeight: layout.titleSize + 6,
+                  lineHeight: layout.titleSize + 4,
                 },
               ]}
             >
@@ -574,17 +523,17 @@ export function RoleSelectScreen() {
             <Text
               style={[
                 styles.taglineGold,
-                layout.compact && styles.taglineGoldCompact,
-                layout.tiny && { fontSize: 13, marginBottom: 5 },
+                layout.compact && { fontSize: 18 },
+                layout.tiny && { fontSize: 16 },
               ]}
             >
-              {t("roleSelect.taglineHeart", "We deliver with heart ❤️")}
+              {t("roleSelect.taglineHeart", "We deliver with heart")}
             </Text>
             <Text
               style={[
                 styles.taglineModes,
-                layout.compact && styles.taglineModesCompact,
-                layout.tiny && { fontSize: 13, marginBottom: 5 },
+                layout.compact && { fontSize: 17 },
+                layout.tiny && { fontSize: 15 },
               ]}
             >
               {t("roleSelect.taglineModes", "Taxi • Delivery • Business")}
@@ -592,72 +541,28 @@ export function RoleSelectScreen() {
             <Text
               style={[
                 styles.taglineMuted,
-                layout.compact && styles.taglineMutedCompact,
-                layout.tiny && { fontSize: 12 },
+                layout.compact && { fontSize: 15 },
+                layout.tiny && { fontSize: 14 },
               ]}
             >
-              {t("roleSelect.taglineFast", "Fast, simple and reliable 🚀")}
+              {t("roleSelect.taglineFast", "Fast, simple and reliable")}
             </Text>
           </FadeIn>
 
-          <FadeIn
-            delay={200}
-            style={[styles.advantagesRow, layout.tiny && { marginBottom: 12 }]}
-          >
-            {advantages.map((item) => (
-              <View key={item.key} style={styles.advantageItem}>
-                <View
-                  style={[
-                    styles.advantageIconWrap,
-                    layout.tiny && { width: 30, height: 30, marginBottom: 4 },
-                  ]}
-                >
-                  <Ionicons
-                    name={item.icon}
-                    size={layout.tiny ? 16 : layout.compact ? 18 : 20}
-                    color={GOLD}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.advantageLabel,
-                    layout.compact && styles.advantageLabelCompact,
-                  ]}
-                  numberOfLines={2}
-                >
-                  {item.label}
-                </Text>
-              </View>
-            ))}
-          </FadeIn>
-
-          <FadeIn delay={280} style={styles.panelWrap}>
-            <LinearGradient
-              colors={[
-                "rgba(220,38,38,0.55)",
-                "rgba(148,163,184,0.18)",
-                "rgba(148,163,184,0.08)",
-              ]}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={[
-                styles.panelBorder,
-                { borderRadius: layout.panelRadius },
-              ]}
-            >
+          <FadeIn delay={200} style={styles.panelWrap}>
+            <View style={styles.panelBorder}>
               <View
                 style={[
                   styles.panelInner,
                   {
-                    borderRadius: layout.panelRadius - 1.5,
-                    padding: layout.tiny ? 12 : layout.compact ? 16 : 20,
+                    padding: layout.tiny ? 14 : 20,
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.panelTitle,
-                    layout.compact && styles.panelTitleCompact,
+                    { fontSize: layout.panelTitleSize },
                   ]}
                 >
                   {t("roleSelect.title", "Choose your mode")}
@@ -665,7 +570,7 @@ export function RoleSelectScreen() {
                 <Text
                   style={[
                     styles.panelSubtitle,
-                    layout.compact && styles.panelSubtitleCompact,
+                    layout.compact && { fontSize: 14, marginBottom: 10 },
                   ]}
                 >
                   {t(
@@ -676,7 +581,7 @@ export function RoleSelectScreen() {
 
                 <View style={styles.rolesStack}>
                   {roleCards.map((card, index) => (
-                    <FadeIn key={card.role} delay={340 + index * 70}>
+                    <FadeIn key={card.role} delay={280 + index * 60}>
                       <PremiumRoleCard
                         config={card}
                         compact={layout.compact || layout.tiny}
@@ -688,23 +593,35 @@ export function RoleSelectScreen() {
                   ))}
                 </View>
               </View>
-            </LinearGradient>
+            </View>
           </FadeIn>
 
-          <FadeIn delay={620} style={styles.footer}>
-            <View style={styles.footerItem}>
-              <Ionicons name="shield-checkmark" size={14} color={GOLD_SOFT} />
-              <Text style={styles.footerText}>
-                {t("roleSelect.footer.safe", "Your data is safe with us")}
-              </Text>
-            </View>
-            <View style={styles.footerDivider} />
-            <View style={styles.footerItem}>
-              <Ionicons name="lock-closed" size={13} color={GOLD_SOFT} />
-              <Text style={styles.footerText}>
-                {t("roleSelect.footer.trusted", "Trusted by thousands")}
-              </Text>
-            </View>
+          <FadeIn delay={520} style={styles.advantagesRow}>
+            {advantages.map((item) => (
+              <View key={item.key} style={styles.advantageItem}>
+                <View
+                  style={[
+                    styles.advantageIconWrap,
+                    layout.tiny && { width: 36, height: 36 },
+                  ]}
+                >
+                  <Ionicons
+                    name={item.icon}
+                    size={layout.tiny ? 16 : 20}
+                    color={MMD_GOLD_DARK}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.advantageLabel,
+                    layout.compact && { fontSize: 10 },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {item.label}
+                </Text>
+              </View>
+            ))}
           </FadeIn>
         </ScrollView>
       </SafeAreaView>
@@ -715,7 +632,7 @@ export function RoleSelectScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BG,
+    backgroundColor: MMD_BLUE,
   },
   safe: {
     flex: 1,
@@ -727,195 +644,107 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
   },
-  ambianceLayer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: "hidden",
-  },
-  glowLeft: {
-    position: "absolute",
-    top: -40,
-    left: -60,
-    width: 280,
-    height: 320,
-    borderRadius: 200,
-  },
-  glowRight: {
-    position: "absolute",
-    top: 40,
-    right: -80,
-    width: 260,
-    height: 280,
-    borderRadius: 200,
-  },
-  glowWave: {
-    position: "absolute",
-    top: "18%",
-    left: -20,
-    right: -20,
-    height: 180,
-  },
   brandBlock: {
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
-  },
-  logoGlow: {
-    position: "absolute",
-    borderRadius: 999,
-    backgroundColor: "rgba(245,197,66,0.10)",
-    shadowColor: "#F5C542",
-    shadowOpacity: 0.55,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
+    height: 163,
+    marginBottom: 4,
   },
   titleBlock: {
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 12,
     paddingHorizontal: 8,
+    gap: 8,
   },
   appTitle: {
-    color: "#FFFFFF",
+    color: MMD_GOLD,
+    fontFamily: MMD_FONT.extrabold,
     fontWeight: "800",
-    letterSpacing: 0.2,
     textAlign: "center",
-    marginBottom: 10,
   },
   taglineGold: {
-    color: GOLD_SOFT,
-    fontSize: 16,
+    color: MMD_GOLD,
+    fontSize: 22,
+    fontFamily: MMD_FONT.semibold,
     fontWeight: "600",
     textAlign: "center",
-    marginBottom: 7,
-  },
-  taglineGoldCompact: {
-    fontSize: 14,
   },
   taglineModes: {
-    color: "#FFFFFF",
-    fontSize: 16,
+    color: MMD_WHITE,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
     fontWeight: "700",
     textAlign: "center",
-    letterSpacing: 0.3,
-    marginBottom: 7,
-  },
-  taglineModesCompact: {
-    fontSize: 14,
   },
   taglineMuted: {
-    color: "#A8B3C7",
-    fontSize: 14,
-    fontWeight: "500",
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.regular,
+    fontWeight: "400",
     textAlign: "center",
-  },
-  taglineMutedCompact: {
-    fontSize: 13,
-  },
-  advantagesRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 20,
-    gap: 6,
-  },
-  advantageItem: {
-    flex: 1,
-    alignItems: "center",
-    minWidth: 0,
-  },
-  advantageIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-    backgroundColor: "rgba(245,197,66,0.08)",
-  },
-  advantageLabel: {
-    color: "#F8FAFC",
-    fontSize: 10,
-    fontWeight: "600",
-    textAlign: "center",
-    lineHeight: 13,
-  },
-  advantageLabelCompact: {
-    fontSize: 9,
-    lineHeight: 12,
   },
   panelWrap: {
-    marginBottom: 18,
+    marginBottom: 12,
   },
   panelBorder: {
+    borderWidth: 1,
+    borderColor: MMD_GOLD_BORDER,
+    borderRadius: 24,
     padding: 1.5,
   },
   panelInner: {
-    backgroundColor: "rgba(12, 14, 22, 0.92)",
+    backgroundColor: MMD_BLUE_SOFT,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.10)",
+    borderColor: MMD_GOLD_BORDER_SOFT,
+    borderRadius: 22.5,
     overflow: "hidden",
   },
   panelTitle: {
-    color: "#FFFFFF",
-    fontSize: 24,
+    color: MMD_GOLD,
+    fontFamily: MMD_FONT.extrabold,
     fontWeight: "800",
     textAlign: "center",
     marginBottom: 8,
   },
-  panelTitleCompact: {
-    fontSize: 21,
-  },
   panelSubtitle: {
-    color: "#94A3B8",
-    fontSize: 13,
-    fontWeight: "500",
+    color: MMD_TEXT,
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+    fontWeight: "400",
     textAlign: "center",
-    lineHeight: 19,
-    marginBottom: 18,
+    lineHeight: 20,
+    marginBottom: 12,
     paddingHorizontal: 4,
-  },
-  panelSubtitleCompact: {
-    fontSize: 12,
-    marginBottom: 14,
   },
   rolesStack: {
     gap: 12,
-  },
-  roleCardShell: {
-    borderRadius: 22,
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  roleCardShellCompact: {
-    borderRadius: 18,
-  },
-  roleCardPressable: {
-    borderRadius: 22,
-    overflow: "hidden",
+    paddingTop: 10,
   },
   roleCard: {
-    minHeight: 72,
+    minHeight: 79,
     borderRadius: 22,
     paddingVertical: 14,
     paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1.5,
+    borderColor: MMD_GOLD_DARK,
   },
   roleCardCompact: {
-    minHeight: 64,
+    minHeight: 72,
     borderRadius: 18,
     paddingVertical: 12,
     paddingHorizontal: 12,
     gap: 10,
   },
   roleIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MMD_GOLD_DARK,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -924,8 +753,9 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   roleTitle: {
-    color: "#FFFFFF",
+    color: MMD_GOLD_DARK,
     fontSize: 17,
+    fontFamily: MMD_FONT.extrabold,
     fontWeight: "800",
     marginBottom: 2,
   },
@@ -933,38 +763,48 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   roleSubtitle: {
-    color: "rgba(255,255,255,0.82)",
-    fontSize: 12,
-    fontWeight: "500",
+    color: MMD_TEXT,
+    fontSize: 16,
+    fontFamily: MMD_FONT.regular,
+    fontWeight: "400",
     lineHeight: 16,
   },
   roleSubtitleCompact: {
-    fontSize: 11,
+    fontSize: 13,
     lineHeight: 15,
   },
-  footer: {
+  advantagesRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: MMD_GOLD_BORDER_SOFT,
+    gap: 6,
+  },
+  advantageItem: {
+    flex: 1,
+    alignItems: "center",
+    minWidth: 0,
+  },
+  advantageIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 4,
-    paddingTop: 2,
+    marginBottom: 6,
+    backgroundColor: "rgba(245,197,66,0.08)",
+    borderWidth: 1,
+    borderColor: MMD_GOLD_BORDER_SOFT,
   },
-  footerItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexShrink: 1,
-  },
-  footerDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 18,
-    backgroundColor: "rgba(148,163,184,0.45)",
-  },
-  footerText: {
-    color: "#94A3B8",
+  advantageLabel: {
+    color: MMD_GOLD_DARK,
     fontSize: 11,
-    fontWeight: "500",
-    flexShrink: 1,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 14,
   },
 });

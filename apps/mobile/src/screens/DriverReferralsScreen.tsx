@@ -1,35 +1,38 @@
-// apps/mobile/src/screens/DriverReferralsScreen.tsx
+/**
+ * Driver Referrals — UI aligned to Figma 296:50 / 296:61 / 296:109.
+ * Logic/APIs preserved (program, code, invites, ledger, share).
+ */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Modal,
   Share,
   Platform,
   StyleSheet,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import ScreenHeader from "../components/navigation/ScreenHeader";
-import { APP_COLORS } from "../theme/appTheme";
+import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
-const BG = "#020617";
-const CARD = "rgba(15,23,42,0.78)";
-const CARD_DEEP = "rgba(2,6,23,0.72)";
-const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = APP_COLORS.accent;
-const BLUE = "#60A5FA";
-const GREEN = "#22C55E";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
-
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 const REFERRAL_WEB_BASE_URL = "https://mmddelivery.com";
+const SOFT_BORDER = "rgba(255,255,255,0.1)";
+const MUTED = "rgba(255,255,255,0.8)";
 
 function centsToUsd(cents: number) {
   return `$${(Number(cents || 0) / 100).toFixed(0)}`;
@@ -55,7 +58,7 @@ function normalizeStatus(value: unknown) {
 function inviteStatusLabel(status: unknown) {
   const s = normalizeStatus(status);
   if (s === "completed" || s === "paid" || s === "rewarded") {
-    return "Reward earned";
+    return "✅ Reward earned";
   }
   if (s === "active" || s === "accepted") return "Active";
   if (s === "expired") return "Expired";
@@ -65,15 +68,13 @@ function inviteStatusLabel(status: unknown) {
 
 function inviteStatusColors(status: unknown) {
   const s = normalizeStatus(status);
-
   if (s === "completed" || s === "paid" || s === "rewarded") {
     return {
       bg: "rgba(34,197,94,0.12)",
-      border: "rgba(34,197,94,0.3)",
-      text: "#BBF7D0",
+      border: "rgba(34,197,94,0.28)",
+      text: MMD_TAXI_GREEN,
     };
   }
-
   if (s === "active" || s === "accepted") {
     return {
       bg: "rgba(96,165,250,0.12)",
@@ -81,7 +82,6 @@ function inviteStatusColors(status: unknown) {
       text: "#BFDBFE",
     };
   }
-
   if (s === "expired") {
     return {
       bg: "rgba(248,113,113,0.12)",
@@ -89,56 +89,11 @@ function inviteStatusColors(status: unknown) {
       text: "#FECACA",
     };
   }
-
   return {
-    bg: "rgba(167,139,250,0.12)",
-    border: "rgba(167,139,250,0.28)",
-    text: "#DDD6FE",
+    bg: "rgba(245,158,11,0.12)",
+    border: "rgba(245,158,11,0.28)",
+    text: "#FBBF24",
   };
-}
-
-function Card({ children, style }: { children: React.ReactNode; style?: any }) {
-  return <View style={[styles.card, style]}>{children}</View>;
-}
-
-function Button({
-  label,
-  onPress,
-  kind = "primary",
-  disabled,
-}: {
-  label: string;
-  onPress: () => void;
-  kind?: "primary" | "ghost" | "danger";
-  disabled?: boolean;
-}) {
-  const isPrimary = kind === "primary";
-  const isDanger = kind === "danger";
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        styles.button,
-        isPrimary && styles.buttonPrimary,
-        kind === "ghost" && styles.buttonGhost,
-        isDanger && styles.buttonDanger,
-        disabled && styles.disabled,
-      ]}
-      activeOpacity={0.86}
-    >
-      <Text
-        style={[
-          styles.buttonText,
-          isPrimary && styles.buttonTextPrimary,
-          isDanger && styles.buttonTextDanger,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
 }
 
 type ReferralProgram = {
@@ -168,19 +123,15 @@ type InviteRow = {
 };
 
 export function DriverReferralsScreen() {
-  const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [loadingInvites, setLoadingInvites] = useState(false);
   const [program, setProgram] = useState<ReferralProgram | null>(null);
-
   const [myCode, setMyCode] = useState<string | null>(null);
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [earnedCents, setEarnedCents] = useState(0);
-
   const [rewardsModalOpen, setRewardsModalOpen] = useState(false);
-  const [invitesModalOpen, setInvitesModalOpen] = useState(false);
 
   const invitedCount = invites.length;
 
@@ -192,11 +143,10 @@ export function DriverReferralsScreen() {
 
   const shareText = useMemo(() => {
     const code = myCode ?? "—";
-
     return t(
       "driver.referrals.shareText",
       "Join MMD Delivery 🚗🍔\n\nMy code: {{code}}\nLink: {{link}}\n\nSign up and start driving!",
-      { code, link: referralLink }
+      { code, link: referralLink },
     );
   }, [myCode, referralLink, t]);
 
@@ -204,7 +154,7 @@ export function DriverReferralsScreen() {
     const { data, error } = await supabase
       .from("referral_programs")
       .select(
-        "id,duration_days,ride_goal,ride_reward_cents,delivery_goal,delivery_reward_cents,max_total_reward_cents"
+        "id,duration_days,ride_goal,ride_reward_cents,delivery_goal,delivery_reward_cents,max_total_reward_cents",
       )
       .eq("is_active", true)
       .limit(1)
@@ -214,7 +164,6 @@ export function DriverReferralsScreen() {
       console.log("loadProgram error", error);
       return null;
     }
-
     return data as ReferralProgram | null;
   }, []);
 
@@ -238,14 +187,12 @@ export function DriverReferralsScreen() {
       console.log("ensureMyCode upsert error", e2);
       return code;
     }
-
     return code;
   }, []);
 
   const loadInvites = useCallback(async (uid: string) => {
     try {
       setLoadingInvites(true);
-
       const { data, error } = await supabase
         .from("referral_invites")
         .select("*")
@@ -258,7 +205,6 @@ export function DriverReferralsScreen() {
         setInvites([]);
         return;
       }
-
       setInvites((data ?? []) as InviteRow[]);
     } finally {
       setLoadingInvites(false);
@@ -273,19 +219,16 @@ export function DriverReferralsScreen() {
       .limit(5000);
 
     if (e2) console.log("ledger error", e2);
-
     const sum = (ledger ?? []).reduce(
       (acc: number, r: any) => acc + (Number(r.amount_cents) || 0),
-      0
+      0,
     );
-
     setEarnedCents(sum);
   }, []);
 
   const loadAll = useCallback(async () => {
     try {
       setLoading(true);
-
       const { data: authData } = await supabase.auth.getUser();
       const uid = authData?.user?.id;
 
@@ -299,10 +242,8 @@ export function DriverReferralsScreen() {
 
       const p = await loadProgram();
       setProgram(p);
-
       const code = await ensureMyCode(uid);
       setMyCode(code);
-
       await Promise.all([loadInvites(uid), loadStats(uid)]);
     } finally {
       setLoading(false);
@@ -317,23 +258,22 @@ export function DriverReferralsScreen() {
     if (!myCode) {
       Alert.alert(
         t("common.loading", "Loading…"),
-        t("driver.referrals.codeLoading", "Your referral code is still loading.")
+        t("driver.referrals.codeLoading", "Your referral code is still loading."),
       );
       return;
     }
-
     try {
       await Share.share(
         { message: shareText, url: referralLink },
         Platform.OS === "ios"
           ? { subject: t("driver.referrals.shareSubject", "Invite MMD Driver") }
-          : undefined
+          : undefined,
       );
     } catch (e) {
       console.log("share error", e);
       Alert.alert(
         t("common.errorTitle", "Error"),
-        t("driver.referrals.shareError", "Unable to open sharing.")
+        t("driver.referrals.shareError", "Unable to open sharing."),
       );
     }
   }, [myCode, referralLink, shareText, t]);
@@ -342,34 +282,37 @@ export function DriverReferralsScreen() {
     if (!program) {
       return t("driver.referrals.headline.noProgram", "Invite your friends");
     }
-
     return t(
       "driver.referrals.headline.withProgram",
       "Up to {{amount}} in {{days}} days",
       {
         amount: centsToUsd(program.max_total_reward_cents),
         days: program.duration_days,
-      }
+      },
     );
   }, [program, t]);
 
   const rideLine = useMemo(() => {
     if (!program) return "—";
-    return t("driver.referrals.rideLine", "{{amount}} for every {{goal}} rides", {
-      amount: centsToUsd(program.ride_reward_cents),
-      goal: program.ride_goal,
-    });
+    return t(
+      "driver.referrals.rideLineCompact",
+      "🚗 Rides - {{amount}} for every {{goal}} rides",
+      {
+        amount: centsToUsd(program.ride_reward_cents),
+        goal: program.ride_goal,
+      },
+    );
   }, [program, t]);
 
   const deliveryLine = useMemo(() => {
     if (!program) return "—";
     return t(
-      "driver.referrals.deliveryLine",
-      "{{amount}} for every {{goal}} deliveries",
+      "driver.referrals.deliveryLineCompact",
+      "📦 Deliveries - {{amount}} for every {{goal}} deliveries",
       {
         amount: centsToUsd(program.delivery_reward_cents),
         goal: program.delivery_goal,
-      }
+      },
     );
   }, [program, t]);
 
@@ -383,26 +326,18 @@ export function DriverReferralsScreen() {
         ? `#${invite.referred_user_id.slice(0, 8)}`
         : t("driver.referrals.invites.unknown", "Invited driver"));
 
-    const ridesDone = Number(invite.rides_done ?? 0);
-    const deliveriesDone = Number(invite.deliveries_done ?? 0);
-
     return (
       <View style={styles.inviteCard}>
         <View style={styles.inviteTopRow}>
           <View style={styles.inviteInfo}>
             <Text style={styles.inviteName} numberOfLines={1}>
-              {name}
+              👤 {name}
             </Text>
             <Text style={styles.inviteMeta}>
-              {t("driver.referrals.invites.invitedOn", "Invited")}: {formatDate(invite.created_at)}
+              {t("driver.referrals.invites.invitedOn", "Invited")}:{" "}
+              {formatDate(invite.created_at)}
             </Text>
-            {invite.expires_at ? (
-              <Text style={styles.inviteMeta}>
-                {t("driver.referrals.invites.expires", "Expires")}: {formatDate(invite.expires_at)}
-              </Text>
-            ) : null}
           </View>
-
           <View
             style={[
               styles.statusPill,
@@ -414,19 +349,22 @@ export function DriverReferralsScreen() {
             </Text>
           </View>
         </View>
-
         <View style={styles.progressRow}>
           <View style={styles.progressBox}>
             <Text style={styles.progressLabel}>
               {t("driver.referrals.invites.rides", "Rides")}
             </Text>
-            <Text style={styles.progressValue}>{ridesDone}</Text>
+            <Text style={styles.progressValue}>
+              {Number(invite.rides_done ?? 0)}
+            </Text>
           </View>
           <View style={styles.progressBox}>
             <Text style={styles.progressLabel}>
               {t("driver.referrals.invites.deliveries", "Deliveries")}
             </Text>
-            <Text style={styles.progressValue}>{deliveriesDone}</Text>
+            <Text style={styles.progressValue}>
+              {Number(invite.deliveries_done ?? 0)}
+            </Text>
           </View>
         </View>
       </View>
@@ -437,41 +375,27 @@ export function DriverReferralsScreen() {
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("driver.referrals.header.title", "Refer friends")}
-        subtitle={t("driver.referrals.header.subtitle", "Invite drivers and earn")}
+        subtitle={t(
+          "driver.referrals.header.subtitle",
+          "Invite drivers and earn",
+        )}
         fallbackRoute="DriverTabs"
-        variant="dark"
-        rightSlot={
-          <TouchableOpacity
-            onPress={() =>
-              Alert.alert(
-                t("driver.referrals.header.infoTitle", "Info"),
-                t(
-                  "driver.referrals.header.info",
-                  "Invite friends with your MMD link. When they sign up and complete the program goals, eligible rewards appear in your referral balance."
-                )
-              )
-            }
-            style={styles.roundButton}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.helpText}>?</Text>
-          </TouchableOpacity>
-        }
+        variant="mmd"
       />
 
       {loading ? (
-        <View style={styles.loadingFull}>
-          <ActivityIndicator color="#fff" />
-          <Text style={styles.loadingText}>{t("common.loading", "Loading…")}</Text>
-        </View>
+        <DriverBrandLoadingState
+          title={t("common.loading", "Loading…")}
+          logoAtBottom={false}
+        />
       ) : (
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Card style={styles.heroCard}>
+          <View style={styles.card}>
             <Text style={styles.heroLabel}>
-              {t("driver.referrals.hero.label", "MMD referral program")}
+              {t("driver.referrals.hero.label", "🎁 MMD Referral Program")}
             </Text>
             <Text style={styles.heroTitle}>{headline}</Text>
             <Text style={styles.heroSub}>
@@ -479,97 +403,142 @@ export function DriverReferralsScreen() {
                 ? t(
                     "driver.referrals.validForDaysAfterFriendSignup",
                     "Valid for {{days}} days after your friend signs up.",
-                    { days: program.duration_days }
+                    { days: program.duration_days },
                   )
                 : t("driver.referrals.programLoading", "Loading program…")}
             </Text>
-
             <View style={styles.rewardRows}>
               <View style={styles.rewardRow}>
-                <Text style={styles.rewardTitle}>
-                  {t("driver.referrals.ridesLabel", "🚗 Rides")}
-                </Text>
-                <Text style={styles.rewardValue}>{rideLine}</Text>
+                <Text style={styles.rewardText}>{rideLine}</Text>
               </View>
               <View style={styles.rewardRow}>
-                <Text style={styles.rewardTitle}>
-                  {t("driver.referrals.deliveriesLabel", "🍔 Deliveries")}
-                </Text>
-                <Text style={styles.rewardValue}>{deliveryLine}</Text>
+                <Text style={styles.rewardText}>{deliveryLine}</Text>
               </View>
             </View>
-
-            <View style={styles.buttonGap} />
-            <Button
-              label={t("driver.referrals.showAllRewards", "All rewards")}
-              kind="ghost"
+            <TouchableOpacity
               onPress={() => setRewardsModalOpen(true)}
-            />
-          </Card>
+              style={styles.ghostBtn}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.ghostBtnText}>
+                {t("driver.referrals.showAllRewards", "All rewards")}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-          <Text style={styles.sectionTitle}>
-            {t("driver.referrals.status.title", "Status")}
-          </Text>
-
-          <Card>
-            <View style={styles.statsGrid}>
-              <View style={styles.statBox}>
+          <View style={styles.card}>
+            <View style={styles.statsRow}>
+              <View style={styles.statCol}>
+                <View style={styles.statCircle}>
+                  <Text style={styles.statValue}>{invitedCount}</Text>
+                </View>
                 <Text style={styles.statLabel}>
                   {t("driver.referrals.status.invited", "Invited")}
                 </Text>
-                <Text style={styles.statValue}>{invitedCount}</Text>
               </View>
-
-              <View style={styles.statBox}>
+              <View style={styles.statCol}>
+                <View
+                  style={[
+                    styles.statCircle,
+                    earnedCents > 0 && styles.statCircleEarned,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statValue,
+                      earnedCents > 0 && styles.statValueEarned,
+                    ]}
+                  >
+                    {centsToUsd(earnedCents)}
+                  </Text>
+                </View>
                 <Text style={styles.statLabel}>
-                  {t("driver.referrals.status.earned", "You earned")}
-                </Text>
-                <Text style={[styles.statValue, styles.earnedValue]}>
-                  {centsToUsd(earnedCents)}
+                  {t("driver.referrals.status.earnedShort", "Earned")}
                 </Text>
               </View>
             </View>
-
-            <View style={styles.buttonGapSmall} />
-            <Button
-              label={t("driver.referrals.status.showInvites", "View invites")}
-              kind="ghost"
-              onPress={() => setInvitesModalOpen(true)}
-            />
-
             <Text style={styles.statusNote}>
               {t(
                 "driver.referrals.status.friendHasDaysToComplete",
                 "Your friend has {{days}} days to complete their goals after accepting your invite.",
-                { days: program?.duration_days ?? "—" }
+                { days: program?.duration_days ?? "—" },
               )}
             </Text>
-          </Card>
+          </View>
 
-          <Text style={styles.sectionTitle}>
-            {t("driver.referrals.invite.title", "Invite")}
-          </Text>
-
-          <Card>
+          <View style={styles.card}>
             <Text style={styles.codeLabel}>
               {t("driver.referrals.myCodeLabel", "Your code")}
             </Text>
             <Text style={styles.codeText}>{myCode ?? "—"}</Text>
-
             <Text style={styles.linkLabel}>
               {t("driver.referrals.linkLabel", "Referral link")}
             </Text>
-            <Text style={styles.linkText} numberOfLines={1}>
+            <Text style={styles.linkText} numberOfLines={2}>
               {referralLink}
             </Text>
-
-            <View style={styles.buttonGap} />
-            <Button
-              label={t("driver.referrals.inviteNow", "Invite")}
+            <TouchableOpacity
               onPress={onShare}
               disabled={!myCode}
+              style={[styles.inviteBtn, !myCode && styles.disabled]}
+              activeOpacity={0.86}
+            >
+              <Text style={styles.inviteBtnText}>
+                {t("driver.referrals.inviteNow", "Invite")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {invites.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyIcon}>📭</Text>
+              <Text style={styles.emptyTitle}>
+                {t("driver.referrals.invites.emptyTitle", "No invites yet")}
+              </Text>
+              <Text style={styles.emptyText}>
+                {t(
+                  "driver.referrals.invites.emptyHint",
+                  "Share your code to invite drivers.",
+                )}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.invitesSection}>
+              <Text style={styles.sectionTitle}>
+                {t("driver.referrals.invites.title", "Invites")}
+              </Text>
+              <View style={styles.invitesStack}>
+                {invites.map((invite) => (
+                  <InviteCard key={invite.id} invite={invite} />
+                ))}
+              </View>
+              {loadingInvites ? (
+                <Text style={styles.refreshHint}>
+                  {t("common.loading", "Loading…")}
+                </Text>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => void loadAll()}
+                  style={styles.ghostBtn}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.ghostBtnText}>
+                    {t("shared.common.refresh", "Refresh")}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <View style={styles.footer}>
+            <Image
+              source={MMD_LOGO}
+              style={styles.logo}
+              resizeMode="contain"
+              accessibilityLabel="MMD Delivery"
             />
-          </Card>
+            <Text style={styles.logoLabel}>MMD Delivery</Text>
+          </View>
 
           <Modal
             visible={rewardsModalOpen}
@@ -589,8 +558,7 @@ export function DriverReferralsScreen() {
                     </Text>
                   </TouchableOpacity>
                 </View>
-
-                <Card>
+                <View style={styles.card}>
                   <Text style={styles.modalStrong}>
                     {t("driver.referrals.modal.summaryTitle", "📌 Summary")}
                   </Text>
@@ -602,109 +570,39 @@ export function DriverReferralsScreen() {
                           {
                             max: centsToUsd(program.max_total_reward_cents),
                             days: program.duration_days,
-                          }
+                          },
                         )
                       : "—"}
                   </Text>
-
-                  <Text style={[styles.modalStrong, styles.modalSectionGap]}>
-                    {t("driver.referrals.ridesLabel", "🚗 Rides")}
+                  <Text style={[styles.modalStrong, { marginTop: 12 }]}>
+                    {rideLine}
                   </Text>
-                  <Text style={styles.modalText}>{rideLine}</Text>
-
-                  <Text style={[styles.modalStrong, styles.modalSectionGap]}>
-                    {t("driver.referrals.deliveriesLabel", "🍔 Deliveries")}
+                  <Text style={[styles.modalStrong, { marginTop: 8 }]}>
+                    {deliveryLine}
                   </Text>
-                  <Text style={styles.modalText}>{deliveryLine}</Text>
-
                   <Text style={styles.modalRules}>
                     {t(
                       "driver.referrals.modal.rules",
-                      "Rules: one invite = one friend. Rewards are capped at the maximum. Rewards are applied after the referral program conditions are met."
+                      "Rules: one invite = one friend. Rewards are capped at the maximum. Rewards are applied after the referral program conditions are met.",
                     )}
                   </Text>
-                </Card>
-
-                <View style={styles.buttonGapSmall} />
-                <Button
-                  label={t("driver.referrals.modal.inviteNow", "Invite now")}
+                </View>
+                <TouchableOpacity
                   onPress={() => {
                     setRewardsModalOpen(false);
                     void onShare();
                   }}
                   disabled={!myCode}
-                />
+                  style={[styles.inviteBtn, !myCode && styles.disabled]}
+                  activeOpacity={0.86}
+                >
+                  <Text style={styles.inviteBtnText}>
+                    {t("driver.referrals.modal.inviteNow", "Invite now")}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           </Modal>
-
-          <Modal
-            visible={invitesModalOpen}
-            animationType="slide"
-            transparent
-            onRequestClose={() => setInvitesModalOpen(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalSheetLarge}>
-                <View style={styles.modalHeader}>
-                  <View>
-                    <Text style={styles.modalTitle}>
-                      {t("driver.referrals.invites.title", "Invites")}
-                    </Text>
-                    <Text style={styles.modalSub}>
-                      {invitedCount} {t("driver.referrals.invites.total", "total")}
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity onPress={() => setInvitesModalOpen(false)}>
-                    <Text style={styles.modalClose}>
-                      {t("shared.common.cancel", "Cancel")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.buttonGapSmall} />
-                <Button
-                  label={t("shared.common.refresh", "Refresh")}
-                  kind="ghost"
-                  onPress={() => void loadAll()}
-                  disabled={loadingInvites}
-                />
-
-                {loadingInvites ? (
-                  <View style={styles.loadingRow}>
-                    <ActivityIndicator color="#fff" />
-                    <Text style={styles.loadingText}>
-                      {t("common.loading", "Loading…")}
-                    </Text>
-                  </View>
-                ) : invites.length === 0 ? (
-                  <View style={styles.emptyBox}>
-                    <Text style={styles.emptyIcon}>◇</Text>
-                    <Text style={styles.emptyText}>
-                      {t("driver.referrals.invites.empty", "No invites yet.")}
-                    </Text>
-                  </View>
-                ) : (
-                  <ScrollView
-                    style={styles.invitesList}
-                    contentContainerStyle={styles.invitesListContent}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    <View style={styles.invitesStack}>
-                      {invites.map((invite) => (
-                        <InviteCard key={invite.id} invite={invite} />
-                      ))}
-                    </View>
-                  </ScrollView>
-                )}
-              </View>
-            </View>
-          </Modal>
-
-          <Text style={styles.footer}>
-            {t("driver.referrals.footer", "MMD Referral • Driver")}
-          </Text>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -712,209 +610,274 @@ export function DriverReferralsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG },
-  headerRow: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  roundButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: CARD_DEEP,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backText: {
-    color: "#BFDBFE",
-    fontSize: 34,
-    fontWeight: "700",
-    marginTop: -2,
-  },
-  helpText: { color: PURPLE, fontWeight: "900", fontSize: 18 },
-  headerCenter: { alignItems: "center", flex: 1, paddingHorizontal: 10 },
-  headerTitle: { color: TEXT, fontSize: 17, fontWeight: "900" },
-  headerSub: { color: MUTED, marginTop: 2, fontSize: 11, fontWeight: "800" },
-  loadingFull: { flex: 1, alignItems: "center", justifyContent: "center" },
-  loadingRow: { flexDirection: "row", alignItems: "center", marginTop: 14 },
-  loadingText: { color: MUTED, marginLeft: 10, fontWeight: "800" },
-  content: { padding: 16, paddingBottom: 28 },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  content: { padding: 16, paddingBottom: 28, gap: 16 },
   card: {
-    backgroundColor: CARD,
-    borderColor: BORDER,
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
-    borderRadius: 24,
+    borderColor: SOFT_BORDER,
+    borderRadius: 14,
     padding: 16,
+    gap: 12,
   },
-  heroCard: {
-    borderColor: "rgba(167,139,250,0.22)",
-    shadowColor: "#8B5CF6",
-    shadowOpacity: 0.14,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
+  heroLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
   },
-  heroLabel: { color: PURPLE, fontWeight: "900", fontSize: 12, marginBottom: 8 },
-  heroTitle: { color: TEXT, fontSize: 24, fontWeight: "900" },
-  heroSub: { color: MUTED, fontWeight: "800", marginTop: 8, lineHeight: 20 },
-  rewardRows: { marginTop: 14, gap: 10 },
+  heroTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 24,
+  },
+  heroSub: {
+    color: MUTED,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  rewardRows: { gap: 10 },
   rewardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    backgroundColor: "rgba(0,51,204,0.72)",
+    borderRadius: 10,
     padding: 12,
-    borderRadius: 16,
-    backgroundColor: CARD_DEEP,
-    borderWidth: 1,
-    borderColor: BORDER,
   },
-  rewardTitle: { color: TEXT, fontWeight: "900" },
-  rewardValue: {
-    color: "#CBD5E1",
-    fontWeight: "900",
-    flexShrink: 1,
-    textAlign: "right",
+  rewardText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
   },
-  button: {
-    paddingVertical: 13,
-    borderRadius: 16,
+  ghostBtn: {
+    minHeight: 40,
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: 12,
     borderWidth: 1,
+    borderColor: SOFT_BORDER,
+    paddingVertical: 8,
   },
-  buttonPrimary: {
-    backgroundColor: "rgba(139,92,246,0.95)",
-    borderColor: "rgba(167,139,250,0.65)",
+  ghostBtnText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 13,
   },
-  buttonGhost: { backgroundColor: CARD_DEEP, borderColor: BORDER },
-  buttonDanger: {
-    backgroundColor: "rgba(127,29,29,0.18)",
-    borderColor: "rgba(248,113,113,0.3)",
+  statsRow: { flexDirection: "row", gap: 16 },
+  statCol: { flex: 1, alignItems: "center", gap: 8 },
+  statCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(0,51,204,0.72)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  buttonText: { color: TEXT, fontWeight: "900" },
-  buttonTextPrimary: { color: "white" },
-  buttonTextDanger: { color: "#FECACA" },
-  disabled: { opacity: 0.55 },
-  buttonGap: { height: 14 },
-  buttonGapSmall: { height: 12 },
-  sectionTitle: {
-    color: TEXT,
+  statCircleEarned: { backgroundColor: MMD_TAXI_GREEN },
+  statValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
     fontSize: 20,
-    fontWeight: "900",
-    marginTop: 18,
-    marginBottom: 10,
   },
-  statsGrid: { flexDirection: "row", gap: 10 },
-  statBox: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: BORDER,
-    backgroundColor: CARD_DEEP,
+  statValueEarned: { color: MMD_BLUE },
+  statLabel: {
+    color: MUTED,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
   },
-  statLabel: { color: MUTED, fontWeight: "900", fontSize: 12 },
-  statValue: { color: TEXT, fontSize: 24, fontWeight: "900", marginTop: 6 },
-  earnedValue: { color: GREEN },
-  statusNote: { color: MUTED, fontWeight: "800", lineHeight: 20, marginTop: 12 },
-  codeLabel: { color: MUTED, fontWeight: "900" },
+  statusNote: {
+    color: MUTED,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 12,
+    textAlign: "center",
+  },
+  codeLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
   codeText: {
-    color: TEXT,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
     fontSize: 24,
-    fontWeight: "900",
-    marginTop: 6,
     letterSpacing: 1,
   },
-  linkLabel: { color: MUTED, fontWeight: "900", marginTop: 14 },
-  linkText: { color: BLUE, fontWeight: "800", marginTop: 6 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.62)",
-    justifyContent: "flex-end",
+  linkLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
   },
-  modalSheet: {
-    backgroundColor: BG,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 16,
+  linkText: {
+    color: "#60A5FA",
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 13,
   },
-  modalSheetLarge: {
-    maxHeight: "82%",
-    backgroundColor: BG,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: BORDER,
-    padding: 16,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  inviteBtn: {
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 12,
+    minHeight: 44,
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  modalTitle: { color: TEXT, fontSize: 20, fontWeight: "900" },
-  modalSub: { color: MUTED, marginTop: 3, fontWeight: "800" },
-  modalClose: { color: "#93C5FD", fontWeight: "900" },
-  modalStrong: { color: TEXT, fontWeight: "900" },
-  modalSectionGap: { marginTop: 12 },
-  modalText: { color: "#CBD5E1", fontWeight: "800", marginTop: 8, lineHeight: 20 },
-  modalRules: { color: MUTED, fontWeight: "800", marginTop: 12, lineHeight: 20 },
-  inviteCard: {
-    borderRadius: 20,
-    backgroundColor: CARD,
+  inviteBtnText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  disabled: { opacity: 0.55 },
+  emptyCard: {
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
-    borderColor: BORDER,
-    padding: 14,
+    borderColor: SOFT_BORDER,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: "center",
+    gap: 12,
+  },
+  emptyIcon: { fontSize: 48 },
+  emptyTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 20,
+    textAlign: "center",
+  },
+  emptyText: {
+    color: MUTED,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  invitesSection: { gap: 12 },
+  sectionTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 20,
+  },
+  invitesStack: { gap: 12 },
+  inviteCard: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
   },
   inviteTopRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
   },
-  inviteInfo: { flex: 1, paddingRight: 10 },
-  inviteName: { color: TEXT, fontSize: 16, fontWeight: "900" },
-  inviteMeta: { color: MUTED, marginTop: 5, fontSize: 12, fontWeight: "800" },
+  inviteInfo: { flex: 1, paddingRight: 10, gap: 2 },
+  inviteName: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  inviteMeta: {
+    color: MUTED,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 12,
+  },
   statusPill: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
   },
-  statusText: { fontSize: 11, fontWeight: "900" },
-  progressRow: { flexDirection: "row", gap: 10, marginTop: 12 },
+  statusText: { fontSize: 11, fontFamily: MMD_FONT.bold, fontWeight: "700" },
+  progressRow: { flexDirection: "row", gap: 12 },
   progressBox: {
     flex: 1,
     padding: 10,
-    borderRadius: 14,
-    backgroundColor: CARD_DEEP,
-    borderWidth: 1,
-    borderColor: BORDER,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,51,204,0.72)",
+    gap: 4,
   },
-  progressLabel: { color: MUTED, fontSize: 11, fontWeight: "900" },
-  progressValue: { color: TEXT, fontSize: 18, fontWeight: "900", marginTop: 4 },
-  emptyBox: {
-    marginTop: 14,
+  progressLabel: {
+    color: MUTED,
+    fontSize: 11,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  progressValue: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  refreshHint: {
+    color: MUTED,
+    fontFamily: MMD_FONT.semibold,
+    textAlign: "center",
+  },
+  footer: { alignItems: "center", paddingTop: 20, gap: 6 },
+  logo: { width: 44, height: 44, borderRadius: 10 },
+  logoLabel: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.62)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: MMD_BLUE,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 16,
+    gap: 12,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    padding: 18,
-    borderRadius: 20,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: BORDER,
   },
-  emptyIcon: { color: PURPLE, fontSize: 24, fontWeight: "900", marginBottom: 6 },
-  emptyText: { color: MUTED, fontWeight: "800", textAlign: "center" },
-  invitesList: { marginTop: 12 },
-  invitesListContent: { paddingBottom: 18 },
-  invitesStack: { gap: 10 },
-  footer: { color: "#6B7280", marginTop: 16, fontWeight: "700" },
+  modalTitle: {
+    color: MMD_WHITE,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  modalClose: {
+    color: "#93C5FD",
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  modalStrong: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  modalText: {
+    color: MUTED,
+    fontFamily: MMD_FONT.semibold,
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  modalRules: {
+    color: MUTED,
+    fontFamily: MMD_FONT.semibold,
+    marginTop: 12,
+    lineHeight: 20,
+  },
 });
 
 export default DriverReferralsScreen;

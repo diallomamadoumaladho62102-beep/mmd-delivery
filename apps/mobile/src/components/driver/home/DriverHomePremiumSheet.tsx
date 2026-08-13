@@ -12,20 +12,32 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  MMD_BLUE,
+  MMD_GOLD_CLASSIC,
+  MMD_STROKE,
+  MMD_TAXI_GREEN,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../../../theme/mmdUi";
 
+/** Figma Driver Home PremiumSheet — MMD_BLUE chrome (file m1YPra9RLUz38tGTPmYczj). */
 const C = {
-  sheet: "#FFFFFF",
-  border: "#E8EAEF",
-  text: "#0F172A",
-  textMuted: "#64748B",
+  sheet: MMD_BLUE,
+  border: MMD_STROKE,
+  text: MMD_WHITE,
+  textMuted: MMD_TEXT_MUTED_BLUE,
   textSoft: "#94A3B8",
-  green: "#16A34A",
-  navy: "#0B1220",
+  green: MMD_TAXI_GREEN,
+  navy: MMD_BLUE,
   purple: "#7C3AED",
-  blue: "#2563EB",
+  blue: "#93C5FD",
   red: "#DC2626",
   orange: "#EA580C",
-  yellow: "#CA8A04",
+  yellow: MMD_GOLD_CLASSIC,
+  link: MMD_GOLD_CLASSIC,
+  actionNavy: "#0037A0",
 } as const;
 
 export type PremiumJobKind = "taxi" | "food" | "delivery" | "other";
@@ -107,10 +119,10 @@ function jobVisual(kind: PremiumJobKind): {
   bg: string;
   fg: string;
 } {
-  if (kind === "taxi") return { icon: "car-sport", bg: "#FEF3C7", fg: "#B45309" };
-  if (kind === "food") return { icon: "restaurant", bg: "#DCFCE7", fg: "#166534" };
-  if (kind === "delivery") return { icon: "bag-handle", bg: "#DCFCE7", fg: "#166534" };
-  return { icon: "cube", bg: "#F3F4F6", fg: C.textMuted };
+  if (kind === "taxi") return { icon: "car-sport", bg: "rgba(212,175,55,0.2)", fg: MMD_GOLD_CLASSIC };
+  if (kind === "food") return { icon: "restaurant", bg: "rgba(34,197,94,0.18)", fg: "#86EFAC" };
+  if (kind === "delivery") return { icon: "bag-handle", bg: "rgba(34,197,94,0.18)", fg: "#86EFAC" };
+  return { icon: "cube", bg: "rgba(170,190,230,0.16)", fg: C.textMuted };
 }
 
 /** Mockup-style luminous multi-layer backdrop + full-width pulse wave. */
@@ -193,38 +205,26 @@ export function DriverHomePremiumSheet({
         <Text style={styles.sectionTitle}>Today's summary</Text>
         <TouchableOpacity onPress={onOpenEarnings} style={styles.linkRow} activeOpacity={0.85}>
           <Text style={styles.linkText}>View details</Text>
-          <Ionicons name="chevron-forward" size={13} color={C.green} />
+          <Ionicons name="chevron-forward" size={13} color={C.link} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.summaryStats}>
         <View style={styles.statCol}>
-          <View style={[styles.statCircle, { backgroundColor: "#DCFCE7" }]}>
-            <Text style={[styles.statGlyph, { color: C.green }]}>$</Text>
-          </View>
           <Text style={styles.statValue} numberOfLines={1}>
             {earningsHidden ? "••••" : stats.todayEarningsLabel}
           </Text>
           <Text style={styles.statLabel}>Earnings</Text>
         </View>
         <View style={styles.statCol}>
-          <View style={[styles.statCircle, { backgroundColor: "#DBEAFE" }]}>
-            <Ionicons name="bag-handle" size={15} color={C.blue} />
-          </View>
           <Text style={styles.statValue}>{stats.tripsToday}</Text>
           <Text style={styles.statLabel}>Trips</Text>
         </View>
         <View style={styles.statCol}>
-          <View style={[styles.statCircle, { backgroundColor: "#FEF3C7" }]}>
-            <Ionicons name="star" size={15} color={C.yellow} />
-          </View>
           <Text style={styles.statValue}>{Math.round(stats.points).toLocaleString()}</Text>
           <Text style={styles.statLabel}>Points</Text>
         </View>
         <View style={styles.statCol}>
-          <View style={[styles.statCircle, { backgroundColor: "#FFEDD5" }]}>
-            <Ionicons name="medal" size={15} color={C.orange} />
-          </View>
           <Text style={styles.statValue} numberOfLines={1}>
             {stats.level}
           </Text>
@@ -248,7 +248,7 @@ export function DriverHomePremiumSheet({
           <Text style={styles.nextRewardValue} numberOfLines={1}>
             {stats.nextRewardLabel}
           </Text>
-          <Ionicons name="chevron-forward" size={13} color={C.green} />
+          <Ionicons name="chevron-forward" size={13} color={C.link} />
         </View>
       </TouchableOpacity>
     </View>
@@ -264,7 +264,7 @@ export function DriverHomePremiumSheet({
           activeOpacity={0.85}
         >
           <Text style={styles.linkText}>{jobs.length > 0 ? "View all" : "Refresh"}</Text>
-          <Ionicons name="chevron-forward" size={13} color={C.green} />
+          <Ionicons name="chevron-forward" size={13} color={C.link} />
         </TouchableOpacity>
       </View>
 
@@ -343,7 +343,6 @@ export function DriverHomePremiumSheet({
               Dispatch.
             </Text>
             <TouchableOpacity style={styles.offlineCta} activeOpacity={0.9} onPress={onGoOnline}>
-              <Ionicons name="radio-button-on" size={18} color="#FFFFFF" />
               <Text style={styles.offlineCtaText}>Go online</Text>
             </TouchableOpacity>
           </View>
@@ -453,14 +452,12 @@ export function DriverHomePremiumSheet({
 
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.primaryAction} activeOpacity={0.9} onPress={onGoBusyArea}>
-            <Ionicons name="navigate" size={18} color="#FFFFFF" />
             <View style={styles.actionTextCol}>
               <Text style={styles.primaryActionTitle}>Go to busy area</Text>
               <Text style={styles.primaryActionSub}>Navigate to high demand zone</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryAction} activeOpacity={0.9} onPress={onGoOffline}>
-            <Ionicons name="pause" size={18} color="#334155" />
             <View style={styles.actionTextCol}>
               <Text style={styles.secondaryActionTitle}>Go offline</Text>
               <Text style={styles.secondaryActionSub}>You will stop receiving requests</Text>
@@ -478,19 +475,15 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 6,
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: -3 },
-    elevation: 16,
     maxHeight: "100%",
   },
   handle: {
-    alignSelf: "center",
+    alignSelf: "flex-start",
+    marginLeft: 14,
     width: 36,
     height: 4,
     borderRadius: 999,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: MMD_BLUE,
     marginBottom: 8,
   },
   scrollContent: {
@@ -499,17 +492,17 @@ const styles = StyleSheet.create({
   },
 
   smartCard: {
-    backgroundColor: "#020617",
+    backgroundColor: MMD_BLUE,
     borderRadius: 18,
     marginBottom: 10,
     overflow: "hidden",
-    minHeight: 108,
-    borderWidth: 1,
-    borderColor: "rgba(96,165,250,0.2)",
+    minHeight: 88,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
   },
   smartBase: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#020617",
+    backgroundColor: MMD_BLUE,
   },
   smartGradientTop: {
     position: "absolute",
@@ -517,7 +510,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     height: "45%",
-    backgroundColor: "rgba(15,23,42,0.7)",
+    backgroundColor: "rgba(0,51,153,0.35)",
   },
   smartGradientBottom: {
     position: "absolute",
@@ -525,7 +518,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: "72%",
-    backgroundColor: "rgba(30,64,175,0.3)",
+    backgroundColor: "rgba(0,55,160,0.25)",
   },
   smartGlowCyan: {
     position: "absolute",
@@ -534,7 +527,7 @@ const styles = StyleSheet.create({
     width: 280,
     height: 190,
     borderRadius: 140,
-    backgroundColor: "rgba(34,211,238,0.42)",
+    backgroundColor: "rgba(34,211,238,0.12)",
   },
   smartGlowPurple: {
     position: "absolute",
@@ -543,7 +536,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 180,
     borderRadius: 125,
-    backgroundColor: "rgba(168,85,247,0.44)",
+    backgroundColor: "rgba(168,85,247,0.14)",
   },
   smartGlowBlueMid: {
     position: "absolute",
@@ -552,7 +545,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 140,
     borderRadius: 90,
-    backgroundColor: "rgba(59,130,246,0.34)",
+    backgroundColor: "rgba(59,130,246,0.12)",
   },
   smartGlowLive: { opacity: 1 },
   smartWaveImage: {
@@ -561,7 +554,7 @@ const styles = StyleSheet.create({
     right: -20,
     bottom: -2,
     height: 88,
-    opacity: 1,
+    opacity: 0.35,
   },
   smartWaveImageSoft: {
     position: "absolute",
@@ -569,7 +562,7 @@ const styles = StyleSheet.create({
     right: -8,
     bottom: 12,
     height: 64,
-    opacity: 0.5,
+    opacity: 0.2,
   },
   smartWaveRibbonHost: {
     position: "absolute",
@@ -591,8 +584,8 @@ const styles = StyleSheet.create({
   },
   smartContent: {
     position: "relative",
-    paddingTop: 11,
-    paddingBottom: 32,
+    paddingTop: 12,
+    paddingBottom: 14,
     paddingHorizontal: 12,
     zIndex: 2,
   },
@@ -602,14 +595,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoBox: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 30,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,140,0,0.45)",
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "visible",
+    overflow: "hidden",
   },
-  logo: { width: 44, height: 30 },
+  logo: { width: 28, height: 28, borderRadius: 14 },
   smartMid: { flex: 1, minWidth: 0 },
   smartTitleRow: {
     flexDirection: "row",
@@ -617,8 +613,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   smartTitle: {
-    color: "#FFFFFF",
-    fontSize: 13.5,
+    color: MMD_WHITE,
+    fontSize: 13,
     fontWeight: "800",
     letterSpacing: -0.2,
     flexShrink: 1,
@@ -637,7 +633,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(148,163,184,0.55)",
   },
   liveText: {
-    color: "#FFFFFF",
+    color: MMD_WHITE,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 0.55,
@@ -645,15 +641,15 @@ const styles = StyleSheet.create({
   smartSubtitle: {
     color: "#E2E8F0",
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "400",
     marginTop: 4,
     lineHeight: 14.5,
   },
   hotspotsBtn: {
     borderRadius: 999,
-    backgroundColor: "rgba(2,6,23,0.55)",
+    backgroundColor: "rgba(0,51,153,0.55)",
     borderWidth: 1.5,
-    borderColor: "rgba(241,245,249,0.7)",
+    borderColor: MMD_STROKE,
     paddingHorizontal: 9,
     paddingVertical: 9,
     flexDirection: "row",
@@ -665,76 +661,80 @@ const styles = StyleSheet.create({
     maxWidth: 104,
   },
   hotspotsText: {
-    color: "#F8FAFC",
-    fontSize: 10.5,
+    color: MMD_TEXT,
+    fontSize: 10,
     fontWeight: "700",
   },
 
   offlineCard: {
-    backgroundColor: "#0B1220",
+    backgroundColor: MMD_BLUE,
     borderRadius: 18,
     paddingHorizontal: 18,
     paddingVertical: 16,
     marginBottom: 12,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.18)",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    gap: 8,
   },
   offlineLogoBox: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,140,0,0.45)",
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "visible",
-    marginBottom: 10,
+    overflow: "hidden",
   },
-  offlineLogo: { width: 48, height: 32 },
+  offlineLogo: { width: 30, height: 30, borderRadius: 15 },
   offlineTitle: {
-    color: "#FFFFFF",
+    color: MMD_WHITE,
     fontSize: 17,
     fontWeight: "800",
-    marginBottom: 5,
   },
   offlineSub: {
-    color: "#CBD5E1",
-    fontSize: 12.5,
-    fontWeight: "500",
+    color: "#94A3B8",
+    fontSize: 12,
+    fontWeight: "600",
     textAlign: "center",
     lineHeight: 17,
-    marginBottom: 14,
+    marginBottom: 4,
   },
   offlineCta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     backgroundColor: C.green,
-    borderRadius: 16,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     paddingHorizontal: 22,
-    paddingVertical: 13,
-    minHeight: 50,
+    height: 48,
     alignSelf: "stretch",
     justifyContent: "center",
   },
-  offlineCtaText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
+  offlineCtaText: { color: MMD_WHITE, fontSize: 15, fontWeight: "800" },
 
   intelStrip: {
     flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: C.border,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    borderRadius: 16,
     paddingVertical: 10,
+    paddingHorizontal: 4,
     marginBottom: 12,
+    backgroundColor: MMD_BLUE,
   },
-  intelCell: { flex: 1, paddingHorizontal: 3, gap: 2 },
+  intelCell: { flex: 1, paddingHorizontal: 4, gap: 2, alignItems: "center" },
   intelDivider: {
     width: StyleSheet.hairlineWidth,
-    backgroundColor: C.border,
+    backgroundColor: "rgba(255,255,255,0.2)",
     marginVertical: 2,
   },
-  intelLabel: { color: C.textSoft, fontSize: 9, fontWeight: "600", marginTop: 2 },
-  intelValue: { color: C.text, fontSize: 11, fontWeight: "800" },
-  intelDetail: { color: C.textMuted, fontSize: 9, fontWeight: "500" },
+  intelLabel: { color: MMD_TEXT_MUTED_BLUE, fontSize: 9, fontWeight: "600", marginTop: 2 },
+  intelValue: { color: MMD_WHITE, fontSize: 11, fontWeight: "800", textAlign: "center" },
+  intelDetail: { color: "#94A3B8", fontSize: 9, fontWeight: "600", textAlign: "center" },
 
   intelRow: {
     flexDirection: "row",
@@ -743,10 +743,10 @@ const styles = StyleSheet.create({
   },
   intelCard: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: MMD_BLUE,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: C.border,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     paddingHorizontal: 6,
     paddingVertical: 8,
     gap: 2,
@@ -760,10 +760,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  sectionTitle: { color: C.text, fontSize: 15, fontWeight: "800" },
+  sectionTitle: { color: MMD_WHITE, fontSize: 15, fontWeight: "800" },
   linkRow: { flexDirection: "row", alignItems: "center", gap: 1 },
-  linkText: { color: C.green, fontSize: 12, fontWeight: "700" },
-  summaryStats: { flexDirection: "row", marginBottom: 12, gap: 4 },
+  linkText: { color: C.link, fontSize: 12, fontWeight: "700" },
+  summaryStats: { flexDirection: "row", marginBottom: 12, gap: 8 },
   statCol: { flex: 1, alignItems: "center", gap: 4 },
   statCircle: {
     width: 36,
@@ -773,19 +773,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   statGlyph: { fontSize: 16, fontWeight: "900" },
-  statValue: { color: C.text, fontSize: 12, fontWeight: "800" },
-  statLabel: { color: C.textMuted, fontSize: 10, fontWeight: "600" },
+  statValue: { color: MMD_WHITE, fontSize: 13, fontWeight: "800" },
+  statLabel: { color: MMD_TEXT_MUTED_BLUE, fontSize: 10, fontWeight: "600" },
   progressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 6,
   },
-  progressPts: { color: C.textMuted, fontSize: 11, fontWeight: "600" },
+  progressPts: { color: MMD_TEXT_MUTED_BLUE, fontSize: 11, fontWeight: "600" },
   progressTrack: {
     height: 7,
     borderRadius: 999,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "rgba(148,163,184,0.28)",
     overflow: "hidden",
     marginBottom: 10,
   },
@@ -795,37 +795,39 @@ const styles = StyleSheet.create({
     backgroundColor: C.green,
   },
   nextRewardCard: {
-    borderWidth: 1,
-    borderColor: C.border,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: MMD_BLUE,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  nextRewardEyebrow: { color: C.textMuted, fontSize: 12, fontWeight: "500" },
-  nextRewardValue: { color: C.green, fontSize: 13, fontWeight: "800" },
+  nextRewardEyebrow: { color: MMD_TEXT_MUTED_BLUE, fontSize: 12, fontWeight: "500" },
+  nextRewardValue: { color: C.link, fontSize: 13, fontWeight: "800" },
 
   jobsBlock: { marginBottom: 14 },
   errorText: { color: C.red, fontSize: 12, marginBottom: 6 },
   emptyBox: {
-    borderWidth: 1,
-    borderColor: C.border,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     borderRadius: 14,
-    padding: 14,
-    backgroundColor: "#F8FAFC",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: MMD_BLUE,
+    alignItems: "center",
   },
-  emptyTitle: { color: C.text, fontSize: 13, fontWeight: "800" },
-  emptySub: { color: C.textMuted, fontSize: 12, marginTop: 4 },
+  emptyTitle: { color: MMD_WHITE, fontSize: 13, fontWeight: "700" },
+  emptySub: { color: MMD_TEXT_MUTED_BLUE, fontSize: 11, marginTop: 4, textAlign: "center" },
   jobCard: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    backgroundColor: MMD_BLUE,
     padding: 12,
     marginBottom: 8,
     gap: 10,
@@ -838,50 +840,46 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   jobBody: { flex: 1, minWidth: 0 },
-  jobKind: { color: C.text, fontSize: 13, fontWeight: "800", marginBottom: 2 },
-  jobLine: { color: C.textMuted, fontSize: 11, marginTop: 1 },
+  jobKind: { color: MMD_WHITE, fontSize: 13, fontWeight: "800", marginBottom: 2 },
+  jobLine: { color: MMD_TEXT_MUTED_BLUE, fontSize: 11, marginTop: 1 },
   jobRight: { alignItems: "flex-end", marginRight: 2 },
-  jobAmount: { color: C.text, fontSize: 14, fontWeight: "800" },
-  jobMeta: { color: C.textSoft, fontSize: 11, fontWeight: "600", marginTop: 2 },
+  jobAmount: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
+  jobMeta: { color: "#94A3B8", fontSize: 11, fontWeight: "600", marginTop: 2 },
 
-  actionsRow: { flexDirection: "row", gap: 10, marginTop: 4, marginBottom: 6 },
+  actionsRow: { flexDirection: "column", gap: 8, marginTop: 4, marginBottom: 6 },
   primaryAction: {
-    flex: 1.2,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: C.green,
+    backgroundColor: C.actionNavy,
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    minHeight: 72,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   secondaryAction: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: MMD_BLUE,
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    minHeight: 72,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   actionTextCol: { flex: 1 },
-  primaryActionTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  primaryActionTitle: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
   primaryActionSub: {
-    color: "rgba(255,255,255,0.92)",
-    fontSize: 10,
-    fontWeight: "500",
+    color: "#DCFCE7",
+    fontSize: 11,
+    fontWeight: "600",
     marginTop: 2,
-    lineHeight: 13,
   },
-  secondaryActionTitle: { color: C.text, fontSize: 13, fontWeight: "800" },
+  secondaryActionTitle: { color: C.red, fontSize: 14, fontWeight: "800" },
   secondaryActionSub: {
-    color: C.textMuted,
-    fontSize: 10,
-    fontWeight: "500",
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 11,
+    fontWeight: "600",
     marginTop: 2,
-    lineHeight: 13,
   },
 });

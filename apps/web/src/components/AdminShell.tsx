@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/lib/adminRbac";
 import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import { supabase } from "@/lib/supabaseBrowser";
+import { ADMIN_LOGO, navIcon } from "@/components/admin/adminUi";
 
 type ShellProps = {
   title?: string;
@@ -130,24 +132,30 @@ export default function AdminShell({
   const sidebar = (
     <aside
       className={[
-        "flex h-full flex-col border-r border-slate-800/80 bg-[var(--cc-sidebar)] text-[var(--cc-sidebar-text)]",
-        railCollapsed ? "w-[72px]" : "w-[260px]",
+        "flex h-full flex-col border-r border-white/12 bg-white/[0.04] text-white backdrop-blur-[20px] shadow-[10px_10px_24px_rgba(0,0,0,0.25)]",
+        railCollapsed ? "w-[88px]" : "w-[260px]",
       ].join(" ")}
+      aria-label="Control Center navigation"
     >
-      <div className="flex h-14 items-center gap-3 border-b border-white/10 px-4">
-        <Link href="/admin" className="flex min-w-0 items-center gap-2.5">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--cc-ai)] text-xs font-bold text-white">
-            MMD
-          </span>
+      <div className="flex items-center gap-3 px-6 py-7">
+        <Link href="/admin" className="flex min-w-0 items-center gap-3">
+          <Image
+            src={ADMIN_LOGO}
+            alt="MMD Delivery"
+            width={48}
+            height={48}
+            className="size-12 shrink-0 rounded-[14px] object-contain"
+            priority
+          />
           {!railCollapsed ? (
-            <span className="truncate text-sm font-semibold tracking-tight">
-              Control Center
+            <span className="truncate text-[22px] font-bold tracking-tight text-[var(--cc-gold)]">
+              MMD Control
             </span>
           ) : null}
         </Link>
         <button
           type="button"
-          className="ml-auto hidden rounded-lg p-1.5 text-[var(--cc-sidebar-muted)] hover:bg-white/10 hover:text-white lg:inline-flex"
+          className="ml-auto hidden rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white lg:inline-flex"
           onClick={() => setRailCollapsed((v) => !v)}
           aria-label={railCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -155,19 +163,16 @@ export default function AdminShell({
         </button>
       </div>
 
-      <nav
-        className="flex-1 space-y-1 overflow-y-auto px-2 py-3"
-        aria-label="Control Center navigation"
-      >
+      <nav className="flex-1 space-y-4 overflow-y-auto px-4 pb-4" aria-label="Admin sections">
         {groups.map((group) => {
           const collapsed = collapsedGroups[group.id] === true;
           return (
-            <div key={group.id} className="mb-1">
+            <div key={group.id}>
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
                 className={[
-                  "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--cc-sidebar-muted)] hover:bg-white/5 hover:text-white",
+                  "flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--cc-gold)]",
                   railCollapsed ? "justify-center" : "",
                 ].join(" ")}
                 title={group.label}
@@ -182,7 +187,7 @@ export default function AdminShell({
                 )}
               </button>
               {!collapsed ? (
-                <ul className="mt-0.5 space-y-0.5">
+                <ul className="mt-2 space-y-1">
                   {group.items.map((item) => {
                     const active = isActivePath(pathname, item.href);
                     return (
@@ -191,21 +196,20 @@ export default function AdminShell({
                           href={item.href}
                           title={item.label}
                           className={[
-                            "flex items-center rounded-lg px-2.5 py-2 text-sm transition-colors duration-150",
-                            railCollapsed ? "justify-center" : "gap-2",
+                            "flex items-center rounded-[14px] px-3.5 py-2.5 text-[15px] transition-colors",
+                            railCollapsed ? "justify-center" : "gap-3",
                             active
-                              ? "bg-white/12 font-medium text-white"
-                              : "text-slate-300 hover:bg-white/8 hover:text-white",
+                              ? "rounded-full border border-white/12 bg-white/10 font-semibold text-white"
+                              : "font-normal text-white/90 hover:bg-white/8",
                           ].join(" ")}
                           aria-current={active ? "page" : undefined}
                         >
+                          <span className="text-xl leading-none" aria-hidden>
+                            {navIcon(item.href)}
+                          </span>
                           {!railCollapsed ? (
                             <span className="truncate">{item.label}</span>
-                          ) : (
-                            <span className="text-xs font-semibold">
-                              {item.label.slice(0, 2)}
-                            </span>
-                          )}
+                          ) : null}
                         </Link>
                       </li>
                     );
@@ -217,11 +221,13 @@ export default function AdminShell({
         })}
       </nav>
 
-      <div className="border-t border-white/10 p-3">
+      <div className="border-t border-white/10 p-4">
         {!railCollapsed ? (
-          <div className="rounded-xl bg-white/5 px-3 py-2.5">
-            <p className="truncate text-xs text-[var(--cc-sidebar-muted)]">Signed in</p>
-            <p className="truncate text-sm font-medium text-white">{displayRole}</p>
+          <div className="rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-2.5">
+            <p className="truncate text-xs text-white/60">Signed in</p>
+            <p className="truncate text-sm font-semibold text-[var(--cc-gold)]">
+              {displayRole}
+            </p>
           </div>
         ) : null}
       </div>
@@ -229,8 +235,8 @@ export default function AdminShell({
   );
 
   return (
-    <div className="min-h-screen bg-[var(--cc-bg)] text-[var(--cc-text)]">
-      <div className="flex min-h-screen">
+    <div className="admin-figma min-h-screen">
+      <div className="mx-auto flex min-h-screen max-w-[1280px]">
         <div className="hidden md:sticky md:top-0 md:flex md:h-screen md:shrink-0">
           {sidebar}
         </div>
@@ -239,7 +245,7 @@ export default function AdminShell({
           <div className="fixed inset-0 z-40 md:hidden">
             <button
               type="button"
-              className="absolute inset-0 bg-slate-900/50"
+              className="absolute inset-0 bg-[#001a66]/70"
               aria-label="Close menu"
               onClick={() => setSidebarOpen(false)}
             />
@@ -247,12 +253,12 @@ export default function AdminShell({
           </div>
         ) : null}
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-[var(--cc-border)] bg-[var(--cc-surface)]/95 backdrop-blur">
-            <div className="flex h-14 items-center gap-3 px-4 lg:px-6">
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-auto">
+          <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0033CC]/85 backdrop-blur-[12px]">
+            <div className="flex h-[72px] items-center gap-3 px-4 sm:h-[88px] lg:px-10">
               <button
                 type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--cc-border)] bg-white text-slate-600 md:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white md:hidden"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Open menu"
               >
@@ -263,9 +269,13 @@ export default function AdminShell({
                 href="/admin"
                 className="hidden items-center gap-2 sm:inline-flex md:hidden"
               >
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--cc-ai)] text-[10px] font-bold text-white">
-                  MMD
-                </span>
+                <Image
+                  src={ADMIN_LOGO}
+                  alt="MMD"
+                  width={32}
+                  height={32}
+                  className="size-8 rounded-lg object-contain"
+                />
               </Link>
 
               <form onSubmit={onSearchSubmit} className="min-w-0 flex-1 max-w-xl">
@@ -277,33 +287,22 @@ export default function AdminShell({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search modules…"
-                  className="h-9 w-full rounded-xl border border-[var(--cc-border)] bg-[var(--cc-elevated)] px-3 text-sm text-slate-800 outline-none ring-[var(--cc-info)] placeholder:text-slate-400 focus:ring-2"
+                  className="h-10 w-full rounded-2xl border border-white/20 bg-white/10 px-3 text-sm text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-[#2563eb]"
                 />
               </form>
 
               <div className="ml-auto flex items-center gap-2">
                 {actions}
-                <button
-                  type="button"
-                  disabled
-                  className="inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-xl border border-[var(--cc-border)] bg-slate-50 text-slate-400"
-                  aria-label="Notifications — coming soon"
-                  title="Notifications — coming soon"
-                >
-                  <BellIcon />
-                </button>
-                <div className="hidden items-center gap-2 rounded-xl border border-[var(--cc-border)] bg-white px-2.5 py-1.5 sm:flex">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700">
-                    {(displayRole || "A").slice(0, 1)}
-                  </span>
-                  <span className="max-w-[120px] truncate text-xs font-medium text-slate-700">
+                <div className="hidden items-center gap-2 rounded-full border border-[rgba(251,191,36,0.25)] bg-[rgba(251,191,36,0.1)] px-3.5 py-2 sm:flex">
+                  <span aria-hidden>🛡️</span>
+                  <span className="max-w-[140px] truncate text-sm font-bold text-[var(--cc-gold)]">
                     {displayRole}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => void signOut()}
-                  className="h-9 rounded-xl border border-[var(--cc-border)] bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15"
                 >
                   Sign out
                 </button>
@@ -311,16 +310,16 @@ export default function AdminShell({
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
+          <main className="flex-1 px-4 py-6 lg:px-10 lg:py-8">
             {(title || subtitle) && (
               <div className="mb-6 space-y-1">
                 {title ? (
-                  <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+                  <h1 className="text-3xl font-bold tracking-tight text-white sm:text-[36px]">
                     {title}
                   </h1>
                 ) : null}
                 {subtitle ? (
-                  <p className="text-sm text-[var(--cc-muted)]">{subtitle}</p>
+                  <p className="text-sm text-white/70">{subtitle}</p>
                 ) : null}
               </div>
             )}
@@ -329,9 +328,8 @@ export default function AdminShell({
         </div>
       </div>
 
-      {/* Mobile bottom nav */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-[var(--cc-border)] bg-white/95 px-2 py-2 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-white/12 bg-[#0033CC]/95 px-2 py-2 backdrop-blur md:hidden"
         aria-label="Mobile quick nav"
       >
         {[
@@ -347,7 +345,7 @@ export default function AdminShell({
               href={item.href}
               className={[
                 "flex flex-1 flex-col items-center rounded-xl px-2 py-1.5 text-[11px] font-medium",
-                active ? "text-[var(--cc-info)]" : "text-slate-500",
+                active ? "text-[var(--cc-gold)]" : "text-white/70",
               ].join(" ")}
             >
               {item.label}
@@ -357,7 +355,7 @@ export default function AdminShell({
         <button
           type="button"
           onClick={() => setSidebarOpen(true)}
-          className="flex flex-1 flex-col items-center rounded-xl px-2 py-1.5 text-[11px] font-medium text-slate-500"
+          className="flex flex-1 flex-col items-center rounded-xl px-2 py-1.5 text-[11px] font-medium text-white/70"
         >
           More
         </button>
@@ -390,14 +388,6 @@ function MenuIcon() {
         d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 5A.75.75 0 012.75 9h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 9.75zm0 5a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75a.75.75 0 01-.75-.75z"
         clipRule="evenodd"
       />
-    </svg>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
-      <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM8 16a2 2 0 104 0H8z" />
     </svg>
   );
 }

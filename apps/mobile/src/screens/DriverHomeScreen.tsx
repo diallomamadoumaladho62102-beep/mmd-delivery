@@ -82,6 +82,15 @@ import {
 } from "../lib/driverPresenceConfig";
 import { subscribeDriverMissionPushRefresh } from "../lib/driverMissionPushEvents";
 import { toUserFacingError } from "../lib/userFacingError";
+import {
+  MMD_BLUE,
+  MMD_GOLD_CLASSIC,
+  MMD_STROKE,
+  MMD_TAXI_GREEN,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -379,10 +388,11 @@ const DRIVER_BOTTOM_TAB_CLEARANCE = Platform.select({
 const DRIVER_BOTTOM_PANEL_OFFSET =
   (DRIVER_BOTTOM_TAB_CLEARANCE ?? 64) + (DRIVER_BOTTOM_NAV_SAFE_OFFSET ?? 28);
 const MAX_VISIBLE_ORDER_MILES = 15;
-const CARD_BG = "rgba(15,23,42,0.92)";
-const CARD_BORDER = "rgba(148,163,184,0.16)";
+
+const CARD_BG = MMD_BLUE;
+const CARD_BORDER = MMD_STROKE;
 const PURPLE = "#8B5CF6";
-const GREEN = "#22C55E";
+const GREEN = MMD_TAXI_GREEN;
 const BLUE = "#3B82F6";
 const ORANGE = "#F97316";
 const SURFACE = "rgba(2,6,23,0.96)";
@@ -2714,7 +2724,7 @@ export function DriverHomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <View style={styles.root}>
         <Mapbox.MapView
           style={styles.map}
@@ -2839,14 +2849,12 @@ export function DriverHomeScreen() {
             <IconButton icon="menu" onPress={openDriverMenu} />
             <View style={styles.locationSlot}>
               {driverMarket.scopeResolved ? (
-                <MarketScopePill market={driverMarket} variant="light" />
+                <MarketScopePill market={driverMarket} variant="mmd" />
               ) : (
                 <View style={styles.locationFallback}>
-                  <Ionicons name="location" size={14} color="#16A34A" />
                   <Text style={styles.locationFallbackText} numberOfLines={1}>
                     {marketAreaLabel}
                   </Text>
-                  <Ionicons name="chevron-down" size={12} color="#9CA3AF" />
                 </View>
               )}
             </View>
@@ -2861,14 +2869,11 @@ export function DriverHomeScreen() {
               <View
                 style={[
                   styles.onlineDot,
-                  { backgroundColor: isOnline ? "#22C55E" : "#9CA3AF" },
+                  { backgroundColor: isOnline ? GREEN : MMD_BLUE },
                 ]}
               />
               <Text style={[styles.onlineText, isOnline ? styles.onlineTextOn : null]}>
                 {onlineLabel}
-              </Text>
-              <Text style={[styles.onlineArrow, isOnline ? styles.onlineArrowOn : null]}>
-                ⌄
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -3261,8 +3266,8 @@ function OfferCard({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#E8EEF5" },
-  root: { flex: 1, backgroundColor: "#E8EEF5" },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  root: { flex: 1, backgroundColor: MMD_BLUE },
   map: { flex: 1 },
   topHud: {
     position: "absolute",
@@ -3281,6 +3286,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    backgroundColor: MMD_BLUE,
   },
   locationSlot: {
     flex: 1,
@@ -3290,9 +3296,9 @@ const styles = StyleSheet.create({
   locationFallback: {
     minHeight: 32,
     borderRadius: 999,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     paddingHorizontal: 10,
     flexDirection: "row",
     alignItems: "center",
@@ -3300,7 +3306,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   locationFallbackText: {
-    color: "#0F172A",
+    color: MMD_WHITE,
     fontSize: 12,
     fontWeight: "700",
     flexShrink: 1,
@@ -3309,20 +3315,20 @@ const styles = StyleSheet.create({
     height: 32,
     width: 32,
     borderRadius: 16,
-    backgroundColor: "transparent",
+    backgroundColor: MMD_BLUE,
     alignItems: "center",
     justifyContent: "center",
   },
-  iconText: { color: "#0F172A", fontSize: 24, fontWeight: "900" },
+  iconText: { color: MMD_WHITE, fontSize: 24, fontWeight: "900" },
   menuIcon: { width: 20, height: 14, justifyContent: "space-between" },
-  menuLine: { height: 2, borderRadius: 999, backgroundColor: "#0F172A", width: 20 },
-  menuLineShort: { height: 2, borderRadius: 999, backgroundColor: "#0F172A", width: 14 },
+  menuLine: { height: 2, borderRadius: 999, backgroundColor: MMD_WHITE, width: 20 },
+  menuLineShort: { height: 2, borderRadius: 999, backgroundColor: MMD_WHITE, width: 14 },
   bellIcon: { width: 22, height: 22, alignItems: "center", justifyContent: "center" },
-  bellTop: { width: 6, height: 6, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.8, borderColor: "#0F172A", marginBottom: -2 },
-  bellBody: { width: 16, height: 13, borderTopLeftRadius: 9, borderTopRightRadius: 9, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, borderWidth: 1.8, borderColor: "#0F172A" },
-  bellClapper: { width: 5, height: 2.5, borderRadius: 2, backgroundColor: "#0F172A", marginTop: 1 },
+  bellTop: { width: 6, height: 6, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.8, borderColor: MMD_GOLD_CLASSIC, marginBottom: -2 },
+  bellBody: { width: 16, height: 13, borderTopLeftRadius: 9, borderTopRightRadius: 9, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, borderWidth: 1.8, borderColor: MMD_GOLD_CLASSIC },
+  bellClapper: { width: 5, height: 2.5, borderRadius: 2, backgroundColor: MMD_GOLD_CLASSIC, marginTop: 1 },
   locateIcon: { width: 24, height: 24, alignItems: "center", justifyContent: "center" },
-  locateNeedle: { width: 0, height: 0, borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 20, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#020617", transform: [{ rotate: "45deg" }] },
+  locateNeedle: { width: 0, height: 0, borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 20, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: MMD_WHITE, transform: [{ rotate: "45deg" }] },
   medalIcon: { width: 30, height: 32, alignItems: "center", justifyContent: "center" },
   medalRibbonLeft: { position: "absolute", top: 1, left: 7, width: 8, height: 16, borderRadius: 4, backgroundColor: "rgba(167,139,250,0.42)", transform: [{ rotate: "-18deg" }] },
   medalRibbonRight: { position: "absolute", top: 1, right: 7, width: 8, height: 16, borderRadius: 4, backgroundColor: "rgba(167,139,250,0.28)", transform: [{ rotate: "18deg" }] },
@@ -3340,7 +3346,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "900" },
+  badgeText: { color: MMD_WHITE, fontSize: 9, fontWeight: "900" },
   onlinePill: {
     minWidth: 96,
     height: 32,
@@ -3349,14 +3355,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexDirection: "row",
     paddingHorizontal: 10,
+    borderWidth: 1.5,
   },
   onlinePillOn: {
-    backgroundColor: "#0B1220",
+    backgroundColor: MMD_BLUE,
+    borderColor: MMD_STROKE,
   },
   onlinePillOff: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    backgroundColor: "#DC2626",
+    borderColor: MMD_WHITE,
   },
   onlineDot: {
     width: 7,
@@ -3364,10 +3371,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: 6,
   },
-  onlineText: { color: "#374151", fontSize: 11, fontWeight: "900", letterSpacing: 0.3 },
-  onlineTextOn: { color: "#FFFFFF" },
-  onlineArrow: { color: "#9CA3AF", fontSize: 11, fontWeight: "900", marginLeft: 4, marginTop: -1 },
-  onlineArrowOn: { color: "#CBD5E1" },
+  onlineText: { color: MMD_WHITE, fontSize: 11, fontWeight: "900", letterSpacing: 0.3 },
+  onlineTextOn: { color: MMD_WHITE },
+  onlineArrow: { color: MMD_TEXT_MUTED_BLUE, fontSize: 11, fontWeight: "900", marginLeft: 4, marginTop: -1 },
+  onlineArrowOn: { color: MMD_TEXT_MUTED_BLUE },
   modesWrap: {
     marginTop: 8,
     marginBottom: 0,
@@ -3385,20 +3392,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: MMD_BLUE,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
   },
   demandPillText: {
-    color: "#0F172A",
+    color: MMD_WHITE,
     fontSize: 11,
     fontWeight: "700",
   },
@@ -3478,10 +3480,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(15,23,42,0.45)",
+    backgroundColor: "rgba(0,51,153,0.45)",
     zIndex: 70,
   },
-  loadingText: { color: "#E5E7EB", marginTop: 8 },
+  loadingText: { color: MMD_TEXT, marginTop: 8, fontWeight: "700", fontSize: 20 },
   pickupPin: { backgroundColor: "#F97316", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
   dropoffPin: { backgroundColor: "#3B82F6", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
   pinText: { color: "white", fontWeight: "800", fontSize: 11 },
@@ -3633,19 +3635,44 @@ const styles = StyleSheet.create({
   detailLabel: { color: "#64748B", fontSize: 10, fontWeight: "700" },
   detailValue: { color: "#E2E8F0", fontSize: 11, fontWeight: "700", marginTop: 3 },
   offerWrap: { paddingHorizontal: 16, paddingBottom: DRIVER_BOTTOM_PANEL_OFFSET },
-  offerCard: { borderRadius: 24, padding: 16, backgroundColor: "rgba(2,6,23,0.96)", borderWidth: 1, borderColor: "rgba(139,92,246,0.24)" },
-  offerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  offerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
-  countdown: { color: "#F97316", fontSize: 24, fontWeight: "900" },
-  offerAddress: { color: "#94A3B8", fontSize: 12, marginTop: 7 },
-  offerAddressStrong: { color: "#E2E8F0", fontWeight: "800" },
-  offerStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 },
-  offerStat: { color: "#94A3B8", fontSize: 12 },
-  offerStatStrong: { color: "#FFFFFF", fontWeight: "900" },
-  offerMoney: { color: "#4ADE80", fontSize: 22, fontWeight: "900" },
-  offerActions: { flexDirection: "row", marginTop: 14 },
-  declineButton: { flex: 1, paddingVertical: 12, borderRadius: 999, backgroundColor: "#EF4444", alignItems: "center", marginRight: 10 },
-  acceptButton: { flex: 1, paddingVertical: 12, borderRadius: 999, backgroundColor: GREEN, alignItems: "center" },
-  actionText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" },
-  acceptText: { color: "#022C22", fontSize: 14, fontWeight: "900" },
+  offerCard: {
+    borderRadius: 24,
+    padding: 16,
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    gap: 8,
+  },
+  offerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  offerTitle: { color: MMD_WHITE, fontSize: 18, fontWeight: "800" },
+  countdown: { color: "#F97316", fontSize: 24, fontWeight: "800" },
+  offerAddress: { color: "#94A3B8", fontSize: 12 },
+  offerAddressStrong: { color: "#94A3B8", fontWeight: "600" },
+  offerStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  offerStat: { color: "#94A3B8", fontSize: 12, fontWeight: "600" },
+  offerStatStrong: { color: "#94A3B8", fontWeight: "600" },
+  offerMoney: { color: "#4ADE80", fontSize: 22, fontWeight: "800" },
+  offerActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  declineButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: "#EF4444",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  acceptButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 999,
+    backgroundColor: GREEN,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionText: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
+  acceptText: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
 });

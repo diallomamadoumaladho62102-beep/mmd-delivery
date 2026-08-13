@@ -77,8 +77,8 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer: customerId,
-      success_url: `${base}/taxi/business/wallet?topup=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${base}/taxi/business/wallet?topup=cancel`,
+      success_url: `${base}/business/wallet?topup=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${base}/business/wallet?topup=cancel`,
       line_items: [
         {
           quantity: 1,

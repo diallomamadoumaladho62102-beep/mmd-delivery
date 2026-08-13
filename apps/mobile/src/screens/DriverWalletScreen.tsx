@@ -1,3 +1,7 @@
+/**
+ * Driver wallet — Stripe Connect cashout.
+ * UI: Figma 308:6374 Loading / 308:6393 Empty / 308:6444 Funded Ready / 308:6516 Funded Setup.
+ */
 import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
@@ -7,11 +11,13 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
 import { supabase } from "../lib/supabase";
 import {
   fetchDriverWalletSnapshot,
@@ -21,7 +27,6 @@ import {
   type WalletLedgerEntry,
 } from "../lib/walletApi";
 import { startStripeOnboarding } from "../utils/stripe";
-import { APP_COLORS } from "../theme/appTheme";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 import { getApiBaseUrl } from "../lib/apiBase";
 import {
@@ -31,24 +36,26 @@ import {
   stripeConnectUserMessage,
   type StripeConnectStatusCode,
 } from "../lib/stripeConnectStatus";
-import {
-  WalletEmptyState,
-  WalletHistoryRow,
-} from "../components/wallet/WalletPrimitives";
 import { financialStatusColor } from "../components/wallet/walletStatusColor";
 import { formatDateTime } from "../i18n/formatters";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_MUTED,
+  MMD_TAXI_GREEN,
+  MMD_TEXT,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
-const BG = "#020617";
-const CARD = "rgba(15,23,42,0.86)";
-const CARD_SOFT = "rgba(2,6,23,0.72)";
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
+
 const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = APP_COLORS.accent;
-const PURPLE_DARK = "#8B5CF6";
-const GREEN = "#22C55E";
+const LILAC = "#A78BFA";
+const AMBER = "#F59E0B";
 const RED = "#FCA5A5";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
-const BLUE = "#93C5FD";
+const SLATE = "#64748B";
 
 async function getFunctionErrorPayload(error: any): Promise<{ code?: string; message?: string }> {
   try {
@@ -95,14 +102,49 @@ async function getFunctionErrorPayload(error: any): Promise<{ code?: string; mes
   return { message: "Unable to request cash out." };
 }
 
+void getFunctionErrorPayload;
+
 function payoutStatusColor(status: string) {
   return financialStatusColor(status);
+}
+
+function BrandFooter({ stacked }: { stacked?: boolean }) {
+  return (
+    <View style={[styles.footer, stacked && styles.footerStacked]}>
+      <Image
+        source={MMD_LOGO}
+        style={styles.footerLogo}
+        resizeMode="contain"
+        accessibilityLabel="MMD Delivery"
+      />
+      <Text style={styles.footerBrand}>MMD Delivery</Text>
+    </View>
+  );
+}
+
+function MetricCard({
+  label,
+  amount,
+  sub,
+}: {
+  label: string;
+  amount: string;
+  sub: string;
+}) {
+  return (
+    <View style={styles.metricCard}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricAmount}>{amount}</Text>
+      <Text style={styles.metricSub}>{sub}</Text>
+    </View>
+  );
 }
 
 export function DriverWalletScreen() {
   const { t, i18n } = useTranslation();
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [currency, setCurrency] = useState("USD");
   const [availableCents, setAvailableCents] = useState(0);
@@ -130,7 +172,7 @@ export function DriverWalletScreen() {
 
   const fmtMoney = useCallback(
     (cents: number) => formatWalletAmount(cents, currency),
-    [currency]
+    [currency],
   );
 
   const payoutBuckets = useMemo(() => {
@@ -166,7 +208,7 @@ export function DriverWalletScreen() {
       case "already_cashed_out_today":
         return t(
           "driver.wallet.cashoutReason.alreadyToday",
-          "You already requested a cash out today. Try again tomorrow."
+          "You already requested a cash out today. Try again tomorrow.",
         );
       case "below_minimum":
         return t("driver.wallet.cashoutReason.min", "Minimum cash out: {{min}}.", {
@@ -179,12 +221,15 @@ export function DriverWalletScreen() {
     }
   }, [cashoutBlockReason, minimumPayoutCents, fmtMoney, t, stripeStatusMessage]);
 
-  const applyStripeStatus = useCallback((codeRaw: unknown, label?: string | null, message?: string | null) => {
-    const code = normalizeStripeConnectStatus(codeRaw);
-    setStripeStatus(code);
-    setStripeStatusLabel(label?.trim() || stripeConnectStatusLabel(code));
-    setStripeStatusMessage(message?.trim() || stripeConnectUserMessage(code));
-  }, []);
+  const applyStripeStatus = useCallback(
+    (codeRaw: unknown, label?: string | null, message?: string | null) => {
+      const code = normalizeStripeConnectStatus(codeRaw);
+      setStripeStatus(code);
+      setStripeStatusLabel(label?.trim() || stripeConnectStatusLabel(code));
+      setStripeStatusMessage(message?.trim() || stripeConnectUserMessage(code));
+    },
+    [],
+  );
 
   const fetchWallet = useCallback(
     async (aliveRef?: { alive: boolean }) => {
@@ -259,7 +304,6 @@ export function DriverWalletScreen() {
             summary.stripe_status_message,
           );
         }
-        // Prefer live Connect sync when available (strict Stripe flags).
         if (connectData && typeof connectData === "object") {
           const connect = connectData as Record<string, unknown>;
           if (connect.status) {
@@ -282,9 +326,10 @@ export function DriverWalletScreen() {
       } finally {
         if (aliveRef && !aliveRef.alive) return;
         setLoading(false);
+        setInitialLoad(false);
       }
     },
-    [t, applyStripeStatus]
+    [t, applyStripeStatus],
   );
 
   useFocusEffect(
@@ -295,7 +340,7 @@ export function DriverWalletScreen() {
       return () => {
         aliveRef.alive = false;
       };
-    }, [fetchWallet])
+    }, [fetchWallet]),
   );
 
   const onPressActivateStripe = useCallback(async () => {
@@ -326,7 +371,7 @@ export function DriverWalletScreen() {
         t("driver.wallet.cashoutUnavailable.title", "Cash out unavailable"),
         cashoutReason ||
           stripeStatusMessage ||
-          t("driver.wallet.cashoutUnavailable.body", "Cash out unavailable.")
+          t("driver.wallet.cashoutUnavailable.body", "Cash out unavailable."),
       );
       return;
     }
@@ -336,7 +381,7 @@ export function DriverWalletScreen() {
       t(
         "driver.wallet.cashoutConfirm.body",
         "You will cash out your full available balance: {{amount}}.\n\nReminder: minimum {{min}} • 1 cash out / day.",
-        { amount: fmtMoney(availableCents), min: fmtMoney(minimumPayoutCents) }
+        { amount: fmtMoney(availableCents), min: fmtMoney(minimumPayoutCents) },
       ),
       [
         { text: t("common.cancel", "Cancel"), style: "cancel" },
@@ -352,7 +397,7 @@ export function DriverWalletScreen() {
               if (sessionErr || !accessToken) {
                 Alert.alert(
                   t("driver.wallet.cashout.title", "Cash out"),
-                  t("driver.wallet.cashout.authError", "Please sign in again.")
+                  t("driver.wallet.cashout.authError", "Please sign in again."),
                 );
                 return;
               }
@@ -404,7 +449,7 @@ export function DriverWalletScreen() {
                 t("driver.wallet.cashoutRequested.title", "Cash out requested"),
                 t("driver.wallet.cashoutRequested.body", "Cash out scheduled: {{amount}}.", {
                   amount: fmtMoney(paidCents),
-                })
+                }),
               );
 
               await fetchWallet();
@@ -422,7 +467,7 @@ export function DriverWalletScreen() {
             }
           },
         },
-      ]
+      ],
     );
   }, [
     driverId,
@@ -439,18 +484,32 @@ export function DriverWalletScreen() {
   ]);
 
   const statusReady = isStripeConnectReady(stripeStatus);
+  const fundedSetup = !statusReady && availableCents > 0;
   const statusPillStyle = statusReady
     ? styles.statusReady
     : stripeStatus === "restricted" || stripeStatus === "disabled"
       ? styles.statusDanger
       : styles.statusWarning;
   const statusDotColor = statusReady
-    ? GREEN
+    ? MMD_TAXI_GREEN
     : stripeStatus === "restricted" || stripeStatus === "disabled"
       ? RED
-      : "#F59E0B";
+      : AMBER;
 
   const availableMethods = payoutMethods.filter((method) => method.available);
+
+  if (initialLoad && loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("driver.wallet.header.title", "Wallet")}
+          fallbackRoute="DriverTabs"
+          variant="mmd"
+        />
+        <DriverBrandLoadingState title={t("common.loading", "Loading…")} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
@@ -458,7 +517,7 @@ export function DriverWalletScreen() {
         <ScreenHeader
           title={t("driver.wallet.header.title", "Wallet")}
           fallbackRoute="DriverTabs"
-          variant="dark"
+          variant="mmd"
           rightSlot={
             <TouchableOpacity
               onPress={() => fetchWallet()}
@@ -467,45 +526,77 @@ export function DriverWalletScreen() {
               activeOpacity={0.85}
             >
               <Text style={styles.refreshText}>
-                {loading ? t("shared.common.loadingEllipsis", "…") : t("shared.common.refresh", "Refresh")}
+                {loading
+                  ? t("shared.common.loadingEllipsis", "…")
+                  : t("shared.common.refresh", "Refresh")}
               </Text>
             </TouchableOpacity>
           }
         />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.heroCard}>
-            <View style={styles.heroTopRow}>
-              <View>
-                <Text style={styles.eyebrow}>{t("driver.wallet.title", "Earnings")}</Text>
-                <Text style={styles.heroLabel}>{t("driver.wallet.available.title", "Available")}</Text>
+          <View style={[styles.heroCard, fundedSetup && styles.heroCardSetup]}>
+            {fundedSetup ? (
+              <View style={styles.heroTopRow}>
+                <View style={styles.earningsInline}>
+                  <Text style={styles.eyebrowAmber}>
+                    💰 {t("driver.wallet.title", "Earnings")}
+                  </Text>
+                  <View style={[styles.statusPill, styles.statusWarning, { marginLeft: 8 }]}>
+                    <View style={[styles.statusDot, { backgroundColor: AMBER }]} />
+                    <Text style={styles.statusText}>{stripeStatusLabel}</Text>
+                  </View>
+                </View>
               </View>
-
-              <View style={[styles.statusPill, statusPillStyle]}>
-                <View style={[styles.statusDot, { backgroundColor: statusDotColor }]} />
-                <Text style={styles.statusText}>{stripeStatusLabel}</Text>
+            ) : (
+              <View style={styles.heroTopRow}>
+                <View>
+                  <Text style={styles.eyebrow}>
+                    💰 {t("driver.wallet.title", "Earnings")}
+                  </Text>
+                  <Text style={styles.heroLabel}>
+                    {t("driver.wallet.available.title", "Available")}
+                  </Text>
+                </View>
+                <View style={[styles.statusPill, statusPillStyle]}>
+                  <View style={[styles.statusDot, { backgroundColor: statusDotColor }]} />
+                  <Text style={styles.statusText}>{stripeStatusLabel}</Text>
+                </View>
               </View>
-            </View>
+            )}
 
             {loading ? (
-              <View style={styles.loadingRow} accessibilityRole="progressbar">
-                <ActivityIndicator color="#fff" />
+              <View style={styles.loadingBlock} accessibilityRole="progressbar">
+                <ActivityIndicator color={LILAC} />
                 <Text style={styles.loadingText}>{t("common.loading", "Loading…")}</Text>
               </View>
             ) : (
               <>
-                <Text style={styles.availableAmount}>{fmtMoney(availableCents)}</Text>
+                <Text style={[styles.availableAmount, fundedSetup && { fontSize: 32 }]}>
+                  {fmtMoney(availableCents)}
+                </Text>
                 <Text style={styles.rulesText}>
                   {t(
                     "driver.wallet.available.connectHint",
                     "Available to cash out from your Stripe Connect balance",
                   )}
                 </Text>
-                <Text style={styles.rulesText}>
-                  {t("driver.wallet.available.rules", "Minimum cash out: {{min}} • 1 cash out / day", {
-                    min: fmtMoney(minimumPayoutCents),
-                  })}
-                </Text>
+                {statusReady ? (
+                  <Text style={styles.rulesText}>
+                    {t(
+                      "driver.wallet.available.readyHint",
+                      "Payouts enabled. You can cash out your available balance.",
+                    )}
+                  </Text>
+                ) : (
+                  <Text style={styles.rulesText}>
+                    {t(
+                      "driver.wallet.available.rules",
+                      "Minimum cash out: {{min}} • 1 cash out / day",
+                      { min: fmtMoney(minimumPayoutCents) },
+                    )}
+                  </Text>
+                )}
                 {awaitingTransferCents > 0 ? (
                   <Text style={styles.reasonTextMuted}>
                     {t(
@@ -516,20 +607,37 @@ export function DriverWalletScreen() {
                   </Text>
                 ) : null}
 
-                <Text style={styles.reasonTextMuted}>{stripeStatusMessage}</Text>
-
-                {!canCashout && cashoutReason ? <Text style={styles.reasonText}>{cashoutReason}</Text> : null}
+                {!canCashout && cashoutReason ? (
+                  <TouchableOpacity
+                    onPress={onPressActivateStripe}
+                    activeOpacity={0.85}
+                    disabled={statusReady}
+                  >
+                    <Text
+                      style={[
+                        styles.reasonText,
+                        fundedSetup && styles.reasonLink,
+                        statusReady && { color: MMD_MUTED },
+                      ]}
+                    >
+                      {cashoutReason}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
 
                 <TouchableOpacity
                   onPress={onPressCashout}
                   disabled={loading || !canCashout}
-                  style={[styles.cashoutButton, canCashout ? styles.cashoutReady : styles.cashoutDisabled]}
+                  style={[
+                    styles.cashoutButton,
+                    canCashout ? styles.cashoutReady : styles.cashoutDisabled,
+                  ]}
                   activeOpacity={0.88}
                   accessibilityRole="button"
                   accessibilityState={{ disabled: loading || !canCashout }}
                   accessibilityLabel={t("driver.wallet.available.cashoutButton", "Cash out")}
                 >
-                  <Text style={[styles.cashoutText, !canCashout && { color: "#94A3B8" }]}>
+                  <Text style={[styles.cashoutText, !canCashout && { color: MMD_MUTED }]}>
                     {t("driver.wallet.available.cashoutButton", "Cash out")}
                   </Text>
                 </TouchableOpacity>
@@ -537,196 +645,229 @@ export function DriverWalletScreen() {
             )}
           </View>
 
-          {!statusReady ? (
-            <View style={styles.setupCard}>
-              <View style={styles.cardIconBox}>
-                <WalletIcon />
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={styles.setupTitle}>
-                  {stripeAccountId
-                    ? t("driver.wallet.stripe.continueTitle", "Continue Stripe setup")
-                    : t("driver.wallet.stripe.activateTitle", "Enable payouts")}
-                </Text>
-                <Text style={styles.setupSub}>{stripeStatusMessage}</Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={onPressActivateStripe}
-                disabled={loading}
-                style={[styles.setupButton, loading && { opacity: 0.6 }]}
-                activeOpacity={0.86}
-              >
-                <Text style={styles.setupButtonText}>
-                  {loading
-                    ? t("common.loading", "Loading…")
-                    : stripeAccountId
+          {!loading ? (
+            !statusReady ? (
+              <View style={styles.setupCard}>
+                <View style={styles.cardIconBox}>
+                  <Text style={styles.cardEmoji}>💳</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.setupTitle}>
+                    {stripeAccountId
+                      ? t("driver.wallet.stripe.continueTitle", "Continue Stripe setup")
+                      : t("driver.wallet.stripe.activateTitle", "Enable payouts")}
+                  </Text>
+                  <Text style={styles.setupSub}>
+                    {stripeAccountId
+                      ? t(
+                          "driver.wallet.stripe.continueDesc",
+                          "Finish verification to unlock cash out.",
+                        )
+                      : t(
+                          "driver.wallet.stripe.activateDesc",
+                          "Complete Stripe Connect onboarding to receive payouts.",
+                        )}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={onPressActivateStripe}
+                  disabled={loading}
+                  style={[
+                    stripeAccountId ? styles.continueBtn : styles.enableBtn,
+                    loading && { opacity: 0.6 },
+                  ]}
+                  activeOpacity={0.86}
+                >
+                  <Text
+                    style={stripeAccountId ? styles.continueBtnText : styles.enableBtnText}
+                  >
+                    {stripeAccountId
                       ? t("driver.wallet.stripe.continueButton", "Continue")
                       : t("driver.wallet.stripe.activateButton", "Enable")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.setupCard}>
-              <View style={styles.cardIconBox}>
-                <WalletIcon />
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.setupTitle}>
-                  {t("driver.wallet.stripe.manageTitle", "Bank & payout method")}
-                </Text>
-                <Text style={styles.setupSub}>
-                  {t(
-                    "driver.wallet.stripe.manageDesc",
-                    "Add, update or replace your bank account in Stripe Express.",
-                  )}
-                </Text>
+            ) : (
+              <View style={styles.setupCard}>
+                <View style={[styles.cardIconBox, styles.cardIconLilac]}>
+                  <Text style={styles.cardEmoji}>🏦</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.setupTitle}>
+                    {t("driver.wallet.stripe.manageTitle", "Bank & payout method")}
+                  </Text>
+                  <Text style={styles.setupSub}>
+                    {t(
+                      "driver.wallet.stripe.manageDesc",
+                      "Add, update or replace your bank account in Stripe Express.",
+                    )}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={onPressActivateStripe}
+                  disabled={loading}
+                  style={[styles.manageBtn, loading && { opacity: 0.6 }]}
+                  activeOpacity={0.86}
+                >
+                  <Text style={styles.manageBtnText}>
+                    {t("driver.wallet.stripe.manageButton", "Manage")}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={onPressActivateStripe}
-                disabled={loading}
-                style={[styles.setupButton, loading && { opacity: 0.6 }]}
-                activeOpacity={0.86}
-              >
-                <Text style={styles.setupButtonText}>
-                  {t("driver.wallet.stripe.manageButton", "Manage")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.cardsRow}>
-            <View style={styles.smallCard}>
-              <Text style={styles.smallLabel}>{t("driver.wallet.pending.title", "Pending")}</Text>
-              <Text style={styles.smallAmount}>{fmtMoney(pendingCents)}</Text>
-              <Text style={styles.smallSub}>{t("driver.wallet.pending.desc", "Not yet available")}</Text>
-            </View>
-
-            <View style={styles.smallCard}>
-              <Text style={styles.smallLabel}>{t("driver.wallet.ledger.title", "Ledger balance")}</Text>
-              <Text style={styles.smallAmount}>{fmtMoney(ledgerBalanceCents)}</Text>
-              <Text style={styles.smallSub}>{t("driver.wallet.ledger.desc", "Official backend balance")}</Text>
-            </View>
-          </View>
-
-          <View style={styles.cardsRow}>
-            <View style={styles.smallCard}>
-              <Text style={styles.smallLabel}>
-                {t("driver.wallet.processing.title", "Processing payouts")}
-              </Text>
-              <Text style={styles.smallAmount}>{fmtMoney(payoutBuckets.processingCents)}</Text>
-              <Text style={styles.smallSub}>
-                {t("driver.wallet.processing.desc", "{{count}} in progress", {
-                  count: payoutBuckets.processingCount,
-                })}
-              </Text>
-            </View>
-            <View style={styles.smallCard}>
-              <Text style={styles.smallLabel}>
-                {t("driver.wallet.completed.title", "Completed payouts")}
-              </Text>
-              <Text style={styles.smallAmount}>{fmtMoney(payoutBuckets.completedCents)}</Text>
-              <Text style={styles.smallSub}>
-                {t("driver.wallet.failed.short", "Failed: {{amount}}", {
-                  amount: fmtMoney(payoutBuckets.failedCents),
-                })}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>{t("driver.wallet.stripe.statusTitle", "Stripe account status")}</Text>
-            <Text style={styles.infoSub}>{stripeStatusLabel}</Text>
-            <Text style={[styles.infoSub, { color: MUTED, marginTop: 4 }]}>{stripeStatusMessage}</Text>
-            <Text style={[styles.infoSub, { color: MUTED, marginTop: 8 }]}>
-              {t("driver.wallet.limits.daily", "Daily payout limit: 1 cash out / day")}
-            </Text>
-            <Text style={[styles.infoSub, { color: MUTED, marginTop: 4 }]}>
-              {t("driver.wallet.limits.minimum", "Minimum payout: {{min}}", {
-                min: fmtMoney(minimumPayoutCents),
-              })}
-            </Text>
-          </View>
-
-          {availableMethods.length > 0 ? (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoTitle}>{t("driver.wallet.payoutMethods.title", "Payout methods")}</Text>
-              {availableMethods.map((method) => (
-                <Text key={method.method_code} style={styles.infoSub}>
-                  {method.display_name}
-                  {method.auto_payout_enabled
-                    ? ` • ${t("driver.wallet.payoutMethods.auto", "Automatic")}`
-                    : ` • ${t("driver.wallet.payoutMethods.manual", "Manual")}`}
-                </Text>
-              ))}
-            </View>
+            )
           ) : null}
 
-          {(cashoutBlockedToday && lastCashoutAt) || payoutBuckets.lastPayout ? (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoTitle}>{t("driver.wallet.available.lastCashout", "Last cash out")}</Text>
-              <Text style={styles.infoSub}>
-                {lastCashoutAt
-                  ? formatDateTime(lastCashoutAt, localeForDates)
-                  : payoutBuckets.lastPayout
-                    ? `${fmtMoney(payoutBuckets.lastPayout.amount_cents)} • ${formatDateTime(
-                        payoutBuckets.lastPayout.created_at,
-                        localeForDates,
-                      )}`
-                    : t("common.dash", "—")}
-              </Text>
-            </View>
-          ) : null}
-
-          {payoutTransactions.length > 0 ? (
-            <View style={styles.listCard}>
-              <Text style={styles.listTitle}>{t("driver.wallet.payouts.title", "Recent payouts")}</Text>
-              {payoutTransactions.slice(0, 8).map((item) => (
-                <WalletHistoryRow
-                  key={item.id}
-                  title={fmtMoney(item.amount_cents)}
-                  meta={`${item.provider} • ${formatDateTime(item.created_at, localeForDates)}${
-                    item.failure_reason ? ` • ${item.failure_reason}` : ""
-                  }`}
-                  amount={String(item.status)}
-                  amountColor={payoutStatusColor(item.status)}
+          {!loading ? (
+            <>
+              <View style={styles.cardsRow}>
+                <MetricCard
+                  label={t("driver.wallet.pending.title", "Pending")}
+                  amount={fmtMoney(pendingCents)}
+                  sub={t("driver.wallet.pending.desc", "Not yet available")}
                 />
-              ))}
-            </View>
-          ) : (
-            <WalletEmptyState
-              title={t("driver.wallet.payouts.emptyTitle", "No payouts yet")}
-              body={t(
-                "driver.wallet.payouts.emptyBody",
-                "Completed cash outs will appear here.",
+                <MetricCard
+                  label={t("driver.wallet.ledger.title", "Ledger balance")}
+                  amount={fmtMoney(ledgerBalanceCents)}
+                  sub={t("driver.wallet.ledger.desc", "Official backend balance")}
+                />
+              </View>
+
+              {!fundedSetup ? (
+                <View style={styles.cardsRow}>
+                  <MetricCard
+                    label={t("driver.wallet.processing.title", "Processing payouts")}
+                    amount={fmtMoney(payoutBuckets.processingCents)}
+                    sub={t("driver.wallet.processing.desc", "{{count}} in progress", {
+                      count: payoutBuckets.processingCount,
+                    })}
+                  />
+                  <MetricCard
+                    label={t("driver.wallet.completed.title", "Completed payouts")}
+                    amount={fmtMoney(payoutBuckets.completedCents)}
+                    sub={t("driver.wallet.failed.short", "Failed: {{amount}}", {
+                      amount: fmtMoney(payoutBuckets.failedCents),
+                    })}
+                  />
+                </View>
+              ) : null}
+
+              {availableMethods.length > 0 ? (
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoTitle}>
+                    {t("driver.wallet.payoutMethods.title", "Payout methods")}
+                  </Text>
+                  {availableMethods.map((method) => (
+                    <Text key={method.method_code} style={styles.infoSub}>
+                      {method.display_name}
+                      {method.auto_payout_enabled
+                        ? ` • ${t("driver.wallet.payoutMethods.auto", "Automatic")}`
+                        : ` • ${t("driver.wallet.payoutMethods.manual", "Manual")}`}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+
+              {(cashoutBlockedToday && lastCashoutAt) || payoutBuckets.lastPayout ? (
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoTitle}>
+                    {t("driver.wallet.available.lastCashout", "Last cash out")}
+                  </Text>
+                  <Text style={styles.infoSub}>
+                    {lastCashoutAt
+                      ? formatDateTime(lastCashoutAt, localeForDates)
+                      : payoutBuckets.lastPayout
+                        ? `${fmtMoney(payoutBuckets.lastPayout.amount_cents)} • ${formatDateTime(
+                            payoutBuckets.lastPayout.created_at,
+                            localeForDates,
+                          )}`
+                        : t("common.dash", "—")}
+                  </Text>
+                </View>
+              ) : null}
+
+              {payoutTransactions.length > 0 ? (
+                <View style={styles.listCard}>
+                  <Text style={styles.listTitle}>
+                    {t("driver.wallet.payouts.title", "Recent payouts")}
+                  </Text>
+                  {payoutTransactions.slice(0, 8).map((item) => {
+                    const tone = financialStatusColor(item.status);
+                    const isPaid = tone === MMD_TAXI_GREEN;
+                    const isPending = tone === AMBER;
+                    return (
+                      <View key={item.id} style={styles.payoutRow}>
+                        <Text style={styles.payoutAmount}>{fmtMoney(item.amount_cents)}</Text>
+                        <Text style={styles.payoutMeta} numberOfLines={2}>
+                          {item.provider} • {formatDateTime(item.created_at, localeForDates)}
+                          {item.failure_reason ? ` • ${item.failure_reason}` : ""}
+                        </Text>
+                        <View
+                          style={[
+                            styles.payoutBadge,
+                            isPaid && styles.payoutBadgePaid,
+                            isPending && styles.payoutBadgePending,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.payoutBadgeText,
+                              { color: payoutStatusColor(item.status) },
+                            ]}
+                          >
+                            {String(item.status)}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.emptyPayouts}>
+                  <Text style={styles.emptyTitle}>
+                    {fundedSetup
+                      ? `📭 ${t("driver.wallet.payouts.emptyTitle", "No payouts yet")}`
+                      : t("driver.wallet.payouts.emptyTitle", "No payouts yet")}
+                  </Text>
+                  <Text style={styles.emptyBody}>
+                    {t(
+                      "driver.wallet.payouts.emptyBody",
+                      "Completed cash outs will appear here.",
+                    )}
+                  </Text>
+                </View>
               )}
-            />
-          )}
 
-          {ledgerHistory.length > 0 ? (
-            <View style={styles.listCard}>
-              <Text style={styles.listTitle}>{t("driver.wallet.history.title", "Wallet history")}</Text>
-              {ledgerHistory.slice(0, 8).map((item) => (
-                <WalletHistoryRow
-                  key={item.id}
-                  title={item.description ?? item.reference_type}
-                  meta={formatDateTime(item.created_at, localeForDates)}
-                  amount={`${item.direction === "credit" ? "+" : "−"}${fmtMoney(item.amount_cents)}`}
-                  amountColor={
-                    item.direction === "credit"
-                      ? financialStatusColor("paid")
-                      : financialStatusColor("pending")
-                  }
-                />
-              ))}
-            </View>
-          ) : null}
+              {ledgerHistory.length > 0 ? (
+                <View style={styles.listCard}>
+                  <Text style={styles.listTitle}>
+                    {t("driver.wallet.history.title", "Wallet history")}
+                  </Text>
+                  {ledgerHistory.slice(0, 8).map((item) => (
+                    <View key={item.id} style={styles.historyRow}>
+                      <Text style={styles.historyTitle} numberOfLines={1}>
+                        {item.description ?? item.reference_type}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.historyAmount,
+                          {
+                            color:
+                              item.direction === "credit" ? MMD_TAXI_GREEN : "#EF4444",
+                          },
+                        ]}
+                      >
+                        {`${item.direction === "credit" ? "+" : "−"}${fmtMoney(item.amount_cents)}`}
+                      </Text>
+                      <Text style={styles.historyMeta}>
+                        {formatDateTime(item.created_at, localeForDates)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
 
-          {driverId ? (
-            <Text style={styles.driverDebug}>
-              {t("driver.wallet.debug.driver", "Driver")} : {driverId.slice(0, 8)}…
-            </Text>
+              <BrandFooter stacked={fundedSetup} />
+            </>
           ) : null}
         </ScrollView>
       </View>
@@ -734,67 +875,63 @@ export function DriverWalletScreen() {
   );
 }
 
-function WalletIcon() {
-  return (
-    <View style={styles.walletIcon}>
-      <View style={styles.walletBody} />
-      <View style={styles.walletDot} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG },
-  root: { flex: 1, backgroundColor: BG },
-  headerRow: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 8,
-    minHeight: 62,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  roundButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: CARD_SOFT,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backIcon: { color: BLUE, fontSize: 34, fontWeight: "700", marginTop: -2 },
-  headerTitle: { color: TEXT, fontSize: 18, fontWeight: "900", letterSpacing: 0.2 },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  root: { flex: 1, backgroundColor: MMD_BLUE },
   refreshButton: {
     minWidth: 86,
     height: 42,
     borderRadius: 999,
-    backgroundColor: CARD_SOFT,
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,
     borderColor: BORDER,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 12,
   },
-  refreshText: { color: "#E5E7EB", fontWeight: "900", fontSize: 12 },
-  content: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 32 },
+  refreshText: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  content: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 32, gap: 14 },
   heroCard: {
-    borderRadius: 30,
+    borderRadius: 14,
     padding: 18,
-    backgroundColor: CARD,
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
     borderColor: "rgba(167,139,250,0.2)",
-    shadowColor: PURPLE_DARK,
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
   },
-  heroTopRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-  eyebrow: { color: PURPLE, fontSize: 13, fontWeight: "900", letterSpacing: 0.4 },
-  heroLabel: { color: MUTED, fontSize: 13, fontWeight: "900", marginTop: 5 },
+  heroCardSetup: {
+    borderColor: "rgba(255,255,255,0.1)",
+    padding: 16,
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  earningsInline: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
+  eyebrow: {
+    color: LILAC,
+    fontSize: 13,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  eyebrowAmber: {
+    color: AMBER,
+    fontSize: 14,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  heroLabel: {
+    color: MMD_MUTED,
+    fontSize: 13,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    marginTop: 4,
+  },
   statusPill: {
     minHeight: 32,
     borderRadius: 999,
@@ -802,18 +939,72 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
+    paddingVertical: 4,
   },
-  statusReady: { backgroundColor: "rgba(34,197,94,0.1)", borderColor: "rgba(34,197,94,0.24)" },
-  statusWarning: { backgroundColor: "rgba(245,158,11,0.1)", borderColor: "rgba(245,158,11,0.24)" },
-  statusDanger: { backgroundColor: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.35)" },
+  statusReady: {
+    backgroundColor: "rgba(34,197,94,0.1)",
+    borderColor: "rgba(34,197,94,0.24)",
+  },
+  statusWarning: {
+    backgroundColor: "rgba(245,158,11,0.1)",
+    borderColor: "rgba(245,158,11,0.24)",
+  },
+  statusDanger: {
+    backgroundColor: "rgba(239,68,68,0.12)",
+    borderColor: "rgba(239,68,68,0.35)",
+  },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 7 },
-  statusText: { color: TEXT, fontSize: 11, fontWeight: "900" },
-  loadingRow: { marginTop: 18, flexDirection: "row", alignItems: "center", gap: 10 },
-  loadingText: { color: MUTED, fontWeight: "800" },
-  availableAmount: { color: TEXT, fontSize: 42, fontWeight: "900", marginTop: 10, letterSpacing: -1 },
-  rulesText: { color: MUTED, marginTop: 8, fontWeight: "800", lineHeight: 19 },
-  reasonText: { color: RED, marginTop: 10, fontWeight: "800", lineHeight: 19 },
-  reasonTextMuted: { color: MUTED, marginTop: 8, fontWeight: "700", lineHeight: 18 },
+  statusText: {
+    color: MMD_TEXT,
+    fontSize: 11,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  loadingBlock: {
+    marginTop: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 20,
+  },
+  loadingText: {
+    color: MMD_TEXT,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  availableAmount: {
+    color: MMD_TEXT,
+    fontSize: 42,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    marginTop: 10,
+    letterSpacing: -1,
+  },
+  rulesText: {
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 8,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+    lineHeight: 19,
+  },
+  reasonText: {
+    color: AMBER,
+    marginTop: 10,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    lineHeight: 19,
+    fontSize: 13,
+  },
+  reasonLink: { textDecorationLine: "underline", fontSize: 12 },
+  reasonTextMuted: {
+    color: MMD_MUTED,
+    marginTop: 8,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
   cashoutButton: {
     marginTop: 16,
     height: 54,
@@ -822,103 +1013,284 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  cashoutReady: { backgroundColor: "rgba(34,197,94,0.14)", borderColor: "rgba(34,197,94,0.55)" },
-  cashoutDisabled: { backgroundColor: "rgba(2,6,23,0.55)", borderColor: BORDER, opacity: 0.65 },
-  cashoutText: { color: TEXT, fontWeight: "900", fontSize: 15 },
+  cashoutReady: {
+    backgroundColor: "rgba(34,197,94,0.14)",
+    borderColor: "rgba(34,197,94,0.55)",
+  },
+  cashoutDisabled: {
+    backgroundColor: "rgba(0,51,204,0.55)",
+    borderColor: "rgba(255,255,255,0.1)",
+    opacity: 0.65,
+    height: 44,
+    borderRadius: 12,
+  },
+  cashoutText: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 15,
+  },
   setupCard: {
-    marginTop: 14,
-    borderRadius: 24,
+    borderRadius: 14,
     padding: 14,
-    backgroundColor: CARD,
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
     borderColor: BORDER,
     flexDirection: "row",
     alignItems: "center",
   },
   cardIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 17,
-    backgroundColor: "rgba(139,92,246,0.14)",
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
   },
-  setupTitle: { color: TEXT, fontWeight: "900", fontSize: 15 },
-  setupSub: { color: MUTED, fontWeight: "700", fontSize: 12, marginTop: 4, lineHeight: 17 },
-  setupButton: {
+  cardIconLilac: {
+    width: 46,
+    height: 46,
+    borderRadius: 17,
+    backgroundColor: "rgba(167,139,250,0.14)",
+  },
+  cardEmoji: { fontSize: 18 },
+  setupTitle: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 15,
+  },
+  setupSub: {
+    color: "rgba(255,255,255,0.7)",
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 17,
+  },
+  enableBtn: {
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginLeft: 10,
+  },
+  enableBtnText: {
+    color: MMD_BLUE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  continueBtn: {
+    backgroundColor: LILAC,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 10,
+  },
+  continueBtnText: {
+    color: MMD_BLUE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  manageBtn: {
     height: 40,
     borderRadius: 14,
     paddingHorizontal: 13,
-    backgroundColor: "rgba(139,92,246,0.16)",
+    backgroundColor: "rgba(167,139,250,0.16)",
     borderWidth: 1,
     borderColor: "rgba(167,139,250,0.38)",
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 10,
+    minWidth: 80,
   },
-  setupButtonText: { color: PURPLE, fontWeight: "900", fontSize: 12 },
-  cardsRow: { flexDirection: "row", gap: 12, marginTop: 14 },
-  smallCard: {
+  manageBtnText: {
+    color: LILAC,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  cardsRow: { flexDirection: "row", gap: 12 },
+  metricCard: {
     flex: 1,
     minHeight: 132,
     borderRadius: 24,
     padding: 15,
-    backgroundColor: CARD,
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
     borderColor: BORDER,
-    justifyContent: "space-between",
+    gap: 8,
   },
-  smallLabel: { color: MUTED, fontWeight: "900", fontSize: 12 },
-  smallAmount: { color: TEXT, fontWeight: "900", fontSize: 22, marginTop: 8 },
-  smallSub: { color: "#64748B", fontWeight: "800", fontSize: 11, marginTop: 8, lineHeight: 15 },
+  metricLabel: {
+    color: MMD_MUTED,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  metricAmount: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 22,
+  },
+  metricSub: {
+    color: SLATE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 11,
+    lineHeight: 15,
+  },
   infoCard: {
-    marginTop: 14,
-    borderRadius: 22,
+    borderRadius: 14,
     padding: 14,
-    backgroundColor: "rgba(15,23,42,0.62)",
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
     borderColor: BORDER,
   },
-  infoTitle: { color: MUTED, fontWeight: "900", fontSize: 12 },
-  infoSub: { color: TEXT, fontWeight: "800", marginTop: 5 },
+  infoTitle: {
+    color: MMD_MUTED,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  infoSub: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    marginTop: 5,
+  },
   listCard: {
-    marginTop: 14,
-    borderRadius: 22,
+    borderRadius: 14,
     padding: 14,
-    backgroundColor: CARD,
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
     borderColor: BORDER,
+    gap: 12,
   },
-  listTitle: { color: TEXT, fontWeight: "900", fontSize: 14, marginBottom: 10 },
-  listRow: {
+  listTitle: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  payoutRow: {
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    padding: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
   },
-  listPrimary: { color: TEXT, fontWeight: "900", fontSize: 14 },
-  listSecondary: { color: MUTED, fontWeight: "700", fontSize: 11, marginTop: 3 },
-  listStatus: { fontWeight: "900", fontSize: 11, textTransform: "uppercase" },
-  driverDebug: { color: "#334155", marginTop: 18, fontSize: 11, fontWeight: "700" },
-  walletIcon: { width: 26, height: 22, justifyContent: "center" },
-  walletBody: {
-    position: "absolute",
-    width: 25,
-    height: 18,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: PURPLE,
+  payoutAmount: {
+    flex: 1,
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
   },
-  walletDot: {
-    position: "absolute",
-    right: 4,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: PURPLE,
+  payoutMeta: {
+    flex: 1,
+    color: MMD_MUTED,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  payoutBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  payoutBadgePaid: {
+    backgroundColor: "rgba(34,197,94,0.1)",
+    borderColor: "rgba(34,197,94,0.24)",
+  },
+  payoutBadgePending: {
+    backgroundColor: "rgba(245,158,11,0.1)",
+    borderColor: "rgba(245,158,11,0.24)",
+  },
+  payoutBadgeText: {
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 11,
+    textTransform: "lowercase",
+  },
+  historyRow: {
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  historyTitle: {
+    flex: 1,
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  historyAmount: {
+    flex: 1,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  historyMeta: {
+    flex: 1,
+    color: MMD_MUTED,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingTop: 8,
+  },
+  footerStacked: {
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 10,
+  },
+  footerLogo: { width: 44, height: 44, borderRadius: 10 },
+  footerBrand: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  emptyPayouts: {
+    borderRadius: 14,
+    padding: 18,
+    minHeight: 80,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    gap: 6,
+  },
+  emptyTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  emptyBody: {
+    color: "rgba(255,255,255,0.7)",
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 13,
+    lineHeight: 20,
   },
 });

@@ -1,9 +1,15 @@
+/**
+ * Driver Vehicle — Figma Lot 6
+ * (311:6614 Loading, 311:6625 Mode Picker, 311:6642 Bicycle, 311:6655 Edit).
+ * Logic/APIs unchanged; visual tokens from mmdUi.
+ */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -21,6 +27,7 @@ import {
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { DriverBrandLoadingState } from "../../components/driver/DriverBrandLoadingState";
 import {
   addDriverVehicle,
   changeDriverTransportMode,
@@ -36,16 +43,64 @@ import {
   uploadDriverVehiclePhoto,
 } from "../../lib/driverVehiclePhoto";
 import { toUserFacingError } from "../../lib/userFacingError";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverVehicle">;
 type Rt = RouteProp<RootStackParamList, "DriverVehicle">;
 type TransportMode = "car" | "moto" | "bike";
 
 function statusColor(status: string) {
-  if (status === "eligible") return "#15803d";
-  if (status === "pending_review") return "#b45309";
-  if (status === "expired_age" || status === "missing_documents") return "#b91c1c";
-  return "#64748b";
+  if (status === "eligible") return MMD_TAXI_GREEN;
+  if (status === "pending_review") return "#F59E0B";
+  if (status === "expired_age" || status === "missing_documents") return "#EF4444";
+  return "rgba(255,255,255,0.5)";
+}
+
+function BrandFooter({ compact }: { compact?: boolean }) {
+  return (
+    <View style={[styles.brandFooter, compact && styles.brandFooterCompact]}>
+      <Image
+        source={MMD_LOGO}
+        style={[styles.brandLogo, compact && styles.brandLogoCompact]}
+        resizeMode="contain"
+        accessibilityLabel="MMD Delivery"
+      />
+      <Text style={[styles.brandLabel, compact && styles.brandLabelCompact]}>
+        MMD Delivery
+      </Text>
+    </View>
+  );
+}
+
+function AmenityToggle(props: {
+  emoji: string;
+  label: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  return (
+    <View style={styles.toggleRow}>
+      <Text style={styles.toggleEmoji}>{props.emoji}</Text>
+      <Text style={styles.toggleLabel}>{props.label}</Text>
+      <Switch
+        value={props.value}
+        onValueChange={props.onValueChange}
+        trackColor={{ false: "rgba(255,255,255,0.25)", true: MMD_TAXI_GREEN }}
+        thumbColor={MMD_WHITE}
+        ios_backgroundColor="rgba(255,255,255,0.25)"
+      />
+    </View>
+  );
 }
 
 export function DriverVehicleScreen() {
@@ -352,12 +407,14 @@ export function DriverVehicleScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
-          title="Véhicule"
-          variant="light"
+          title="Vehicle"
+          subtitle="Vehicle details"
+          variant="dark"
           fallbackRoute="DriverVehicles"
         />
-        <ActivityIndicator style={{ marginTop: 40 }} />
+        <DriverBrandLoadingState title="Loading vehicle..." logoAtBottom />
       </SafeAreaView>
     );
   }
@@ -365,31 +422,40 @@ export function DriverVehicleScreen() {
   if (isCreate && transportMode === null) {
     return (
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
-          title="Ajouter un véhicule"
-          subtitle="Choisissez d'abord le type — la catégorie est synchronisée immédiatement avec Supabase et le dispatch."
-          variant="light"
+          title="Add a vehicle"
+          subtitle="Choose the type first"
+          variant="dark"
           fallbackRoute="DriverVehicles"
         />
         <View style={styles.modePicker}>
           {(
             [
-              { id: "car" as const, label: "Car", hint: "Voiture — food, colis, taxi" },
+              {
+                id: "car" as const,
+                emoji: "🚗",
+                label: "Car",
+                hint: "Car - food, parcels, taxi",
+              },
               {
                 id: "moto" as const,
+                emoji: "🏍️",
                 label: "Motorcycle",
-                hint: "Moto — livraison rapide",
+                hint: "Motorcycle - fast delivery",
               },
               {
                 id: "bike" as const,
+                emoji: "🚲",
                 label: "Bicycle",
-                hint: "Vélo — pas de flotte motorisée requise",
+                hint: "Bicycle - no motorized fleet required",
               },
             ] as const
           ).map((opt) => (
             <TouchableOpacity
               key={opt.id}
               style={styles.modeCard}
+              activeOpacity={0.9}
               onPress={() => {
                 setTransportMode(opt.id);
                 if (opt.id === "moto") {
@@ -411,10 +477,16 @@ export function DriverVehicleScreen() {
                 }
               }}
             >
-              <Text style={styles.modeLabel}>{opt.label}</Text>
-              <Text style={styles.modeHint}>{opt.hint}</Text>
+              <Text style={styles.modeEmoji}>{opt.emoji}</Text>
+              <View style={styles.modeText}>
+                <Text style={styles.modeLabel}>{opt.label}</Text>
+                <Text style={styles.modeHint}>{opt.hint}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={MMD_WHITE} />
             </TouchableOpacity>
           ))}
+          <Text style={styles.modeInfo}>Category is synced automatically</Text>
+          <BrandFooter />
         </View>
       </SafeAreaView>
     );
@@ -423,30 +495,43 @@ export function DriverVehicleScreen() {
   if (isCreate && transportMode === "bike") {
     return (
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
           title="Bicycle"
-          subtitle="Pas de véhicule motorisé requis. Confirmez pour synchroniser transport_mode=bike."
-          variant="light"
+          subtitle="No motorized vehicle required"
+          variant="dark"
           fallbackRoute="DriverVehicles"
         />
-        <View style={styles.modePicker}>
+        <View style={styles.bikeBody}>
           <TouchableOpacity
-            style={styles.modeCard}
+            style={styles.bikeCard}
             onPress={() => setTransportMode(null)}
+            activeOpacity={0.9}
           >
-            <Text style={styles.modeHint}>Changer de type</Text>
+            <Text style={styles.bikeEmoji}>🚲</Text>
+            <Text style={styles.modeLabel}>Change type</Text>
+            <Text style={[styles.modeHint, styles.bikeHintCentered]}>
+              Back to Car / Motorcycle / Bicycle selection
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={() => void save()}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.saveText}>Confirmer le mode vélo</Text>
-            )}
-          </TouchableOpacity>
+
+          <View style={styles.bikeActions}>
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={() => void save()}
+              disabled={saving}
+              activeOpacity={0.9}
+            >
+              {saving ? (
+                <ActivityIndicator color={MMD_WHITE} />
+              ) : (
+                <Text style={styles.saveText}>Confirm bicycle mode</Text>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.bikeHint}>Confirm to sync with dispatch</Text>
+          </View>
+
+          <BrandFooter />
         </View>
       </SafeAreaView>
     );
@@ -454,47 +539,52 @@ export function DriverVehicleScreen() {
 
   const motoForm = transportMode === "moto";
   const fieldRows: Array<[string, string]> = [
-    ["vehicle_make", "Marque"],
-    ["vehicle_model", "Modèle"],
-    ["vehicle_year", "Année"],
-    ["vehicle_color", "Couleur"],
-    ["license_plate", "Plaque"],
+    ["vehicle_make", "Make"],
+    ["vehicle_model", "Model"],
+    ["vehicle_year", "Year"],
+    ["vehicle_color", "Color"],
+    ["license_plate", "Plate"],
     ...(motoForm
       ? []
       : ([
-          ["seats_count", "Places passagers"],
+          ["seats_count", "Passenger seats"],
           ["vehicle_type", "Type (sedan, suv, van, minivan)"],
         ] as Array<[string, string]>)),
     [
       "fuel_type",
       "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
     ],
-    ["nickname", "Surnom (optionnel)"],
+    ["nickname", "Nickname (optional)"],
   ];
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
-        title={isCreate ? "Ajouter un véhicule" : "Véhicule"}
+        title={isCreate ? "Add a vehicle" : "Vehicle"}
         subtitle={
           isCreate
-            ? `Type: ${transportMode === "moto" ? "Motorcycle" : "Car"}. Les catégories taxi sont calculées par le serveur.`
-            : "Les catégories taxi sont calculées par le serveur. Vous ne pouvez pas vous auto-attribuer Comfort, XL ou Wheelchair."
+            ? `Type: ${transportMode === "moto" ? "Motorcycle" : "Car"}. Taxi categories are calculated by the server.`
+            : "Taxi categories are calculated by the server."
         }
-        variant="light"
+        variant="dark"
         fallbackRoute="DriverVehicles"
       />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {isCreate ? (
           <TouchableOpacity onPress={() => setTransportMode(null)}>
-            <Text style={styles.changeType}>Changer le type de véhicule</Text>
+            <Text style={styles.changeType}>Change vehicle type</Text>
           </TouchableOpacity>
         ) : null}
 
         <View style={styles.photoCard}>
           <Text style={styles.photoTitle}>Vehicle photo</Text>
           <Text style={styles.photoHelp}>
-            Upload a clear photo of the vehicle used for trips.
+            Upload a clear photo of the vehicle
           </Text>
           <View style={styles.photoPreview}>
             {previewUri ? (
@@ -506,13 +596,13 @@ export function DriverVehicleScreen() {
               />
             ) : (
               <View style={styles.photoPlaceholder}>
-                <Ionicons name="car-sport-outline" size={42} color="#94A3B8" />
+                <Text style={styles.photoPlaceholderEmoji}>📸</Text>
                 <Text style={styles.photoPlaceholderText}>No photo yet</Text>
               </View>
             )}
             {uploadingPhoto ? (
               <View style={styles.photoBusy}>
-                <ActivityIndicator color="#FFF" />
+                <ActivityIndicator color={MMD_WHITE} />
               </View>
             ) : null}
           </View>
@@ -543,90 +633,87 @@ export function DriverVehicleScreen() {
           </View>
         </View>
 
-        {fieldRows.map(([key, label]) => (
-          <View key={key}>
-            <Text style={styles.fieldLabel}>{label}</Text>
-            <TextInput
-              style={styles.input}
-              value={(form as Record<string, string | boolean>)[key] as string}
-              onChangeText={(text) =>
-                setForm((prev) => ({ ...prev, [key]: text }))
-              }
-            />
-          </View>
-        ))}
+        <View style={styles.fieldsCard}>
+          {fieldRows.map(([key, label]) => (
+            <View key={key} style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>{label}</Text>
+              <TextInput
+                style={styles.input}
+                value={(form as Record<string, string | boolean>)[key] as string}
+                onChangeText={(text) =>
+                  setForm((prev) => ({ ...prev, [key]: text }))
+                }
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                placeholder="—"
+              />
+            </View>
+          ))}
+        </View>
 
-        {!motoForm ? (
-          <>
-            <View style={styles.row}>
-              <Text style={styles.fieldLabel}>Climatisation</Text>
-              <Switch
+        <View style={styles.togglesCard}>
+          {!motoForm ? (
+            <>
+              <AmenityToggle
+                emoji="❄️"
+                label="Air conditioning"
                 value={form.has_air_conditioning}
                 onValueChange={(v) =>
                   setForm((prev) => ({ ...prev, has_air_conditioning: v }))
                 }
               />
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.fieldLabel}>Accessible fauteuil roulant</Text>
-              <Switch
+              <AmenityToggle
+                emoji="♿"
+                label="Accessible"
                 value={form.wheelchair_accessible}
                 onValueChange={(v) =>
                   setForm((prev) => ({ ...prev, wheelchair_accessible: v }))
                 }
               />
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.fieldLabel}>Siège enfant</Text>
-              <Switch
+              <AmenityToggle
+                emoji="👶"
+                label="Baby seat"
                 value={form.child_seat_available}
                 onValueChange={(v) =>
                   setForm((prev) => ({ ...prev, child_seat_available: v }))
                 }
               />
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.fieldLabel}>Gros bagages</Text>
-              <Switch
+              <AmenityToggle
+                emoji="🧳"
+                label="Large luggage"
                 value={form.large_luggage}
                 onValueChange={(v) =>
                   setForm((prev) => ({ ...prev, large_luggage: v }))
                 }
               />
-            </View>
-          </>
-        ) : null}
-
-        <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Animaux acceptés</Text>
-          <Switch
+            </>
+          ) : null}
+          <AmenityToggle
+            emoji="🐾"
+            label="Pets"
             value={form.pets_allowed}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, pets_allowed: v }))
             }
           />
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Chargeur téléphone</Text>
-          <Switch
+          <AmenityToggle
+            emoji="🔌"
+            label="Phone charger"
             value={form.phone_charger_available}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, phone_charger_available: v }))
             }
           />
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Véhicule silencieux</Text>
-          <Switch
+          <AmenityToggle
+            emoji="🔇"
+            label="Quiet vehicle"
             value={form.quiet_vehicle}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, quiet_vehicle: v }))
             }
           />
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Non-fumeur</Text>
-          <Switch
+          <AmenityToggle
+            emoji="🚭"
+            label="Non-smoking"
             value={form.non_smoking}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, non_smoking: v }))
@@ -635,12 +722,20 @@ export function DriverVehicleScreen() {
         </View>
 
         {categories.length > 0 ? (
-          <View style={{ marginTop: 8, gap: 6 }}>
-            <Text style={styles.fieldLabel}>Catégories taxi (serveur)</Text>
+          <View style={styles.categoriesCard}>
+            <Text style={styles.categoriesTitle}>Taxi categories (server)</Text>
             {categories.map((c) => (
-              <Text key={c.category} style={{ color: statusColor(c.status) }}>
-                {c.category}: {c.status}
-              </Text>
+              <View key={c.category} style={styles.categoryRow}>
+                <View
+                  style={[
+                    styles.categoryDot,
+                    { backgroundColor: statusColor(c.status) },
+                  ]}
+                />
+                <Text style={styles.categoryText}>
+                  {c.category}: {c.status}
+                </Text>
+              </View>
             ))}
           </View>
         ) : null}
@@ -649,102 +744,286 @@ export function DriverVehicleScreen() {
           style={styles.saveBtn}
           onPress={() => void save()}
           disabled={saving || uploadingPhoto}
+          activeOpacity={0.9}
         >
           {saving ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={MMD_WHITE} />
           ) : (
             <Text style={styles.saveText}>
-              {isCreate ? "Ajouter" : "Enregistrer"}
+              {isCreate ? "Add" : "Save"}
             </Text>
           )}
         </TouchableOpacity>
+
+        <BrandFooter compact />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-  content: { padding: 16, gap: 12, paddingBottom: 40 },
-  fieldLabel: { color: "#334155", fontWeight: "700", marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 12,
+  container: { flex: 1, backgroundColor: MMD_BLUE },
+  content: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: "#fff",
-    color: "#0F172A",
+    paddingTop: 8,
+    paddingBottom: 32,
+    gap: 8,
   },
-  row: {
+  modePicker: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+    gap: 12,
+  },
+  modeCard: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 16,
+    padding: 16,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 4,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
   },
-  saveBtn: {
-    marginTop: 12,
-    backgroundColor: "#0F172A",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
+  modeEmoji: { fontSize: 28, lineHeight: 34 },
+  modeText: { flex: 1, gap: 4 },
+  modeLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 16,
   },
-  saveText: { color: "#fff", fontWeight: "800" },
-  photoCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 14,
-    gap: 10,
+  modeHint: {
+    color: "rgba(255,255,255,0.5)",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
+    lineHeight: 16,
   },
-  photoTitle: { color: "#0F172A", fontWeight: "800", fontSize: 16 },
-  photoHelp: { color: "#64748B", fontSize: 13, lineHeight: 18 },
-  photoPreview: {
-    height: 160,
-    borderRadius: 14,
-    overflow: "hidden",
-    backgroundColor: "#F1F5F9",
+  modeInfo: {
+    marginTop: 24,
+    textAlign: "center",
+    color: "rgba(255,255,255,0.4)",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
   },
-  photoImage: { width: "100%", height: "100%" },
-  photoPlaceholder: {
+  bikeBody: {
     flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 32,
+    gap: 32,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
   },
-  photoPlaceholderText: { color: "#94A3B8", fontWeight: "600" },
-  photoBusy: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15,23,42,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  photoActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  photoBtn: {
-    backgroundColor: "#0F172A",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  photoBtnDanger: { backgroundColor: "#B91C1C" },
-  photoBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  modePicker: { padding: 16, gap: 12 },
-  modeCard: {
-    backgroundColor: "#fff",
+  bikeCard: {
+    width: "100%",
+    backgroundColor: MMD_ACTION_NAVY,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 16,
-    gap: 6,
+    padding: 24,
+    gap: 12,
+    alignItems: "center",
   },
-  modeLabel: { color: "#0F172A", fontWeight: "800", fontSize: 18 },
-  modeHint: { color: "#64748B", fontSize: 13, lineHeight: 18 },
+  bikeEmoji: { fontSize: 48, lineHeight: 56 },
+  bikeActions: { width: "100%", gap: 16, alignItems: "center" },
+  bikeHint: {
+    color: "rgba(255,255,255,0.25)",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
+    textAlign: "center",
+  },
+  bikeHintCentered: { textAlign: "center" },
   changeType: {
-    color: "#2563EB",
+    color: MMD_TAXI_GREEN,
+    fontFamily: MMD_FONT.bold,
     fontWeight: "700",
     marginBottom: 4,
   },
+  photoCard: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  photoTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  photoHelp: {
+    color: "rgba(255,255,255,0.5)",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  photoPreview: {
+    minHeight: 80,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: MMD_GLASS,
+  },
+  photoImage: { width: "100%", height: 120 },
+  photoPlaceholder: {
+    minHeight: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 12,
+  },
+  photoPlaceholderEmoji: { fontSize: 18 },
+  photoPlaceholderText: {
+    color: "rgba(255,255,255,0.6)",
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 11,
+  },
+  photoBusy: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoActions: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  photoBtn: {
+    flex: 1,
+    minWidth: 80,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 8,
+    minHeight: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 6,
+  },
+  photoBtnDanger: { backgroundColor: "rgba(185,28,28,0.55)" },
+  photoBtnText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  fieldsCard: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 0,
+  },
+  fieldRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+  },
+  fieldLabel: {
+    color: "rgba(255,255,255,0.5)",
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 11,
+    flexShrink: 1,
+    maxWidth: "48%",
+  },
+  input: {
+    flex: 1,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+    textAlign: "right",
+    paddingVertical: 2,
+    minWidth: 80,
+  },
+  togglesCard: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  toggleEmoji: { fontSize: 11, lineHeight: 16 },
+  toggleLabel: {
+    flex: 1,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 10,
+  },
+  categoriesCard: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  categoriesTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 10,
+  },
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  categoryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  categoryText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
+  },
+  saveBtn: {
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 12,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    width: "100%",
+  },
+  saveText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  brandFooter: {
+    marginTop: "auto",
+    paddingTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  brandFooterCompact: {
+    justifyContent: "flex-start",
+    gap: 6,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  brandLogo: { width: 40, height: 40, borderRadius: 12 },
+  brandLogoCompact: { width: 32, height: 32 },
+  brandLabel: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  brandLabelCompact: { fontSize: 11 },
 });
 
 export default DriverVehicleScreen;

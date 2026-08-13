@@ -2,45 +2,50 @@ import React from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { UnifiedMarketScope } from "../../lib/marketScope";
+import { MMD_BLUE, MMD_STROKE, MMD_WHITE } from "../../theme/mmdUi";
 
 type Props = {
   market: UnifiedMarketScope;
-  /** Light pills match the Driver Home mockup header. */
-  variant?: "dark" | "light";
+  /** Light pills match the legacy Driver Home mockup header. */
+  variant?: "dark" | "light" | "mmd";
 };
 
 export default function MarketScopePill({ market, variant = "dark" }: Props) {
   if (!market.scopeResolved) return null;
 
   const light = variant === "light";
+  const mmd = variant === "mmd";
 
   return (
     <View
       style={{
-        alignSelf: light ? "stretch" : "flex-start",
-        paddingHorizontal: light ? 12 : 10,
-        paddingVertical: light ? 0 : 6,
+        alignSelf: light || mmd ? "stretch" : "flex-start",
+        paddingHorizontal: light || mmd ? 12 : 10,
+        paddingVertical: light || mmd ? 0 : 6,
         borderRadius: 999,
-        backgroundColor: light ? "#FFFFFF" : "rgba(15,23,42,0.88)",
-        borderWidth: 1,
-        borderColor: light ? "#E5E7EB" : "rgba(148,163,184,0.35)",
+        backgroundColor: mmd
+          ? MMD_BLUE
+          : light
+            ? "#FFFFFF"
+            : "rgba(15,23,42,0.88)",
+        borderWidth: mmd ? 1.5 : 1,
+        borderColor: mmd
+          ? MMD_STROKE
+          : light
+            ? "#E5E7EB"
+            : "rgba(148,163,184,0.35)",
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: light ? 32 : undefined,
+        minHeight: light || mmd ? 32 : undefined,
         gap: 4,
-        shadowColor: light ? "#0F172A" : undefined,
-        shadowOpacity: light ? 0.05 : undefined,
-        shadowRadius: light ? 4 : undefined,
-        shadowOffset: light ? { width: 0, height: 1 } : undefined,
-        elevation: light ? 1 : undefined,
       }}
     >
       {light ? <Ionicons name="location" size={14} color="#16A34A" /> : null}
       <Text
         style={{
-          color: light ? "#0F172A" : "#E2E8F0",
-          fontSize: light ? 12 : 11,
+          color: mmd || !light ? (mmd ? MMD_WHITE : "#E2E8F0") : "#0F172A",
+          fontSize: light || mmd ? 12 : 11,
           fontWeight: "800",
           flexShrink: 1,
         }}

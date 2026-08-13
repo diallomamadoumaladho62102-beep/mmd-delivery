@@ -1,4 +1,7 @@
-// apps/mobile/src/screens/DriverWorkAccountScreen.tsx
+/**
+ * Driver work account hub — status, work links, legal.
+ * UI aligned to Figma 265:5926 (Loading) / 265:5927 (Default).
+ */
 import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
@@ -6,18 +9,29 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  ActivityIndicator,
+  StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
 import {
   computeDriverSetupProgress,
   nextDriverSetupStep,
   type DriverSetupProgress,
 } from "../lib/driverSetupProgress";
+import {
+  MMD_BLUE,
+  MMD_DRIVER_LINK,
+  MMD_FONT,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 function SectionCard({
   title,
@@ -29,33 +43,14 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <View
-      style={{
-        backgroundColor: "#0B1220",
-        borderColor: "#111827",
-        borderWidth: 1,
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 14,
-      }}
-    >
-      <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>
-        {title}
-      </Text>
-
+    <View style={styles.sectionCard}>
+      <Text style={styles.sectionTitle}>{title}</Text>
       {subtitle ? (
-        <Text
-          style={{
-            color: "#9CA3AF",
-            fontWeight: "800",
-            marginTop: 6,
-            lineHeight: 18,
-          }}
-        >
-          {subtitle}
-        </Text>
+        <>
+          <View style={{ height: 6 }} />
+          <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+        </>
       ) : null}
-
       <View style={{ height: 10 }} />
       {children}
     </View>
@@ -75,60 +70,25 @@ function Row({
   onPress?: () => void;
   danger?: boolean;
   leftIcon?: string;
-  chevron?: string; // ✅ i18n chevron (si RTL)
+  chevron?: string;
 }) {
   return (
     <TouchableOpacity
       disabled={!onPress}
       onPress={onPress}
-      style={{
-        paddingVertical: 14,
-        paddingHorizontal: 12,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: "#111827",
-        backgroundColor: "#0A1730",
-        marginBottom: 10,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        opacity: onPress ? 1 : 0.9,
-      }}
+      style={[styles.row, { opacity: onPress ? 1 : 0.9 }]}
       activeOpacity={0.85}
     >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          flex: 1,
-          paddingRight: 10,
-        }}
-      >
-        {leftIcon ? (
-          <Text style={{ width: 24, color: "#93C5FD", fontWeight: "900" }}>
-            {leftIcon}
-          </Text>
-        ) : null}
-
+      <View style={styles.rowLeft}>
+        {leftIcon ? <Text style={styles.rowIcon}>{leftIcon}</Text> : null}
         <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              color: danger ? "#FCA5A5" : "#E5E7EB",
-              fontWeight: "900",
-            }}
-          >
+          <Text style={[styles.rowLabel, danger ? styles.rowLabelDanger : null]}>
             {label}
           </Text>
-
-          {value ? (
-            <Text style={{ color: "#9CA3AF", fontWeight: "800", marginTop: 4 }}>
-              {value}
-            </Text>
-          ) : null}
+          {value ? <Text style={styles.rowValue}>{value}</Text> : null}
         </View>
       </View>
-
-      <Text style={{ color: danger ? "#FCA5A5" : "#93C5FD", fontWeight: "900" }}>
+      <Text style={[styles.rowChevron, danger ? styles.rowLabelDanger : null]}>
         {onPress ? chevron ?? "›" : ""}
       </Text>
     </TouchableOpacity>
@@ -138,24 +98,8 @@ function Row({
 function ProgressBar({ value }: { value: number }) {
   const v = Math.max(0, Math.min(100, Math.round(value)));
   return (
-    <View
-      style={{
-        height: 10,
-        borderRadius: 999,
-        backgroundColor: "rgba(255,255,255,0.08)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.10)",
-        overflow: "hidden",
-        marginTop: 10,
-      }}
-    >
-      <View
-        style={{
-          height: "100%",
-          width: `${v}%`,
-          backgroundColor: "rgba(59,130,246,0.7)",
-        }}
-      />
+    <View style={styles.progressTrack}>
+      <View style={[styles.progressFill, { width: `${v}%` }]} />
     </View>
   );
 }
@@ -173,12 +117,13 @@ const EMPTY_STATE: DriverSetupProgress = {
 export function DriverWorkAccountScreen() {
   const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
+  const { width } = useWindowDimensions();
+  const contentMax = width >= 768 ? 560 : undefined;
 
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<DriverSetupProgress>(EMPTY_STATE);
 
   const chevron = useMemo(() => {
-    // simple RTL: ar -> ‹ (sinon ›)
     const lng = String(i18n.language || "en").toLowerCase();
     return lng.startsWith("ar") ? "‹" : "›";
   }, [i18n.language]);
@@ -197,12 +142,11 @@ export function DriverWorkAccountScreen() {
       if (!uid) {
         Alert.alert(
           t("common.errorTitle", "Error"),
-          t("driver.workAccount.auth.noUser", "No user logged in.")
+          t("driver.workAccount.auth.noUser", "No user logged in."),
         );
         return;
       }
 
-      // ✅ Optionnel: resync Stripe
       try {
         const { error: syncErr } = await supabase.functions.invoke("check_connect_status", {
           body: { role: "driver" },
@@ -264,10 +208,9 @@ export function DriverWorkAccountScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+    }, [load]),
   );
 
-  // ✅ nextStep calculé à l’affichage (donc change de langue instantanément)
   const nextStep = useMemo(() => {
     const key = nextDriverSetupStep(state);
 
@@ -318,7 +261,7 @@ export function DriverWorkAccountScreen() {
           navigation.navigate("DriverAccount");
       }
     },
-    [navigation, t],
+    [navigation],
   );
 
   const title = useMemo(
@@ -326,7 +269,7 @@ export function DriverWorkAccountScreen() {
       t("driver.workAccount.status.title", "Account status • {{pct}}%", {
         pct: state.progress,
       }),
-    [t, state.progress]
+    [t, state.progress],
   );
 
   const subtitle = useMemo(
@@ -334,11 +277,24 @@ export function DriverWorkAccountScreen() {
       t("driver.workAccount.status.subtitle", "Next step: {{step}}", {
         step: nextStep,
       }),
-    [t, nextStep]
+    [t, nextStep],
   );
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("driver.workAccount.header.title", "Driver account")}
+          fallbackRoute="DriverTabs"
+          variant="dark"
+        />
+        <DriverBrandLoadingState title="Account status" logoAtBottom />
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("driver.workAccount.header.title", "Driver account")}
         fallbackRoute="DriverTabs"
@@ -346,88 +302,86 @@ export function DriverWorkAccountScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+        contentContainerStyle={[
+          styles.scroll,
+          contentMax ? { maxWidth: contentMax, alignSelf: "center", width: "100%" } : null,
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Status */}
         <SectionCard title={title} subtitle={subtitle}>
-          {loading ? (
-            <View style={{ paddingVertical: 10 }}>
-              <ActivityIndicator />
-              <Text style={{ color: "#9CA3AF", marginTop: 10, fontWeight: "800" }}>
-                {t("common.loading", "Loading…")}
-              </Text>
-            </View>
-          ) : (
-            <>
-              <ProgressBar value={state.progress} />
-              <View style={{ height: 12 }} />
+          <ProgressBar value={state.progress} />
+          <View style={{ height: 12 }} />
 
-              <Row
-                chevron={chevron}
-                leftIcon={state.vehicleOk ? "✅" : "❌"}
-                label={t("driver.workAccount.rows.vehicle.label", "Vehicle")}
-                value={
-                  state.vehicleOk
-                    ? t("driver.workAccount.rows.vehicle.ok", "OK")
-                    : t("driver.workAccount.rows.vehicle.missing", "To add")
-                }
-                onPress={() => go("DriverVehicleScreen")}
-              />
+          <Row
+            chevron={chevron}
+            leftIcon={state.vehicleOk ? "✅" : "❌"}
+            label={t("driver.workAccount.rows.vehicle.label", "Vehicle")}
+            value={
+              state.vehicleOk
+                ? t("driver.workAccount.rows.vehicle.ok", "OK")
+                : t("driver.workAccount.rows.vehicle.missing", "To add")
+            }
+            onPress={() => go("DriverVehicleScreen")}
+          />
 
-              <Row
-                chevron={chevron}
-                leftIcon={
-                  state.isBike
-                    ? "✅"
-                    : state.docsDone >= state.docsTotal
-                    ? "✅"
-                    : "⏳"
-                }
-                label={t("driver.workAccount.rows.docs.label", "Documents")}
-                value={
-                  state.isBike
-                    ? t("driver.workAccount.rows.docs.notRequiredBike", "Not required (Bike)")
-                    : `${state.docsDone}/${state.docsTotal}`
-                }
-                onPress={() => go("DriverDocumentsScreen")}
-              />
+          <Row
+            chevron={chevron}
+            leftIcon={
+              state.isBike
+                ? "✅"
+                : state.docsDone >= state.docsTotal
+                  ? "✅"
+                  : "⏳"
+            }
+            label={t("driver.workAccount.rows.docs.label", "Documents")}
+            value={
+              state.isBike
+                ? t("driver.workAccount.rows.docs.notRequiredBike", "Not required (Bike)")
+                : `${state.docsDone}/${state.docsTotal}`
+            }
+            onPress={() => go("DriverDocumentsScreen")}
+          />
 
-              <Row
-                chevron={chevron}
-                leftIcon={state.payoutOk ? "✅" : "❌"}
-                label={t("driver.workAccount.rows.payment.label", "Payout")}
-                value={
-                  state.payoutOk
-                    ? t("driver.workAccount.rows.payment.ready", "Ready")
-                    : t("driver.workAccount.rows.payment.notConfigured", "Not configured")
-                }
-                onPress={() => go("DriverPayoutScreen")}
-              />
-            </>
-          )}
+          <Row
+            chevron={chevron}
+            leftIcon={state.payoutOk ? "✅" : "❌"}
+            label={t("driver.workAccount.rows.payment.label", "Payout")}
+            value={
+              state.payoutOk
+                ? t("driver.workAccount.rows.payment.ready", "Ready")
+                : t("driver.workAccount.rows.payment.notConfigured", "Not configured")
+            }
+            onPress={() => go("DriverPayoutScreen")}
+          />
         </SectionCard>
 
-        {/* Work */}
+        <View style={{ height: 14 }} />
+
         <SectionCard
           title={t("driver.workAccount.work.title", "Work")}
           subtitle={t(
             "driver.workAccount.work.subtitle",
-            "What impacts your trips and earnings."
+            "What impacts your trips and earnings.",
           )}
         >
           <Row
             chevron={chevron}
             leftIcon="🏢"
             label={t("driver.workAccount.work.center.label", "Work center")}
-            value={t("driver.workAccount.work.center.value", "Zone, preferences, availability")}
+            value={t(
+              "driver.workAccount.work.center.value",
+              "Zone, preferences, availability",
+            )}
             onPress={() => go("DriverWorkCenterScreen")}
           />
           <Row
             chevron={chevron}
             leftIcon="💰"
             label={t("driver.workAccount.work.earnings.label", "Earnings")}
-            value={t("driver.workAccount.work.earnings.value", "History, payouts, cashouts")}
+            value={t(
+              "driver.workAccount.work.earnings.value",
+              "History, payouts, cashouts",
+            )}
             onPress={() => go("DriverEarningsScreen")}
           />
           <Row
@@ -439,7 +393,8 @@ export function DriverWorkAccountScreen() {
           />
         </SectionCard>
 
-        {/* Legal */}
+        <View style={{ height: 14 }} />
+
         <SectionCard title={t("driver.workAccount.legal.title", "Legal & Help")}>
           <Row
             chevron={chevron}
@@ -457,10 +412,113 @@ export function DriverWorkAccountScreen() {
           />
         </SectionCard>
 
-        <Text style={{ color: "#6B7280", marginTop: 6, fontWeight: "700" }}>
+        <View style={{ height: 6 }} />
+        <Text style={styles.footer}>
           {t("driver.workAccount.footer", "MMD Driver • Driver account")}
         </Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: MMD_BLUE,
+  },
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 28,
+  },
+  sectionCard: {
+    backgroundColor: MMD_BLUE,
+    borderColor: MMD_STROKE,
+    borderWidth: 1.5,
+    borderRadius: 18,
+    padding: 14,
+  },
+  sectionTitle: {
+    color: MMD_WHITE,
+    fontSize: 20,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  sectionSubtitle: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  row: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    backgroundColor: MMD_BLUE,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    paddingRight: 10,
+    gap: 8,
+  },
+  rowIcon: {
+    width: 24,
+    color: MMD_DRIVER_LINK,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  rowLabel: {
+    color: "#E5E7EB",
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  rowLabelDanger: {
+    color: "#FCA5A5",
+  },
+  rowValue: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+    marginTop: 4,
+  },
+  rowChevron: {
+    color: MMD_DRIVER_LINK,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 20,
+  },
+  progressTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,51,153,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "rgba(59,130,246,0.7)",
+    borderRadius: 999,
+  },
+  footer: {
+    color: MMD_LINK_BLUE,
+    marginTop: 6,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+});
+
+export default DriverWorkAccountScreen;

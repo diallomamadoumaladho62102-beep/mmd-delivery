@@ -158,7 +158,7 @@ export default function AdminPayoutMethodsPage() {
 
   return (
     <AdminGate requiredPermission="pricing.read">
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="space-y-2">
             <h1 className="text-2xl font-bold text-slate-900">Payout Methods (Outbound)</h1>

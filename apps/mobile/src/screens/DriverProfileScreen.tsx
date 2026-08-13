@@ -1,3 +1,7 @@
+/**
+ * Driver Profile — UI aligned to Figma 299:2 / 299:13 / 299:6244.
+ * Logic/APIs preserved (profile load, docs, stripe, edit save).
+ */
 import React, { useCallback, useMemo, useState } from "react";
 import { decode } from "base64-arraybuffer";
 import {
@@ -12,6 +16,7 @@ import {
   Alert,
   Platform,
   ActionSheetIOS,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -23,8 +28,16 @@ import { applyLiveTripFilters } from "../lib/tripVisibility";
 import { startStripeOnboarding } from "../utils/stripe";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
 import { changeDriverTransportMode } from "../lib/driverServicePreferencesApi";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 const AVATARS_BUCKET = "avatars";
 const DRIVER_DOCS_BUCKET = "driver-docs";
@@ -187,114 +200,212 @@ function resolveAvatarPublicUrl(value: string | null | undefined) {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <Text
-      style={{
-        color: "white",
-        fontSize: 16,
-        fontWeight: "900",
-        marginTop: 18,
-        marginBottom: 10,
-      }}
-    >
-      {children}
-    </Text>
-  );
+  return <Text style={ui.sectionTitle}>{children}</Text>;
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <View
-      style={{
-        backgroundColor: "#0B1220",
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: "#111827",
-        padding: 14,
-      }}
-    >
-      {children}
-    </View>
-  );
-}
-
-function Divider() {
-  return <View style={{ height: 1, backgroundColor: "#111827" }} />;
+  return <View style={ui.card}>{children}</View>;
 }
 
 function Row({
   label,
   value,
   onPress,
+  icon,
+  valueColor,
 }: {
   label: string;
   value?: string;
   onPress?: () => void;
+  icon?: string;
+  valueColor?: string;
 }) {
   const Wrapper: any = onPress ? TouchableOpacity : View;
   return (
-    <Wrapper
-      onPress={onPress}
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingVertical: 12,
-      }}
-    >
-      <Text style={{ color: "#CBD5E1", fontWeight: "800", flex: 1, paddingRight: 12 }}>
-        {label}
-      </Text>
-      <Text
-        style={{
-          color: "white",
-          fontWeight: "800",
-          flexShrink: 1,
-          textAlign: "right",
-        }}
-      >
-        {value ?? "—"}
-      </Text>
+    <Wrapper onPress={onPress} style={ui.iconRow} activeOpacity={0.85}>
+      {icon ? (
+        <View style={ui.iconCircle}>
+          <Text style={ui.iconEmoji}>{icon}</Text>
+        </View>
+      ) : null}
+      <View style={ui.iconText}>
+        <Text style={ui.rowLabel}>{label}</Text>
+        <Text style={[ui.rowValue, valueColor ? { color: valueColor } : null]} numberOfLines={2}>
+          {value ?? "—"}
+        </Text>
+      </View>
+      {onPress ? <Text style={ui.chevron}>›</Text> : null}
     </Wrapper>
   );
 }
 
-function StarsRow({
-  rating,
-  count,
-  size = 14,
+function RatingRing({
+  value,
+  size,
+  label,
+  color,
 }: {
-  rating: number | null | undefined;
-  count: number;
-  size?: number;
+  value: string;
+  size: number;
+  label: string;
+  color: string;
 }) {
-  if (!count) {
-    return (
-      <Text style={{ color: "#374151", fontSize: size, fontWeight: "900" }}>
-        {"☆".repeat(5)}
-      </Text>
-    );
-  }
-
-  const v = clamp(rating ?? 0, 0, 5);
-  const full = Math.floor(v);
-  const half = v - full >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
-
   return (
-    <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <Text style={{ color: "#FBBF24", fontSize: size, fontWeight: "900" }}>
-        {"★".repeat(full)}
-      </Text>
-      {half ? (
-        <Text style={{ color: "#FBBF24", fontSize: size, fontWeight: "900" }}>½</Text>
-      ) : null}
-      <Text style={{ color: "#374151", fontSize: size, fontWeight: "900" }}>
-        {"☆".repeat(empty)}
-      </Text>
+    <View style={{ alignItems: "center", gap: 6, width: size + 12 }}>
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: Math.max(4, size / 15),
+          borderColor: color,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "rgba(0,51,204,0.35)",
+        }}
+      >
+        <Text
+          style={{
+            color: MMD_WHITE,
+            fontFamily: MMD_FONT.extrabold,
+            fontWeight: "800",
+            fontSize: size >= 100 ? 28 : 16,
+          }}
+        >
+          {value}
+        </Text>
+      </View>
+      <Text style={ui.ringLabel}>{label}</Text>
     </View>
   );
 }
+
+const ui = StyleSheet.create({
+  sectionTitle: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    marginTop: 4,
+    marginBottom: 0,
+  },
+  card: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 16,
+    padding: 16,
+  },
+  iconRow: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconEmoji: { fontSize: 20, color: MMD_WHITE },
+  iconText: { flex: 1, minWidth: 0, gap: 2 },
+  rowLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  rowValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 15,
+  },
+  chevron: {
+    color: MMD_WHITE,
+    fontSize: 20,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  ringLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 11,
+    textAlign: "center",
+  },
+  badge: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  badgeText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: MMD_BLUE,
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  statLabel: {
+    color: "#CBD5E1",
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  statValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 18,
+  },
+  stack: { gap: 12 },
+  editField: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 16,
+    padding: 14,
+    gap: 8,
+  },
+  editLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  editInput: {
+    height: 42,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 14,
+  },
+  transportPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  transportPillActive: {
+    borderColor: MMD_WHITE,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+});
 
 export function DriverProfileScreen() {
   const navigation = useNavigation<any>();
@@ -1530,464 +1641,471 @@ export function DriverProfileScreen() {
     }
   }, [t]);
 
+  const okColor = MMD_TAXI_GREEN;
+  const missingColor = "#EF4444";
+  const docStatus = (ok: boolean) =>
+    ok
+      ? t("common.ok", { defaultValue: "OK" })
+      : t("driver.profile.missing", { defaultValue: "Missing" });
+
+  const initials = useMemo(() => {
+    const parts = String(headerName || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!parts.length) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+    return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  }, [headerName]);
+
+  const recentRatings = useMemo(() => {
+    return ratingHistory
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+      .slice(0, 2);
+  }, [ratingHistory]);
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title={t("common.profile.title", { defaultValue: "Profil" })}
+        title={t("common.profile.title", { defaultValue: "Profile" })}
         fallbackRoute="DriverTabs"
-        variant="dark"
+        variant="mmd"
         rightSlot={
           <TouchableOpacity onPress={openEdit}>
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-              {t("driver.profile.editShort", { defaultValue: "Modifier" })}
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontFamily: MMD_FONT.bold,
+                fontWeight: "700",
+                fontSize: 14,
+              }}
+            >
+              {t("driver.profile.editShort", { defaultValue: "Edit" })}
             </Text>
           </TouchableOpacity>
         }
       />
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator />
-          <Text style={{ color: "#9CA3AF", marginTop: 10 }}>
-            {t("shared.common.loading", { defaultValue: "Chargement…" })}
-          </Text>
-        </View>
+        <DriverBrandLoadingState
+          title={t("shared.common.loading", { defaultValue: "Loading..." })}
+          logoAtBottom={false}
+        />
       ) : (
         <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 16 }}
           showsVerticalScrollIndicator={false}
         >
           <Card>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <TouchableOpacity
-                onPress={openAvatarMenu}
-                activeOpacity={0.85}
-                style={{ marginRight: 14 }}
-              >
-                <View style={{ width: 64, height: 64 }}>
-                  <Image
-                    key={avatarUri}
-                    source={{ uri: avatarUri }}
-                    style={{ width: 64, height: 64, borderRadius: 32 }}
-                    onError={() => {
-                      setAvatarBroken(true);
-                    }}
-                  />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <TouchableOpacity onPress={openAvatarMenu} activeOpacity={0.85}>
+                <View
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 40,
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.2)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                  }}
+                >
+                  {avatarBroken || !avatarUri ? (
+                    <Text
+                      style={{
+                        color: MMD_WHITE,
+                        fontFamily: MMD_FONT.extrabold,
+                        fontWeight: "800",
+                        fontSize: 28,
+                      }}
+                    >
+                      {initials}
+                    </Text>
+                  ) : (
+                    <Image
+                      key={avatarUri}
+                      source={{ uri: avatarUri }}
+                      style={{ width: 80, height: 80 }}
+                      onError={() => setAvatarBroken(true)}
+                    />
+                  )}
                   {saving ? (
                     <View
                       style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
+                        ...StyleSheet.absoluteFillObject,
                         alignItems: "center",
                         justifyContent: "center",
                         backgroundColor: "rgba(0,0,0,0.25)",
-                        borderRadius: 32,
                       }}
                     >
-                      <ActivityIndicator />
+                      <ActivityIndicator color={MMD_WHITE} />
                     </View>
                   ) : null}
                 </View>
               </TouchableOpacity>
 
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>
-                  {headerName}
-                </Text>
-
-                <View
+              <View style={{ flex: 1, gap: 8 }}>
+                <Text
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginTop: 6,
-                    flexWrap: "wrap",
+                    color: MMD_WHITE,
+                    fontSize: 22,
+                    fontFamily: MMD_FONT.extrabold,
+                    fontWeight: "800",
                   }}
                 >
-                  <StarsRow rating={avgRating} count={ratingCount} size={15} />
-                  <Text
-                    style={{
-                      color: "#9CA3AF",
-                      fontWeight: "800",
-                      marginLeft: 8,
-                    }}
-                  >
-                    {ratingCount === 0
-                      ? t("driver.profile.newDriver", { defaultValue: "Nouveau" })
-                      : avgRating?.toFixed(2)}
-                    {ratingCount > 0 ? ` (${ratingCount})` : ""}
-                  </Text>
-
-                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>{"  "}•{"  "}</Text>
-                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>{verifiedLabel}</Text>
-
-                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>{"  "}•{"  "}</Text>
-                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-                    {transportLabelI18n(transportMode)}
-                  </Text>
-                </View>
-
-                <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      backgroundColor: isTopDriver ? "#064E3B" : "#0A1730",
-                      borderWidth: 1,
-                      borderColor: isTopDriver ? "#10B981" : "#1F2937",
-                      marginRight: 8,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "900" }}>
+                  {headerName}
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <View style={ui.badge}>
+                    <Text style={ui.badgeText}>
                       {isTopDriver
-                        ? t("common.profile.topDriver", { defaultValue: "🏆 Top Driver" })
-                        : t("common.profile.inProgress", { defaultValue: "ℹ️ En progression" })}
+                        ? t("common.profile.topDriver", { defaultValue: "Top Driver" })
+                        : t("common.profile.inProgress", { defaultValue: "In progress" })}
                     </Text>
                   </View>
-
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      backgroundColor: "#0A1730",
-                      borderWidth: 1,
-                      borderColor: "#1F2937",
-                      marginRight: 8,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "900" }}>
+                  <View style={ui.badge}>
+                    <Text style={ui.badgeText}>
                       {t("common.profile.driverScore", { defaultValue: "Driver Score" })}:{" "}
                       {driverScore}/100
                     </Text>
                   </View>
-
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      backgroundColor: "#0A1730",
-                      borderWidth: 1,
-                      borderColor: "#1F2937",
-                      marginRight: 8,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <Text style={{ color: "white", fontWeight: "900" }}>
-                      {tierLabelI18n(driverTier)}
-                    </Text>
+                  <View style={ui.badge}>
+                    <Text style={ui.badgeText}>{tierLabelI18n(driverTier)}</Text>
                   </View>
                 </View>
-
-                <Text style={{ color: "#CBD5E1", marginTop: 6, fontWeight: "700" }}>
-                  {isBike
-                    ? t("common.profile.bikeNoVehicleLine", {
-                        defaultValue:
-                          "Vélo : pas de permis / plaque / assurance / registration",
-                      })
-                    : vehicleLine}
-                </Text>
               </View>
             </View>
 
-            <View style={{ height: 12 }} />
-
-            <View style={{ flexDirection: "row" }}>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: "#0A1730",
-                  borderRadius: 14,
-                  padding: 12,
-                  marginRight: 10,
-                }}
-              >
-                <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-                  {t("common.profile.deliveries", { defaultValue: "Livraisons" })}
+            <View style={{ height: 16 }} />
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <View style={ui.statBox}>
+                <Text style={ui.statLabel}>
+                  {t("common.profile.deliveries", { defaultValue: "Deliveries" })}
                 </Text>
-                <Text style={{ color: "white", fontSize: 18, fontWeight: "900", marginTop: 6 }}>
-                  {statsDeliveries}
-                </Text>
+                <Text style={ui.statValue}>{statsDeliveries}</Text>
               </View>
-
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: "#0A1730",
-                  borderRadius: 14,
-                  padding: 12,
-                  marginRight: 10,
-                }}
-              >
-                <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-                  {t("common.profile.acceptance", { defaultValue: "Acceptation" })}
+              <View style={ui.statBox}>
+                <Text style={ui.statLabel}>
+                  {t("common.profile.acceptance", { defaultValue: "Acceptance" })}
                 </Text>
-                <Text style={{ color: "white", fontSize: 18, fontWeight: "900", marginTop: 6 }}>
-                  {pct(statsAcceptanceRate)}
-                </Text>
+                <Text style={ui.statValue}>{pct(statsAcceptanceRate)}</Text>
               </View>
-
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: "#0A1730",
-                  borderRadius: 14,
-                  padding: 12,
-                }}
-              >
-                <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-                  {t("common.profile.cancellation", { defaultValue: "Annulation" })}
+              <View style={ui.statBox}>
+                <Text style={ui.statLabel}>
+                  {t("common.profile.cancellation", { defaultValue: "Cancellation" })}
                 </Text>
-                <Text style={{ color: "white", fontSize: 18, fontWeight: "900", marginTop: 6 }}>
-                  {pct(statsCancellationRate)}
-                </Text>
+                <Text style={ui.statValue}>{pct(statsCancellationRate)}</Text>
               </View>
             </View>
-
-            <Text style={{ color: "#64748B", marginTop: 10, fontWeight: "700" }}>
-              {t("common.profile.tipChangePhoto", {
-                defaultValue: "Astuce : touche la photo pour la changer (caméra / fichiers).",
-              })}
-            </Text>
           </Card>
 
-          <SectionTitle>
-            {t("common.profile.accountSection", { defaultValue: "Compte" })}
-          </SectionTitle>
-          <Card>
-            <Row label={t("common.profile.name", { defaultValue: "Nom" })} value={headerName} />
-            <Divider />
-            <Row label={t("common.profile.phone", { defaultValue: "Téléphone" })} value={phoneToShow} />
-            <Divider />
+          <View style={ui.stack}>
+            <SectionTitle>
+              {t("common.profile.accountSection", { defaultValue: "Account" })}
+            </SectionTitle>
             <Row
-              label={t("common.profile.emergencyPhone", { defaultValue: "Téléphone d’urgence" })}
+              icon="👤"
+              label={t("common.profile.name", { defaultValue: "Name" })}
+              value={headerName}
+              onPress={openEdit}
+            />
+            <Row
+              icon="📱"
+              label={t("common.profile.phone", { defaultValue: "Phone" })}
+              value={phoneToShow}
+              onPress={openEdit}
+            />
+            <Row
+              icon="🆘"
+              label={t("common.profile.emergencyPhone", { defaultValue: "Emergency phone" })}
               value={driver?.emergency_phone ?? "—"}
+              onPress={openEdit}
             />
-            <Divider />
             <Row
-              label={t("common.profile.address", { defaultValue: "Adresse" })}
+              icon="📍"
+              label={t("common.profile.address", { defaultValue: "Address" })}
               value={driver?.address ?? "—"}
+              onPress={openEdit}
             />
-            <Divider />
-            <Row label={t("common.profile.city", { defaultValue: "Ville" })} value={driver?.city ?? "—"} />
-            <Divider />
-            <Row label={t("common.profile.state", { defaultValue: "État" })} value={driver?.state ?? "—"} />
-            <Divider />
             <Row
+              icon="🏙️"
+              label={t("common.profile.city", { defaultValue: "City" })}
+              value={driver?.city ?? "—"}
+              onPress={openEdit}
+            />
+            <Row
+              icon="🗺️"
+              label={t("common.profile.state", { defaultValue: "State" })}
+              value={driver?.state ?? "—"}
+              onPress={openEdit}
+            />
+            <Row
+              icon="📮"
               label={t("common.profile.zip", { defaultValue: "ZIP code" })}
               value={driver?.zip_code ?? "—"}
+              onPress={openEdit}
             />
-            <Divider />
             <Row
-              label={t("common.profile.dateOfBirth", { defaultValue: "Date de naissance" })}
+              icon="🎂"
+              label={t("common.profile.dateOfBirth", { defaultValue: "Date of birth" })}
               value={formatDateLabel(driver?.date_of_birth)}
+              onPress={openEdit}
             />
-            <Divider />
             <Row
+              icon="🚗"
               label={t("common.profile.transport", { defaultValue: "Transport" })}
               value={transportLabelI18n(transportMode)}
+              onPress={openEdit}
             />
-            <Divider />
             <Row
-              label={t("common.profile.payment", { defaultValue: "Paiement" })}
+              icon="💳"
+              label={t("common.profile.payment", { defaultValue: "Payment" })}
               value={paymentLabel}
-              onPress={!stripeOnboarded ? onPressStripe : undefined}
+              onPress={!stripeOnboarded ? onPressStripe : openEdit}
             />
-            {!stripeOnboarded ? (
-              <Text style={{ color: "#94A3B8", marginTop: 8, fontWeight: "700" }}>
-                {t("common.profile.configureStripeHint", {
-                  defaultValue: "Configure Stripe pour activer les gains. (touche “Paiement”)",
-                })}
-              </Text>
-            ) : null}
-            <Divider />
             <Row
-              label={t("common.profile.status", { defaultValue: "Statut" })}
+              icon="📊"
+              label={t("common.profile.status", { defaultValue: "Status" })}
               value={verifiedLabel}
+              onPress={openEdit}
             />
-          </Card>
+          </View>
 
           {!isBike ? (
-            <>
+            <View style={ui.stack}>
               <SectionTitle>
-                {t("common.profile.vehicleSection", { defaultValue: "Véhicule" })}
+                {t("common.profile.vehicleSection", { defaultValue: "Vehicle" })}
               </SectionTitle>
-              <Card>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("DriverVehicles")}
-                  style={{
-                    paddingVertical: 12,
-                    paddingHorizontal: 12,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: "#2563EB",
-                    backgroundColor: "#0A1730",
-                    marginBottom: 10,
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={{ color: "#93C5FD", fontWeight: "900", textAlign: "center" }}>
-                    Gérer ma flotte
-                  </Text>
-                </TouchableOpacity>
-                <Row
-                  label={t("common.profile.brand", { defaultValue: "Marque" })}
-                  value={driver?.vehicle_brand ?? "—"}
-                />
-                <Divider />
-                <Row
-                  label={t("common.profile.model", { defaultValue: "Modèle" })}
-                  value={driver?.vehicle_model ?? "—"}
-                />
-                <Divider />
-                <Row
-                  label={t("common.profile.year", { defaultValue: "Année" })}
-                  value={driver?.vehicle_year ? String(driver.vehicle_year) : "—"}
-                />
-                <Divider />
-                <Row
-                  label={t("common.profile.color", { defaultValue: "Couleur" })}
-                  value={driver?.vehicle_color ?? "—"}
-                />
-                <Divider />
-                <Row
-                  label={t("common.profile.plate", { defaultValue: "Plaque" })}
-                  value={driver?.plate_number ?? "—"}
-                />
-                <Divider />
-                <Row
-                  label={t("driver.profile.licenseNumber", { defaultValue: "Numéro du permis" })}
-                  value={driver?.license_number ?? "—"}
-                />
-                <Divider />
-                <Row
-                  label={t("driver.profile.licenseExpiry", {
-                    defaultValue: "Expiration du permis",
-                  })}
-                  value={formatDateLabel(driver?.license_expiry)}
-                />
-              </Card>
-            </>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("DriverVehicles")}
+                style={[ui.iconRow, { justifyContent: "center" }]}
+                activeOpacity={0.85}
+              >
+                <Text style={{ color: MMD_WHITE, fontFamily: MMD_FONT.bold, fontWeight: "700" }}>
+                  {t("driver.profile.manageFleet", { defaultValue: "Manage fleet" })}
+                </Text>
+              </TouchableOpacity>
+              <Row
+                icon="🚘"
+                label={t("common.profile.brand", { defaultValue: "Brand" })}
+                value={driver?.vehicle_brand ?? "—"}
+              />
+              <Row
+                icon="🧩"
+                label={t("common.profile.model", { defaultValue: "Model" })}
+                value={driver?.vehicle_model ?? "—"}
+              />
+              <Row
+                icon="📅"
+                label={t("common.profile.year", { defaultValue: "Year" })}
+                value={driver?.vehicle_year ? String(driver.vehicle_year) : "—"}
+              />
+              <Row
+                icon="🎨"
+                label={t("common.profile.color", { defaultValue: "Color" })}
+                value={driver?.vehicle_color ?? "—"}
+              />
+              <Row
+                icon="🔢"
+                label={t("common.profile.plate", { defaultValue: "Plate" })}
+                value={driver?.plate_number ?? "—"}
+              />
+            </View>
           ) : null}
 
-          <SectionTitle>
-            {t("common.profile.documentsSection", { defaultValue: "Documents" })}
-          </SectionTitle>
-          <Card>
+          <View style={ui.stack}>
+            <SectionTitle>
+              {t("common.profile.documentsSection", { defaultValue: "Documents" })}
+            </SectionTitle>
             <Row
+              icon="📸"
               label={driverDocumentLabel("profile_photo")}
-              value={hasProfilePhoto ? "OK ✅" : "Manquant"}
+              value={docStatus(hasProfilePhoto)}
+              valueColor={hasProfilePhoto ? okColor : missingColor}
               onPress={openAvatarMenu}
             />
-            <Divider />
             <Row
+              icon="🪪"
               label={driverDocumentLabel("id_card_front")}
-              value={hasIdFront ? "OK ✅" : "Manquant"}
+              value={docStatus(hasIdFront)}
+              valueColor={hasIdFront ? okColor : missingColor}
               onPress={() => openDocMenu("id_card_front")}
             />
-            <Divider />
             <Row
+              icon="🪪"
               label={driverDocumentLabel("id_card_back")}
-              value={hasIdBack ? "OK ✅" : "Manquant"}
+              value={docStatus(hasIdBack)}
+              valueColor={hasIdBack ? okColor : missingColor}
               onPress={() => openDocMenu("id_card_back")}
             />
             {!isBike ? (
               <>
-                <Divider />
                 <Row
+                  icon="📄"
                   label={driverDocumentLabel("license_front")}
-                  value={hasLicenseFront ? "OK ✅" : "Manquant"}
+                  value={docStatus(hasLicenseFront)}
+                  valueColor={hasLicenseFront ? okColor : missingColor}
                   onPress={() => openDocMenu("license_front")}
                 />
-                <Divider />
                 <Row
+                  icon="📄"
                   label={driverDocumentLabel("license_back")}
-                  value={hasLicenseBack ? "OK ✅" : "Manquant"}
+                  value={docStatus(hasLicenseBack)}
+                  valueColor={hasLicenseBack ? okColor : missingColor}
                   onPress={() => openDocMenu("license_back")}
                 />
-                <Divider />
                 <Row
+                  icon="🛡️"
                   label={driverDocumentLabel("insurance")}
-                  value={hasInsurance ? "OK ✅" : "Manquant"}
+                  value={docStatus(hasInsurance)}
+                  valueColor={hasInsurance ? okColor : missingColor}
                   onPress={() => openDocMenu("insurance")}
                 />
-                <Divider />
                 <Row
+                  icon="📋"
                   label={driverDocumentLabel("registration")}
-                  value={hasRegistration ? "OK ✅" : "Manquant"}
+                  value={docStatus(hasRegistration)}
+                  valueColor={hasRegistration ? okColor : missingColor}
                   onPress={() => openDocMenu("registration")}
                 />
               </>
             ) : null}
-          </Card>
+          </View>
 
-          <SectionTitle>
-            {t("driver.profile.missingRequirements", { defaultValue: "Éléments manquants" })}
-          </SectionTitle>
-          <Card>
-            {missingRequirements.length === 0 ? (
-              <Text style={{ color: "#10B981", fontWeight: "800" }}>
-                {t("driver.profile.verified.full", { defaultValue: "Dossier complet ✅" })}
-              </Text>
-            ) : (
-              missingRequirements.map((item, index) => (
+          <View style={ui.stack}>
+            <SectionTitle>
+              {t("driver.profile.missingRequirements", {
+                defaultValue: "Missing requirements",
+              })}
+            </SectionTitle>
+            <Card>
+              {missingRequirements.length === 0 ? (
                 <Text
-                  key={`${item}-${index}`}
-                  style={{ color: "#FCA5A5", fontWeight: "700", marginBottom: 6 }}
+                  style={{
+                    color: okColor,
+                    fontFamily: MMD_FONT.extrabold,
+                    fontWeight: "800",
+                  }}
                 >
-                  • {item}
+                  {t("driver.profile.verified.full", { defaultValue: "Complete ✅" })}
                 </Text>
-              ))
-            )}
-          </Card>
-
-          <SectionTitle>
-            {t("common.profile.ratingHistorySection", {
-              defaultValue: "Historique des notes",
-            })}
-          </SectionTitle>
-          <Card>
-            {ratingHistory.length === 0 ? (
-              <Text style={{ color: "#94A3B8", fontWeight: "700" }}>
-                {t("common.profile.noReviewsYet", {
-                  defaultValue: "Aucun avis pour l’instant.",
-                })}
-              </Text>
-            ) : (
-              <View>
-                {ratingHistory
-                  .slice()
-                  .reverse()
-                  .map((row, idx) => (
+              ) : (
+                <View style={{ gap: 12 }}>
+                  {missingRequirements.map((item, index) => (
                     <View
-                      key={`${row.created_at}-${idx}`}
+                      key={`${item}-${index}`}
                       style={{
+                        backgroundColor: "rgba(255,255,255,0.05)",
+                        borderRadius: 12,
+                        padding: 12,
                         flexDirection: "row",
-                        justifyContent: "space-between",
-                        paddingVertical: 10,
+                        alignItems: "center",
+                        gap: 12,
                       }}
                     >
-                      <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                        {fmtShortDate(row.created_at)}
-                      </Text>
-                      <Text style={{ color: "#FBBF24", fontWeight: "900" }}>
-                        {Number.isFinite(row.rating) ? `${row.rating.toFixed(1)} ★` : "—"}
-                      </Text>
+                      <View style={ui.iconCircle}>
+                        <Text style={ui.iconEmoji}>⚠️</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={ui.rowLabel}>
+                          {t("driver.profile.missing", { defaultValue: "Missing" })}
+                        </Text>
+                        <Text style={[ui.rowValue, { color: missingColor }]}>{item}</Text>
+                      </View>
                     </View>
                   ))}
-              </View>
-            )}
-          </Card>
+                </View>
+              )}
+            </Card>
+          </View>
 
-          <Text style={{ color: "#6B7280", marginTop: 16, fontWeight: "700" }}>
-            {Platform.OS === "ios" ? "iOS" : "Android"} • DriverProfileScreen
-          </Text>
+          <View style={ui.stack}>
+            <SectionTitle>
+              {t("common.profile.ratingHistorySection", {
+                defaultValue: "Rating history",
+              })}
+            </SectionTitle>
+            <Card>
+              {ratingHistory.length === 0 ? (
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    fontFamily: MMD_FONT.semibold,
+                    fontWeight: "600",
+                  }}
+                >
+                  {t("common.profile.noReviewsYet", {
+                    defaultValue: "No reviews yet.",
+                  })}
+                </Text>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <RatingRing
+                      value={
+                        recentRatings[0]
+                          ? Number(recentRatings[0].rating).toFixed(1)
+                          : "—"
+                      }
+                      size={60}
+                      label={
+                        recentRatings[0]
+                          ? fmtShortDate(recentRatings[0].created_at)
+                          : "—"
+                      }
+                      color={MMD_TAXI_GREEN}
+                    />
+                    <RatingRing
+                      value={avgRating != null ? avgRating.toFixed(1) : "—"}
+                      size={120}
+                      label={t("common.profile.avgRating", {
+                        defaultValue: "avg rating",
+                      })}
+                      color="#FBBF24"
+                    />
+                    <RatingRing
+                      value={
+                        recentRatings[1]
+                          ? Number(recentRatings[1].rating).toFixed(1)
+                          : "—"
+                      }
+                      size={60}
+                      label={
+                        recentRatings[1]
+                          ? fmtShortDate(recentRatings[1].created_at)
+                          : "—"
+                      }
+                      color="#60A5FA"
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      color: MMD_WHITE,
+                      fontFamily: MMD_FONT.semibold,
+                      fontWeight: "600",
+                      fontSize: 11,
+                      textAlign: "center",
+                    }}
+                  >
+                    {ratingCount}{" "}
+                    {t("common.profile.ratingsCount", { defaultValue: "ratings" })}
+                  </Text>
+                </View>
+              )}
+            </Card>
+          </View>
         </ScrollView>
       )}
 
@@ -2000,33 +2118,111 @@ export function DriverProfileScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.65)",
-            justifyContent: "center",
-            padding: 16,
+            backgroundColor: MMD_BLUE,
+            paddingTop: 20,
+            paddingHorizontal: 16,
+            paddingBottom: 24,
           }}
         >
-          <ScrollView
-            style={{ maxHeight: "92%" }}
-            contentContainerStyle={{ justifyContent: "center", flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              marginBottom: 16,
+            }}
           >
-            <View
+            <TouchableOpacity
+              onPress={() => setEditOpen(false)}
               style={{
-                backgroundColor: "#0B1220",
-                borderRadius: 18,
-                borderWidth: 1,
-                borderColor: "#111827",
-                padding: 14,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: "rgba(255,255,255,0.08)",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>
-                {t("common.profile.editProfileTitle", { defaultValue: "Modifier le profil" })}
-              </Text>
+              <Text style={{ color: MMD_WHITE, fontSize: 20, fontWeight: "700" }}>‹</Text>
+            </TouchableOpacity>
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontFamily: MMD_FONT.bold,
+                fontWeight: "700",
+                fontSize: 18,
+              }}
+            >
+              {t("common.profile.editProfileTitle", { defaultValue: "Edit profile" })}
+            </Text>
+            <TouchableOpacity
+              onPress={() => void saveEdit()}
+              disabled={saving}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: "rgba(255,255,255,0.08)",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: saving ? 0.7 : 1,
+              }}
+            >
+              {saving ? (
+                <ActivityIndicator color={MMD_WHITE} size="small" />
+              ) : (
+                <Text style={{ color: MMD_WHITE, fontSize: 16 }}>💾</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-              <View style={{ height: 12 }} />
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <TouchableOpacity
+              onPress={openAvatarMenu}
+              activeOpacity={0.85}
+              style={{ alignItems: "center", marginBottom: 4 }}
+            >
+              <View
+                style={{
+                  width: 96,
+                  height: 96,
+                  borderRadius: 48,
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 44 }}>👤</Text>
+                <View
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    bottom: 0,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: MMD_ACTION_NAVY,
+                    borderWidth: 2,
+                    borderColor: MMD_WHITE,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 14 }}>📷</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
 
-              <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                {t("common.profile.name", { defaultValue: "Nom" })}
+            <View style={ui.editField}>
+              <Text style={ui.editLabel}>
+                {t("common.profile.name", { defaultValue: "Name" })}
               </Text>
               <TextInput
                 value={editFullName}
@@ -2034,354 +2230,262 @@ export function DriverProfileScreen() {
                 placeholder={t("common.profile.placeholderName", {
                   defaultValue: "Ex: Mamadou",
                 })}
-                placeholderTextColor="#64748B"
-                style={{
-                  color: "white",
-                  backgroundColor: "#071022",
-                  borderColor: "#111827",
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  marginTop: 6,
-                }}
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                style={ui.editInput}
               />
+            </View>
 
-              <View style={{ height: 10 }} />
-
-              <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                {t("common.profile.phone", { defaultValue: "Téléphone" })}
-              </Text>
-              <TextInput
-                value={editPhone}
-                onChangeText={setEditPhone}
-                placeholder={t("common.profile.placeholderPhone", {
-                  defaultValue: "Ex: 9297408722",
-                })}
-                placeholderTextColor="#64748B"
-                keyboardType="phone-pad"
-                style={{
-                  color: "white",
-                  backgroundColor: "#071022",
-                  borderColor: "#111827",
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  marginTop: 6,
-                }}
-              />
-
-              <View style={{ height: 10 }} />
-
-              <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                {t("common.profile.emergencyPhone", {
-                  defaultValue: "Téléphone d’urgence",
-                })}
-              </Text>
-              <TextInput
-                value={editEmergencyPhone}
-                onChangeText={setEditEmergencyPhone}
-                placeholder={t("common.profile.placeholderEmergencyPhone", {
-                  defaultValue: "Ex: 9170000000",
-                })}
-                placeholderTextColor="#64748B"
-                keyboardType="phone-pad"
-                style={{
-                  color: "white",
-                  backgroundColor: "#071022",
-                  borderColor: "#111827",
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  marginTop: 6,
-                }}
-              />
-
-              <View style={{ height: 10 }} />
-
-              <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                {t("common.profile.address", { defaultValue: "Adresse" })}
-              </Text>
-              <TextInput
-                value={editAddress}
-                onChangeText={setEditAddress}
-                placeholder={t("common.profile.placeholderAddress", {
-                  defaultValue: "Adresse",
-                })}
-                placeholderTextColor="#64748B"
-                style={{
-                  color: "white",
-                  backgroundColor: "#071022",
-                  borderColor: "#111827",
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  marginTop: 6,
-                }}
-              />
-
-              <View style={{ height: 10 }} />
-
-              <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                {t("common.profile.city", { defaultValue: "Ville" })}
-              </Text>
-              <TextInput
-                value={editCity}
-                onChangeText={setEditCity}
-                placeholder={t("common.profile.placeholderCity", {
-                  defaultValue: "Ville",
-                })}
-                placeholderTextColor="#64748B"
-                style={{
-                  color: "white",
-                  backgroundColor: "#071022",
-                  borderColor: "#111827",
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  marginTop: 6,
-                }}
-              />
-
-              <View style={{ height: 10 }} />
-
-              <View style={{ flexDirection: "row" }}>
-                <View style={{ flex: 1, marginRight: 10 }}>
-                  <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                    {t("common.profile.state", { defaultValue: "État" })}
-                  </Text>
-                  <TextInput
-                    value={editState}
-                    onChangeText={setEditState}
-                    placeholder={t("common.profile.placeholderState", {
-                      defaultValue: "NJ",
-                    })}
-                    placeholderTextColor="#64748B"
-                    style={{
-                      color: "white",
-                      backgroundColor: "#071022",
-                      borderColor: "#111827",
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      marginTop: 6,
-                    }}
-                  />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                    {t("common.profile.zip", { defaultValue: "ZIP code" })}
-                  </Text>
-                  <TextInput
-                    value={editZipCode}
-                    onChangeText={setEditZipCode}
-                    placeholder={t("common.profile.placeholderZip", {
-                      defaultValue: "07030",
-                    })}
-                    placeholderTextColor="#64748B"
-                    keyboardType="number-pad"
-                    style={{
-                      color: "white",
-                      backgroundColor: "#071022",
-                      borderColor: "#111827",
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      marginTop: 6,
-                    }}
-                  />
-                </View>
+            {(
+              [
+                {
+                  key: "phone",
+                  label: t("common.profile.phone", { defaultValue: "Phone" }),
+                  value: editPhone,
+                  set: setEditPhone,
+                  placeholder: t("common.profile.placeholderPhone", {
+                    defaultValue: "Ex: 9297408722",
+                  }),
+                  keyboardType: "phone-pad" as const,
+                },
+                {
+                  key: "emergency",
+                  label: t("common.profile.emergencyPhone", {
+                    defaultValue: "Emergency phone",
+                  }),
+                  value: editEmergencyPhone,
+                  set: setEditEmergencyPhone,
+                  placeholder: t("common.profile.placeholderEmergencyPhone", {
+                    defaultValue: "Ex: 9170000000",
+                  }),
+                  keyboardType: "phone-pad" as const,
+                },
+                {
+                  key: "address",
+                  label: t("common.profile.address", { defaultValue: "Address" }),
+                  value: editAddress,
+                  set: setEditAddress,
+                  placeholder: t("common.profile.placeholderAddress", {
+                    defaultValue: "Address",
+                  }),
+                },
+                {
+                  key: "city",
+                  label: t("common.profile.city", { defaultValue: "City" }),
+                  value: editCity,
+                  set: setEditCity,
+                  placeholder: t("common.profile.placeholderCity", {
+                    defaultValue: "City",
+                  }),
+                },
+                {
+                  key: "dob",
+                  label: t("common.profile.dateOfBirth", {
+                    defaultValue: "Date of birth",
+                  }),
+                  value: editDateOfBirth,
+                  set: setEditDateOfBirth,
+                  placeholder: "1990-01-31",
+                },
+              ] as const
+            ).map((field) => (
+              <View key={field.key} style={ui.editField}>
+                <Text style={ui.editLabel}>{field.label}</Text>
+                <TextInput
+                  value={field.value}
+                  onChangeText={field.set}
+                  placeholder={field.placeholder}
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  keyboardType={"keyboardType" in field ? field.keyboardType : "default"}
+                  style={ui.editInput}
+                />
               </View>
+            ))}
 
-              <View style={{ height: 10 }} />
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <View style={[ui.editField, { flex: 1 }]}>
+                <Text style={ui.editLabel}>
+                  {t("common.profile.state", { defaultValue: "State" })}
+                </Text>
+                <TextInput
+                  value={editState}
+                  onChangeText={setEditState}
+                  placeholder={t("common.profile.placeholderState", {
+                    defaultValue: "NJ",
+                  })}
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  style={ui.editInput}
+                />
+              </View>
+              <View style={[ui.editField, { flex: 1 }]}>
+                <Text style={ui.editLabel}>
+                  {t("common.profile.zip", { defaultValue: "ZIP code" })}
+                </Text>
+                <TextInput
+                  value={editZipCode}
+                  onChangeText={setEditZipCode}
+                  placeholder={t("common.profile.placeholderZip", {
+                    defaultValue: "07030",
+                  })}
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  keyboardType="number-pad"
+                  style={ui.editInput}
+                />
+              </View>
+            </View>
 
-              <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                {t("common.profile.dateOfBirth", {
-                  defaultValue: "Date de naissance (YYYY-MM-DD)",
-                })}
-              </Text>
-              <TextInput
-                value={editDateOfBirth}
-                onChangeText={setEditDateOfBirth}
-                placeholder="1990-01-31"
-                placeholderTextColor="#64748B"
+            <View style={{ gap: 10, paddingTop: 4 }}>
+              <Text
                 style={{
-                  color: "white",
-                  backgroundColor: "#071022",
-                  borderColor: "#111827",
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  marginTop: 6,
+                  color: MMD_WHITE,
+                  fontFamily: MMD_FONT.bold,
+                  fontWeight: "700",
+                  fontSize: 13,
                 }}
-              />
-
-              <View style={{ height: 12 }} />
-
-              <Text style={{ color: "#CBD5E1", fontWeight: "900" }}>
+              >
                 {t("common.profile.transport", { defaultValue: "Transport" })}
               </Text>
-
-              <View style={{ flexDirection: "row", marginTop: 8, flexWrap: "wrap" }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {(["bike", "moto", "car"] as TransportMode[]).map((mode) => {
                   const selected = editTransportMode === mode;
                   return (
                     <TouchableOpacity
                       key={mode}
                       onPress={() => setEditTransportMode(mode)}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        borderRadius: 999,
-                        borderWidth: 1,
-                        borderColor: selected ? "#2563EB" : "#1F2937",
-                        backgroundColor: selected ? "#1D4ED8" : "#071022",
-                        marginRight: 8,
-                        marginBottom: 8,
-                      }}
+                      style={[ui.transportPill, selected && ui.transportPillActive]}
                     >
-                      <Text style={{ color: "white", fontWeight: "900" }}>
+                      <Text
+                        style={{
+                          color: MMD_WHITE,
+                          fontFamily: selected ? MMD_FONT.bold : MMD_FONT.semibold,
+                          fontWeight: selected ? "700" : "600",
+                          fontSize: 14,
+                        }}
+                      >
                         {transportLabelI18n(mode)}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
-
-              {editTransportMode !== "bike" ? (
+              {editTransportMode === "bike" ? (
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    fontFamily: MMD_FONT.semibold,
+                    fontWeight: "600",
+                    fontSize: 12,
+                  }}
+                >
+                  {t("common.profile.bikeNoVehicleHint", {
+                    defaultValue:
+                      "Bike mode: no license / plate / insurance / registration required",
+                  })}
+                </Text>
+              ) : (
                 <>
-                  <View style={{ height: 12 }} />
-                  <Text style={{ color: "#CBD5E1", fontWeight: "900" }}>
-                    {t("common.profile.vehicleSection", { defaultValue: "Véhicule" })}
-                  </Text>
-
                   <TouchableOpacity
                     onPress={() => {
                       setEditOpen(false);
                       navigation.navigate("DriverVehicles");
                     }}
-                    style={{
-                      marginTop: 10,
-                      paddingVertical: 12,
-                      paddingHorizontal: 12,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: "#2563EB",
-                      backgroundColor: "#071022",
-                    }}
+                    style={[ui.transportPill, { alignItems: "center" }]}
                     activeOpacity={0.85}
                   >
-                    <Text style={{ color: "#93C5FD", fontWeight: "900", textAlign: "center" }}>
-                      Gérer ma flotte
+                    <Text
+                      style={{
+                        color: MMD_WHITE,
+                        fontFamily: MMD_FONT.bold,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {t("driver.profile.manageFleet", { defaultValue: "Manage fleet" })}
                     </Text>
                   </TouchableOpacity>
-
-                  <View style={{ height: 10 }} />
-
-                  <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                    {t("driver.profile.licenseNumber", { defaultValue: "Numéro du permis" })}
-                  </Text>
-                  <TextInput
-                    value={editLicenseNumber}
-                    onChangeText={setEditLicenseNumber}
-                    placeholder={t("driver.profile.placeholderLicenseNumber", {
-                      defaultValue: "Numéro du permis",
-                    })}
-                    placeholderTextColor="#64748B"
-                    style={{
-                      color: "white",
-                      backgroundColor: "#071022",
-                      borderColor: "#111827",
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      marginTop: 6,
-                    }}
-                  />
-
-                  <View style={{ height: 10 }} />
-
-                  <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                    {t("driver.profile.licenseExpiry", {
-                      defaultValue: "Expiration du permis (YYYY-MM-DD)",
-                    })}
-                  </Text>
-                  <TextInput
-                    value={editLicenseExpiry}
-                    onChangeText={setEditLicenseExpiry}
-                    placeholder="2030-12-31"
-                    placeholderTextColor="#64748B"
-                    style={{
-                      color: "white",
-                      backgroundColor: "#071022",
-                      borderColor: "#111827",
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      marginTop: 6,
-                    }}
-                  />
-                </>
-              ) : (
-                <>
-                  <View style={{ height: 12 }} />
-                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-                    {t("common.profile.bikeNoVehicleHint", {
-                      defaultValue:
-                        "Vélo : pas besoin de permis / plaque / assurance / registration ✅",
-                    })}
-                  </Text>
+                  <View style={ui.editField}>
+                    <Text style={ui.editLabel}>
+                      {t("driver.profile.licenseNumber", {
+                        defaultValue: "License number",
+                      })}
+                    </Text>
+                    <TextInput
+                      value={editLicenseNumber}
+                      onChangeText={setEditLicenseNumber}
+                      placeholder={t("driver.profile.placeholderLicenseNumber", {
+                        defaultValue: "License number",
+                      })}
+                      placeholderTextColor="rgba(255,255,255,0.5)"
+                      style={ui.editInput}
+                    />
+                  </View>
+                  <View style={ui.editField}>
+                    <Text style={ui.editLabel}>
+                      {t("driver.profile.licenseExpiry", {
+                        defaultValue: "License expiry",
+                      })}
+                    </Text>
+                    <TextInput
+                      value={editLicenseExpiry}
+                      onChangeText={setEditLicenseExpiry}
+                      placeholder="2030-12-31"
+                      placeholderTextColor="rgba(255,255,255,0.5)"
+                      style={ui.editInput}
+                    />
+                  </View>
                 </>
               )}
+            </View>
 
-              <View style={{ height: 14 }} />
-
-              <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
-                <TouchableOpacity
-                  onPress={() => setEditOpen(false)}
+            <View style={{ flexDirection: "row", gap: 12, paddingTop: 8 }}>
+              <TouchableOpacity
+                onPress={() => setEditOpen(false)}
+                style={{
+                  minHeight: 44,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  justifyContent: "center",
+                }}
+                disabled={saving}
+              >
+                <Text
                   style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: "#1F2937",
-                    marginRight: 10,
+                    color: MMD_WHITE,
+                    fontFamily: MMD_FONT.semibold,
+                    fontWeight: "600",
+                    fontSize: 14,
                   }}
-                  disabled={saving}
                 >
-                  <Text style={{ color: "#CBD5E1", fontWeight: "900" }}>
-                    {t("shared.common.cancel", { defaultValue: "Annuler" })}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => void saveEdit()}
+                  {t("shared.common.cancel", { defaultValue: "Cancel" })}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void saveEdit()}
+                style={{
+                  minHeight: 44,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.2)",
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                  justifyContent: "center",
+                  opacity: saving ? 0.7 : 1,
+                }}
+                disabled={saving}
+              >
+                <Text
                   style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderRadius: 12,
-                    backgroundColor: "#2563EB",
-                    opacity: saving ? 0.7 : 1,
+                    color: MMD_WHITE,
+                    fontFamily: MMD_FONT.semibold,
+                    fontWeight: "600",
+                    fontSize: 14,
                   }}
-                  disabled={saving}
                 >
-                  <Text style={{ color: "white", fontWeight: "900" }}>
-                    {saving
-                      ? t("driver.profile.saving", { defaultValue: "Sauvegarde…" })
-                      : t("shared.common.save", { defaultValue: "Enregistrer" })}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                  {saving
+                    ? t("driver.profile.saving", { defaultValue: "Saving…" })
+                    : t("shared.common.save", { defaultValue: "Save" })}
+                </Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>

@@ -20,8 +20,15 @@ import {
   type DriverAreaIntelligence,
 } from "../../lib/driverAreaIntelligenceApi";
 import { ensureMapboxTokenApplied } from "../../lib/mapboxConfig";
-import { APP_COLORS } from "../../theme/appTheme";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_TEXT,
+  MMD_MUTED,
+  MMD_WHITE,
+  MMD_ACTION_NAVY,
+} from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverHotspots">;
 type R = RouteProp<RootStackParamList, "DriverHotspots">;
@@ -114,13 +121,25 @@ export default function DriverHotspotsScreen() {
     });
   };
 
+  const navigateNearest = () => {
+    const best = data?.best_hotspot ?? hotspots[0];
+    if (best) focusHotspot(best);
+  };
+
+  const panelTitle = data
+    ? `${data.requests_nearby} open · ${data.drivers_nearby} drivers · ${data.earnings_multiplier.toFixed(1)}x`
+    : "Live demand";
+
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title="Demand hotspots"
         onBack={() => navigation.goBack()}
+        variant="mmd"
+        style={styles.header}
       />
+
       <View style={styles.mapWrap}>
         <Mapbox.MapView
           style={StyleSheet.absoluteFill}
@@ -163,8 +182,8 @@ export default function DriverHotspotsScreen() {
                     "x",
                   ],
                   textSize: 12,
-                  textColor: "#0F172A",
-                  textHaloColor: "#FFFFFF",
+                  textColor: MMD_BLUE,
+                  textHaloColor: MMD_WHITE,
                   textHaloWidth: 1.2,
                   textAllowOverlap: true,
                 }}
@@ -174,54 +193,82 @@ export default function DriverHotspotsScreen() {
         </Mapbox.MapView>
 
         {loading ? (
-          <View style={styles.overlay}>
-            <ActivityIndicator color="#0F172A" />
+          <View style={styles.mapOverlay}>
+            <Text style={styles.mapOverlayText}>···</Text>
           </View>
         ) : null}
       </View>
 
       <View style={styles.panel}>
         <View style={styles.panelHeader}>
-          <Text style={styles.panelTitle}>
-            {data
-              ? `${data.requests_nearby} open · ${data.drivers_nearby} drivers · ${data.earnings_multiplier.toFixed(1)}x`
-              : "Live demand"}
-          </Text>
-          <TouchableOpacity onPress={() => void load()}>
-            <Ionicons name="refresh" size={18} color={APP_COLORS.accent} />
+          <Text style={styles.panelTitle}>{panelTitle}</Text>
+          <TouchableOpacity
+            onPress={() => void load()}
+            accessibilityRole="button"
+            accessibilityLabel="Refresh"
+            hitSlop={8}
+          >
+            <Ionicons name="refresh" size={18} color={MMD_WHITE} />
           </TouchableOpacity>
         </View>
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        {hotspots.length === 0 && !loading ? (
-          <Text style={styles.empty}>
-            No demand clusters in range right now. Stay online for the next wave.
-          </Text>
+
+        {loading ? (
+          <View style={styles.loadingBlock}>
+            <ActivityIndicator color={MMD_TEXT} size="small" />
+            <Text style={styles.loadingTitle}>Chargement…</Text>
+          </View>
+        ) : hotspots.length === 0 ? (
+          <View style={styles.emptyBlock}>
+            <Text style={styles.emptyTitle}>No demand clusters</Text>
+            <Text style={styles.emptyBody}>
+              No demand clusters in range right now. Stay online for the next
+              wave.
+            </Text>
+          </View>
         ) : (
-          <FlatList
-            data={hotspots}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => focusHotspot(item)}
-                activeOpacity={0.88}
-              >
-                <View
-                  style={[
-                    styles.dot,
-                    { backgroundColor: levelColor(item.demand_level) },
-                  ]}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rowTitle}>{item.label}</Text>
-                  <Text style={styles.rowSub}>
-                    {item.demand_level.replace("_", " ")} · score {item.score}
+          <>
+            <FlatList
+              data={hotspots}
+              keyExtractor={(item) => item.id}
+              style={{ flexGrow: 0 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => focusHotspot(item)}
+                  activeOpacity={0.88}
+                >
+                  <View
+                    style={[
+                      styles.dot,
+                      { backgroundColor: levelColor(item.demand_level) },
+                    ]}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.rowTitle}>{item.label}</Text>
+                    <Text style={styles.rowSub}>
+                      {item.demand_level.replace("_", " ")} · score {item.score}
+                    </Text>
+                  </View>
+                  <Text style={styles.mult}>
+                    {item.multiplier.toFixed(1)}x
                   </Text>
-                </View>
-                <Text style={styles.mult}>{item.multiplier.toFixed(1)}x</Text>
-              </TouchableOpacity>
-            )}
-          />
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity
+              style={styles.navCta}
+              onPress={navigateNearest}
+              activeOpacity={0.9}
+              accessibilityRole="button"
+            >
+              <Ionicons name="navigate" size={22} color={MMD_WHITE} />
+              <Text style={styles.navCtaLabel}>
+                Navigate to nearest hotspot
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     </SafeAreaView>
@@ -229,8 +276,9 @@ export default function DriverHotspotsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: APP_COLORS.bg },
-  mapWrap: { flex: 1.15, backgroundColor: "#E8EEF5" },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  header: { backgroundColor: MMD_BLUE },
+  mapWrap: { height: 360, backgroundColor: "#E8EEF5" },
   meDot: {
     width: 14,
     height: 14,
@@ -239,38 +287,126 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#fff",
   },
-  overlay: {
+  mapOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.35)",
   },
+  mapOverlayText: {
+    color: MMD_BLUE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
   panel: {
     flex: 1,
-    backgroundColor: APP_COLORS.bgElevated,
+    backgroundColor: MMD_BLUE,
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     padding: 14,
+    gap: 4,
   },
   panelHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  panelTitle: { color: APP_COLORS.text, fontSize: 14, fontWeight: "800" },
-  error: { color: APP_COLORS.danger, marginBottom: 8 },
-  empty: { color: APP_COLORS.textMuted, fontSize: 13, lineHeight: 18 },
+  panelTitle: {
+    color: MMD_TEXT,
+    fontSize: 14,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  error: {
+    color: "#FCA5A5",
+    marginBottom: 8,
+    fontFamily: MMD_FONT.regular,
+  },
+  loadingBlock: {
+    padding: 20,
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "center",
+    width: 280,
+  },
+  loadingTitle: {
+    color: MMD_TEXT,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  emptyBlock: {
+    padding: 20,
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "center",
+    width: 280,
+  },
+  emptyTitle: {
+    color: MMD_TEXT,
+    fontSize: 20,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  emptyBody: {
+    color: MMD_MUTED,
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+    lineHeight: 22,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    height: 52,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: APP_COLORS.border,
+    borderBottomColor: "#1F2937",
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  rowTitle: { color: APP_COLORS.text, fontSize: 13, fontWeight: "800" },
-  rowSub: { color: APP_COLORS.textMuted, fontSize: 11, marginTop: 2 },
-  mult: { color: APP_COLORS.accent, fontSize: 16, fontWeight: "900" },
+  rowTitle: {
+    color: MMD_WHITE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  rowSub: {
+    color: MMD_WHITE,
+    fontSize: 11,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  mult: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  navCta: {
+    marginTop: 10,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: MMD_ACTION_NAVY,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  navCtaLabel: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    flex: 1,
+    textAlign: "center",
+  },
 });

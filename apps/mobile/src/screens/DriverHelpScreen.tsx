@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/DriverHelpScreen.tsx
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,29 +9,27 @@ import {
   Linking,
   Alert,
   ActivityIndicator,
+  Image,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { SocialLinks } from "../components/shared/SocialLinks";
-import { APP_COLORS } from "../theme/appTheme";
+import { getActiveSocialLinks } from "../lib/socialLinks";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
-const BG = "#020617";
-const CARD = "rgba(15,23,42,0.82)";
-const CARD_DEEP = "rgba(2,6,23,0.72)";
-const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = APP_COLORS.accent;
-const BLUE = "#60A5FA";
-const ORANGE = "#F97316";
-const RED = "#F87171";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
-
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 const SUPPORT_EMAIL = "support@mmddelivery.com";
 const EMERGENCY_NUMBER = "911";
 
-type HelpTone = "purple" | "blue" | "orange" | "red";
 type BusyAction = "mail" | "emergency" | "chat" | "report";
 
 type HelpItemProps = {
@@ -39,18 +37,11 @@ type HelpItemProps = {
   title: string;
   subtitle: string;
   onPress: () => void;
-  tone?: HelpTone;
   disabled?: boolean;
   loading?: boolean;
+  showDivider?: boolean;
   accessibilityLabel?: string;
 };
-
-function toneColor(tone?: HelpTone) {
-  if (tone === "blue") return BLUE;
-  if (tone === "orange") return ORANGE;
-  if (tone === "red") return RED;
-  return PURPLE;
-}
 
 async function openSupportedUrl(url: string) {
   const supported = await Linking.canOpenURL(url);
@@ -67,58 +58,61 @@ function HelpItem({
   title,
   subtitle,
   onPress,
-  tone,
   disabled,
   loading,
+  showDivider,
   accessibilityLabel,
 }: HelpItemProps) {
-  const color = toneColor(tone);
   const isDisabled = disabled || loading;
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={isDisabled}
-      activeOpacity={0.86}
-      style={[styles.helpItem, isDisabled && styles.disabledItem]}
-      accessible
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel || title}
-      accessibilityHint={subtitle}
-      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
-    >
-      <View
-        style={[
-          styles.itemIconBox,
-          {
-            borderColor: `${color}55`,
-            backgroundColor: `${color}18`,
-          },
-        ]}
+    <>
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={isDisabled}
+        activeOpacity={0.86}
+        style={[styles.helpItem, isDisabled && styles.disabledItem]}
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || title}
+        accessibilityHint={subtitle}
+        accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       >
         {loading ? (
-          <ActivityIndicator color={color} />
+          <ActivityIndicator color={MMD_WHITE} style={styles.itemIcon} />
         ) : (
-          <Text style={[styles.itemIcon, { color }]}>{icon}</Text>
+          <Text style={styles.itemIcon}>{icon}</Text>
         )}
-      </View>
 
-      <View style={styles.itemTextWrap}>
-        <Text style={styles.itemTitle}>{title}</Text>
-        <Text style={styles.itemSubtitle}>{subtitle}</Text>
-      </View>
+        <View style={styles.itemTextWrap}>
+          <Text style={styles.itemTitle}>{title}</Text>
+          <Text style={styles.itemSubtitle}>{subtitle}</Text>
+        </View>
 
-      <Text style={styles.chevron}>›</Text>
-    </TouchableOpacity>
+        <Text style={styles.chevron}>›</Text>
+      </TouchableOpacity>
+      {showDivider ? <View style={styles.rowDivider} /> : null}
+    </>
   );
 }
 
-function FaqRow({ question, answer }: { question: string; answer: string }) {
+function FaqRow({
+  question,
+  answer,
+  showDivider,
+}: {
+  question: string;
+  answer: string;
+  showDivider?: boolean;
+}) {
   return (
-    <View style={styles.faqRow}>
-      <Text style={styles.faqQuestion}>{question}</Text>
-      <Text style={styles.faqAnswer}>{answer}</Text>
-    </View>
+    <>
+      <View style={styles.faqRow}>
+        <Text style={styles.faqQuestion}>{question}</Text>
+        <Text style={styles.faqAnswer}>{answer}</Text>
+      </View>
+      {showDivider ? <View style={styles.rowDivider} /> : null}
+    </>
   );
 }
 
@@ -126,6 +120,17 @@ export function DriverHelpScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
   const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
+
+  const instagramLinks = useMemo(
+    () =>
+      getActiveSocialLinks().filter(
+        (link) =>
+          link.id === "instagram" ||
+          /instagram/i.test(link.label) ||
+          /instagram\.com/i.test(link.url)
+      ),
+    []
+  );
 
   const runBusyAction = useCallback(
     async (key: BusyAction, action: () => Promise<void> | void) => {
@@ -244,129 +249,170 @@ export function DriverHelpScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("driver.help.title", "Help")}
-        subtitle={t("driver.help.subtitle", "Support, FAQ, emergency help and reports.")}
+        subtitle={t("driver.help.subtitleShort", "Support, FAQ & emergency")}
         fallbackRoute="DriverTabs"
-        variant="dark"
+        variant="mmd"
       />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroCard}>
           <View style={styles.flex}>
-            <Text style={styles.heroLabel}>{t("driver.help.heroLabel", "MMD DRIVER SUPPORT")}</Text>
-            <Text style={styles.heroTitle}>{t("driver.help.heroTitle", "How can we help?")}</Text>
+            <Text style={styles.heroLabel}>
+              {t("driver.help.heroLabel", "MMD DRIVER SUPPORT")}
+            </Text>
+            <Text style={styles.heroTitle}>
+              {t("driver.help.heroTitle", "How can we help?")}
+            </Text>
             <Text style={styles.heroSub}>
               {t(
-                "driver.help.heroSub",
-                "Get help with orders, payouts, account verification, safety, and app issues."
+                "driver.help.heroSubShort",
+                "Get help with orders, payouts, account, safety."
               )}
             </Text>
           </View>
 
-          <View style={styles.heroIconBox}>
-            <Text style={styles.heroIcon}>?</Text>
-          </View>
+          <Image
+            source={MMD_LOGO}
+            style={styles.heroLogo}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
         </View>
 
-        <Text style={styles.sectionTitle}>{t("driver.help.supportSection", "Support")}</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>
+            {t("driver.help.supportSection", "Support")}
+          </Text>
+          <View style={styles.sectionDivider} />
+        </View>
 
         <HelpItem
           icon="💬"
-          title={t("driver.help.chatSupport", "Chat support")}
+          title={t("driver.help.chatSupport", "Chat Support")}
           subtitle={t("driver.help.chatSupportSub", "Contact MMD admin support.")}
           onPress={openAdminChat}
-          tone="purple"
           disabled={busy}
           loading={busyAction === "chat"}
+          showDivider
         />
 
         <HelpItem
-          icon="✉"
-          title={t("driver.help.emailSupport", "Email support")}
-          subtitle={t("driver.help.emailSupportSub", "Send details, screenshots, or an order ID.")}
+          icon="📧"
+          title={t("driver.help.emailSupport", "Email Support")}
+          subtitle={t(
+            "driver.help.emailSupportSubShort",
+            "Send details, screenshots, or order ID."
+          )}
           onPress={openMail}
-          tone="blue"
           disabled={busy}
           loading={busyAction === "mail"}
+          showDivider
         />
 
         <HelpItem
-          icon="⚠"
-          title={t("driver.help.reportIssue", "Report an issue")}
+          icon="🚨"
+          title={t("driver.help.reportIssue", "Report an Issue")}
           subtitle={t(
-            "driver.help.reportIssueSub",
-            "Problem with order, payment, GPS, customer, or restaurant."
+            "driver.help.reportIssueSubShort",
+            "Problem with order, payment, GPS."
           )}
           onPress={reportIssue}
-          tone="orange"
           disabled={busy}
           loading={busyAction === "report"}
+          showDivider
         />
 
         <HelpItem
-          icon="SOS"
+          icon="🆘"
           title={t("driver.help.emergency", "Emergency")}
           subtitle={t("driver.help.emergencySub", "Urgent delivery or safety issue.")}
           onPress={callEmergency}
-          tone="red"
           disabled={busy}
           loading={busyAction === "emergency"}
         />
 
-        <Text style={styles.sectionTitle}>{t("driver.help.faqSection", "FAQ")}</Text>
-
-        <View style={styles.faqCard}>
-          <FaqRow
-            question={t("driver.help.faq.cashoutQ", "Why can’t I cash out?")}
-            answer={t(
-              "driver.help.faq.cashoutA",
-              "Make sure Stripe is fully enabled, your balance reached the minimum, and you have not already cashed out today."
-            )}
-          />
-
-          <FaqRow
-            question={t("driver.help.faq.orderQ", "What should I do if an order has a problem?")}
-            answer={t(
-              "driver.help.faq.orderA",
-              "Open the order, use the chat, and report the issue with the order ID."
-            )}
-          />
-
-          <FaqRow
-            question={t("driver.help.faq.gpsQ", "Why is GPS not updating?")}
-            answer={t(
-              "driver.help.faq.gpsA",
-              "Check location permissions, keep the app open, and make sure you are online."
-            )}
-          />
-
-          <FaqRow
-            question={t("driver.help.faq.documentsQ", "Why is my account not complete?")}
-            answer={t(
-              "driver.help.faq.documentsA",
-              "Go to Account and complete documents, vehicle info, and payout setup."
-            )}
-          />
-        </View>
-
-        <View style={styles.footerCard}>
-          <Text style={styles.footerTitle}>
-            {t("driver.help.footerTitle", "Before contacting support")}
-          </Text>
-          <Text style={styles.footerText}>
-            {t(
-              "driver.help.footerText",
-              "Prepare your order ID, screenshot, phone number, and a short explanation. This helps MMD solve the issue faster."
-            )}
-          </Text>
-        </View>
-
-        <View style={{ marginTop: 18, marginBottom: 8 }}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
+            {t("driver.help.faqSection", "FAQ")}
+          </Text>
+          <View style={styles.sectionDivider} />
+        </View>
+
+        <FaqRow
+          question={t("driver.help.faq.cashoutQ", "Why can't I cash out?")}
+          answer={t(
+            "driver.help.faq.cashoutAShort",
+            "Make sure Stripe is enabled and balance reached the minimum."
+          )}
+          showDivider
+        />
+
+        <FaqRow
+          question={t("driver.help.faq.orderQShort", "Order has a problem?")}
+          answer={t(
+            "driver.help.faq.orderAShort",
+            "Open the order, use chat, report with order ID."
+          )}
+          showDivider
+        />
+
+        <FaqRow
+          question={t("driver.help.faq.gpsQShort", "GPS not updating?")}
+          answer={t(
+            "driver.help.faq.gpsAShort",
+            "Check location permissions, keep app open."
+          )}
+          showDivider
+        />
+
+        <FaqRow
+          question={t("driver.help.faq.documentsQShort", "Account not complete?")}
+          answer={t(
+            "driver.help.faq.documentsAShort",
+            "Go to Account, complete documents and payout."
+          )}
+        />
+
+        <View style={styles.tipCard}>
+          <View style={styles.tipIconBox}>
+            <Text style={styles.tipIcon}>📋</Text>
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.tipTitle}>
+              {t("driver.help.footerTitle", "Before contacting support")}
+            </Text>
+            <Text style={styles.tipText}>
+              {t(
+                "driver.help.footerTextShort",
+                "Prepare your order ID, screenshot, phone number, and a short explanation."
+              )}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.socialSection}>
+          <Text style={styles.socialTitle}>
             {t("driver.help.socialSection", "Follow MMD Delivery")}
           </Text>
-          <SocialLinks tone="dark" />
+          <SocialLinks
+            tone="dark"
+            compact
+            links={instagramLinks.length ? instagramLinks : undefined}
+            style={styles.socialLinks}
+          />
+        </View>
+
+        <View style={styles.footer}>
+          <Image
+            source={MMD_LOGO}
+            style={styles.footerLogo}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.footerBrand}>MMD Delivery</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -374,207 +420,190 @@ export function DriverHelpScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG },
-  flex: { flex: 1 },
-  headerWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 6,
-  },
-  headerRow: {
-    minHeight: 50,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  roundButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: CARD_DEEP,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  roundButtonGhost: {
-    width: 42,
-    height: 42,
-  },
-  backText: {
-    color: "#BFDBFE",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  headerCenter: {
-    flex: 1,
-    paddingHorizontal: 12,
-    alignItems: "center",
-  },
-  headerTitle: {
-    color: TEXT,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  headerSub: {
-    color: MUTED,
-    marginTop: 2,
-    fontSize: 11,
-    fontWeight: "800",
-    textAlign: "center",
-  },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  flex: { flex: 1, minWidth: 0 },
   content: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 30,
+    paddingBottom: 24,
+    gap: 8,
   },
   heroCard: {
-    borderRadius: 28,
-    padding: 18,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.22)",
+    borderRadius: 14,
+    padding: 14,
+    backgroundColor: MMD_ACTION_NAVY,
     flexDirection: "row",
     alignItems: "center",
-    shadowColor: "#8B5CF6",
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
+    gap: 10,
   },
   heroLabel: {
-    color: PURPLE,
-    fontSize: 11,
-    fontWeight: "900",
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 8,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
     letterSpacing: 0.8,
   },
   heroTitle: {
-    color: TEXT,
-    fontSize: 28,
-    fontWeight: "900",
-    marginTop: 6,
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    marginTop: 4,
   },
   heroSub: {
-    color: "#CBD5E1",
-    fontSize: 13,
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 10,
+    fontFamily: MMD_FONT.bold,
     fontWeight: "700",
-    lineHeight: 19,
+    lineHeight: 14,
+    marginTop: 4,
+  },
+  heroLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+  },
+  sectionHeader: {
     marginTop: 8,
-  },
-  heroIconBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 24,
-    backgroundColor: "rgba(139,92,246,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 14,
-  },
-  heroIcon: {
-    color: PURPLE,
-    fontSize: 32,
-    fontWeight: "900",
+    gap: 6,
   },
   sectionTitle: {
-    color: TEXT,
-    fontSize: 22,
-    fontWeight: "900",
-    marginTop: 20,
-    marginBottom: 10,
+    color: MMD_WHITE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.13)",
   },
   helpItem: {
-    minHeight: 78,
-    borderRadius: 22,
-    padding: 14,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: BORDER,
-    marginBottom: 10,
+    minHeight: 36,
+    paddingHorizontal: 4,
+    paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
   },
   disabledItem: {
     opacity: 0.62,
   },
-  itemIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 17,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
   itemIcon: {
-    fontSize: 18,
-    fontWeight: "900",
+    fontSize: 24,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    width: 32,
+    textAlign: "center",
   },
   itemTextWrap: {
     flex: 1,
     minWidth: 0,
+    gap: 2,
   },
   itemTitle: {
-    color: TEXT,
-    fontSize: 16,
-    fontWeight: "900",
+    color: MMD_WHITE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
   },
   itemSubtitle: {
-    color: MUTED,
-    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 10,
+    fontFamily: MMD_FONT.bold,
     fontWeight: "700",
-    marginTop: 4,
-    lineHeight: 17,
   },
   chevron: {
-    color: "#CBD5E1",
-    fontSize: 28,
-    fontWeight: "700",
-    marginLeft: 8,
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
   },
-  faqCard: {
-    borderRadius: 24,
-    padding: 14,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: BORDER,
+  rowDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   faqRow: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.1)",
+    paddingVertical: 10,
+    gap: 4,
   },
   faqQuestion: {
-    color: TEXT,
-    fontSize: 14,
-    fontWeight: "900",
+    color: MMD_WHITE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
   },
   faqAnswer: {
-    color: MUTED,
-    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 10,
+    fontFamily: MMD_FONT.bold,
     fontWeight: "700",
-    lineHeight: 18,
-    marginTop: 6,
+    lineHeight: 14,
   },
-  footerCard: {
-    marginTop: 14,
-    borderRadius: 22,
-    padding: 14,
-    backgroundColor: "rgba(139,92,246,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.20)",
+  tipCard: {
+    marginTop: 4,
+    borderRadius: 12,
+    padding: 10,
+    backgroundColor: MMD_ACTION_NAVY,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
-  footerTitle: {
-    color: "#DDD6FE",
-    fontSize: 14,
-    fontWeight: "900",
+  tipIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  footerText: {
-    color: "#C4B5FD",
-    fontSize: 12,
+  tipIcon: {
+    fontSize: 18,
+  },
+  tipTitle: {
+    color: MMD_WHITE,
+    fontSize: 11,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  tipText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 9,
+    fontFamily: MMD_FONT.bold,
     fontWeight: "700",
-    lineHeight: 18,
-    marginTop: 6,
+    lineHeight: 12,
+    marginTop: 2,
+  },
+  socialSection: {
+    marginTop: 4,
+    alignItems: "center",
+    gap: 6,
+  },
+  socialTitle: {
+    color: MMD_WHITE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  socialLinks: {
+    justifyContent: "center",
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    height: 40,
+    marginTop: 4,
+  },
+  footerLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+  },
+  footerBrand: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
   },
 });

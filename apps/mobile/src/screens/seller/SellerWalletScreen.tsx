@@ -7,31 +7,35 @@ import {
   RefreshControl,
   StyleSheet,
   Alert,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { supabase } from "../../lib/supabase";
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { formatWalletAmount, fetchWalletSummary } from "../../lib/walletApi";
 import { startStripeOnboarding } from "../../utils/stripe";
 import { toUserFacingError } from "../../lib/userFacingError";
-import { APP_COLORS } from "../../theme/appTheme";
-import { financialStatusColor } from "../../components/wallet/walletStatusColor";
-import {
-  WalletEmptyState,
-  WalletErrorState,
-  WalletHistoryRow,
-  WalletLoadingState,
-  WalletSummaryCard,
-} from "../../components/wallet/WalletPrimitives";
 import { formatDateTime } from "../../i18n/formatters";
 import {
   normalizeStripeConnectStatus,
   stripeConnectStatusLabel,
   stripeConnectUserMessage,
 } from "../../lib/stripeConnectStatus";
+import {
+  SellerBottomNav,
+  SellerBrandHeader,
+  SellerFeedbackCard,
+  SellerGlassCard,
+} from "../../components/seller/SellerChrome";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type ActivityItem = {
   id: string;
@@ -151,26 +155,54 @@ export default function SellerWalletScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
-        <ScreenHeader
-          title={t("seller.wallet.title", "Seller Wallet")}
+        <StatusBar barStyle="light-content" />
+        <SellerBrandHeader
+          subtitle={t("seller.wallet.title", "Wallet")}
+          showBack
           fallbackRoute="SellerDashboard"
-          variant="dark"
         />
-        <WalletLoadingState label={t("common.loading", "Loading…")} />
+        <SellerFeedbackCard
+          loading
+          title={t("common.loading", "Loading...")}
+          message={t("seller.wallet.loading", "Fetching your wallet")}
+        />
+        <SellerBottomNav active="earnings" />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="light-content" />
+        <SellerBrandHeader
+          subtitle={t("seller.wallet.title", "Wallet")}
+          showBack
+          fallbackRoute="SellerDashboard"
+        />
+        <SellerFeedbackCard
+          icon="⚠️"
+          title={t("seller.wallet.errorTitle", "Wallet Error")}
+          message={error}
+          actionLabel={t("common.retry", "Retry")}
+          actionTone="red"
+          onAction={() => {
+            setLoading(true);
+            void refresh().finally(() => setLoading(false));
+          }}
+        />
+        <SellerBottomNav active="earnings" />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
-      <ScreenHeader
-        title={t("seller.wallet.title", "Seller Wallet")}
-        subtitle={t(
-          "seller.wallet.subtitle",
-          "Marketplace earnings via Stripe Connect"
-        )}
+      <StatusBar barStyle="light-content" />
+      <SellerBrandHeader
+        subtitle={t("seller.wallet.title", "Wallet")}
+        showBack
         fallbackRoute="SellerDashboard"
-        variant="dark"
       />
 
       <ScrollView
@@ -178,6 +210,7 @@ export default function SellerWalletScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
+            tintColor={MMD_WHITE}
             onRefresh={() => {
               setRefreshing(true);
               void refresh().finally(() => setRefreshing(false));
@@ -185,54 +218,19 @@ export default function SellerWalletScreen() {
           />
         }
       >
-        {error ? (
-          <WalletErrorState
-            message={error}
-            retryLabel={t("common.retry", "Retry")}
-            onRetry={() => void refresh()}
-          />
-        ) : null}
-
-        <WalletSummaryCard
-          label={t("seller.wallet.awaiting", "Awaiting transfer")}
-          amount={fmt(awaitingCents)}
-          footnote={note}
-        >
-          <View style={styles.statRow}>
-            <View style={styles.stat}>
-              <Text style={styles.muted}>
-                {t("seller.wallet.paidOut", "Paid out")}
-              </Text>
-              <Text style={styles.statValue}>
-                {fmt(paidOutCents || availableCents)}
-              </Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.muted}>
-                {t("seller.wallet.fees", "Commissions")}
-              </Text>
-              <Text style={styles.statValue}>{fmt(feesCents)}</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.muted}>
-                {t("seller.wallet.refunds", "Refunds")}
-              </Text>
-              <Text style={styles.statValue}>{fmt(refundedCents)}</Text>
-            </View>
-          </View>
-          <Text style={styles.note}>
-            {t("seller.wallet.ledger", "Ledger")}: {fmt(balanceCents)}
+        <SellerGlassCard style={styles.hero}>
+          <Text style={styles.heroLabel}>
+            {t("seller.wallet.available", "Available Balance")}
           </Text>
-        </WalletSummaryCard>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            {t("seller.wallet.connect", "Stripe Connect")}
+          <Text style={styles.heroAmount}>
+            {fmt(availableCents || balanceCents)}
           </Text>
-          <Text style={styles.statValue}>{stripeLabel}</Text>
-          <Text style={styles.note}>{stripeMessage}</Text>
+          <Text style={styles.heroMeta}>
+            {t("seller.wallet.awaiting", "Awaiting transfer")}: {fmt(awaitingCents)}
+          </Text>
+          {note ? <Text style={styles.heroMeta}>{note}</Text> : null}
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={styles.payoutBtn}
             onPress={() => {
               void startStripeOnboarding("seller").catch((e) =>
                 Alert.alert(
@@ -243,16 +241,39 @@ export default function SellerWalletScreen() {
             }}
             accessibilityRole="button"
           >
-            <Text style={styles.primaryLabel}>
+            <Text style={styles.payoutLabel}>
               {t("seller.wallet.manageConnect", "Manage payouts")}
             </Text>
           </TouchableOpacity>
+        </SellerGlassCard>
+
+        <View style={styles.statRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>{t("seller.wallet.paidOut", "Paid out")}</Text>
+            <Text style={styles.statValue}>{fmt(paidOutCents)}</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>{t("seller.wallet.fees", "Commissions")}</Text>
+            <Text style={styles.statValue}>{fmt(feesCents)}</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>{t("seller.wallet.refunds", "Refunds")}</Text>
+            <Text style={styles.statValue}>{fmt(refundedCents)}</Text>
+          </View>
         </View>
 
+        <SellerGlassCard style={{ gap: 8 }}>
+          <Text style={styles.sectionTitle}>
+            {t("seller.wallet.connect", "Stripe Connect")}
+          </Text>
+          <Text style={styles.statValue}>{stripeLabel}</Text>
+          <Text style={styles.heroMeta}>{stripeMessage}</Text>
+        </SellerGlassCard>
+
         <Text style={styles.sectionTitle}>
-          {t("seller.wallet.activity", "Activity")}
+          💸 {t("seller.wallet.activity", "Recent Transactions")}
         </Text>
-        <Text style={styles.note}>
+        <Text style={styles.heroMeta}>
           {t("seller.wallet.buckets", "Pending {{p}} · Paid {{paid}} · Refunds {{r}}", {
             p: buckets.pending.length,
             paid: buckets.paid.length,
@@ -261,77 +282,140 @@ export default function SellerWalletScreen() {
         </Text>
 
         {items.length === 0 ? (
-          <WalletEmptyState
-            title={t("seller.wallet.emptyTitle", "No payouts yet")}
-            body={t(
+          <SellerFeedbackCard
+            icon="💳"
+            title={t("seller.wallet.emptyTitle", "No Payouts Yet")}
+            message={t(
               "seller.wallet.emptyBody",
-              "When marketplace orders are paid, seller payouts and transfers appear here."
+              "Payouts will appear here after your sales settle"
             )}
             actionLabel={t("seller.wallet.viewOrders", "View orders")}
             onAction={() => navigation.navigate("SellerOrders")}
           />
         ) : (
-          items.map((item) => (
-            <WalletHistoryRow
-              key={item.id}
-              title={item.title}
-              meta={`${formatDateTime(item.created_at, i18n.language)} · ${item.status}`}
-              amount={`${item.direction === "credit" ? "+" : "−"}${fmt(item.amount_cents)}`}
-              amountColor={
-                item.direction === "credit"
-                  ? financialStatusColor("paid")
-                  : financialStatusColor(item.status)
-              }
-              detail={
-                [
-                  item.subtitle,
-                  item.stripe_transfer_id
-                    ? `SCT ${item.stripe_transfer_id}`
-                    : null,
-                  item.stripe_refund_id
-                    ? `Refund ${item.stripe_refund_id}`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || null
-              }
-            />
-          ))
+          items.map((item) => {
+            const credit = item.direction === "credit";
+            return (
+              <SellerGlassCard key={item.id} style={styles.txRow}>
+                <View
+                  style={[
+                    styles.txIcon,
+                    { backgroundColor: credit ? MMD_TAXI_GREEN : "#EF4444" },
+                  ]}
+                >
+                  <Text>{credit ? "🟢" : "🔴"}</Text>
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.txTitle}>{item.title}</Text>
+                  <Text style={styles.heroMeta}>
+                    {item.subtitle ||
+                      `${formatDateTime(item.created_at, i18n.language)} · ${item.status}`}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.txAmount,
+                    { color: credit ? MMD_TAXI_GREEN : "#EF4444" },
+                  ]}
+                >
+                  {credit ? "+" : "−"}
+                  {fmt(item.amount_cents)}
+                </Text>
+              </SellerGlassCard>
+            );
+          })
         )}
       </ScrollView>
+
+      <SellerBottomNav active="earnings" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: APP_COLORS.bg },
-  content: { padding: 16, paddingBottom: 40 },
-  card: {
-    backgroundColor: "rgba(15,23,42,0.86)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
-    padding: 16,
-    marginBottom: 14,
+  root: { flex: 1, backgroundColor: MMD_BLUE },
+  content: { padding: 24, paddingBottom: 40, gap: 16 },
+  hero: { gap: 12, padding: 28, borderRadius: 28 },
+  heroLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
   },
-  muted: { color: "#94A3B8", fontWeight: "700", fontSize: 12 },
-  statRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-  stat: { flex: 1 },
-  statValue: { color: "#E2E8F0", fontWeight: "800", marginTop: 4 },
-  note: { color: "#64748B", marginTop: 10, fontSize: 12, lineHeight: 18 },
-  sectionTitle: {
-    color: "#E2E8F0",
-    fontWeight: "900",
-    fontSize: 15,
-    marginBottom: 8,
+  heroAmount: {
+    color: MMD_WHITE,
+    fontSize: 36,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  heroMeta: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: MMD_FONT.regular,
+    lineHeight: 18,
+  },
+  payoutBtn: {
     marginTop: 4,
-  },
-  primaryBtn: {
-    marginTop: 12,
-    backgroundColor: "#F59E0B",
-    borderRadius: 14,
-    paddingVertical: 14,
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: "center",
   },
-  primaryLabel: { color: "#0F172A", fontWeight: "900" },
+  payoutLabel: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  statRow: { flexDirection: "row", gap: 10 },
+  stat: {
+    flex: 1,
+    backgroundColor: MMD_GLASS,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    padding: 12,
+  },
+  statLabel: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 11,
+    fontFamily: MMD_FONT.regular,
+  },
+  statValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    marginTop: 4,
+    fontSize: 14,
+  },
+  sectionTitle: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  txRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 20,
+    padding: 18,
+  },
+  txIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  txTitle: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  txAmount: {
+    fontSize: 18,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
 });

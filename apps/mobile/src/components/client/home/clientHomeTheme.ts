@@ -1,71 +1,86 @@
 import { Platform, StyleSheet } from "react-native";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD,
+  MMD_GOLD_DARK,
+  MMD_WHITE,
+} from "../../../theme/mmdUi";
 
-/** Official Client Home light theme — mockup reference. */
+/** Client Home tokens — Figma Customer App / Client Home (m1YPra9RLUz38tGTPmYczj). */
 export const V4 = {
-  bg: "#FFFFFF",
-  surface: "#FFFFFF",
-  card: "#FFFFFF",
-  cardSecondary: "#F8FAFC",
-  mutedBg: "#F8FAFC",
-  green: "#16A34A",
-  greenSoft: "#DCFCE7",
+  bg: MMD_BLUE,
+  surface: "rgba(255,255,255,0.05)",
+  card: MMD_WHITE,
+  cardSecondary: "rgba(255,255,255,0.08)",
+  mutedBg: "rgba(255,255,255,0.08)",
+  green: "#1AA633",
+  greenSoft: "rgba(26,166,51,0.2)",
   greenDark: "#15803D",
-  borderGreen: "rgba(22,163,74,0.35)",
+  borderGreen: "rgba(26,166,51,0.45)",
   purple: "#7C3AED",
-  purpleSoft: "#F3E8FF",
-  yellow: "#EAB308",
-  yellowSoft: "#FEF9C3",
-  taxi: "#CA8A04",
-  food: "#16A34A",
-  delivery: "#7C3AED",
-  marketplace: "#059669",
-  textPrimary: "#0F172A",
-  textSecondary: "#64748B",
-  textSoft: "#94A3B8",
-  border: "#E2E8F0",
-  borderStrong: "#CBD5E1",
+  purpleSoft: "rgba(124,58,237,0.2)",
+  yellow: MMD_GOLD_DARK,
+  yellowSoft: "rgba(218,170,32,0.2)",
+  taxi: "#E51A1A",
+  food: "#1AA633",
+  delivery: "#FFCC00",
+  marketplace: "#1AA633",
+  textPrimary: MMD_WHITE,
+  textOnCard: "#1A1A1A",
+  textSecondary: "rgba(255,255,255,0.85)",
+  textSoft: "rgba(255,255,255,0.65)",
+  border: "rgba(255,255,255,0.3)",
+  borderStrong: MMD_WHITE,
   danger: "#EF4444",
-  searchIcon: "#3B82F6",
+  searchIcon: "#1A1A1A",
+  searchBar: "#00998C",
+  navBg: "#001F59",
+  creditCardBg: MMD_WHITE,
+  creditCardText: "#1A1A1A",
+  gold: MMD_GOLD,
+  goldDark: MMD_GOLD_DARK,
+  font: MMD_FONT,
 } as const;
 
 export const V4_RADIUS = {
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 24,
+  sm: 10,
+  md: 12,
+  lg: 14,
+  xl: 20,
   pill: 999,
 } as const;
 
 export const V4_SHADOW = {
   shadowColor: "#0F172A",
-  shadowOpacity: 0.08,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 3,
+  shadowOpacity: 0.2,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 3 },
+  elevation: 4,
 } as const;
 
 export const V4_SHADOW_SOFT = {
   shadowColor: "#0F172A",
-  shadowOpacity: 0.06,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.12,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
   elevation: 2,
 } as const;
 
 export const V4_BOTTOM_SAFE = Platform.OS === "android" ? 108 : 96;
 
 export const v4Styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: V4.bg,
-  },
   root: {
     flex: 1,
     backgroundColor: V4.bg,
   },
+  safe: {
+    flex: 1,
+    backgroundColor: V4.bg,
+  },
   scrollContent: {
-    paddingHorizontal: 12,
-    paddingTop: 4,
-    paddingBottom: V4_BOTTOM_SAFE + 20,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: V4_BOTTOM_SAFE,
   },
 });

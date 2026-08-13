@@ -6,7 +6,7 @@ import AdminCommunicationPanel from "@/components/admin/AdminCommunicationPanel"
 export default function AdminCommunicationPage() {
   return (
     <AdminGate requiredPermission="communication.notify">
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-2xl space-y-6">
           <header>
             <h1 className="text-2xl font-bold text-slate-900">Communication</h1>

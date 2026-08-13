@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StatusBar,
-  ActivityIndicator,
   Alert,
   Image,
   Animated,
@@ -51,6 +50,8 @@ import {
   type RestaurantHomeNavKey,
   type RestaurantMapStatusFilter,
 } from "../features/restaurant/home";
+import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
+import { MMD_BLUE } from "../theme/mmdUi";
 
 const FALLBACK_RESTAURANT_ID = "";
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
@@ -365,9 +366,7 @@ const restaurantStyles = StyleSheet.create({
   },
   loadingSafe: {
     flex: 1,
-    backgroundColor: RH.bg,
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: MMD_BLUE,
   },
   setupBanner: {
     position: "absolute",
@@ -1391,19 +1390,19 @@ export function RestaurantHomeScreen({ navigation }: any) {
       return t("restaurant.home.status.setup", "SETUP");
     }
     if (restaurantBusy) {
-      return windowWidth < 380
-        ? t("restaurant.home.status.busyShort", "BUSY")
-        : t("restaurant.home.status.busy", "OCCUPÉ");
+      return t("restaurant.home.status.busyShort", "BUSY");
     }
     if (!restaurantOnline) {
-      return windowWidth < 380
-        ? t("restaurant.home.status.offlineShort", "OFF")
-        : t("restaurant.home.status.offline", "HORS LIGNE");
+      return t("restaurant.home.status.offlineShort", "OFFLINE");
     }
-    return windowWidth < 380
-      ? t("restaurant.home.status.onlineShort", "ON")
-      : t("restaurant.home.status.online", "EN LIGNE");
-  }, [profileNeedsSetup, restaurantBusy, restaurantOnline, t, windowWidth]);
+    return t("restaurant.home.status.onlineShort", "ONLINE");
+  }, [profileNeedsSetup, restaurantBusy, restaurantOnline, t]);
+
+  const mapOpsMode = useMemo(() => {
+    if (!restaurantOnline) return "offline" as const;
+    if (restaurantBusy) return "busy" as const;
+    return "online" as const;
+  }, [restaurantBusy, restaurantOnline]);
 
   const restaurantIdShort = useMemo(() => {
     const id = String(activeRestaurantId || "").trim();
@@ -1612,22 +1611,23 @@ export function RestaurantHomeScreen({ navigation }: any) {
     return (
       <SafeAreaProvider>
         <View style={restaurantStyles.loadingSafe}>
-          <StatusBar barStyle="dark-content" backgroundColor={RH.bg} translucent={false} />
-          <ActivityIndicator color={RH.green} />
-          <Text style={{ color: RH.text, marginTop: 10 }}>
-            {t("common.loading", "Chargement…")}
-          </Text>
+          <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} translucent={false} />
+          <RestaurantBrandLoadingState
+            variant="card"
+            title={t("restaurant.home.loadingTitle", "Loading Restaurant...")}
+            subtitle={t("restaurant.home.loadingSubtitle", "Preparing your dashboard")}
+          />
         </View>
       </SafeAreaProvider>
     );
   }
 
-  const onlineForHeader = !profileNeedsSetup && restaurantOnline && !restaurantBusy;
+  const onlineForHeader = !profileNeedsSetup && restaurantOnline;
 
   return (
     <SafeAreaProvider>
       <View style={restaurantStyles.safe}>
-        <StatusBar barStyle="dark-content" backgroundColor={RH.bg} translucent={false} />
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} translucent={false} />
         <View style={restaurantStyles.root}>
           <RestaurantHomeHeader
             restaurantName={restaurantName}
@@ -1645,7 +1645,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
             onPressAccount={openAccountMenu}
             statusLabel={headerStatusLabel}
             brandTitle="MMD"
-            brandSubtitle={t("restaurant.home.brandSubtitle", "RESTAURANT")}
+            brandSubtitle={t("restaurant.home.brandSubtitle", "Delivery")}
           />
 
           <View style={restaurantStyles.body}>
@@ -1929,6 +1929,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
                 formatMoney={(amount) => formatMoney(Number(amount ?? 0), stats.currency)}
                 statusLabel={statusLabel}
                 t={(key, fallback) => t(key, fallback)}
+                opsMode={mapOpsMode}
               />
 
               {profileNeedsSetup && (

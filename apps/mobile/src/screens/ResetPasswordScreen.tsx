@@ -9,7 +9,10 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  useWindowDimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -17,6 +20,13 @@ import { supabase } from "../lib/supabase";
 import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
 import { rowDirection, textAlignStart } from "../i18n/rtl";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD,
+  MMD_WHITE,
+  mmdLogoSize,
+} from "../theme/mmdUi";
 
 function getUrlParams(url: string) {
   const params: Record<string, string> = {};
@@ -161,23 +171,62 @@ export default function ResetPasswordScreen() {
     }
   }, [password, confirmPassword, loading, navigation, t]);
 
+  const { width, height } = useWindowDimensions();
+  const logoSize = mmdLogoSize(width, height);
+
   if (checkingSession) {
     return (
       <SafeAreaView
         style={{
           flex: 1,
-          backgroundColor: "#020617",
+          backgroundColor: MMD_BLUE,
           alignItems: "center",
           justifyContent: "center",
+          paddingHorizontal: 24,
         }}
       >
-        <ActivityIndicator color="white" />
+        <Image
+          source={require("../../assets/brand/mmd-logo-ui.png")}
+          style={{
+            width: Math.min(140, logoSize + 40),
+            height: Math.min(140, logoSize + 40),
+            borderRadius: Math.min(140, logoSize + 40) / 2,
+            marginBottom: 16,
+          }}
+          resizeMode="contain"
+          accessibilityLabel="MMD Delivery"
+        />
         <Text
           style={{
-            color: "#9CA3AF",
+            color: MMD_GOLD,
+            fontSize: 28,
+            fontFamily: MMD_FONT.extrabold,
+            fontWeight: "800",
+            letterSpacing: 1,
+            marginBottom: 8,
+          }}
+        >
+          MMD DELIVERY
+        </Text>
+        <Text
+          style={{
+            color: MMD_WHITE,
+            fontSize: 16,
+            fontFamily: MMD_FONT.semibold,
+            fontWeight: "600",
+            marginBottom: 24,
+          }}
+        >
+          We Deliver With Heart
+        </Text>
+        <ActivityIndicator color={MMD_WHITE} />
+        <Text
+          style={{
+            color: MMD_WHITE,
             marginTop: 12,
+            fontFamily: MMD_FONT.bold,
             fontWeight: "700",
-            textAlign: textAlignStart(),
+            textAlign: "center",
           }}
         >
           {t("auth.resetPassword.preparingLink", "Preparing link...")}
@@ -187,17 +236,39 @@ export default function ResetPasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <View style={{ padding: 16, marginTop: 40 }}>
+        <View
+          style={{
+            padding: 16,
+            marginTop: 24,
+            maxWidth: 560,
+            width: "100%",
+            alignSelf: "center",
+          }}
+        >
+          <View style={{ alignItems: "center", height: 100, marginBottom: 16 }}>
+            <Image
+              source={require("../../assets/brand/mmd-logo-ui.png")}
+              style={{
+                width: logoSize,
+                height: logoSize,
+                borderRadius: logoSize / 2,
+              }}
+              resizeMode="contain"
+              accessibilityLabel="MMD Delivery"
+            />
+          </View>
+
           <Text
             style={{
-              color: "white",
-              fontSize: 28,
-              fontWeight: "900",
+              color: MMD_WHITE,
+              fontSize: 36,
+              fontFamily: MMD_FONT.bold,
+              fontWeight: "700",
               textAlign: textAlignStart(),
             }}
           >
@@ -206,31 +277,41 @@ export default function ResetPasswordScreen() {
 
           <Text
             style={{
-              color: "#9CA3AF",
+              color: MMD_WHITE,
               marginTop: 10,
-              fontSize: 15,
+              fontSize: 16,
               lineHeight: 22,
-              fontWeight: "700",
+              fontFamily: MMD_FONT.regular,
+              fontWeight: "400",
               textAlign: textAlignStart(),
             }}
           >
             {t(
               "auth.resetPassword.newSubtitle",
-              "Enter your new password to recover your MMD Delivery account."
+              "Enter your new password to recover your MMD Delivery account.",
             )}
           </Text>
 
           <View style={{ marginTop: 24 }}>
-            <Text style={{ color: "#9CA3AF", fontWeight: "900", textAlign: textAlignStart() }}>
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontFamily: MMD_FONT.semibold,
+                fontWeight: "600",
+                fontSize: 17,
+                textTransform: "uppercase",
+                textAlign: textAlignStart(),
+              }}
+            >
               {t("auth.resetPassword.password", "Password")}
             </Text>
             <View
               style={{
                 marginTop: 8,
-                borderRadius: 14,
-                backgroundColor: "#0B1220",
-                borderWidth: 1,
-                borderColor: "#111827",
+                borderRadius: 10,
+                backgroundColor: "rgba(255,255,255,0.1)",
+                borderWidth: 2.5,
+                borderColor: MMD_WHITE,
                 flexDirection: rowDirection(),
                 alignItems: "center",
               }}
@@ -239,14 +320,19 @@ export default function ResetPasswordScreen() {
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
-                placeholder={t("auth.resetPassword.newPasswordPlaceholder", "New password")}
-                placeholderTextColor="#475569"
+                placeholder={t(
+                  "auth.resetPassword.newPasswordPlaceholder",
+                  "New password",
+                )}
+                placeholderTextColor="rgba(255,255,255,0.55)"
                 autoCapitalize="none"
                 autoCorrect={false}
                 style={{
                   flex: 1,
                   padding: 14,
-                  color: "white",
+                  color: MMD_WHITE,
+                  fontSize: 18,
+                  fontFamily: MMD_FONT.regular,
                   textAlign: textAlignStart(),
                 }}
               />
@@ -259,7 +345,13 @@ export default function ResetPasswordScreen() {
                   paddingVertical: 12,
                 }}
               >
-                <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+                <Text
+                  style={{
+                    color: MMD_WHITE,
+                    fontFamily: MMD_FONT.extrabold,
+                    fontWeight: "800",
+                  }}
+                >
                   {showPassword
                     ? t("auth.resetPassword.hide", "Hide")
                     : t("auth.resetPassword.show", "Show")}
@@ -269,16 +361,25 @@ export default function ResetPasswordScreen() {
           </View>
 
           <View style={{ marginTop: 16 }}>
-            <Text style={{ color: "#9CA3AF", fontWeight: "900", textAlign: textAlignStart() }}>
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontFamily: MMD_FONT.semibold,
+                fontWeight: "600",
+                fontSize: 17,
+                textTransform: "uppercase",
+                textAlign: textAlignStart(),
+              }}
+            >
               {t("auth.resetPassword.confirmPassword", "Confirm password")}
             </Text>
             <View
               style={{
                 marginTop: 8,
-                borderRadius: 14,
-                backgroundColor: "#0B1220",
-                borderWidth: 1,
-                borderColor: "#111827",
+                borderRadius: 10,
+                backgroundColor: "rgba(255,255,255,0.1)",
+                borderWidth: 2.5,
+                borderColor: MMD_WHITE,
                 flexDirection: rowDirection(),
                 alignItems: "center",
               }}
@@ -287,14 +388,19 @@ export default function ResetPasswordScreen() {
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder={t("auth.resetPassword.confirmPlaceholder", "Confirm password")}
-                placeholderTextColor="#475569"
+                placeholder={t(
+                  "auth.resetPassword.confirmPlaceholder",
+                  "Confirm password",
+                )}
+                placeholderTextColor="rgba(255,255,255,0.55)"
                 autoCapitalize="none"
                 autoCorrect={false}
                 style={{
                   flex: 1,
                   padding: 14,
-                  color: "white",
+                  color: MMD_WHITE,
+                  fontSize: 18,
+                  fontFamily: MMD_FONT.regular,
                   textAlign: textAlignStart(),
                 }}
               />
@@ -307,7 +413,13 @@ export default function ResetPasswordScreen() {
                   paddingVertical: 12,
                 }}
               >
-                <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+                <Text
+                  style={{
+                    color: MMD_WHITE,
+                    fontFamily: MMD_FONT.extrabold,
+                    fontWeight: "800",
+                  }}
+                >
                   {showConfirmPassword
                     ? t("auth.resetPassword.hide", "Hide")
                     : t("auth.resetPassword.show", "Show")}
@@ -322,19 +434,37 @@ export default function ResetPasswordScreen() {
             activeOpacity={0.85}
             style={{
               marginTop: 26,
-              backgroundColor: loading ? "#111827" : "#2563EB",
-              padding: 15,
-              borderRadius: 14,
-              alignItems: "center",
+              borderRadius: 16,
+              overflow: "hidden",
+              opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-                {t("auth.resetPassword.update", "Update password")}
-              </Text>
-            )}
+            <LinearGradient
+              colors={["#93C5FD", "#3B82F6", "#93C5FD"]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={{
+                padding: 16,
+                minHeight: 60,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {loading ? (
+                <ActivityIndicator color="#1A0D00" />
+              ) : (
+                <Text
+                  style={{
+                    color: "#1A0D00",
+                    fontFamily: MMD_FONT.bold,
+                    fontWeight: "700",
+                    fontSize: 20,
+                  }}
+                >
+                  {t("auth.resetPassword.update", "Update password")}
+                </Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -346,7 +476,14 @@ export default function ResetPasswordScreen() {
             }
             style={{ marginTop: 18, alignItems: "center" }}
           >
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontFamily: MMD_FONT.bold,
+                fontWeight: "700",
+                fontSize: 18,
+              }}
+            >
               {t("common.back", "Back")}
             </Text>
           </TouchableOpacity>

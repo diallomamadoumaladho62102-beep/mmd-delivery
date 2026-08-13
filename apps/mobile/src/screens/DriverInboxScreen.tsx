@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
   TextInput,
   StyleSheet,
@@ -15,7 +14,13 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
-import { APP_COLORS } from "../theme/appTheme";
+import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
+import {
+  MMD_BLUE,
+  MMD_CARD_BORDER,
+  MMD_TEXT,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 type OrderRow = {
   id: string;
@@ -36,15 +41,15 @@ type MsgRow = {
   created_at: string;
 };
 
-const BG = "#020617";
-const CARD = "rgba(15,23,42,0.78)";
-const CARD_DEEP = "rgba(2,6,23,0.72)";
-const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = APP_COLORS.accent;
+const BG = MMD_BLUE;
+const CARD = "rgba(0,45,145,0.5)";
+const CARD_DEEP = "rgba(0,45,145,0.4)";
+const BORDER = MMD_CARD_BORDER;
+const PURPLE = "#A78BFA";
 const BLUE = "#60A5FA";
 const GREEN = "#22C55E";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
+const TEXT = MMD_TEXT;
+const MUTED = "#DCE6FA";
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -422,9 +427,8 @@ export function DriverInboxScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color="#fff" />
-            <Text style={styles.loadingText}>{t("shared.common.loading", "Loading…")}</Text>
+          <View style={styles.loadingBrand}>
+            <DriverBrandLoadingState title={t("shared.common.loading", "Loading")} />
           </View>
         ) : me == null ? (
           <EmptyState text={t("driver.inbox.not_logged_in", "Log in as a driver to view your conversations.")} />
@@ -482,7 +486,9 @@ function SectionHeader({ title, count }: { title: string; count: number }) {
 function EmptyState({ text, compact }: { text: string; compact?: boolean }) {
   return (
     <View style={[styles.emptyState, compact && styles.emptyStateCompact]}>
-      <Text style={styles.emptyIcon}>◇</Text>
+      {!compact ? (
+        <Text style={styles.emptyTitle}>Inbox empty</Text>
+      ) : null}
       <Text style={styles.emptyText}>{text}</Text>
     </View>
   );
@@ -525,136 +531,119 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  refreshText: { color: TEXT, fontWeight: "900", fontSize: 12 },
+  refreshText: { color: TEXT, fontWeight: "800", fontSize: 12 },
   heroCard: {
     marginTop: 14,
-    borderRadius: 28,
-    padding: 16,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.2)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: CARD_DEEP,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#8B5CF6",
-    shadowOpacity: 0.16,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
   },
-  heroLabel: { color: MUTED, fontWeight: "900", fontSize: 12 },
-  heroTitle: { color: TEXT, fontWeight: "900", fontSize: 38, marginTop: 2 },
-  heroSub: { color: "#CBD5E1", fontWeight: "800", marginTop: 2 },
+  heroLabel: { color: MUTED, fontWeight: "800", fontSize: 11 },
+  heroTitle: { color: TEXT, fontWeight: "800", fontSize: 30, marginTop: 2 },
+  heroSub: { color: MUTED, fontWeight: "700", marginTop: 2, fontSize: 11 },
   heroIconWrap: {
-    width: 62,
-    height: 62,
+    width: 48,
+    height: 48,
     borderRadius: 22,
     backgroundColor: "rgba(139,92,246,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.28)",
     alignItems: "center",
     justifyContent: "center",
   },
-  heroIcon: { color: PURPLE, fontSize: 28, fontWeight: "900" },
+  heroIcon: { color: "#B4C8FF", fontSize: 28, fontWeight: "800" },
   searchBox: {
     marginTop: 12,
-    height: 50,
-    borderRadius: 18,
-    paddingHorizontal: 13,
-    backgroundColor: CARD,
+    height: 42,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    backgroundColor: "rgba(0,40,130,0.3)",
     borderWidth: 1,
     borderColor: BORDER,
     flexDirection: "row",
     alignItems: "center",
   },
-  searchIcon: { color: "#64748B", fontSize: 18, fontWeight: "900", marginRight: 8 },
-  searchInput: { flex: 1, color: TEXT, fontWeight: "800", height: "100%" },
+  searchIcon: { color: "rgba(200,215,245,0.9)", fontSize: 18, fontWeight: "800", marginRight: 8 },
+  searchInput: { flex: 1, color: TEXT, fontWeight: "400", height: "100%", fontSize: 14 },
   content: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 30 },
+  loadingBrand: { minHeight: 280, marginTop: 12 },
   loadingRow: { marginTop: 12, flexDirection: "row", alignItems: "center" },
   loadingText: { color: MUTED, fontWeight: "800", marginLeft: 10 },
-  sectionsWrap: { gap: 12 },
+  sectionsWrap: { gap: 16 },
   sectionHeader: {
     marginTop: 6,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  sectionTitle: { color: TEXT, fontSize: 22, fontWeight: "900" },
+  sectionTitle: { color: TEXT, fontSize: 18, fontWeight: "800" },
   countPill: {
     minWidth: 34,
     height: 28,
     paddingHorizontal: 10,
     borderRadius: 999,
     backgroundColor: "rgba(139,92,246,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.22)",
     alignItems: "center",
     justifyContent: "center",
   },
-  countText: { color: PURPLE, fontSize: 12, fontWeight: "900" },
+  countText: { color: MMD_WHITE, fontSize: 12, fontWeight: "800" },
   listGap: { gap: 10 },
   orderCard: {
-    borderRadius: 22,
-    padding: 14,
+    borderRadius: 16,
+    padding: 12,
     backgroundColor: CARD,
     borderWidth: 1,
     borderColor: BORDER,
   },
   orderCardUnread: {
-    borderColor: "rgba(96,165,250,0.75)",
-    shadowColor: BLUE,
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    borderColor: BORDER,
   },
-  orderTopRow: { flexDirection: "row", alignItems: "flex-start" },
+  orderTopRow: { flexDirection: "row", alignItems: "center" },
   orderIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    marginRight: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    marginRight: 10,
     backgroundColor: "rgba(139,92,246,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
-  orderIcon: { color: PURPLE, fontSize: 18, fontWeight: "900" },
+  orderIcon: { color: MMD_WHITE, fontSize: 18, fontWeight: "800" },
   orderContent: { flex: 1, minWidth: 0, paddingRight: 8 },
   titleRow: { flexDirection: "row", alignItems: "center", minWidth: 0 },
-  orderTitle: { flex: 1, color: TEXT, fontSize: 17, fontWeight: "900" },
+  orderTitle: { flex: 1, color: TEXT, fontSize: 15, fontWeight: "800" },
   unreadPill: {
     marginLeft: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
     backgroundColor: "rgba(239,68,68,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.3)",
   },
-  unreadText: { color: "#FCA5A5", fontWeight: "900", fontSize: 10 },
-  messagePreview: { color: MUTED, marginTop: 6, fontWeight: "700", lineHeight: 18 },
-  metaLine: { color: "#64748B", marginTop: 8, fontSize: 12, fontWeight: "800" },
+  unreadText: { color: "#EF4447", fontWeight: "800", fontSize: 10 },
+  messagePreview: { color: MUTED, marginTop: 3, fontWeight: "600", lineHeight: 18, fontSize: 13 },
+  metaLine: { color: "#B4C8F0", marginTop: 3, fontSize: 11, fontWeight: "700" },
   statusPill: {
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 0,
     alignSelf: "flex-start",
+    backgroundColor: "rgba(96,165,250,0.12)",
   },
-  statusText: { fontWeight: "900", fontSize: 11 },
+  statusText: { fontWeight: "800", fontSize: 11, color: MMD_WHITE },
   emptyState: {
     marginTop: 12,
     borderRadius: 22,
-    padding: 18,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: BORDER,
+    padding: 20,
+    backgroundColor: "transparent",
     alignItems: "center",
+    maxWidth: 280,
+    alignSelf: "center",
   },
-  emptyStateCompact: { marginTop: 0, padding: 14 },
-  emptyIcon: { color: PURPLE, fontSize: 24, fontWeight: "900", marginBottom: 6 },
-  emptyText: { color: MUTED, fontWeight: "800", textAlign: "center", lineHeight: 20 },
-  driverDebug: { color: "#334155", marginTop: 18, fontSize: 11 },
+  emptyStateCompact: { marginTop: 0, padding: 14, maxWidth: "100%" },
+  emptyTitle: { color: TEXT, fontSize: 20, fontWeight: "700", marginBottom: 8, textAlign: "center" },
+  emptyText: { color: MUTED, fontWeight: "400", textAlign: "center", lineHeight: 20, fontSize: 15 },
+  driverDebug: { color: "rgba(170,190,230,0.4)", marginTop: 18, fontSize: 11 },
 });

@@ -478,7 +478,7 @@ export default function AdminPayoutsReconciliationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-w-0">
       <div className="mx-auto max-w-[1820px] px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>

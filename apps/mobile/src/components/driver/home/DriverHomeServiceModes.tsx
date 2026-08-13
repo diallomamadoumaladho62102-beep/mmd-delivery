@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type { DriverServicePreferences } from "../../../lib/driverServicePreferencesApi";
+import { MMD_GOLD_CLASSIC, MMD_WHITE } from "../../../theme/mmdUi";
 
 export type DriverServiceModeKey = "taxi" | "delivery" | "food" | "auto";
 
@@ -10,17 +10,16 @@ type Props = {
   onPressMode: (mode: DriverServiceModeKey) => void;
 };
 
+/** Figma Driver Home service chips — Food / Colis / Taxi (+ Auto). */
 const MODES: Array<{
   key: DriverServiceModeKey;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  activeColor: string;
   activeBg: string;
 }> = [
-  { key: "taxi", label: "Taxi", icon: "car-sport", activeColor: "#CA8A04", activeBg: "#FEF9C3" },
-  { key: "delivery", label: "Delivery", icon: "bag-handle", activeColor: "#16A34A", activeBg: "#F0FDF4" },
-  { key: "food", label: "Food", icon: "restaurant", activeColor: "#EA580C", activeBg: "#FFF7ED" },
-  { key: "auto", label: "Auto", icon: "flash", activeColor: "#7C3AED", activeBg: "#F5F3FF" },
+  { key: "food", label: "Food", activeBg: "#DC2626" },
+  { key: "delivery", label: "Colis", activeBg: MMD_GOLD_CLASSIC },
+  { key: "taxi", label: "Taxi", activeBg: "#16A34A" },
+  { key: "auto", label: "Auto", activeBg: "#7C3AED" },
 ];
 
 function isModeActive(
@@ -39,37 +38,30 @@ function isModeActive(
 }
 
 /**
- * Mockup service bar: thin equal columns, icon above label, hairline dividers.
+ * Figma service bar: colored rounded chips with white labels.
  */
 export function DriverHomeServiceModes({ preferences, onPressMode }: Props) {
   return (
     <View style={styles.row} accessibilityRole="tablist">
-      {MODES.map((mode, index) => {
+      {MODES.map((mode) => {
         const active = isModeActive(mode.key, preferences);
         return (
-          <React.Fragment key={mode.key}>
-            {index > 0 ? <View style={styles.divider} /> : null}
-            <TouchableOpacity
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={mode.label}
-              onPress={() => onPressMode(mode.key)}
-              activeOpacity={0.85}
-              style={[styles.tab, active ? { backgroundColor: mode.activeBg } : null]}
-            >
-              <Ionicons
-                name={mode.icon}
-                size={16}
-                color={active ? mode.activeColor : "#94A3B8"}
-              />
-              <Text
-                style={[styles.label, { color: active ? "#0F172A" : "#64748B" }]}
-                numberOfLines={1}
-              >
-                {mode.label}
-              </Text>
-            </TouchableOpacity>
-          </React.Fragment>
+          <TouchableOpacity
+            key={mode.key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={mode.label}
+            onPress={() => onPressMode(mode.key)}
+            activeOpacity={0.85}
+            style={[
+              styles.chip,
+              { backgroundColor: mode.activeBg, opacity: active ? 1 : 0.45 },
+            ]}
+          >
+            <Text style={styles.label} numberOfLines={1}>
+              {mode.label}
+            </Text>
+          </TouchableOpacity>
         );
       })}
     </View>
@@ -78,35 +70,22 @@ export function DriverHomeServiceModes({ preferences, onPressMode }: Props) {
 
 const styles = StyleSheet.create({
   row: {
-    marginHorizontal: 12,
+    marginHorizontal: 10,
     flexDirection: "row",
-    alignItems: "stretch",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E7EB",
-    overflow: "hidden",
-    height: 48,
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  divider: {
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: "#E5E7EB",
-    marginVertical: 10,
-  },
-  tab: {
-    flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 1,
-    paddingVertical: 4,
+    gap: 10,
+    flexWrap: "wrap",
+  },
+  chip: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
   label: {
-    fontSize: 10,
+    color: MMD_WHITE,
+    fontSize: 14,
     fontWeight: "700",
   },
 });

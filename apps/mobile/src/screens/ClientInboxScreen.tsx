@@ -7,6 +7,10 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Image,
+  StatusBar,
+  StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -14,6 +18,20 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import {
+  MMD_BLUE,
+  MMD_CARD_ON_BLUE,
+  MMD_FONT,
+  MMD_GREEN,
+  MMD_LINK_BLUE,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+  mmdLogoSizeCompact,
+} from "../theme/mmdUi";
+
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 
 type OrderRow = {
   id: string;
@@ -48,7 +66,9 @@ function isInProgress(status?: string | null) {
 
 export function ClientInboxScreen() {
   const navigation = useNavigation<any>();
-  const { t, i18n } = useTranslation(); // ✅ re-render on language change
+  const { t, i18n } = useTranslation();
+  const { width, height } = useWindowDimensions();
+  const logoSize = mmdLogoSizeCompact(width, height);
 
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -62,10 +82,7 @@ export function ClientInboxScreen() {
     (iso?: string | null) => {
       if (!iso) return "—";
       const d = new Date(iso);
-
-      // ✅ essayer d'utiliser la locale i18n, sinon fallback
       const loc = locale === "zh" ? "zh-CN" : locale;
-
       const dd = d.toLocaleDateString(loc, { day: "2-digit", month: "short" });
       const tt = d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" });
       return `${dd} ${tt}`;
@@ -209,15 +226,15 @@ export function ClientInboxScreen() {
     const badge = delivered
       ? {
           text: t("client.inbox.badges.delivered", "Livrée"),
-          bg: "rgba(34,197,94,0.12)",
+          bg: MMD_GREEN,
           border: "#14532D",
-          color: "#BBF7D0",
+          color: MMD_WHITE,
         }
       : {
           text: t("client.inbox.badges.inProgress", "En cours"),
-          bg: "rgba(59,130,246,0.12)",
-          border: "#1D4ED8",
-          color: "#BFDBFE",
+          bg: "#C5B722",
+          border: "rgba(197,175,34,0.96)",
+          color: MMD_WHITE,
         };
 
     const lastText =
@@ -232,41 +249,29 @@ export function ClientInboxScreen() {
     return (
       <TouchableOpacity
         onPress={() => openChat(o.id)}
-        style={{
-          borderRadius: 18,
-          padding: 14,
-          backgroundColor: "rgba(15,23,42,0.65)",
-          borderWidth: 1,
-          borderColor: "#1F2937",
-        }}
+        style={styles.card}
         activeOpacity={0.85}
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <View style={{ flex: 1, paddingRight: 10 }}>
-            <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>
+        <View style={styles.cardRow}>
+          <View style={styles.cardCopy}>
+            <Text style={styles.cardTitle}>
               {o.restaurant_name ?? t("client.inbox.orderFallback", "Commande")}
             </Text>
 
-            <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "700", lineHeight: 18 }}>
-              {shownLast}
-            </Text>
+            <Text style={styles.cardPreview}>{shownLast}</Text>
 
-            <Text style={{ color: "#64748B", marginTop: 8, fontSize: 12, fontWeight: "800" }}>
+            <Text style={styles.cardMeta} numberOfLines={1}>
               #{o.id.slice(0, 8)} • {fmtShortDateTime(o.created_at)} • {(o.status ?? "—").toUpperCase()}
             </Text>
           </View>
 
           <View
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: badge.bg,
-              borderWidth: 1,
-              borderColor: badge.border,
-            }}
+            style={[
+              styles.badge,
+              { backgroundColor: badge.bg, borderColor: badge.border },
+            ]}
           >
-            <Text style={{ color: badge.color, fontWeight: "900", fontSize: 12 }}>
+            <Text style={[styles.badgeText, { color: badge.color }]}>
               {badge.text}
             </Text>
           </View>
@@ -275,8 +280,13 @@ export function ClientInboxScreen() {
     );
   }
 
+  const showLoadingSplash = loading && orders.length === 0;
+  const showEmpty =
+    !loading && me != null && filtered.length === 0;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("client.inbox.title", "Boîte")}
         subtitle={t("client.inbox.subtitle", "En cours + livrées (7 jours)")}
@@ -285,96 +295,230 @@ export function ClientInboxScreen() {
         rightSlot={
           <TouchableOpacity
             onPress={() => void fetchInbox()}
-            style={{
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-              borderRadius: 999,
-              backgroundColor: "rgba(15,23,42,0.7)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
+            style={styles.refreshBtn}
             activeOpacity={0.85}
           >
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+            <Text style={styles.refreshText}>
               {loading ? "..." : t("common.refresh", "Rafraîchir")}
             </Text>
           </TouchableOpacity>
         }
       />
 
-      <View style={{ paddingHorizontal: 16 }}>
-        <View style={{ marginTop: 10 }}>
+      {!showLoadingSplash && !showEmpty ? (
+        <View style={styles.searchWrap}>
           <TextInput
             value={q}
             onChangeText={setQ}
             placeholder={t("client.inbox.search.placeholder", "Rechercher (#id, restaurant, statut)…")}
-            placeholderTextColor="#64748B"
-            style={{
-              height: 46,
-              borderRadius: 16,
-              paddingHorizontal: 12,
-              backgroundColor: "rgba(15,23,42,0.65)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-              color: "white",
-              fontWeight: "700",
-            }}
+            placeholderTextColor={MMD_TEXT_MUTED_BLUE}
+            style={styles.searchInput}
           />
         </View>
-      </View>
+      ) : null}
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
-        {loading ? (
-          <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <ActivityIndicator color="#fff" />
-            <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-              {t("shared.common.loading", "Chargement…")}
-            </Text>
-          </View>
-        ) : me == null ? (
-          <Text style={{ color: "#9CA3AF", marginTop: 12 }}>
-            {t("client.inbox.empty.notLoggedIn", "Connecte-toi comme client pour voir tes conversations.")}
+      {showLoadingSplash ? (
+        <View style={styles.splash}>
+          <Image
+            source={MMD_LOGO}
+            style={{ width: logoSize, height: logoSize, borderRadius: logoSize / 2 }}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.splashBrand}>MMD Delivery</Text>
+          <Text style={styles.splashSub}>
+            {t("client.inbox.loading.prepare", "Preparing your inbox...")}
           </Text>
-        ) : filtered.length === 0 ? (
-          <Text style={{ color: "#9CA3AF", marginTop: 12 }}>
-            {t("client.inbox.empty.noOrders", "Aucune commande trouvée.")}
+          <ActivityIndicator color={MMD_WHITE} style={{ marginTop: 8 }} />
+          <Text style={styles.splashSub}>{t("shared.common.loading", "Loading...")}</Text>
+        </View>
+      ) : showEmpty ? (
+        <View style={styles.splash}>
+          <Image
+            source={MMD_LOGO}
+            style={{ width: logoSize, height: logoSize, borderRadius: logoSize / 2 }}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
+          <Text style={styles.splashBrand}>{t("client.inbox.title", "Inbox")}</Text>
+          <Text style={styles.emptyTitle}>
+            {t("client.inbox.empty.noConversations", "No conversations yet")}
           </Text>
-        ) : (
-          <View style={{ gap: 14 }}>
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>
-              {t("client.inbox.sections.inProgress", "En cours")}
-            </Text>
-
-            {inProgressOrders.length === 0 ? (
-              <Text style={{ color: "#9CA3AF" }}>
-                {t("client.inbox.sections.inProgressEmpty", "Aucune commande en cours.")}
-              </Text>
-            ) : (
-              <View style={{ gap: 10 }}>
-                {inProgressOrders.map((o) => (
-                  <Card key={o.id} o={o} />
-                ))}
-              </View>
+          <Text style={styles.emptyBody}>
+            {t(
+              "client.inbox.empty.hint",
+              "Your chats with drivers and support will show up here."
             )}
-
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "900", marginTop: 8 }}>
-              {t("client.inbox.sections.delivered7d", "Livrées (7 jours)")}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll}>
+          {me == null ? (
+            <Text style={styles.muted}>
+              {t("client.inbox.empty.notLoggedIn", "Connecte-toi comme client pour voir tes conversations.")}
             </Text>
-
-            {deliveredOrders.length === 0 ? (
-              <Text style={{ color: "#9CA3AF" }}>
-                {t("client.inbox.sections.deliveredEmpty", "Aucune commande livrée sur 7 jours.")}
+          ) : (
+            <View style={styles.sections}>
+              <Text style={styles.sectionTitle}>
+                {t("client.inbox.sections.inProgress", "En cours")}
               </Text>
-            ) : (
-              <View style={{ gap: 10 }}>
-                {deliveredOrders.map((o) => (
-                  <Card key={o.id} o={o} />
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-      </ScrollView>
+
+              {inProgressOrders.length === 0 ? (
+                <Text style={styles.muted}>
+                  {t("client.inbox.sections.inProgressEmpty", "Aucune commande en cours.")}
+                </Text>
+              ) : (
+                <View style={styles.listGap}>
+                  {inProgressOrders.map((o) => (
+                    <Card key={o.id} o={o} />
+                  ))}
+                </View>
+              )}
+
+              <Text style={[styles.sectionTitle, { marginTop: 8 }]}>
+                {t("client.inbox.sections.delivered7d", "Livrées (7 jours)")}
+              </Text>
+
+              {deliveredOrders.length === 0 ? (
+                <Text style={styles.muted}>
+                  {t("client.inbox.sections.deliveredEmpty", "Aucune commande livrée sur 7 jours.")}
+                </Text>
+              ) : (
+                <View style={styles.listGap}>
+                  {deliveredOrders.map((o) => (
+                    <Card key={o.id} o={o} />
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  searchWrap: { paddingHorizontal: 16, paddingTop: 10 },
+  searchInput: {
+    height: 46,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    backgroundColor: MMD_CARD_ON_BLUE,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    color: MMD_WHITE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 13,
+  },
+  refreshBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: MMD_CARD_ON_BLUE,
+    borderWidth: 1,
+    borderColor: MMD_STROKE,
+  },
+  refreshText: {
+    color: MMD_TEXT,
+    fontWeight: "900",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  scroll: { padding: 16, paddingBottom: 30 },
+  sections: { gap: 14 },
+  listGap: { gap: 10 },
+  sectionTitle: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontWeight: "900",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  card: {
+    borderRadius: 18,
+    padding: 16,
+    backgroundColor: MMD_CARD_ON_BLUE,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+  },
+  cardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  cardCopy: { flex: 1, paddingRight: 4, gap: 6 },
+  cardTitle: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontWeight: "900",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  cardPreview: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  cardMeta: {
+    color: MMD_LINK_BLUE,
+    fontSize: 12,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontWeight: "900",
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+  },
+  muted: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    marginTop: 12,
+  },
+  splash: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  splashBrand: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.bold,
+    textAlign: "center",
+  },
+  splashSub: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 14,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    textAlign: "center",
+  },
+  emptyTitle: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    textAlign: "center",
+  },
+  emptyBody: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 320,
+  },
+});

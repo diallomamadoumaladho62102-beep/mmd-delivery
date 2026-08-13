@@ -7,6 +7,9 @@ import {
   ActivityIndicator,
   Alert,
   View,
+  StatusBar,
+  Image,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -27,8 +30,30 @@ import {
   shouldCreateRideBeforePayment,
 } from "../../lib/taxiBookingFlow";
 import { rowDirection } from "../../i18n/rtl";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GREEN,
+  MMD_STROKE,
+  MMD_TEXT_MUTED_BLUE,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiMultiStop">;
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
+
+const inputStyle = {
+  height: 42,
+  borderWidth: 1.5,
+  borderColor: "rgba(255,255,255,0.35)",
+  borderRadius: 8,
+  paddingHorizontal: 14,
+  paddingVertical: 10,
+  color: MMD_WHITE,
+  backgroundColor: "transparent",
+  fontSize: 14,
+} as const;
 
 export default function TaxiMultiStopScreen() {
   const navigation = useNavigation<Nav>();
@@ -111,28 +136,45 @@ export default function TaxiMultiStopScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("taxi.multiStop.title", "Multi-stop ride")}
         fallbackRoute="ClientHome"
         variant="dark"
       />
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} keyboardShouldPersistTaps="handled">
-        <MarketScopeCard
-          market={market}
-          areaLabel={t("taxi.home.yourArea", "Your area")}
-          currencyLabel={t("taxi.home.currencyLabel", "Currency")}
-          loading={scopeLoading}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Image
+          source={MMD_LOGO}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="MMD Delivery"
         />
-        <AddressAutocomplete
-          value={pickup}
-          onChangeText={setPickup}
-          onSelect={(place) => setPickup(place.fullAddress)}
-          placeholder={t("taxi.quote.pickup", "Pickup")}
-          country={market.countryCode || undefined}
-        />
+        <Text style={styles.brand}>MMD Delivery</Text>
+
+        <View style={styles.fullWidth}>
+          <MarketScopeCard
+            market={market}
+            areaLabel={t("taxi.home.yourArea", "Your area")}
+            currencyLabel={t("taxi.home.currencyLabel", "Currency")}
+            loading={scopeLoading}
+          />
+        </View>
+        <View style={styles.fullWidth}>
+          <AddressAutocomplete
+            value={pickup}
+            onChangeText={setPickup}
+            onSelect={(place) => setPickup(place.fullAddress)}
+            placeholder={t("taxi.quote.pickup", "Pickup")}
+            country={market.countryCode || undefined}
+            style={inputStyle}
+          />
+        </View>
         {stops.map((stop, index) => (
-          <View key={`stop-${index}`} style={{ gap: 8 }}>
+          <View key={`stop-${index}`} style={[styles.fullWidth, { gap: 8 }]}>
             <AddressAutocomplete
               value={stop}
               onChangeText={(text) => updateStop(index, text)}
@@ -141,54 +183,35 @@ export default function TaxiMultiStopScreen() {
                 n: index + 1,
               })}
               country={market.countryCode || undefined}
+              style={inputStyle}
             />
             <View style={{ flexDirection: rowDirection(), gap: 8 }}>
               <TouchableOpacity
                 onPress={() => moveStop(index, -1)}
                 disabled={index === 0}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: "#334155",
-                  alignItems: "center",
-                  opacity: index === 0 ? 0.4 : 1,
-                }}
+                style={[styles.stopBtn, { opacity: index === 0 ? 0.4 : 1 }]}
               >
-                <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+                <Text style={styles.stopBtnText}>
                   {t("taxi.multiStop.moveUp", "Up")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => moveStop(index, 1)}
                 disabled={index >= stops.length - 1}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: "#334155",
-                  alignItems: "center",
-                  opacity: index >= stops.length - 1 ? 0.4 : 1,
-                }}
+                style={[
+                  styles.stopBtn,
+                  { opacity: index >= stops.length - 1 ? 0.4 : 1 },
+                ]}
               >
-                <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+                <Text style={styles.stopBtnText}>
                   {t("taxi.multiStop.moveDown", "Down")}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => removeStop(index)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: "#7F1D1D",
-                  alignItems: "center",
-                }}
+                style={styles.stopBtn}
               >
-                <Text style={{ color: "#FCA5A5", fontWeight: "700" }}>
+                <Text style={styles.removeText}>
                   {t("taxi.multiStop.remove", "Remove")}
                 </Text>
               </TouchableOpacity>
@@ -196,42 +219,37 @@ export default function TaxiMultiStopScreen() {
           </View>
         ))}
         {stops.length < MAX_TAXI_STOPS ? (
-          <TouchableOpacity
-            onPress={addStop}
-            style={{
-              paddingVertical: 12,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: "#334155",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "#93C5FD", fontWeight: "700" }}>
+          <TouchableOpacity onPress={addStop} style={styles.addStop}>
+            <Text style={styles.addStopText}>
               {t("taxi.multiStop.addStop", "Add stop")}
             </Text>
           </TouchableOpacity>
         ) : null}
-        <AddressAutocomplete
-          value={dropoff}
-          onChangeText={setDropoff}
-          onSelect={(place) => setDropoff(place.fullAddress)}
-          placeholder={t("taxi.multiStop.finalDestination", "Final destination")}
-          country={market.countryCode || undefined}
-        />
+        <View style={styles.fullWidth}>
+          <AddressAutocomplete
+            value={dropoff}
+            onChangeText={setDropoff}
+            onSelect={(place) => setDropoff(place.fullAddress)}
+            placeholder={t("taxi.multiStop.finalDestination", "Final destination")}
+            country={market.countryCode || undefined}
+            style={inputStyle}
+          />
+        </View>
         <TouchableOpacity
           onPress={handleQuote}
           disabled={loading || !market.scopeResolved}
-          style={{ backgroundColor: "#F59E0B", padding: 16, borderRadius: 14, alignItems: "center" }}
+          style={styles.cta}
+          activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator color="#111827" />
+            <ActivityIndicator color={MMD_WHITE} />
           ) : (
-            <Text style={{ color: "#111827", fontWeight: "800" }}>
+            <Text style={styles.ctaText}>
               {t("taxi.multiStop.getEstimate", "Get estimate")}
             </Text>
           )}
         </TouchableOpacity>
-        <Text style={{ color: "#64748B", textAlign: "center" }}>
+        <Text style={styles.note}>
           {t(
             "taxi.multiStop.pricingNote",
             "Pricing uses total route distance/duration. Up to {{max}} stops.",
@@ -242,3 +260,79 @@ export default function TaxiMultiStopScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+    gap: 12,
+    alignItems: "center",
+  },
+  logo: { width: 50, height: 50, borderRadius: 25 },
+  brand: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 15,
+    textAlign: "center",
+  },
+  fullWidth: { width: "100%" },
+  stopBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: MMD_STROKE,
+    alignItems: "center",
+  },
+  stopBtnText: {
+    color: "#E2E8F0",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  removeText: {
+    color: "#FCA5A5",
+    fontFamily: MMD_FONT.bold,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  addStop: {
+    width: "100%",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    alignItems: "center",
+  },
+  addStopText: {
+    color: "#93C5FD",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  cta: {
+    width: "100%",
+    backgroundColor: MMD_GREEN,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  ctaText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  note: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
+    textAlign: "center",
+    width: "100%",
+  },
+});

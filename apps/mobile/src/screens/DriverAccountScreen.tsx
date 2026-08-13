@@ -1,10 +1,13 @@
+/**
+ * Driver Account — UI aligned to Figma 294:6021.
+ * Logic/APIs preserved (setup progress, locale, logout).
+ */
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert,
   StyleSheet,
 } from "react-native";
@@ -16,14 +19,22 @@ import { clearSelectedRole } from "../lib/authRole";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DriverAccountCard } from "../components/DriverAccountCard";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
 import { toUserFacingError } from "../lib/userFacingError";
-import { APP_COLORS } from "../theme/appTheme";
 import { computeDriverSetupProgress } from "../lib/driverSetupProgress";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../theme/mmdUi";
 
 const LOCALE_KEY = "mmd_locale_driver";
+const DANGER = "#F87171";
 
 const LOCALE_LABELS: Record<string, string> = {
-  en: "English",
+  en: "English (US)",
   fr: "Français",
   es: "Español",
   ar: "العربية",
@@ -31,85 +42,22 @@ const LOCALE_LABELS: Record<string, string> = {
   ff: "Pulaar",
 };
 
-const BG = "#020617";
-const CARD = "rgba(15,23,42,0.88)";
-const CARD_SOFT = "rgba(2,6,23,0.74)";
-const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = APP_COLORS.accent;
-const PURPLE_DARK = "#8B5CF6";
-const GREEN = "#22C55E";
-const RED = "#FCA5A5";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
-
-type AccountIconName =
-  | "work"
-  | "earnings"
-  | "tax"
-  | "security"
-  | "language"
-  | "logout";
-
-function Card({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
-      <View style={styles.cardBody}>{children}</View>
-    </View>
-  );
-}
-
-function Row({
-  label,
-  value,
-  onPress,
-  danger,
-  icon,
-}: {
-  label: string;
-  value?: string;
-  onPress?: () => void;
-  danger?: boolean;
-  icon: AccountIconName;
-}) {
-  return (
-    <TouchableOpacity
-      disabled={!onPress}
-      onPress={onPress}
-      style={[styles.row, danger && styles.rowDanger, !onPress && { opacity: 0.9 }]}
-      activeOpacity={0.86}
-    >
-      <View style={styles.rowLeft}>
-        <View style={[styles.rowIconBox, danger && styles.rowIconDanger]}>
-          <AccountIcon name={icon} danger={danger} />
-        </View>
-
-        <View style={styles.rowTextWrap}>
-          <Text style={[styles.rowLabel, danger && styles.dangerText]}>{label}</Text>
-          {value ? <Text style={styles.rowValue}>{value}</Text> : null}
-        </View>
-      </View>
-
-      <Text style={[styles.chevron, danger && styles.dangerText]}>{onPress ? "›" : ""}</Text>
-    </TouchableOpacity>
-  );
-}
-
 type DriverProgress = {
   progress: number;
   vehicleOk: boolean;
   docsDone: number;
   docsTotal: number;
   payoutOk: boolean;
+};
+
+type DriverProfile = {
+  id?: string | null;
+  user_id?: string | null;
+  transport_mode?: string | null;
+  active_vehicle_id?: string | null;
+  stripe_account_id?: string | null;
+  stripe_onboarded?: boolean | null;
+  status?: string | null;
 };
 
 function normalizeLocale6(locale: string) {
@@ -123,26 +71,56 @@ function normalizeLocale6(locale: string) {
   return x;
 }
 
-type DriverProfile = {
-  id?: string | null;
-  user_id?: string | null;
-  transport_mode?: string | null;
-  active_vehicle_id?: string | null;
-  vehicle_brand?: string | null;
-  vehicle_model?: string | null;
-  vehicle_year?: number | null;
-  plate_number?: string | null;
-  vehicle_verified?: boolean | null;
-  payout_enabled?: boolean | null;
-  stripe_account_id?: string | null;
-  stripe_onboarded?: boolean | null;
-};
+function initialsFromName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
+function MenuRow({
+  icon,
+  iconBg,
+  label,
+  value,
+  onPress,
+  danger,
+  showChevron = true,
+}: {
+  icon: string;
+  iconBg: string;
+  label: string;
+  value?: string;
+  onPress?: () => void;
+  danger?: boolean;
+  showChevron?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      disabled={!onPress}
+      onPress={onPress}
+      style={styles.menuRow}
+      activeOpacity={0.86}
+    >
+      <View style={[styles.menuIcon, { backgroundColor: iconBg }]}>
+        <Text style={styles.menuEmoji}>{icon}</Text>
+      </View>
+      <View style={styles.menuText}>
+        <Text style={[styles.menuLabel, danger && styles.dangerText]}>{label}</Text>
+        {value ? <Text style={styles.menuValue}>{value}</Text> : null}
+      </View>
+      {showChevron && onPress ? <Text style={styles.chevron}>›</Text> : null}
+    </TouchableOpacity>
+  );
+}
 
 export function DriverAccountScreen() {
   const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
 
   const [loading, setLoading] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [p, setP] = useState<DriverProgress>({
     progress: 0,
     vehicleOk: false,
@@ -150,9 +128,9 @@ export function DriverAccountScreen() {
     docsTotal: 4,
     payoutOk: false,
   });
-  const [loadingProgress, setLoadingProgress] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(true);
   const [locale, setLocale] = useState<string>(() =>
-    normalizeLocale6(i18n.resolvedLanguage || i18n.language || "en")
+    normalizeLocale6(i18n.resolvedLanguage || i18n.language || "en"),
   );
 
   const mountedRef = useRef(true);
@@ -190,7 +168,10 @@ export function DriverAccountScreen() {
 
       const { data: authRes, error: authErr } = await supabase.auth.getUser();
       if (authErr) {
-        Alert.alert(t("common.errorTitle", "Error"), toUserFacingError(authErr, t("common.errorTitle", "Error")));
+        Alert.alert(
+          t("common.errorTitle", "Error"),
+          toUserFacingError(authErr, t("common.errorTitle", "Error")),
+        );
         return;
       }
 
@@ -198,7 +179,7 @@ export function DriverAccountScreen() {
       if (!uid) {
         Alert.alert(
           t("common.errorTitle", "Error"),
-          t("common.notConfigured", "Not configured")
+          t("common.notConfigured", "Not configured"),
         );
         return;
       }
@@ -213,9 +194,22 @@ export function DriverAccountScreen() {
         console.log("check_connect_status exception:", e);
       }
 
+      const profileRes = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", uid)
+        .maybeSingle();
+      if (profileRes.data?.full_name) {
+        safeSetState(() => setDisplayName(String(profileRes.data.full_name)));
+      } else if (authRes.user?.email) {
+        safeSetState(() => setDisplayName(String(authRes.user?.email)));
+      }
+
       let { data: profileRaw, error: pErr } = await supabase
         .from("driver_profiles")
-        .select("id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded")
+        .select(
+          "id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded,status",
+        )
         .or(`user_id.eq.${uid},id.eq.${uid}`)
         .maybeSingle();
 
@@ -238,13 +232,18 @@ export function DriverAccountScreen() {
         if (upErr) {
           Alert.alert(
             "Erreur",
-            toUserFacingError(upErr, "Impossible de créer le profil chauffeur pour le moment."),
+            toUserFacingError(
+              upErr,
+              "Impossible de créer le profil chauffeur pour le moment.",
+            ),
           );
         }
 
         const again = await supabase
           .from("driver_profiles")
-          .select("id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded")
+          .select(
+            "id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded,status",
+          )
           .or(`user_id.eq.${uid},id.eq.${uid}`)
           .maybeSingle();
 
@@ -255,11 +254,15 @@ export function DriverAccountScreen() {
       if (pErr) {
         Alert.alert(
           "Erreur",
-          toUserFacingError(pErr, "Impossible de charger le profil chauffeur pour le moment."),
+          toUserFacingError(
+            pErr,
+            "Impossible de charger le profil chauffeur pour le moment.",
+          ),
         );
       }
 
       const dp = (profileRaw as unknown as DriverProfile | null) ?? null;
+      safeSetState(() => setAccountStatus(dp?.status ?? null));
 
       let docs: { doc_type?: string | null; status?: string | null }[] = [];
       const first = await supabase
@@ -277,7 +280,10 @@ export function DriverAccountScreen() {
         if (second.error) {
           Alert.alert(
             t("common.errorTitle", "Error"),
-            toUserFacingError(second.error, "Impossible de charger les documents pour le moment."),
+            toUserFacingError(
+              second.error,
+              "Impossible de charger les documents pour le moment.",
+            ),
           );
         } else {
           docs = second.data ?? [];
@@ -304,32 +310,35 @@ export function DriverAccountScreen() {
       console.log("loadProgress error", e);
       Alert.alert(
         t("common.errorTitle", "Error"),
-        e?.message ?? "Unable to load account status."
+        e?.message ?? "Unable to load account status.",
       );
     } finally {
       setLoadingProgress(false);
     }
-  }, [t]);
+  }, [safeSetState, t]);
 
   useFocusEffect(
     useCallback(() => {
       loadProgress();
       loadLocaleFromStorage();
-    }, [loadProgress, loadLocaleFromStorage])
+    }, [loadProgress, loadLocaleFromStorage]),
   );
 
   const onLogout = useCallback(async () => {
     try {
       setLoading(true);
-
       await clearSelectedRole();
-
       const { error } = await supabase.auth.signOut();
       if (error) {
-        Alert.alert(t("common.errorTitle", "Error"), toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+        Alert.alert(
+          t("common.errorTitle", "Error"),
+          toUserFacingError(
+            error,
+            "Une action temporairement impossible s'est produite. Veuillez réessayer.",
+          ),
+        );
         return;
       }
-
       navigation.reset({
         index: 0,
         routes: [{ name: "RoleSelect" }],
@@ -339,370 +348,369 @@ export function DriverAccountScreen() {
     }
   }, [navigation, t]);
 
+  const onSwitchAccount = useCallback(async () => {
+    try {
+      setLoading(true);
+      await clearSelectedRole();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "RoleSelect" }],
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [navigation]);
+
   const safeProgress = useMemo(() => p, [p]);
 
   const languageValue = useMemo(() => {
     const code = normalizeLocale6(locale || "en");
-    const name = LOCALE_LABELS[code] || code.toUpperCase();
-    return `🌐 ${name} (${code})`;
+    return LOCALE_LABELS[code] || code.toUpperCase();
   }, [locale]);
 
-  const goTax = useCallback(() => {
-    navigation.navigate("DriverTax");
-  }, [navigation]);
+  const isActive = useMemo(() => {
+    const s = String(accountStatus || "").toLowerCase();
+    if (s === "active" || s === "approved" || s === "verified") return true;
+    return safeProgress.progress >= 100;
+  }, [accountStatus, safeProgress.progress]);
+
+  const nameLabel =
+    displayName.trim() ||
+    t("driver.account.unnamed", "Driver");
+
+  if (loadingProgress && !displayName) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("driver.account.title", "Driver account")}
+          fallbackRoute="DriverTabs"
+          variant="mmd"
+          showBack={false}
+        />
+        <DriverBrandLoadingState
+          title={t("common.loading", "Loading…")}
+          logoAtBottom={false}
+        />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("driver.account.title", "Driver account")}
         fallbackRoute="DriverTabs"
-        variant="dark"
+        variant="mmd"
+        showBack={false}
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.progressCardWrap}>
-          <DriverAccountCard
-            progress={safeProgress.progress}
-            vehicleOk={safeProgress.vehicleOk}
-            docsDone={safeProgress.docsDone}
-            docsTotal={safeProgress.docsTotal}
-            payoutOk={safeProgress.payoutOk}
-            onPress={() => navigation.navigate("DriverWorkAccount")}
-            onAction={() => {
-              if (!safeProgress.vehicleOk) {
-                navigation.navigate("DriverVehicles");
-                return;
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.profileCard}>
+          <View style={styles.profileRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initialsFromName(nameLabel)}</Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {nameLabel}
+              </Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: isActive ? MMD_TAXI_GREEN : "#F59E0B" },
+                ]}
+              >
+                <Text style={styles.statusBadgeText}>
+                  {isActive
+                    ? t("driver.account.statusActive", "Active")
+                    : t("driver.account.statusIncomplete", "Incomplete")}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <DriverAccountCard
+          progress={safeProgress.progress}
+          vehicleOk={safeProgress.vehicleOk}
+          docsDone={safeProgress.docsDone}
+          docsTotal={safeProgress.docsTotal}
+          payoutOk={safeProgress.payoutOk}
+          guidedActive={isActive}
+          onPress={() => navigation.navigate("DriverWorkAccount")}
+          onAction={() => {
+            if (!safeProgress.vehicleOk) {
+              navigation.navigate("DriverVehicles");
+              return;
+            }
+            if (!safeProgress.payoutOk) {
+              navigation.navigate("DriverWallet");
+              return;
+            }
+            navigation.navigate("DriverProfile");
+          }}
+        />
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {t("driver.account.workTitle", "Work").toUpperCase()}
+          </Text>
+          <View style={styles.sectionStack}>
+            <MenuRow
+              icon="📍"
+              iconBg="#E0E7FF"
+              label={t("driver.account.zonePrefs", "Zone & Preferences")}
+              value={t(
+                "driver.account.zonePrefsHint",
+                "Availability and service area",
+              )}
+              onPress={() => navigation.navigate("DriverServices")}
+            />
+            <MenuRow
+              icon="💰"
+              iconBg="#E0E7FF"
+              label={t("driver.account.earnings", "Earnings")}
+              value={t(
+                "driver.account.earningsHint",
+                "History, payouts, and cashouts",
+              )}
+              onPress={() => navigation.navigate("DriverWallet")}
+            />
+            <MenuRow
+              icon="📄"
+              iconBg="#E0E7FF"
+              label={t("driver.account.taxInfo", "Tax Info (W-9 / 1099)")}
+              value={t("driver.account.taxHint", "Fiscal documentation")}
+              onPress={() => navigation.navigate("DriverTax")}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {t("common.account", "Account").toUpperCase()}
+          </Text>
+          <View style={styles.sectionStack}>
+            <MenuRow
+              icon="🛡️"
+              iconBg="#E0E7FF"
+              label={t("common.security", "Security")}
+              value={t(
+                "driver.settings.securityHint",
+                "Manage your account security",
+              )}
+              onPress={() => navigation.navigate("DriverSecurity")}
+            />
+            <MenuRow
+              icon="🔒"
+              iconBg="#E0E7FF"
+              label={t("driver.account.changePassword", "Change Password")}
+              value={t(
+                "driver.account.changePasswordHint",
+                "Update your login credentials",
+              )}
+              onPress={() => navigation.navigate("DriverSecurity")}
+            />
+            <MenuRow
+              icon="🗑️"
+              iconBg="#FEE2E2"
+              label={t("account.delete.title", "Delete Account")}
+              value={t(
+                "account.delete.rowHint",
+                "Permanently remove your account",
+              )}
+              onPress={() =>
+                navigation.navigate("DeleteAccount", { role: "driver" })
               }
-              if (!safeProgress.payoutOk) {
-                navigation.navigate("DriverWallet");
-                return;
-              }
-              navigation.navigate("DriverProfile");
-            }}
+              danger
+              showChevron={false}
+            />
+            <MenuRow
+              icon="🌐"
+              iconBg="#E0E7FF"
+              label={t("common.language", "Language")}
+              value={languageValue}
+              onPress={() => navigation.navigate("DriverLanguage")}
+            />
+          </View>
+        </View>
+
+        <View style={styles.sectionStack}>
+          <MenuRow
+            icon="🔄"
+            iconBg="#E0E7FF"
+            label={t("driver.settings.switchAccountTitle", "Switch account")}
+            onPress={onSwitchAccount}
+            showChevron={false}
+          />
+          <MenuRow
+            icon="🚪"
+            iconBg="#FEE2E2"
+            label={
+              loading
+                ? t("driver.settings.loggingOut", "Logging out…")
+                : t("common.logout", "Log out")
+            }
+            onPress={onLogout}
+            danger
+            showChevron={false}
           />
         </View>
 
-        <Card
-          title={t("driver.account.workTitle", "Work")}
-          subtitle={t(
-            "driver.account.workSubtitle",
-            "What impacts your trips and earnings."
-          )}
+        <TouchableOpacity
+          style={styles.helpCard}
+          activeOpacity={0.86}
+          onPress={() => navigation.navigate("DriverHelp")}
         >
-          <Row
-            icon="work"
-            label={t("driver.account.workCenter", "Work center")}
-            value={t("driver.account.workCenterHint", "Zone, preferences, availability")}
-            onPress={() => navigation.navigate("DriverServices")}
-          />
-
-          <Row
-            icon="earnings"
-            label={t("driver.account.earnings", "Earnings")}
-            value={t("driver.account.earningsHint", "History, payouts, cashouts")}
-            onPress={() => navigation.navigate("DriverWallet")}
-          />
-
-          <Row
-            icon="tax"
-            label={t("driver.account.taxInfo", "Tax info")}
-            value={t("driver.account.taxHint", "W-9 / 1099 (later)")}
-            onPress={goTax}
-          />
-        </Card>
-
-        <Card
-          title={t("common.account", "Account")}
-          subtitle={t("driver.settings.subtitle", "Manage your driver account.")}
-        >
-          <Row
-            icon="security"
-            label={t("common.security", "Security")}
-            value={t("driver.settings.securityHint", "Change your password.")}
-            onPress={() => navigation.navigate("DriverSecurity")}
-          />
-
-          <Row
-            icon="logout"
-            label={t("account.delete.title", "Delete account")}
-            value={t(
-              "account.delete.rowHint",
-              "Permanently delete and anonymize your data."
-            )}
-            onPress={() =>
-              navigation.navigate("DeleteAccount", { role: "driver" })
-            }
-            danger
-          />
-
-          <Row
-            icon="language"
-            label={t("common.language", "Language")}
-            value={languageValue}
-            onPress={() => navigation.navigate("DriverLanguage")}
-          />
-        </Card>
-
-        <Card title={t("driver.settings.switchAccountTitle", "Switch account")}>
-          {loading ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator color={PURPLE} />
-              <Text style={styles.loadingText}>{t("driver.settings.loggingOut", "Logging out…")}</Text>
+          <View style={styles.helpLeft}>
+            <View style={styles.helpIcon}>
+              <Text style={styles.menuEmoji}>🎧</Text>
             </View>
-          ) : (
-            <Row
-              icon="logout"
-              label={t("common.logout", "Log out")}
-              value={t("driver.settings.logoutHint", "Log out of your account.")}
-              onPress={onLogout}
-              danger
-            />
-          )}
-        </Card>
-
-        <Text style={styles.footerText}>
-          {loadingProgress
-            ? t("driver.settings.loadingFooter", "Loading…")
-            : t("driver.settings.footer", "Need help? Contact support.")}
-        </Text>
+            <View>
+              <Text style={styles.helpTitle}>
+                {t("driver.account.needHelp", "Need Help?")}
+              </Text>
+              <Text style={styles.helpSub}>
+                {t(
+                  "driver.account.needHelpHint",
+                  "Contact our support team",
+                )}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function AccountIcon({ name, danger }: { name: AccountIconName; danger?: boolean }) {
-  const color = danger ? RED : PURPLE;
-
-  if (name === "earnings") {
-    return <Text style={[styles.iconGlyph, { color }]}>$</Text>;
-  }
-
-  if (name === "tax") {
-    return <Text style={[styles.iconGlyph, { color, fontSize: 18 }]}>%</Text>;
-  }
-
-  if (name === "language") {
-    return <Text style={[styles.iconGlyph, { color, fontSize: 17 }]}>文</Text>;
-  }
-
-  if (name === "security") {
-    return (
-      <View style={styles.shieldIcon}>
-        <View style={[styles.shieldShape, { borderColor: color }]} />
-      </View>
-    );
-  }
-
-  if (name === "logout") {
-    return <Text style={[styles.iconGlyph, { color, fontSize: 20 }]}>↪</Text>;
-  }
-
-  return (
-    <View style={styles.workIcon}>
-      <View style={[styles.workCase, { borderColor: color }]} />
-      <View style={[styles.workHandle, { borderColor: color }]} />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-  header: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 8,
-    minHeight: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: CARD_SOFT,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backIcon: {
-    color: "#BFDBFE",
-    fontSize: 34,
-    fontWeight: "700",
-    marginTop: -2,
-  },
-  headerTitle: {
-    color: TEXT,
-    fontSize: 17,
-    fontWeight: "900",
-    letterSpacing: 0.2,
-  },
-  headerSpacer: {
-    width: 44,
-    height: 44,
-  },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
   content: {
-    paddingHorizontal: 18,
-    paddingTop: 8,
-    paddingBottom: 30,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 40,
+    gap: 24,
   },
-  progressCardWrap: {
-    marginBottom: 16,
-    borderRadius: 26,
-    overflow: "hidden",
-    shadowColor: PURPLE_DARK,
-    shadowOpacity: 0.14,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
+  profileCard: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 16,
+    padding: 16,
   },
-  card: {
-    borderRadius: 26,
-    padding: 15,
-    marginBottom: 16,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: BORDER,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  cardTitle: {
-    color: TEXT,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  cardSubtitle: {
-    color: MUTED,
-    fontWeight: "800",
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  cardBody: {
-    marginTop: 12,
-  },
-  row: {
-    minHeight: 72,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: CARD_SOFT,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.11)",
-    marginBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  rowDanger: {
-    borderColor: "rgba(252,165,165,0.2)",
-    backgroundColor: "rgba(127,29,29,0.14)",
-  },
-  rowLeft: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    minWidth: 0,
-  },
-  rowIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 15,
-    backgroundColor: "rgba(139,92,246,0.14)",
+  profileRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 2,
+    borderColor: MMD_WHITE,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
   },
-  rowIconDanger: {
-    backgroundColor: "rgba(239,68,68,0.12)",
+  avatarText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 20,
   },
-  rowTextWrap: {
-    flex: 1,
-    minWidth: 0,
+  profileInfo: { flex: 1, minWidth: 0, gap: 6 },
+  profileName: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 18,
   },
-  rowLabel: {
-    color: TEXT,
-    fontSize: 15,
-    fontWeight: "900",
+  statusBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
-  rowValue: {
-    color: MUTED,
+  statusBadgeText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
     fontSize: 12,
-    fontWeight: "800",
-    marginTop: 4,
+  },
+  section: { gap: 12 },
+  sectionTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  sectionStack: { gap: 12 },
+  menuRow: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  menuIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuEmoji: { fontSize: 24 },
+  menuText: { flex: 1, minWidth: 0, gap: 2 },
+  menuLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  menuValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 13,
   },
   chevron: {
-    color: "#CBD5E1",
-    fontSize: 28,
-    fontWeight: "600",
-    marginLeft: 10,
-    marginTop: -2,
-  },
-  dangerText: {
-    color: RED,
-  },
-  loadingBox: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-  },
-  loadingText: {
-    color: MUTED,
-    marginTop: 10,
+    color: MMD_WHITE,
+    fontSize: 20,
+    fontFamily: MMD_FONT.extrabold,
     fontWeight: "800",
   },
-  footerText: {
-    color: "#64748B",
+  dangerText: { color: DANGER },
+  helpCard: {
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  helpLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  helpIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  helpTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  helpSub: {
+    color: MMD_WHITE,
+    opacity: 0.9,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
     marginTop: 2,
-    fontWeight: "800",
-    paddingHorizontal: 4,
-  },
-  iconGlyph: {
-    color: PURPLE,
-    fontSize: 21,
-    fontWeight: "900",
-  },
-  workIcon: {
-    width: 25,
-    height: 23,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  workHandle: {
-    position: "absolute",
-    top: 2,
-    width: 11,
-    height: 7,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 4,
-    borderWidth: 2,
-    borderBottomWidth: 0,
-  },
-  workCase: {
-    position: "absolute",
-    bottom: 2,
-    width: 23,
-    height: 16,
-    borderRadius: 5,
-    borderWidth: 2,
-  },
-  shieldIcon: {
-    width: 24,
-    height: 26,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  shieldShape: {
-    width: 20,
-    height: 22,
-    borderRadius: 7,
-    borderWidth: 2,
-    transform: [{ rotate: "45deg" }],
   },
 });
+
+export default DriverAccountScreen;

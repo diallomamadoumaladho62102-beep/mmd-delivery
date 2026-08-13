@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -43,6 +44,16 @@ import {
 import { AddressAutocomplete } from "../../components/location/AddressAutocomplete";
 import { reverseGeocode } from "../../lib/reverseGeocode";
 import { getFreshPosition } from "../../lib/locationPermissionState";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC_BORDER,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 type TaxiHomeRoute = RouteProp<RootStackParamList, "TaxiHome">;
@@ -79,12 +90,12 @@ export default function TaxiHomeScreen() {
   const CLASSES = useMemo(
     () =>
       [
-        { key: "standard" as const, label: t("taxi.home.standard", "Standard"), emoji: "🚕" },
-        { key: "comfort" as const, label: t("taxi.home.comfort", "Comfort"), emoji: "✨" },
+        { key: "standard" as const, label: t("taxi.home.standard", "Standard"), emoji: "🚗" },
+        { key: "comfort" as const, label: t("taxi.home.comfort", "Comfort"), emoji: "⭐" },
         { key: "xl" as const, label: t("taxi.home.xl", "XL"), emoji: "🚐" },
         {
           key: "wheelchair_accessible" as const,
-          label: t("taxi.home.wheelchair", "Wheelchair Accessible"),
+          label: t("taxi.home.wheelchair", "Accessible"),
           emoji: "♿",
         },
       ] as const,
@@ -344,15 +355,21 @@ export default function TaxiHomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={ts("taxi.home.title", "MMD Taxi")}
-        subtitle={ts("taxi.home.subtitle", "Book a ride — separate from delivery packages.")}
+        subtitle={ts("taxi.home.subtitle", "Premium ride service")}
         fallbackRoute="ClientHome"
         variant="dark"
       />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+        <Image
+          source={MMD_LOGO}
+          style={{ width: 44, height: 44, borderRadius: 14, alignSelf: "flex-start" }}
+          resizeMode="contain"
+          accessibilityLabel="MMD"
+        />
         {scopeLoading ? (
           <ActivityIndicator color="#93C5FD" />
         ) : !market.taxiAvailable ? (
@@ -427,19 +444,17 @@ export default function TaxiHomeScreen() {
               disabled={gpsLoading}
               style={{
                 flex: 1,
-                borderRadius: 12,
+                borderRadius: 14,
                 paddingVertical: 12,
                 alignItems: "center",
-                borderWidth: 1,
-                borderColor: "#334155",
-                backgroundColor: "rgba(15,23,42,0.8)",
+                backgroundColor: MMD_TAXI_GREEN,
               }}
             >
               {gpsLoading ? (
-                <ActivityIndicator color="#93C5FD" />
+                <ActivityIndicator color={MMD_WHITE} />
               ) : (
-                <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
-                  {t("taxi.home.useMyGps", "Use my GPS")}
+                <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold }}>
+                  {t("taxi.home.useMyGps", "Use GPS")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -447,20 +462,16 @@ export default function TaxiHomeScreen() {
               onPress={openPickupPicker}
               style={{
                 flex: 1,
-                borderRadius: 12,
+                borderRadius: 14,
                 paddingVertical: 12,
                 alignItems: "center",
-                borderWidth: 1,
-                borderColor: pickupLocationId ? "#22C55E" : "#334155",
-                backgroundColor: pickupLocationId
-                  ? "rgba(34,197,94,0.12)"
-                  : "rgba(15,23,42,0.8)",
+                backgroundColor: MMD_TAXI_GREEN,
               }}
             >
-              <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+              <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold }}>
                 {pickupLocationId
                   ? t("taxi.home.pickupPinned", "Pickup pinned on map")
-                  : t("taxi.home.pinPickup", "Pin exact pickup on map")}
+                  : t("taxi.home.pinPickup", "Pin on map")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -487,20 +498,16 @@ export default function TaxiHomeScreen() {
           <TouchableOpacity
             onPress={openDropoffPicker}
             style={{
-              borderRadius: 12,
+              borderRadius: 14,
               paddingVertical: 12,
               alignItems: "center",
-              borderWidth: 1,
-              borderColor: dropoffLocationId ? "#22C55E" : "#334155",
-              backgroundColor: dropoffLocationId
-                ? "rgba(34,197,94,0.12)"
-                : "rgba(15,23,42,0.8)",
+              backgroundColor: MMD_TAXI_GREEN,
             }}
           >
-            <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+            <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold }}>
               {dropoffLocationId
                 ? t("taxi.home.dropoffPinned", "Dropoff pinned on map")
-                : t("taxi.home.pinDropoff", "Pin exact dropoff on map")}
+                : t("taxi.home.pinDropoff", "Pin on map")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -524,16 +531,20 @@ export default function TaxiHomeScreen() {
                   style={{
                     flex: 1,
                     paddingVertical: 12,
-                    borderRadius: 12,
+                    borderRadius: 16,
                     borderWidth: 1,
-                    borderColor: selected ? "#38BDF8" : "#334155",
-                    backgroundColor: selected
-                      ? "rgba(56,189,248,0.12)"
-                      : "rgba(15,23,42,0.8)",
+                    borderColor: selected ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.12)",
+                    backgroundColor: selected ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.06)",
                     alignItems: "center",
                   }}
                 >
-                  <Text style={{ color: selected ? "#E0F2FE" : "#CBD5E1", fontWeight: "700" }}>
+                  <Text
+                    style={{
+                      color: selected ? MMD_WHITE : "rgba(255,255,255,0.7)",
+                      fontWeight: selected ? "800" : "700",
+                      fontFamily: selected ? MMD_FONT.extrabold : MMD_FONT.bold,
+                    }}
+                  >
                     {label}
                   </Text>
                 </TouchableOpacity>
@@ -620,24 +631,29 @@ export default function TaxiHomeScreen() {
                   }}
                   style={{
                     width: "48%",
-                    padding: 12,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: selected ? "#38BDF8" : unavailable ? "#64748B" : "#334155",
+                    padding: 14,
+                    borderRadius: 22,
+                    borderWidth: selected ? 2 : 1.5,
+                    borderColor: selected
+                      ? MMD_TAXI_GREEN
+                      : unavailable
+                        ? "#64748B"
+                        : MMD_GOLD_CLASSIC_BORDER,
                     backgroundColor: selected
-                      ? "rgba(56,189,248,0.12)"
+                      ? "#000000"
                       : unavailable
                         ? "rgba(100,116,139,0.15)"
-                        : "rgba(15,23,42,0.8)",
+                        : "rgba(10,10,18,0.85)",
                     alignItems: "center",
                     opacity: unavailable ? 0.7 : 1,
                   }}
                 >
-                  <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
+                  <Text style={{ fontSize: 32 }}>{item.emoji}</Text>
                   <Text
                     style={{
-                      color: selected ? "#E0F2FE" : "#CBD5E1",
+                      color: MMD_WHITE,
                       fontWeight: "700",
+                      fontFamily: MMD_FONT.bold,
                       marginTop: 4,
                       textAlign: "center",
                     }}
@@ -757,62 +773,86 @@ export default function TaxiHomeScreen() {
           disabled={loading}
           style={{
             marginTop: 8,
-            backgroundColor: "#F59E0B",
+            backgroundColor: MMD_TAXI_GREEN,
+            borderWidth: 2,
+            borderColor: "rgba(212,175,55,0.6)",
             paddingVertical: 16,
-            borderRadius: 16,
+            borderRadius: 18,
             alignItems: "center",
           }}
         >
           {loading ? (
-            <ActivityIndicator color="#111827" />
+            <ActivityIndicator color={MMD_WHITE} />
           ) : (
-            <Text style={{ color: "#111827", fontWeight: "800", fontSize: 16 }}>
-              {t("taxi.home.getEstimate", "Get estimate")}
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontWeight: "800",
+                fontSize: 19,
+                fontFamily: MMD_FONT.extrabold,
+              }}
+            >
+              ✨ {t("taxi.home.getEstimate", "Get Estimate")}
             </Text>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate("TaxiHistory")}>
-          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            {t("taxi.home.history", "View ride history")}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("TaxiFavorites")}>
-          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            {t("taxi.home.favorites", "Favorite drivers")}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("TaxiLoyalty")}>
-          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            {t("taxi.home.loyalty", "Loyalty points")}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("BusinessWallet")}>
-          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            {t("taxi.home.businessWallet", "Business Wallet")}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("TaxiScheduled")}>
-          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            {t("taxi.home.scheduled", "Scheduled rides")}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("TaxiMultiStop")}>
-          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            {t("taxi.home.multiStop", "Multi-stop ride")}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("TaxiLoyaltyRewards")}>
-          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            {t("taxi.home.loyaltyRewards", "Loyalty rewards")}
-          </Text>
-        </TouchableOpacity>
+        <Text
+          style={{
+            color: MMD_WHITE,
+            fontFamily: MMD_FONT.semibold,
+            fontWeight: "600",
+            fontSize: 18,
+            textAlign: "center",
+            marginTop: 8,
+          }}
+        >
+          {t("taxi.home.moreOptions", "More options")}
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" }}>
+          {(
+            [
+              ["🕐", t("taxi.home.history", "History"), () => navigation.navigate("TaxiHistory")],
+              ["❤️", t("taxi.home.favorites", "Favorites"), () => navigation.navigate("TaxiFavorites")],
+              ["💎", t("taxi.home.loyalty", "Loyalty"), () => navigation.navigate("TaxiLoyalty")],
+              ["💼", t("taxi.home.businessWallet", "Wallet"), () => navigation.navigate("BusinessWallet")],
+              ["📅", t("taxi.home.scheduled", "Schedule"), () => navigation.navigate("TaxiScheduled")],
+              ["🔄", t("taxi.home.multiStop", "Multi-stop"), () => navigation.navigate("TaxiMultiStop")],
+              ["🎁", t("taxi.home.loyaltyRewards", "Rewards"), () => navigation.navigate("TaxiLoyaltyRewards")],
+            ] as const
+          ).map(([emoji, label, onPress]) => (
+            <TouchableOpacity
+              key={label}
+              onPress={onPress}
+              style={{ width: "22%", alignItems: "center", gap: 8 }}
+            >
+              <View
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  borderWidth: 1.5,
+                  borderColor: "rgba(212,175,55,0.45)",
+                }}
+              >
+                <Text style={{ fontSize: 22 }}>{emoji}</Text>
+              </View>
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  fontSize: 11,
+                  fontFamily: MMD_FONT.regular,
+                  textAlign: "center",
+                }}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
           </>
         )}
       </ScrollView>
@@ -821,12 +861,13 @@ export default function TaxiHomeScreen() {
 }
 
 const inputStyle = {
-  backgroundColor: "rgba(15,23,42,0.95)",
-  borderWidth: 1,
-  borderColor: "#334155",
+  backgroundColor: MMD_GLASS,
+  borderWidth: 1.5,
+  borderColor: MMD_GOLD_CLASSIC_BORDER,
   borderRadius: 14,
   paddingHorizontal: 14,
   paddingVertical: 14,
-  color: "#F8FAFC",
+  color: MMD_WHITE,
   fontSize: 16,
+  fontFamily: MMD_FONT.regular,
 } as const;

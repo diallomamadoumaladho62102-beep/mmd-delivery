@@ -1,6 +1,12 @@
 import React from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import type { UnifiedMarketScope } from "../../lib/marketScope";
+import {
+  MMD_CARD_ON_BLUE_STRONG,
+  MMD_STROKE,
+  MMD_TEXT,
+  MMD_TEXT_MUTED_BLUE,
+} from "../../theme/mmdUi";
 
 type Props = {
   market: UnifiedMarketScope;
@@ -28,15 +34,15 @@ export default function MarketScopeCard({
           gap: 8,
           padding: 14,
           borderRadius: 14,
-          borderWidth: 1,
-          borderColor: isDark ? "#334155" : "#E2E8F0",
-          backgroundColor: isDark ? "rgba(15,23,42,0.95)" : "#F8FAFC",
+          borderWidth: 1.5,
+          borderColor: isDark ? MMD_STROKE : "#E2E8F0",
+          backgroundColor: isDark ? MMD_CARD_ON_BLUE_STRONG : "#F8FAFC",
           flexDirection: "row",
           alignItems: "center",
         }}
       >
-        <ActivityIndicator color={isDark ? "#94A3B8" : "#64748B"} />
-        <Text style={{ color: isDark ? "#94A3B8" : "#64748B", fontSize: 13 }}>
+        <ActivityIndicator color={isDark ? MMD_TEXT_MUTED_BLUE : "#64748B"} />
+        <Text style={{ color: isDark ? MMD_TEXT_MUTED_BLUE : "#64748B", fontSize: 13 }}>
           {unresolvedMessage}
         </Text>
       </View>
@@ -67,14 +73,14 @@ export default function MarketScopeCard({
         gap: 6,
         padding: 14,
         borderRadius: 14,
-        borderWidth: 1,
-        borderColor: isDark ? "#334155" : "#E2E8F0",
-        backgroundColor: isDark ? "rgba(15,23,42,0.95)" : "#FFFFFF",
+        borderWidth: 1.5,
+        borderColor: isDark ? MMD_STROKE : "#E2E8F0",
+        backgroundColor: isDark ? MMD_CARD_ON_BLUE_STRONG : "#FFFFFF",
       }}
     >
       <Text
         style={{
-          color: isDark ? "#64748B" : "#64748B",
+          color: isDark ? MMD_TEXT_MUTED_BLUE : "#64748B",
           fontSize: 12,
           fontWeight: "600",
         }}
@@ -83,14 +89,14 @@ export default function MarketScopeCard({
       </Text>
       <Text
         style={{
-          color: isDark ? "#F8FAFC" : "#0F172A",
+          color: isDark ? MMD_TEXT : "#0F172A",
           fontSize: 17,
           fontWeight: "800",
         }}
       >
         {market.displayLabel}
       </Text>
-      <Text style={{ color: isDark ? "#94A3B8" : "#475569", fontSize: 13 }}>
+      <Text style={{ color: isDark ? MMD_TEXT_MUTED_BLUE : "#475569", fontSize: 13 }}>
         {currencyLabel} · {market.currencyCode}
       </Text>
     </View>

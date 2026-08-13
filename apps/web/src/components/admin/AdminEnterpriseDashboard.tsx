@@ -129,9 +129,62 @@ export default function AdminEnterpriseDashboard() {
 
       const persona = dashboardPersona(effectiveRole, founder);
       setTasks(defaultTasksForPersona(persona));
-      if (alive) {
-        setActivity(defaultActivityForPersona(persona, loadedMetrics));
+
+      // Recent activity: real admin_audit_logs only — never invent events.
+      let nextActivity: ActivityItem[] = [];
+      if (
+        sessionHasPermission(
+          { role: effectiveRole, isFounder: founder },
+          "audit.read"
+        )
+      ) {
+        const { data: auditRows } = await supabase
+          .from("admin_audit_logs")
+          .select("id, action, target_type, created_at")
+          .order("created_at", { ascending: false })
+          .limit(8);
+        if (Array.isArray(auditRows) && auditRows.length) {
+          nextActivity = auditRows.map((row, i) => {
+            const created =
+              typeof row.created_at === "string" ? row.created_at : null;
+            const time = created
+              ? new Date(created).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "—";
+            const action = String(row.action ?? "admin_action");
+            const target = row.target_type
+              ? ` · ${String(row.target_type)}`
+              : "";
+            return {
+              id: String(row.id ?? `audit-${i}`),
+              time,
+              label: `${action}${target}`,
+            };
+          });
+        }
       }
+      // Fallback: live overview metrics only (no fabricated audit rows).
+      if (!nextActivity.length && loadedMetrics) {
+        const stamp = new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        nextActivity = [
+          {
+            id: "m-orders",
+            time: stamp,
+            label: `${loadedMetrics.pending_orders} open orders`,
+          },
+          {
+            id: "m-drivers",
+            time: stamp,
+            label: `${loadedMetrics.online_drivers} active drivers`,
+          },
+        ];
+      }
+      if (alive) setActivity(nextActivity);
     })();
 
     return () => {
@@ -154,70 +207,47 @@ export default function AdminEnterpriseDashboard() {
       persona === "support" ||
       persona === "review";
 
+    // Figma Overview KPI row: Open orders · Active drivers · Critical flags · AI actions
     const cards: KpiCard[] = [
       {
-        id: "pending_orders",
-        label: "Pending Orders",
+        id: "open_orders",
+        label: "Open orders",
         value: m?.pending_orders ?? "—",
         href: "/admin/orders",
-        tone: "warn",
-        visible: showOps || showSupport,
-      },
-      {
-        id: "active_rides",
-        label: "Active Rides",
-        value: "—",
-        href: "/admin/taxi-rides",
-        tone: "info",
-        visible: showOps,
-      },
-      {
-        id: "drivers_online",
-        label: "Drivers Online",
-        value: m?.online_drivers ?? "—",
-        href: "/admin/drivers",
         tone: "success",
         visible: showOps || showSupport,
       },
       {
-        id: "revenue_today",
-        label: "Revenue Today",
-        value: "—",
-        href: "/admin/finance",
+        id: "active_drivers",
+        label: "Active drivers",
+        value: m?.online_drivers ?? "—",
+        href: "/admin/drivers",
         tone: "info",
-        visible: showFinance,
+        visible: showOps || showSupport,
       },
       {
-        id: "failed_payouts",
-        label: "Failed Payouts",
-        value: m?.failed_payouts ?? "—",
-        href: "/admin/payouts",
-        tone: "critical",
-        visible: showFinance || showOps,
-      },
-      {
-        id: "dispatch_errors",
-        label: "Dispatch Errors",
-        value: m?.pending_dispatch_retries ?? "—",
-        href: "/admin/dispatch",
-        tone: "warn",
-        visible: showOps,
-      },
-      {
-        id: "open_incidents",
-        label: "Open Incidents",
-        value: m?.unpaid_orders ?? "—",
+        id: "critical_flags",
+        label: "Critical flags",
+        value:
+          m == null
+            ? "—"
+            : Number(m.failed_payouts ?? 0) +
+              Number(m.pending_dispatch_retries ?? 0),
         href: "/admin/road-safety",
         tone: "critical",
-        visible: showSafety,
+        visible: showSafety || showOps || showFinance,
       },
       {
-        id: "ai_cost",
-        label: "AI Cost",
-        value: "—",
+        id: "ai_actions",
+        label: "AI actions",
+        value: m?.webhooks_24h ?? "—",
         href: "/admin/mmd-ai",
-        tone: "ai",
-        visible: persona === "founder" || persona === "admin" || persona === "finance",
+        tone: "success",
+        visible:
+          persona === "founder" ||
+          persona === "admin" ||
+          persona === "finance" ||
+          showOps,
       },
     ];
     return cards.filter((k) => k.visible);
@@ -227,38 +257,28 @@ export default function AdminEnterpriseDashboard() {
     const failed = m?.failed_payouts ?? 0;
     const pending = m?.pending_orders ?? 0;
     const dispatch = m?.pending_dispatch_retries ?? 0;
+    // Only surface alerts backed by real overview metrics (no placeholder zeros).
     const cards: AlertCard[] = [
-      {
-        id: "drivers_review",
-        label: "Drivers to verify",
-        count: 0,
-        href: "/admin/drivers",
-        tone: "critical",
-        visible: persona !== "finance",
-      },
-      {
-        id: "restaurants_suspended",
-        label: "Restaurants suspended",
-        count: 0,
-        href: "/admin/restaurants",
-        tone: "warn",
-        visible: persona !== "finance",
-      },
       {
         id: "payouts_failed",
         label: "Failed payouts",
         count: failed,
         href: "/admin/payouts",
         tone: "critical",
-        visible: persona === "founder" || persona === "admin" || persona === "finance" || persona === "ops",
+        visible:
+          (persona === "founder" ||
+            persona === "admin" ||
+            persona === "finance" ||
+            persona === "ops") &&
+          failed > 0,
       },
       {
         id: "orders_blocked",
-        label: "Orders blocked",
+        label: "Open orders",
         count: pending,
         href: "/admin/orders",
         tone: "warn",
-        visible: persona !== "finance",
+        visible: persona !== "finance" && pending > 0,
       },
       {
         id: "dispatch_retry",
@@ -266,40 +286,33 @@ export default function AdminEnterpriseDashboard() {
         count: dispatch,
         href: "/admin/dispatch",
         tone: "info",
-        visible: persona === "founder" || persona === "admin" || persona === "ops",
+        visible:
+          (persona === "founder" || persona === "admin" || persona === "ops") &&
+          dispatch > 0,
       },
     ];
     return cards.filter((a) => a.visible);
   }, [m, persona]);
 
-  const title =
-    persona === "founder"
-      ? "Global command"
-      : persona === "finance"
-        ? "Finance desk"
-        : persona === "ops"
-          ? "Operations desk"
-          : persona === "support"
-            ? "Support desk"
-            : persona === "review"
-              ? "Review desk"
-              : "Control Center";
-
   return (
-    <div className="mx-auto max-w-[1400px] space-y-8 pb-8">
-      <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cc-muted)]">
-          MMD Delivery
-        </p>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
-              {title}
-            </h1>
-            <p className="mt-1 text-sm text-[var(--cc-muted)]">
-              {roleDisplayName(role, { isFounder })}
-              {isFounder ? " · unrestricted access" : ""}
-            </p>
+    <div className="mx-auto max-w-[1280px] space-y-8 pb-8">
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-[32px] font-bold tracking-tight text-white sm:text-[36px]">
+            Overview
+          </h1>
+          <p className="mt-1 text-sm text-white/70">
+            {roleDisplayName(role, { isFounder })}
+            {persona !== "admin" && persona !== "founder"
+              ? ` · ${persona} desk`
+              : ""}
+            {isFounder ? " · unrestricted access" : ""}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(251,191,36,0.25)] bg-[rgba(251,191,36,0.1)] px-3.5 py-2 text-sm font-bold text-[var(--cc-gold)]">
+            <span aria-hidden>🛡️</span>
+            {roleDisplayName(role, { isFounder })}
           </div>
           {isFounder ? (
             <Link
@@ -311,22 +324,29 @@ export default function AdminEnterpriseDashboard() {
           ) : null}
         </div>
         {metricsError ? (
-          <p className="text-sm text-[var(--cc-critical)]">{metricsError}</p>
+          <p className="w-full text-sm text-[var(--cc-critical)]">{metricsError}</p>
         ) : null}
       </header>
 
-      {/* KPI row */}
+      {/* KPI row — Figma Overview */}
       <section aria-label="Key metrics">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((kpi) => (
-            <Link key={kpi.id} href={kpi.href} className="cc-kpi block">
-              <div className="flex items-center gap-2">
+            <Link
+              key={kpi.id}
+              href={kpi.href}
+              className="block rounded-[20px] border border-white/10 bg-white/[0.04] p-7 shadow-[0px_16px_32px_rgba(0,0,0,0.25)] backdrop-blur-[20px] transition hover:bg-white/[0.07]"
+            >
+              <p className="text-lg font-semibold text-white/70">{kpi.label}</p>
+              <p className="mt-3 text-5xl font-bold text-white">{kpi.value}</p>
+              <div className="mt-3 flex items-center gap-2.5">
                 <span
-                  className={`inline-block h-2.5 w-2.5 rounded-full ${TONE_DOT[kpi.tone]}`}
+                  className={`inline-block size-2.5 rounded-[5px] ${TONE_DOT[kpi.tone]}`}
                 />
-                <span className="cc-kpi-label">{kpi.label}</span>
+                <span className="text-base font-semibold text-white/80">
+                  Live
+                </span>
               </div>
-              <div className="cc-kpi-value">{kpi.value}</div>
             </Link>
           ))}
         </div>
@@ -342,30 +362,32 @@ export default function AdminEnterpriseDashboard() {
         </section>
       )}
 
-      {/* Critical alerts */}
-      <section aria-label="Critical alerts" className="space-y-3">
-        <h2 className="text-base font-semibold text-slate-900">Critical alerts</h2>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {alerts.map((alert) => (
-            <Link
-              key={alert.id}
-              href={alert.href}
-              className={`cc-card border-l-4 px-4 py-4 ${ALERT_BORDER[alert.tone]}`}
-            >
-              <p className="text-2xl font-semibold tracking-tight text-slate-900">
-                {alert.count}
-              </p>
-              <p className="mt-1 text-sm text-[var(--cc-muted)]">{alert.label}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Critical alerts — only when real counts exist */}
+      {alerts.length > 0 ? (
+        <section aria-label="Critical alerts" className="space-y-3">
+          <h2 className="text-base font-semibold text-white">Critical alerts</h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {alerts.map((alert) => (
+              <Link
+                key={alert.id}
+                href={alert.href}
+                className={`cc-card border-l-4 px-4 py-4 ${ALERT_BORDER[alert.tone]}`}
+              >
+                <p className="text-2xl font-semibold tracking-tight text-white">
+                  {alert.count}
+                </p>
+                <p className="mt-1 text-sm text-[var(--cc-muted)]">{alert.label}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* My tasks */}
         <section aria-label="My tasks" className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900">My tasks</h2>
+            <h2 className="text-base font-semibold text-white">My tasks</h2>
             <Link
               href="/admin/tasks"
               className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
@@ -385,7 +407,7 @@ export default function AdminEnterpriseDashboard() {
                   href={task.href}
                   className="flex items-center justify-between px-5 py-4 transition hover:bg-slate-50"
                 >
-                  <span className="text-sm font-medium text-slate-800">
+                  <span className="text-sm font-medium text-white">
                     {task.title}
                   </span>
                   <span className="text-xs font-semibold text-[var(--cc-info)]">
@@ -397,26 +419,36 @@ export default function AdminEnterpriseDashboard() {
           </div>
         </section>
 
-        {/* Recent activity */}
-        <section aria-label="Recent activity" className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-900">
-            Recent activity
-          </h2>
-          <div className="cc-card divide-y divide-[var(--cc-border)]">
+        {/* Recent activity — Figma table */}
+        <section aria-label="Recent activity" className="space-y-4 lg:col-span-2">
+          <h2 className="text-2xl font-bold text-white">Recent activity</h2>
+          <div className="overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.04] shadow-[0px_18px_36px_-18px_rgba(0,0,0,0.25)] backdrop-blur-[20px]">
+            <div className="grid grid-cols-2 gap-3 bg-white/[0.06] px-5 py-3.5 text-sm font-bold uppercase tracking-[0.08em] text-white/70 sm:grid-cols-4">
+              <span>Time</span>
+              <span className="sm:col-span-2">Event</span>
+              <span className="hidden sm:block">Status</span>
+            </div>
             {activity.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-[var(--cc-muted)]">
+              <p className="px-5 py-6 text-sm text-white/70">
                 Activity will appear here as admins take actions.
               </p>
             ) : (
               activity.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-start gap-4 px-5 py-3.5"
+                  className="grid grid-cols-2 gap-3 border-t border-white/[0.07] px-5 py-3.5 sm:grid-cols-4"
                 >
-                  <span className="w-12 shrink-0 text-xs font-medium tabular-nums text-[var(--cc-muted)]">
+                  <span className="text-base tabular-nums text-white">
                     {item.time}
                   </span>
-                  <span className="text-sm text-slate-800">{item.label}</span>
+                  <span className="text-base text-white sm:col-span-2">
+                    {item.label}
+                  </span>
+                  <span className="hidden sm:inline-flex">
+                    <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-bold text-[#22C55E]">
+                      Live
+                    </span>
+                  </span>
                 </div>
               ))
             )}
@@ -425,41 +457,6 @@ export default function AdminEnterpriseDashboard() {
       </div>
     </div>
   );
-}
-
-function defaultActivityForPersona(
-  persona: ReturnType<typeof dashboardPersona>,
-  metrics: OverviewMetrics | null
-): ActivityItem[] {
-  const now = Date.now();
-  const t = (minsAgo: number) =>
-    new Date(now - minsAgo * 60_000).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-  if (persona === "finance") {
-    return [
-      { id: "a1", time: t(5), label: "Payout reconciliation checked" },
-      { id: "a2", time: t(12), label: "Commission snapshot reviewed" },
-      {
-        id: "a3",
-        time: t(20),
-        label: `${metrics?.failed_payouts ?? 0} failed payouts in queue`,
-      },
-    ];
-  }
-
-  return [
-    { id: "a1", time: t(3), label: "Dispatch retry evaluated" },
-    { id: "a2", time: t(8), label: "Driver approval queue refreshed" },
-    {
-      id: "a3",
-      time: t(15),
-      label: `${metrics?.pending_orders ?? 0} orders pending`,
-    },
-    { id: "a4", time: t(22), label: "Supervision metrics synced" },
-  ];
 }
 
 function defaultTasksForPersona(

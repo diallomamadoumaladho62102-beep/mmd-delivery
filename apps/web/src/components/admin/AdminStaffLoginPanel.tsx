@@ -12,6 +12,7 @@ import {
   type StaffLoginAccessResult,
 } from "@/lib/adminStaffLogin";
 import { supabase } from "@/lib/supabaseBrowser";
+import { ADMIN_LOGO } from "@/components/admin/adminUi";
 
 type ViewState = "idle" | "loading" | "success" | "error";
 
@@ -30,7 +31,7 @@ export default function AdminStaffLoginPanel() {
   const trimmedEmail = useMemo(() => email.trim(), [email]);
   const emailIsValid = useMemo(
     () => isValidStaffLoginEmail(trimmedEmail),
-    [trimmedEmail],
+    [trimmedEmail]
   );
 
   const redirectStaffIfAlreadySignedIn = async () => {
@@ -73,7 +74,7 @@ export default function AdminStaffLoginPanel() {
   }, [router]);
 
   const verifyStaffAccess = async (
-    accessToken: string,
+    accessToken: string
   ): Promise<StaffLoginAccessResult> => {
     const res = await fetch("/api/admin/staff-login-check", {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -236,195 +237,173 @@ export default function AdminStaffLoginPanel() {
     setMessage("Email de réinitialisation envoyé. Vérifiez votre boîte email.");
   };
 
+  const fieldClass =
+    "h-14 w-full rounded-2xl border border-white/20 bg-white/10 px-4 text-[17px] text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-[#2563eb] disabled:opacity-60";
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-white to-gray-50 px-4 py-6 md:px-6 md:py-10">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-center">
-        <div className="grid w-full overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-xl md:min-h-[640px] md:grid-cols-2">
-          <section className="flex flex-col justify-center bg-gray-900 px-6 py-8 text-white md:px-10 md:py-12">
-            <div className="mb-6">
-              <Image
-                src="/brand/mmd-logo-transparent-v2.png"
-                alt="MMD Delivery — We Deliver With Heart"
-                width={156}
-                height={104}
-                priority
-                className="h-24 w-36 object-contain drop-shadow-[0_7px_14px_rgba(0,0,0,0.5)]"
+    <main className="admin-figma flex min-h-screen items-center justify-center bg-[#0033CC] p-6 sm:p-10">
+      <div className="w-full max-w-[480px] rounded-[28px] border border-white/50 bg-white/10 p-8 shadow-[0px_18px_40px_-12px_rgba(0,0,0,0.25)] backdrop-blur-[12px] sm:p-12">
+        <div className="flex flex-col items-center gap-3">
+          <Image
+            src={ADMIN_LOGO}
+            alt="MMD Delivery"
+            width={48}
+            height={48}
+            priority
+            className="size-12 rounded-[14px] object-contain"
+          />
+          <p className="text-[28px] font-extrabold text-[#FBBF24]">MMD Control</p>
+        </div>
+
+        <div className="mt-6 text-center">
+          <h1 className="text-[32px] font-extrabold text-white sm:text-[36px]">
+            Staff Sign In
+          </h1>
+          <p className="mt-2 text-base text-white/70 sm:text-lg">
+            Use your staff account to access the Control Center.
+          </p>
+        </div>
+
+        {isCheckingSession ? (
+          <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 px-4 py-6 text-center text-white/80">
+            Loading…
+          </div>
+        ) : (
+          <div className="mt-8 space-y-4">
+            <div>
+              <label
+                htmlFor="admin-email"
+                className="mb-2 block text-base font-semibold text-white/70"
+              >
+                Email
+              </label>
+              <input
+                id="admin-email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                autoFocus
+                placeholder="staff@mmd.delivery"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && state !== "loading") {
+                    event.preventDefault();
+                    passwordRef.current?.focus();
+                  }
+                }}
+                className={fieldClass}
+                disabled={state === "loading"}
               />
             </div>
 
-            <h1 className="text-2xl font-bold leading-tight md:text-4xl">
-              Administration MMD Delivery
-            </h1>
-
-            <p className="mt-4 max-w-md text-sm leading-6 text-gray-300 md:text-base">
-              Espace réservé au personnel autorisé : Super Admin, Operations,
-              Support, Finance et Review.
-            </p>
-
-            <div className="mt-8 space-y-3 text-sm text-gray-300 md:text-base">
-              <div>Supervision des opérations</div>
-              <div>Paiements et conformité</div>
-              <div>Support et modération</div>
-            </div>
-          </section>
-
-          <section className="flex items-center justify-center px-6 py-8 md:px-10 md:py-12">
-            <div className="w-full max-w-md">
-              <div className="mb-6">
-                <h2 className="text-2xl font-semibold text-gray-900 md:text-3xl">
-                  Connexion staff
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Connectez-vous avec votre email et votre mot de passe staff.
-                </p>
-              </div>
-
-              {isCheckingSession ? (
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                  Vérification de la session…
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="admin-email"
-                      className="mb-2 block text-sm font-medium text-gray-700"
-                    >
-                      Email
-                    </label>
-                    <input
-                      id="admin-email"
-                      type="email"
-                      autoComplete="email"
-                      inputMode="email"
-                      autoFocus
-                      placeholder="staff@mmddelivery.com"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && state !== "loading") {
-                          event.preventDefault();
-                          passwordRef.current?.focus();
-                        }
-                      }}
-                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-gray-200"
-                      disabled={state === "loading"}
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="admin-password"
-                      className="mb-2 block text-sm font-medium text-gray-700"
-                    >
-                      Mot de passe
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="admin-password"
-                        ref={passwordRef}
-                        type={showPassword ? "text" : "password"}
-                        autoComplete="current-password"
-                        placeholder="Votre mot de passe"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" && state !== "loading") {
-                            event.preventDefault();
-                            void signInWithPassword();
-                          }
-                        }}
-                        className="w-full rounded-2xl border border-gray-300 px-4 py-3 pr-24 text-sm text-gray-900 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-gray-200"
-                        disabled={state === "loading"}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((value) => !value)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-700"
-                        disabled={state === "loading"}
-                      >
-                        {showPassword ? "Masquer" : "Afficher"}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => void signInWithPassword()}
-                    disabled={state === "loading"}
-                    className="w-full rounded-2xl bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {state === "loading" ? "Connexion…" : "Se connecter"}
-                  </button>
-
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <button
-                      type="button"
-                      onClick={() => void resetPassword()}
-                      disabled={state === "loading"}
-                      className="font-medium text-blue-700 underline-offset-2 hover:underline disabled:opacity-60"
-                    >
-                      Mot de passe oublié ?
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowMagicLink((value) => !value)}
-                      disabled={state === "loading"}
-                      className="font-medium text-gray-600 underline-offset-2 hover:underline disabled:opacity-60"
-                    >
-                      {showMagicLink
-                        ? "Masquer connexion sans mot de passe"
-                        : "Connexion sans mot de passe"}
-                    </button>
-                  </div>
-
-                  {showMagicLink ? (
-                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                      <p className="text-sm text-gray-600">
-                        Recevez un lien de connexion par email. Réservé aux
-                        comptes staff déjà créés par un administrateur.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => void sendMagicLink()}
-                        disabled={state === "loading"}
-                        className="mt-3 w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Envoyer le lien de connexion
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-
-              {message ? (
-                <div
-                  className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
-                    state === "error"
-                      ? "border-red-200 bg-red-50 text-red-700"
-                      : state === "success"
-                        ? "border-green-200 bg-green-50 text-green-700"
-                        : "border-gray-200 bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  {message}
-                </div>
-              ) : null}
-
-              <p className="mt-6 text-xs leading-5 text-gray-500">
-                Les comptes staff ne peuvent pas être créés depuis cette page.
-                Contactez un administrateur MMD Delivery si vous avez besoin
-                d&apos;un accès.
-              </p>
-
-              <Link
-                href="/"
-                className="mt-4 inline-block text-sm font-medium text-gray-600 underline-offset-2 hover:underline"
+            <div>
+              <label
+                htmlFor="admin-password"
+                className="mb-2 block text-base font-semibold text-white/70"
               >
-                Retour au site
-              </Link>
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="admin-password"
+                  ref={passwordRef}
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && state !== "loading") {
+                      event.preventDefault();
+                      void signInWithPassword();
+                    }
+                  }}
+                  className={`${fieldClass} pr-24`}
+                  disabled={state === "loading"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-white/80"
+                  disabled={state === "loading"}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
-          </section>
+
+            <button
+              type="button"
+              onClick={() => void signInWithPassword()}
+              disabled={state === "loading"}
+              className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#2563EB] text-lg font-extrabold text-white shadow-[0px_10px_12px_rgba(37,99,235,0.2)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {state === "loading" ? "Signing in…" : "Sign In"}
+            </button>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <button
+                type="button"
+                onClick={() => void resetPassword()}
+                disabled={state === "loading"}
+                className="font-medium text-white/80 underline-offset-2 hover:underline disabled:opacity-60"
+              >
+                Forgot password?
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMagicLink((value) => !value)}
+                disabled={state === "loading"}
+                className="font-medium text-white/70 underline-offset-2 hover:underline disabled:opacity-60"
+              >
+                {showMagicLink ? "Hide magic link" : "Sign in without password"}
+              </button>
+            </div>
+
+            {showMagicLink ? (
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+                <p className="text-sm text-white/70">
+                  Receive a login link by email. Staff accounts must already exist.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void sendMagicLink()}
+                  disabled={state === "loading"}
+                  className="mt-3 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  Send login link
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {message ? (
+          <div
+            className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
+              state === "error"
+                ? "border-red-400/40 bg-red-500/15 text-red-100"
+                : state === "success"
+                  ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+                  : "border-white/15 bg-white/10 text-white/80"
+            }`}
+          >
+            {message}
+          </div>
+        ) : null}
+
+        <p className="mt-6 text-center text-xs leading-5 text-white/50">
+          Staff accounts cannot be created here. Contact a MMD administrator.
+        </p>
+
+        <div className="mt-4 text-center">
+          <Link
+            href="/"
+            className="text-sm font-medium text-white/70 underline-offset-2 hover:underline"
+          >
+            Back to site
+          </Link>
         </div>
       </div>
     </main>

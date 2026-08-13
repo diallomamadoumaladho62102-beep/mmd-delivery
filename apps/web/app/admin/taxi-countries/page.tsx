@@ -65,7 +65,7 @@ export default function AdminTaxiCountriesPage() {
 
   return (
     <AdminGate requiredPermission="taxi_countries.read">
-      <main className="min-h-screen bg-slate-50 p-6">
+      <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
             <h1 className="text-2xl font-bold text-slate-900">Taxi Countries</h1>

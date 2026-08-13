@@ -11,6 +11,7 @@ import MMDLocationPicker, {
 import type { MmdLocationPickerContext } from "../lib/mmdLocationDisplay";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
+import { MMD_BLUE, MMD_FONT, MMD_GOLD_BRIGHT } from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "MMDLocationPicker">;
 type PickerRoute = RouteProp<RootStackParamList, "MMDLocationPicker">;
@@ -31,18 +32,21 @@ export default function MMDLocationPickerScreen() {
   const resolvedCountryCode = String(routeCountryCode ?? "").trim().toUpperCase();
   if (!resolvedCountryCode) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }} edges={["bottom", "left", "right"]}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
           title={t("location.exactLocation", "Exact location")}
           fallbackRoute="ClientHome"
           variant="dark"
         />
         <View style={{ padding: 20 }}>
-          <Text style={{ color: "#FCA5A5" }}>
+          <Text style={{ color: "#FCA5A5", fontFamily: MMD_FONT.semibold }}>
             {t("location.missingMarketScope", "Market scope is required for this picker.")}
           </Text>
           <TouchableOpacity onPress={safeBack} style={{ marginTop: 12 }}>
-            <Text style={{ color: "#94A3B8" }}>{t("common.back", "Back")}</Text>
+            <Text style={{ color: MMD_GOLD_BRIGHT, fontFamily: MMD_FONT.semibold }}>
+              {t("common.back", "Back")}
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -68,8 +72,8 @@ export default function MMDLocationPickerScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }} edges={["bottom", "left", "right"]}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={resolvedTitle}
         fallbackRoute="ClientHome"

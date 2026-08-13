@@ -6,6 +6,10 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  StyleSheet,
+  StatusBar,
+  Image,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -13,10 +17,23 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { toUserFacingError } from "../lib/userFacingError";
+import {
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_BRIGHT,
+  MMD_MUTED,
+  MMD_NAVY,
+  MMD_WHITE,
+  mmdLogoSizeCompact,
+} from "../theme/mmdUi";
+
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 
 export function ClientSecurityScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const { width, height } = useWindowDimensions();
+  const logoSize = mmdLogoSizeCompact(width, height);
 
   const [email, setEmail] = useState<string>("");
   const [hasUser, setHasUser] = useState<boolean>(true);
@@ -130,72 +147,52 @@ export function ClientSecurityScreen() {
   }, [saving, hasUser, newPassword, confirm, navigation, t]);
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#020617" }}
-      edges={["bottom", "left", "right"]}
-    >
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("client.security.title", "Security")}
         fallbackRoute="ClientSettings"
         variant="dark"
       />
 
-      <View style={{ padding: 16 }}>
-        <View
+      <View style={styles.content}>
+        <Image
+          source={MMD_LOGO}
           style={{
-            marginTop: 14,
-            backgroundColor: "#0B1220",
-            borderColor: "#111827",
-            borderWidth: 1,
-            borderRadius: 18,
-            padding: 14,
+            width: logoSize,
+            height: logoSize,
+            borderRadius: logoSize / 2,
+            alignSelf: "center",
+            marginBottom: 16,
           }}
-        >
-          <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
+          resizeMode="contain"
+          accessibilityLabel="MMD Delivery"
+        />
+
+        <View style={styles.card}>
+          <Text style={styles.accountLabel}>
             {t("client.security.accountLabel", "Account")}
           </Text>
-          <Text style={{ color: "white", fontWeight: "900", marginTop: 6 }}>
-            {email || "—"}
-          </Text>
+          <Text style={styles.email}>{email || "—"}</Text>
 
           <View style={{ height: 16 }} />
 
-          <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+          <Text style={styles.fieldLabel}>
             {t("client.security.newPasswordLabel", "New password")}
           </Text>
-
-          <View
-            style={{
-              marginTop: 8,
-              backgroundColor: "#0A1730",
-              borderColor: "#111827",
-              borderWidth: 1,
-              borderRadius: 14,
-              paddingHorizontal: 12,
-              paddingVertical: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-            }}
-          >
+          <View style={styles.inputRow}>
             <TextInput
               value={newPassword}
               onChangeText={setNewPassword}
               placeholder="********"
-              placeholderTextColor="#64748B"
+              placeholderTextColor="#6B7280"
               secureTextEntry={!showNew}
               autoCapitalize="none"
               autoCorrect={false}
-              style={{
-                flex: 1,
-                color: "white",
-                fontWeight: "800",
-              }}
+              style={styles.input}
             />
-
             <TouchableOpacity onPress={() => setShowNew((v) => !v)} activeOpacity={0.85}>
-              <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+              <Text style={styles.toggle}>
                 {showNew
                   ? t("client.security.hide", "Hide")
                   : t("client.security.show", "Show")}
@@ -205,45 +202,25 @@ export function ClientSecurityScreen() {
 
           <View style={{ height: 12 }} />
 
-          <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+          <Text style={styles.fieldLabel}>
             {t("client.security.confirmLabel", "Confirm password")}
           </Text>
-
-          <View
-            style={{
-              marginTop: 8,
-              backgroundColor: "#0A1730",
-              borderColor: "#111827",
-              borderWidth: 1,
-              borderRadius: 14,
-              paddingHorizontal: 12,
-              paddingVertical: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-            }}
-          >
+          <View style={styles.inputRow}>
             <TextInput
               value={confirm}
               onChangeText={setConfirm}
               placeholder="********"
-              placeholderTextColor="#64748B"
+              placeholderTextColor="#6B7280"
               secureTextEntry={!showConfirm}
               autoCapitalize="none"
               autoCorrect={false}
-              style={{
-                flex: 1,
-                color: "white",
-                fontWeight: "800",
-              }}
+              style={styles.input}
             />
-
             <TouchableOpacity
               onPress={() => setShowConfirm((v) => !v)}
               activeOpacity={0.85}
             >
-              <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+              <Text style={styles.toggle}>
                 {showConfirm
                   ? t("client.security.hide", "Hide")
                   : t("client.security.show", "Show")}
@@ -257,31 +234,18 @@ export function ClientSecurityScreen() {
             onPress={onSave}
             disabled={!canSubmit}
             activeOpacity={0.85}
-            style={{
-              backgroundColor: "#1D4ED8",
-              borderRadius: 14,
-              paddingVertical: 14,
-              alignItems: "center",
-              opacity: canSubmit ? 1 : 0.55,
-            }}
+            style={[styles.submitBtn, !canSubmit && styles.submitDisabled]}
           >
             {saving ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color={MMD_NAVY} />
             ) : (
-              <Text style={{ color: "white", fontWeight: "900" }}>
+              <Text style={styles.submitText}>
                 {t("client.security.save", "Update password")}
               </Text>
             )}
           </TouchableOpacity>
 
-          <Text
-            style={{
-              color: "#64748B",
-              fontWeight: "800",
-              marginTop: 10,
-              lineHeight: 18,
-            }}
-          >
+          <Text style={styles.tip}>
             {t(
               "client.security.tip",
               "Use at least 8 characters. You’ll stay signed in on this device."
@@ -294,3 +258,89 @@ export function ClientSecurityScreen() {
 }
 
 export default ClientSecurityScreen;
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
+  content: { padding: 16, paddingTop: 14, alignItems: "stretch" },
+  card: {
+    backgroundColor: MMD_NAVY,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+  },
+  accountLabel: {
+    color: MMD_GOLD_BRIGHT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  email: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 16,
+    marginTop: 6,
+  },
+  fieldLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  inputRow: {
+    marginTop: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderColor: MMD_WHITE,
+    borderWidth: 2,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+    fontWeight: "600",
+    fontSize: 14,
+    minHeight: 42,
+    paddingHorizontal: 10,
+  },
+  toggle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+    paddingRight: 4,
+  },
+  submitBtn: {
+    backgroundColor: MMD_GOLD_BRIGHT,
+    borderRadius: 10,
+    paddingVertical: 14,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  submitDisabled: {
+    backgroundColor: "#94A3B8",
+    opacity: 0.55,
+  },
+  submitText: {
+    color: MMD_NAVY,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  tip: {
+    color: MMD_MUTED,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    marginTop: 10,
+    lineHeight: 18,
+    fontSize: 12,
+  },
+});

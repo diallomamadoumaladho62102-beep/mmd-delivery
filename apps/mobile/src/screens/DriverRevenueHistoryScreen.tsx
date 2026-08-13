@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -14,7 +15,23 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
-import { APP_COLORS } from "../theme/appTheme";
+import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GOLD_CLASSIC,
+  MMD_MUTED,
+  MMD_TAXI_GREEN,
+  MMD_TEXT,
+  MMD_WHITE,
+} from "../theme/mmdUi";
+
+const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
+
+const LILAC = "#A78BFA";
+const LILAC_SOFT = "#DDD6FE";
+const TRIP_EMOJIS = ["🟢", "🔵", "🟣", "🟡", "🟠", "🔴", "⚪"] as const;
 
 type RangeKey = "today" | "week" | "month";
 
@@ -62,14 +79,6 @@ function fmtMoney(n: number) {
   return `${(Number.isFinite(x) ? x : 0).toFixed(2)} $`;
 }
 
-function fmtShortDate(iso: string | null, locale: string) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleDateString(locale || "en-US", {
-    day: "2-digit",
-    month: "short",
-  });
-}
 function fmtTime(iso: string | null, locale: string) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -97,6 +106,28 @@ function getTip(o: OrderRow) {
   return cents / 100;
 }
 
+function emojiFromId(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) {
+    h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  }
+  return TRIP_EMOJIS[h % TRIP_EMOJIS.length];
+}
+
+function BrandFooter({ stacked }: { stacked?: boolean }) {
+  return (
+    <View style={[styles.footer, stacked && styles.footerStacked]}>
+      <Image
+        source={MMD_LOGO}
+        style={styles.footerLogo}
+        resizeMode="contain"
+        accessibilityLabel="MMD Delivery"
+      />
+      <Text style={styles.footerBrand}>MMD Delivery</Text>
+    </View>
+  );
+}
+
 export function DriverRevenueHistoryScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -105,7 +136,8 @@ export function DriverRevenueHistoryScreen() {
   const initialRange: RangeKey = (route?.params?.range as RangeKey) ?? "week";
 
   const [range, setRange] = useState<RangeKey>(initialRange);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [orders, setOrders] = useState<OrderRow[]>([]);
 
   const localeForDates = useMemo(() => {
@@ -241,6 +273,7 @@ export function DriverRevenueHistoryScreen() {
       setOrders([]);
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
   }, [fromISO, toISO, t]);
 
@@ -257,13 +290,36 @@ export function DriverRevenueHistoryScreen() {
     return { baseEarnings, tipsTotal, totalEarnings };
   }, [orders]);
 
+  const showEmpty = !loading && orders.length === 0;
+  const showList = !loading && orders.length > 0;
+
+  const totalDisplay = loading
+    ? "—"
+    : fmtMoney(totals.totalEarnings);
+  const netDisplay = loading ? "—" : fmtMoney(totals.baseEarnings);
+  const tipsDisplay = loading ? "—" : fmtMoney(totals.tipsTotal);
+
+  if (initialLoad && loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("driver.revenue.history.title", "History")}
+          subtitle={label}
+          fallbackRoute="DriverTabs"
+          variant="mmd"
+        />
+        <DriverBrandLoadingState title={t("common.loading", "Loading…")} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("driver.revenue.history.title", "History")}
         subtitle={label}
         fallbackRoute="DriverTabs"
-        variant="dark"
+        variant="mmd"
         rightSlot={
           <TouchableOpacity
             onPress={() => void fetchOrders()}
@@ -298,11 +354,19 @@ export function DriverRevenueHistoryScreen() {
               <TouchableOpacity
                 key={k}
                 onPress={() => setRange(k)}
-                style={[styles.filterPill, active && styles.filterPillActive]}
+                style={[
+                  styles.filterPill,
+                  loading && styles.filterPillLoading,
+                  active && (loading ? styles.filterPillActiveLilac : styles.filterPillActive),
+                ]}
                 activeOpacity={0.86}
               >
                 <Text
-                  style={[styles.filterText, active && styles.filterTextActive]}
+                  style={[
+                    styles.filterText,
+                    loading && styles.filterTextLoading,
+                    active && (loading ? styles.filterTextActiveLilac : styles.filterTextActive),
+                  ]}
                 >
                   {text}
                 </Text>
@@ -311,184 +375,162 @@ export function DriverRevenueHistoryScreen() {
           })}
         </View>
 
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, loading && styles.summaryCardLoading]}>
           <View style={styles.summaryTopRow}>
-            <View style={styles.summaryIconBox}>
-              <Text style={styles.summaryIcon}>$</Text>
+            <View style={[styles.summaryIconBox, loading && styles.summaryIconBoxLilac]}>
+              <Text style={[styles.summaryIcon, loading && styles.summaryIconLilac]}>
+                {loading ? "$" : "💲"}
+              </Text>
             </View>
             <View style={styles.livePill}>
-              <Text style={styles.liveText}>{orders.length} trips</Text>
+              <Text style={styles.liveText}>
+                {orders.length}{" "}
+                {t("driver.revenue.history.summary.trips", "trips")}
+              </Text>
             </View>
           </View>
 
           <Text style={styles.summaryLabel}>
             {t("driver.revenue.history.summary.totalLabel", "Total")}
           </Text>
-          <Text style={styles.summaryAmount}>
-            {fmtMoney(totals.totalEarnings)}
-          </Text>
+          <Text style={styles.summaryAmount}>{totalDisplay}</Text>
 
           <View style={styles.splitRow}>
-            <View style={styles.splitCard}>
+            <View style={[styles.splitCard, loading && styles.splitCardLoading]}>
               <Text style={styles.splitLabel}>
                 {t("driver.revenue.history.summary.net", "Net price")}
               </Text>
-              <Text style={styles.splitValue}>
-                {fmtMoney(totals.baseEarnings)}
-              </Text>
+              <Text style={styles.splitValue}>{netDisplay}</Text>
             </View>
 
-            <View style={styles.splitCard}>
+            <View style={[styles.splitCard, loading && styles.splitCardLoading]}>
               <Text style={styles.splitLabel}>
                 {t("driver.revenue.history.summary.tips", "Tips")}
               </Text>
-              <Text style={styles.splitValueGreen}>
-                {fmtMoney(totals.tipsTotal)}
-              </Text>
+              <Text style={styles.splitValueGreen}>{tipsDisplay}</Text>
             </View>
           </View>
-        </View>
 
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>
-            {t("driver.revenue.history.list.title", "Delivered trips")}
-          </Text>
-          <Text style={styles.sectionMeta}>{label}</Text>
+          {!loading ? (
+            <View style={styles.periodRow}>
+              <Text style={styles.periodLabel}>
+                {t("driver.revenue.history.summary.period", "Period:")}
+              </Text>
+              <Text style={styles.periodValue}>{label}</Text>
+            </View>
+          ) : null}
         </View>
 
         {loading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color="#FFFFFF" />
+          <View style={styles.loadingFeedback}>
+            <ActivityIndicator color={MMD_WHITE} />
             <Text style={styles.loadingText}>
               {t("common.loading", "Loading…")}
             </Text>
           </View>
-        ) : orders.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>
-              {t(
-                "driver.revenue.history.list.empty",
-                "No delivered trips in this period.",
-              )}
-            </Text>
-            <Text style={styles.emptySub}>
-              {t(
-                "driver.revenue.history.list.emptySub",
-                "Completed deliveries will appear here.",
-              )}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.listWrap}>
-            {orders.map((o) => {
-              const base = getGain(o);
-              const tip = getTip(o);
-              const total = base + tip;
+        ) : null}
 
-              return (
-                <TouchableOpacity
-                  key={`${o.source_table}:${o.id}`}
-                  onPress={() =>
-                    navigation.navigate("DriverOrderDetails", { orderId: o.id, sourceTable: o.source_table })
-                  }
-                  style={styles.tripCard}
-                  activeOpacity={0.86}
-                >
-                  <View style={styles.tripTopRow}>
-                    <View>
+        {showEmpty ? (
+          <>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyEmoji}>📭</Text>
+              <Text style={styles.emptyTitle}>
+                {t(
+                  "driver.revenue.history.list.empty",
+                  "No delivered trips in this period.",
+                )}
+              </Text>
+              <Text style={styles.emptySub}>
+                {t(
+                  "driver.revenue.history.list.emptySub",
+                  "Completed deliveries will appear here.",
+                )}
+              </Text>
+            </View>
+            <BrandFooter stacked />
+          </>
+        ) : null}
+
+        {showList ? (
+          <>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>
+                {t("driver.revenue.history.list.title", "Delivered trips")}
+              </Text>
+              <Text style={styles.sectionMeta}>{label}</Text>
+            </View>
+
+            <View style={styles.listWrap}>
+              {orders.map((o) => {
+                const base = getGain(o);
+                const tip = getTip(o);
+                const total = base + tip;
+                const restaurant =
+                  o.source_table === "delivery_requests"
+                    ? "Delivery"
+                    : o.restaurant_name ?? "—";
+
+                return (
+                  <TouchableOpacity
+                    key={`${o.source_table}:${o.id}`}
+                    onPress={() =>
+                      navigation.navigate("DriverOrderDetails", {
+                        orderId: o.id,
+                        sourceTable: o.source_table,
+                      })
+                    }
+                    style={styles.tripCard}
+                    activeOpacity={0.86}
+                  >
+                    <View style={styles.tripTopRow}>
+                      <View style={styles.tripLeft}>
+                        <Text style={styles.tripEmoji}>{emojiFromId(o.id)}</Text>
+                        <Text style={styles.tripMeta}>
+                          {fmtTime(o.created_at, localeForDates)} · #
+                          {o.id.slice(0, 8)}
+                        </Text>
+                      </View>
                       <Text style={styles.tripAmount}>{fmtMoney(total)}</Text>
-                      <Text style={styles.tripMeta}>
-                        {fmtTime(o.created_at, localeForDates)} · #
-                        {o.id.slice(0, 8)}
-                      </Text>
                     </View>
 
-                    <View style={styles.datePill}>
-                      <Text style={styles.datePillText}>
-                        {fmtShortDate(o.created_at, localeForDates)}
+                    <Text style={styles.restaurantName}>{restaurant}</Text>
+
+                    <View style={styles.tripBreakdownRow}>
+                      <Text style={styles.tripBreakdownText}>
+                        {t(
+                          "driver.revenue.history.list.netTipLine",
+                          "Net price: {{net}} · Tip: {{tip}}",
+                          {
+                            net: fmtMoney(base),
+                            tip: fmtMoney(tip),
+                          },
+                        )}
                       </Text>
+                      <Text style={styles.chevron}>›</Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-                  {o.source_table === "delivery_requests" ? (
-                    <Text style={styles.restaurantName}>Delivery</Text>
-                  ) : o.restaurant_name ? (
-                    <Text style={styles.restaurantName}>
-                      {o.restaurant_name}
-                    </Text>
-                  ) : null}
-
-                  <View style={styles.tripBreakdownRow}>
-                    <Text style={styles.tripBreakdownText}>
-                      {t(
-                        "driver.revenue.history.list.netTipLine",
-                        "Net price: {{net}} · Tip: {{tip}}",
-                        {
-                          net: fmtMoney(base),
-                          tip: fmtMoney(tip),
-                        },
-                      )}
-                    </Text>
-                    <Text style={styles.chevron}>›</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+            <BrandFooter />
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const BG = "#020617";
-const CARD = "rgba(15,23,42,0.86)";
-const CARD_SOFT = "rgba(2,6,23,0.72)";
 const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = APP_COLORS.accent;
-const PURPLE_DARK = "#8B5CF6";
-const GREEN = "#22C55E";
-const TEXT = "#F8FAFC";
-const MUTED = "#94A3B8";
+const MUTED_SOFT = "rgba(255,255,255,0.8)";
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG },
-  headerWrap: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 8 },
-  headerRow: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  headerCenter: { alignItems: "center", flex: 1, paddingHorizontal: 12 },
-  headerTitle: { color: TEXT, fontSize: 17, fontWeight: "900" },
-  headerSubtitle: {
-    color: MUTED,
-    marginTop: 3,
-    fontWeight: "800",
-    fontSize: 12,
-  },
-  roundButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: CARD_SOFT,
-    borderWidth: 1,
-    borderColor: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backText: {
-    color: "#BFDBFE",
-    fontSize: 34,
-    fontWeight: "700",
-    marginTop: -2,
-  },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
   refreshButton: {
     minWidth: 82,
     height: 42,
     borderRadius: 999,
-    backgroundColor: CARD_SOFT,
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,
     borderColor: BORDER,
     alignItems: "center",
@@ -496,150 +538,308 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   disabled: { opacity: 0.65 },
-  refreshText: { color: TEXT, fontWeight: "900", fontSize: 12 },
-  content: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 32 },
-  filtersRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  refreshText: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  content: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 32,
+    gap: 20,
+  },
+  filtersRow: { flexDirection: "row", gap: 8 },
   filterPill: {
     flex: 1,
-    height: 44,
+    height: 40,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: CARD_SOFT,
+    backgroundColor: "transparent",
     borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  filterPillLoading: {
+    height: 44,
+    backgroundColor: "rgba(0,51,204,0.72)",
     borderColor: BORDER,
   },
   filterPillActive: {
-    backgroundColor: "rgba(139,92,246,0.18)",
+    backgroundColor: MMD_ACTION_NAVY,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  filterPillActiveLilac: {
+    backgroundColor: "rgba(167,139,250,0.18)",
     borderColor: "rgba(167,139,250,0.5)",
   },
-  filterText: { color: "#CBD5E1", fontWeight: "900", fontSize: 12 },
-  filterTextActive: { color: "#DDD6FE" },
+  filterText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  filterTextLoading: {
+    color: "#CBD5E1",
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  filterTextActive: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  filterTextActiveLilac: {
+    color: LILAC_SOFT,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
   summaryCard: {
+    borderRadius: 14,
+    padding: 20,
+    backgroundColor: MMD_ACTION_NAVY,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    gap: 16,
+  },
+  summaryCardLoading: {
     borderRadius: 28,
     padding: 18,
-    backgroundColor: CARD,
-    borderWidth: 1,
+    backgroundColor: "rgba(0,51,204,0.86)",
     borderColor: "rgba(167,139,250,0.18)",
-    shadowColor: PURPLE_DARK,
-    shadowOpacity: 0.18,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
+    gap: 6,
   },
   summaryTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
   },
   summaryIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 16,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(139,92,246,0.16)",
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  summaryIconBoxLilac: {
+    borderRadius: 16,
+    backgroundColor: "rgba(167,139,250,0.16)",
     borderColor: "rgba(167,139,250,0.28)",
   },
-  summaryIcon: { color: PURPLE, fontSize: 22, fontWeight: "900" },
+  summaryIcon: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  summaryIconLilac: { color: LILAC },
   livePill: {
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: "rgba(34,197,94,0.1)",
     borderWidth: 1,
     borderColor: "rgba(34,197,94,0.22)",
   },
-  liveText: { color: GREEN, fontWeight: "900", fontSize: 12 },
-  summaryLabel: { color: MUTED, fontWeight: "900" },
-  summaryAmount: { color: TEXT, fontSize: 40, fontWeight: "900", marginTop: 6 },
-  splitRow: { flexDirection: "row", gap: 10, marginTop: 16 },
+  liveText: {
+    color: MMD_TAXI_GREEN,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  summaryLabel: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  summaryAmount: {
+    color: MMD_TEXT,
+    fontSize: 36,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    marginTop: -8,
+  },
+  splitRow: { flexDirection: "row", gap: 12 },
   splitCard: {
     flex: 1,
-    borderRadius: 18,
+    borderRadius: 12,
     padding: 12,
-    backgroundColor: "rgba(2,6,23,0.55)",
+    backgroundColor: MMD_BLUE,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: "rgba(255,255,255,0.1)",
+    gap: 4,
   },
-  splitLabel: { color: MUTED, fontSize: 12, fontWeight: "800" },
-  splitValue: { color: TEXT, marginTop: 5, fontSize: 17, fontWeight: "900" },
+  splitCardLoading: {
+    borderRadius: 18,
+    backgroundColor: "rgba(0,51,204,0.55)",
+    borderColor: BORDER,
+    gap: 5,
+  },
+  splitLabel: {
+    color: MUTED_SOFT,
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  splitValue: {
+    color: MMD_TEXT,
+    fontSize: 16,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
   splitValueGreen: {
-    color: GREEN,
-    marginTop: 5,
-    fontSize: 17,
-    fontWeight: "900",
+    color: MMD_TAXI_GREEN,
+    fontSize: 16,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  periodRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  periodLabel: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  periodValue: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 12,
   },
   sectionRow: {
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    marginTop: 22,
-    marginBottom: 10,
   },
-  sectionTitle: { color: TEXT, fontSize: 21, fontWeight: "900" },
-  sectionMeta: { color: MUTED, fontSize: 12, fontWeight: "800" },
-  loadingRow: {
-    marginTop: 10,
-    flexDirection: "row",
+  sectionTitle: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  sectionMeta: {
+    color: MUTED_SOFT,
+    fontSize: 12,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  loadingFeedback: {
     alignItems: "center",
-    gap: 10,
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 20,
   },
-  loadingText: { color: MUTED, fontWeight: "800" },
+  loadingText: {
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 20,
+    textAlign: "center",
+  },
   emptyCard: {
-    borderRadius: 22,
+    borderRadius: 14,
     padding: 18,
-    backgroundColor: CARD,
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
+    gap: 8,
   },
-  emptyTitle: { color: "#CBD5E1", fontWeight: "900", textAlign: "center" },
+  emptyEmoji: { fontSize: 22 },
+  emptyTitle: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    textAlign: "center",
+    fontSize: 16,
+  },
   emptySub: {
-    color: "#64748B",
+    color: MMD_MUTED,
+    fontFamily: MMD_FONT.bold,
     fontWeight: "700",
     textAlign: "center",
-    marginTop: 6,
+    fontSize: 13,
   },
-  listWrap: { gap: 10 },
+  listWrap: { gap: 12 },
   tripCard: {
-    borderRadius: 22,
-    padding: 15,
-    backgroundColor: CARD,
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: MMD_ACTION_NAVY,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: "rgba(255,255,255,0.1)",
+    gap: 12,
   },
   tripTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
   },
-  tripAmount: { color: TEXT, fontSize: 22, fontWeight: "900" },
-  tripMeta: { color: MUTED, marginTop: 6, fontWeight: "800" },
-  datePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(139,92,246,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.22)",
+  tripLeft: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
+  tripEmoji: {
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
   },
-  datePillText: { color: "#DDD6FE", fontSize: 11, fontWeight: "900" },
-  restaurantName: { color: "#CBD5E1", marginTop: 9, fontWeight: "800" },
+  tripMeta: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  tripAmount: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  restaurantName: {
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
+  },
   tripBreakdownRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 10,
+    gap: 8,
   },
   tripBreakdownText: {
-    color: "#64748B",
-    fontWeight: "800",
+    color: MUTED_SOFT,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
     fontSize: 12,
     flex: 1,
-    paddingRight: 10,
   },
-  chevron: { color: "#CBD5E1", fontSize: 28, fontWeight: "600", marginTop: -2 },
+  chevron: {
+    color: MUTED_SOFT,
+    fontSize: 20,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingTop: 12,
+  },
+  footerStacked: {
+    flexDirection: "column",
+    gap: 12,
+  },
+  footerLogo: { width: 44, height: 44, borderRadius: 10 },
+  footerBrand: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 14,
+  },
 });

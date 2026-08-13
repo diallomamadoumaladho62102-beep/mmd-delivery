@@ -31,7 +31,18 @@ import {
   formatDurationMinutes,
 } from "../../i18n/formatters";
 import { toUserFacingError } from "../../lib/userFacingError";
-import { APP_COLORS } from "../../theme/appTheme";
+import {
+  MMD_ACTION_NAVY,
+  MMD_BLUE,
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC,
+  MMD_GOLD_CLASSIC_BORDER,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
 export default function TaxiReceiptScreen() {
   const { t, i18n } = useTranslation();
@@ -182,10 +193,16 @@ export default function TaxiReceiptScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={APP_COLORS.accent} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={MMD_TAXI_GREEN} />
         }
       >
         <View style={styles.headerCard} accessibilityRole="header">
+          <Image
+            source={MMD_LOGO}
+            style={{ width: 48, height: 48, borderRadius: 14, marginBottom: 8 }}
+            resizeMode="contain"
+            accessibilityLabel="MMD Delivery"
+          />
           <Text style={styles.brand}>{receipt.company.brand}</Text>
           <Text style={styles.legal}>{receipt.company.legal_name}</Text>
           <Text style={styles.meta}>
@@ -430,50 +447,75 @@ function ActionBtn({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#020617" },
+  safe: { flex: 1, backgroundColor: MMD_BLUE },
   content: { padding: 16, paddingBottom: 40 },
   headerCard: {
-    backgroundColor: "rgba(15,23,42,0.9)",
-    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
-    padding: 16,
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
+    padding: 24,
     marginBottom: 16,
+    alignItems: "center",
   },
-  brand: { color: "#F8FAFC", fontSize: 28, fontWeight: "900" },
-  legal: { color: "#94A3B8", marginTop: 4, fontWeight: "600" },
-  meta: { color: "#94A3B8", marginTop: 6, fontSize: 12, lineHeight: 18 },
+  brand: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  legal: {
+    color: "rgba(255,255,255,0.4)",
+    marginTop: 4,
+    fontWeight: "400",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
+  },
+  meta: {
+    color: "rgba(255,255,255,0.5)",
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: MMD_FONT.regular,
+  },
   status: {
     marginTop: 10,
-    color: "#22C55E",
+    color: MMD_WHITE,
     fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
     textTransform: "uppercase",
-    fontSize: 12,
+    fontSize: 11,
+    backgroundColor: MMD_TAXI_GREEN,
+    overflow: "hidden",
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   sectionTitle: {
-    color: "#94A3B8",
+    color: "rgba(255,255,255,0.4)",
     fontWeight: "800",
-    fontSize: 12,
-    letterSpacing: 0.6,
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 11,
+    letterSpacing: 1.1,
     textTransform: "uppercase",
     marginBottom: 8,
     marginTop: 8,
   },
   card: {
-    backgroundColor: "rgba(15,23,42,0.86)",
-    borderRadius: 16,
+    backgroundColor: MMD_GLASS,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
     padding: 16,
     marginBottom: 14,
   },
   cardRow: {
     flexDirection: "row",
     gap: 12,
-    backgroundColor: "rgba(15,23,42,0.86)",
-    borderRadius: 16,
+    backgroundColor: MMD_GLASS,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
     padding: 16,
     marginBottom: 14,
     alignItems: "center",
@@ -483,47 +525,82 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 14,
     marginBottom: 12,
-    backgroundColor: "#0f172a",
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   mapFallback: {
     width: "100%",
     minHeight: 72,
     borderRadius: 14,
     marginBottom: 12,
-    backgroundColor: "rgba(15,23,42,0.86)",
+    backgroundColor: MMD_GLASS,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
   },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  avatarFallback: { backgroundColor: "#1e293b" },
-  label: { color: "#94A3B8", fontWeight: "700", fontSize: 12 },
-  value: { color: "#F8FAFC", fontWeight: "700", marginTop: 4, lineHeight: 20 },
+  avatar: { width: 44, height: 44, borderRadius: 22 },
+  avatarFallback: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_GOLD_CLASSIC,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  label: {
+    color: "rgba(255,255,255,0.4)",
+    fontWeight: "400",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
+  },
+  value: {
+    color: MMD_WHITE,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    marginTop: 4,
+    lineHeight: 20,
+  },
   fareRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.1)",
+    borderBottomColor: "rgba(255,255,255,0.1)",
   },
-  fareLabel: { color: "#E2E8F0", flex: 1, paddingRight: 12 },
-  fareAmount: { color: "#F8FAFC", fontWeight: "800" },
-  discount: { color: "#22C55E" },
+  fareLabel: {
+    color: MMD_WHITE,
+    flex: 1,
+    paddingRight: 12,
+    fontFamily: MMD_FONT.regular,
+  },
+  fareAmount: { color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold },
+  discount: { color: MMD_TAXI_GREEN },
   totalRow: { borderBottomWidth: 0, marginTop: 4 },
-  totalLabel: { color: "#F8FAFC", fontWeight: "900", fontSize: 16 },
-  totalValue: { color: "#F8FAFC", fontWeight: "900", fontSize: 16 },
-  link: { color: "#93C5FD", fontWeight: "700", marginTop: 8 },
+  totalLabel: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 20,
+  },
+  totalValue: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 20,
+  },
+  link: { color: MMD_GOLD_CLASSIC, fontWeight: "700", fontFamily: MMD_FONT.bold, marginTop: 8 },
   actions: { gap: 10, marginBottom: 24 },
   actionBtn: {
-    backgroundColor: "rgba(15,23,42,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.2)",
-    borderRadius: 14,
+    backgroundColor: MMD_ACTION_NAVY,
+    borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
     alignItems: "center",
   },
-  actionText: { color: "#F8FAFC", fontWeight: "800" },
+  actionText: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    fontSize: 14,
+  },
 });

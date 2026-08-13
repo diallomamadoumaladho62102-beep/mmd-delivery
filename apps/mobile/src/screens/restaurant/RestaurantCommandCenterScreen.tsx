@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
@@ -24,10 +26,13 @@ import { FinancialSummaryCard } from "../../features/restaurant/components/Finan
 import { RevenueHeroCard } from "../../features/restaurant/components/RevenueHeroCard";
 import { RevenueTrendChart } from "../../features/restaurant/components/RevenueTrendChart";
 import { OrderInsightsCard } from "../../features/restaurant/components/OrderInsightsCard";
-import { CommandCenterSkeleton } from "../../features/restaurant/components/CommandCenterSkeleton";
 import { CC } from "../../features/restaurant/components/commandCenterTheme";
+import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
 import { formatDate, formatMoney } from "../../i18n/formatters";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
+import { MMD_BLUE, MMD_FONT, MMD_TAXI_GREEN, MMD_WHITE } from "../../theme/mmdUi";
+
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
 type Props = NativeStackScreenProps<RootStackParamList, "RestaurantCommandCenter">;
 
@@ -165,8 +170,15 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
   if (loading && !data) {
     return (
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" />
-        <CommandCenterSkeleton />
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <RestaurantBrandLoadingState
+          variant="card"
+          title={t("restaurant.commandCenter.loadingTitle", "Loading Command Center...")}
+          subtitle={t(
+            "restaurant.commandCenter.loadingSubtitle",
+            "Fetching your restaurant data"
+          )}
+        />
       </SafeAreaView>
     );
   }
@@ -174,11 +186,24 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
   if (error && !data) {
     return (
       <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="light-content" />
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <View style={styles.center}>
-          <Text style={styles.errorText}>{t("restaurant.commandCenter.loadFailed")}</Text>
+          <View style={styles.errorIconWrap}>
+            <Ionicons name="warning-outline" size={40} color={MMD_WHITE} />
+          </View>
+          <Text style={styles.errorTitle}>
+            {t("restaurant.commandCenter.unableToLoad", "Unable to Load")}
+          </Text>
+          <Text style={styles.errorText}>
+            {t(
+              "restaurant.commandCenter.loadFailed",
+              "Command Center failed to load. Check your connection and try again."
+            )}
+          </Text>
           <Pressable style={styles.retryBtn} onPress={() => void refresh()}>
-            <Text style={styles.retryText}>{t("restaurant.commandCenter.retry")}</Text>
+            <Text style={styles.retryText}>
+              {t("restaurant.commandCenter.retry", "Retry")}
+            </Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -191,24 +216,35 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={CC.purpleLight} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor={CC.purpleLight}
+          />
         }
       >
         <View style={[styles.headerRow, { flexDirection: rowDirection() }]}>
-          <Pressable onPress={openHomeMenu} style={styles.backBtn} accessibilityRole="button">
-            <Text style={styles.menuText}>☰</Text>
-          </Pressable>
-          <View style={styles.headerMeta}>
-            <Text style={[styles.headerTitle, { textAlign: textAlignStart() }]}>
-              {t("restaurant.commandCenter.title")}
-            </Text>
-            <Text style={[styles.headerDate, { textAlign: textAlignStart() }]}>
-              {formatDate(new Date(), i18n.language)} • {t("restaurant.commandCenter.today")}
-            </Text>
+          <View style={[styles.brandRow, { flexDirection: rowDirection() }]}>
+            <Pressable
+              onPress={openHomeMenu}
+              style={styles.logoBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t("restaurant.commandCenter.homeMenuTitle", "Restaurant menu")}
+            >
+              <Image source={MMD_LOGO} style={styles.logo} resizeMode="contain" />
+            </Pressable>
+            <View style={styles.headerMeta}>
+              <Text style={[styles.headerTitle, { textAlign: textAlignStart() }]} numberOfLines={1}>
+                {data.restaurant.name}
+              </Text>
+              <Text style={[styles.headerDate, { textAlign: textAlignStart() }]}>
+                {formatDate(new Date(), i18n.language)}
+              </Text>
+            </View>
           </View>
           <Pressable
             onPress={onToggleOpen}
@@ -227,8 +263,8 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
               {availabilityLoading
                 ? t("common.loading", "Loading…")
                 : isRestaurantOpen
-                  ? t("restaurant.commandCenter.open")
-                  : t("restaurant.commandCenter.closed")}
+                  ? t("restaurant.commandCenter.open", "Open")
+                  : t("restaurant.commandCenter.closed", "Closed")}
             </Text>
           </Pressable>
         </View>
@@ -345,7 +381,9 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           style={styles.allOrdersBtn}
           onPress={() => navigation.navigate("RestaurantOrders")}
         >
-          <Text style={styles.allOrdersText}>{t("restaurant.commandCenter.viewAllOrders")}</Text>
+          <Text style={styles.allOrdersText}>
+            {t("restaurant.commandCenter.viewAllOrders", "View All Orders")}
+          </Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -355,93 +393,113 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: CC.bg,
+    backgroundColor: MMD_BLUE,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 48,
-    gap: 12,
+    gap: 10,
   },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    paddingHorizontal: 24,
+    gap: 32,
+  },
+  errorIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorTitle: {
+    color: MMD_WHITE,
+    fontSize: 22,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    textAlign: "center",
   },
   errorText: {
-    color: CC.red,
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
     textAlign: "center",
-    marginBottom: 12,
-    fontWeight: "700",
+    lineHeight: 21,
+    marginTop: -20,
   },
   retryBtn: {
-    backgroundColor: CC.purpleGlow,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: CC.glassBorder,
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 12,
+    minHeight: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   retryText: {
-    color: CC.purpleLight,
-    fontWeight: "900",
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
   },
   headerRow: {
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 10,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: CC.glass,
+  brandRow: {
+    flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: CC.glassBorder,
+    gap: 12,
+    minWidth: 0,
   },
-  backText: {
-    color: CC.textPrimary,
-    fontSize: 18,
-    fontWeight: "900",
+  logoBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
+    overflow: "hidden",
   },
-  menuText: {
-    color: CC.textPrimary,
-    fontSize: 20,
-    fontWeight: "900",
-    lineHeight: 22,
+  logo: {
+    width: 64,
+    height: 64,
+    borderRadius: 14,
   },
   headerMeta: {
     flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   headerTitle: {
-    color: CC.textPrimary,
-    fontSize: 24,
-    fontWeight: "900",
-    letterSpacing: -0.4,
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
   },
   headerDate: {
     color: CC.textMuted,
     fontSize: 12,
-    marginTop: 3,
-    fontWeight: "600",
+    fontFamily: MMD_FONT.regular,
   },
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderWidth: 1,
   },
   statusOpen: {
     backgroundColor: CC.greenDim,
-    borderColor: "rgba(34,197,94,0.35)",
+    borderColor: "rgba(34,197,94,0.2)",
   },
   statusClosed: {
     backgroundColor: CC.redDim,
-    borderColor: "rgba(239,68,68,0.35)",
+    borderColor: "rgba(248,113,113,0.2)",
   },
   statusLoading: {
     opacity: 0.65,
@@ -458,16 +516,15 @@ const styles = StyleSheet.create({
     backgroundColor: CC.red,
   },
   statusText: {
-    color: CC.textPrimary,
-    fontSize: 11,
-    fontWeight: "900",
+    color: MMD_WHITE,
+    fontSize: 12,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
   },
   greeting: {
-    color: CC.textSecondary,
+    color: CC.textMuted,
     fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "600",
-    marginBottom: -4,
+    fontFamily: MMD_FONT.regular,
   },
   kpiScroll: {
     marginHorizontal: -16,
@@ -478,7 +535,7 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   trendCard: {
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 16,
     backgroundColor: CC.glass,
     borderWidth: 1,
@@ -487,17 +544,16 @@ const styles = StyleSheet.create({
   },
   allOrdersBtn: {
     marginTop: 4,
-    backgroundColor: CC.purpleGlow,
-    borderRadius: 16,
-    paddingVertical: 16,
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 14,
+    height: 46,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: CC.glassBorder,
-    ...CC.shadow,
+    justifyContent: "center",
   },
   allOrdersText: {
-    color: CC.purpleLight,
-    fontWeight: "900",
-    fontSize: 15,
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 14,
   },
 });

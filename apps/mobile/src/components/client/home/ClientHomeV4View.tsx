@@ -105,7 +105,8 @@ export type ClientHomeV4ViewProps = {
 const SCREEN_W = Dimensions.get("window").width;
 const AD_CARD_W = Math.min(188, SCREEN_W * 0.48);
 const AD_GAP = 10;
-const AD_CARD_H = 168;
+const AD_CARD_H = 78;
+const MMD_LOGO = require("../../../../assets/brand/mmd-logo-ui.png");
 
 const SERVICE_ART = {
   taxi: require("../../../../assets/brand/services/taxi-mmd-official.png"),
@@ -113,8 +114,6 @@ const SERVICE_ART = {
   delivery: require("../../../../assets/brand/services/delivery-mmd-v2.png"),
   marketplace: require("../../../../assets/brand/services/marketplace.png"),
 } as const;
-
-const LANGUAGE_GLOBE_ICON = require("../../../../assets/brand/icons/language-globe-v3.png");
 
 function PressCard({
   children,
@@ -146,9 +145,9 @@ function PressCard({
 }
 
 function serviceMeta(kind: ClientHomeItem["kind"]): { badge: string; color: string; bg: string } {
-  if (kind === "taxi_ride") return { badge: "TX", color: V4.taxi, bg: V4.yellowSoft };
-  if (kind === "delivery_request") return { badge: "DL", color: V4.delivery, bg: V4.purpleSoft };
-  return { badge: "FD", color: V4.food, bg: V4.greenSoft };
+  if (kind === "taxi_ride") return { badge: "TX", color: "#FFFFFF", bg: V4.taxi };
+  if (kind === "delivery_request") return { badge: "DL", color: "#1A1A1A", bg: V4.delivery };
+  return { badge: "FD", color: "#FFFFFF", bg: V4.food };
 }
 
 function statusTone(label: string): string {
@@ -157,7 +156,7 @@ function statusTone(label: string): string {
   if (lower.includes("complet") || lower.includes("deliver") || lower.includes("livré")) {
     return V4.green;
   }
-  return V4.textSecondary;
+  return V4.textOnCard;
 }
 
 export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
@@ -246,8 +245,8 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
       {
         key: "taxi" as const,
         badge: "TX",
-        badgeBg: V4.yellowSoft,
-        badgeFg: V4.taxi,
+        badgeBg: V4.taxi,
+        badgeFg: "#FFFFFF",
         title: props.ts("client.home.services.taxi", "Taxi"),
         subtitle: props.ts("client.home.services.taxiSub", "Ride anywhere"),
         art: SERVICE_ART.taxi,
@@ -258,8 +257,8 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
       {
         key: "food" as const,
         badge: "FD",
-        badgeBg: V4.greenSoft,
-        badgeFg: V4.food,
+        badgeBg: V4.food,
+        badgeFg: "#FFFFFF",
         title: props.ts("client.home.services.food", "Food"),
         subtitle: props.ts("client.home.services.foodSub", "Order now"),
         art: SERVICE_ART.food,
@@ -270,8 +269,8 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
       {
         key: "delivery" as const,
         badge: "DL",
-        badgeBg: V4.purpleSoft,
-        badgeFg: V4.delivery,
+        badgeBg: V4.delivery,
+        badgeFg: "#1A1A1A",
         title: props.ts("client.home.services.delivery", "Delivery"),
         subtitle: props.ts("client.home.services.deliverySub", "Send anything"),
         art: SERVICE_ART.delivery,
@@ -282,8 +281,8 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
       {
         key: "marketplace" as const,
         badge: "MK",
-        badgeBg: "#D1FAE5",
-        badgeFg: V4.marketplace,
+        badgeBg: V4.marketplace,
+        badgeFg: "#FFFFFF",
         title: props.ts("client.home.services.marketplace", "Marketplace"),
         subtitle: props.ts("client.home.services.marketplaceSub", "Shop & save"),
         art: SERVICE_ART.marketplace,
@@ -297,8 +296,11 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
 
   if (props.loading && props.items.length === 0 && !props.refreshing) {
     return (
-      <View style={[v4Styles.root, styles.centered]}>
-        <ActivityIndicator color={V4.green} size="large" />
+      <View style={[v4Styles.root, styles.loadingRoot]}>
+        <Image source={MMD_LOGO} style={styles.loadingLogo} resizeMode="contain" />
+        <Text style={styles.loadingTitle}>MMD DELIVERY</Text>
+        <Text style={styles.loadingTagline}>We Deliver With Heart ❤️</Text>
+        <ActivityIndicator color={V4.gold} size="large" style={{ marginTop: 8 }} />
       </View>
     );
   }
@@ -323,11 +325,9 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
         {/* Header — compact: avatar + greeting + credit */}
         <View style={styles.headerTop}>
           <PressCard onPress={props.onToggleMenu} style={styles.iconBtn}>
-            <Image
-              source={LANGUAGE_GLOBE_ICON}
-              style={styles.languageIcon}
-              resizeMode="contain"
-            />
+            <Text style={styles.langCode}>
+              {(props.currentLang || "en").split("-")[0].toUpperCase()}
+            </Text>
           </PressCard>
           <View style={styles.avatarOuter}>
             <View style={styles.avatarWrap}>
@@ -345,44 +345,30 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
                 </View>
               )}
             </View>
-            <View style={styles.onlineDot} />
           </View>
           <PressCard
             onPress={props.onNavigateNotifications ?? props.onNavigateInbox}
-            style={styles.iconBtn}
+            style={styles.notifBtn}
           >
-            <Ionicons name="notifications-outline" size={17} color={V4.textPrimary} />
+            <Ionicons name="notifications-outline" size={17} color={V4.goldDark} />
             {props.activeOrdersCount > 0 ? <View style={styles.notifDot} /> : null}
           </PressCard>
         </View>
 
         <View style={styles.greetingRow}>
           <View style={styles.greetingCol}>
-            <Text style={styles.greetingLine}>
-              {props.greeting} {"👋"}
-            </Text>
+            <Text style={styles.greetingLine}>{props.greeting}</Text>
             <Text style={styles.nameLine} numberOfLines={1}>
               {props.firstName || "Client"}
             </Text>
             <PressCard onPress={props.onRefreshLocation} style={styles.locationRow}>
-              <Ionicons name="location" size={13} color={V4.green} />
               <Text style={styles.locationText} numberOfLines={1}>
                 {props.displayLocation ||
                   props.scopeLabel ||
                   props.ts("client.home.location.unknown", "Current location")}
               </Text>
-              <Ionicons name="chevron-down" size={12} color={V4.textSoft} />
+              <Text style={styles.locationChevron}>▾</Text>
             </PressCard>
-          </View>
-
-          <View style={styles.areaMidSlot} pointerEvents="box-none">
-            {props.areaLabel ? (
-              <Pressable onPress={props.onRefreshLocation} hitSlop={8}>
-                <Text style={styles.areaMidText} numberOfLines={1}>
-                  {props.areaLabel}
-                </Text>
-              </Pressable>
-            ) : null}
           </View>
 
           <View style={styles.creditCol}>
@@ -399,7 +385,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
                   {props.ts("client.home.credit.available", "Available")}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={14} color={V4.green} />
+              <Text style={styles.creditChevron}>›</Text>
             </PressCard>
           </View>
         </View>
@@ -416,7 +402,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
             </Text>
           </PressCard>
           <PressCard onPress={openSearchHub} style={styles.filterBtn}>
-            <Ionicons name="options-outline" size={16} color={V4.textPrimary} />
+            <Ionicons name="options-outline" size={16} color={V4.textOnCard} />
           </PressCard>
         </View>
 
@@ -458,16 +444,13 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
               >
                 {svc.title}
               </Text>
-              <Text style={styles.serviceSub} numberOfLines={1}>
-                {svc.enabled
-                  ? svc.subtitle
-                  : svc.key === "marketplace"
+              {!svc.enabled ? (
+                <Text style={styles.serviceSub} numberOfLines={1}>
+                  {svc.key === "marketplace"
                     ? props.marketplaceSoonLabel
                     : props.comingSoonLabel}
-              </Text>
-              <View style={[styles.serviceCta, { backgroundColor: svc.accent }]}>
-                <Ionicons name="arrow-forward" size={11} color="#FFFFFF" />
-              </View>
+                </Text>
+              ) : null}
             </PressCard>
           ))}
         </View>
@@ -557,10 +540,9 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
               <View style={[styles.progressFill, { width: props.progressBarWidth }]} />
             </View>
             <View style={styles.rewardsLinkRow}>
-              <Text style={styles.sectionLink}>
-                {props.ts("client.home.rewards.view", "View rewards")}
+              <Text style={styles.rewardsLink}>
+                {props.ts("client.home.rewards.view", "View rewards")} ›
               </Text>
-              <Ionicons name="chevron-forward" size={14} color={V4.green} />
             </View>
           </View>
         </PressCard>
@@ -570,7 +552,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
           style={styles.walletNearLoyalty}
         >
           <View style={styles.walletNearLoyaltyLeft}>
-            <Ionicons name="wallet-outline" size={18} color={V4.green} />
+            <Text style={styles.walletEmoji}>💳</Text>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.walletNearLoyaltyTitle}>
                 {props.ts("client.home.wallet.title", "Wallet")}
@@ -583,12 +565,12 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
               </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={14} color={V4.green} />
+          <Text style={styles.walletChevron}>›</Text>
         </PressCard>
 
         {/* Recent activity */}
         <View style={[styles.sectionHeader, { marginTop: 12 }]}>
-          <Text style={styles.sectionTitle}>
+          <Text style={styles.activitySectionTitle}>
             {props.ts("client.home.activity.title", "Recent activity")}
           </Text>
           <PressCard onPress={props.onNavigateOrders}>
@@ -640,7 +622,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
                     {label.replace(/^[^\w]+/, "").trim() || label}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={V4.textSoft} />
+                <Text style={styles.activityChevron}>›</Text>
               </PressCard>
             );
           })
@@ -650,36 +632,36 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
       {/* Bottom nav */}
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <PressCard onPress={() => {}} style={styles.tabItem}>
-          <Ionicons name="home" size={22} color={V4.green} />
+          <Ionicons name="home" size={22} color="#FFFFFF" />
           <Text style={[styles.tabLabel, styles.tabLabelActive]}>
             {props.ts("client.home.tabs.home", "Home")}
           </Text>
         </PressCard>
         <PressCard onPress={props.onNavigateOrders} style={styles.tabItem}>
-          <Ionicons name="receipt-outline" size={22} color={V4.textSoft} />
+          <Ionicons name="list" size={22} color="#FFFFFF" />
           <Text style={styles.tabLabel}>{props.ts("client.home.tabs.orders", "Orders")}</Text>
         </PressCard>
 
         <View style={styles.aiSlot}>
           <Animated.View style={{ transform: [{ scale: aiScale }] }}>
             <PressCard onPress={props.onNavigateAi} style={styles.aiBtn}>
-              <Ionicons name="sparkles" size={22} color="#FFFFFF" />
+              <Image source={MMD_LOGO} style={styles.aiLogo} resizeMode="contain" />
               <Text style={styles.aiLabel}>
-                {props.ts("client.home.tabs.ai", "Ask MMD AI")}
+                {props.ts("client.home.tabs.aiShort", "A S K")}
               </Text>
             </PressCard>
           </Animated.View>
         </View>
 
         <PressCard onPress={props.onNavigateInbox} style={styles.tabItem}>
-          <Ionicons name="chatbubble-ellipses-outline" size={22} color={V4.textSoft} />
+          <Ionicons name="chatbubble-ellipses-outline" size={22} color="#FFFFFF" />
           <Text style={styles.tabLabel}>{props.ts("client.home.tabs.inbox", "Inbox")}</Text>
         </PressCard>
         <PressCard
           onPress={props.onNavigateSettings ?? props.onNavigateProfile}
           style={styles.tabItem}
         >
-          <Ionicons name="settings-outline" size={22} color={V4.textSoft} />
+          <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
           <Text style={styles.tabLabel}>
             {props.ts("client.home.tabs.settings", "Settings")}
           </Text>
@@ -699,26 +681,59 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
 }
 
 const styles = StyleSheet.create({
-  centered: { alignItems: "center", justifyContent: "center" },
+  loadingRoot: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 44,
+    gap: 12,
+  },
+  loadingLogo: { width: 100, height: 100, borderRadius: 50 },
+  loadingTitle: {
+    color: V4.textPrimary,
+    fontSize: 28,
+    fontWeight: "800",
+    fontFamily: V4.font.extrabold,
+    textAlign: "center",
+  },
+  loadingTagline: {
+    color: V4.goldDark,
+    fontSize: 16,
+    fontWeight: "600",
+    fontFamily: V4.font.semibold,
+    textAlign: "center",
+  },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 2,
+    paddingVertical: 8,
   },
   iconBtn: {
     width: 34,
     height: 34,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: V4.border,
-    backgroundColor: V4.surface,
+    borderRadius: 17,
+    borderWidth: 1.5,
+    borderColor: V4.borderStrong,
+    backgroundColor: V4.bg,
     alignItems: "center",
     justifyContent: "center",
   },
-  languageIcon: {
-    width: 18,
-    height: 18,
+  notifBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: V4.bg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  langCode: {
+    color: V4.textPrimary,
+    fontSize: 11,
+    fontWeight: "600",
+    fontFamily: V4.font.semibold,
   },
   avatarOuter: {
     width: 68,
@@ -731,7 +746,7 @@ const styles = StyleSheet.create({
     height: 68,
     borderRadius: 34,
     borderWidth: 2.5,
-    borderColor: V4.green,
+    borderColor: V4.bg,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
@@ -742,21 +757,15 @@ const styles = StyleSheet.create({
     width: 63,
     height: 63,
     borderRadius: 31.5,
-    backgroundColor: V4.greenSoft,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarInitials: { color: V4.greenDark, fontSize: 24, fontWeight: "800" },
-  onlineDot: {
-    position: "absolute",
-    right: 1,
-    bottom: 1,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: V4.green,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+  avatarInitials: {
+    color: "#1A1A1A",
+    fontSize: 24,
+    fontWeight: "800",
+    fontFamily: V4.font.extrabold,
   },
   notifDot: {
     position: "absolute",
@@ -771,48 +780,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 2,
+    paddingVertical: 4,
   },
-  greetingCol: { flex: 1, minWidth: 0, paddingRight: 4 },
-  greetingLine: { color: V4.textSecondary, fontSize: 12, fontWeight: "500", lineHeight: 15 },
-  nameLine: { color: V4.textPrimary, fontSize: 20, fontWeight: "800", marginTop: 0, lineHeight: 24 },
-  areaMidSlot: {
-    flex: 1,
-    minWidth: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  areaMidText: {
-    maxWidth: "100%",
+  greetingCol: { flex: 1, minWidth: 0, paddingRight: 8 },
+  greetingLine: {
     color: V4.textPrimary,
-    fontSize: 13,
-    fontWeight: "600",
-    fontStyle: "italic",
-    textAlign: "center",
+    fontSize: 12,
+    fontWeight: "400",
+    fontFamily: V4.font.regular,
+    lineHeight: 15,
+  },
+  nameLine: {
+    color: V4.textPrimary,
+    fontSize: 20,
+    fontWeight: "800",
+    fontFamily: V4.font.extrabold,
+    marginTop: 0,
+    lineHeight: 24,
   },
   creditCol: {
-    flex: 1,
-    minWidth: 0,
+    flexShrink: 0,
     alignItems: "flex-end",
-    paddingLeft: 4,
   },
   creditCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: V4.creditCardBg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: V4.border,
+    borderColor: "#E2E8F0",
     paddingHorizontal: 9,
     paddingVertical: 7,
-    minWidth: 100,
-    maxWidth: "100%",
+    minWidth: 84,
+    maxWidth: 120,
     ...V4_SHADOW_SOFT,
   },
-  creditLabel: { color: V4.textSecondary, fontSize: 9.5, fontWeight: "600" },
-  creditValue: { color: V4.green, fontSize: 15, fontWeight: "800", marginTop: 0 },
-  creditAvail: { color: V4.green, fontSize: 9.5, fontWeight: "600", marginTop: 0 },
+  creditLabel: { color: V4.creditCardText, fontSize: 9.5, fontWeight: "600" },
+  creditValue: { color: V4.creditCardText, fontSize: 15, fontWeight: "800", marginTop: 0 },
+  creditAvail: { color: V4.creditCardText, fontSize: 9.5, fontWeight: "600", marginTop: 0 },
+  creditChevron: { color: V4.creditCardText, fontSize: 12, fontWeight: "700" },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -822,27 +829,28 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
   },
   locationText: { color: V4.textPrimary, fontSize: 11.5, fontWeight: "600", flexShrink: 1 },
+  locationChevron: { color: V4.textPrimary, fontSize: 10 },
   searchRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 5, marginTop: 0 },
   searchBar: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: V4.searchBar,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: V4.border,
+    borderColor: "#E2E8F0",
     paddingHorizontal: 11,
     minHeight: 40,
     ...V4_SHADOW_SOFT,
   },
-  searchPlaceholder: { flex: 1, color: V4.textSoft, fontSize: 11.5, fontWeight: "500" },
+  searchPlaceholder: { flex: 1, color: V4.textOnCard, fontSize: 11.5, fontWeight: "500" },
   filterBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: V4.border,
+    borderColor: "#E2E8F0",
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
@@ -855,21 +863,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 5,
   },
-  sectionTitle: { color: V4.textPrimary, fontSize: 15, fontWeight: "800" },
-  sectionLink: { color: V4.green, fontSize: 12, fontWeight: "700" },
+  sectionTitle: {
+    color: V4.textPrimary,
+    fontSize: 20,
+    fontWeight: "800",
+    fontFamily: V4.font.extrabold,
+  },
+  activitySectionTitle: {
+    color: V4.textPrimary,
+    fontSize: 15,
+    fontWeight: "800",
+    fontFamily: V4.font.extrabold,
+  },
+  sectionLink: { color: V4.textPrimary, fontSize: 12, fontWeight: "700" },
+  rewardsLink: { color: V4.goldDark, fontSize: 12, fontWeight: "700" },
   servicesRow: {
     flexDirection: "row",
     alignItems: "stretch",
-    gap: 5,
+    gap: 8,
     marginBottom: 6,
   },
   serviceCard: {
     flex: 1,
     minWidth: 0,
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: V4.border,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.8)",
     paddingTop: 5,
     paddingHorizontal: 4,
     paddingBottom: 22,
@@ -877,11 +897,11 @@ const styles = StyleSheet.create({
   },
   serviceBadge: {
     alignSelf: "flex-start",
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
   },
-  serviceBadgeText: { fontSize: 7.5, fontWeight: "800" },
+  serviceBadgeText: { fontSize: 12, fontWeight: "800" },
   serviceArtImg: {
     width: "100%",
     height: 50,
@@ -889,48 +909,47 @@ const styles = StyleSheet.create({
     marginTop: 1,
     marginBottom: 1,
   },
-  serviceTitle: { color: V4.textPrimary, fontSize: 10.5, fontWeight: "800" },
-  serviceSub: { color: V4.textSecondary, fontSize: 8.5, fontWeight: "500", marginTop: 0 },
-  serviceCta: {
-    position: "absolute",
-    right: 4,
-    bottom: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
+  serviceTitle: { color: V4.textOnCard, fontSize: 15, fontWeight: "800" },
+  serviceSub: { color: V4.textOnCard, fontSize: 8.5, fontWeight: "500", marginTop: 0 },
+  adsBlock: {
+    marginTop: 8,
+    marginBottom: 2,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    borderRadius: 12,
+    padding: 0,
+    overflow: "hidden",
   },
-  adsBlock: { marginTop: 0, marginBottom: 2 },
   adCard: {
     width: AD_CARD_W,
     height: AD_CARD_H,
-    borderRadius: 14,
+    borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#0F172A",
+    backgroundColor: "#001F66",
     ...V4_SHADOW,
   },
   adImage: { ...StyleSheet.absoluteFillObject },
   adScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(2,6,23,0.4)",
+    backgroundColor: "rgba(0,31,102,0.35)",
   },
   adContent: {
     flex: 1,
     justifyContent: "flex-end",
     padding: 10,
+    gap: 2,
   },
   adTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", lineHeight: 16 },
   adSub: { color: "rgba(255,255,255,0.9)", fontSize: 10, fontWeight: "500", marginTop: 2 },
   adBtn: {
     alignSelf: "flex-start",
-    marginTop: 6,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 999,
+    marginTop: 4,
+    backgroundColor: V4.goldDark,
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  adBtnText: { color: V4.textPrimary, fontSize: 11, fontWeight: "700" },
+  adBtnText: { color: "#1A0D00", fontSize: 12, fontWeight: "700" },
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -938,24 +957,24 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 2,
   },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#E2E8F0" },
-  dotActive: { backgroundColor: V4.green, width: 7, height: 7, borderRadius: 3.5 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#FFFFFF" },
+  dotActive: { backgroundColor: V4.goldDark, width: 7, height: 7, borderRadius: 3.5 },
   rewardsCard: {
     marginTop: 8,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: V4.border,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "rgba(218,170,32,0.6)",
     padding: 12,
     ...V4_SHADOW_SOFT,
   },
-  rewardsEyebrow: { color: V4.green, fontSize: 11, fontWeight: "700", marginBottom: 8 },
+  rewardsEyebrow: { color: V4.textPrimary, fontSize: 11, fontWeight: "700", marginBottom: 8 },
   rewardsBody: { flexDirection: "row", alignItems: "center", gap: 8 },
   rewardsMedal: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#FEF3C7",
+    backgroundColor: "#CD7F32",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -965,8 +984,8 @@ const styles = StyleSheet.create({
   tierBadge: {
     width: 40,
     height: 46,
-    borderRadius: 9,
-    backgroundColor: "#B45309",
+    borderRadius: 8,
+    backgroundColor: V4.goldDark,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -978,14 +997,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E7EB",
     overflow: "hidden",
   },
-  progressFill: { height: "100%", backgroundColor: V4.green, borderRadius: 999 },
+  progressFill: { height: "100%", backgroundColor: V4.goldDark, borderRadius: 999 },
   rewardsLinkRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2 },
   walletNearLoyalty: {
     marginTop: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: V4.border,
-    backgroundColor: V4.surface,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     paddingHorizontal: 14,
     paddingVertical: 12,
     flexDirection: "row",
@@ -1006,19 +1025,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   walletNearLoyaltySub: {
-    color: V4.textSoft,
+    color: V4.textSecondary,
     fontWeight: "600",
     fontSize: 12,
     marginTop: 2,
   },
+  walletEmoji: { fontSize: 16 },
+  walletChevron: { color: V4.textPrimary, fontSize: 14, fontWeight: "700" },
   activityRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: V4.border,
+    borderColor: "rgba(255,255,255,0.2)",
     padding: 10,
     marginBottom: 6,
     ...V4_SHADOW_SOFT,
@@ -1031,11 +1052,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   activityBadgeText: { fontSize: 11, fontWeight: "800" },
-  activityTitle: { color: V4.textPrimary, fontSize: 13, fontWeight: "800" },
-  activityMeta: { color: V4.textSecondary, fontSize: 11, marginTop: 1 },
+  activityTitle: { color: V4.textOnCard, fontSize: 13, fontWeight: "800" },
+  activityMeta: { color: V4.textOnCard, fontSize: 11, marginTop: 1 },
   activityRight: { alignItems: "flex-end", marginRight: 2 },
-  activityPrice: { color: V4.textPrimary, fontSize: 13, fontWeight: "800" },
-  activityStatus: { fontSize: 10, fontWeight: "700", marginTop: 1 },
+  activityPrice: { color: V4.textOnCard, fontSize: 13, fontWeight: "800" },
+  activityStatus: { fontSize: 10, fontWeight: "700", marginTop: 1, color: V4.textOnCard },
+  activityChevron: { color: V4.textOnCard, fontSize: 16 },
   mutedNote: { color: V4.textSecondary, fontSize: 12, marginBottom: 6 },
   bottomNav: {
     position: "absolute",
@@ -1045,16 +1067,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: V4.navBg,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: V4.border,
+    borderTopColor: "#E2E8F0",
     paddingHorizontal: 10,
     paddingTop: 8,
     ...V4_SHADOW,
   },
   tabItem: { flex: 1, alignItems: "center", gap: 2, paddingBottom: 2 },
-  tabLabel: { color: V4.textSoft, fontSize: 10, fontWeight: "600" },
-  tabLabelActive: { color: V4.green, fontWeight: "700" },
+  tabLabel: { color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "600" },
+  tabLabelActive: { color: "#FFFFFF", fontWeight: "700" },
   aiSlot: {
     width: 86,
     alignItems: "center",
@@ -1064,21 +1086,26 @@ const styles = StyleSheet.create({
     width: 74,
     height: 74,
     borderRadius: 37,
-    backgroundColor: V4.green,
+    backgroundColor: V4.navBg,
+    borderWidth: 2,
+    borderColor: V4.goldDark,
     alignItems: "center",
     justifyContent: "center",
-    gap: 1,
-    shadowColor: V4.green,
+    gap: 3,
+    overflow: "hidden",
+    shadowColor: V4.goldDark,
     shadowOpacity: 0.35,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
+  aiLogo: { width: 36, height: 36 },
   aiLabel: {
     color: "#FFFFFF",
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: "700",
     textAlign: "center",
+    letterSpacing: 1.2,
     paddingHorizontal: 4,
   },
 });
