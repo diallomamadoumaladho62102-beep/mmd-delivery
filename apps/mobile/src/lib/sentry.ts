@@ -29,6 +29,9 @@ const IGNORE_ERRORS = [
   /Cannot find native module ['"]ExpoNetwork['"]/i,
   // SDK auto-capture of plain objects (our capture path normalizes via toCapturableError).
   /Object captured as exception with keys/i,
+  // Expected taxi/checkout unpaid confirm (HTTP 409) — business outcome, not an app defect.
+  /Stripe payment not confirmed yet/i,
+  /payment was not completed\.?\s*please check your payment method/i,
 ];
 
 // Transient network / offline failures that are pure client-side noise. Kept in
@@ -138,10 +141,29 @@ export function captureMobileException(
 ): void {
   if (!sentryModule) return;
   try {
+    try {
+      const { isExpectedUnpaidPaymentSentryNoise } =
+        require("./taxiPaymentAbandonFlow") as {
+          isExpectedUnpaidPaymentSentryNoise: (
+            error: unknown,
+            metadata?: Record<string, unknown> | null,
+          ) => boolean;
+        };
+      if (isExpectedUnpaidPaymentSentryNoise(error, extra ?? null)) {
+        return;
+      }
+    } catch {
+      // continue — never block capture of real errors if helper fails
+    }
+
     const { toCapturableError } = require("./toCapturableError") as {
       toCapturableError: (error: unknown, fallbackMessage?: string) => Error;
     };
-    sentryModule.captureException(toCapturableError(error, scope), {
+    const capturable = toCapturableError(error, scope);
+    if (shouldDrop(`${capturable.name}: ${capturable.message}`)) {
+      return;
+    }
+    sentryModule.captureException(capturable, {
       extra: { scope, ...(extra ?? {}), original: error },
     });
   } catch {

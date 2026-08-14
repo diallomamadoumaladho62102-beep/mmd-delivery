@@ -8,13 +8,58 @@ export function isExpectedTaxiPaymentPendingResponse(
       ? (body as Record<string, unknown>)
       : null;
   if (!record) return false;
-  const error = String(record.error ?? "").toLowerCase();
+  const error = String(record.error ?? record.message ?? "").toLowerCase();
   const paymentStatus = String(record.payment_status ?? "").toLowerCase();
   return (
     error.includes("payment not confirmed") ||
     paymentStatus === "unpaid" ||
     paymentStatus === "requires_payment_method"
   );
+}
+
+function messageFromUnknown(error: unknown): string {
+  if (error instanceof Error) return String(error.message ?? "");
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    return String(record.error ?? record.message ?? record.msg ?? "");
+  }
+  return "";
+}
+
+/**
+ * Expected business outcome: card unpaid / Checkout abandoned → confirm-*-paid
+ * returns HTTP 409 with payment_status unpaid. Must not pollute Sentry as Error.
+ * Real Stripe/server failures (5xx, auth, unknown) must still be captured.
+ */
+export function isExpectedUnpaidPaymentSentryNoise(
+  error: unknown,
+  metadata?: Record<string, unknown> | null,
+): boolean {
+  const statusRaw = metadata?.status;
+  const status =
+    typeof statusRaw === "number"
+      ? statusRaw
+      : Number.parseInt(String(statusRaw ?? ""), 10);
+
+  if (Number.isFinite(status) && isExpectedTaxiPaymentPendingResponse(status, error)) {
+    return true;
+  }
+
+  const text = messageFromUnknown(error).trim();
+  if (!text) return false;
+
+  // Exact API business message (and CapturedObjectError wrapping it).
+  if (/stripe payment not confirmed yet/i.test(text)) return true;
+
+  // User-facing copy used after expected unpaid 409 in taxiClientApi.
+  if (
+    /payment was not completed\.?\s*please check your payment method/i.test(text)
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

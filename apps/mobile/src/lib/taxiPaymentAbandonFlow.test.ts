@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   didTaxiConfirmSucceed,
   isExpectedTaxiPaymentPendingResponse,
+  isExpectedUnpaidPaymentSentryNoise,
   nextActionAfterCheckoutReturn,
 } from "./taxiPaymentAbandonFlow";
 
@@ -97,6 +98,55 @@ test("unpaid confirm-taxi-paid 409 is expected business pending", () => {
     isExpectedTaxiPaymentPendingResponse(409, {
       error: "Ride or offer status changed",
     }),
+    false
+  );
+});
+
+test("unpaid 409 must not be treated as Sentry Error noise filter pass", () => {
+  const unpaidBody = {
+    ok: false,
+    error: "Stripe payment not confirmed yet",
+    payment_status: "unpaid",
+  };
+  assert.equal(isExpectedUnpaidPaymentSentryNoise(unpaidBody, { status: 409 }), true);
+  assert.equal(
+    isExpectedUnpaidPaymentSentryNoise(new Error("Stripe payment not confirmed yet")),
+    true
+  );
+  assert.equal(
+    isExpectedUnpaidPaymentSentryNoise(
+      new Error(
+        "Payment was not completed. Please check your payment method and try again.",
+      ),
+    ),
+    true
+  );
+});
+
+test("real Stripe/server failures must still be Sentry-eligible", () => {
+  assert.equal(
+    isExpectedUnpaidPaymentSentryNoise(
+      { error: "Stripe API error: No such payment_intent" },
+      { status: 500 },
+    ),
+    false
+  );
+  assert.equal(
+    isExpectedUnpaidPaymentSentryNoise(
+      { error: "Unauthorized" },
+      { status: 401 },
+    ),
+    false
+  );
+  assert.equal(
+    isExpectedUnpaidPaymentSentryNoise(
+      { error: "Ride or offer status changed" },
+      { status: 409 },
+    ),
+    false
+  );
+  assert.equal(
+    isExpectedUnpaidPaymentSentryNoise(new Error("card_declined"), { status: 402 }),
     false
   );
 });

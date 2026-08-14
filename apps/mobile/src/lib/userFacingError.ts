@@ -329,6 +329,24 @@ function mapKnownErrorCode(errorCode: string, message: string): string | null {
 }
 
 export function logTechnicalError(scope: string, error: unknown, metadata?: Record<string, unknown>) {
+  try {
+    const { isExpectedUnpaidPaymentSentryNoise } =
+      require("./taxiPaymentAbandonFlow") as {
+        isExpectedUnpaidPaymentSentryNoise: (
+          error: unknown,
+          metadata?: Record<string, unknown> | null,
+        ) => boolean;
+      };
+    if (isExpectedUnpaidPaymentSentryNoise(error, metadata ?? null)) {
+      console.log(`[${scope}] expected unpaid payment (not sent to Sentry)`, {
+        status: metadata?.status,
+      });
+      return;
+    }
+  } catch {
+    // fall through to normal logging if helper unavailable
+  }
+
   console.error(`[${scope}]`, error, metadata ?? {});
   try {
     // Lazy require avoids circular init with sentry bootstrap.
