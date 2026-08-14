@@ -317,14 +317,15 @@ function getPriorityScore(row: RestaurantAdminRow): number {
 }
 
 function getActionCardClass(status: RestaurantDocStatus): string {
+  // Control Center blue (#0033cc) — keep status via border only (no white/green-50 cards).
   switch (status) {
     case "approved":
-      return "border-green-200 bg-green-50";
+      return "border-green-200 bg-[#0033cc]";
     case "rejected":
-      return "border-red-200 bg-red-50";
+      return "border-red-200 bg-[#0033cc]";
     case "pending":
     default:
-      return "border-slate-200 bg-white";
+      return "border-slate-200 bg-[#0033cc]";
   }
 }
 
@@ -774,7 +775,7 @@ export default function AdminRestaurantsPage() {
                 >
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-8 xl:grid-cols-2 xl:items-center">
-                      <div className="min-w-0 space-y-5 rounded-2xl border border-slate-100 bg-white/70 p-6 xl:pr-0">
+                      <div className="min-w-0 space-y-5 rounded-2xl border border-slate-100 bg-[#0033cc] p-6 xl:pr-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h2 className="text-xl font-semibold text-slate-900">
                             {r.restaurant_name}
@@ -833,8 +834,8 @@ export default function AdminRestaurantsPage() {
                         </p>
                       </div>
 
-                      <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col justify-center">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="w-full rounded-2xl border border-slate-100 bg-[#0033cc] p-5 flex flex-col justify-center">
+                        <div className="rounded-2xl border border-slate-200 bg-[#0033cc] p-4 shadow-sm">
                           <div className="mb-3 text-sm font-semibold text-slate-900">
                             Actions rapides
                           </div>
@@ -942,7 +943,7 @@ export default function AdminRestaurantsPage() {
                       </div>
                     </div>
 
-                    <details className="rounded-2xl border border-slate-200 bg-white open:shadow-sm">
+                    <details className="rounded-2xl border border-slate-200 bg-[#0033cc] open:shadow-sm">
                       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-900">
                         Voir les détails
                       </summary>
