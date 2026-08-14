@@ -59,6 +59,16 @@
   font-family: var(--font-sora), "Sora", system-ui, sans-serif;
 }
 
+/*
+ * Root layout uses body.bg-gray-50 (near-white). That ancestor is outside
+ * .admin-figma, so gray shows through any gap. When Control Center is mounted,
+ * force the same CC blue on html/body.
+ */
+html:has(.admin-figma),
+html:has(.admin-figma) body {
+  background-color: #0033cc !important;
+}
+
 .admin-figma .bg-white,
 .admin-figma .bg-slate-50,
 .admin-figma .bg-gray-50,

@@ -74,60 +74,61 @@ export default function AdminTaxiBusinessAccountsPage() {
 
   return (
     <AdminGate requiredPermission="taxi_business.read">
-      <main
+      {/* Full content-pane blue (CC #0033cc) — not only the max-width column */}
+      <div
         style={{
-          padding: 24,
-          maxWidth: 1100,
-          margin: "0 auto",
-          // Match MMD Control Center shell (.admin-figma --cc-bg)
           backgroundColor: "#0033cc",
+          minHeight: "100%",
+          width: "100%",
         }}
       >
-        <h1>Taxi Business Accounts</h1>
-        {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
-        {canEdit ? (
-          <form onSubmit={createAccount} style={{ marginBottom: 24, display: "flex", gap: 8 }}>
-            <input
-              placeholder="Company name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <input
-              placeholder="Billing email"
-              value={billingEmail}
-              onChange={(e) => setBillingEmail(e.target.value)}
-            />
-            <button type="submit">Create account</button>
-          </form>
-        ) : null}
-        {loading ? <p>Loading…</p> : null}
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th align="left">Name</th>
-              <th align="left">Members</th>
-              <th align="left">Policy</th>
-              <th align="left">Recent spend events</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} style={{ borderTop: "1px solid #e2e8f0" }}>
-                <td>
-                  {row.name} ({row.slug}) {row.active ? "" : "• inactive"}
-                </td>
-                <td>{row.taxi_business_members?.length ?? 0}</td>
-                <td>
-                  max ride:{" "}
-                  {row.taxi_business_ride_policies?.[0]?.max_ride_cents ?? "—"} / day:{" "}
-                  {row.taxi_business_ride_policies?.[0]?.max_daily_cents ?? "—"}
-                </td>
-                <td>{row.taxi_business_billing_events?.length ?? 0}</td>
+        <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
+          <h1>Taxi Business Accounts</h1>
+          {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
+          {canEdit ? (
+            <form onSubmit={createAccount} style={{ marginBottom: 24, display: "flex", gap: 8 }}>
+              <input
+                placeholder="Company name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <input
+                placeholder="Billing email"
+                value={billingEmail}
+                onChange={(e) => setBillingEmail(e.target.value)}
+              />
+              <button type="submit">Create account</button>
+            </form>
+          ) : null}
+          {loading ? <p>Loading…</p> : null}
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th align="left">Name</th>
+                <th align="left">Members</th>
+                <th align="left">Policy</th>
+                <th align="left">Recent spend events</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </main>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} style={{ borderTop: "1px solid #e2e8f0" }}>
+                  <td>
+                    {row.name} ({row.slug}) {row.active ? "" : "• inactive"}
+                  </td>
+                  <td>{row.taxi_business_members?.length ?? 0}</td>
+                  <td>
+                    max ride:{" "}
+                    {row.taxi_business_ride_policies?.[0]?.max_ride_cents ?? "—"} / day:{" "}
+                    {row.taxi_business_ride_policies?.[0]?.max_daily_cents ?? "—"}
+                  </td>
+                  <td>{row.taxi_business_billing_events?.length ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </main>
+      </div>
     </AdminGate>
   );
 }
