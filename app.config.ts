@@ -295,7 +295,7 @@ export default ({ config }) => {
         foregroundImage: "./apps/mobile/assets/adaptive-icon.png",
         backgroundImage: "./apps/mobile/assets/adaptive-icon-background.png",
         monochromeImage: "./apps/mobile/assets/monochrome-icon.png",
-        backgroundColor: "#050816",
+        backgroundColor: "#003399",
       },
     },
 

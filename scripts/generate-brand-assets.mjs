@@ -178,10 +178,11 @@ const APP_ICON_SAFE_AREA = 0.9;
 /** Android adaptive foreground (full-bleed layer; launcher mask crops edges). */
 const ADAPTIVE_FG_SAFE_AREA = 0.86;
 /**
- * Exact night-blue from the validated AVANT/APRÈS icon maquette (#050816).
- * Not white. Not pure black. Blends with the logo with no visible frame.
+ * Opaque iOS/Android icon fill: official MMD brand blue (#003399).
+ * Apple requires opaque App Icons — never use near-black (#050816) or transparency
+ * (iOS fills transparent pixels with black on the home screen).
  */
-const APP_ICON_BG = { r: 5, g: 8, b: 22, alpha: 1 };
+const APP_ICON_BG = { r: 0, g: 51, b: 153, alpha: 1 };
 
 /**
  * Optical center of the heart body (ignores left speed-streak asymmetry).

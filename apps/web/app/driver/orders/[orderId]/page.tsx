@@ -115,8 +115,11 @@ export default function DriverOrderDetailsPage() {
     }
   }
 
-  const canPickup = order?.status === "ready" || order?.status === "dispatched";
-  const canDeliver = order?.status === "dispatched" || order?.status === "picked_up";
+  const orderStatus = String(order?.status ?? "").toLowerCase();
+  const canPickup = ["ready", "accepted", "prepared", "dispatched"].includes(
+    orderStatus
+  );
+  const canDeliver = orderStatus === "picked_up";
   const canAccept =
     !!order &&
     !order.driver_id &&

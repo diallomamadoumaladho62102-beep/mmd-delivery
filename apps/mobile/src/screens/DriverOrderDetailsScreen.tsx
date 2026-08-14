@@ -699,8 +699,14 @@ function normalizeKind(value: unknown): string {
     .replace(/[\s-]+/g, "_");
 }
 
-function isFinalStatus(status: OrderStatus) {
-  return status === "delivered" || status === "canceled";
+function isFinalStatus(status: string) {
+  const s = String(status ?? "").toLowerCase();
+  return (
+    s === "delivered" ||
+    s === "completed" ||
+    s === "canceled" ||
+    s === "cancelled"
+  );
 }
 
 
@@ -793,6 +799,8 @@ export function DriverOrderDetailsScreen() {
   const isDeliveryRequest = order?.source_table === "delivery_requests" || normalizedKind === "delivery";
   const isMarketplaceJob =
     order?.source_table === "marketplace_delivery_jobs" || normalizedKind === "marketplace";
+  const isTaxiRide =
+    order?.source_table === "taxi_rides" || normalizedKind === "taxi";
 
   const pickupCoord = useMemo(() => {
     if (!isValidCoordinate(order?.pickup_lat, order?.pickup_lng)) return null;
@@ -1439,21 +1447,26 @@ export function DriverOrderDetailsScreen() {
   const isAssignedDriver =
     !!order && !!myUserId && !!order.driver_id && order.driver_id === myUserId;
 
+  // After accept, food / pickup_dropoff / delivery_request orders move to
+  // `dispatched`. Pickup verify must stay available until `picked_up`.
+  // Dropoff verify only after successful pickup (`picked_up`).
+  // Taxi uses a separate lifecycle: accepted → driver_arrived → in_progress → completed.
+  const orderStatus = String(order?.status ?? "").toLowerCase();
   const canPickup =
     !!order &&
     isAssignedDriver &&
-    (
-      (isDeliveryRequest && order.status === "dispatched") ||
-      (!isDeliveryRequest &&
-        ((isPickupDropoff && ["accepted", "prepared", "ready"].includes(order.status)) ||
-          (!isPickupDropoff && order.status === "ready")))
-    );
+    !isMarketplaceJob &&
+    (isTaxiRide
+      ? orderStatus === "accepted" || orderStatus === "driver_arrived"
+      : isDeliveryRequest
+        ? orderStatus === "dispatched"
+        : ["ready", "accepted", "prepared", "dispatched"].includes(orderStatus));
 
   const canDeliver =
     !!order &&
     isAssignedDriver &&
-    ((isDeliveryRequest && order.status === "picked_up") ||
-      (!isDeliveryRequest && order.status === "dispatched"));
+    !isMarketplaceJob &&
+    (isTaxiRide ? orderStatus === "in_progress" : orderStatus === "picked_up");
 
   const canAccept =
     !!order &&
@@ -1504,13 +1517,93 @@ export function DriverOrderDetailsScreen() {
   const waitTimerEntityType = isDeliveryRequest ? "delivery_request" : "order";
 
   function openCodeModal(kind: VerifyKind) {
-    if (kind === "pickup" && !canPickup) return;
-    if (kind === "dropoff" && !canDeliver) return;
+    if (kind === "pickup" && !canPickup) {
+      Alert.alert(
+        t("driver.orderDetails.verify.pickupBtn", "Verify Pickup Code"),
+        isTaxiRide
+          ? t(
+              "driver.orderDetails.verify.taxiPickupNotReady",
+              "Pickup verification unlocks after the taxi ride is accepted (status: accepted / driver_arrived)."
+            )
+          : t(
+              "driver.orderDetails.verify.pickupNotReady",
+              "Pickup verification unlocks once you are assigned and the trip is ready for pickup (status: ready / dispatched)."
+            )
+      );
+      return;
+    }
+    if (kind === "dropoff" && !canDeliver) {
+      Alert.alert(
+        t("driver.orderDetails.verify.dropoffBtn", "Verify Delivery Code"),
+        isTaxiRide
+          ? t(
+              "driver.orderDetails.verify.taxiDropoffNotReady",
+              "Complete ride unlocks after pickup code verification (status: in_progress)."
+            )
+          : t(
+              "driver.orderDetails.verify.dropoffNotReady",
+              "Delivery verification unlocks after pickup is confirmed (status: picked_up)."
+            )
+      );
+      return;
+    }
+
+    // Taxi has no dropoff OTP — complete the ride with GPS proximity.
+    if (isTaxiRide && kind === "dropoff") {
+      void handleCompleteTaxiRide();
+      return;
+    }
+
     setCodeInput("");
     setCodeError(null);
     setCodeSuccess(false);
     setProofPhotoUri(null);
     setVerifyingKind(kind);
+  }
+
+  async function handleCompleteTaxiRide() {
+    if (!order || submittingCode) return;
+    try {
+      setSubmittingCode(true);
+      const Location = await import("expo-location");
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        throw new Error(
+          t(
+            "driver.orderDetails.locationRequired",
+            "Location permission is required to complete this ride."
+          )
+        );
+      }
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const { completeTaxiRide } = await import("../lib/taxiDriverApi");
+      await completeTaxiRide(order.id, {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      });
+      await fetchOrder();
+      Alert.alert(
+        t("driver.orderDetails.taxi.completedTitle", "Ride completed"),
+        t(
+          "driver.orderDetails.taxi.completedBody",
+          "The taxi ride was marked as completed."
+        )
+      );
+    } catch (e: unknown) {
+      Alert.alert(
+        t("common.error", "Erreur"),
+        e instanceof Error
+          ? e.message
+          : t(
+              "driver.orderDetails.taxi.completeFailed",
+              "Unable to complete the taxi ride."
+            )
+      );
+    } finally {
+      setSubmittingCode(false);
+    }
   }
 
   function closeCodeModal() {
@@ -2014,6 +2107,58 @@ export function DriverOrderDetailsScreen() {
           photoUri: proofPhotoUri,
         });
         proofPhotoUrl = uploaded.publicUrl;
+      }
+
+      if (getOrderSourceTable(order) === "taxi_rides") {
+        const { arriveTaxiPickup, startTaxiRide } = await import(
+          "../lib/taxiDriverApi"
+        );
+        const digits = normalizedCode.replace(/\D/g, "").slice(0, 4);
+        if (digits.length !== 4) {
+          setCodeError(
+            t(
+              "driver.orderDetails.taxi.pickupCodeLength",
+              "Enter the 4-digit pickup code from the client."
+            )
+          );
+          return;
+        }
+
+        const statusNow = String(order.status ?? "").toLowerCase();
+        if (statusNow === "accepted") {
+          const Location = await import("expo-location");
+          const permission = await Location.requestForegroundPermissionsAsync();
+          if (permission.status !== "granted") {
+            throw new Error(
+              t(
+                "driver.orderDetails.locationRequired",
+                "Location permission is required to confirm arrival."
+              )
+            );
+          }
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          await arriveTaxiPickup(order.id, {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        }
+
+        await startTaxiRide(order.id, digits);
+        setCodeSuccess(true);
+        await fetchOrder();
+        setTimeout(() => {
+          setVerifyingKind(null);
+          setCodeInput("");
+          setCodeError(null);
+          setCodeSuccess(false);
+          setProofPhotoUri(null);
+          setProofPhotoPreparing(false);
+          setSubmittingCode(false);
+          setProofUploading(false);
+        }, 700);
+        return;
       }
 
       if (getOrderSourceTable(order) === "delivery_requests") {
@@ -3133,14 +3278,15 @@ export function DriverOrderDetailsScreen() {
           </Text>
 
           <TouchableOpacity
-            disabled={!canPickup}
+            disabled={false}
             onPress={() => openCodeModal("pickup")}
+            activeOpacity={canPickup ? 0.85 : 0.7}
             style={{
               borderRadius: 999,
               paddingVertical: 14,
               paddingHorizontal: 12,
               alignItems: "center",
-              backgroundColor: canPickup ? MMD_BLUE : MMD_BLUE,
+              backgroundColor: MMD_BLUE,
               opacity: canPickup ? 1 : 0.55,
               borderWidth: 1,
               borderColor: "#0037A0",
@@ -3161,17 +3307,18 @@ export function DriverOrderDetailsScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            disabled={!canDeliver}
+            disabled={false}
             onPress={() => openCodeModal("dropoff")}
+            activeOpacity={canDeliver ? 0.85 : 0.7}
             style={{
               borderRadius: 999,
               paddingVertical: 14,
               paddingHorizontal: 12,
               alignItems: "center",
-              backgroundColor: canDeliver ? "#16A34A" : "#16A34A",
+              backgroundColor: "#16A34A",
               opacity: canDeliver ? 1 : 0.55,
               borderWidth: 1,
-              borderColor: canDeliver ? "#34D399" : "#34D399",
+              borderColor: "#34D399",
             }}
           >
             <Text
@@ -3182,7 +3329,9 @@ export function DriverOrderDetailsScreen() {
                 fontWeight: "800",
               }}
             >
-              {isPickupDropoff
+              {isTaxiRide
+                ? t("driver.orderDetails.verify.completeRide", "Complete ride")
+                : isPickupDropoff
                 ? t("driver.orderDetails.verify.dropoffBtnPd", "Verify Delivery Code")
                 : t("driver.orderDetails.verify.dropoffBtn", "Verify Delivery Code")}
             </Text>
@@ -3567,6 +3716,8 @@ export function DriverOrderDetailsScreen() {
         transparent
         visible={verifyingKind !== null}
         animationType="fade"
+        presentationStyle="overFullScreen"
+        statusBarTranslucent
         onRequestClose={closeCodeModal}
       >
         <View
@@ -3607,10 +3758,14 @@ export function DriverOrderDetailsScreen() {
             </Text>
 
             <OtpDigitInput
-              length={6}
+              length={isTaxiRide ? 4 : 6}
               value={codeInput}
               onChange={(value) => {
-                setCodeInput(normalizeVerificationCode(value).slice(0, 6));
+                const maxLen = isTaxiRide ? 4 : 6;
+                const next = isTaxiRide
+                  ? String(value || "").replace(/\D/g, "").slice(0, maxLen)
+                  : normalizeVerificationCode(value).slice(0, maxLen);
+                setCodeInput(next);
                 if (codeError) setCodeError(null);
               }}
               onComplete={(digits) => void handleSubmitCode(digits)}
@@ -3618,7 +3773,7 @@ export function DriverOrderDetailsScreen() {
               disabled={submittingCode || proofUploading || proofPhotoPreparing}
               error={codeError}
               success={codeSuccess}
-              mode="alphanumeric"
+              mode={isTaxiRide ? "numeric" : "alphanumeric"}
             />
 
             {submittingCode ? (

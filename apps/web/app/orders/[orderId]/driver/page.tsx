@@ -318,8 +318,10 @@ export default function DriverOrderPage() {
   const driverPay =
     order.delivery_fee != null ? computeDriverPay(order.delivery_fee) : null;
 
-  const canPickup = order.status === "ready";
-  const canDropoff = order.status === "dispatched";
+  const canPickup = ["ready", "accepted", "prepared", "dispatched"].includes(
+    String(order.status ?? "").toLowerCase()
+  );
+  const canDropoff = String(order.status ?? "").toLowerCase() === "picked_up";
 
   const phaseHelpText =
     phase === "pickup"

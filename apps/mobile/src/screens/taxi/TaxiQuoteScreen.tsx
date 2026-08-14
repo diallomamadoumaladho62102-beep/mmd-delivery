@@ -540,6 +540,8 @@ export default function TaxiQuoteScreen() {
                 fontWeight: "800",
                 fontSize: 15,
                 fontFamily: MMD_FONT.extrabold,
+                textAlign: "center",
+                flexShrink: 1,
               }}
             >
               {pickupLocationId
@@ -571,6 +573,8 @@ export default function TaxiQuoteScreen() {
                 fontWeight: "800",
                 fontSize: 15,
                 fontFamily: MMD_FONT.extrabold,
+                textAlign: "center",
+                flexShrink: 1,
               }}
             >
               {dropoffLocationId
@@ -877,9 +881,12 @@ function Card({ label, value }: { label: string; value: string }) {
         backgroundColor: MMD_GLASS,
         borderWidth: 1,
         borderColor: "rgba(212,175,55,0.7)",
-        flexDirection: "row",
+        flexDirection: rowDirection(),
         justifyContent: "space-between",
-        alignItems: "center",
+        alignItems: "flex-start",
+        gap: 12,
+        width: "100%",
+        overflow: "hidden",
       }}
     >
       <Text
@@ -889,6 +896,8 @@ function Card({ label, value }: { label: string; value: string }) {
           fontWeight: "700",
           fontFamily: MMD_FONT.bold,
           textAlign: textAlignStart(),
+          flexShrink: 0,
+          maxWidth: "38%",
         }}
       >
         {label}
@@ -899,6 +908,10 @@ function Card({ label, value }: { label: string; value: string }) {
           fontSize: 16,
           fontWeight: "700",
           fontFamily: MMD_FONT.bold,
+          flex: 1,
+          flexShrink: 1,
+          minWidth: 0,
+          textAlign: "right",
         }}
       >
         {value}
@@ -917,12 +930,22 @@ function Row({
   bold?: boolean;
 }) {
   return (
-    <View style={{ flexDirection: rowDirection(), justifyContent: "space-between" }}>
+    <View
+      style={{
+        flexDirection: rowDirection(),
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 12,
+        width: "100%",
+      }}
+    >
       <Text
         style={{
           color: MMD_GOLD_CLASSIC,
           fontFamily: bold ? MMD_FONT.extrabold : MMD_FONT.regular,
           fontWeight: bold ? "800" : "400",
+          flexShrink: 0,
+          maxWidth: "42%",
         }}
       >
         {label}
@@ -933,6 +956,10 @@ function Row({
           fontWeight: bold ? "800" : "700",
           fontFamily: bold ? MMD_FONT.extrabold : MMD_FONT.bold,
           fontSize: bold ? 24 : 15,
+          flex: 1,
+          flexShrink: 1,
+          minWidth: 0,
+          textAlign: "right",
         }}
       >
         {value}
@@ -960,12 +987,25 @@ function OptionToggle({
         borderWidth: 1,
         borderColor: "rgba(212,175,55,0.7)",
         backgroundColor: MMD_GLASS,
-        flexDirection: "row",
+        flexDirection: rowDirection(),
         justifyContent: "space-between",
         alignItems: "center",
+        gap: 12,
+        width: "100%",
+        overflow: "hidden",
       }}
     >
-      <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold, fontSize: 16 }}>
+      <Text
+        style={{
+          color: MMD_WHITE,
+          fontWeight: "700",
+          fontFamily: MMD_FONT.bold,
+          fontSize: 16,
+          flex: 1,
+          flexShrink: 1,
+          minWidth: 0,
+        }}
+      >
         {label}
       </Text>
       <View
@@ -974,6 +1014,7 @@ function OptionToggle({
           height: 24,
           borderRadius: 12,
           padding: 2,
+          flexShrink: 0,
           backgroundColor: active ? MMD_TAXI_GREEN : MMD_GLASS,
           borderWidth: active ? 0 : 1,
           borderColor: "rgba(212,175,55,0.7)",

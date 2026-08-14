@@ -90,7 +90,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundImage": "./assets/adaptive-icon-background.png",
         "monochromeImage": "./assets/monochrome-icon.png",
-        "backgroundColor": "#050816"
+        "backgroundColor": "#003399"
       },
       "permissions": [
         "INTERNET",
