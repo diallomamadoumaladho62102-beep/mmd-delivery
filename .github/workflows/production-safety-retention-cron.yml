@@ -12,10 +12,13 @@ concurrency:
 jobs:
   safety-retention-cron:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Retention + up to 3 retries with backoff need headroom beyond a single attempt.
+    timeout-minutes: 10
     env:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
+      CRON_FETCH_MAX_ATTEMPTS: "3"
+      CRON_FETCH_TIMEOUT_MS: "120000"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

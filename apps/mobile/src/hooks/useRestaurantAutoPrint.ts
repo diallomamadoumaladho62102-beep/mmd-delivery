@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Alert } from "react-native";
+import i18n from "../i18n";
 import {
   ackPrintJob,
   fetchPendingPrintJobs,
@@ -36,8 +37,11 @@ export function useRestaurantAutoPrint(enabled: boolean) {
         } else if (result.ok === false) {
           await ackPrintJob(jobId, "failed", result.error);
           Alert.alert(
-            "Impression",
-            "La commande est acceptée, mais l'impression a échoué. Vous pouvez réimprimer depuis la commande.",
+            i18n.t("restaurant.autoPrint.title", "Print"),
+            i18n.t(
+              "restaurant.autoPrint.failedBody",
+              "Order accepted, but printing failed. You can reprint from the order.",
+            ),
           );
         }
       }

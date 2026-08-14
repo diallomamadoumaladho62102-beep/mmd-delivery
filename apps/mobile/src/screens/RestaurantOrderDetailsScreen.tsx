@@ -398,19 +398,23 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
       try {
         await requestOrderPrint(order.id, source);
         Alert.alert(
-          "Print",
-          source === "reprint" ? "Reprint queued." : "Ticket added to print queue."
+          t("restaurant.orderPrint.title", "Print"),
+          source === "reprint"
+            ? t("restaurant.orderPrint.reprintQueued", "Reprint queued.")
+            : t("restaurant.orderPrint.ticketQueued", "Ticket added to print queue."),
         );
       } catch (error) {
         Alert.alert(
-          "Print",
-          error instanceof Error ? error.message : "Unable to start printing."
+          t("restaurant.orderPrint.title", "Print"),
+          error instanceof Error
+            ? error.message
+            : t("restaurant.orderPrint.printFailed", "Unable to start printing."),
         );
       } finally {
         setPrinting(false);
       }
     },
-    [order, printing]
+    [order, printing, t]
   );
 
   if (loading) {

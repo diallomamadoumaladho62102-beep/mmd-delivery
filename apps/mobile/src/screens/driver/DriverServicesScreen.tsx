@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { DriverBrandLoadingState } from "../../components/driver/DriverBrandLoadingState";
 import {
@@ -74,6 +75,7 @@ function BrandFooter() {
 }
 
 export function DriverServicesScreen() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prefs, setPrefs] = useState<DriverServicePreferences>({
@@ -90,16 +92,16 @@ export function DriverServicesScreen() {
       setPrefs(data.preferences);
     } catch (error) {
       Alert.alert(
-        "Erreur",
+        t("driver.services.errorTitle", "Error"),
         toUserFacingError(
           error,
-          "Impossible de charger vos services pour le moment.",
+          t("driver.services.loadFailed", "Unable to load your services right now."),
         ),
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -113,10 +115,13 @@ export function DriverServicesScreen() {
         setPrefs(saved);
       } catch (error) {
         Alert.alert(
-          "Services",
+          t("driver.services.saveTitle", "Services"),
           toUserFacingError(
             error,
-            "Impossible d'enregistrer vos préférences pour le moment.",
+            t(
+              "driver.services.saveFailed",
+              "Unable to save your preferences right now.",
+            ),
           ),
         );
         await load();
@@ -124,7 +129,7 @@ export function DriverServicesScreen() {
         setSaving(false);
       }
     },
-    [load],
+    [load, t],
   );
 
   const patch = (key: keyof DriverServicePreferences, value: boolean) => {
@@ -137,8 +142,11 @@ export function DriverServicesScreen() {
 
     if (enabledCount === 0) {
       Alert.alert(
-        "Mes services",
-        "Activez au moins un service pour recevoir des missions.",
+        t("driver.services.minOneTitle", "My services"),
+        t(
+          "driver.services.minOneBody",
+          "Enable at least one service to receive missions.",
+        ),
       );
       return;
     }

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
@@ -96,6 +97,7 @@ export function DriverTaxiPanel({
   elevated = false,
   onActiveOffersChange,
 }: Props) {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [features, setFeatures] = useState<TaxiDriverFeatures | null>(null);
   const [driverApproved, setDriverApproved] = useState(false);
@@ -234,13 +236,19 @@ export function DriverTaxiPanel({
         await refresh();
         await stopDriverMissionAlert();
         Alert.alert(
-          "Taxi",
+          t("driver.taxiPanel.title", "Taxi"),
           takenOrExpired
             ? toUserFacingError(
                 result,
-                "This offer was taken or expired. Offers refreshed."
+                t(
+                  "driver.taxiPanel.offerTakenOrExpired",
+                  "This offer was taken or expired. Offers refreshed.",
+                ),
               )
-            : toUserFacingError(result, "Accept failed")
+            : toUserFacingError(
+                result,
+                t("driver.taxiPanel.acceptFailed", "Accept failed"),
+              ),
         );
         return;
       }
@@ -257,10 +265,16 @@ export function DriverTaxiPanel({
         lower.includes("status changed");
       await refresh();
       Alert.alert(
-        "Taxi",
+        t("driver.taxiPanel.title", "Taxi"),
         takenOrExpired
-          ? toUserFacingError(e, "This offer was taken or expired. Offers refreshed.")
-          : toUserFacingError(e, "Accept failed")
+          ? toUserFacingError(
+              e,
+              t(
+                "driver.taxiPanel.offerTakenOrExpired",
+                "This offer was taken or expired. Offers refreshed.",
+              ),
+            )
+          : toUserFacingError(e, t("driver.taxiPanel.acceptFailed", "Accept failed")),
       );
     } finally {
       actionLockRef.current = false;
@@ -277,7 +291,10 @@ export function DriverTaxiPanel({
       await refresh();
       await stopDriverMissionAlert();
     } catch (e: unknown) {
-      Alert.alert("Taxi", toUserFacingError(e, "Reject failed"));
+      Alert.alert(
+        t("driver.taxiPanel.title", "Taxi"),
+        toUserFacingError(e, t("driver.taxiPanel.rejectFailed", "Reject failed")),
+      );
     } finally {
       actionLockRef.current = false;
       setActionId(null);
@@ -324,7 +341,10 @@ export function DriverTaxiPanel({
       if (action === "complete") await completeTaxiRide(rideId, coords);
       await refresh();
     } catch (e: unknown) {
-      Alert.alert("Taxi", toUserFacingError(e, "Action failed"));
+      Alert.alert(
+        t("driver.taxiPanel.title", "Taxi"),
+        toUserFacingError(e, t("driver.taxiPanel.actionFailed", "Action failed")),
+      );
     } finally {
       actionLockRef.current = false;
       setActionId(null);
@@ -345,7 +365,12 @@ export function DriverTaxiPanel({
       // Surface inline error in the OTP modal (bank-style UX).
       throw e instanceof Error
         ? e
-        : new Error(toUserFacingError(e, "Invalid pickup code"));
+        : new Error(
+            toUserFacingError(
+              e,
+              t("driver.taxiPanel.invalidPickupCode", "Invalid pickup code."),
+            ),
+          );
     } finally {
       actionLockRef.current = false;
       setActionId(null);
@@ -363,7 +388,13 @@ export function DriverTaxiPanel({
         sourceTable: "taxi_rides",
       });
     } catch (e: unknown) {
-      Alert.alert("Call", toUserFacingError(e, "Unable to start masked call"));
+      Alert.alert(
+        t("driver.taxiPanel.callTitle", "Call"),
+        toUserFacingError(
+          e,
+          t("driver.taxiPanel.maskedCallFailed", "Unable to start masked call"),
+        ),
+      );
     }
   }
 
@@ -376,7 +407,10 @@ export function DriverTaxiPanel({
       await cancelTaxiRideByDriver(rideId);
       await refresh();
     } catch (e: unknown) {
-      Alert.alert("Taxi", toUserFacingError(e, "Cancel failed"));
+      Alert.alert(
+        t("driver.taxiPanel.title", "Taxi"),
+        toUserFacingError(e, t("driver.taxiPanel.cancelFailed", "Cancel failed")),
+      );
     } finally {
       actionLockRef.current = false;
       setActionId(null);
@@ -455,14 +489,20 @@ export function DriverTaxiPanel({
             void arriveTaxiStop(rideId, stopOrder)
               .then(refresh)
               .catch((e: unknown) =>
-                Alert.alert("Taxi", toUserFacingError(e, "Failed")),
+                Alert.alert(
+                  t("driver.taxiPanel.title", "Taxi"),
+                  toUserFacingError(e, t("driver.taxiPanel.genericFailed", "Failed")),
+                ),
               )
           }
           onCompleteStop={(stopOrder) =>
             void completeTaxiStop(rideId, stopOrder)
               .then(refresh)
               .catch((e: unknown) =>
-                Alert.alert("Taxi", toUserFacingError(e, "Failed")),
+                Alert.alert(
+                  t("driver.taxiPanel.title", "Taxi"),
+                  toUserFacingError(e, t("driver.taxiPanel.genericFailed", "Failed")),
+                ),
               )
           }
           onNoShowCanceled={() => void refresh()}

@@ -356,7 +356,10 @@ export function ClientAuthScreen() {
     if (!e) {
       Alert.alert(
         t("client.auth.missingTitle"),
-        "Entre ton email, puis appuie sur mot de passe oublié."
+        t(
+          "client.auth.forgotPasswordEmailHint",
+          "Enter your email, then tap forgot password.",
+        ),
       );
       return;
     }
@@ -368,17 +371,25 @@ export function ClientAuthScreen() {
       });
 
       if (error) {
-        throw new Error(toUserFacingError(error, "Impossible d'envoyer l'email."));
+        throw new Error(
+          toUserFacingError(
+            error,
+            t("client.auth.cannotSendEmail", "Unable to send email."),
+          ),
+        );
       }
 
       Alert.alert(
-        "Email envoyé",
-        "Vérifie ta boîte email. Clique sur le lien reçu pour modifier ton mot de passe."
+        t("client.auth.resetEmailSentTitle", "Email sent"),
+        t(
+          "client.auth.resetEmailSentBody",
+          "Check your inbox. Click the link you received to reset your password.",
+        ),
       );
     } catch (err: unknown) {
       Alert.alert(
         t("client.auth.errorTitle"),
-        toUserFacingError(err, "Impossible d'envoyer l'email.")
+        toUserFacingError(err, t("client.auth.cannotSendEmail", "Unable to send email.")),
       );
     } finally {
       setLoading(false);
@@ -466,32 +477,36 @@ export function ClientAuthScreen() {
       console.log("client_profiles upsert exception:", err);
     }
 
-    try {
-      await supabase
-        .from("client_addresses")
-        .update({ is_default: false })
-        .eq("user_id", userId)
-        .eq("is_default", true);
+    // Only persist a saved address when the user actually provided one.
+    // Full address is optional at signup (Apple 5.1.1(v)).
+    if (trimOrEmpty(addressLine1)) {
+      try {
+        await supabase
+          .from("client_addresses")
+          .update({ is_default: false })
+          .eq("user_id", userId)
+          .eq("is_default", true);
 
-      const { error: addrErr } = await supabase
-        .from("client_addresses")
-        .insert({
-          user_id: userId,
-          label: t("client.auth.mainAddressLabel"),
-          address_line1: trimOrEmpty(addressLine1),
-          address_line2: trimOrEmpty(addressLine2),
-          city: trimOrEmpty(city),
-          state: trimOrEmpty(stateRegion),
-          postal_code: trimOrEmpty(postalCode),
-          country: signupCountry,
-          is_default: true,
-        });
+        const { error: addrErr } = await supabase
+          .from("client_addresses")
+          .insert({
+            user_id: userId,
+            label: t("client.auth.mainAddressLabel"),
+            address_line1: trimOrEmpty(addressLine1),
+            address_line2: trimOrEmpty(addressLine2),
+            city: trimOrEmpty(city),
+            state: trimOrEmpty(stateRegion),
+            postal_code: trimOrEmpty(postalCode),
+            country: signupCountry || null,
+            is_default: true,
+          });
 
-      if (addrErr) {
-        console.log("client_addresses insert error:", addrErr);
+        if (addrErr) {
+          console.log("client_addresses insert error:", addrErr);
+        }
+      } catch (err) {
+        console.log("client_addresses insert exception:", err);
       }
-    } catch (err) {
-      console.log("client_addresses insert exception:", err);
     }
   }
 
@@ -526,27 +541,12 @@ export function ClientAuthScreen() {
       return;
     }
 
-    if (
-      !trimOrEmpty(addressLine1) ||
-      !trimOrEmpty(city) ||
-      !trimOrEmpty(stateRegion) ||
-      !trimOrEmpty(postalCode)
-    ) {
-      Alert.alert(
-        t("client.auth.addressTitle"),
-        t("client.auth.fullAddressRequired")
-      );
-      return;
-    }
-
-    const signupCountry = trimOrEmpty(country).toUpperCase();
-    if (!/^[A-Z]{2}$/.test(signupCountry)) {
-      Alert.alert(
-        t("client.auth.addressTitle"),
-        t("client.auth.countryRequired", "Select your country to continue.")
-      );
-      return;
-    }
+    // Full street address is optional at signup (Apple 5.1.1(v)).
+    // Country may still be provided for market scope; never block signup on address.
+    const signupCountryRaw = trimOrEmpty(country).toUpperCase();
+    const signupCountry = /^[A-Z]{2}$/.test(signupCountryRaw)
+      ? signupCountryRaw
+      : "";
 
     setLoading(true);
     try {
@@ -733,7 +733,22 @@ export function ClientAuthScreen() {
                   style={[fieldStyle, { marginBottom: 16 }]}
                 />
 
-                <Text style={labelStyle}>{t("client.auth.address")}</Text>
+                <Text style={labelStyle}>
+                  {t("client.auth.addressOptional", "Address (optional)")}
+                </Text>
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.65)",
+                    fontSize: 12,
+                    marginBottom: 8,
+                    lineHeight: 16,
+                  }}
+                >
+                  {t(
+                    "client.auth.addressOptionalHint",
+                    "You can add a delivery address later when you order food, packages, or a taxi.",
+                  )}
+                </Text>
                 <TextInput
                   value={addressLine1}
                   onChangeText={setAddressLine1}

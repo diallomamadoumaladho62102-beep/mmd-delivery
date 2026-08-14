@@ -2,11 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePushSound } from "./mmdPushSounds";
 
 export const SAFETY_RECORDING_CONSENT_MESSAGE =
-  "Un enregistrement de sécurité est en cours pour protéger les deux parties.";
+  "A safety recording is in progress on your device to protect this ride. The other party is notified but does not control your microphone.";
 
 export const SAFETY_RECORDING_RETENTION_DAYS = 14;
 
-export type SafetyRecordingType = "client_audio" | "driver_video";
+export type SafetyRecordingType = "client_audio" | "driver_audio" | "driver_video";
 export type SafetyRecordingStatus =
   | "recording"
   | "uploaded"
@@ -35,7 +35,9 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const ACTIVE_RIDE_STATUSES = new Set(["accepted", "driver_arrived", "in_progress"]);
 
 function recordingTypeLabel(type: SafetyRecordingType): string {
-  return type === "client_audio" ? "audio client" : "vidéo chauffeur";
+  if (type === "client_audio") return "client safety audio";
+  if (type === "driver_audio") return "driver safety audio";
+  return "driver safety video";
 }
 
 async function loadUserExpoTokens(
@@ -95,16 +97,18 @@ export async function notifySafetyRecordingStarted(params: {
   if (tokens.length === 0) return;
 
   const who =
-    params.initiatorRole === "client"
-      ? "Le client a démarré un enregistrement audio de sécurité."
-      : "Le chauffeur a démarré un enregistrement vidéo de sécurité.";
+    params.recordingType === "client_audio"
+      ? "The client started a safety audio recording on their device."
+      : params.recordingType === "driver_audio"
+        ? "The driver started a safety audio recording on their device."
+        : "The driver started a safety video recording on their device.";
 
   await sendExpoPush(
     tokens.map((token) => ({
       to: token,
       sound: resolvePushSound("client_update"),
-      title: "Enregistrement de sécurité",
-      body: `${who} ${SAFETY_RECORDING_CONSENT_MESSAGE}`,
+      title: "Safety recording",
+      body: `${who} This does not turn on your microphone.`,
       data: {
         type: "taxi_safety_recording_started",
         taxi_ride_id: params.rideId,
@@ -154,14 +158,22 @@ export function isActiveTaxiRideStatus(status: unknown): boolean {
 export function buildSafetyRecordingStatusPayload(recordings: SafetyRecordingRow[]) {
   const active = recordings.filter((row) => row.status === "recording");
   const clientRecording = active.find((row) => row.recording_type === "client_audio");
-  const driverRecording = active.find((row) => row.recording_type === "driver_video");
+  const driverAudioRecording = active.find((row) => row.recording_type === "driver_audio");
+  const driverVideoRecording = active.find((row) => row.recording_type === "driver_video");
 
   return {
     consent_message: SAFETY_RECORDING_CONSENT_MESSAGE,
     client_audio_active: Boolean(clientRecording),
-    driver_video_active: Boolean(driverRecording),
+    driver_audio_active: Boolean(driverAudioRecording),
+    driver_video_active: Boolean(driverVideoRecording),
     any_active: active.length > 0,
-    active_recordings: active,
+    active_recordings: active.map((row) => ({
+      id: row.id,
+      recording_type: row.recording_type,
+      initiator_role: row.initiator_role,
+      status: row.status,
+      started_at: row.started_at ?? null,
+    })),
     recordings,
   };
 }
@@ -175,33 +187,43 @@ export async function processRideSafetyRecordingRetention(
   if (error) throw new Error(error.message);
 
   const payload = (purgeResult ?? {}) as Record<string, unknown>;
+  const warn3Count = Number(payload.warnings_3d ?? 0);
+  const warn24Count = Number(payload.warnings_24h ?? 0);
 
-  const { data: warn3Rows } = await supabaseAdmin
-    .from("ride_safety_recordings")
-    .select("*")
-    .not("warning_3d_sent_at", "is", null)
-    .gte("warning_3d_sent_at", new Date(Date.now() - 5 * 60 * 1000).toISOString());
+  // Only notify when THIS purge run stamped new warnings. Retries after a
+  // successful purge return 0 and must not re-send push notifications.
+  const recentCutoff = new Date(Date.now() - 2 * 60 * 1000).toISOString();
 
-  for (const row of (warn3Rows ?? []) as SafetyRecordingRow[]) {
-    await notifySafetyRecordingExpiry({
-      supabaseAdmin,
-      recording: row,
-      warning: "3d",
-    }).catch(() => null);
+  if (warn3Count > 0) {
+    const { data: warn3Rows } = await supabaseAdmin
+      .from("ride_safety_recordings")
+      .select("*")
+      .not("warning_3d_sent_at", "is", null)
+      .gte("warning_3d_sent_at", recentCutoff);
+
+    for (const row of (warn3Rows ?? []) as SafetyRecordingRow[]) {
+      await notifySafetyRecordingExpiry({
+        supabaseAdmin,
+        recording: row,
+        warning: "3d",
+      }).catch(() => null);
+    }
   }
 
-  const { data: warn24Rows } = await supabaseAdmin
-    .from("ride_safety_recordings")
-    .select("*")
-    .not("warning_24h_sent_at", "is", null)
-    .gte("warning_24h_sent_at", new Date(Date.now() - 5 * 60 * 1000).toISOString());
+  if (warn24Count > 0) {
+    const { data: warn24Rows } = await supabaseAdmin
+      .from("ride_safety_recordings")
+      .select("*")
+      .not("warning_24h_sent_at", "is", null)
+      .gte("warning_24h_sent_at", recentCutoff);
 
-  for (const row of (warn24Rows ?? []) as SafetyRecordingRow[]) {
-    await notifySafetyRecordingExpiry({
-      supabaseAdmin,
-      recording: row,
-      warning: "24h",
-    }).catch(() => null);
+    for (const row of (warn24Rows ?? []) as SafetyRecordingRow[]) {
+      await notifySafetyRecordingExpiry({
+        supabaseAdmin,
+        recording: row,
+        warning: "24h",
+      }).catch(() => null);
+    }
   }
 
   const { data: deletedRows } = await supabaseAdmin

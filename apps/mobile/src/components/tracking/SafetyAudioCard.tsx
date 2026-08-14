@@ -3,19 +3,21 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Linking,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type AppStateStatus,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
 import {
-  requestClientAudioPermissions,
-  startClientAudioCapture,
-  stopClientAudioCapture,
+  requestSafetyAudioPermissions,
+  startSafetyAudioCapture,
+  stopSafetyAudioCapture,
 } from "../../lib/taxiSafetyRecordingCapture";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
@@ -30,6 +32,8 @@ import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 type Props = {
   rideId: string;
   rideActive: boolean;
+  /** Who is recording on this device. Default client. */
+  role?: "client" | "driver";
 };
 
 function formatTimer(seconds: number): string {
@@ -40,11 +44,15 @@ function formatTimer(seconds: number): string {
 }
 
 /**
- * Premium safety audio card for clients.
- * Uses the existing taxi safety-recording APIs (secure upload to ride-safety-recordings).
- * Does NOT invent trusted contacts — share opens the signed download URL when available.
+ * Safety Audio for Client and Driver during an active taxi ride.
+ * Each role records only on their own device after explicit consent + mic permission.
+ * No silent start. No UIBackgroundModes audio — foreground recording only.
  */
-export function SafetyAudioCard({ rideId, rideActive }: Props) {
+export function SafetyAudioCard({
+  rideId,
+  rideActive,
+  role = "client",
+}: Props) {
   const { t } = useTranslation();
   const network = useNetworkStatus();
   const reduceMotion = useReduceMotion();
@@ -57,8 +65,12 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
   const [elapsedSec, setElapsedSec] = useState(0);
   const [pendingUpload, setPendingUpload] = useState(false);
   const [localUri, setLocalUri] = useState<string | null>(null);
+  const [bgWarned, setBgWarned] = useState(false);
   const pulse = useRef(new Animated.Value(0.4)).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stoppingRef = useRef(false);
+
+  const recordingType = role === "driver" ? "driver_audio" : "client_audio";
 
   const refresh = useCallback(async () => {
     if (!rideId) return;
@@ -78,8 +90,18 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
     return () => clearInterval(timer);
   }, [refresh]);
 
-  const ownActive = Boolean(status?.client_audio_active);
-  const allowed = status?.client_audio_allowed !== false;
+  const ownActive =
+    role === "driver"
+      ? Boolean(status?.driver_audio_active)
+      : Boolean(status?.client_audio_active);
+  const otherPartyActive =
+    role === "driver"
+      ? Boolean(status?.client_audio_active || status?.driver_video_active)
+      : Boolean(status?.driver_audio_active || status?.driver_video_active);
+  const allowed =
+    role === "driver"
+      ? status?.driver_audio_allowed !== false
+      : status?.client_audio_allowed !== false;
 
   useEffect(() => {
     if (timerRef.current) {
@@ -88,6 +110,7 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
     }
     if (!ownActive) {
       setElapsedSec(0);
+      setBgWarned(false);
       return;
     }
     setElapsedSec(0);
@@ -122,6 +145,23 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
     return () => loop.stop();
   }, [ownActive, pulse, reduceMotion]);
 
+  useEffect(() => {
+    const onChange = (next: AppStateStatus) => {
+      if (next !== "active" && ownActive && !bgWarned) {
+        setBgWarned(true);
+        Alert.alert(
+          t("taxi.tracking.safety.bgTitle", "Recording may pause"),
+          t(
+            "taxi.tracking.safety.bgBody",
+            "Safety Audio records while MMD Delivery is open. Leaving the app or locking the screen may interrupt the recording — keep the app open to continue.",
+          ),
+        );
+      }
+    };
+    const sub = AppState.addEventListener("change", onChange);
+    return () => sub.remove();
+  }, [bgWarned, ownActive, t]);
+
   const flushPendingUpload = useCallback(async () => {
     if (!pendingUpload || !localUri || !localRecordingId) return;
     if (network.quality === "offline") return;
@@ -145,7 +185,10 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
     } catch (error) {
       Alert.alert(
         t("taxi.tracking.safety.uploadTitle", "Safety audio"),
-        toUserFacingError(error, "Upload failed"),
+        toUserFacingError(
+          error,
+          t("taxi.tracking.safety.uploadFailed", "Unable to upload the recording."),
+        ),
       );
     } finally {
       setBusy(false);
@@ -166,56 +209,89 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
     }
   }, [network.quality, pendingUpload, flushPendingUpload]);
 
-  const handleStart = async () => {
+  const runStart = async () => {
     if (!rideActive || !allowed) return;
     setBusy(true);
     try {
-      const granted = await requestClientAudioPermissions();
+      const granted = await requestSafetyAudioPermissions();
       if (!granted) {
         Alert.alert(
           t("taxi.tracking.safety.micTitle", "Microphone"),
           t(
             "taxi.tracking.safety.micBody",
-            "Allow microphone access to record a safety audio for this ride.",
+            "Allow microphone access to record a safety audio for this ride. You can enable it in iOS Settings if it was blocked.",
           ),
+          [
+            { text: t("common.cancel", "Cancel"), style: "cancel" },
+            {
+              text: t("taxi.tracking.safety.openSettings", "Open Settings"),
+              onPress: () => void Linking.openSettings(),
+            },
+          ],
         );
         return;
       }
 
       const started = await startSafetyRecording({
         rideId,
-        recordingType: "client_audio",
+        recordingType,
       });
       const recordingId = String(started.recording?.id ?? "");
       setLocalRecordingId(recordingId);
-      await startClientAudioCapture();
+      await startSafetyAudioCapture({
+        onInterrupted: () => {
+          // Soft signal only — user must stop intentionally; OS may suspend capture.
+        },
+      });
       Alert.alert(
         t("taxi.tracking.safety.startedTitle", "Recording started"),
-        started.consent_message ??
-          t(
-            "taxi.tracking.safety.consent",
-            "A safety recording is in progress to protect both parties.",
-          ),
+        t(
+          "taxi.tracking.safety.startedBody",
+          "Your microphone is recording now. A red Recording indicator stays visible until you stop. The other party is notified but cannot control your mic.",
+        ),
       );
       await refresh();
     } catch (error) {
       Alert.alert(
         t("taxi.tracking.safety.errorTitle", "Error"),
-        toUserFacingError(error, "Unable to start recording"),
+        toUserFacingError(
+          error,
+          t("taxi.tracking.safety.startFailed", "Unable to start recording."),
+        ),
       );
     } finally {
       setBusy(false);
     }
   };
 
+  const handleStart = () => {
+    if (!rideActive || !allowed || busy) return;
+    Alert.alert(
+      t("taxi.tracking.safety.consentTitle", "Start Safety Audio?"),
+      t(
+        "taxi.tracking.safety.consentBody",
+        "This records audio from YOUR device microphone only, for ride safety. It does not start silently. Files are private (not public), stored securely, retained about 14 days, and only you (or MMD staff during a review) can download your file. The other party is notified when you start — their consent is separate and does not turn on their microphone.",
+      ),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("taxi.tracking.safety.consentConfirm", "I understand — Record"),
+          onPress: () => void runStart(),
+        },
+      ],
+    );
+  };
+
   const handleStop = async () => {
+    if (stoppingRef.current) return;
+    stoppingRef.current = true;
     setBusy(true);
     try {
       const activeRecording = (status?.recordings ?? []).find(
         (row) =>
-          String(row.recording_type) === "client_audio" &&
+          String(row.recording_type) === recordingType &&
           String(row.status) === "recording" &&
-          String(row.initiator_role) === "client",
+          String(row.initiator_role) === role,
       );
       const recordingId =
         localRecordingId ?? String(activeRecording?.id ?? "");
@@ -227,7 +303,7 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
         return;
       }
 
-      const capture = await stopClientAudioCapture();
+      const capture = await stopSafetyAudioCapture();
       await stopSafetyRecording(recordingId);
 
       if (capture?.uri) {
@@ -255,7 +331,7 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
             t("taxi.tracking.safety.uploadTitle", "Safety audio"),
             t(
               "taxi.tracking.safety.stoppedOk",
-              "Recording stopped and stored securely.",
+              "Recording stopped and stored securely. Only you can open your own recording from this screen.",
             ),
           );
         }
@@ -264,9 +340,13 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
     } catch (error) {
       Alert.alert(
         t("taxi.tracking.safety.errorTitle", "Error"),
-        toUserFacingError(error, "Unable to stop recording"),
+        toUserFacingError(
+          error,
+          t("taxi.tracking.safety.stopFailed", "Unable to stop recording."),
+        ),
       );
     } finally {
+      stoppingRef.current = false;
       setBusy(false);
     }
   };
@@ -279,7 +359,10 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
     } catch (error) {
       Alert.alert(
         t("taxi.tracking.safety.errorTitle", "Error"),
-        toUserFacingError(error, "Download unavailable"),
+        toUserFacingError(
+          error,
+          t("taxi.tracking.safety.downloadUnavailable", "Download unavailable."),
+        ),
       );
     }
   };
@@ -312,31 +395,55 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
 
   const downloadable = (status?.recordings ?? []).filter(
     (row) =>
-      String(row.initiator_role) === "client" &&
+      String(row.initiator_role) === role &&
       ["available", "locked_for_review"].includes(String(row.status)),
   );
 
   return (
-    <View style={styles.card}>
+    <View style={styles.card} accessibilityLabel={t("taxi.tracking.safety.title", "Safety Audio")}>
       <View style={styles.header}>
         <View style={styles.shield}>
           <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
         </View>
         <View style={styles.headerText}>
           <Text style={styles.title}>
-            {t("taxi.tracking.safety.title", "Record a safety audio")}
+            {t("taxi.tracking.safety.title", "Safety Audio")}
           </Text>
           <Text style={styles.body}>
             {t(
               "taxi.tracking.safety.subtitle",
-              "Securely record audio for this ride. Files are private and uploaded to MMD safety storage — not end-to-end encrypted.",
+              "Record audio from your microphone for ride safety. Never starts silently. Files are private — not end-to-end encrypted.",
             )}
           </Text>
         </View>
       </View>
 
+      {otherPartyActive ? (
+        <View style={styles.otherBanner} accessibilityLiveRegion="polite">
+          <View style={styles.recDot} />
+          <Text style={styles.otherText}>
+            {t(
+              "taxi.tracking.safety.otherActive",
+              "The other party started a safety recording on their device. Your microphone stays off unless you start yours.",
+            )}
+          </Text>
+        </View>
+      ) : null}
+
+      {ownActive ? (
+        <View style={styles.activeBanner} accessibilityLiveRegion="polite">
+          <Animated.View style={[styles.recDotLarge, { opacity: pulse }]} />
+          <Text style={styles.activeText}>
+            {t(
+              "taxi.tracking.safety.activeIndicator",
+              "RECORDING — your microphone is on",
+            )}
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.meter}>
-        <Text style={styles.timer} accessibilityLiveRegion="none">
+        <Text style={styles.timer}>
           {formatTimer(elapsedSec)}
         </Text>
         <View style={styles.waveRow}>
@@ -366,7 +473,7 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
             accessibilityRole="button"
             accessibilityLabel={t("taxi.tracking.safety.record", "Record")}
             disabled={busy}
-            onPress={() => void handleStart()}
+            onPress={handleStart}
             style={[styles.recordBtn, { backgroundColor: "#7C3AED" }]}
           >
             {busy ? (
@@ -414,7 +521,7 @@ export function SafetyAudioCard({ rideId, rideActive }: Props) {
             >
               <Ionicons name="play-circle-outline" size={18} color="#A5B4FC" />
               <Text style={styles.downloadLabel} numberOfLines={1}>
-                {t("taxi.tracking.safety.openSecure", "Open secure recording")}
+                {t("taxi.tracking.safety.openSecure", "Open your secure recording")}
               </Text>
             </Pressable>
           ))}
@@ -467,6 +574,53 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     lineHeight: 17,
+  },
+  otherBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: "rgba(37,99,235,0.28)",
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: "rgba(147,197,253,0.3)",
+  },
+  otherText: {
+    color: "#DBEAFE",
+    fontSize: 12,
+    fontWeight: "700",
+    flex: 1,
+    lineHeight: 16,
+  },
+  activeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(220,38,38,0.28)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "rgba(248,113,113,0.45)",
+  },
+  activeText: {
+    color: "#FEE2E2",
+    fontWeight: "800",
+    flex: 1,
+    fontSize: 13,
+  },
+  recDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#60A5FA",
+    marginTop: 4,
+  },
+  recDotLarge: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#EF4444",
   },
   meter: {
     backgroundColor: "rgba(15,23,42,0.8)",

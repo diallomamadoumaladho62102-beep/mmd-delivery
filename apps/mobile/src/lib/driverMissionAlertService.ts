@@ -17,8 +17,9 @@ import {
  * Starts on push OR Realtime offer insert (food + delivery + taxi); stops only via
  * stopDriverMissionAlert (accept / decline / expire).
  *
- * Continues ringing while backgrounded (iOS UIBackgroundModes includes audio).
- * When the process is killed, OS remote push + channel sound is the alert path.
+ * Foreground / active app: in-app long-ring via expo-av.
+ * Background / killed: OS remote-notification channel sound (no UIBackgroundModes audio —
+ * Apple Guideline 2.5.4; location + remote-notification remain for Driver GPS / pushes).
  */
 
 let ringing = false;
@@ -292,7 +293,7 @@ function onAppStateChange(state: AppStateStatus) {
     }
     return;
   }
-  // Background / locked: keep in-app long-ring alive (audio background mode).
+  // Background / locked: OS push sound carries the alert (no background audio mode).
   // Do not call setRinging(false) here — that was silencing offers when leaving Driver UI.
 }
 

@@ -2,6 +2,7 @@ import { Alert, Platform } from "react-native";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
+import i18n from "../i18n";
 import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
@@ -44,7 +45,10 @@ const CONFIRM_PAYMENT_RETRY_DELAY_MS = 1500;
 function mapStripePaymentError(error: { code?: string; message?: string }): string {
   return toUserFacingError(
     { code: error.code, message: error.message },
-    "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.",
+    i18n.t(
+      "payment.stripe.paymentFailed",
+      "The payment could not be completed. Please try again in a few moments.",
+    ),
   );
 }
 
@@ -517,10 +521,13 @@ export async function startStripeOnboarding(
       const detail = String(parsed.message ?? error.message ?? "").trim();
       const mapped = toUserFacingError(
         { code: parsed.code, message: detail },
-        "Impossible d'ouvrir la configuration Stripe. Réessayez ou contactez le support.",
+        i18n.t(
+          "payment.stripe.onboardingFailed",
+          "Unable to open Stripe setup. Try again or contact support.",
+        ),
       );
       Alert.alert(
-        "Stripe",
+        i18n.t("payment.stripe.title", "Stripe"),
         detail &&
           detail !== mapped &&
           !mapped.includes("questionnaire Connect") &&
@@ -536,10 +543,13 @@ export async function startStripeOnboarding(
       const detail = String(payload.message ?? payload.details ?? payload.error).trim();
       const mapped = toUserFacingError(
         { code: String(payload.error), message: detail },
-        "Impossible d'ouvrir la configuration Stripe. Réessayez ou contactez le support.",
+        i18n.t(
+          "payment.stripe.onboardingFailed",
+          "Unable to open Stripe setup. Try again or contact support.",
+        ),
       );
       Alert.alert(
-        "Stripe",
+        i18n.t("payment.stripe.title", "Stripe"),
         detail &&
           detail !== mapped &&
           !mapped.includes("questionnaire Connect") &&
@@ -555,8 +565,11 @@ export async function startStripeOnboarding(
     if (!url) {
       console.log("[stripe-onboarding] no onboarding url in response:", data);
       Alert.alert(
-        "Stripe",
-        "Stripe URL manquante. La fonction a répondu, mais aucun lien d’onboarding n’a été trouvé.",
+        i18n.t("payment.stripe.title", "Stripe"),
+        i18n.t(
+          "payment.stripe.missingUrl",
+          "Stripe URL missing. The function responded, but no onboarding link was found.",
+        ),
       );
       return false;
     }
@@ -564,8 +577,11 @@ export async function startStripeOnboarding(
     const alreadyComplete = Boolean(payload?.already_complete);
     if (alreadyComplete) {
       Alert.alert(
-        "Stripe",
-        "Votre compte est prêt pour les virements. Vous pouvez ajouter ou modifier votre compte bancaire dans le tableau de bord Stripe.",
+        i18n.t("payment.stripe.title", "Stripe"),
+        i18n.t(
+          "payment.stripe.accountReady",
+          "Your account is ready for payouts. You can add or change your bank account in the Stripe dashboard.",
+        ),
       );
     }
 
@@ -574,8 +590,11 @@ export async function startStripeOnboarding(
   } catch (error) {
     logTechnicalError("stripe-onboarding", error);
     Alert.alert(
-      "Stripe",
-      toUserFacingError(error, "Impossible d'ouvrir la configuration Stripe pour le moment."),
+      i18n.t("payment.stripe.title", "Stripe"),
+      toUserFacingError(
+        error,
+        i18n.t("payment.stripe.openFailed", "Unable to open Stripe setup right now."),
+      ),
     );
     return false;
   }
@@ -638,8 +657,14 @@ async function presentTipPaymentSheet(params: {
 function assertTipPaymentSheetAvailable(): boolean {
   if (Platform.OS === "ios" && isExpoGo()) {
     Alert.alert(
-      "Paiement tip indisponible sur iPhone (Expo Go)",
-      "Le tip Stripe natif nécessite un development build ou un vrai build iOS."
+      i18n.t(
+        "payment.stripe.tipUnavailableExpoGoTitle",
+        "Tip payment unavailable on iPhone (Expo Go)",
+      ),
+      i18n.t(
+        "payment.stripe.tipUnavailableExpoGoBody",
+        "Native Stripe tipping requires a development build or a real iOS build.",
+      ),
     );
     return false;
   }
@@ -708,7 +733,10 @@ export async function payTaxiTipWithPaymentSheet(params: {
     throw new Error(
       toUserFacingError(
         null,
-        "Le paiement du tip n'a pas pu être initialisé. Réessayez."
+        i18n.t(
+          "payment.stripe.tipInitFailed",
+          "The tip payment could not be started. Please try again."
+        )
       )
     );
   }
@@ -750,7 +778,10 @@ export async function payTipWithPaymentSheet(orderId: string): Promise<boolean> 
     throw new Error(
       toUserFacingError(
         null,
-        "Le paiement du tip n'a pas pu être initialisé. Réessayez."
+        i18n.t(
+          "payment.stripe.tipInitFailed",
+          "The tip payment could not be started. Please try again."
+        )
       )
     );
   }
@@ -772,8 +803,14 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
 
   if (Platform.OS === "ios" && isExpoGo()) {
     Alert.alert(
-      "Paiement indisponible sur iPhone (Expo Go)",
-      "Le paiement Stripe natif nécessite un development build ou un vrai build iOS. Expo Go ne suffit pas pour un test réel."
+      i18n.t(
+        "payment.stripe.paymentUnavailableExpoGoTitle",
+        "Payment unavailable on iPhone (Expo Go)",
+      ),
+      i18n.t(
+        "payment.stripe.paymentUnavailableExpoGoBody",
+        "Native Stripe payment requires a development build or a real iOS build. Expo Go is not enough for a real payment test.",
+      ),
     );
     return false;
   }
@@ -788,7 +825,13 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
   if (error) {
     logTechnicalError("payments.create_payment_intent", error, { orderId: normalizedOrderId });
     throw new Error(
-      toUserFacingError(error, "Le paiement n'a pas pu être initialisé. Réessayez dans quelques instants."),
+      toUserFacingError(
+        error,
+        i18n.t(
+          "payment.stripe.initFailed",
+          "The payment could not be started. Please try again in a few moments.",
+        ),
+      ),
     );
   }
 
@@ -808,7 +851,10 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
     throw new Error(
       toUserFacingError(
         null,
-        "Le paiement n'a pas pu être initialisé. Réessayez dans quelques instants.",
+        i18n.t(
+          "payment.stripe.initFailed",
+          "The payment could not be started. Please try again in a few moments.",
+        ),
       ),
     );
   }

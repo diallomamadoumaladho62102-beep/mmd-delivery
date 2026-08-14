@@ -1,44 +1,85 @@
 import { Audio } from "expo-av";
+import { AppState, type AppStateStatus } from "react-native";
 import type { CameraView } from "expo-camera";
 
 let activeRecording: Audio.Recording | null = null;
 let driverCameraRef: CameraView | null = null;
 let driverRecordingPromise: Promise<{ uri: string } | undefined> | null = null;
 let driverRecordingActive = false;
+let audioAppStateSub: { remove: () => void } | null = null;
+let onAudioInterrupted: (() => void) | null = null;
 
-export async function requestClientAudioPermissions(): Promise<boolean> {
+export async function requestSafetyAudioPermissions(): Promise<boolean> {
   const permission = await Audio.requestPermissionsAsync();
   return permission.granted === true;
 }
 
-export async function startClientAudioCapture(): Promise<void> {
+/** @deprecated Prefer requestSafetyAudioPermissions */
+export async function requestClientAudioPermissions(): Promise<boolean> {
+  return requestSafetyAudioPermissions();
+}
+
+/**
+ * Foreground safety audio capture (client or driver device mic).
+ * Does NOT enable UIBackgroundModes audio — iOS may interrupt when backgrounded/locked.
+ */
+export async function startSafetyAudioCapture(params?: {
+  onInterrupted?: () => void;
+}): Promise<void> {
   if (activeRecording) {
-    await stopClientAudioCapture();
+    await stopSafetyAudioCapture();
   }
+
+  onAudioInterrupted = params?.onInterrupted ?? null;
 
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: true,
     playsInSilentModeIOS: true,
+    // Explicit: no background recording claim for Apple 2.5.4.
+    staysActiveInBackground: false,
   });
 
   const recording = new Audio.Recording();
   await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
   await recording.startAsync();
   activeRecording = recording;
+
+  if (audioAppStateSub) {
+    audioAppStateSub.remove();
+    audioAppStateSub = null;
+  }
+  audioAppStateSub = AppState.addEventListener(
+    "change",
+    (next: AppStateStatus) => {
+      if (next !== "active" && activeRecording && onAudioInterrupted) {
+        onAudioInterrupted();
+      }
+    },
+  );
 }
 
-export async function stopClientAudioCapture(): Promise<{
+/** @deprecated Prefer startSafetyAudioCapture */
+export async function startClientAudioCapture(): Promise<void> {
+  return startSafetyAudioCapture();
+}
+
+export async function stopSafetyAudioCapture(): Promise<{
   uri: string;
   mimeType: string;
   extension: string;
 } | null> {
+  if (audioAppStateSub) {
+    audioAppStateSub.remove();
+    audioAppStateSub = null;
+  }
+  onAudioInterrupted = null;
+
   if (!activeRecording) return null;
 
   await activeRecording.stopAndUnloadAsync();
   const uri = activeRecording.getURI();
   activeRecording = null;
 
-  // Recording flips allowsRecordingIOS; restore playback-friendly session for rings/alerts.
   try {
     const { mmdAudio } = require("./mmdAudio") as typeof import("./mmdAudio");
     await mmdAudio.init();
@@ -50,7 +91,20 @@ export async function stopClientAudioCapture(): Promise<{
   return { uri, mimeType: "audio/m4a", extension: "m4a" };
 }
 
-/** Bind the in-app CameraView used for background safety video (never system camera). */
+/** @deprecated Prefer stopSafetyAudioCapture */
+export async function stopClientAudioCapture(): Promise<{
+  uri: string;
+  mimeType: string;
+  extension: string;
+} | null> {
+  return stopSafetyAudioCapture();
+}
+
+export function isSafetyAudioRecording(): boolean {
+  return activeRecording != null;
+}
+
+/** Bind the in-app CameraView used for safety video (never system camera). */
 export function bindDriverSafetyCamera(ref: CameraView | null) {
   driverCameraRef = ref;
 }

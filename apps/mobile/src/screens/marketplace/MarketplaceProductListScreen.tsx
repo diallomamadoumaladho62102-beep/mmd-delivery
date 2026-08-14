@@ -64,12 +64,17 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
       setProducts(items);
       setFavoriteIds(new Set(favorites.map((row) => row.product_id)));
     } catch (e) {
-      setError(toUserFacingError(e, "Unable to load products"));
+      setError(
+        toUserFacingError(
+          e,
+          t("marketplace.products.loadFailed", "Unable to load products.")
+        )
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [sellerCountryCode, sellerId]);
+  }, [sellerCountryCode, sellerId, t]);
 
   useEffect(() => {
     void load();
@@ -118,7 +123,12 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
         setFavoriteIds((prev) => new Set(prev).add(product.id));
       }
     } catch (e) {
-      setError(toUserFacingError(e, "Unable to update favorite"));
+      setError(
+        toUserFacingError(
+          e,
+          t("marketplace.products.favoriteFailed", "Unable to update favorite.")
+        )
+      );
     }
   }
 

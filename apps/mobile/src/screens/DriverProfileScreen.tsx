@@ -1154,10 +1154,13 @@ export function DriverProfileScreen() {
         } catch (transportError) {
           logTechnicalError("driver.profile.transport_mode", transportError);
           Alert.alert(
-            t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+            t("client.auth.errorTitle", "Error"),
             toUserFacingError(
               transportError,
-              "Ce mode de transport nécessite une validation de vos documents avant d'être activé.",
+              t(
+                "driver.profile.transportValidationRequired",
+                "This transport mode requires document validation before it can be enabled.",
+              ),
             ),
           );
           return;
@@ -1632,10 +1635,10 @@ export function DriverProfileScreen() {
       await startStripeOnboarding("driver");
     } catch (error: any) {
       Alert.alert(
-        "Stripe",
+        t("payment.stripe.title", "Stripe"),
         error?.message ??
           t("driver.payments.unavailable", {
-            defaultValue: "Impossible d’ouvrir Stripe pour le moment.",
+            defaultValue: "Unable to open Stripe right now.",
           }),
       );
     }

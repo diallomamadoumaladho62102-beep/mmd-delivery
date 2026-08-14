@@ -9,6 +9,7 @@ import {
   RefreshControl,
   StyleSheet,
   Image,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -49,13 +50,16 @@ export default function MarketplaceHomeScreen() {
   const navigation = useNavigation<Nav>();
   const { features, loading: scopeLoading } = useClientPlatformFeatures();
   const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
-  const marketplaceEnabled = Boolean(
-    features?.ok !== false && features?.marketplace_available,
-  );
+  // Guests may browse the public catalog without platform scope (Apple 5.1.1(v)).
+  const guestBrowse = features?.error === "not_authenticated";
+  const marketplaceEnabled =
+    guestBrowse ||
+    Boolean(features?.ok !== false && features?.marketplace_available);
   const [sellers, setSellers] = useState<MarketplaceSeller[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async (silent = false) => {
     try {
@@ -74,15 +78,20 @@ export default function MarketplaceHomeScreen() {
       }
 
       const items = await fetchMarketplaceSellers();
-      const scoped = market.countryCode
-        ? items.filter(
-            (seller) =>
-              String(seller.country_code ?? "").trim().toUpperCase() === market.countryCode
-          )
-        : items;
+      const scoped =
+        !guestBrowse && market.countryCode
+          ? items.filter(
+              (seller) =>
+                String(seller.country_code ?? "").trim().toUpperCase() ===
+                market.countryCode
+            )
+          : items;
       setSellers(sortSellers(scoped));
     } catch (e) {
-      const message = toUserFacingError(e, t("marketplace.home.loadError", "Unable to load marketplace"));
+      const message = toUserFacingError(
+        e,
+        t("marketplace.home.loadError", "Unable to load marketplace")
+      );
       if (message.includes("marketplace_unavailable")) {
         setError(
           t(
@@ -98,40 +107,78 @@ export default function MarketplaceHomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [market.countryCode, marketplaceEnabled, t]);
+  }, [guestBrowse, market.countryCode, marketplaceEnabled, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const openCount = sellers.filter((s) => s.is_accepting_orders).length;
+  const filteredSellers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return sellers;
+    return sellers.filter((seller) => {
+      const hay = [
+        seller.business_name,
+        seller.city,
+        seller.country_code,
+        seller.address,
+      ]
+        .map((v) => String(v ?? "").toLowerCase())
+        .join(" ");
+      return hay.includes(q);
+    });
+  }, [query, sellers]);
+
+  const openCount = filteredSellers.filter((s) => s.is_accepting_orders).length;
 
   const listHeader = (
     <View style={styles.headerBlock}>
-      <MarketScopeCard
-        market={market}
-        areaLabel={t("marketplace.home.market", "Your market")}
-        currencyLabel={t("marketplace.home.currency", "Currency")}
-        loading={scopeLoading}
+      {guestBrowse ? (
+        <Text style={styles.guestHint}>
+          {t(
+            "marketplace.home.guestBrowseHint",
+            "Browse shops and products freely. Sign in when you are ready to order.",
+          )}
+        </Text>
+      ) : (
+        <MarketScopeCard
+          market={market}
+          areaLabel={t("marketplace.home.market", "Your market")}
+          currencyLabel={t("marketplace.home.currency", "Currency")}
+          loading={scopeLoading}
+        />
+      )}
+
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder={t("marketplace.home.searchPlaceholder", "Search shops…")}
+        placeholderTextColor="rgba(255,255,255,0.45)"
+        style={styles.searchInput}
+        autoCorrect={false}
+        autoCapitalize="none"
+        clearButtonMode="while-editing"
       />
 
-      {!loading && !error && sellers.length > 0 ? (
+      {!loading && !error && filteredSellers.length > 0 ? (
         <Text style={styles.openCount}>
           {t("marketplace.home.openCount", "{{open}} open · {{total}} shops", {
             open: openCount,
-            total: sellers.length,
+            total: filteredSellers.length,
           })}
         </Text>
       ) : null}
 
-      <TouchableOpacity
-        onPress={() => navigation.navigate("SellerGate" as never)}
-        style={styles.sellCta}
-      >
-        <Text style={styles.sellCtaText}>
-          {t("marketplace.home.sellCta", "Sell on MMD →")}
-        </Text>
-      </TouchableOpacity>
+      {!guestBrowse ? (
+        <TouchableOpacity
+          onPress={() => navigation.navigate("SellerGate" as never)}
+          style={styles.sellCta}
+        >
+          <Text style={styles.sellCtaText}>
+            {t("marketplace.home.sellCta", "Sell on MMD →")}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 
@@ -140,12 +187,15 @@ export default function MarketplaceHomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
         title={t("marketplace.home.title", "Marketplace")}
-        subtitle={t("marketplace.home.subtitle", "Shop approved local sellers on MMD.")}
-        fallbackRoute="ClientHome"
+        subtitle={t(
+          "marketplace.home.subtitle",
+          "Shop approved local sellers on MMD.",
+        )}
+        fallbackRoute={guestBrowse ? "RoleSelect" : "ClientHome"}
         variant="mmd"
       />
       <FlatList
-        data={loading || error ? [] : sellers}
+        data={loading || error ? [] : filteredSellers}
         keyExtractor={(item) => item.id}
         {...MARKETPLACE_LIST_PERF}
         refreshControl={
@@ -164,17 +214,14 @@ export default function MarketplaceHomeScreen() {
           loading ? (
             <MarketplaceBrandState
               mode="loading"
-              message={t(
-                "marketplace.home.loading",
-                "Loading marketplace..."
-              )}
+              message={t("marketplace.home.loading", "Loading marketplace...")}
             />
           ) : error ? (
             <MarketplaceBrandState
               mode="error"
               title={t(
                 "marketplace.home.errorTitle",
-                "Couldn’t load marketplace"
+                "Couldn’t load marketplace",
               )}
               message={error}
               onRetry={() => void load()}
@@ -185,11 +232,11 @@ export default function MarketplaceHomeScreen() {
               mode="empty"
               title={t(
                 "marketplace.home.emptyOpen",
-                "No approved shops in your area yet."
+                "No approved shops in your area yet.",
               )}
               message={t(
                 "marketplace.home.emptyHint",
-                "Try again later or check a nearby area."
+                "Try again later or check a nearby area.",
               )}
             />
           )
@@ -198,12 +245,11 @@ export default function MarketplaceHomeScreen() {
           const isOpen = Boolean(seller.is_accepting_orders);
           const productCount = seller.active_product_count ?? 0;
           const logoUrl = String(
-            seller.logo_url || seller.cover_image_url || ""
+            seller.logo_url || seller.cover_image_url || "",
           ).trim();
 
           return (
             <TouchableOpacity
-              disabled={!isOpen}
               onPress={() =>
                 navigation.navigate("MarketplaceProductList", {
                   sellerId: seller.id,
@@ -242,9 +288,11 @@ export default function MarketplaceHomeScreen() {
                 {seller.address}
               </Text>
               <Text style={styles.meta}>
-                {t("marketplace.home.productCount", "{{count}} products available", {
-                  count: productCount,
-                })}
+                {t(
+                  "marketplace.home.productCount",
+                  "{{count}} products available",
+                  { count: productCount },
+                )}
               </Text>
             </TouchableOpacity>
           );
@@ -258,6 +306,23 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: MMD_BLUE },
   list: { padding: 20, paddingTop: 8, gap: 12 },
   headerBlock: { gap: 12, marginBottom: 12 },
+  guestHint: {
+    color: "#CBD5E1",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: MMD_STROKE,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 15,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
   openCount: {
     color: "#CBD5E1",
     fontFamily: MMD_FONT.regular,

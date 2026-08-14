@@ -120,11 +120,16 @@ export default function BusinessWalletScreen() {
       setSummary(sum as Summary);
       setItems(((hist as { items?: HistoryItem[] }).items ?? []) as HistoryItem[]);
     } catch (e) {
-      setError(toUserFacingError(e, "Unable to load business wallet"));
+      setError(
+        toUserFacingError(
+          e,
+          t("business.wallet.loadFailed", "Unable to load the business wallet.")
+        )
+      );
       setSummary(null);
       setItems([]);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -165,7 +170,10 @@ export default function BusinessWalletScreen() {
       await WebBrowser.openBrowserAsync(url);
       await refresh();
     } catch (e) {
-      Alert.alert(t("common.errorTitle", "Error"), toUserFacingError(e, "Top-up failed"));
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        toUserFacingError(e, t("business.wallet.topupFailed", "Top-up failed."))
+      );
     } finally {
       setBusy(false);
     }
@@ -199,7 +207,7 @@ export default function BusinessWalletScreen() {
     } catch (e) {
       Alert.alert(
         t("common.errorTitle", "Error"),
-        toUserFacingError(e, "Cash-out failed")
+        toUserFacingError(e, t("business.wallet.cashoutFailed", "Cash-out failed."))
       );
     } finally {
       setBusy(false);
@@ -227,7 +235,10 @@ export default function BusinessWalletScreen() {
     } catch (e) {
       Alert.alert(
         t("common.errorTitle", "Error"),
-        toUserFacingError(e, "Unable to open Stripe Connect")
+        toUserFacingError(
+          e,
+          t("business.wallet.stripeFailed", "Unable to open Stripe Connect.")
+        )
       );
     } finally {
       setBusy(false);

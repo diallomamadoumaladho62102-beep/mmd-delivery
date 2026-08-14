@@ -70,7 +70,7 @@ export function useRestaurantCommandCenter(): UseRestaurantCommandCenterResult {
       setData(commandCenter);
       setAiGrowth(growth);
     } catch (e: unknown) {
-      const message = toUserFacingError(e, "LOAD_FAILED");
+      const message = toUserFacingError(e);
       setError(message);
     } finally {
       if (opts?.pull) setRefreshing(false);

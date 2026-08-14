@@ -1,4 +1,5 @@
 import { Alert, Linking } from "react-native";
+import i18n from "../i18n";
 import { supabase } from "./supabase";
 import { API_BASE_URL } from "./apiBase";
 
@@ -110,7 +111,7 @@ export async function startMaskedCall({
   } catch (error) {
     const message = getErrorMessage(error);
     console.error("startMaskedCall error:", error);
-    Alert.alert("Call error", message);
+    Alert.alert(i18n.t("maskedCall.errorTitle", "Call error"), message);
     throw error;
   }
 }

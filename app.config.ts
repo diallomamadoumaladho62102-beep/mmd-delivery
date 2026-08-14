@@ -155,6 +155,15 @@ export default ({ config }) => {
     userInterfaceStyle: "automatic",
     assetBundlePatterns: ["**/*"],
 
+    locales: {
+      en: "./apps/mobile/ios-locales/en.json",
+      fr: "./apps/mobile/ios-locales/fr.json",
+      es: "./apps/mobile/ios-locales/es.json",
+      ar: "./apps/mobile/ios-locales/ar.json",
+      zh: "./apps/mobile/ios-locales/zh.json",
+      ff: "./apps/mobile/ios-locales/ff.json",
+    },
+
     plugins: [
       [
         "expo-notifications",
@@ -186,7 +195,7 @@ export default ({ config }) => {
           cameraPermission:
             "MMD Delivery records in-app safety videos during taxi rides without opening the system Camera app.",
           microphonePermission:
-            "MMD Delivery may record audio with in-app safety video for incident protection.",
+            "MMD Delivery may record audio with in-app safety video or Safety Audio during an active taxi trip when you explicitly start a recording.",
           recordAudioAndroid: true,
         },
       ],
@@ -230,6 +239,11 @@ export default ({ config }) => {
       bundleIdentifier: IOS_BUNDLE_ID,
       icon: "./apps/mobile/assets/ios-marketing-icon.png",
       supportsTablet: true,
+      buildNumber: String(
+        cleanEnv(env.IOS_BUILD_NUMBER) ||
+          existingIos.buildNumber ||
+          "72",
+      ),
       associatedDomains: [
         "applinks:www.mmddelivery.com",
         "applinks:mmddelivery.com",
@@ -244,15 +258,19 @@ export default ({ config }) => {
         NSPhotoLibraryAddUsageDescription:
           "MMD Delivery may save delivery proof photos to your photo library when you choose to keep a copy.",
         NSMicrophoneUsageDescription:
-          "MMD Delivery uses the microphone during optional in-ride safety recordings when you choose to start an audio or video safety recording.",
+          "MMD Delivery uses the microphone for optional in-ride Safety Audio (and safety video) during an active taxi trip when you explicitly start a recording. Recording never starts silently.",
         NSLocationWhenInUseUsageDescription:
           "MMD Delivery uses your location to show nearby restaurants, set pickup and drop-off points, and help drivers navigate during active deliveries and taxi rides.",
         NSLocationAlwaysAndWhenInUseUsageDescription:
           "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
         NSLocationAlwaysUsageDescription:
           "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
-        // `audio` keeps the in-app driver long-ring alive when the app is backgrounded.
-        UIBackgroundModes: ["location", "remote-notification", "audio"],
+        // Driver GPS + push alerts only. Do not declare `audio` — Apple 2.5.4
+        // (persistent background audio is not a product feature; mission alerts
+        // use remote-notification sounds when the app is backgrounded/killed).
+        UIBackgroundModes: ["location", "remote-notification"],
+        CFBundleLocalizations: ["en", "fr", "es", "ar", "zh", "ff"],
+        CFBundleDevelopmentRegion: "en",
         LSApplicationQueriesSchemes: ["waze", "comgooglemaps", "googlemaps"],
       },
     },
@@ -269,6 +287,7 @@ export default ({ config }) => {
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
         "CAMERA",
+        "RECORD_AUDIO",
         "READ_MEDIA_IMAGES",
         "READ_EXTERNAL_STORAGE",
       ],

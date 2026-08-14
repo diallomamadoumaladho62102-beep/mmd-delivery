@@ -111,17 +111,25 @@ export function isClientProfileComplete(
 ): boolean {
   const score = scoreClientProfileCompleteness(input);
   if (score.percent < 100) {
-    // Legacy soft complete: name + phone + address + avatar (matches historical mobile gate)
-    const soft =
-      score.checks.first_name &&
-      score.checks.phone &&
-      score.checks.address &&
-      score.checks.avatar;
+    // Soft complete for account access: identity basics only.
+    // Full street address is NOT required to use the app — it is collected
+    // when a service needs it (taxi/delivery checkout). Apple Guideline 5.1.1(v).
+    const soft = score.checks.first_name && score.checks.phone;
     if (!opts?.requirePhoneVerified && !opts?.requireEmailVerified) {
       return soft;
     }
   }
   if (opts?.requireEmailVerified && !score.checks.email_verified) return false;
   if (opts?.requirePhoneVerified && !score.checks.phone_verified) return false;
+  // When verified flags are required, address remains part of 100% score but is
+  // not forced solely by soft-gate identity checks above.
+  if (opts?.requirePhoneVerified || opts?.requireEmailVerified) {
+    return (
+      score.checks.first_name &&
+      score.checks.phone &&
+      (!opts.requireEmailVerified || score.checks.email_verified) &&
+      (!opts.requirePhoneVerified || score.checks.phone_verified)
+    );
+  }
   return score.status === "complete";
 }

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
@@ -59,6 +60,7 @@ function ToggleRow(props: {
 }
 
 export function RestaurantOrderAutomationScreen() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<RestaurantAutomationSettings | null>(null);
@@ -85,11 +87,14 @@ export function RestaurantOrderAutomationScreen() {
         sound_alert: soundRaw === "1",
       });
     } catch (error) {
-      Alert.alert("Erreur", toUserFacingError(error, "Chargement impossible"));
+      Alert.alert(
+        t("restaurant.automation.errorTitle", "Error"),
+        toUserFacingError(error, t("restaurant.automation.loadFailed", "Unable to load settings")),
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -108,23 +113,35 @@ export function RestaurantOrderAutomationScreen() {
       });
       setSettings(saved);
       await AsyncStorage.setItem(SOUND_ALERT_KEY, draft.sound_alert ? "1" : "0");
-      Alert.alert("Saved", "Automation settings updated.");
+      Alert.alert(
+        t("restaurant.automation.savedTitle", "Saved"),
+        t("restaurant.automation.savedBody", "Automation settings updated."),
+      );
     } catch (error) {
-      Alert.alert("Erreur", toUserFacingError(error, "Enregistrement impossible"));
+      Alert.alert(
+        t("restaurant.automation.errorTitle", "Error"),
+        toUserFacingError(error, t("restaurant.automation.saveFailed", "Unable to save settings")),
+      );
       await load();
     } finally {
       setSaving(false);
     }
-  }, [draft, load, settings]);
+  }, [draft, load, settings, t]);
 
   const handleTestPrint = useCallback(async () => {
     try {
       await requestRestaurantTestPrint();
-      Alert.alert("Test impression", "Ticket de test ajouté à la file d'impression.");
+      Alert.alert(
+        t("restaurant.automation.testPrintTitle", "Test print"),
+        t("restaurant.automation.testPrintQueued", "Test ticket added to print queue."),
+      );
     } catch (error) {
-      Alert.alert("Erreur", toUserFacingError(error, "Test impossible"));
+      Alert.alert(
+        t("restaurant.automation.errorTitle", "Error"),
+        toUserFacingError(error, t("restaurant.automation.testFailed", "Test print failed")),
+      );
     }
-  }, []);
+  }, [t]);
 
   if (loading || !settings || !draft) {
     return (

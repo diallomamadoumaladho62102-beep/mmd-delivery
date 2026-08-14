@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   DEFAULT_DRIVER_MAP_REPORT_CONTEXT,
   DRIVER_MAP_REPORT_LABELS,
@@ -36,25 +37,35 @@ export function DriverReportButton({
   bottomOffset = 28,
   onSubmitted,
 }: Props) {
+  const { t } = useTranslation();
   const [sheetVisible, setSheetVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handleOpen = useCallback(() => {
     if (!driverId) {
-      Alert.alert("Session requise", "Reconnecte-toi pour envoyer un signalement.");
+      Alert.alert(
+        t("driver.report.sessionRequiredTitle", "Session required"),
+        t(
+          "driver.report.sessionRequiredBody",
+          "Log in again to submit a report.",
+        ),
+      );
       return;
     }
 
     if (latitude == null || longitude == null) {
       Alert.alert(
-        "GPS indisponible",
-        "Attends une position GPS valide avant de signaler un problème.",
+        t("driver.report.gpsUnavailableTitle", "GPS unavailable"),
+        t(
+          "driver.report.gpsUnavailableBody",
+          "Wait for a valid GPS position before reporting an issue.",
+        ),
       );
       return;
     }
 
     setSheetVisible(true);
-  }, [driverId, latitude, longitude]);
+  }, [driverId, latitude, longitude, t]);
 
   const handleSelectCategory = useCallback(
     async (category: DriverMapReportCategory) => {
@@ -79,18 +90,29 @@ export function DriverReportButton({
         const errorMessage =
           result.message ??
           (result.reason === "rate_limited"
-            ? "Tu as atteint la limite de signalements pour cette heure."
+            ? t(
+                "driver.report.rateLimited",
+                "You reached the report limit for this hour.",
+              )
             : result.reason === "invalid_country"
-              ? "Pays non pris en charge pour les signalements."
-              : "Réessaie dans quelques instants.");
+              ? t(
+                  "driver.report.invalidCountry",
+                  "Country not supported for reports.",
+                )
+              : t("driver.report.tryAgain", "Try again in a few moments."));
 
-        Alert.alert("Signalement impossible", errorMessage);
+        Alert.alert(
+          t("driver.report.failedTitle", "Report failed"),
+          errorMessage,
+        );
         return;
       }
 
       Alert.alert(
-        "Signalement envoyé",
-        `${DRIVER_MAP_REPORT_LABELS[category]} signalé. Visible 25 minutes pour les chauffeurs à proximité.`,
+        t("driver.report.sentTitle", "Report sent"),
+        t("driver.report.sentBody", "{{label}} reported. Visible for 25 minutes to nearby drivers.", {
+          label: DRIVER_MAP_REPORT_LABELS[category],
+        }),
       );
       onSubmitted?.();
     },
@@ -103,6 +125,7 @@ export function DriverReportButton({
       onSubmitted,
       orderId,
       sourceTable,
+      t,
     ],
   );
 
@@ -131,8 +154,9 @@ export function DriverReportButton({
             }}
           >
             <Text style={{ color: "#FDBA74", fontSize: 11, fontWeight: "800" }}>
-              {nearbyCount} alerte{nearbyCount > 1 ? "s" : ""} active
-              {nearbyCount > 1 ? "s" : ""} à proximité
+              {t("driver.report.nearbyAlerts", "{{count}} active alert nearby", {
+                count: nearbyCount,
+              })}
             </Text>
           </View>
         )}
@@ -150,7 +174,7 @@ export function DriverReportButton({
           }}
         >
           <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "900" }}>
-            Signaler
+            {t("driver.report.reportButton", "Report")}
           </Text>
         </TouchableOpacity>
       </View>

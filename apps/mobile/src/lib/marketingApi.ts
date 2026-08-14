@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { API_BASE_URL } from "./apiBase";
 import { supabase } from "./supabase";
 import { logTechnicalError, toUserFacingError } from "./userFacingError";
@@ -34,7 +35,12 @@ export async function fetchMarketingSummary(params?: {
   const out = await res.json().catch(() => null);
   if (!res.ok || out?.ok === false) {
     logTechnicalError("marketing.summary", out, { status: res.status });
-    throw new Error(toUserFacingError(out, "Chargement promotions impossible."));
+    throw new Error(
+      toUserFacingError(
+        out,
+        i18n.t("promotions.loadFailed", "Unable to load promotions."),
+      ),
+    );
   }
   return out;
 }
@@ -48,7 +54,9 @@ export async function validateMarketingCode(body: Record<string, unknown>) {
   const out = await res.json().catch(() => null);
   if (!res.ok || out?.ok === false) {
     logTechnicalError("marketing.validate", out, { status: res.status });
-    throw new Error(toUserFacingError(out, "Code refusé."));
+    throw new Error(
+      toUserFacingError(out, i18n.t("promotions.codeRejected", "Code rejected.")),
+    );
   }
   return out;
 }

@@ -219,7 +219,12 @@ export default function DriverOrderPage() {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ order_id: order.id }),
+        body: JSON.stringify({
+          order_id: order.id,
+          ...(phase === "pickup"
+            ? { pickup_code: trimmedCode, code: trimmedCode }
+            : { dropoff_code: trimmedCode, code: trimmedCode }),
+        }),
       });
 
       const result = await response.json().catch(() => null);

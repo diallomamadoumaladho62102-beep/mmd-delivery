@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ScreenHeader from "../components/navigation/ScreenHeader";
@@ -38,6 +39,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, "Promotions">;
 const MMD_LOGO = require("../../assets/brand/mmd-logo-ui.png");
 
 export default function PromotionsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,12 +61,17 @@ export default function PromotionsScreen() {
       setOffers((res.offers as Array<Record<string, unknown>>) ?? []);
       setCoupons((res.coupons as Array<Record<string, unknown>>) ?? []);
     } catch (e: unknown) {
-      setError(toUserFacingError(e, "Chargement impossible."));
+      setError(
+        toUserFacingError(
+          e,
+          t("promotions.loadFailed", "Unable to load promotions."),
+        ),
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -87,15 +94,28 @@ export default function PromotionsScreen() {
       const disc = Number(res.resolve?.order_discount_cents ?? 0);
       const fee = Number(res.resolve?.delivery_fee_discount_cents ?? 0);
       Alert.alert(
-        "Promotions",
+        t("promotions.title", "Promotions"),
         disc + fee > 0
-          ? `Code accepté (−${(disc / 100).toFixed(2)} $ / −${(fee / 100).toFixed(2)} $ livraison). Le montant exact s’applique au checkout.`
-          : "Code accepté. Le montant exact s’applique au checkout selon votre panier."
+          ? t(
+              "promotions.codeAcceptedWithDiscount",
+              "Code accepted (−{{orderDiscount}} / −{{deliveryDiscount}} delivery). Exact amount applies at checkout.",
+              {
+                orderDiscount: `${(disc / 100).toFixed(2)} $`,
+                deliveryDiscount: `${(fee / 100).toFixed(2)} $`,
+              },
+            )
+          : t(
+              "promotions.codeAccepted",
+              "Code accepted. Exact amount applies at checkout based on your cart.",
+            ),
       );
     } catch (e: unknown) {
-      Alert.alert("Promotions", toUserFacingError(e, "Code refusé."));
+      Alert.alert(
+        t("promotions.title", "Promotions"),
+        toUserFacingError(e, t("promotions.codeRejected", "Code rejected.")),
+      );
     }
-  }, [code]);
+  }, [code, t]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>

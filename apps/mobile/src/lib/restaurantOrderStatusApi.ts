@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { API_BASE_URL } from "./apiBase";
 import { supabase } from "./supabase";
 import { toUserFacingError } from "./userFacingError";
@@ -36,7 +37,13 @@ export async function postRestaurantOrderStatus(params: {
 
   if (!res.ok) {
     throw new Error(
-      toUserFacingError(out, `Impossible de mettre à jour le statut (${res.status})`),
+      toUserFacingError(
+        out,
+        i18n.t("restaurant.orders.statusUpdateFailed", {
+          status: res.status,
+          defaultValue: "Unable to update the order status ({{status}}).",
+        }),
+      ),
     );
   }
 
@@ -77,7 +84,13 @@ export async function postRestaurantOrderReject(params: { orderId: string }) {
 
   if (!res.ok) {
     throw new Error(
-      toUserFacingError(out, `Impossible de refuser la commande (${res.status})`),
+      toUserFacingError(
+        out,
+        i18n.t("restaurant.orders.rejectFailed", {
+          status: res.status,
+          defaultValue: "Unable to refuse the order ({{status}}).",
+        }),
+      ),
     );
   }
 

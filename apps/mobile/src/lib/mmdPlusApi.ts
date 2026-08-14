@@ -25,12 +25,7 @@ async function mmdPlusGet(path: string) {
   const out = await res.json().catch(() => null);
   if (!res.ok || out?.ok === false) {
     logTechnicalError(`mmdPlus.get${path}`, out, { status: res.status });
-    throw new Error(
-      toUserFacingError(
-        out,
-        "Une action temporairement impossible s'est produite. Veuillez réessayer."
-      )
-    );
+    throw new Error(toUserFacingError(out));
   }
   return out;
 }
@@ -44,12 +39,7 @@ async function mmdPlusPost(path: string, body: Record<string, unknown>) {
   const out = await res.json().catch(() => null);
   if (!res.ok || out?.ok === false) {
     logTechnicalError(`mmdPlus.post${path}`, out, { status: res.status });
-    throw new Error(
-      toUserFacingError(
-        out,
-        "Une action temporairement impossible s'est produite. Veuillez réessayer."
-      )
-    );
+    throw new Error(toUserFacingError(out));
   }
   return out;
 }

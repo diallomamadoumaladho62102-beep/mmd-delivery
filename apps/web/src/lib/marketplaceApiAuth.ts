@@ -1,5 +1,9 @@
 import type { NextRequest } from "next/server";
-import { mmdLocationJson, requireMmdLocationApiUser } from "@/lib/mmdLocationCore";
+import {
+  getSupabaseAdminClient,
+  mmdLocationJson,
+  requireMmdLocationApiUser,
+} from "@/lib/mmdLocationCore";
 import { canStartServiceInCounty } from "@/lib/canStartServiceInCounty";
 import { readClientScopeQuery } from "@/lib/platformScopeApi";
 import {
@@ -21,6 +25,30 @@ async function readOptionalJsonBody(req: NextRequest): Promise<Record<string, un
     return body && typeof body === "object" ? (body as Record<string, unknown>) : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Guest-safe catalog access (Apple 5.1.1(v)): browse approved sellers/products
+ * without an account. Uses service role only for public storefront fields —
+ * never returns orders, wallets, addresses, or private seller ops data.
+ * Cart / checkout / favorites still require requireMarketplaceClientAuth.
+ */
+export function allowMarketplacePublicCatalog() {
+  try {
+    const supabaseAdmin = getSupabaseAdminClient();
+    return { ok: true as const, supabaseAdmin, guest: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      response: mmdLocationJson(
+        {
+          ok: false,
+          error: error instanceof Error ? error.message : "Server error",
+        },
+        500,
+      ),
+    };
   }
 }
 

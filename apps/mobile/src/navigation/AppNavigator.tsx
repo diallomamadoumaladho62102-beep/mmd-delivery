@@ -636,6 +636,19 @@ export function AppNavigator({
     );
   }, []);
 
+  const isGuestMarketplaceBrowse = React.useCallback(
+    (r?: keyof RootStackParamList) => {
+      if (!r) return false;
+      // Apple 5.1.1(v): catalog discovery without account. Cart/checkout stay gated.
+      return (
+        r === "MarketplaceHome" ||
+        r === "MarketplaceProductList" ||
+        r === "MarketplaceProductDetails"
+      );
+    },
+    [],
+  );
+
   const isInClientArea = React.useCallback((r?: keyof RootStackParamList) => {
     if (!r) return false;
     return (
@@ -884,7 +897,8 @@ export function AppNavigator({
           cur === "RoleSelect" ||
           cur === "ClientAuth" ||
           cur === "DriverAuth" ||
-          cur === "RestaurantAuth"
+          cur === "RestaurantAuth" ||
+          isGuestMarketplaceBrowse(cur)
         ) {
           return;
         }
@@ -1008,6 +1022,7 @@ export function AppNavigator({
     isInDriverArea,
     isInRestaurantArea,
     isInSellerArea,
+    isGuestMarketplaceBrowse,
   ]);
 
   const scheduleSync = React.useCallback(() => {

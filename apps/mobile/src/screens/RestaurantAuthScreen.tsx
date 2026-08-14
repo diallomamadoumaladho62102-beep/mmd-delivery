@@ -163,7 +163,7 @@ export function RestaurantAuthScreen() {
         email: userEmail,
       });
 
-      if (error) throw new Error(toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+      if (error) throw new Error(toUserFacingError(error));
     } else {
       const { error } = await supabase
         .from("profiles")
@@ -171,7 +171,7 @@ export function RestaurantAuthScreen() {
         .eq("id", userId)
         .eq("role", "restaurant");
 
-      if (error) throw new Error(toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+      if (error) throw new Error(toUserFacingError(error));
     }
 
     const { data: existingRestaurantProfile, error: existingRestaurantError } =
@@ -209,7 +209,7 @@ export function RestaurantAuthScreen() {
         is_accepting_orders: false,
       });
 
-      if (error) throw new Error(toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+      if (error) throw new Error(toUserFacingError(error));
     }
   }
 
@@ -238,7 +238,7 @@ export function RestaurantAuthScreen() {
         password: p,
       });
 
-      if (error) throw new Error(toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+      if (error) throw new Error(toUserFacingError(error));
 
       if (!data.session) {
         throw new Error(
@@ -318,7 +318,7 @@ export function RestaurantAuthScreen() {
         },
       });
 
-      if (error) throw new Error(toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+      if (error) throw new Error(toUserFacingError(error));
 
       const userId = data.user?.id;
 
@@ -380,7 +380,7 @@ export function RestaurantAuthScreen() {
         redirectTo: RESET_PASSWORD_URL,
       });
 
-      if (error) throw new Error(toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+      if (error) throw new Error(toUserFacingError(error));
 
       setMsg(
         t("restaurant.auth.success.resetEmailSent", "✅ Email envoyé. Clique sur le lien reçu pour modifier ton mot de passe.")

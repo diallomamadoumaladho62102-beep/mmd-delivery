@@ -217,7 +217,7 @@ export default function ResetPasswordScreen() {
             marginBottom: 24,
           }}
         >
-          We Deliver With Heart
+          {t("brand.tagline", "We Deliver With Heart ❤️")}
         </Text>
         <ActivityIndicator color={MMD_WHITE} />
         <Text

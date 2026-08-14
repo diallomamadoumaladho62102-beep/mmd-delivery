@@ -231,10 +231,13 @@ export function DriverAccountScreen() {
 
         if (upErr) {
           Alert.alert(
-            "Erreur",
+            t("common.errorTitle", "Error"),
             toUserFacingError(
               upErr,
-              "Impossible de créer le profil chauffeur pour le moment.",
+              t(
+                "driver.account.createProfileFailed",
+                "Unable to create the driver profile right now.",
+              ),
             ),
           );
         }
@@ -253,10 +256,13 @@ export function DriverAccountScreen() {
 
       if (pErr) {
         Alert.alert(
-          "Erreur",
+          t("common.errorTitle", "Error"),
           toUserFacingError(
             pErr,
-            "Impossible de charger le profil chauffeur pour le moment.",
+            t(
+              "driver.account.loadProfileFailed",
+              "Unable to load the driver profile right now.",
+            ),
           ),
         );
       }
@@ -282,7 +288,10 @@ export function DriverAccountScreen() {
             t("common.errorTitle", "Error"),
             toUserFacingError(
               second.error,
-              "Impossible de charger les documents pour le moment.",
+              t(
+                "driver.account.loadDocsFailed",
+                "Unable to load documents right now.",
+              ),
             ),
           );
         } else {
@@ -310,7 +319,8 @@ export function DriverAccountScreen() {
       console.log("loadProgress error", e);
       Alert.alert(
         t("common.errorTitle", "Error"),
-        e?.message ?? "Unable to load account status.",
+        e?.message ??
+          t("driver.account.loadStatusFailed", "Unable to load account status."),
       );
     } finally {
       setLoadingProgress(false);
@@ -334,7 +344,10 @@ export function DriverAccountScreen() {
           t("common.errorTitle", "Error"),
           toUserFacingError(
             error,
-            "Une action temporairement impossible s'est produite. Veuillez réessayer.",
+            t(
+              "driver.account.logoutFailed",
+              "Something went wrong temporarily. Please try again.",
+            ),
           ),
         );
         return;

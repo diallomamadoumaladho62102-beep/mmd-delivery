@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import i18n from "i18next";
 import { toUserFacingError } from "../lib/userFacingError";
 import * as Location from "expo-location";
 import { calculateHeading } from "../lib/navigationService";
@@ -142,7 +143,10 @@ export function useDriverMapLocation(enabled = true): DriverMapLocationState {
       } catch (error) {
         if (!mountedRef.current) return;
         setErrorMessage(
-          toUserFacingError(error, "Impossible d'activer le GPS."),
+          toUserFacingError(
+            error,
+            i18n.t("driver.map.gpsEnableFailed", "Unable to turn on GPS."),
+          ),
         );
         setGpsStatus("lost");
       }

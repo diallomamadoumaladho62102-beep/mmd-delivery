@@ -2,7 +2,8 @@ name: Production dispatch crons
 
 on:
   schedule:
-    - cron: "*/3 * * * *"
+    # GitHub Actions schedules have a 5-minute floor; */3 is unreliable.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 concurrency:
@@ -12,7 +13,8 @@ concurrency:
 jobs:
   dispatch-crons:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Six cron endpoints × retries need headroom beyond 5 minutes.
+    timeout-minutes: 10
     env:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
@@ -23,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
 
       - name: Validate cron configuration
         run: |

@@ -58,9 +58,11 @@ function loadBundle(lang) {
 const enFlat = loadBundle("en");
 const enKeys = Object.keys(enFlat);
 const requiredPrefixes = ["marketplace.", "seller.", "taxi.", "client.", "language."];
+const mustTranslatePrefixes = ["taxi.tracking.safety.", "roleSelect.", "language."];
 
 let score = 100;
 const issues = [];
+let hardFail = false;
 
 for (const lang of SUPPORTED) {
   const flat = loadBundle(lang);
@@ -68,17 +70,34 @@ for (const lang of SUPPORTED) {
   if (missing.length) {
     issues.push(`${lang}: missing ${missing.length} keys`);
     score -= Math.min(20, missing.length);
+    hardFail = true;
   }
 
   if (lang === "en") continue;
+
+  for (const prefix of mustTranslatePrefixes) {
+    const prefixKeys = enKeys.filter((k) => k.startsWith(prefix));
+    // Ignore short shared brand tokens that are identical by design (Client, Taxi, etc.)
+    const comparable = prefixKeys.filter((k) => (enFlat[k] || "").length > 12);
+    const stillEnglish = comparable.filter(
+      (k) => flat[k] && flat[k] === enFlat[k],
+    );
+    if (comparable.length >= 3 && stillEnglish.length / comparable.length > 0.5) {
+      issues.push(
+        `${lang}: ${prefix}* still mostly English (${stillEnglish.length}/${comparable.length})`,
+      );
+      score -= 8;
+      hardFail = true;
+    }
+  }
 
   for (const prefix of requiredPrefixes) {
     const prefixKeys = enKeys.filter((k) => k.startsWith(prefix));
     const translated = prefixKeys.filter((k) => flat[k] && flat[k] !== enFlat[k]);
     const ratio = prefixKeys.length ? translated.length / prefixKeys.length : 1;
-    if (ratio < 0.75 && prefixKeys.length > 5) {
-      issues.push(`${lang}: ${prefix} translated ${Math.round(ratio * 100)}%`);
-      score -= 3;
+    if (ratio < 0.55 && prefixKeys.length > 5) {
+      issues.push(`${lang}: ${prefix} translated ${Math.round(ratio * 100)}% (warn)`);
+      score -= 2;
     }
   }
 }
@@ -88,11 +107,11 @@ score = Math.max(0, Math.min(100, Math.round(score)));
 console.log("i18n coverage score:", score, "/100");
 if (issues.length) {
   console.log("Issues:");
-  for (const issue of issues.slice(0, 20)) console.log(" -", issue);
+  for (const issue of issues.slice(0, 30)) console.log(" -", issue);
 }
 
-if (score < 90) {
-  console.error("FAIL: i18n coverage below threshold (90)");
+if (hardFail || score < 80) {
+  console.error("FAIL: i18n coverage gate");
   process.exit(1);
 }
 

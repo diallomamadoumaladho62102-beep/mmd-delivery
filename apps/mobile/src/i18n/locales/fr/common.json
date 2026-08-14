@@ -57,9 +57,9 @@
     },
     "profile": {
       "title": "Profil",
-      "topDriver": "🏆 Top Driver",
+      "topDriver": "🏆 Meilleur chauffeur",
       "inProgress": "ℹ️ En progression",
-      "driverScore": "Driver Score",
+      "driverScore": "Score chauffeur",
       "bikeNoVehicleLine": "Vélo : pas de permis / plaque / assurance / registration",
       "deliveries": "Livraisons",
       "acceptance": "Acceptation",
@@ -98,13 +98,13 @@
       "saveDriverProfilesFailed": "Impossible de sauvegarder (driver_profiles).",
       "avatarTitle": "Photo de profil",
       "avatarUpdated": "Photo de profil mise à jour.",
-      "avatarUploadFailed": "Upload avatar impossible. Vérifie Storage policies (avatars).",
-      "avatarUnknownError": "Upload avatar: erreur inconnue.",
+      "avatarUploadFailed": "Impossible d'envoyer l'avatar. Vérifiez les policies Storage (avatars).",
+      "avatarUnknownError": "Envoi de l'avatar : erreur inconnue.",
       "uploadDocTitle": "Uploader {{doc}}",
       "docSent": "{{doc}} envoyé.",
-      "docUploadFailed": "Upload impossible. Vérifie Storage policies (driver-docs).",
-      "docDbFailed": "Fichier uploadé mais DB non mise à jour (driver_documents).",
-      "docUnknownError": "Upload doc: erreur inconnue."
+      "docUploadFailed": "Échec de l'envoi. Vérifiez les policies Storage (driver-docs).",
+      "docDbFailed": "Fichier envoyé mais base de données non mise à jour (driver_documents).",
+      "docUnknownError": "Envoi du document : erreur inconnue."
     },
     "permission": {
       "title": "Permission",
@@ -121,7 +121,7 @@
         "pending": "En attente",
         "accepted": "Acceptée",
         "prepared": "En préparation",
-        "readyPickup": "Prête (pickup)",
+        "readyPickup": "Prête (enlèvement)",
         "readyWaitingDriver": "Prête – en attente d’un chauffeur",
         "readyDriverAssigned": "Prête – chauffeur assigné",
         "dispatched": "En livraison",
@@ -158,7 +158,7 @@
     "restaurant": {
       "orders": {
         "title": "Commandes restaurant",
-        "earningsBtn": "Earnings",
+        "earningsBtn": "Gains",
         "testRing": "🔔 Tester sonnerie",
         "loadingAccount": "Chargement du compte restaurant…",
         "loadingOrders": "Chargement des commandes…",
@@ -229,6 +229,8 @@
       "accountCreatedTitle": "Compte créé",
       "addPhoto": "Ajouter une photo",
       "address": "Adresse",
+      "addressOptional": "Adresse (optionnelle)",
+      "addressOptionalHint": "Tu pourras ajouter une adresse de livraison plus tard pour commander nourriture, colis ou taxi.",
       "address1Placeholder": "Adresse (ligne 1)",
       "address2Placeholder": "Complément (ligne 2)",
       "addressTitle": "Adresse",
@@ -288,7 +290,7 @@
       "docs": {
         "license": "Permis",
         "insurance": "Assurance",
-        "registration": "Registration",
+        "registration": "Carte grise",
         "missing": "Manquant"
       },
       "verified": {
@@ -298,13 +300,30 @@
     },
     "tax": {
       "title": "Informations fiscales",
-      "sections": { "overview": "Aperçu", "important": "Important" },
-      "badges": { "soon": "Bientôt" },
+      "sections": {
+        "overview": "Aperçu",
+        "important": "Important"
+      },
+      "badges": {
+        "soon": "Bientôt"
+      },
       "overview": {
-        "status": { "label": "Statut", "value": "Pas requis pour le moment" },
-        "formType": { "label": "Type de formulaire", "value": "W-9 / 1099 (US)" },
-        "country": { "label": "Pays", "value": "États-Unis" },
-        "withholding": { "label": "Retenue", "value": "Aucune taxe prélevée" }
+        "status": {
+          "label": "Statut",
+          "value": "Pas requis pour le moment"
+        },
+        "formType": {
+          "label": "Type de formulaire",
+          "value": "W-9 / 1099 (US)"
+        },
+        "country": {
+          "label": "Pays",
+          "value": "États-Unis"
+        },
+        "withholding": {
+          "label": "Retenue",
+          "value": "Aucune taxe prélevée"
+        }
       },
       "important": {
         "title": "Nous ne prélevons pas les taxes",
@@ -430,7 +449,7 @@
     "menu": {
       "driver_label": "Chauffeur",
       "new_driver": "Nouveau",
-      "tips_week": "Tips semaine",
+      "tips_week": "Pourboires de la semaine",
       "load_error": "Impossible de charger le menu chauffeur.",
       "payments_title": "Paiements",
       "payments_unavailable": "Impossible d’ouvrir Stripe pour le moment.",
@@ -469,13 +488,13 @@
         "menu": "Menu"
       },
       "map": {
-        "pickupTitle": "Pickup",
-        "dropoffTitle": "Dropoff"
+        "pickupTitle": "Enlèvement",
+        "dropoffTitle": "Livraison"
       },
       "offer": {
         "title": "Nouvelle course disponible",
-        "pickup": "Pickup :",
-        "dropoff": "Dropoff :",
+        "pickup": "Enlèvement :",
+        "dropoff": "Livraison :",
         "distance": "Distance estimée",
         "earnings": "Gain estimé",
         "createdAt": "Créée :",
@@ -491,8 +510,8 @@
         "viewDetails": "Voir les détails →"
       },
       "labels": {
-        "pickup": "Pickup:",
-        "dropoff": "Dropoff:",
+        "pickup": "Enlèvement :",
+        "dropoff": "Livraison :",
         "distance": "Distance:",
         "driverEarnings": "Gain chauffeur:"
       },
@@ -500,7 +519,7 @@
         "pending": "En attente (restaurant)",
         "accepted": "Acceptée",
         "prepared": "En préparation",
-        "ready": "Prête (en attente driver)",
+        "ready": "Prête (en attente d'un chauffeur)",
         "dispatched": "En livraison",
         "delivered": "Livrée",
         "canceled": "Annulée"
@@ -508,7 +527,7 @@
       "kind": {
         "food": "Commande restaurant",
         "foodWithName": "Commande restaurant · {{name}}",
-        "pickup_dropoff": "Course pickup / dropoff"
+        "pickup_dropoff": "Course enlèvement / livraison"
       },
       "accept": {
         "title": "Course acceptée",
@@ -547,8 +566,8 @@
       "goOffline": "Me mettre hors ligne",
       "incoming": {
         "title": "Nouvelle course",
-        "pickup": "Pickup :",
-        "dropoff": "Dropoff :",
+        "pickup": "Enlèvement :",
+        "dropoff": "Livraison :",
         "decline": "Refuser",
         "accept": "Accepter"
       },
@@ -647,12 +666,16 @@
           "body": "En ligne/Au volant viennent du RPC get_driver_stats(from_ts,to_ts). Courses = livrées, Points = nombre de courses.",
           "link": "Comment nous calculons les statistiques"
         },
-        "completed": { "title": "Courses terminées" },
-        "driverId": "Driver",
+        "completed": {
+          "title": "Courses terminées"
+        },
+        "driverId": "Chauffeur",
         "earnings": "Revenus",
         "loadError": "Impossible de charger les détails.",
         "noTripToShow": "Aucune course disponible pour afficher le détail.",
-        "range": { "today": "Aujourd’hui" },
+        "range": {
+          "today": "Aujourd’hui"
+        },
         "stats": {
           "driving": "Au volant",
           "online": "En ligne",
@@ -782,7 +805,7 @@
       "missingAddressBody": "Aucune adresse disponible pour cette étape.",
       "missingCoordsTitle": "Infos manquantes",
       "missingCoordsBody": "Cette course n’a pas encore de coordonnées GPS.",
-      "rezoom": "Re-zoom",
+      "rezoom": "Recentrer",
       "acceptDeniedTitle": "Impossible d'accepter",
       "acceptDeniedStripe": "Tu dois terminer la configuration Stripe avant d'accepter des courses.",
       "acceptDeniedGeneric": "Impossible d'accepter cette course.",
@@ -857,13 +880,17 @@
         "refreshing": "Rafraîchissement..."
       },
       "alert": {
-        "boostSelected": { "title": "Boost sélectionné ✅" },
-        "help": { "title": "Aide" }
+        "boostSelected": {
+          "title": "Boost sélectionné ✅"
+        },
+        "help": {
+          "title": "Aide"
+        }
       },
       "badge": {
-        "bonusDollar": "Bonus $",
-        "boost": "Boost",
-        "boostPercent": "Boost %",
+        "bonusDollar": "Prime $",
+        "boost": "Amplificateur",
+        "boostPercent": "Amplificateur %",
         "claim": "Réclamer",
         "claimed": "Réclamé",
         "earned": "Gagné",
@@ -887,7 +914,7 @@
       "sections": {
         "activeBoost": "Boost actif",
         "availableBoosts": "Boosts disponibles",
-        "bonus": "Bonus",
+        "bonus": "Prime",
         "challenges": "Défis"
       },
       "summary": {
@@ -972,7 +999,7 @@
         "savedWithCount": "Occasions enregistrées ({{count}})"
       },
       "tags": {
-        "boost": "Boost",
+        "boost": "Amplificateur",
         "new": "Nouveau",
         "promo": "Promo",
         "recommended": "Recommandé",
@@ -1000,7 +1027,7 @@
       "myCodeLabel": "Ton code",
       "ridesLabel": "🚗 Courses",
       "shareError": "Impossible d’ouvrir le partage.",
-      "shareSubject": "Invite MMD Driver",
+      "shareSubject": "Invitation MMD Chauffeur",
       "shareText": "Rejoins MMD Driver 🚗🍔\n\nMon code: {{code}}\nLien: {{link}}\n\nInscris-toi et commence à rouler !",
       "status": {
         "earned": "Vous avez gagné",
@@ -1047,8 +1074,12 @@
         "body": "Retrait indisponible.",
         "title": "Retrait indisponible"
       },
-      "debug": { "driver": "Driver" },
-      "header": { "title": "Portefeuille" },
+      "debug": {
+        "driver": "Chauffeur"
+      },
+      "header": {
+        "title": "Portefeuille"
+      },
       "loadError": "Impossible de charger le portefeuille.",
       "pending": {
         "title": "En attente",
@@ -1076,9 +1107,9 @@
         "permissionPhotosBody": "Autorise l'accès aux photos.",
         "invalidImageUri": "Image invalide (uri manquante).",
         "imageNotUploaded": "Image non envoyée. Vérifie les policies Storage du bucket:",
-        "uploadFailed": "Upload impossible",
+        "uploadFailed": "Échec de l'envoi",
         "deleteFailed": "Suppression impossible",
-        "updateFailed": "Update impossible."
+        "updateFailed": "Échec de la mise à jour."
       },
       "categories": {
         "title": "Catégories",
@@ -1089,7 +1120,7 @@
       },
       "header": {
         "title": "Menu / Produits",
-        "earnings": "Earnings"
+        "earnings": "Gains"
       },
       "actions": {
         "add": "Ajouter",
@@ -1113,7 +1144,7 @@
         "addButton": "Ajouter le produit",
         "nameRequired": "Nom obligatoire",
         "invalidPrice": "Prix invalide",
-        "noPhoto": "No photo",
+        "noPhoto": "Aucune photo",
         "available": "✅ Disponible",
         "unavailable": "⛔ Indispo",
         "pricePrefix": "💰"

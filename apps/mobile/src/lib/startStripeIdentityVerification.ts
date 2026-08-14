@@ -1,5 +1,6 @@
 import * as WebBrowser from "expo-web-browser";
 import { Alert, Linking } from "react-native";
+import i18n from "../i18n";
 import {
   createIdentitySession,
   fetchIdentityStatus,
@@ -85,12 +86,19 @@ export async function promptStripeIdentityIfRequired(
 
   return await new Promise((resolve) => {
     Alert.alert(
-      "Identity verification required",
-      "Complete Stripe Identity verification to continue. Documents are processed by Stripe only.",
+      i18n.t("driver.identity.stripeRequiredTitle", "Identity verification required"),
+      i18n.t(
+        "driver.identity.stripeRequiredBody",
+        "Complete Stripe Identity verification to continue. Documents are processed by Stripe only.",
+      ),
       [
-        { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
         {
-          text: "Verify",
+          text: i18n.t("driver.identity.cancel", "Cancel"),
+          style: "cancel",
+          onPress: () => resolve(false),
+        },
+        {
+          text: i18n.t("driver.identity.verify", "Verify"),
           onPress: () => {
             void startStripeIdentityVerification({ subjectType }).then((result) => {
               resolve(Boolean(result.ok));

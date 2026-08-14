@@ -1,0 +1,9 @@
+{
+  "NSCameraUsageDescription": "MMD Delivery usa la cámara para grabaciones de seguridad en la app y fotos opcionales de prueba de entrega, sin abrir la app Cámara del sistema.",
+  "NSPhotoLibraryUsageDescription": "MMD Delivery accede a tu fototeca para subir fotos de perfil, pruebas de entrega y fotos de referencia de ubicación.",
+  "NSPhotoLibraryAddUsageDescription": "MMD Delivery puede guardar fotos de prueba de entrega en tu fototeca cuando eliges conservar una copia.",
+  "NSMicrophoneUsageDescription": "MMD Delivery usa el micrófono para el Audio de seguridad (y video de seguridad) durante un viaje de taxi activo cuando inicias explícitamente una grabación. Nunca comienza en silencio.",
+  "NSLocationWhenInUseUsageDescription": "MMD Delivery usa tu ubicación para mostrar restaurantes cercanos, definir puntos de recogida y entrega, y ayudar a los conductores a navegar durante entregas y viajes en taxi.",
+  "NSLocationAlwaysAndWhenInUseUsageDescription": "MMD Delivery usa la ubicación en segundo plano durante turnos activos del conductor y viajes en vivo para que los clientes puedan seguir su pedido o viaje hasta completarlo.",
+  "NSLocationAlwaysUsageDescription": "MMD Delivery usa la ubicación en segundo plano durante turnos activos del conductor y viajes en vivo para que los clientes puedan seguir su pedido o viaje hasta completarlo."
+}

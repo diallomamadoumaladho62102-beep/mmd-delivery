@@ -41,7 +41,7 @@
         "pending": "待处理",
         "accepted": "已接单",
         "prepared": "准备中",
-        "readyPickup": "可取餐（pickup）",
+        "readyPickup": "已就绪（取件）",
         "dispatched": "配送中",
         "delivered": "已送达",
         "canceled": "已取消",
@@ -153,11 +153,11 @@
       "saveDriverProfilesFailed": "无法保存（driver_profiles）。",
       "avatarTitle": "头像",
       "avatarUpdated": "头像已更新。",
-      "avatarUploadFailed": "无法上传头像。请检查 Storage policies（avatars）。",
+      "avatarUploadFailed": "无法上传头像。请检查 Storage 策略（avatars）。",
       "avatarUnknownError": "头像上传：未知错误。",
       "uploadDocTitle": "上传 {{doc}}",
       "docSent": "{{doc}} 已发送。",
-      "docUploadFailed": "上传失败。请检查 Storage policies（driver-docs）。",
+      "docUploadFailed": "上传失败。请检查 Storage 策略（driver-docs）。",
       "docDbFailed": "文件已上传，但数据库未更新（driver_documents）。",
       "docUnknownError": "资料上传：未知错误。",
       "edit": "编辑",
@@ -225,9 +225,9 @@
         "missingOrderId": "缺少 orderId",
         "missingOrderIdUi": "错误：缺少 orderId。",
         "imageNotFoundOnPhone": "手机中未找到图片文件。",
-        "imageEmptyOnPhone": "图片文件为空（0 bytes）。",
+        "imageEmptyOnPhone": "手机上的图片文件为空（0 字节）。",
         "base64ReadFailedEmpty": "Base64 读取失败（空）。",
-        "arrayBufferZeroBytes": "ArrayBuffer 转换结果为 0 bytes。"
+        "arrayBufferZeroBytes": "ArrayBuffer 转换结果为 0 字节。"
       },
       "header": {
         "subtitle": "消息与附件"
@@ -345,13 +345,30 @@
     },
     "tax": {
       "title": "税务信息",
-      "sections": { "overview": "概览", "important": "重要" },
-      "badges": { "soon": "即将推出" },
+      "sections": {
+        "overview": "概览",
+        "important": "重要"
+      },
+      "badges": {
+        "soon": "即将推出"
+      },
       "overview": {
-        "status": { "label": "状态", "value": "目前不需要" },
-        "formType": { "label": "表格类型", "value": "W-9 / 1099（美国）" },
-        "country": { "label": "国家", "value": "美国" },
-        "withholding": { "label": "预扣", "value": "不代扣税款" }
+        "status": {
+          "label": "状态",
+          "value": "目前不需要"
+        },
+        "formType": {
+          "label": "表格类型",
+          "value": "W-9 / 1099（美国）"
+        },
+        "country": {
+          "label": "国家",
+          "value": "美国"
+        },
+        "withholding": {
+          "label": "预扣",
+          "value": "不代扣税款"
+        }
       },
       "important": {
         "title": "我们不代扣税款",
@@ -460,7 +477,7 @@
     },
     "menu": {
       "load_error": "无法加载司机菜单。",
-      "tips_week": "每周提示",
+      "tips_week": "每周小费",
       "referrals": "推荐",
       "opportunities": "机会",
       "driver_program": "司机计划",
@@ -649,7 +666,7 @@
       "title": "收入",
       "help_btn": "帮助",
       "help_title": "帮助",
-      "help_body": "我们将在这里添加帮助页面（FAQ / 支持）。",
+      "help_body": "我们将在此添加帮助页面（FAQ / 支持）。",
       "auth_title": "登录",
       "auth_body": "请以司机身份登录以查看收入。",
       "load_error": "无法加载收入。",
@@ -691,20 +708,28 @@
       "tip": "小费",
       "driver_label": "司机",
       "details": {
-        "auth": { "title": "登录" },
+        "auth": {
+          "title": "登录"
+        },
         "breakdown": {
           "netPrice": "净价",
           "tip": "小费",
           "title": "明细",
           "total": "总收入"
         },
-        "calc": { "title": "计算" },
-        "completed": { "title": "已完成行程" },
+        "calc": {
+          "title": "计算"
+        },
+        "completed": {
+          "title": "已完成行程"
+        },
         "driverId": "司机",
         "earnings": "收入",
         "loadError": "无法加载详情。",
         "noTripToShow": "没有可显示详情的行程。",
-        "range": { "today": "今天" },
+        "range": {
+          "today": "今天"
+        },
         "stats": {
           "driving": "行驶中",
           "online": "在线",
@@ -713,7 +738,9 @@
           "trips": "行程"
         },
         "title": "详情",
-        "tripAlert": { "title": "行程" },
+        "tripAlert": {
+          "title": "行程"
+        },
         "tripsLabel": "行程",
         "week": {
           "fri": "周五",
@@ -726,13 +753,17 @@
         }
       },
       "history": {
-        "auth": { "title": "登录" },
+        "auth": {
+          "title": "登录"
+        },
         "filters": {
           "month": "本月",
           "today": "今天",
           "week": "本周"
         },
-        "list": { "title": "已送达行程" },
+        "list": {
+          "title": "已送达行程"
+        },
         "loadError": "无法加载历史记录。",
         "range": {
           "month": "本月",
@@ -916,8 +947,12 @@
     "referrals": {
       "deliveriesLabel": "🍔 配送",
       "footer": "MMD 推荐 • 司机",
-      "header": { "title": "邀请朋友" },
-      "headline": { "noProgram": "邀请你的朋友" },
+      "header": {
+        "title": "邀请朋友"
+      },
+      "headline": {
+        "noProgram": "邀请你的朋友"
+      },
       "inviteNow": "邀请",
       "modal": {
         "allRewardsTitle": "全部奖励",
@@ -963,12 +998,16 @@
         "alreadyToday": "你今天已提现过。请明天再试。",
         "min": "最低提现：{{min}}。"
       },
-      "debug": { "driver": "司机" },
-      "header": { "title": "钱包" },
+      "debug": {
+        "driver": "司机"
+      },
+      "header": {
+        "title": "钱包"
+      },
       "loadError": "无法加载钱包。",
       "pending": {
         "title": "处理中",
-        "desc": "提现处理中（scheduled / processing）"
+        "desc": "提现处理中（已排期 / 处理中）"
       },
       "stripe": {
         "activateButton": "启用 Stripe",
@@ -991,7 +1030,7 @@
         "permissionTitle": "需要权限",
         "permissionPhotosBody": "请允许访问照片。",
         "invalidImageUri": "图片无效（缺少 uri）。",
-        "imageNotUploaded": "图片未上传。请检查 Storage policies 的 bucket：",
+        "imageNotUploaded": "图片未上传。请检查该存储桶的策略：",
         "uploadFailed": "上传失败",
         "deleteFailed": "删除失败",
         "updateFailed": "更新失败。"

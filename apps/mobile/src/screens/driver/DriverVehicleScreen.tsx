@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import {
   useNavigation,
   useRoute,
@@ -104,6 +105,7 @@ function AmenityToggle(props: {
 }
 
 export function DriverVehicleScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
   const paramVehicleId = route.params?.vehicleId;
@@ -193,16 +195,16 @@ export function DriverVehicleScreen() {
       }
     } catch (error) {
       Alert.alert(
-        "Erreur",
+        t("driver.vehicle.errorTitle", "Error"),
         toUserFacingError(
           error,
-          "Impossible de charger les informations du véhicule.",
+          t("driver.vehicle.loadFailed", "Unable to load vehicle information."),
         ),
       );
     } finally {
       setLoading(false);
     }
-  }, [vehicleId]);
+  }, [vehicleId, t]);
 
   useEffect(() => {
     void load();
@@ -218,7 +220,10 @@ export function DriverVehicleScreen() {
             if (source === "camera") {
               const p = await ImagePicker.requestCameraPermissionsAsync();
               if (!p.granted) {
-                Alert.alert("Camera", "Allow camera access.");
+                Alert.alert(
+                  t("driver.vehicle.cameraTitle", "Camera"),
+                  t("driver.vehicle.cameraPermission", "Allow camera access."),
+                );
                 return null;
               }
               const r = await ImagePicker.launchCameraAsync({
@@ -232,7 +237,10 @@ export function DriverVehicleScreen() {
             }
             const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (!p.granted) {
-              Alert.alert("Photos", "Allow photo library access.");
+              Alert.alert(
+                t("driver.vehicle.photosTitle", "Photos"),
+                t("driver.vehicle.photosPermission", "Allow photo library access."),
+              );
               return null;
             }
             const r = await ImagePicker.launchImageLibraryAsync({
@@ -256,12 +264,18 @@ export function DriverVehicleScreen() {
         await updateDriverVehicleById(vehicleId, { photo_url: path });
         setPhotoUrl(path);
         setPendingLocalPhoto(null);
-        Alert.alert("Vehicle photo", "Photo uploaded successfully.");
+        Alert.alert(
+          t("driver.vehicle.photoUploadedTitle", "Vehicle photo"),
+          t("driver.vehicle.photoUploadedBody", "Photo uploaded successfully."),
+        );
       } catch (error) {
         if (String((error as Error)?.message ?? "") === "photo_cancelled") return;
         Alert.alert(
-          "Erreur",
-          toUserFacingError(error, "Impossible d'envoyer la photo."),
+          t("driver.vehicle.errorTitle", "Error"),
+          toUserFacingError(
+            error,
+            t("driver.vehicle.uploadFailed", "Unable to upload the photo."),
+          ),
         );
       } finally {
         setUploadingPhoto(false);
@@ -270,10 +284,13 @@ export function DriverVehicleScreen() {
   };
 
   const removePhoto = () => {
-    Alert.alert("Remove photo", "Delete this vehicle photo?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
+    Alert.alert(
+      t("driver.vehicle.removePhotoTitle", "Remove photo"),
+      t("driver.vehicle.removePhotoBody", "Delete this vehicle photo?"),
+      [
+        { text: t("driver.vehicle.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("driver.vehicle.delete", "Delete"),
         style: "destructive",
         onPress: () => {
           void (async () => {
@@ -287,8 +304,11 @@ export function DriverVehicleScreen() {
               setPendingLocalPhoto(null);
             } catch (error) {
               Alert.alert(
-                "Erreur",
-                toUserFacingError(error, "Impossible de supprimer la photo."),
+                t("driver.vehicle.errorTitle", "Error"),
+                toUserFacingError(
+                  error,
+                  t("driver.vehicle.deletePhotoFailed", "Unable to delete the photo."),
+                ),
               );
             } finally {
               setUploadingPhoto(false);
@@ -302,8 +322,11 @@ export function DriverVehicleScreen() {
   const save = async () => {
     if (isCreate && !transportMode) {
       Alert.alert(
-        "Type de véhicule",
-        "Choisissez d'abord Car, Motorcycle ou Bicycle.",
+        t("driver.vehicle.typeRequiredTitle", "Vehicle type"),
+        t(
+          "driver.vehicle.typeRequiredBody",
+          "Choose Car, Motorcycle, or Bicycle first.",
+        ),
       );
       return;
     }
@@ -313,8 +336,11 @@ export function DriverVehicleScreen() {
       if (isCreate && transportMode === "bike") {
         await changeDriverTransportMode("bike");
         Alert.alert(
-          "Mode vélo",
-          "Votre catégorie est passée en Bicycle. Aucun véhicule motorisé n'est requis pour passer en ligne.",
+          t("driver.vehicle.bikeModeTitle", "Bicycle mode"),
+          t(
+            "driver.vehicle.bikeModeBody",
+            "Your category is now Bicycle. No motorized vehicle is required to go online.",
+          ),
         );
         navigation.goBack();
         return;
@@ -354,8 +380,11 @@ export function DriverVehicleScreen() {
 
       if (!payload.vehicle_make || !payload.vehicle_model || !payload.license_plate) {
         Alert.alert(
-          "Formulaire incomplet",
-          "Marque, modèle et plaque sont obligatoires.",
+          t("driver.vehicle.formIncompleteTitle", "Incomplete form"),
+          t(
+            "driver.vehicle.formIncompleteBody",
+            "Make, model, and license plate are required.",
+          ),
         );
         return;
       }
@@ -385,18 +414,24 @@ export function DriverVehicleScreen() {
       }
 
       Alert.alert(
-        "Véhicule",
+        t("driver.vehicle.savedTitle", "Vehicle"),
         isCreate
-          ? "Véhicule ajouté. Il est en attente de validation par l'équipe MMD."
-          : "Informations enregistrées. Si des champs importants ont changé, le véhicule repasse en validation admin.",
+          ? t(
+              "driver.vehicle.savedCreateBody",
+              "Vehicle added. It is pending validation by the MMD team.",
+            )
+          : t(
+              "driver.vehicle.savedUpdateBody",
+              "Information saved. If important fields changed, the vehicle goes back to admin validation.",
+            ),
       );
       navigation.goBack();
     } catch (error) {
       Alert.alert(
-        "Erreur",
+        t("driver.vehicle.errorTitle", "Error"),
         toUserFacingError(
           error,
-          "Impossible d'enregistrer le véhicule pour le moment.",
+          t("driver.vehicle.saveFailed", "Unable to save the vehicle right now."),
         ),
       );
     } finally {

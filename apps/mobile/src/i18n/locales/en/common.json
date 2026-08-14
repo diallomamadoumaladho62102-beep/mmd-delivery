@@ -260,6 +260,8 @@
       "accountCreatedTitle": "Account created",
       "addPhoto": "Add a photo",
       "address": "Address",
+      "addressOptional": "Address (optional)",
+      "addressOptionalHint": "You can add a delivery address later when you order food, packages, or a taxi.",
       "address1Placeholder": "Address (line 1)",
       "address2Placeholder": "Apt / Suite (line 2)",
       "addressTitle": "Address",

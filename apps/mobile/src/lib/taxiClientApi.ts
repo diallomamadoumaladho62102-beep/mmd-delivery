@@ -40,12 +40,7 @@ async function taxiGet(path: string) {
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     logTechnicalError(`taxi.get${path}`, out, { status: res.status });
-    throw new Error(
-      toUserFacingError(
-        out,
-        "Une action temporairement impossible s'est produite. Veuillez réessayer.",
-      ),
-    );
+    throw new Error(toUserFacingError(out));
   }
   return out;
 }
@@ -298,12 +293,7 @@ export async function removeTaxiFavoriteDriver(driverUserId: string) {
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     logTechnicalError("taxi.deleteFavoriteDriver", out, { status: res.status });
-    throw new Error(
-      toUserFacingError(
-        out,
-        "Une action temporairement impossible s'est produite. Veuillez réessayer.",
-      ),
-    );
+    throw new Error(toUserFacingError(out));
   }
   return out;
 }

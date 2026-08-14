@@ -12,8 +12,10 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { DriverWaitTimerPanel } from "./DriverWaitTimerPanel";
 import { TaxiSafetyRecordingPanel } from "../taxi/TaxiSafetyRecordingPanel";
+import { SafetyAudioCard } from "../tracking/SafetyAudioCard";
 import { OtpDigitInput } from "../shared/OtpDigitInput";
 import { formatDriverPayout } from "../../lib/taxiDriverApi";
 
@@ -66,6 +68,7 @@ export function DriverTaxiActiveRideCard({
   onCompleteStop,
   onNoShowCanceled,
 }: Props) {
+  const { t } = useTranslation();
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState<string | null>(null);
@@ -120,10 +123,19 @@ export function DriverTaxiActiveRideCard({
       } catch (e: any) {
         const msg = String(e?.message || "").toLowerCase();
         if (msg.includes("invalid") || msg.includes("code")) {
-          setCodeError("Incorrect code. Ask the client and try again.");
+          setCodeError(
+            t(
+              "taxi.driver.activeRide.incorrectCode",
+              "Incorrect code. Ask the client and try again.",
+            ),
+          );
         } else {
           setCodeError(
-            e?.message || "Could not verify the code. Please try again.",
+            e?.message ||
+              t(
+                "taxi.driver.activeRide.verifyFailed",
+                "Could not verify the code. Please try again.",
+              ),
           );
         }
         setCode("");
@@ -216,14 +228,26 @@ export function DriverTaxiActiveRideCard({
           <ActionTile
             icon="navigate"
             color="#22C55E"
-            label="Navigate"
+            label={t("taxi.driver.activeRide.navigate", "Navigate")}
             onPress={() =>
               onNavigate(status === "in_progress" ? "dropoff" : "pickup")
             }
           />
-          <ActionTile icon="chatbubble" color="#3B82F6" label="Chat" onPress={onChat} />
-          <ActionTile icon="call" color="#A855F7" label="Call" onPress={onCall} />
+          <ActionTile
+            icon="chatbubble"
+            color="#3B82F6"
+            label={t("taxi.driver.activeRide.chat", "Chat")}
+            onPress={onChat}
+          />
+          <ActionTile
+            icon="call"
+            color="#A855F7"
+            label={t("taxi.driver.activeRide.call", "Call")}
+            onPress={onCall}
+          />
         </View>
+
+        <SafetyAudioCard rideId={rideId} rideActive role="driver" />
 
         <TaxiSafetyRecordingPanel
           rideId={rideId}
@@ -298,7 +322,9 @@ export function DriverTaxiActiveRideCard({
                   <View style={styles.primaryIcon}>
                     <Ionicons name="checkmark" size={16} color="#111827" />
                   </View>
-                  <Text style={styles.primaryText}>Arrived at pickup</Text>
+                  <Text style={styles.primaryText}>
+                    {t("taxi.driver.activeRide.arrivedPickup", "Arrived at pickup")}
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -314,7 +340,9 @@ export function DriverTaxiActiveRideCard({
             <View style={styles.primaryIcon}>
               <Ionicons name="keypad" size={15} color="#111827" />
             </View>
-            <Text style={styles.primaryText}>Verify Pickup Code</Text>
+            <Text style={styles.primaryText}>
+              {t("taxi.driver.activeRide.verifyPickupCode", "Verify Pickup Code")}
+            </Text>
           </TouchableOpacity>
         ) : null}
 
@@ -325,7 +353,9 @@ export function DriverTaxiActiveRideCard({
             onPress={onComplete}
           >
             <Text style={styles.primaryText}>
-              {busy ? "…" : "Complete ride"}
+              {busy
+                ? "…"
+                : t("taxi.driver.activeRide.completeRide", "Complete ride")}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -336,12 +366,21 @@ export function DriverTaxiActiveRideCard({
             disabled={busy}
             onPress={() => {
               Alert.alert(
-                "Cancel ride",
-                "Cancel this taxi ride? Payment refund (if any) is handled by admin.",
+                t("taxi.driver.activeRide.cancelTitle", "Cancel ride"),
+                t(
+                  "taxi.driver.activeRide.cancelBody",
+                  "Cancel this taxi ride? Payment refund (if any) is handled by admin.",
+                ),
                 [
-                  { text: "Keep ride", style: "cancel" },
                   {
-                    text: "Cancel ride",
+                    text: t("taxi.driver.activeRide.keepRide", "Keep ride"),
+                    style: "cancel",
+                  },
+                  {
+                    text: t(
+                      "taxi.driver.activeRide.cancelTitle",
+                      "Cancel ride",
+                    ),
                     style: "destructive",
                     onPress: onCancel,
                   },
@@ -353,7 +392,9 @@ export function DriverTaxiActiveRideCard({
               <Ionicons name="close" size={14} color="#F87171" />
             </View>
             <Text style={styles.cancelText}>
-              {busy ? "…" : "Cancel ride"}
+              {busy
+                ? "…"
+                : t("taxi.driver.activeRide.cancelTitle", "Cancel ride")}
             </Text>
           </TouchableOpacity>
         ) : null}

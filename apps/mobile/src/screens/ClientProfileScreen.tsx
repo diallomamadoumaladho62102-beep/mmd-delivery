@@ -663,7 +663,9 @@ export function ClientProfileScreen() {
         <StatusBar barStyle="light-content" />
         <Image source={MMD_LOGO} style={styles.loadingLogo} resizeMode="contain" />
         <Text style={styles.loadingBrand}>MMD DELIVERY</Text>
-        <Text style={styles.loadingTagline}>We Deliver With Heart</Text>
+        <Text style={styles.loadingTagline}>
+          {t("brand.tagline", "We Deliver With Heart ❤️")}
+        </Text>
         <ActivityIndicator color={MMD_GOLD_DARK} size="large" style={{ marginTop: 16 }} />
         <Text style={styles.loadingCaption}>
           {t("client.profile.loading", "Chargement du profil...")}

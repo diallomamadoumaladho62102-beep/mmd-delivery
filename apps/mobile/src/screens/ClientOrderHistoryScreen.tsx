@@ -14,9 +14,12 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
+
+type Tr = (key: string, defaultValue?: string) => string;
 import {
   computeClientOrderStats,
   isClientActiveStatus,
@@ -47,20 +50,34 @@ type HistoryItem = {
   archived_at?: string | null;
 };
 
-function titleFor(item: HistoryItem): string {
-  if (item.kind === "taxi_ride") return "Taxi ride";
-  if (item.kind === "delivery_request") return "Package delivery";
-  return item.pickup_address?.split(",")[0]?.trim() || "Food order";
+function titleFor(item: HistoryItem, t: Tr): string {
+  if (item.kind === "taxi_ride") {
+    return t("client.orderHistory.kind.taxiRide", "Taxi ride");
+  }
+  if (item.kind === "delivery_request") {
+    return t("client.orderHistory.kind.packageDelivery", "Package delivery");
+  }
+  return (
+    item.pickup_address?.split(",")[0]?.trim() ||
+    t("client.orderHistory.kind.foodOrder", "Food order")
+  );
 }
 
-function badgeFor(kind: ClientTripKind): { label: string; bg: string } {
-  if (kind === "taxi_ride") return { label: "TX", bg: "#EAB308" };
-  if (kind === "delivery_request") return { label: "DL", bg: "#DC2626" };
-  return { label: "FD", bg: "#16A34A" };
+function badgeFor(kind: ClientTripKind, t: Tr): { label: string; bg: string } {
+  if (kind === "taxi_ride") {
+    return { label: t("client.orderHistory.badge.taxi", "TX"), bg: "#EAB308" };
+  }
+  if (kind === "delivery_request") {
+    return { label: t("client.orderHistory.badge.delivery", "DL"), bg: "#DC2626" };
+  }
+  return { label: t("client.orderHistory.badge.food", "FD"), bg: "#16A34A" };
 }
 
-function formatWhen(iso: string | null): string {
-  if (!iso) return "—";
+function formatWhen(
+  iso: string | null,
+  noValue: string,
+): string {
+  if (!iso) return noValue;
   try {
     const d = new Date(iso);
     return d.toLocaleString(undefined, {
@@ -69,27 +86,42 @@ function formatWhen(iso: string | null): string {
       minute: "2-digit",
     });
   } catch {
-    return "—";
+    return noValue;
   }
 }
 
-function statusLabel(item: HistoryItem): { text: string; color: string } {
+function statusLabel(
+  item: HistoryItem,
+  t: Tr,
+  noValue: string,
+): { text: string; color: string } {
   if (isClientCompletedStatus(item.status)) {
     return {
-      text: item.kind === "restaurant_order" ? "Delivered" : "Completed",
+      text:
+        item.kind === "restaurant_order"
+          ? t("client.orderHistory.status.delivered", "Delivered")
+          : t("client.orderHistory.status.completed", "Completed"),
       color: "#16A34A",
     };
   }
   if (isClientCancelledStatus(item.status)) {
-    return { text: "Cancelled", color: "#F87171" };
+    return {
+      text: t("client.orderHistory.status.cancelled", "Cancelled"),
+      color: "#F87171",
+    };
   }
   if (isClientActiveStatus(item.status)) {
-    return { text: "In progress", color: "#AABEE6" };
+    return {
+      text: t("client.orderHistory.status.inProgress", "In progress"),
+      color: "#AABEE6",
+    };
   }
-  return { text: item.status || "—", color: "#AABEE6" };
+  return { text: item.status || noValue, color: "#AABEE6" };
 }
 
 export default function ClientOrderHistoryScreen() {
+  const { t } = useTranslation();
+  const tr = t as unknown as Tr;
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -217,6 +249,7 @@ export default function ClientOrderHistoryScreen() {
   );
 
   const stats = useMemo(() => computeClientOrderStats(items), [items]);
+  const noValue = t("client.orderHistory.noValue", "—");
 
   const openItem = useCallback(
     (item: HistoryItem) => {
@@ -239,17 +272,31 @@ export default function ClientOrderHistoryScreen() {
     <View style={[styles.root, { paddingTop: insets.top + 8 }]}>
       <View style={[styles.header, contentMaxWidth ? { maxWidth: contentMaxWidth, alignSelf: "center", width: "100%" } : null]}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} accessibilityRole="button">
-          <Text style={styles.back}>‹ Back</Text>
+          <Text style={styles.back}>{t("common.back", "← Back")}</Text>
         </Pressable>
-        <Text style={styles.title}>Order history</Text>
+        <Text style={styles.title}>
+          {t("client.orderHistory.title", "Order history")}
+        </Text>
         <View style={{ width: 48 }} />
       </View>
 
       <View style={[styles.statsRow, contentMaxWidth ? { maxWidth: contentMaxWidth, alignSelf: "center", width: "100%" } : null]}>
-        <Stat label="Active" value={stats.active} />
-        <Stat label="Completed" value={stats.completed} />
-        <Stat label="Cancelled" value={stats.cancelled} />
-        <Stat label="Total" value={stats.totalOrders} />
+        <Stat
+          label={t("client.orderHistory.stats.active", "Active")}
+          value={stats.active}
+        />
+        <Stat
+          label={t("client.orderHistory.stats.completed", "Completed")}
+          value={stats.completed}
+        />
+        <Stat
+          label={t("client.orderHistory.stats.cancelled", "Cancelled")}
+          value={stats.cancelled}
+        />
+        <Stat
+          label={t("client.orderHistory.stats.total", "Total")}
+          value={stats.totalOrders}
+        />
       </View>
 
       {loading ? (
@@ -273,13 +320,17 @@ export default function ClientOrderHistoryScreen() {
             width: "100%",
           }}
           ListEmptyComponent={
-            <Text style={styles.empty}>No orders yet.</Text>
+            <Text style={styles.empty}>
+              {t("client.orderHistory.empty", "No orders yet.")}
+            </Text>
           }
           renderItem={({ item }) => {
-            const badge = badgeFor(item.kind);
-            const status = statusLabel(item);
+            const badge = badgeFor(item.kind, tr);
+            const status = statusLabel(item, tr, noValue);
             const amount =
-              typeof item.total === "number" ? `$${item.total.toFixed(2)}` : "—";
+              typeof item.total === "number"
+                ? `$${item.total.toFixed(2)}`
+                : noValue;
             return (
               <Pressable style={styles.row} onPress={() => openItem(item)}>
                 <View style={[styles.badge, { backgroundColor: badge.bg }]}>
@@ -287,10 +338,10 @@ export default function ClientOrderHistoryScreen() {
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={styles.rowTitle} numberOfLines={1}>
-                    {titleFor(item)}
+                    {titleFor(item, tr)}
                   </Text>
                   <Text style={styles.rowMeta} numberOfLines={1}>
-                    {formatWhen(item.created_at)}
+                    {formatWhen(item.created_at, noValue)}
                   </Text>
                 </View>
                 <View style={styles.rightCol}>

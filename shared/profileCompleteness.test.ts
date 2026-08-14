@@ -40,15 +40,23 @@ test("full verified profile scores 100", () => {
   assert.deepEqual(score.missing, []);
 });
 
-test("soft complete without verified flags for legacy users", () => {
+test("soft complete without address or avatar (Apple 5.1.1)", () => {
   assert.equal(
     isClientProfileComplete({
       fullName: "Fatou Bah",
       phone: "620000000",
+    }),
+    true,
+  );
+});
+
+test("soft complete still false without name/phone", () => {
+  assert.equal(
+    isClientProfileComplete({
       addressLine: "Kaloum",
       avatarUrl: "https://example.com/f.jpg",
     }),
-    true,
+    false,
   );
 });
 

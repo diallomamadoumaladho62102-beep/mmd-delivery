@@ -12,8 +12,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Mapbox from "@rnmapbox/maps";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+
+type Tr = (key: string, defaultValue?: string) => string;
 import {
   fetchDriverAreaIntelligence,
   type DemandHotspot,
@@ -34,10 +37,10 @@ import {
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverHotspots">;
 type R = RouteProp<RootStackParamList, "DriverHotspots">;
 
-const HORIZON_OPTIONS: { label: string; minutes: DriverAreaHorizonMinutes }[] = [
-  { label: "Now", minutes: 0 },
-  { label: "In 1h", minutes: 60 },
-  { label: "In 2h", minutes: 120 },
+const HORIZON_OPTIONS: { labelKey: string; fallback: string; minutes: DriverAreaHorizonMinutes }[] = [
+  { labelKey: "driver.hotspots.horizon.now", fallback: "Now", minutes: 0 },
+  { labelKey: "driver.hotspots.horizon.in1h", fallback: "In 1h", minutes: 60 },
+  { labelKey: "driver.hotspots.horizon.in2h", fallback: "In 2h", minutes: 120 },
 ];
 
 function HorizonChip({
@@ -70,7 +73,20 @@ function levelColor(level: string): string {
   return "#22C55E";
 }
 
+function demandLevelLabel(level: string, t: Tr): string {
+  const key = `driver.hotspots.demandLevel.${level}`;
+  const fallbacks: Record<string, string> = {
+    very_busy: "Very busy",
+    busy: "Busy",
+    moderate: "Moderate",
+    quiet: "Quiet",
+  };
+  return t(key, fallbacks[level] ?? level.replace(/_/g, " "));
+}
+
 export default function DriverHotspotsScreen() {
+  const { t } = useTranslation();
+  const tr = t as unknown as Tr;
   const navigation = useNavigation<Nav>();
   const route = useRoute<R>();
   const cameraRef = useRef<Mapbox.Camera>(null);
@@ -85,7 +101,7 @@ export default function DriverHotspotsScreen() {
 
   const load = useCallback(async () => {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      setError("GPS position required");
+      setError(t("driver.hotspots.errors.gpsRequired", "GPS position required"));
       setLoading(false);
       return;
     }
@@ -111,11 +127,15 @@ export default function DriverHotspotsScreen() {
         });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load hotspots");
+      setError(
+        e instanceof Error
+          ? e.message
+          : t("driver.hotspots.errors.loadFailed", "Failed to load hotspots"),
+      );
     } finally {
       setLoading(false);
     }
-  }, [horizonMinutes, isOnline, lat, lng]);
+  }, [horizonMinutes, isOnline, lat, lng, t]);
 
   useEffect(() => {
     void load();
@@ -159,21 +179,33 @@ export default function DriverHotspotsScreen() {
   };
 
   const panelTitle = data
-    ? `${data.requests_nearby} open · ${data.drivers_nearby} drivers · ${data.earnings_multiplier.toFixed(1)}x`
+    ? t("driver.hotspots.panelTitle.stats", "{{requests}} open · {{drivers}} drivers · {{multiplier}}x", {
+        requests: data.requests_nearby,
+        drivers: data.drivers_nearby,
+        multiplier: data.earnings_multiplier.toFixed(1),
+      })
     : horizonMinutes === 0
-      ? "Live demand"
-      : `Forecast · ${horizonMinutes / 60}h`;
+      ? t("driver.hotspots.panelTitle.liveDemand", "Live demand")
+      : t("driver.hotspots.panelTitle.forecast", "Forecast · {{hours}}h", {
+          hours: horizonMinutes / 60,
+        });
 
   const horizonSubtitle =
     horizonMinutes === 0
-      ? "Live open requests and current time-of-day demand."
-      : "Same live open requests — wait estimates adjust for the forecast time of day.";
+      ? t(
+          "driver.hotspots.subtitle.live",
+          "Live open requests and current time-of-day demand.",
+        )
+      : t(
+          "driver.hotspots.subtitle.forecast",
+          "Same live open requests — wait estimates adjust for the forecast time of day.",
+        );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
-        title="Demand hotspots"
+        title={t("driver.hotspots.title", "Demand hotspots")}
         onBack={() => navigation.goBack()}
         variant="mmd"
         style={styles.header}
@@ -243,7 +275,7 @@ export default function DriverHotspotsScreen() {
           {HORIZON_OPTIONS.map((opt) => (
             <HorizonChip
               key={opt.minutes}
-              label={opt.label}
+              label={t(opt.labelKey, opt.fallback)}
               active={horizonMinutes === opt.minutes}
               onPress={() => setHorizonMinutes(opt.minutes)}
             />
@@ -256,7 +288,7 @@ export default function DriverHotspotsScreen() {
           <TouchableOpacity
             onPress={() => void load()}
             accessibilityRole="button"
-            accessibilityLabel="Refresh"
+            accessibilityLabel={t("driver.hotspots.refresh", "Refresh")}
             hitSlop={8}
           >
             <Ionicons name="refresh" size={18} color={MMD_WHITE} />
@@ -268,17 +300,33 @@ export default function DriverHotspotsScreen() {
         {loading ? (
           <View style={styles.loadingBlock}>
             <ActivityIndicator color={MMD_TEXT} size="small" />
-            <Text style={styles.loadingTitle}>Chargement…</Text>
+            <Text style={styles.loadingTitle}>
+              {t("driver.hotspots.loading", "Loading…")}
+            </Text>
           </View>
         ) : hotspots.length === 0 ? (
           <View style={styles.emptyBlock}>
             <Text style={styles.emptyTitle}>
-              {horizonMinutes === 0 ? "No demand clusters" : "No clusters in range"}
+              {horizonMinutes === 0
+                ? t(
+                    "driver.hotspots.empty.noClustersLiveTitle",
+                    "No demand clusters",
+                  )
+                : t(
+                    "driver.hotspots.empty.noClustersForecastTitle",
+                    "No clusters in range",
+                  )}
             </Text>
             <Text style={styles.emptyBody}>
               {horizonMinutes === 0
-                ? "No demand clusters in range right now. Stay online for the next wave."
-                : "No live open requests in range. Forecast timing may still improve wait estimates when demand picks up."}
+                ? t(
+                    "driver.hotspots.empty.noClustersLiveBody",
+                    "No demand clusters in range right now. Stay online for the next wave.",
+                  )
+                : t(
+                    "driver.hotspots.empty.noClustersForecastBody",
+                    "No live open requests in range. Forecast timing may still improve wait estimates when demand picks up.",
+                  )}
             </Text>
           </View>
         ) : (
@@ -302,7 +350,10 @@ export default function DriverHotspotsScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rowTitle}>{item.label}</Text>
                     <Text style={styles.rowSub}>
-                      {item.demand_level.replace("_", " ")} · score {item.score}
+                      {t("driver.hotspots.rowScore", "{{level}} · score {{score}}", {
+                        level: demandLevelLabel(item.demand_level, tr),
+                        score: item.score,
+                      })}
                     </Text>
                   </View>
                   <Text style={styles.mult}>
@@ -319,7 +370,10 @@ export default function DriverHotspotsScreen() {
             >
               <Ionicons name="navigate" size={22} color={MMD_WHITE} />
               <Text style={styles.navCtaLabel}>
-                Navigate to nearest hotspot
+                {t(
+                  "driver.hotspots.navigateNearest",
+                  "Navigate to nearest hotspot",
+                )}
               </Text>
             </TouchableOpacity>
           </>

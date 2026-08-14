@@ -23,8 +23,10 @@ export type SafetyRecordingStatus = {
   ok: boolean;
   ride_active?: boolean;
   client_audio_allowed?: boolean;
+  driver_audio_allowed?: boolean;
   driver_video_allowed?: boolean;
   client_audio_active?: boolean;
+  driver_audio_active?: boolean;
   driver_video_active?: boolean;
   any_active?: boolean;
   consent_message?: string;
@@ -45,7 +47,7 @@ export async function fetchSafetyRecordingStatus(rideId: string): Promise<Safety
 
 export async function startSafetyRecording(params: {
   rideId: string;
-  recordingType: "client_audio" | "driver_video";
+  recordingType: "client_audio" | "driver_audio" | "driver_video";
 }) {
   const res = await fetch(`${baseUrl()}/api/taxi/rides/safety-recording`, {
     method: "POST",

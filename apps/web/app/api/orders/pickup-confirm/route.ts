@@ -12,6 +12,9 @@ type Body = {
   orderId?: string;
   order_id?: string;
   proof_photo_url?: string | null;
+  pickup_code?: string | null;
+  dropoff_code?: string | null;
+  code?: string | null;
 };
 
 type RpcResult = {
@@ -439,6 +442,30 @@ export async function POST(req: NextRequest) {
           message: platformCheck.message,
           country_code: platformCheck.country_code,
         },
+        403
+      );
+    }
+
+    // Server-side OTP gate: clients that skip mobile verify cannot confirm pickup.
+    const pickupCode = String(body.pickup_code ?? body.code ?? "").trim();
+    const { data: verifyData, error: verifyErr } = await supabaseUser.rpc(
+      "verify_order_code",
+      {
+        p_order_id: orderId,
+        p_input_code: pickupCode,
+        p_code_type: "pickup",
+      }
+    );
+    if (verifyErr) {
+      return json({ error: verifyErr.message }, 500);
+    }
+    const verifyRow = (verifyData ?? null) as {
+      success?: boolean;
+      message?: string;
+    } | null;
+    if (verifyRow?.success !== true) {
+      return json(
+        { error: verifyRow?.message ?? "invalid_pickup_code" },
         403
       );
     }

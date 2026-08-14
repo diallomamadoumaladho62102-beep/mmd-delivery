@@ -185,7 +185,10 @@ export default function SellerOrdersScreen({ navigation }: Props) {
     } catch (e) {
       Alert.alert(
         t("common.errorTitle", "Error"),
-        toUserFacingError(e, "Unable to update order")
+        toUserFacingError(
+          e,
+          t("seller.orders.updateFailed", "Unable to update the order.")
+        )
       );
     } finally {
       setBusyId(null);

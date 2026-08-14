@@ -343,16 +343,32 @@
       "taxInfo": "معلومات ضريبية",
       "taxHint": "W-9 / 1099 (لاحقاً)"
     },
-
     "tax": {
       "title": "معلومات الضرائب",
-      "sections": { "overview": "نظرة عامة", "important": "مهم" },
-      "badges": { "soon": "قريباً" },
+      "sections": {
+        "overview": "نظرة عامة",
+        "important": "مهم"
+      },
+      "badges": {
+        "soon": "قريباً"
+      },
       "overview": {
-        "status": { "label": "الحالة", "value": "غير مطلوب حالياً" },
-        "formType": { "label": "نوع النموذج", "value": "W-9 / 1099 (الولايات المتحدة)" },
-        "country": { "label": "الدولة", "value": "الولايات المتحدة" },
-        "withholding": { "label": "الاقتطاع", "value": "لا يتم اقتطاع ضرائب" }
+        "status": {
+          "label": "الحالة",
+          "value": "غير مطلوب حالياً"
+        },
+        "formType": {
+          "label": "نوع النموذج",
+          "value": "W-9 / 1099 (الولايات المتحدة)"
+        },
+        "country": {
+          "label": "الدولة",
+          "value": "الولايات المتحدة"
+        },
+        "withholding": {
+          "label": "الاقتطاع",
+          "value": "لا يتم اقتطاع ضرائب"
+        }
       },
       "important": {
         "title": "نحن لا نقتطع الضرائب",
@@ -371,7 +387,6 @@
         "comingSoonBody": "سيكون تنزيل الملخص السنوي متاحاً هنا (PDF)."
       }
     },
-
     "auth": {
       "actions": {
         "camera": "الكاميرا",
@@ -693,20 +708,28 @@
       "tip": "إكرامية",
       "driver_label": "السائق",
       "details": {
-        "auth": { "title": "تسجيل الدخول" },
+        "auth": {
+          "title": "تسجيل الدخول"
+        },
         "breakdown": {
           "netPrice": "السعر الصافي",
           "tip": "إكرامية",
           "title": "التفاصيل",
           "total": "إجمالي الأرباح"
         },
-        "calc": { "title": "الحساب" },
-        "completed": { "title": "الرحلات المكتملة" },
+        "calc": {
+          "title": "الحساب"
+        },
+        "completed": {
+          "title": "الرحلات المكتملة"
+        },
         "driverId": "السائق",
         "earnings": "الأرباح",
         "loadError": "تعذر تحميل التفاصيل.",
         "noTripToShow": "لا توجد رحلة لعرض التفاصيل.",
-        "range": { "today": "اليوم" },
+        "range": {
+          "today": "اليوم"
+        },
         "stats": {
           "driving": "القيادة",
           "online": "متصل",
@@ -715,7 +738,9 @@
           "trips": "الرحلات"
         },
         "title": "التفاصيل",
-        "tripAlert": { "title": "رحلة" },
+        "tripAlert": {
+          "title": "رحلة"
+        },
         "tripsLabel": "الرحلات",
         "week": {
           "fri": "الجمعة",
@@ -728,13 +753,17 @@
         }
       },
       "history": {
-        "auth": { "title": "تسجيل الدخول" },
+        "auth": {
+          "title": "تسجيل الدخول"
+        },
         "filters": {
           "month": "الشهر",
           "today": "اليوم",
           "week": "الأسبوع"
         },
-        "list": { "title": "الرحلات المُسلّمة" },
+        "list": {
+          "title": "الرحلات المُسلّمة"
+        },
         "loadError": "تعذر تحميل السجل.",
         "range": {
           "month": "هذا الشهر",
@@ -973,8 +1002,12 @@
         "refreshing": "جارٍ التحديث..."
       },
       "alert": {
-        "boostSelected": { "title": "تم اختيار التعزيز ✅" },
-        "help": { "title": "مساعدة" }
+        "boostSelected": {
+          "title": "تم اختيار التعزيز ✅"
+        },
+        "help": {
+          "title": "مساعدة"
+        }
       },
       "badge": {
         "bonusDollar": "مكافأة $",
@@ -1099,8 +1132,12 @@
     "referrals": {
       "deliveriesLabel": "🍔 توصيلات",
       "footer": "إحالة MMD • السائق",
-      "header": { "title": "ادعُ أصدقاءك" },
-      "headline": { "noProgram": "ادعُ أصدقاءك" },
+      "header": {
+        "title": "ادعُ أصدقاءك"
+      },
+      "headline": {
+        "noProgram": "ادعُ أصدقاءك"
+      },
       "inviteNow": "دعوة",
       "modal": {
         "allRewardsTitle": "كل المكافآت",
@@ -1146,8 +1183,12 @@
         "alreadyToday": "قمت بالسحب اليوم بالفعل. حاول غداً.",
         "min": "الحد الأدنى للسحب: {{min}}."
       },
-      "debug": { "driver": "السائق" },
-      "header": { "title": "المحفظة" },
+      "debug": {
+        "driver": "السائق"
+      },
+      "header": {
+        "title": "المحفظة"
+      },
       "loadError": "تعذر تحميل المحفظة.",
       "pending": {
         "title": "قيد الانتظار",

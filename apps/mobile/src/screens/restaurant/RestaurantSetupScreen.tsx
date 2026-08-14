@@ -260,8 +260,10 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        toUserFacingError(err, "Impossible de choisir le logo."
-)
+        toUserFacingError(
+          err,
+          t("restaurant.setup.alerts.logoPickFailed", "Unable to pick the logo."),
+        )
       );
     }
   }
@@ -285,7 +287,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         cacheControl: "3600",
       });
 
-    if (error) throw new Error(toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+    if (error) throw new Error(toUserFacingError(error));
 
     return filePath;
   }
@@ -318,7 +320,13 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        toUserFacingError(err, "Impossible de choisir la couverture.")
+        toUserFacingError(
+          err,
+          t(
+            "restaurant.setup.alerts.coverPickFailed",
+            "Unable to pick the cover image.",
+          ),
+        )
       );
     }
   }
@@ -344,7 +352,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
 
     if (error) {
       throw new Error(
-        toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer.")
+        toUserFacingError(error)
       );
     }
 
@@ -375,8 +383,13 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        toUserFacingError(err, "Impossible de choisir le document."
-)
+        toUserFacingError(
+          err,
+          t(
+            "restaurant.setup.alerts.documentPickFailed",
+            "Unable to pick the document.",
+          ),
+        )
       );
     }
   }
@@ -618,8 +631,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        toUserFacingError(err, "Erreur inconnue"
-)
+        toUserFacingError(err),
       );
     } finally {
       setLoading(false);

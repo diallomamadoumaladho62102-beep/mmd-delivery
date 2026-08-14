@@ -92,10 +92,8 @@ export const siteCssVars = `
   --site-amber: #f59e0b;
   min-height: 100vh;
   color: var(--site-text);
-  background:
-    radial-gradient(ellipse at top left, rgba(251, 146, 60, 0.18), transparent 42%),
-    radial-gradient(ellipse at top right, rgba(244, 63, 94, 0.12), transparent 40%),
-    linear-gradient(180deg, #020617 0%, #030712 55%, #020617 100%);
+  /* Brand blue — matches other MMD surfaces (#003399). Keep text/cards unchanged. */
+  background: #003399;
   font-family: ${siteTheme.fontFamily};
 }
 @media (prefers-reduced-motion: reduce) {

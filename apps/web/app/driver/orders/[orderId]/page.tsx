@@ -249,6 +249,9 @@ export default function DriverOrderDetailsPage() {
         body: JSON.stringify({
           order_id: order.id,
           proof_photo_url: proofUrl,
+          ...(verifyingKind === "pickup"
+            ? { pickup_code: codeInput.trim(), code: codeInput.trim() }
+            : { dropoff_code: codeInput.trim(), code: codeInput.trim() }),
         }),
       });
 

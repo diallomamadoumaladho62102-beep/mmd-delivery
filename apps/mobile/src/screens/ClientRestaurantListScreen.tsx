@@ -334,7 +334,7 @@ export function ClientRestaurantListScreen() {
               textAlign: "center",
             }}
           >
-            We Deliver With Heart
+            {t("brand.tagline", "We Deliver With Heart ❤️")}
           </Text>
           <ActivityIndicator size="large" color={MMD_GOLD_BRIGHT} style={{ marginTop: 28 }} />
           <Text

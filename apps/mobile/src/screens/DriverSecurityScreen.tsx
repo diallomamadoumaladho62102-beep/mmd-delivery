@@ -104,10 +104,7 @@ export function DriverSecurityScreen() {
       if (error) {
         Alert.alert(
           t("driver.security.errorTitle"),
-          toUserFacingError(
-            error,
-            "Une action temporairement impossible s'est produite. Veuillez réessayer.",
-          ),
+          toUserFacingError(error),
         );
         return;
       }

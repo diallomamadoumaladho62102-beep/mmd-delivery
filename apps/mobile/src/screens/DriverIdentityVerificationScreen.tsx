@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
@@ -64,6 +65,7 @@ type ScreenPhase =
   | "error";
 
 export function DriverIdentityVerificationScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
   const contentMax = width >= 768 ? 560 : undefined;
@@ -147,19 +149,29 @@ export function DriverIdentityVerificationScreen() {
     } catch (error) {
       const message = getDriverIdentityPhotoErrorMessage(error);
       if (String((error as Error).message) === "CAMERA_PERMISSION_DENIED") {
-        Alert.alert("Camera required", message, [
-          { text: "Cancel", style: "cancel" },
-          { text: "Open settings", onPress: () => Linking.openSettings() },
-        ]);
+        Alert.alert(
+          t("driver.identity.cameraRequiredTitle", "Camera required"),
+          message,
+          [
+            { text: t("driver.identity.cancel", "Cancel"), style: "cancel" },
+            {
+              text: t("driver.identity.openSettings", "Open settings"),
+              onPress: () => Linking.openSettings(),
+            },
+          ],
+        );
         return;
       }
-      Alert.alert("Error", message);
+      Alert.alert(t("driver.identity.errorTitle", "Error"), message);
     }
-  }, []);
+  }, [t]);
 
   const handleSubmit = useCallback(async () => {
     if (!checkId || !photoUri) {
-      Alert.alert("Selfie required", "Take a selfie before continuing.");
+      Alert.alert(
+        t("driver.identity.selfieRequiredTitle", "Selfie required"),
+        t("driver.identity.selfieRequiredBody", "Take a selfie before continuing."),
+      );
       return;
     }
 
@@ -180,9 +192,12 @@ export function DriverIdentityVerificationScreen() {
     } catch (error) {
       setPhase("capture");
       setErrorMessage(getDriverIdentityPhotoErrorMessage(error));
-      Alert.alert("Upload failed", getDriverIdentityPhotoErrorMessage(error));
+      Alert.alert(
+        t("driver.identity.uploadFailedTitle", "Upload failed"),
+        getDriverIdentityPhotoErrorMessage(error),
+      );
     }
-  }, [checkId, photoUri]);
+  }, [checkId, photoUri, t]);
 
   const handleDone = useCallback(() => {
     if (gateStatus === "verified" || gateStatus === "not_required") {
@@ -317,8 +332,11 @@ export function DriverIdentityVerificationScreen() {
                   style={styles.linkBtn}
                   onPress={() =>
                     Alert.alert(
-                      "Need help?",
-                      "Contact MMD Delivery support if you cannot use the camera.",
+                      t("driver.identity.helpTitle", "Need help?"),
+                      t(
+                        "driver.identity.helpBody",
+                        "Contact MMD Delivery support if you cannot use the camera.",
+                      ),
                     )
                   }
                 >

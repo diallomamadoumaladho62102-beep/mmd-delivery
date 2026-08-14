@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import i18n from "i18next";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   ActivityIndicator,
@@ -47,7 +48,12 @@ export function DriverTripLocationCard({
       .catch((e: unknown) => {
         if (cancelled) return;
         setLocation(null);
-        setError(toUserFacingError(e, "Unable to load location"));
+        setError(
+          toUserFacingError(
+            e,
+            i18n.t("location.tripCard.loadFailed", "Unable to load the location."),
+          ),
+        );
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

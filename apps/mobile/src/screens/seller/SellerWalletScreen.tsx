@@ -235,7 +235,10 @@ export default function SellerWalletScreen() {
               void startStripeOnboarding("seller").catch((e) =>
                 Alert.alert(
                   t("common.errorTitle", "Error"),
-                  toUserFacingError(e, "Unable to open Stripe")
+                  toUserFacingError(
+                    e,
+                    t("seller.wallet.stripeFailed", "Unable to open Stripe.")
+                  )
                 )
               );
             }}

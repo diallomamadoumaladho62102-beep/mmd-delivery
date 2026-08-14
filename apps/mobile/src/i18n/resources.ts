@@ -35,17 +35,21 @@ function deepMerge(base: unknown, override: unknown): unknown {
 }
 
 function buildTranslation(common: unknown, extras: unknown, enBase?: unknown) {
+  // Merge order: English base (common+extras) → locale common → locale extras.
+  // Ensures keys that exist only in en/extras are never missing in other locales.
   const merged = deepMerge(deepMerge(enBase ?? common, common), extras);
   return merged;
 }
 
+const enTranslation = buildTranslation(enCommon, enExtras);
+
 export const resources = {
-  en: { translation: buildTranslation(enCommon, enExtras) },
-  fr: { translation: buildTranslation(frCommon, frExtras, enCommon) },
-  es: { translation: buildTranslation(esCommon, esExtras, enCommon) },
-  ar: { translation: buildTranslation(arCommon, arExtras, enCommon) },
-  zh: { translation: buildTranslation(zhCommon, zhExtras, enCommon) },
-  ff: { translation: buildTranslation(ffCommon, ffExtras, enCommon) },
+  en: { translation: enTranslation },
+  fr: { translation: buildTranslation(frCommon, frExtras, enTranslation) },
+  es: { translation: buildTranslation(esCommon, esExtras, enTranslation) },
+  ar: { translation: buildTranslation(arCommon, arExtras, enTranslation) },
+  zh: { translation: buildTranslation(zhCommon, zhExtras, enTranslation) },
+  ff: { translation: buildTranslation(ffCommon, ffExtras, enTranslation) },
 } as const;
 
 export type SupportedLocale = keyof typeof resources;

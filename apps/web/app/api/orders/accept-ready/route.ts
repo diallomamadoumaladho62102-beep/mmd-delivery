@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import {
   driverAcceptJson,
   getOrderId,
+  getRpcRow,
   requireDriverAcceptUser,
 } from "@/lib/driverAcceptApi";
 import { fireFoodOrderDispatchedTransactional } from "@/lib/transactionalDispatchNotify";
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
       return driverAcceptJson({ ok: false, error: message }, 400);
     }
 
-    const { error } = await auth.supabaseUser.rpc("driver_accept_ready_order", {
+    const { data, error } = await auth.supabaseUser.rpc("driver_accept_ready_order", {
       p_order_id: orderId,
     });
 
@@ -32,12 +33,21 @@ export async function POST(req: NextRequest) {
       return driverAcceptJson({ ok: false, error: error.message }, 500);
     }
 
+    const result = getRpcRow<{ ok?: boolean; message?: string; order_id?: string }>(data);
+    if (!result?.ok) {
+      return driverAcceptJson(
+        { ok: false, error: result?.message ?? "order_not_available" },
+        409,
+      );
+    }
+
+    const acceptedOrderId = String(result.order_id ?? orderId);
     await fireFoodOrderDispatchedTransactional({
       supabaseAdmin: auth.supabaseAdmin,
-      orderId,
+      orderId: acceptedOrderId,
     });
 
-    return driverAcceptJson({ ok: true, order_id: orderId });
+    return driverAcceptJson({ ok: true, order_id: acceptedOrderId, result });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
     return driverAcceptJson({ ok: false, error: message }, 500);

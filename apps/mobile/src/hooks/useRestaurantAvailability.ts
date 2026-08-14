@@ -38,7 +38,15 @@ export function useRestaurantAvailability() {
         .eq("user_id", restaurantUserId);
 
       if (error) {
-        throw new Error(toUserFacingError(error, "Unable to change restaurant status."));
+        throw new Error(
+          toUserFacingError(
+            error,
+            t(
+              "restaurant.dashboard.availabilityUpdateFailed",
+              "Unable to change the restaurant status."
+            )
+          )
+        );
       }
 
       return nextValue;

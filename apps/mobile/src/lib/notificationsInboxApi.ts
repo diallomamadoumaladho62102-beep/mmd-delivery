@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { API_BASE_URL } from "./apiBase";
 import { supabase } from "./supabase";
 import { logTechnicalError, toUserFacingError } from "./userFacingError";
@@ -60,7 +61,10 @@ export async function fetchNotificationInbox(params?: {
     throw new Error(
       toUserFacingError(
         out,
-        "Unable to load notifications. Please try again."
+        i18n.t(
+          "notifications.inbox.loadFailed",
+          "Unable to load notifications. Please try again."
+        )
       )
     );
   }
@@ -87,7 +91,13 @@ export async function patchNotificationInbox(
       action,
     });
     throw new Error(
-      toUserFacingError(out, "Unable to update notification. Please try again.")
+      toUserFacingError(
+        out,
+        i18n.t(
+          "notifications.inbox.updateFailed",
+          "Unable to update the notification. Please try again."
+        )
+      )
     );
   }
   return out;

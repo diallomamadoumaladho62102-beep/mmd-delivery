@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   ActivityIndicator,
@@ -116,6 +117,7 @@ export default function MMDLocationPicker({
   onSave,
   onCancel,
 }: Props) {
+  const { t } = useTranslation();
   const mapReady = ensureMapboxTokenApplied();
 
   if (!countryCode?.trim()) {
@@ -229,7 +231,10 @@ export default function MMDLocationPicker({
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert("Permission required", "Allow location access to use GPS.");
+        Alert.alert(
+          t("locationPicker.permissionTitle", "Permission required"),
+          t("locationPicker.gpsPermissionBody", "Allow location access to use GPS."),
+        );
         return;
       }
 
@@ -246,7 +251,10 @@ export default function MMDLocationPicker({
       setAccuracyM(pos.coords.accuracy ?? null);
       setLocationSource("gps");
     } catch (e: unknown) {
-      Alert.alert("GPS error", toUserFacingError(e, "Unable to read GPS"));
+      Alert.alert(
+        t("locationPicker.gpsErrorTitle", "GPS error"),
+        toUserFacingError(e, t("locationPicker.gpsErrorBody", "Unable to read GPS")),
+      );
     } finally {
       setLoadingGps(false);
     }
@@ -285,7 +293,10 @@ export default function MMDLocationPicker({
   async function handlePickPhoto() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Permission required", "Allow camera access to add a location photo.");
+      Alert.alert(
+        t("locationPicker.permissionTitle", "Permission required"),
+        t("locationPicker.cameraPermissionBody", "Allow camera access to add a location photo."),
+      );
       return;
     }
 
@@ -309,12 +320,21 @@ export default function MMDLocationPicker({
   async function handleSave() {
     if (!canSave) {
       Alert.alert(
-        "Missing information",
+        t("locationPicker.missingInfoTitle", "Missing information"),
         structuredMode
-          ? "Enter street number, city, and postal code, then place the pin."
+          ? t(
+              "locationPicker.missingStructuredBody",
+              "Enter street number, city, and postal code, then place the pin.",
+            )
           : requirePinConfirm
-            ? "Confirm the map pin and add landmark or directions so the driver can find you."
-            : "Move the pin on the map and describe your exact location (minimum 8 characters).",
+            ? t(
+                "locationPicker.missingPinConfirmBody",
+                "Confirm the map pin and add landmark or directions so the driver can find you.",
+              )
+            : t(
+                "locationPicker.missingDirectionsBody",
+                "Move the pin on the map and describe your exact location (minimum 8 characters).",
+              ),
       );
       return;
     }
@@ -363,7 +383,10 @@ export default function MMDLocationPicker({
 
       await onSave({ location });
     } catch (e: unknown) {
-      Alert.alert("Save failed", toUserFacingError(e, "Unable to save location"));
+      Alert.alert(
+        t("locationPicker.saveFailedTitle", "Save failed"),
+        toUserFacingError(e, t("locationPicker.saveFailedBody", "Unable to save location")),
+      );
     } finally {
       setSaving(false);
     }

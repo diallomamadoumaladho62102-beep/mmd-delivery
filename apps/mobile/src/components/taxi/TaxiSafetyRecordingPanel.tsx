@@ -10,12 +10,11 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import {
   bindDriverSafetyCamera,
-  requestClientAudioPermissions,
-  startClientAudioCapture,
+  requestSafetyAudioPermissions,
   startDriverSafetyVideoCapture,
-  stopClientAudioCapture,
   stopDriverSafetyVideoCapture,
 } from "../../lib/taxiSafetyRecordingCapture";
 import { toUserFacingError } from "../../lib/userFacingError";
@@ -35,15 +34,17 @@ type Props = {
   premium?: boolean;
 };
 
-const CONSENT_MESSAGE =
-  "A safety recording is active to protect both parties.";
-
+/**
+ * Optional Safety Video for drivers (camera + mic).
+ * Safety Audio for both roles lives in SafetyAudioCard.
+ */
 export function TaxiSafetyRecordingPanel({
   rideId,
   role,
   rideActive,
   premium = false,
 }: Props) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<Awaited<
@@ -54,11 +55,9 @@ export function TaxiSafetyRecordingPanel({
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView | null>(null);
 
-  const recordingType = role === "client" ? "client_audio" : "driver_video";
-  const allowed =
-    role === "client"
-      ? status?.client_audio_allowed !== false
-      : status?.driver_video_allowed !== false;
+  // Video panel is driver-only in production UI.
+  const recordingType = "driver_video" as const;
+  const allowed = status?.driver_video_allowed !== false;
 
   const refresh = useCallback(async () => {
     if (!rideId) return;
@@ -80,64 +79,87 @@ export function TaxiSafetyRecordingPanel({
 
   useEffect(() => {
     return () => {
-      if (role === "driver") bindDriverSafetyCamera(null);
+      bindDriverSafetyCamera(null);
     };
-  }, [role]);
+  }, []);
 
-  const otherPartyActive =
-    role === "client" ? status?.driver_video_active : status?.client_audio_active;
-  const ownActive =
-    role === "client" ? status?.client_audio_active : status?.driver_video_active;
+  const otherPartyActive = Boolean(
+    status?.client_audio_active || status?.driver_audio_active,
+  );
+  const ownActive = Boolean(status?.driver_video_active);
 
-  const handleStart = async () => {
-    if (!rideActive || !allowed) return;
+  const runStart = async () => {
+    if (!rideActive || !allowed || role !== "driver") return;
     setBusy(true);
     try {
-      if (role === "client") {
-        const granted = await requestClientAudioPermissions();
-        if (!granted) {
+      if (!permission?.granted) {
+        const next = await requestPermission();
+        if (!next.granted) {
           Alert.alert(
-            "Microphone",
-            "Allow microphone access for the safety recording.",
-          );
-          return;
-        }
-      } else {
-        if (!permission?.granted) {
-          const next = await requestPermission();
-          if (!next.granted) {
-            Alert.alert(
-              "Camera",
+            t("taxi.tracking.safety.cameraTitle", "Camera"),
+            t(
+              "taxi.tracking.safety.cameraBody",
               "Allow camera access for in-app safety recording. Recording stays inside MMD Delivery.",
-            );
-            return;
-          }
-        }
-        if (!cameraReady || !cameraRef.current) {
-          Alert.alert(
-            "Camera",
-            "Safety camera is starting. Tap Record again in a moment.",
+            ),
           );
           return;
         }
+      }
+      const micOk = await requestSafetyAudioPermissions();
+      if (!micOk) {
+        Alert.alert(
+          t("taxi.tracking.safety.micTitle", "Microphone"),
+          t(
+            "taxi.tracking.safety.videoMicBody",
+            "Allow microphone access for safety video audio. You can enable it in Settings if blocked.",
+          ),
+        );
+        return;
+      }
+      if (!cameraReady || !cameraRef.current) {
+        Alert.alert(
+          t("taxi.tracking.safety.cameraTitle", "Camera"),
+          t(
+            "taxi.tracking.safety.cameraStarting",
+            "Safety camera is starting. Tap Record again in a moment.",
+          ),
+        );
+        return;
       }
 
       const started = await startSafetyRecording({ rideId, recordingType });
       const recordingId = String(started.recording?.id ?? "");
       setLocalRecordingId(recordingId);
-
-      if (role === "client") {
-        await startClientAudioCapture();
-      } else {
-        await startDriverSafetyVideoCapture();
-      }
-
+      await startDriverSafetyVideoCapture();
       await refresh();
     } catch (error) {
-      Alert.alert("Error", toUserFacingError(error, "Unable to start recording"));
+      Alert.alert(
+        t("taxi.tracking.safety.errorTitle", "Error"),
+        toUserFacingError(
+          error,
+          t("taxi.tracking.safety.startFailed", "Unable to start recording."),
+        ),
+      );
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleStart = () => {
+    Alert.alert(
+      t("taxi.tracking.safety.videoConsentTitle", "Start Safety Video?"),
+      t(
+        "taxi.tracking.safety.videoConsentBody",
+        "This uses your camera and microphone inside MMD Delivery only. The other party is notified. Consent is independent — their mic is not turned on by this action.",
+      ),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("taxi.tracking.safety.consentConfirm", "I understand — Record"),
+          onPress: () => void runStart(),
+        },
+      ],
+    );
   };
 
   const handleStop = async () => {
@@ -147,24 +169,18 @@ export function TaxiSafetyRecordingPanel({
         (row) =>
           String(row.recording_type) === recordingType &&
           String(row.status) === "recording" &&
-          String(row.initiator_role) === role,
+          String(row.initiator_role) === "driver",
       );
       const recordingId = localRecordingId ?? String(activeRecording?.id ?? "");
       if (!recordingId) {
-        Alert.alert("Error", "No active recording.");
+        Alert.alert(
+          t("taxi.tracking.safety.errorTitle", "Error"),
+          t("taxi.tracking.safety.noActive", "No active recording."),
+        );
         return;
       }
 
-      let capture:
-        | { uri: string; mimeType: string; extension: string }
-        | null = null;
-
-      if (role === "client") {
-        capture = await stopClientAudioCapture();
-      } else {
-        capture = await stopDriverSafetyVideoCapture();
-      }
-
+      const capture = await stopDriverSafetyVideoCapture();
       await stopSafetyRecording(recordingId);
 
       if (capture) {
@@ -178,9 +194,22 @@ export function TaxiSafetyRecordingPanel({
       }
 
       setLocalRecordingId(null);
+      Alert.alert(
+        t("taxi.tracking.safety.uploadTitle", "Safety audio"),
+        t(
+          "taxi.tracking.safety.stoppedOk",
+          "Recording stopped and stored securely.",
+        ),
+      );
       await refresh();
     } catch (error) {
-      Alert.alert("Error", toUserFacingError(error, "Unable to stop recording"));
+      Alert.alert(
+        t("taxi.tracking.safety.errorTitle", "Error"),
+        toUserFacingError(
+          error,
+          t("taxi.tracking.safety.stopFailed", "Unable to stop recording."),
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -193,18 +222,24 @@ export function TaxiSafetyRecordingPanel({
       await Linking.openURL(downloadUrl);
     } catch (error) {
       Alert.alert(
-        "Error",
-        toUserFacingError(error, "Unable to download recording"),
+        t("taxi.tracking.safety.errorTitle", "Error"),
+        toUserFacingError(
+          error,
+          t("taxi.tracking.safety.downloadFailed", "Unable to download the recording."),
+        ),
       );
     }
   };
 
-  if (!rideActive || loading) return null;
+  if (!rideActive || loading || role !== "driver") return null;
   if (!allowed) {
     return (
       <View style={styles.blocked}>
         <Text style={styles.blockedText}>
-          Safety recording is not allowed in this area.
+          {t(
+            "taxi.tracking.safety.notAllowed",
+            "Safety recording is not allowed in this area.",
+          )}
         </Text>
       </View>
     );
@@ -212,65 +247,72 @@ export function TaxiSafetyRecordingPanel({
 
   const downloadable = (status?.recordings ?? []).filter(
     (row) =>
-      String(row.initiator_role) === role &&
+      String(row.initiator_role) === "driver" &&
+      String(row.recording_type) === "driver_video" &&
       ["available", "locked_for_review"].includes(String(row.status)),
   );
 
-  const showHiddenCamera = role === "driver";
-
   return (
     <View style={premium ? styles.premiumWrap : styles.wrap}>
-      {/* Tiny in-app camera — never opens the system Camera app. */}
-      {showHiddenCamera ? (
-        <CameraView
-          ref={(ref) => {
-            cameraRef.current = ref;
-            bindDriverSafetyCamera(ref);
-          }}
-          style={styles.hiddenCamera}
-          facing="front"
-          mode="video"
-          mute={false}
-          onCameraReady={() => setCameraReady(true)}
-        />
-      ) : null}
+      <CameraView
+        ref={(ref) => {
+          cameraRef.current = ref;
+          bindDriverSafetyCamera(ref);
+        }}
+        style={styles.hiddenCamera}
+        facing="front"
+        mode="video"
+        mute={false}
+        onCameraReady={() => setCameraReady(true)}
+      />
 
-      {(ownActive || otherPartyActive || status?.any_active) && (
+      {(ownActive || otherPartyActive) && (
         <View style={styles.activeBanner}>
           <View style={styles.recDot} />
           <Text style={styles.activeText}>
             {ownActive
-              ? role === "driver"
-                ? "Safety video recording in background"
-                : "Safety audio recording in progress"
-              : CONSENT_MESSAGE}
+              ? t(
+                  "taxi.tracking.safety.videoActive",
+                  "RECORDING — safety video is active (camera + mic). Tap Stop to end.",
+                )
+              : t(
+                  "taxi.tracking.safety.otherActive",
+                  "The other party started a safety recording on their device. Your microphone stays off unless you start yours.",
+                )}
           </Text>
         </View>
       )}
 
-      {premium && role === "driver" ? (
+      {premium ? (
         <View style={styles.premiumRow}>
           <View style={styles.premiumIcon}>
-            <Ionicons name="shield-checkmark" size={20} color="#C4B5FD" />
+            <Ionicons name="videocam" size={20} color="#C4B5FD" />
           </View>
           <View style={styles.premiumCopy}>
-            <Text style={styles.premiumTitle}>Safety first</Text>
+            <Text style={styles.premiumTitle}>
+              {t("taxi.tracking.safety.videoTitle", "Safety video (optional)")}
+            </Text>
             <Text style={styles.premiumSub}>
-              Record a video for your safety and protection.
+              {t(
+                "taxi.tracking.safety.videoSubtitle",
+                "Record an in-app front-camera video with audio for protection. Never starts silently.",
+              )}
             </Text>
           </View>
           {!ownActive ? (
             <TouchableOpacity
               style={styles.recordPill}
               disabled={busy}
-              onPress={() => void handleStart()}
+              onPress={handleStart}
             >
               {busy ? (
                 <ActivityIndicator color="#FFF" size="small" />
               ) : (
                 <>
                   <Ionicons name="videocam" size={14} color="#FFF" />
-                  <Text style={styles.recordPillText}>Record video</Text>
+                  <Text style={styles.recordPillText}>
+                    {t("taxi.tracking.safety.videoRecord", "Record video")}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -280,7 +322,9 @@ export function TaxiSafetyRecordingPanel({
               disabled={busy}
               onPress={() => void handleStop()}
             >
-              <Text style={styles.recordPillText}>Stop</Text>
+              <Text style={styles.recordPillText}>
+                {t("taxi.tracking.safety.stop", "Stop")}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -290,15 +334,13 @@ export function TaxiSafetyRecordingPanel({
             <TouchableOpacity
               style={styles.startBtn}
               disabled={busy}
-              onPress={() => void handleStart()}
+              onPress={handleStart}
             >
               {busy ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
                 <Text style={styles.btnText}>
-                  {role === "client"
-                    ? "Record safety audio"
-                    : "Record Safety Video"}
+                  {t("taxi.tracking.safety.videoRecord", "Record video")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -308,7 +350,9 @@ export function TaxiSafetyRecordingPanel({
               disabled={busy}
               onPress={() => void handleStop()}
             >
-              <Text style={styles.btnText}>Stop recording</Text>
+              <Text style={styles.btnText}>
+                {t("taxi.tracking.safety.stopRecording", "Stop recording")}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -321,7 +365,10 @@ export function TaxiSafetyRecordingPanel({
           onPress={() => void handleDownload(String(row.id))}
         >
           <Text style={styles.btnText}>
-            Download before expiry ({String(row.expires_at ?? "").slice(0, 10)})
+            {t("taxi.tracking.safety.downloadBeforeExpiry", {
+              date: String(row.expires_at ?? "").slice(0, 10),
+              defaultValue: "Download before expiry ({{date}})",
+            })}
           </Text>
         </TouchableOpacity>
       ))}

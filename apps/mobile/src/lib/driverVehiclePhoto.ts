@@ -2,6 +2,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { Alert } from "react-native";
+import i18n from "../i18n";
 import { supabase } from "./supabase";
 import { vehiclePhotoStoragePath } from "./driverVehiclePhotoPath";
 
@@ -72,8 +73,11 @@ async function pickVehiclePhoto(
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       Alert.alert(
-        "Camera",
-        "Allow camera access to photograph your vehicle.",
+        i18n.t("driver.vehicle.cameraTitle", "Camera"),
+        i18n.t(
+          "driver.vehicle.cameraPermissionVehicle",
+          "Allow camera access to photograph your vehicle.",
+        ),
       );
       return null;
     }
@@ -91,8 +95,11 @@ async function pickVehiclePhoto(
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     Alert.alert(
-      "Photos",
-      "Allow photo library access to choose a vehicle photo.",
+      i18n.t("driver.vehicle.photosTitle", "Photos"),
+      i18n.t(
+        "driver.vehicle.photosPermissionVehicle",
+        "Allow photo library access to choose a vehicle photo.",
+      ),
     );
     return null;
   }

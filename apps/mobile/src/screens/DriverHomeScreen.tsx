@@ -1110,7 +1110,7 @@ export function DriverHomeScreen() {
       if (blockMessage) {
         await setDriverOnlineStatus(false);
         Alert.alert(
-          t("shared.orderChat.alerts.errorTitle", "Erreur"),
+          t("shared.orderChat.alerts.errorTitle", "Error"),
           blockMessage,
         );
         return false;
@@ -1150,13 +1150,19 @@ export function DriverHomeScreen() {
         if (identityBlocksDriverOnline(identityStatus.gate_status)) {
           await setDriverOnlineStatus(false);
           Alert.alert(
-            "Photo verification (safety)",
+            t("driver.home.identityPhotoVerification.title", "Photo verification (safety)"),
             identityStatus.message ??
-              "Complete photo/liveness verification before going online. This is separate from legal ID verification (Stripe Identity).",
+              t(
+                "driver.home.identityPhotoVerification.body",
+                "Complete photo/liveness verification before going online. This is separate from legal ID verification (Stripe Identity).",
+              ),
             [
-              { text: "Cancel", style: "cancel" },
               {
-                text: "Verify photo",
+                text: t("driver.home.identityPhotoVerification.cancel", "Cancel"),
+                style: "cancel",
+              },
+              {
+                text: t("driver.home.identityPhotoVerification.verifyPhoto", "Verify photo"),
                 onPress: () => navigation.navigate("DriverIdentityVerification"),
               },
             ],
@@ -1169,8 +1175,11 @@ export function DriverHomeScreen() {
           await setDriverOnlineStatus(false);
         }
         Alert.alert(
-          t("shared.orderChat.alerts.errorTitle", "Erreur"),
-          "Impossible de vérifier votre identité. Réessayez dans un instant.",
+          t("shared.orderChat.alerts.errorTitle", "Error"),
+          t(
+            "driver.home.identityVerifyFailed",
+            "Unable to verify your identity. Try again in a moment.",
+          ),
         );
         return false;
       }
@@ -1240,7 +1249,7 @@ export function DriverHomeScreen() {
           locationPermissionDeniedAlertShownRef.current = true;
           Alert.alert(
             t("driver.home.gps.title", "GPS"),
-            t("driver.home.gps.permissionDenied", "Permission GPS refusée. Active la localisation dans les paramètres du téléphone."),
+            t("driver.home.gps.permissionDenied", "GPS permission denied. Enable location in phone settings."),
           );
         }
         return;
@@ -2161,8 +2170,8 @@ export function DriverHomeScreen() {
       } catch (e: any) {
         console.log("Erreur acceptation course:", e);
         Alert.alert(
-          t("shared.orderChat.alerts.errorTitle", "Erreur"),
-          e?.message ?? t("driver.home.errors.accept", "Impossible d'accepter la course."),
+          t("shared.orderChat.alerts.errorTitle", "Error"),
+          e?.message ?? t("driver.home.errors.accept", "Unable to accept the trip."),
         );
       } finally {
         setAcceptingId(null);
@@ -2215,8 +2224,8 @@ export function DriverHomeScreen() {
     } catch (e: any) {
       console.log("Erreur refus offre driver:", e);
       Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        e?.message ?? t("driver.home.errors.decline", "Impossible de refuser cette offre."),
+        t("shared.orderChat.alerts.errorTitle", "Error"),
+        e?.message ?? t("driver.home.errors.decline", "Unable to decline this offer."),
       );
     } finally {
       await stopSound();
@@ -2322,7 +2331,10 @@ export function DriverHomeScreen() {
         .single();
 
       if (driverErr || !driver) {
-        Alert.alert("Erreur", "Profil chauffeur introuvable.");
+        Alert.alert(
+          t("shared.orderChat.alerts.errorTitle", "Error"),
+          t("driver.home.profileNotFound", "Driver profile not found."),
+        );
         return;
       }
 
@@ -2361,33 +2373,53 @@ export function DriverHomeScreen() {
       const hasDoc = (docType: string) => approvedDocTypeSet.has(docType.toLowerCase());
       const missing: string[] = [];
 
-      if (!driver.full_name) missing.push("Nom complet");
-      if (!driver.phone) missing.push("Téléphone");
-      if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
-      if (!driver.address) missing.push("Adresse");
-      if (!driver.city) missing.push("Ville");
-      if (!driver.state) missing.push("État");
-      if (!driver.zip_code) missing.push("ZIP code");
-      if (!driver.date_of_birth) missing.push("Date de naissance");
+      if (!driver.full_name) missing.push(t("driver.home.profileFields.fullName", "Full name"));
+      if (!driver.phone) missing.push(t("driver.home.profileFields.phone", "Phone"));
+      if (!driver.emergency_phone) {
+        missing.push(t("driver.home.profileFields.emergencyPhone", "Emergency phone"));
+      }
+      if (!driver.address) missing.push(t("driver.home.profileFields.address", "Address"));
+      if (!driver.city) missing.push(t("driver.home.profileFields.city", "City"));
+      if (!driver.state) missing.push(t("driver.home.profileFields.state", "State"));
+      if (!driver.zip_code) missing.push(t("driver.home.profileFields.zipCode", "ZIP code"));
+      if (!driver.date_of_birth) {
+        missing.push(t("driver.home.profileFields.dateOfBirth", "Date of birth"));
+      }
 
-      if (!hasDoc("profile_photo")) missing.push("Photo personnelle");
-      if (!hasDoc("id_card_front")) missing.push("Pièce identité recto");
-      if (!hasDoc("id_card_back")) missing.push("Pièce identité verso");
+      if (!hasDoc("profile_photo")) {
+        missing.push(t("driver.home.profileFields.profilePhoto", "Profile photo"));
+      }
+      if (!hasDoc("id_card_front")) {
+        missing.push(t("driver.home.profileFields.idFront", "ID card (front)"));
+      }
+      if (!hasDoc("id_card_back")) {
+        missing.push(t("driver.home.profileFields.idBack", "ID card (back)"));
+      }
 
       const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
       if (isVehicle) {
         // Align with server assertDriverCanGoOnline — fleet table only.
-        if (!driver.active_vehicle_id) missing.push("Véhicule");
-        if (!hasDoc("license_front")) missing.push("Permis recto");
-        if (!hasDoc("license_back")) missing.push("Permis verso");
-        if (!hasDoc("insurance")) missing.push("Assurance");
-        if (!hasDoc("registration")) missing.push("Registration");
+        if (!driver.active_vehicle_id) {
+          missing.push(t("driver.home.profileFields.vehicle", "Vehicle"));
+        }
+        if (!hasDoc("license_front")) {
+          missing.push(t("driver.home.profileFields.licenseFront", "License (front)"));
+        }
+        if (!hasDoc("license_back")) {
+          missing.push(t("driver.home.profileFields.licenseBack", "License (back)"));
+        }
+        if (!hasDoc("insurance")) {
+          missing.push(t("driver.home.profileFields.insurance", "Insurance"));
+        }
+        if (!hasDoc("registration")) {
+          missing.push(t("driver.home.profileFields.registration", "Registration"));
+        }
       }
 
       if (missing.length > 0) {
         Alert.alert(
-          "Profil incomplet",
-          "Complète ton profil avant de passer en ligne :\n\n" + missing.map((m) => "• " + m).join("\n"),
+          t("driver.home.incompleteProfile.title", "Incomplete profile"),
+          `${t("driver.home.incompleteProfile.bodyPrefix", "Complete your profile before going online:")}\n\n${missing.map((m) => "• " + m).join("\n")}`,
         );
         return;
       }
@@ -2395,7 +2427,7 @@ export function DriverHomeScreen() {
       const onlineBlockMessage = driverOnlineBlockMessage(driver?.status ?? null);
       if (next && onlineBlockMessage) {
         await setDriverOnlineStatus(false);
-        Alert.alert("Erreur", onlineBlockMessage);
+        Alert.alert(t("shared.orderChat.alerts.errorTitle", "Error"), onlineBlockMessage);
         return;
       }
 
@@ -2412,16 +2444,22 @@ export function DriverHomeScreen() {
           const identityOk = await promptStripeIdentityIfRequired("driver");
           if (!identityOk) {
             Alert.alert(
-              "Legal ID verification (Stripe Identity)",
-              "Complete Stripe Identity (government ID) before going online. This is separate from the in-app photo/liveness check.",
+              t("driver.home.stripeIdentity.title", "Legal ID verification (Stripe Identity)"),
+              t(
+                "driver.home.stripeIdentity.requiredBody",
+                "Complete Stripe Identity (government ID) before going online. This is separate from the in-app photo/liveness check.",
+              ),
             );
             return;
           }
         } catch (identityErr) {
           console.log("identity verification prompt error:", identityErr);
           Alert.alert(
-            "Legal ID verification (Stripe Identity)",
-            "Unable to verify Stripe Identity status. Try again before going online.",
+            t("driver.home.stripeIdentity.title", "Legal ID verification (Stripe Identity)"),
+            t(
+              "driver.home.stripeIdentity.statusFailedBody",
+              "Unable to verify Stripe Identity status. Try again before going online.",
+            ),
           );
           return;
         }
@@ -2430,11 +2468,17 @@ export function DriverHomeScreen() {
           const servicePrefs = await fetchDriverServicePreferences();
           if (!hasAnyDriverServiceEnabled(servicePrefs.preferences)) {
             Alert.alert(
-              "Mes services",
-              "Activez au moins un service (Food, Colis ou Taxi) avant de passer en ligne.",
+              t("driver.home.servicesRequired.title", "My services"),
+              t(
+                "driver.home.servicesRequired.body",
+                "Enable at least one service (Food, Packages, or Taxi) before going online.",
+              ),
               [
-                { text: "Configurer", onPress: () => navAny.navigate("DriverServices" as never) },
-                { text: "OK", style: "cancel" },
+                {
+                  text: t("driver.home.servicesRequired.configure", "Configure"),
+                  onPress: () => navAny.navigate("DriverServices" as never),
+                },
+                { text: t("common.ok", "OK"), style: "cancel" },
               ],
             );
             return;
@@ -2447,7 +2491,13 @@ export function DriverHomeScreen() {
         if (!ok) {
           if (!locationPermissionDeniedAlertShownRef.current) {
             locationPermissionDeniedAlertShownRef.current = true;
-            Alert.alert("GPS", "Active la localisation dans les paramètres du téléphone pour passer en ligne.");
+            Alert.alert(
+              t("driver.home.gps.title", "GPS"),
+              t(
+                "driver.home.gps.enableToGoOnline",
+                "Enable GPS permission to go online.",
+              ),
+            );
           }
           return;
         }
@@ -2474,8 +2524,11 @@ export function DriverHomeScreen() {
     } catch (e: any) {
       console.log("toggleOnline error:", e);
       Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        toUserFacingError(e, "Impossible de changer le statut pour le moment."),
+        t("shared.orderChat.alerts.errorTitle", "Error"),
+        toUserFacingError(
+          e,
+          t("driver.home.toggleStatusFailed", "Unable to change status right now."),
+        ),
       );
     }
   }, [ensureDriverCanGoOnline, ensureGpsPermission, fetchDriverOrders, getUserIdOrThrow, isOnline, setDriverProfileOnline, startDbGpsTracking, stopDbGpsTracking, stopSound, t]);

@@ -469,10 +469,18 @@ export function DriverAuthScreen() {
 
     if (status === "suspended" || status === "disabled") {
       Alert.alert(
-        status === "disabled" ? "Compte désactivé" : "Compte suspendu",
         status === "disabled"
-          ? "Ton compte chauffeur est désactivé. Contacte le support MMD Delivery."
-          : "Ton compte chauffeur est suspendu. Contacte le support MMD Delivery."
+          ? t("driver.auth.alert.accountDisabledTitle", "Account disabled")
+          : t("driver.auth.alert.accountSuspendedTitle", "Account suspended"),
+        status === "disabled"
+          ? t(
+              "driver.auth.alert.accountDisabledBody",
+              "Your driver account is disabled. Contact MMD Delivery support.",
+            )
+          : t(
+              "driver.auth.alert.accountSuspendedBody",
+              "Your driver account is suspended. Contact MMD Delivery support.",
+            ),
       );
       await clearSelectedRole();
       await supabase.auth.signOut();
@@ -480,7 +488,7 @@ export function DriverAuthScreen() {
     }
 
     navigation.replace("DriverOnboarding");
-  }, [navigation]);
+  }, [navigation, t]);
 
   useEffect(() => {
     let mounted = true;
@@ -526,8 +534,11 @@ export function DriverAuthScreen() {
 
       if (!userData.user?.email_confirmed_at) {
         Alert.alert(
-          "Email non vérifié",
-          "Confirme ton email avant de te connecter."
+          t("driver.auth.alert.emailNotVerifiedTitle", "Email not verified"),
+          t(
+            "driver.auth.alert.emailNotVerifiedBody",
+            "Confirm your email before logging in.",
+          ),
         );
         await clearSelectedRole();
       await supabase.auth.signOut();
@@ -548,8 +559,11 @@ export function DriverAuthScreen() {
 
     if (!cleanedEmail) {
       Alert.alert(
-        "Email requis",
-        "Entre ton email, puis appuie sur mot de passe oublié."
+        t("driver.auth.alert.emailRequiredTitle", "Email required"),
+        t(
+          "driver.auth.alert.emailRequiredBody",
+          "Enter your email, then tap forgot password.",
+        ),
       );
       return;
     }
@@ -565,18 +579,30 @@ export function DriverAuthScreen() {
       });
 
       if (error) {
-        Alert.alert("Erreur", toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
+        Alert.alert(
+          t("driver.auth.alert.errorTitle", "Error"),
+          toUserFacingError(
+            error,
+            t(
+              "driver.auth.alert.genericRetry",
+              "Something went wrong temporarily. Please try again.",
+            ),
+          ),
+        );
         return;
       }
 
       Alert.alert(
-        "Email envoyé",
-        "Vérifie ta boîte email. Clique sur le lien reçu pour modifier ton mot de passe."
+        t("driver.auth.alert.resetEmailSentTitle", "Email sent"),
+        t(
+          "driver.auth.alert.resetEmailSentBody",
+          "Check your inbox. Click the link you received to reset your password.",
+        ),
       );
     } finally {
       setLoading(false);
     }
-  }, [email, loading]);
+  }, [email, loading, t]);
 
   const pickAvatarFromCamera = useCallback(async () => {
     try {
@@ -738,8 +764,11 @@ export function DriverAuthScreen() {
 
       if (!canSubmit) {
         Alert.alert(
-          "Informations incomplètes",
-          "Remplis tous les champs obligatoires avant de créer le compte."
+          t("driver.auth.alert.incompleteSignupTitle", "Incomplete information"),
+          t(
+            "driver.auth.alert.incompleteSignupBody",
+            "Fill in all required fields before creating your account.",
+          ),
         );
         return;
       }
@@ -757,16 +786,22 @@ export function DriverAuthScreen() {
 
       if (!isValidTwilioPhone(cleanedPhone)) {
         Alert.alert(
-          "Téléphone invalide",
-          "Entre un numéro valide au format américain. Exemple : 9297408722 ou +19297408722."
+          t("driver.auth.alert.invalidPhoneTitle", "Invalid phone"),
+          t(
+            "driver.auth.alert.invalidPhoneBody",
+            "Enter a valid US phone number. Example: 9297408722 or +19297408722.",
+          ),
         );
         return;
       }
 
       if (!isValidTwilioPhone(cleanedEmergencyPhone)) {
         Alert.alert(
-          "Téléphone d'urgence invalide",
-          "Entre un numéro d'urgence valide. Exemple : 9297408722 ou +19297408722."
+          t("driver.auth.alert.invalidEmergencyPhoneTitle", "Invalid emergency phone"),
+          t(
+            "driver.auth.alert.invalidEmergencyPhoneBody",
+            "Enter a valid emergency phone number. Example: 9297408722 or +19297408722.",
+          ),
         );
         return;
       }
@@ -797,8 +832,11 @@ export function DriverAuthScreen() {
       const identities = (data?.user as any)?.identities;
       if (Array.isArray(identities) && identities.length === 0) {
         Alert.alert(
-          "Compte déjà existant",
-          "Un compte existe déjà avec cet email."
+          t("driver.auth.alert.accountExistsTitle", "Account already exists"),
+          t(
+            "driver.auth.alert.accountExistsBody",
+            "An account already exists with this email.",
+          ),
         );
         setMode("login");
         return;
@@ -807,8 +845,11 @@ export function DriverAuthScreen() {
       const user = data?.user;
       if (!user) {
         Alert.alert(
-          "Vérifie ton email",
-          "Confirme ton email avant de te connecter."
+          t("driver.auth.alert.verifyEmailSignupTitle", "Verify your email"),
+          t(
+            "driver.auth.alert.verifyEmailSignupBody",
+            "Confirm your email before logging in.",
+          ),
         );
         setMode("login");
         return;
@@ -864,13 +905,19 @@ export function DriverAuthScreen() {
         .upsert(payload, { onConflict: "user_id" });
 
       if (dErr) {
-        Alert.alert("Erreur profil", dErr.message);
+        Alert.alert(
+          t("driver.auth.alert.profileErrorTitle", "Profile error"),
+          dErr.message,
+        );
         return;
       }
 
       Alert.alert(
-        "Demande envoyée",
-        "Ton compte chauffeur est en attente de validation."
+        t("driver.auth.alert.applicationSubmittedTitle", "Application submitted"),
+        t(
+          "driver.auth.alert.applicationSubmittedBody",
+          "Your driver account is pending approval.",
+        ),
       );
 
       navigation.replace("DriverOnboarding");

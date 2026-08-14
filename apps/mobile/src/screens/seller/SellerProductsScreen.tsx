@@ -99,7 +99,10 @@ export default function SellerProductsScreen({ navigation }: Props) {
       setSellerId(seller.id);
       setProducts(await loadSellerProducts(seller.id));
     } catch (e: any) {
-      Alert.alert(t("common.errorTitle", "Error"), e?.message ?? "Load failed");
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        e?.message ?? t("seller.products.loadFailed", "Unable to load products.")
+      );
     } finally {
       setLoading(false);
     }
@@ -211,7 +214,10 @@ export default function SellerProductsScreen({ navigation }: Props) {
       setModalOpen(false);
       await refresh();
     } catch (e: any) {
-      Alert.alert(t("common.errorTitle", "Error"), e?.message ?? "Save failed");
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        e?.message ?? t("seller.products.saveFailed", "Unable to save the product.")
+      );
     } finally {
       setSaving(false);
     }
@@ -223,7 +229,10 @@ export default function SellerProductsScreen({ navigation }: Props) {
       await toggleSellerProductActive(sellerId, product.id, !product.active);
       await refresh();
     } catch (e: any) {
-      Alert.alert(t("common.errorTitle", "Error"), e?.message ?? "Update failed");
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        e?.message ?? t("seller.products.updateFailed", "Unable to update the product.")
+      );
     }
   };
 

@@ -679,7 +679,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     if (error) {
       console.log("âŒ toggle available:", error);
-      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), toUserFacingError(error, "Action impossible pour le moment."));
+      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), toUserFacingError(
+        error,
+        t("restaurant.menu.alerts.actionFailed", "This action is unavailable right now."),
+      ));
     }
     if (restaurantUserId) await refreshAll(restaurantUserId);
   };
@@ -837,7 +840,13 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
       if (error) {
         console.log("âŒ edit item:", error);
-        return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), toUserFacingError(error, "Action impossible pour le moment."));
+        return Alert.alert(
+          t("restaurant.menu.alerts.errorTitle", "Erreur"),
+          toUserFacingError(
+            error,
+            t("restaurant.menu.alerts.actionFailed", "This action is unavailable right now."),
+          ),
+        );
       }
 
       await refreshAll(restaurantUserId);

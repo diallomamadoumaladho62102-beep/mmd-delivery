@@ -13,6 +13,8 @@
     "taglineHeart": "We deliver with heart ❤️",
     "taglineModes": "Taxi • Delivery • Business",
     "taglineFast": "Fast, simple and reliable 🚀",
+    "browseMarketplace": "Browse Marketplace",
+    "browseMarketplaceHint": "No account needed to discover products",
     "advantages": {
       "secure": "Secure Payments",
       "fast": "Fast Delivery",
@@ -57,7 +59,9 @@
       "shopClosed": "This shop is currently closed.",
       "openCart": "Open cart / draft",
       "empty": "No active products.",
-      "loadError": "Unable to load products"
+      "loadError": "Unable to load products",
+      "loadFailed": "Unable to load products.",
+      "favoriteFailed": "Unable to update favorite."
     },
     "details": {
       "addedTitle": "Added to draft",
@@ -135,7 +139,9 @@
       "submittedTitle": "Application submitted",
       "submittedBody": "Your seller profile is pending admin review.",
       "submit": "Submit for review",
-      "scopeRequired": "Your market must be resolved before applying."
+      "scopeRequired": "Your market must be resolved before applying.",
+      "loadFailed": "Unable to load your seller profile.",
+      "submitFailed": "Unable to submit your application."
     },
     "fields": {
       "businessName": "Business name",
@@ -150,7 +156,8 @@
       "empty": "No marketplace orders yet.",
       "deliveryNotLive": "Delivery not live yet",
       "deliveryShadowStatus": "Delivery shadow",
-      "estimatedDelivery": "Est. delivery"
+      "estimatedDelivery": "Est. delivery",
+      "updateFailed": "Unable to update the order."
     },
     "products": {
       "title": "Products",
@@ -165,9 +172,62 @@
       "loadFailed": "Load failed",
       "saveFailed": "Save failed",
       "updateFailed": "Update failed"
+    },
+    "wallet": {
+      "stripeFailed": "Unable to open Stripe."
     }
   },
   "taxi": {
+    "tracking": {
+      "safety": {
+        "title": "Safety Audio",
+        "subtitle": "Record audio from your microphone for ride safety. Never starts silently. Files are private — not end-to-end encrypted.",
+        "consentTitle": "Start Safety Audio?",
+        "consentBody": "This records audio from YOUR device microphone only, for ride safety. It does not start silently. Files are private (not public), stored securely, retained about 14 days, and only you (or MMD staff during a review) can download your file. The other party is notified when you start — their consent is separate and does not turn on their microphone.",
+        "consentConfirm": "I understand — Record",
+        "micTitle": "Microphone",
+        "micBody": "Allow microphone access to record a safety audio for this ride. You can enable it in iOS Settings if it was blocked.",
+        "openSettings": "Open Settings",
+        "startedTitle": "Recording started",
+        "startedBody": "Your microphone is recording now. A red Recording indicator stays visible until you stop. The other party is notified but cannot control your mic.",
+        "activeIndicator": "RECORDING — your microphone is on",
+        "otherActive": "The other party started a safety recording on their device. Your microphone stays off unless you start yours.",
+        "bgTitle": "Recording may pause",
+        "bgBody": "Safety Audio records while MMD Delivery is open. Leaving the app or locking the screen may interrupt the recording — keep the app open to continue.",
+        "record": "Record",
+        "stop": "Stop",
+        "recording": "Recording… Stop",
+        "loading": "Loading safety tools…",
+        "notAllowed": "Safety recording is not allowed in this area.",
+        "uploadTitle": "Safety audio",
+        "uploadOk": "Recording uploaded securely.",
+        "stoppedOk": "Recording stopped and stored securely. Only you can open your own recording from this screen.",
+        "pendingTitle": "Pending upload",
+        "pendingBody": "You are offline. The recording is kept on this device and will upload when network returns.",
+        "pendingBadge": "Pending upload",
+        "openSecure": "Open your secure recording",
+        "openRecording": "Open recording",
+        "noActive": "No active recording.",
+        "errorTitle": "Error",
+        "uploadFailed": "Unable to upload the recording.",
+        "startFailed": "Unable to start recording.",
+        "stopFailed": "Unable to stop recording.",
+        "downloadFailed": "Unable to download the recording.",
+        "downloadUnavailable": "Download unavailable.",
+        "videoTitle": "Safety video (optional)",
+        "videoSubtitle": "Record an in-app front-camera video with audio for protection. Never starts silently.",
+        "videoConsentTitle": "Start Safety Video?",
+        "videoConsentBody": "This uses your camera and microphone inside MMD Delivery only. The other party is notified. Consent is independent — their mic is not turned on by this action.",
+        "videoActive": "RECORDING — safety video is active (camera + mic). Tap Stop to end.",
+        "videoRecord": "Record video",
+        "videoMicBody": "Allow microphone access for safety video audio. You can enable it in Settings if blocked.",
+        "cameraTitle": "Camera",
+        "cameraBody": "Allow camera access for in-app safety recording. Recording stays inside MMD Delivery.",
+        "cameraStarting": "Safety camera is starting. Tap Record again in a moment.",
+        "downloadBeforeExpiry": "Download before expiry ({{date}})",
+        "stopRecording": "Stop recording"
+      }
+    },
     "ui": {
       "country": "Country",
       "currency": "Currency",
@@ -388,6 +448,41 @@
         "adjustment": "Adjustment",
         "total": "Total"
       }
+    },
+    "driver": {
+      "activeRide": {
+        "navigate": "Navigate",
+        "chat": "Chat",
+        "call": "Call",
+        "completeRide": "Complete ride",
+        "cancelTitle": "Cancel ride",
+        "cancelBody": "Cancel this taxi ride? Payment refund (if any) is handled by admin.",
+        "keepRide": "Keep ride",
+        "incorrectCode": "Incorrect code. Ask the client and try again.",
+        "verifyFailed": "Could not verify the code. Please try again.",
+        "arrivedPickup": "Arrived at pickup",
+        "verifyPickupCode": "Verify Pickup Code"
+      }
+    },
+    "tip": {
+      "loadFailed": "Unable to load the ride.",
+      "payFailed": "Unable to pay the tip."
+    }
+  },
+  "payment": {
+    "stripe": {
+      "title": "Stripe",
+      "onboardingFailed": "Unable to open Stripe setup. Try again or contact support.",
+      "missingUrl": "Stripe URL missing. The function responded, but no onboarding link was found.",
+      "accountReady": "Your account is ready for payouts. You can add or change your bank account in the Stripe dashboard.",
+      "openFailed": "Unable to open Stripe setup right now.",
+      "tipUnavailableExpoGoTitle": "Tip payment unavailable on iPhone (Expo Go)",
+      "tipUnavailableExpoGoBody": "Native Stripe tipping requires a development build or a real iOS build.",
+      "paymentUnavailableExpoGoTitle": "Payment unavailable on iPhone (Expo Go)",
+      "paymentUnavailableExpoGoBody": "Native Stripe payment requires a development build or a real iOS build. Expo Go is not enough for a real payment test.",
+      "paymentFailed": "The payment could not be completed. Please try again in a few moments.",
+      "initFailed": "The payment could not be started. Please try again in a few moments.",
+      "tipInitFailed": "The tip payment could not be started. Please try again."
     }
   },
   "finance": {
@@ -403,6 +498,12 @@
     }
   },
   "client": {
+    "auth": {
+      "forgotPasswordEmailHint": "Enter your email, then tap forgot password.",
+      "resetEmailSentTitle": "Email sent",
+      "resetEmailSentBody": "Check your inbox. Click the link you received to reset your password.",
+      "cannotSendEmail": "Unable to send email."
+    },
     "home": {
       "greeting_morning": "Good morning",
       "greeting_afternoon": "Good afternoon",
@@ -476,6 +577,33 @@
         "processing": "Processing",
         "unpaid": "Unpaid"
       }
+    },
+    "orderHistory": {
+      "title": "Order history",
+      "empty": "No orders yet.",
+      "noValue": "—",
+      "stats": {
+        "active": "Active",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "total": "Total"
+      },
+      "kind": {
+        "taxiRide": "Taxi ride",
+        "packageDelivery": "Package delivery",
+        "foodOrder": "Food order"
+      },
+      "badge": {
+        "taxi": "TX",
+        "delivery": "DL",
+        "food": "FD"
+      },
+      "status": {
+        "delivered": "Delivered",
+        "completed": "Completed",
+        "cancelled": "Cancelled",
+        "inProgress": "In progress"
+      }
     }
   },
   "location": {
@@ -483,7 +611,10 @@
     "pickerDefaultTitle": "Choose location",
     "exactLocation": "Exact location",
     "useLocation": "Use this location",
-    "back": "Back"
+    "back": "Back",
+    "tripCard": {
+      "loadFailed": "Unable to load the location."
+    }
   },
   "auth": {
     "resetPassword": {
@@ -505,6 +636,9 @@
     }
   },
   "driver": {
+    "profile": {
+      "transportValidationRequired": "This transport mode requires document validation before it can be enabled."
+    },
     "marketplace": {
       "status": {
         "pending": "Pending",
@@ -521,7 +655,170 @@
     "home": {
       "kind": {
         "marketplace": "Marketplace delivery"
+      },
+      "identityPhotoVerification": {
+        "title": "Photo verification (safety)",
+        "body": "Complete photo/liveness verification before going online. This is separate from legal ID verification (Stripe Identity).",
+        "cancel": "Cancel",
+        "verifyPhoto": "Verify photo"
+      },
+      "identityVerifyFailed": "Unable to verify your identity. Try again in a moment.",
+      "profileNotFound": "Driver profile not found.",
+      "incompleteProfile": {
+        "title": "Incomplete profile",
+        "bodyPrefix": "Complete your profile before going online:"
+      },
+      "stripeIdentity": {
+        "title": "Legal ID verification (Stripe Identity)",
+        "requiredBody": "Complete Stripe Identity (government ID) before going online. This is separate from the in-app photo/liveness check.",
+        "statusFailedBody": "Unable to verify Stripe Identity status. Try again before going online."
+      },
+      "servicesRequired": {
+        "title": "My services",
+        "body": "Enable at least one service (Food, Packages, or Taxi) before going online.",
+        "configure": "Configure"
+      },
+      "profileFields": {
+        "fullName": "Full name",
+        "phone": "Phone",
+        "emergencyPhone": "Emergency phone",
+        "address": "Address",
+        "city": "City",
+        "state": "State",
+        "zipCode": "ZIP code",
+        "dateOfBirth": "Date of birth",
+        "profilePhoto": "Profile photo",
+        "idFront": "ID card (front)",
+        "idBack": "ID card (back)",
+        "vehicle": "Vehicle",
+        "licenseFront": "License (front)",
+        "licenseBack": "License (back)",
+        "insurance": "Insurance",
+        "registration": "Registration"
+      },
+      "toggleStatusFailed": "Unable to change status right now."
+    },
+    "auth": {
+      "alert": {
+        "accountDisabledTitle": "Account disabled",
+        "accountDisabledBody": "Your driver account is disabled. Contact MMD Delivery support.",
+        "accountSuspendedTitle": "Account suspended",
+        "accountSuspendedBody": "Your driver account is suspended. Contact MMD Delivery support.",
+        "emailNotVerifiedTitle": "Email not verified",
+        "emailNotVerifiedBody": "Confirm your email before logging in.",
+        "emailRequiredTitle": "Email required",
+        "emailRequiredBody": "Enter your email, then tap forgot password.",
+        "resetEmailSentTitle": "Email sent",
+        "resetEmailSentBody": "Check your inbox. Click the link you received to reset your password.",
+        "genericRetry": "Something went wrong temporarily. Please try again.",
+        "incompleteSignupTitle": "Incomplete information",
+        "incompleteSignupBody": "Fill in all required fields before creating your account.",
+        "invalidPhoneTitle": "Invalid phone",
+        "invalidPhoneBody": "Enter a valid US phone number. Example: 9297408722 or +19297408722.",
+        "invalidEmergencyPhoneTitle": "Invalid emergency phone",
+        "invalidEmergencyPhoneBody": "Enter a valid emergency phone number. Example: 9297408722 or +19297408722.",
+        "accountExistsTitle": "Account already exists",
+        "accountExistsBody": "An account already exists with this email.",
+        "verifyEmailSignupTitle": "Verify your email",
+        "verifyEmailSignupBody": "Confirm your email before logging in.",
+        "profileErrorTitle": "Profile error",
+        "applicationSubmittedTitle": "Application submitted",
+        "applicationSubmittedBody": "Your driver account is pending approval."
       }
+    },
+    "vehicle": {
+      "errorTitle": "Error",
+      "loadFailed": "Unable to load vehicle information.",
+      "cameraTitle": "Camera",
+      "cameraPermission": "Allow camera access.",
+      "photosTitle": "Photos",
+      "photosPermission": "Allow photo library access.",
+      "photoUploadedTitle": "Vehicle photo",
+      "photoUploadedBody": "Photo uploaded successfully.",
+      "uploadFailed": "Unable to upload the photo.",
+      "removePhotoTitle": "Remove photo",
+      "removePhotoBody": "Delete this vehicle photo?",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deletePhotoFailed": "Unable to delete the photo.",
+      "typeRequiredTitle": "Vehicle type",
+      "typeRequiredBody": "Choose Car, Motorcycle, or Bicycle first.",
+      "bikeModeTitle": "Bicycle mode",
+      "bikeModeBody": "Your category is now Bicycle. No motorized vehicle is required to go online.",
+      "formIncompleteTitle": "Incomplete form",
+      "formIncompleteBody": "Make, model, and license plate are required.",
+      "savedTitle": "Vehicle",
+      "savedCreateBody": "Vehicle added. It is pending validation by the MMD team.",
+      "savedUpdateBody": "Information saved. If important fields changed, the vehicle goes back to admin validation.",
+      "saveFailed": "Unable to save the vehicle right now.",
+      "cameraPermissionVehicle": "Allow camera access to photograph your vehicle.",
+      "photosPermissionVehicle": "Allow photo library access to choose a vehicle photo."
+    },
+    "vehicles": {
+      "errorTitle": "Error",
+      "loadFailed": "Unable to load your vehicles right now.",
+      "activeTitle": "Active vehicle",
+      "activeFailed": "Unable to change the active vehicle right now.",
+      "deleteTitle": "Delete",
+      "deleteBody": "Delete this vehicle?",
+      "cancel": "Cancel",
+      "deleteConfirm": "Delete",
+      "deleteFailed": "Unable to delete this vehicle right now."
+    },
+    "services": {
+      "errorTitle": "Error",
+      "loadFailed": "Unable to load your services right now.",
+      "saveTitle": "Services",
+      "saveFailed": "Unable to save your preferences right now.",
+      "minOneTitle": "My services",
+      "minOneBody": "Enable at least one service to receive missions."
+    },
+    "identity": {
+      "cameraRequiredTitle": "Camera required",
+      "cancel": "Cancel",
+      "openSettings": "Open settings",
+      "errorTitle": "Error",
+      "selfieRequiredTitle": "Selfie required",
+      "selfieRequiredBody": "Take a selfie before continuing.",
+      "uploadFailedTitle": "Upload failed",
+      "helpTitle": "Need help?",
+      "helpBody": "Contact MMD Delivery support if you cannot use the camera.",
+      "stripeRequiredTitle": "Identity verification required",
+      "stripeRequiredBody": "Complete Stripe Identity verification to continue. Documents are processed by Stripe only.",
+      "verify": "Verify"
+    },
+    "taxiPanel": {
+      "title": "Taxi",
+      "callTitle": "Call",
+      "offerTakenOrExpired": "This offer was taken or expired. Offers refreshed.",
+      "acceptFailed": "Accept failed",
+      "rejectFailed": "Reject failed",
+      "actionFailed": "Action failed",
+      "maskedCallFailed": "Unable to start masked call",
+      "cancelFailed": "Cancel failed",
+      "genericFailed": "Failed",
+      "invalidPickupCode": "Invalid pickup code."
+    },
+    "account": {
+      "createProfileFailed": "Unable to create the driver profile right now.",
+      "loadProfileFailed": "Unable to load the driver profile right now.",
+      "loadDocsFailed": "Unable to load documents right now.",
+      "loadStatusFailed": "Unable to load account status.",
+      "logoutFailed": "Something went wrong temporarily. Please try again."
+    },
+    "report": {
+      "sessionRequiredTitle": "Session required",
+      "sessionRequiredBody": "Log in again to submit a report.",
+      "gpsUnavailableTitle": "GPS unavailable",
+      "gpsUnavailableBody": "Wait for a valid GPS position before reporting an issue.",
+      "failedTitle": "Report failed",
+      "rateLimited": "You reached the report limit for this hour.",
+      "invalidCountry": "Country not supported for reports.",
+      "tryAgain": "Try again in a few moments.",
+      "sentTitle": "Report sent",
+      "sentBody": "{{label}} reported. Visible for 25 minutes to nearby drivers.",
+      "reportButton": "Report",
+      "nearbyAlerts": "{{count}} active alert(s) nearby"
     },
     "w9": {
       "title": "W-9",
@@ -554,6 +851,49 @@
       "saved": "Saved.",
       "submitFailed": "Submit failed",
       "tinKeepCurrent": "Leave blank to keep current TIN"
+    },
+    "taxPdf": {
+      "errorTitle": "PDF error"
+    },
+    "map": {
+      "gpsEnableFailed": "Unable to turn on GPS."
+    },
+    "hotspots": {
+      "title": "Demand hotspots",
+      "refresh": "Refresh",
+      "loading": "Loading…",
+      "navigateNearest": "Navigate to nearest hotspot",
+      "rowScore": "{{level}} · score {{score}}",
+      "horizon": {
+        "now": "Now",
+        "in1h": "In 1h",
+        "in2h": "In 2h"
+      },
+      "subtitle": {
+        "live": "Live open requests and current time-of-day demand.",
+        "forecast": "Same live open requests — wait estimates adjust for the forecast time of day."
+      },
+      "panelTitle": {
+        "liveDemand": "Live demand",
+        "forecast": "Forecast · {{hours}}h",
+        "stats": "{{requests}} open · {{drivers}} drivers · {{multiplier}}x"
+      },
+      "errors": {
+        "gpsRequired": "GPS position required",
+        "loadFailed": "Failed to load hotspots"
+      },
+      "empty": {
+        "noClustersLiveTitle": "No demand clusters",
+        "noClustersForecastTitle": "No clusters in range",
+        "noClustersLiveBody": "No demand clusters in range right now. Stay online for the next wave.",
+        "noClustersForecastBody": "No live open requests in range. Forecast timing may still improve wait estimates when demand picks up."
+      },
+      "demandLevel": {
+        "very_busy": "Very busy",
+        "busy": "Busy",
+        "moderate": "Moderate",
+        "quiet": "Quiet"
+      }
     }
   },
   "restaurant": {
@@ -683,6 +1023,45 @@
       "monthlyStatements": "Monthly Statements",
       "noStatements": "No statements available yet.",
       "taxDocuments": "Tax Documents"
+    },
+    "automation": {
+      "errorTitle": "Error",
+      "loadFailed": "Unable to load settings",
+      "savedTitle": "Saved",
+      "savedBody": "Automation settings updated.",
+      "saveFailed": "Unable to save settings",
+      "testPrintTitle": "Test print",
+      "testPrintQueued": "Test ticket added to print queue.",
+      "testFailed": "Test print failed"
+    },
+    "autoPrint": {
+      "title": "Print",
+      "failedBody": "Order accepted, but printing failed. You can reprint from the order."
+    },
+    "orderPrint": {
+      "title": "Print",
+      "reprintQueued": "Reprint queued.",
+      "ticketQueued": "Ticket added to print queue.",
+      "printFailed": "Unable to start printing."
+    },
+    "setup": {
+      "alerts": {
+        "logoPickFailed": "Unable to pick the logo.",
+        "coverPickFailed": "Unable to pick the cover image.",
+        "documentPickFailed": "Unable to pick the document."
+      }
+    },
+    "menu": {
+      "alerts": {
+        "actionFailed": "This action is unavailable right now."
+      }
+    },
+    "dashboard": {
+      "availabilityUpdateFailed": "Unable to change the restaurant status."
+    },
+    "orders": {
+      "statusUpdateFailed": "Unable to update the order status ({{status}}).",
+      "rejectFailed": "Unable to refuse the order ({{status}})."
     }
   },
   "clientRestaurantMenu": {
@@ -731,6 +1110,107 @@
         "walletCredit": "Wallet credit",
         "tip": "Tip"
       }
+    }
+  },
+  "promotions": {
+    "title": "Promotions",
+    "codeAcceptedWithDiscount": "Code accepted (−{{orderDiscount}} / −{{deliveryDiscount}} delivery). Exact amount applies at checkout.",
+    "codeAccepted": "Code accepted. Exact amount applies at checkout based on your cart.",
+    "codeRejected": "Code rejected.",
+    "loadFailed": "Unable to load promotions."
+  },
+  "mmdPlus": {
+    "title": "MMD+",
+    "actionFailed": "Action unavailable.",
+    "loadFailed": "Unable to load MMD+."
+  },
+  "locationPicker": {
+    "permissionTitle": "Permission required",
+    "gpsPermissionBody": "Allow location access to use GPS.",
+    "gpsErrorTitle": "GPS error",
+    "gpsErrorBody": "Unable to read GPS",
+    "cameraPermissionBody": "Allow camera access to add a location photo.",
+    "missingInfoTitle": "Missing information",
+    "missingStructuredBody": "Enter street number, city, and postal code, then place the pin.",
+    "missingPinConfirmBody": "Confirm the map pin and add landmark or directions so the driver can find you.",
+    "missingDirectionsBody": "Move the pin on the map and describe your exact location (minimum 8 characters).",
+    "saveFailedTitle": "Save failed",
+    "saveFailedBody": "Unable to save location"
+  },
+  "maskedCall": {
+    "errorTitle": "Call error"
+  },
+  "errors": {
+    "fallback": "Something went wrong temporarily. Please try again.",
+    "codes": {
+      "active_mission_in_progress": "Finish your current mission before changing this setting.",
+      "documents_required": "This transport mode requires your documents to be approved before it can be enabled.",
+      "invalid_transport_mode": "Invalid transport mode.",
+      "must_be_offline": "Go offline to edit or delete a vehicle.",
+      "active_ride_in_progress": "You cannot change vehicle during a ride.",
+      "vehicle_not_active": "This vehicle is not active or approved.",
+      "vehicle_not_found": "Vehicle not found.",
+      "no_active_vehicle": "Select an active, approved vehicle before going online.",
+      "vehicle_pending_review": "Your vehicle is pending review. You will be able to go online once it is approved.",
+      "vehicle_rejected": "Your vehicle was rejected. Correct the information or add a new vehicle.",
+      "vehicle_not_eligible": "Your active vehicle is not eligible. Wait for admin approval or choose another vehicle.",
+      "no_service_enabled": "Enable at least one service (Food, Package or Taxi) before going online.",
+      "driver_not_approved": "Your driver account must be approved before you can go online.",
+      "driver_suspended": "Your driver account is suspended.",
+      "driver_disabled": "Your driver account is disabled.",
+      "online_status_update_failed": "Unable to change your status right now.",
+      "route_unavailable": "We could not calculate the exact route right now. Please check the addresses or try again.",
+      "card_declined": "Your card was declined. Check your details or use another card.",
+      "payment_intent_authentication_failure": "Payment authentication failed. Try again or use another card.",
+      "processing_error": "The payment could not be completed. Please try again in a few moments.",
+      "invalid_credentials": "Incorrect credentials. Check your email and password.",
+      "email_not_confirmed": "Confirm your email address before signing in.",
+      "user_already_registered": "An account already exists with this email address.",
+      "weak_password": "Password too weak. Use at least 8 characters.",
+      "payment_setup_failed": "The payment could not be completed. Please try again in a few moments.",
+      "stripe_payment_not_confirmed": "Payment was not completed. Please check your payment method and try again.",
+      "delivery_share_pct_invalid": "The delivery configuration is temporarily unavailable. Try again later or contact support.",
+      "stripe_setup_required": "Complete your Stripe setup to enable payouts, then try again.",
+      "stripe_secret_key_must_be_live": "Stripe Connect is not ready on the server side. Contact MMD support.",
+      "stripe_account_retrieve_failed": "Unable to read your Stripe account. Reopen the payout setup.",
+      "stripe_connect_platform_profile_incomplete": "Stripe Connect is not activated yet for the MMD platform. Complete the Connect questionnaire in the Stripe Dashboard (Connect → Accounts → Overview), then try again.",
+      "profile_not_found": "Your driver profile is incomplete. Reopen the app or contact support to finish your account, then try Enable again.",
+      "stripe_connect_error": "Unable to open the Stripe setup. Try again or contact support.",
+      "already_cashed_out_today": "You have already requested a payout today. Try again tomorrow.",
+      "below_minimum": "Your available balance is below the payout minimum.",
+      "cashout_rate_limited": "Too many payout requests. Wait a few minutes then try again.",
+      "driver_no_stripe_account": "No Stripe Connect account found. Tap Enable payouts to get started."
+    },
+    "patterns": {
+      "notOnboarded": "Complete your Stripe setup to enable payouts, then try again.",
+      "stripeSecretLive": "Stripe Connect is not ready on the server side. Contact MMD support.",
+      "deliveryShare": "The delivery configuration is temporarily unavailable. Try again later or contact support.",
+      "invalidCredentials": "Incorrect credentials. Check your email and password.",
+      "emailNotConfirmed": "Confirm your email address before signing in.",
+      "paymentNotConfirmed": "Payment was not completed. Please check your payment method and try again.",
+      "userAlreadyRegistered": "An account already exists with this email address.",
+      "paymentCanceled": "Payment canceled.",
+      "processingError": "The payment could not be completed. Please try again in a few moments.",
+      "cardDeclined": "Your card was declined. Check your details or use another card.",
+      "networkFailed": "Unstable connection. Check your network and try again.",
+      "distanceTooFar": "The distance is too long for this ride."
+    }
+  },
+  "common": {
+    "unknownError": "Unknown error."
+  },
+  "notifications": {
+    "inbox": {
+      "loadFailed": "Unable to load notifications. Please try again.",
+      "updateFailed": "Unable to update the notification. Please try again."
+    }
+  },
+  "business": {
+    "wallet": {
+      "loadFailed": "Unable to load the business wallet.",
+      "topupFailed": "Top-up failed.",
+      "cashoutFailed": "Cash-out failed.",
+      "stripeFailed": "Unable to open Stripe Connect."
     }
   }
 }

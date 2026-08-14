@@ -299,7 +299,9 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
       <View style={[v4Styles.root, styles.loadingRoot]}>
         <Image source={MMD_LOGO} style={styles.loadingLogo} resizeMode="contain" />
         <Text style={styles.loadingTitle}>MMD DELIVERY</Text>
-        <Text style={styles.loadingTagline}>We Deliver With Heart ❤️</Text>
+        <Text style={styles.loadingTagline}>
+          {props.ts("brand.tagline", "We Deliver With Heart ❤️")}
+        </Text>
         <ActivityIndicator color={V4.gold} size="large" style={{ marginTop: 8 }} />
       </View>
     );

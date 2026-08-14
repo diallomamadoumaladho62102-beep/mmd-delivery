@@ -1784,7 +1784,8 @@ export function DriverOrderDetailsScreen() {
   async function callConfirmRoute(
     kind: VerifyKind,
     currentOrderId: string,
-    proofPhotoUrl: string | null
+    proofPhotoUrl: string | null,
+    verificationCode: string
   ) {
     const { data: sessionData, error: sessionError } =
       await supabase.auth.getSession();
@@ -1832,6 +1833,9 @@ export function DriverOrderDetailsScreen() {
           order_id: currentOrderId,
           proof_photo_url: proofPhotoUrl,
           driver_id: myUserId,
+          ...(kind === "pickup"
+            ? { pickup_code: verificationCode, code: verificationCode }
+            : { dropoff_code: verificationCode, code: verificationCode }),
         }),
       });
     } catch (fetchErr: any) {
@@ -2235,7 +2239,7 @@ export function DriverOrderDetailsScreen() {
         return;
       }
 
-      await callConfirmRoute(kind, order.id, proofPhotoUrl);
+      await callConfirmRoute(kind, order.id, proofPhotoUrl, normalizedCode);
       setCodeSuccess(true);
       await fetchOrder();
       setTimeout(() => {

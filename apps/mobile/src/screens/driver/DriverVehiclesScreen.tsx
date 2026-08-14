@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { DriverBrandLoadingState } from "../../components/driver/DriverBrandLoadingState";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -197,6 +198,7 @@ function BrandFooter() {
 }
 
 export function DriverVehiclesScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<DriverVehicleListItem[]>([]);
@@ -215,16 +217,16 @@ export function DriverVehiclesScreen() {
       setHistory(data.history.slice(0, 10));
     } catch (error) {
       Alert.alert(
-        "Erreur",
+        t("driver.vehicles.errorTitle", "Error"),
         toUserFacingError(
           error,
-          "Impossible de charger vos véhicules pour le moment.",
+          t("driver.vehicles.loadFailed", "Unable to load your vehicles right now."),
         ),
       );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const scheduleReload = useCallback(() => {
     if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
@@ -288,20 +290,26 @@ export function DriverVehiclesScreen() {
       await load();
     } catch (error) {
       Alert.alert(
-        "Véhicule actif",
+        t("driver.vehicles.activeTitle", "Active vehicle"),
         toUserFacingError(
           error,
-          "Impossible de changer le véhicule actif pour le moment.",
+          t(
+            "driver.vehicles.activeFailed",
+            "Unable to change the active vehicle right now.",
+          ),
         ),
       );
     }
   };
 
   const remove = (vehicleId: string) => {
-    Alert.alert("Supprimer", "Supprimer ce véhicule ?", [
-      { text: "Annuler", style: "cancel" },
-      {
-        text: "Supprimer",
+    Alert.alert(
+      t("driver.vehicles.deleteTitle", "Delete"),
+      t("driver.vehicles.deleteBody", "Delete this vehicle?"),
+      [
+        { text: t("driver.vehicles.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("driver.vehicles.deleteConfirm", "Delete"),
         style: "destructive",
         onPress: () => {
           void (async () => {
@@ -310,10 +318,13 @@ export function DriverVehiclesScreen() {
               await load();
             } catch (error) {
               Alert.alert(
-                "Erreur",
+                t("driver.vehicles.errorTitle", "Error"),
                 toUserFacingError(
                   error,
-                  "Impossible de supprimer ce véhicule pour le moment.",
+                  t(
+                    "driver.vehicles.deleteFailed",
+                    "Unable to delete this vehicle right now.",
+                  ),
                 ),
               );
             }

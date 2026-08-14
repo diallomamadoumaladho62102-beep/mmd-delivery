@@ -29,12 +29,7 @@ async function loyaltyGet(path: string) {
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     logTechnicalError(`loyalty.get${path}`, out, { status: res.status });
-    throw new Error(
-      toUserFacingError(
-        out,
-        "Une action temporairement impossible s'est produite. Veuillez réessayer.",
-      ),
-    );
+    throw new Error(toUserFacingError(out));
   }
   return out;
 }
@@ -48,12 +43,7 @@ async function loyaltyPost(path: string, body: Record<string, unknown>) {
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     logTechnicalError(`loyalty.post${path}`, out, { status: res.status });
-    throw new Error(
-      toUserFacingError(
-        out,
-        "Une action temporairement impossible s'est produite. Veuillez réessayer.",
-      ),
-    );
+    throw new Error(toUserFacingError(out));
   }
   return out;
 }

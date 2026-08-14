@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import i18n from "i18next";
 import { getApiBaseUrl } from "./apiBase";
 import { supabase } from "./supabase";
 import { logTechnicalError, toUserFacingError } from "./userFacingError";
@@ -83,9 +84,7 @@ async function authFetch(path: string, init?: RequestInit) {
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.ok === false) {
     logTechnicalError(`driver.api${path}`, body, { status: res.status });
-    const err = new Error(
-      toUserFacingError(body, "Une action temporairement impossible s'est produite. Veuillez réessayer."),
-    );
+    const err = new Error(toUserFacingError(body));
     (err as Error & { code?: string }).code = String(body.error ?? "");
     throw err;
   }
@@ -323,7 +322,10 @@ export async function setDriverOnlineViaApi(isOnline: boolean): Promise<boolean>
       const err = new Error(
         toUserFacingError(
           { error: row.error, message: row.message },
-          "Impossible de changer le statut pour le moment.",
+          i18n.t(
+            "errors.codes.online_status_update_failed",
+            "Unable to change your status right now.",
+          ),
         ),
       );
       (err as Error & { code?: string }).code = String(row.error ?? "");

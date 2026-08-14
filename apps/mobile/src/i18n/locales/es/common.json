@@ -455,7 +455,7 @@
       "transport": {
         "bike": "Bicicleta",
         "car": "Auto",
-        "moto": "Moto",
+        "moto": "Motocicleta",
         "title": "Transporte"
       },
       "vehicle": {
@@ -477,7 +477,7 @@
     },
     "menu": {
       "load_error": "No se pudo cargar el menú del conductor.",
-      "tips_week": "Consejos semanales",
+      "tips_week": "Propinas de la semana",
       "referrals": "Referidos",
       "opportunities": "Oportunidades",
       "driver_program": "Programa de conductores",
@@ -826,7 +826,7 @@
       "missingAddressBody": "No hay dirección disponible para este paso.",
       "missingCoordsTitle": "Falta información",
       "missingCoordsBody": "Este viaje aún no tiene coordenadas GPS.",
-      "rezoom": "Re-zoom",
+      "rezoom": "Reajustar zoom",
       "acceptDeniedTitle": "No se puede aceptar",
       "acceptDeniedStripe": "Debes terminar la configuración de Stripe antes de aceptar viajes.",
       "acceptDeniedGeneric": "No se puede aceptar este viaje.",
@@ -928,7 +928,7 @@
         "saved": "Guardado",
         "soon": "Pronto",
         "recommended": "Recomendado",
-        "boost": "Boost",
+        "boost": "Impulso",
         "promo": "Promo"
       },
       "alerts": {
@@ -1011,8 +1011,8 @@
       },
       "badge": {
         "bonusDollar": "Bono $",
-        "boost": "Boost",
-        "boostPercent": "Boost %",
+        "boost": "Impulso",
+        "boostPercent": "Impulso %",
         "claim": "Reclamar",
         "claimed": "Reclamado",
         "earned": "Ganado",
@@ -1035,7 +1035,7 @@
       "loading": "Cargando…",
       "sections": {
         "activeBoost": "Boost activo",
-        "availableBoosts": "Boosts disponibles",
+        "availableBoosts": "Impulsos disponibles",
         "bonus": "Bono",
         "challenges": "Desafíos"
       },
@@ -1121,7 +1121,7 @@
         "savedWithCount": "Oportunidades guardadas ({{count}})"
       },
       "tags": {
-        "boost": "Boost",
+        "boost": "Impulso",
         "new": "Nuevo",
         "promo": "Promo",
         "recommended": "Recomendado",

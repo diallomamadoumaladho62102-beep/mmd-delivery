@@ -640,6 +640,43 @@ export function RoleSelectScreen() {
                     </FadeIn>
                   ))}
                 </View>
+
+                <FadeIn delay={520}>
+                  <Pressable
+                    onPress={() => navigation.navigate("MarketplaceHome")}
+                    style={({ pressed }) => [
+                      styles.guestMarketplaceBtn,
+                      pressed && { opacity: 0.88 },
+                      (layout.compact || layout.tiny) && {
+                        minHeight: 44,
+                        marginTop: 10,
+                      },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(
+                      "roleSelect.browseMarketplace",
+                      "Browse Marketplace",
+                    )}
+                  >
+                    <Ionicons
+                      name="storefront-outline"
+                      size={18}
+                      color={MMD_GOLD}
+                    />
+                    <Text style={styles.guestMarketplaceText}>
+                      {t(
+                        "roleSelect.browseMarketplace",
+                        "Browse Marketplace",
+                      )}
+                    </Text>
+                  </Pressable>
+                  <Text style={styles.guestMarketplaceHint}>
+                    {t(
+                      "roleSelect.browseMarketplaceHint",
+                      "No account needed to discover products",
+                    )}
+                  </Text>
+                </FadeIn>
               </View>
             </View>
           </FadeIn>
@@ -767,6 +804,33 @@ const styles = StyleSheet.create({
   rolesStack: {
     gap: 12,
     paddingTop: 10,
+  },
+  guestMarketplaceBtn: {
+    marginTop: 14,
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_GOLD_BORDER,
+    backgroundColor: "rgba(245,197,66,0.08)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+  },
+  guestMarketplaceText: {
+    color: MMD_GOLD,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  guestMarketplaceHint: {
+    marginTop: 6,
+    color: MMD_TEXT,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 12,
+    textAlign: "center",
+    opacity: 0.85,
   },
   roleCard: {
     minHeight: 79,

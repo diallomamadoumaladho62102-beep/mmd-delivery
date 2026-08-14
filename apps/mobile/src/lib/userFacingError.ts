@@ -1,3 +1,17 @@
+// Imported from "i18next" (not "../i18n") so this module stays free of the
+// react-native / react-i18next bootstrap and can be used from any layer.
+import i18n from "i18next";
+
+/** Resolves an i18n key, falling back to the English source when i18n is not ready yet. */
+function tr(key: string, defaultValue: string): string {
+  try {
+    const value = i18n.t(key, { defaultValue });
+    return typeof value === "string" && value.trim() ? value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
 const TECHNICAL_PATTERNS: RegExp[] = [
   /unrecognized format\(\)/i,
   /postgres/i,
@@ -39,7 +53,10 @@ export function isTechnicalErrorMessage(message: string): boolean {
 
 export function toUserFacingError(
   error: unknown,
-  fallback = "Une action temporairement impossible s'est produite. Veuillez réessayer.",
+  fallback = tr(
+    "errors.fallback",
+    "Something went wrong temporarily. Please try again.",
+  ),
 ): string {
   if (error == null) return fallback;
 
@@ -63,102 +80,202 @@ export function toUserFacingError(
   return rawMessage;
 }
 
-function mapKnownErrorCode(code: string, message: string): string | null {
-  switch (code) {
+function code(key: string, defaultValue: string): string {
+  return tr(`errors.codes.${key}`, defaultValue);
+}
+
+function pattern(key: string, defaultValue: string): string {
+  return tr(`errors.patterns.${key}`, defaultValue);
+}
+
+const STRIPE_SETUP_REQUIRED_EN =
+  "Complete your Stripe setup to enable payouts, then try again.";
+const STRIPE_SECRET_LIVE_EN =
+  "Stripe Connect is not ready on the server side. Contact MMD support.";
+const STRIPE_PLATFORM_PROFILE_EN =
+  "Stripe Connect is not activated yet for the MMD platform. Complete the Connect questionnaire in the Stripe Dashboard (Connect → Accounts → Overview), then try again.";
+const DELIVERY_SHARE_EN =
+  "The delivery configuration is temporarily unavailable. Try again later or contact support.";
+const PROCESSING_ERROR_EN =
+  "The payment could not be completed. Please try again in a few moments.";
+const CARD_DECLINED_EN =
+  "Your card was declined. Check your details or use another card.";
+const INVALID_CREDENTIALS_EN =
+  "Incorrect credentials. Check your email and password.";
+const EMAIL_NOT_CONFIRMED_EN = "Confirm your email address before signing in.";
+const PAYMENT_NOT_CONFIRMED_EN =
+  "Payment was not completed. Please check your payment method and try again.";
+const USER_ALREADY_REGISTERED_EN =
+  "An account already exists with this email address.";
+
+function mapKnownErrorCode(errorCode: string, message: string): string | null {
+  switch (errorCode) {
     case "active_mission_in_progress":
-      return "Terminez votre mission en cours avant de modifier ce paramètre.";
+      return code(
+        "active_mission_in_progress",
+        "Finish your current mission before changing this setting.",
+      );
     case "documents_required":
-      return "Ce mode de transport nécessite une validation de vos documents avant d'être activé.";
+      return code(
+        "documents_required",
+        "This transport mode requires your documents to be approved before it can be enabled.",
+      );
     case "invalid_transport_mode":
-      return "Mode de transport invalide.";
+      return code("invalid_transport_mode", "Invalid transport mode.");
     case "must_be_offline":
-      return "Passez hors ligne pour modifier ou supprimer un véhicule.";
+      return code(
+        "must_be_offline",
+        "Go offline to edit or delete a vehicle.",
+      );
     case "active_ride_in_progress":
-      return "Impossible de changer de véhicule pendant une course.";
+      return code(
+        "active_ride_in_progress",
+        "You cannot change vehicle during a ride.",
+      );
     case "vehicle_not_active":
-      return "Ce véhicule n'est pas actif ou approuvé.";
+      return code(
+        "vehicle_not_active",
+        "This vehicle is not active or approved.",
+      );
     case "vehicle_not_found":
-      return "Véhicule introuvable.";
+      return code("vehicle_not_found", "Vehicle not found.");
     case "no_active_vehicle":
-      return "Sélectionnez un véhicule actif et approuvé avant de passer en ligne.";
+      return code(
+        "no_active_vehicle",
+        "Select an active, approved vehicle before going online.",
+      );
     case "vehicle_pending_review":
-      return "Votre véhicule est en attente de validation. Vous pourrez passer en ligne après approbation.";
+      return code(
+        "vehicle_pending_review",
+        "Your vehicle is pending review. You will be able to go online once it is approved.",
+      );
     case "vehicle_rejected":
-      return "Votre véhicule a été refusé. Corrigez les informations ou ajoutez un nouveau véhicule.";
+      return code(
+        "vehicle_rejected",
+        "Your vehicle was rejected. Correct the information or add a new vehicle.",
+      );
     case "vehicle_not_eligible":
-      return "Votre véhicule actif n'est pas éligible. Attendez la validation admin ou choisissez un autre véhicule.";
+      return code(
+        "vehicle_not_eligible",
+        "Your active vehicle is not eligible. Wait for admin approval or choose another vehicle.",
+      );
     case "no_service_enabled":
-      return "Activez au moins un service (Food, Colis ou Taxi) avant de passer en ligne.";
+      return code(
+        "no_service_enabled",
+        "Enable at least one service (Food, Package or Taxi) before going online.",
+      );
     case "driver_not_approved":
-      return "Votre compte chauffeur doit être approuvé avant de passer en ligne.";
+      return code(
+        "driver_not_approved",
+        "Your driver account must be approved before you can go online.",
+      );
     case "driver_suspended":
-      return "Votre compte chauffeur est suspendu.";
+      return code("driver_suspended", "Your driver account is suspended.");
     case "driver_disabled":
-      return "Votre compte chauffeur est désactivé.";
+      return code("driver_disabled", "Your driver account is disabled.");
     case "online_status_update_failed":
-      return "Impossible de changer le statut pour le moment.";
+      return code(
+        "online_status_update_failed",
+        "Unable to change your status right now.",
+      );
     case "route_unavailable":
-      return "Nous n'avons pas pu calculer l'itinéraire exact pour le moment. Veuillez vérifier les adresses ou réessayer.";
+      return code(
+        "route_unavailable",
+        "We could not calculate the exact route right now. Please check the addresses or try again.",
+      );
     case "card_declined":
-      return "Votre carte a été refusée. Vérifiez vos informations ou utilisez une autre carte.";
+      return code("card_declined", CARD_DECLINED_EN);
     case "payment_intent_authentication_failure":
-      return "L'authentification du paiement a échoué. Réessayez ou utilisez une autre carte.";
+      return code(
+        "payment_intent_authentication_failure",
+        "Payment authentication failed. Try again or use another card.",
+      );
     case "processing_error":
-      return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
+      return code("processing_error", PROCESSING_ERROR_EN);
     case "invalid_credentials":
     case "invalid_grant":
-      return "Identifiants incorrects. Vérifiez votre email et mot de passe.";
+      return code("invalid_credentials", INVALID_CREDENTIALS_EN);
     case "email_not_confirmed":
-      return "Confirmez votre adresse email avant de vous connecter.";
+      return code("email_not_confirmed", EMAIL_NOT_CONFIRMED_EN);
     case "user_already_registered":
-      return "Un compte existe déjà avec cette adresse email.";
+      return code("user_already_registered", USER_ALREADY_REGISTERED_EN);
     case "weak_password":
-      return "Mot de passe trop faible. Utilisez au moins 8 caractères.";
+      return code(
+        "weak_password",
+        "Password too weak. Use at least 8 characters.",
+      );
     case "wallet_ledger_bridge_failed":
     case "payment_setup_failed":
-      return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
+      return code("payment_setup_failed", PROCESSING_ERROR_EN);
     case "Stripe payment not confirmed yet":
-      return "Payment was not completed. Please check your payment method and try again.";
+      return code("stripe_payment_not_confirmed", PAYMENT_NOT_CONFIRMED_EN);
     case "delivery_share_pct_invalid":
-      return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
+      return code("delivery_share_pct_invalid", DELIVERY_SHARE_EN);
     case "stripe_setup_required":
     case "Driver not onboarded":
-      return "Complétez la configuration Stripe pour activer les virements, puis réessayez.";
+      return code("stripe_setup_required", STRIPE_SETUP_REQUIRED_EN);
     case "stripe_secret_key_must_be_live":
-      return "La configuration Stripe Connect n'est pas prête côté serveur. Contactez le support MMD.";
+      return code("stripe_secret_key_must_be_live", STRIPE_SECRET_LIVE_EN);
     case "stripe_account_retrieve_failed":
-      return "Impossible de lire votre compte Stripe. Rouvrez la configuration des virements.";
+      return code(
+        "stripe_account_retrieve_failed",
+        "Unable to read your Stripe account. Reopen the payout setup.",
+      );
     case "stripe_connect_platform_profile_incomplete":
-      return "Stripe Connect n'est pas encore activé pour la plateforme MMD. Complétez le questionnaire Connect dans le Dashboard Stripe (Connect → Accounts → Overview), puis réessayez.";
+      return code(
+        "stripe_connect_platform_profile_incomplete",
+        STRIPE_PLATFORM_PROFILE_EN,
+      );
     case "profile_not_found":
-      return "Votre profil chauffeur est incomplet. Rouvrez l'application ou contactez le support pour finaliser votre compte, puis réessayez Enable.";
+      return code(
+        "profile_not_found",
+        "Your driver profile is incomplete. Reopen the app or contact support to finish your account, then try Enable again.",
+      );
     case "stripe_connect_error":
       if (
         /complete your platform profile|answer the questionnaire|connect\/accounts\/overview/i.test(
           message,
         )
       ) {
-        return "Stripe Connect n'est pas encore activé pour la plateforme MMD. Complétez le questionnaire Connect dans le Dashboard Stripe (Connect → Accounts → Overview), puis réessayez.";
+        return code(
+          "stripe_connect_platform_profile_incomplete",
+          STRIPE_PLATFORM_PROFILE_EN,
+        );
       }
-      return "Impossible d'ouvrir la configuration Stripe. Réessayez ou contactez le support.";
+      return code(
+        "stripe_connect_error",
+        "Unable to open the Stripe setup. Try again or contact support.",
+      );
     case "already_cashed_out_today":
-      return "Vous avez déjà demandé un retrait aujourd'hui. Réessayez demain.";
+      return code(
+        "already_cashed_out_today",
+        "You have already requested a payout today. Try again tomorrow.",
+      );
     case "below_minimum":
-      return "Le solde disponible est inférieur au minimum de retrait.";
+      return code(
+        "below_minimum",
+        "Your available balance is below the payout minimum.",
+      );
     case "cashout_rate_limited":
-      return "Trop de demandes de retrait. Attendez quelques minutes puis réessayez.";
+      return code(
+        "cashout_rate_limited",
+        "Too many payout requests. Wait a few minutes then try again.",
+      );
     case "Driver has no Stripe account":
-      return "Aucun compte Stripe Connect trouvé. Appuyez sur Activer les virements pour commencer.";
+      return code(
+        "driver_no_stripe_account",
+        "No Stripe Connect account found. Tap Enable payouts to get started.",
+      );
     default:
       break;
   }
 
   if (/not onboarded|setup.?required|complete.?stripe/i.test(message)) {
-    return "Complétez la configuration Stripe pour activer les virements, puis réessayez.";
+    return pattern("notOnboarded", STRIPE_SETUP_REQUIRED_EN);
   }
 
   if (/stripe_secret_key_must_be_live|sk_live_/i.test(message)) {
-    return "La configuration Stripe Connect n'est pas prête côté serveur. Contactez le support MMD.";
+    return pattern("stripeSecretLive", STRIPE_SECRET_LIVE_EN);
   }
 
   if (
@@ -166,43 +283,46 @@ function mapKnownErrorCode(code: string, message: string): string | null {
     /delivery share pair incomplete/i.test(message) ||
     /must be provided together/i.test(message)
   ) {
-    return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
+    return pattern("deliveryShare", DELIVERY_SHARE_EN);
   }
 
   if (/invalid login credentials/i.test(message)) {
-    return "Identifiants incorrects. Vérifiez votre email et mot de passe.";
+    return pattern("invalidCredentials", INVALID_CREDENTIALS_EN);
   }
 
   if (/email not confirmed/i.test(message)) {
-    return "Confirmez votre adresse email avant de vous connecter.";
+    return pattern("emailNotConfirmed", EMAIL_NOT_CONFIRMED_EN);
   }
 
   if (/payment not confirmed yet/i.test(message)) {
-    return "Payment was not completed. Please check your payment method and try again.";
+    return pattern("paymentNotConfirmed", PAYMENT_NOT_CONFIRMED_EN);
   }
 
   if (/user already registered/i.test(message)) {
-    return "Un compte existe déjà avec cette adresse email.";
+    return pattern("userAlreadyRegistered", USER_ALREADY_REGISTERED_EN);
   }
 
-  if (/Canc/i.test(message) || code === "Canceled") {
-    return "Paiement annulé.";
+  if (/Canc/i.test(message) || errorCode === "Canceled") {
+    return pattern("paymentCanceled", "Payment canceled.");
   }
 
   if (/Une erreur de traitement est survenue/i.test(message)) {
-    return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
+    return pattern("processingError", PROCESSING_ERROR_EN);
   }
 
   if (/card was declined/i.test(message)) {
-    return "Votre carte a été refusée. Vérifiez vos informations ou utilisez une autre carte.";
+    return pattern("cardDeclined", CARD_DECLINED_EN);
   }
 
   if (/network request failed/i.test(message)) {
-    return "Connexion instable. Vérifiez votre réseau et réessayez.";
+    return pattern(
+      "networkFailed",
+      "Unstable connection. Check your network and try again.",
+    );
   }
 
   if (message === "distance_too_far") {
-    return "La distance est trop importante pour cette course.";
+    return pattern("distanceTooFar", "The distance is too long for this ride.");
   }
 
   return null;

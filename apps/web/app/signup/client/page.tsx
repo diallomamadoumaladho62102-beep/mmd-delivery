@@ -241,27 +241,30 @@ export default function SignupClientPage() {
     }
 
     try {
-      await supabase
-        .from("client_addresses")
-        .update({ is_default: false })
-        .eq("user_id", userId)
-        .eq("is_default", true);
+      // Only persist a saved address when the user actually provided one.
+      if (trimOrEmpty(addressLine1)) {
+        await supabase
+          .from("client_addresses")
+          .update({ is_default: false })
+          .eq("user_id", userId)
+          .eq("is_default", true);
 
-      const { error } = await supabase.from("client_addresses").insert({
-        user_id: userId,
-        label: "Main address",
-        address_line1: trimOrEmpty(addressLine1),
-        address_line2: trimOrEmpty(addressLine2),
-        city: trimOrEmpty(city),
-        state: trimOrEmpty(stateRegion),
-        postal_code: trimOrEmpty(postalCode),
-        country: trimOrEmpty(country || "US"),
-        is_default: true,
-      });
+        const { error } = await supabase.from("client_addresses").insert({
+          user_id: userId,
+          label: "Main address",
+          address_line1: trimOrEmpty(addressLine1),
+          address_line2: trimOrEmpty(addressLine2),
+          city: trimOrEmpty(city),
+          state: trimOrEmpty(stateRegion),
+          postal_code: trimOrEmpty(postalCode),
+          country: trimOrEmpty(country || "US"),
+          is_default: true,
+        });
 
-      if (error) {
-        console.log("client_addresses insert error:", error);
-        throw error;
+        if (error) {
+          console.log("client_addresses insert error:", error);
+          throw error;
+        }
       }
     } catch (error) {
       console.log("client_addresses insert exception:", error);
@@ -357,15 +360,8 @@ export default function SignupClientPage() {
       return;
     }
 
-    if (
-      !trimOrEmpty(addressLine1) ||
-      !trimOrEmpty(city) ||
-      !trimOrEmpty(stateRegion) ||
-      !trimOrEmpty(postalCode)
-    ) {
-      setErr("Merci de saisir ton adresse complète.");
-      return;
-    }
+    // Full street address is optional at signup (Apple 5.1.1(v)).
+    // Address is collected later when ordering taxi / delivery / marketplace.
 
     setLoading(true);
 
@@ -541,7 +537,12 @@ export default function SignupClientPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-200">Adresse</label>
+                <label className="mb-2 block text-sm font-bold text-slate-200">
+                  Adresse (optionnelle)
+                </label>
+                <p className="mb-2 text-xs text-slate-400">
+                  Tu pourras l’ajouter plus tard pour une livraison ou un taxi.
+                </p>
                 <input
                   value={addressLine1}
                   onChange={(event) => setAddressLine1(event.target.value)}

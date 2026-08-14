@@ -86,7 +86,9 @@ export default function TaxiTipScreen() {
         );
       }
     } catch (e) {
-      setError(toUserFacingError(e, "Unable to load ride"));
+      setError(
+        toUserFacingError(e, t("taxi.tip.loadFailed", "Unable to load the ride."))
+      );
     } finally {
       setLoading(false);
     }
@@ -137,7 +139,10 @@ export default function TaxiTipScreen() {
       );
       await refresh();
     } catch (e) {
-      const message = toUserFacingError(e, "Unable to pay tip");
+      const message = toUserFacingError(
+        e,
+        t("taxi.tip.payFailed", "Unable to pay the tip")
+      );
       if (/annul|cancel/i.test(message)) {
         Alert.alert(
           t("taxi.tip.cancelledTitle", "Tip cancelled"),

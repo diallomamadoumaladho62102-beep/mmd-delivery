@@ -1,5 +1,6 @@
 import { Alert } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import i18n from "../i18n";
 import { supabase } from "./supabase";
 import { API_BASE_URL } from "./apiBase";
 
@@ -123,7 +124,7 @@ async function openDriverTaxPdf(params: {
 
     console.log(`openDriverTaxPdf(${range}) error:`, message, error);
 
-    Alert.alert("Erreur PDF", message);
+    Alert.alert(i18n.t("driver.taxPdf.errorTitle", "PDF error"), message);
 
     throw error;
   }

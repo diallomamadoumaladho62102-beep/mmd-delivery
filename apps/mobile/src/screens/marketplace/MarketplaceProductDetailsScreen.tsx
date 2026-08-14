@@ -25,6 +25,7 @@ import {
   saveMarketplaceDraft,
   type MarketplaceProduct,
 } from "../../lib/marketplaceApi";
+import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
 import {
@@ -41,6 +42,11 @@ type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductDetai
 
 const MMD_CYAN = "#00C0E8";
 
+async function hasClientSession(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return Boolean(data.session?.access_token);
+}
+
 export default function MarketplaceProductDetailsScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { sellerId, sellerName, productId, sellerCountryCode, orderId: routeOrderId } =
@@ -53,16 +59,27 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
   const [draftOrderId, setDraftOrderId] = useState<string | undefined>(routeOrderId);
   const [favorited, setFavorited] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [products, draft, favorites] = await Promise.all([
-        fetchMarketplaceProducts(sellerId, scope),
+      const signedIn = await hasClientSession();
+      setIsGuest(!signedIn);
+
+      const products = await fetchMarketplaceProducts(sellerId, scope);
+      setProduct(products.find((row) => row.id === productId) ?? null);
+
+      if (!signedIn) {
+        setDraftOrderId(undefined);
+        setFavorited(false);
+        return;
+      }
+
+      const [draft, favorites] = await Promise.all([
         fetchMarketplaceDraft({ sellerId, orderId: routeOrderId }, scope).catch(() => null),
         fetchMarketplaceFavorites(scope, sellerId).catch(() => []),
       ]);
-      setProduct(products.find((row) => row.id === productId) ?? null);
       if (draft?.id) setDraftOrderId(draft.id);
       setFavorited(favorites.some((row) => row.product_id === productId));
     } finally {
@@ -83,8 +100,30 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
     return formatMarketplaceMoney(unit * quantity, product.currency);
   }, [product, quantity]);
 
+  function promptSignIn(actionLabel: string) {
+    Alert.alert(
+      t("marketplace.details.signInTitle", "Sign in required"),
+      t(
+        "marketplace.details.signInBody",
+        "Create an account or sign in to {{action}}. You can keep browsing products without an account.",
+        { action: actionLabel },
+      ),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("marketplace.details.signInCta", "Sign in"),
+          onPress: () => navigation.navigate("ClientAuth" as never),
+        },
+      ],
+    );
+  }
+
   async function addToDraft() {
     if (!product) return;
+    if (!(await hasClientSession())) {
+      promptSignIn(t("marketplace.details.addToCartAction", "add items to your cart"));
+      return;
+    }
     try {
       setSaving(true);
       let orderId = draftOrderId;
@@ -112,7 +151,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
     } catch (e) {
       Alert.alert(
         t("marketplace.details.errorTitle", "Unable to update draft"),
-        toUserFacingError(e, "Unknown error")
+        toUserFacingError(e, t("common.unknownError", "Unknown error."))
       );
     } finally {
       setSaving(false);
@@ -121,6 +160,10 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
 
   async function toggleFavorite() {
     if (!product) return;
+    if (!(await hasClientSession())) {
+      promptSignIn(t("marketplace.details.favoriteAction", "save favorites"));
+      return;
+    }
     try {
       setFavoriteBusy(true);
       if (favorited) {
@@ -137,7 +180,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
     } catch (e) {
       Alert.alert(
         t("marketplace.details.errorTitle", "Unable to update draft"),
-        toUserFacingError(e, "Unknown error")
+        toUserFacingError(e, t("common.unknownError", "Unknown error."))
       );
     } finally {
       setFavoriteBusy(false);
@@ -171,6 +214,14 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
           />
         ) : (
           <>
+            {isGuest ? (
+              <Text style={styles.guestBanner}>
+                {t(
+                  "marketplace.details.guestBanner",
+                  "Browsing as guest — sign in to order.",
+                )}
+              </Text>
+            ) : null}
             {String(product.image_paths?.[0] ?? "").trim() ? (
               <Image
                 source={{ uri: String(product.image_paths?.[0]).trim() }}
@@ -251,6 +302,12 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: MMD_BLUE },
   scroll: { padding: 20, paddingTop: 8, gap: 16 },
+  guestBanner: {
+    color: "#CBD5E1",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   heroImage: {
     width: "100%",
     height: 200,

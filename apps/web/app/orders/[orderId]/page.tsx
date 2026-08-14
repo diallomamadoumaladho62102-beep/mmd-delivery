@@ -381,7 +381,8 @@ export default function OrderPage() {
 
   async function callConfirmRoute(
     endpoint: "/api/orders/pickup-confirm" | "/api/orders/delivered-confirm",
-    orderIdToConfirm: string
+    orderIdToConfirm: string,
+    verificationCode: string
   ) {
     const token = await getAccessToken();
 
@@ -391,7 +392,12 @@ export default function OrderPage() {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ order_id: orderIdToConfirm }),
+      body: JSON.stringify({
+        order_id: orderIdToConfirm,
+        ...(endpoint.includes("pickup")
+          ? { pickup_code: verificationCode, code: verificationCode }
+          : { dropoff_code: verificationCode, code: verificationCode }),
+      }),
       cache: "no-store",
     });
 
@@ -463,7 +469,7 @@ export default function OrderPage() {
 
     try {
       const result = await verifyOrderCode("pickup", pickupCodeInput);
-      await callConfirmRoute("/api/orders/pickup-confirm", order.id);
+      await callConfirmRoute("/api/orders/pickup-confirm", order.id, pickupCodeInput.trim());
 
       setPickupCodeInput("");
       setSuccessMsg(
@@ -508,7 +514,11 @@ export default function OrderPage() {
 
     try {
       const result = await verifyOrderCode("dropoff", dropoffCodeInput);
-      await callConfirmRoute("/api/orders/delivered-confirm", order.id);
+      await callConfirmRoute(
+        "/api/orders/delivered-confirm",
+        order.id,
+        dropoffCodeInput.trim()
+      );
 
       setDropoffCodeInput("");
       setSuccessMsg(

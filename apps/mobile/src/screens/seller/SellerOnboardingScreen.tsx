@@ -74,7 +74,11 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
             : ""
         );
       } catch (e: any) {
-        Alert.alert(t("common.errorTitle", "Error"), e?.message ?? "Load failed");
+        Alert.alert(
+          t("common.errorTitle", "Error"),
+          e?.message ??
+            t("seller.onboarding.loadFailed", "Unable to load your seller profile.")
+        );
       } finally {
         setHydrating(false);
       }
@@ -154,7 +158,11 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
         );
       }
     } catch (e: any) {
-      Alert.alert(t("common.errorTitle", "Error"), e?.message ?? "Submit failed");
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        e?.message ??
+          t("seller.onboarding.submitFailed", "Unable to submit your application.")
+      );
     } finally {
       setLoading(false);
     }

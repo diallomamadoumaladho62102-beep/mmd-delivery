@@ -114,18 +114,31 @@ async function buildMarketplacePath(
   return qs ? `${path}?${qs}` : path;
 }
 
+function isMarketplacePublicBrowsePath(path: string): boolean {
+  const bare = path.split("?")[0] ?? path;
+  return (
+    bare === "/api/marketplace/sellers" || bare === "/api/marketplace/products"
+  );
+}
+
 async function marketplaceFetch(
   path: string,
   init?: RequestInit,
-  _scope?: MarketplaceScopeInput
+  _scope?: MarketplaceScopeInput,
+  opts?: { allowGuest?: boolean }
 ) {
   const token = await getAccessToken();
-  if (!token) throw new Error("Not authenticated");
+  const method = String(init?.method ?? "GET").toUpperCase();
+  const allowGuest =
+    opts?.allowGuest === true ||
+    (method === "GET" && isMarketplacePublicBrowsePath(path));
+
+  if (!token && !allowGuest) throw new Error("Not authenticated");
 
   const res = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       Accept: "application/json",
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
@@ -151,7 +164,7 @@ export async function fetchMarketplaceSellers(
   scope?: MarketplaceScopeInput
 ): Promise<MarketplaceSeller[]> {
   const path = await buildMarketplacePath("/api/marketplace/sellers", {}, scope);
-  const body = await marketplaceFetch(path, undefined, scope);
+  const body = await marketplaceFetch(path, undefined, scope, { allowGuest: true });
   return body.items ?? [];
 }
 
@@ -164,7 +177,7 @@ export async function fetchMarketplaceProducts(
     { seller_id: sellerId },
     scope
   );
-  const body = await marketplaceFetch(path, undefined, scope);
+  const body = await marketplaceFetch(path, undefined, scope, { allowGuest: true });
   return body.items ?? [];
 }
 

@@ -20,7 +20,7 @@ The `x-vercel-cron` header alone is **rejected** (it is spoofable outside Vercel
 
 ## External cron (GitHub Actions — `.github/workflows/production-dispatch-crons.yml`)
 
-Runs every **3 minutes** with `Authorization: Bearer $CRON_SECRET`:
+Runs every **5 minutes** with `Authorization: Bearer $CRON_SECRET` (GitHub Actions minimum schedule interval):
 
 | Path | Purpose |
 |------|---------|
@@ -32,7 +32,7 @@ Runs every **3 minutes** with `Authorization: Bearer $CRON_SECRET`:
 
 ## External cron (GitHub Actions — `.github/workflows/production-safety-retention-cron.yml`)
 
-Runs every **6 hours** with `Authorization: Bearer $CRON_SECRET`:
+Runs every **6 hours** with `Authorization: Bearer $CRON_SECRET` and **up to 3 attempts** (linear backoff) on network/5xx failures. The retention endpoint is idempotent (purge only stamps new warnings when unset; push notify only when `warnings_* > 0` for that run; storage deletes clear `storage_path`):
 
 | Path | Purpose |
 |------|---------|

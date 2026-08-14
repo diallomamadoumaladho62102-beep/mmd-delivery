@@ -29,19 +29,13 @@ export async function GET(req: NextRequest, context: RouteContext) {
     if (error) return taxiJson({ ok: false, error: error.message }, 500);
     if (!recording) return taxiJson({ ok: false, error: "recording_not_found" }, 404);
 
-    const { data: ride } = await auth.supabaseAdmin
-      .from("taxi_rides")
-      .select("client_user_id,driver_id")
-      .eq("id", recording.taxi_ride_id)
-      .maybeSingle();
-
     const userId = auth.user.id;
-    const allowed =
-      String(recording.initiator_user_id) === userId ||
-      String(ride?.client_user_id) === userId ||
-      String(ride?.driver_id ?? "") === userId;
+    const isInitiator = String(recording.initiator_user_id) === userId;
 
-    if (!allowed) return taxiJson({ ok: false, error: "forbidden" }, 403);
+    // Cross-party downloads are forbidden. Staff use the lock/review admin path.
+    if (!isInitiator) {
+      return taxiJson({ ok: false, error: "forbidden" }, 403);
+    }
 
     if (!["available", "locked_for_review"].includes(String(recording.status))) {
       return taxiJson({ ok: false, error: "not_available" }, 400);

@@ -40,6 +40,9 @@ export async function PATCH(request: NextRequest) {
     if (body.client_audio_allowed !== undefined) {
       patch.client_audio_allowed = Boolean(body.client_audio_allowed);
     }
+    if (body.driver_audio_allowed !== undefined) {
+      patch.driver_audio_allowed = Boolean(body.driver_audio_allowed);
+    }
     if (body.driver_video_allowed !== undefined) {
       patch.driver_video_allowed = Boolean(body.driver_video_allowed);
     }
@@ -91,6 +94,7 @@ export async function POST(request: NextRequest) {
         state_code: stateCode,
         city,
         client_audio_allowed: body.client_audio_allowed !== false,
+        driver_audio_allowed: body.driver_audio_allowed !== false,
         driver_video_allowed: body.driver_video_allowed !== false,
         retention_days: Number(body.retention_days ?? 14),
         is_active: true,

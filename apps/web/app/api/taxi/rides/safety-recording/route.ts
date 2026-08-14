@@ -52,19 +52,31 @@ export async function GET(req: NextRequest) {
 
     if (error) return taxiJson({ ok: false, error: error.message }, 500);
 
-    const statusPayload = buildSafetyRecordingStatusPayload(
-      (recordings ?? []) as SafetyRecordingRow[],
-    );
+    const allRecordings = (recordings ?? []) as SafetyRecordingRow[];
+    const statusPayload = buildSafetyRecordingStatusPayload(allRecordings);
+
+    // Participants only receive their own recording rows (no cross-party file metadata).
+    // Active flags still show when the other party is recording on their own device.
+    const ownRecordings = allRecordings
+      .filter((row) => String(row.initiator_user_id) === userId)
+      .map((row) => {
+        const { storage_path: _storagePath, ...safe } = row as SafetyRecordingRow & {
+          storage_path?: string | null;
+        };
+        return safe;
+      });
 
     return taxiJson({
       ok: true,
       ride_active: isActiveTaxiRideStatus(ride.status),
       rules: rules ?? null,
       client_audio_allowed: rules?.client_audio_allowed !== false,
+      driver_audio_allowed: rules?.driver_audio_allowed !== false,
       driver_video_allowed: rules?.driver_video_allowed !== false,
       retention_days: rules?.retention_days ?? 14,
       consent_message: SAFETY_RECORDING_CONSENT_MESSAGE,
       ...statusPayload,
+      recordings: ownRecordings,
     });
   } catch (e: unknown) {
     return taxiJson(
@@ -83,7 +95,7 @@ export async function POST(req: NextRequest) {
     const rideId = getTaxiRideId(body as Record<string, unknown>);
     const recordingType = String(body.recording_type ?? body.recordingType ?? "").trim();
 
-    if (!["client_audio", "driver_video"].includes(recordingType)) {
+    if (!["client_audio", "driver_audio", "driver_video"].includes(recordingType)) {
       return taxiJson({ ok: false, error: "invalid_recording_type" }, 400);
     }
 
@@ -116,7 +128,7 @@ export async function POST(req: NextRequest) {
       await notifySafetyRecordingStarted({
         supabaseAdmin: auth.supabaseAdmin,
         rideId,
-        recordingType: recordingType as "client_audio" | "driver_video",
+        recordingType: recordingType as "client_audio" | "driver_audio" | "driver_video",
         initiatorRole: initiatorRole as "client" | "driver",
         otherPartyUserId,
       });

@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import ScreenHeader from "../components/navigation/ScreenHeader";
@@ -46,6 +47,7 @@ function formatMoney(cents: number, currency: string) {
 }
 
 export default function MmdPlusScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,12 +65,14 @@ export default function MmdPlusScreen() {
       setPlans(res.plans);
       setInvoices(res.invoices);
     } catch (e: unknown) {
-      setError(toUserFacingError(e, "Chargement MMD+ impossible."));
+      setError(
+        toUserFacingError(e, t("mmdPlus.loadFailed", "Unable to load MMD+.")),
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -96,12 +100,15 @@ export default function MmdPlusScreen() {
         }
         await load();
       } catch (e: unknown) {
-        Alert.alert("MMD+", toUserFacingError(e, "Action impossible."));
+        Alert.alert(
+          t("mmdPlus.title", "MMD+"),
+          toUserFacingError(e, t("mmdPlus.actionFailed", "Action unavailable.")),
+        );
       } finally {
         setBusy(null);
       }
     },
-    [busy, load]
+    [busy, load, t]
   );
 
   return (

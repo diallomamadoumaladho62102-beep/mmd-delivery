@@ -102,7 +102,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
-        toUserFacingError(e, "Unknown error")
+        toUserFacingError(e, t("common.unknownError", "Unknown error."))
       );
     } finally {
       setLoading(false);
@@ -175,7 +175,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
-        toUserFacingError(e, "Unknown error")
+        toUserFacingError(e, t("common.unknownError", "Unknown error."))
       );
     }
   }
@@ -205,7 +205,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
-        toUserFacingError(e, "Unknown error")
+        toUserFacingError(e, t("common.unknownError", "Unknown error."))
       );
     } finally {
       setCheckingOut(false);
@@ -290,7 +290,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
-        toUserFacingError(e, "Unknown error")
+        toUserFacingError(e, t("common.unknownError", "Unknown error."))
       );
     } finally {
       setCheckingOut(false);
