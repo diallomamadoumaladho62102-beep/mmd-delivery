@@ -22,6 +22,11 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole, setSelectedRole } from "../lib/authRole";
+import {
+  fetchOwnProfileForRoleGate,
+  userMessageForProfileGateKind,
+} from "../lib/roleSelectProfileGate";
+import { logTechnicalError } from "../lib/userFacingError";
 import { useTranslation } from "react-i18next";
 import {
   MMD_BLUE,
@@ -303,26 +308,69 @@ export function RoleSelectScreen() {
       return;
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role, is_founder")
-      .eq("id", userId)
-      .maybeSingle();
+    const gate = await fetchOwnProfileForRoleGate(supabase as any, userId);
 
-    if (profileError) {
-      console.log("RoleSelect profile check error:", profileError);
-      Alert.alert(
-        t("common.error", "Erreur"),
-        t(
-          "roleSelect.errors.profileCheckFailed",
-          "Impossible de vérifier ton profil. Réessaie.",
-        ),
-      );
+    if (gate.ok === false) {
+      console.log("RoleSelect profile check error:", {
+        kind: gate.kind,
+        code: gate.code,
+        message: gate.message,
+        details: gate.details,
+        hint: gate.hint,
+        userId: gate.userId,
+      });
+
+      if (gate.kind === "session_expired" || gate.kind === "permission") {
+        logTechnicalError("roleSelect.profileGate", gate, {
+          kind: gate.kind,
+          code: gate.code,
+          userId: gate.userId,
+        });
+      } else if (gate.kind === "server" || gate.kind === "unknown") {
+        logTechnicalError("roleSelect.profileGate", gate, {
+          kind: gate.kind,
+          code: gate.code,
+          userId: gate.userId,
+        });
+      }
+      // network: user-facing only (avoid Sentry noise for offline)
+
+      const title =
+        gate.kind === "session_expired"
+          ? t("roleSelect.sessionExpiredTitle", "Session expired")
+          : t("common.error", "Erreur");
+
+      Alert.alert(title, userMessageForProfileGateKind(gate.kind), [
+        { text: t("common.ok", "OK"), style: "cancel" as const },
+        ...(gate.kind === "session_expired"
+          ? [
+              {
+                text: t("roleSelect.signInAgain", "Sign in again"),
+                onPress: async () => {
+                  await clearSelectedRole();
+                  await supabase.auth.signOut();
+                  if (selectedRole === "driver") {
+                    navigation.navigate("DriverAuth");
+                    return;
+                  }
+                  if (selectedRole === "restaurant") {
+                    navigation.navigate("RestaurantAuth");
+                    return;
+                  }
+                  navigation.navigate("ClientAuth");
+                },
+              },
+            ]
+          : []),
+      ]);
       return;
     }
 
-    const realRole = normalizeProfileRole((profile as any)?.role);
-    const isFounder = (profile as any)?.is_founder === true;
+    const profile = gate.profile;
+    const resolvedUserId = gate.userId || userId;
+
+    const realRole = normalizeProfileRole(profile?.role);
+    const isFounder = profile?.is_founder === true;
     const canUseAnyPublicRole = isFounder || realRole === "admin";
 
     if (realRole && realRole !== selectedRole && !canUseAnyPublicRole) {
@@ -344,7 +392,7 @@ export function RoleSelectScreen() {
         const { data: driverProfile } = await supabase
           .from("driver_profiles")
           .select("status")
-          .eq("user_id", userId)
+          .eq("user_id", resolvedUserId)
           .maybeSingle();
 
         const status = normalizeDriverStatus((driverProfile as any)?.status);
@@ -379,7 +427,7 @@ export function RoleSelectScreen() {
       const { data: driverProfile, error: driverError } = await supabase
         .from("driver_profiles")
         .select("status")
-        .eq("user_id", userId)
+        .eq("user_id", resolvedUserId)
         .maybeSingle();
 
       if (driverError) {

@@ -1,3 +1,22 @@
+export function isExpectedTaxiPaymentPendingResponse(
+  status: number,
+  body: unknown,
+): boolean {
+  if (status !== 409) return false;
+  const record =
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>)
+      : null;
+  if (!record) return false;
+  const error = String(record.error ?? "").toLowerCase();
+  const paymentStatus = String(record.payment_status ?? "").toLowerCase();
+  return (
+    error.includes("payment not confirmed") ||
+    paymentStatus === "unpaid" ||
+    paymentStatus === "requires_payment_method"
+  );
+}
+
 /**
  * Pure decision helpers for taxi Checkout abandon / recovery.
  * Keep in sync with TaxiQuoteScreen post-WebBrowser behavior.

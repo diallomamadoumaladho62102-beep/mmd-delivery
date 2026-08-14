@@ -117,6 +117,8 @@ function mapKnownErrorCode(code: string, message: string): string | null {
     case "wallet_ledger_bridge_failed":
     case "payment_setup_failed":
       return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
+    case "Stripe payment not confirmed yet":
+      return "Payment was not completed. Please check your payment method and try again.";
     case "delivery_share_pct_invalid":
       return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
     case "stripe_setup_required":
@@ -173,6 +175,10 @@ function mapKnownErrorCode(code: string, message: string): string | null {
 
   if (/email not confirmed/i.test(message)) {
     return "Confirmez votre adresse email avant de vous connecter.";
+  }
+
+  if (/payment not confirmed yet/i.test(message)) {
+    return "Payment was not completed. Please check your payment method and try again.";
   }
 
   if (/user already registered/i.test(message)) {

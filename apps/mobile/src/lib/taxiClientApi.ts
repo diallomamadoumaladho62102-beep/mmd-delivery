@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "./apiBase";
 import { supabase } from "./supabase";
+import { isExpectedTaxiPaymentPendingResponse } from "./taxiPaymentAbandonFlow";
 import { logTechnicalError, toUserFacingError } from "./userFacingError";
 
 async function getAuthHeaders() {
@@ -57,11 +58,23 @@ async function taxiPost(path: string, body: Record<string, unknown>) {
   });
   const out = await res.json().catch(() => null);
   if (!res.ok) {
-    logTechnicalError(`taxi.post${path}`, out, { status: res.status });
+    const expectedPending =
+      path.includes("confirm-taxi-paid") &&
+      isExpectedTaxiPaymentPendingResponse(res.status, out);
+    if (!expectedPending) {
+      logTechnicalError(`taxi.post${path}`, out, { status: res.status });
+    } else {
+      console.log(`[taxi.post${path}] payment not confirmed yet`, {
+        status: res.status,
+        payment_status: (out as { payment_status?: string } | null)?.payment_status,
+      });
+    }
     throw new Error(
       toUserFacingError(
         out,
-        "Une action temporairement impossible s'est produite. Veuillez réessayer.",
+        expectedPending
+          ? "Payment was not completed. Please check your payment method and try again."
+          : "Une action temporairement impossible s'est produite. Veuillez réessayer.",
       ),
     );
   }

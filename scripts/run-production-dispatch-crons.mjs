@@ -38,50 +38,87 @@ if (!cronSecret) {
 
 async function invokeCron(path) {
   const url = `${siteUrl}${path}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
+  const maxAttempts = Math.max(
+    1,
+    Number(process.env.CRON_FETCH_MAX_ATTEMPTS ?? 3) || 3,
+  );
 
-  let response;
-  let bodyText = "";
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${cronSecret}`,
-        "Content-Type": "application/json",
-      },
-      signal: controller.signal,
-    });
-    bodyText = await response.text();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (controller.signal.aborted || /aborted|timeout/i.test(message)) {
-      fail(`${path} timed out after ${fetchTimeoutMs}ms.`);
+  let lastFailure = "";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
+
+    let response;
+    let bodyText = "";
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${cronSecret}`,
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      });
+      bodyText = await response.text();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      clearTimeout(timer);
+      if (controller.signal.aborted || /aborted|timeout/i.test(message)) {
+        lastFailure = `${path} timed out after ${fetchTimeoutMs}ms (attempt ${attempt}/${maxAttempts}).`;
+      } else {
+        lastFailure = `${path} network error: ${message} (attempt ${attempt}/${maxAttempts}).`;
+      }
+      if (attempt < maxAttempts) {
+        const waitMs = 1000 * attempt;
+        console.warn(`${lastFailure} Retrying in ${waitMs}ms…`);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        continue;
+      }
+      fail(lastFailure);
+    } finally {
+      clearTimeout(timer);
     }
-    fail(`${path} network error: ${message}`);
-  } finally {
-    clearTimeout(timer);
-  }
 
-  let bodyPreview = bodyText.trim();
-  if (bodyPreview.length > 300) {
-    bodyPreview = `${bodyPreview.slice(0, 300)}...`;
-  }
+    let bodyPreview = bodyText.trim();
+    if (bodyPreview.length > 300) {
+      bodyPreview = `${bodyPreview.slice(0, 300)}...`;
+    }
 
-  console.log(`${path} -> HTTP ${response.status}${bodyPreview ? ` ${bodyPreview}` : ""}`);
+    console.log(
+      `${path} -> HTTP ${response.status}${bodyPreview ? ` ${bodyPreview}` : ""}` +
+        (attempt > 1 ? ` (attempt ${attempt}/${maxAttempts})` : ""),
+    );
 
-  const evaluated = evaluateCronHttpResult(response.status, bodyText);
-  if (!evaluated.ok) {
-    if (response.status === 401) {
-      fail(
-        `${path} returned 401 Unauthorized. CRON_SECRET in GitHub Actions does not match Vercel production.`,
+    const evaluated = evaluateCronHttpResult(response.status, bodyText);
+    if (evaluated.ok) {
+      return;
+    }
+
+    const transientUpstream =
+      response.status >= 500 &&
+      /upstream connect error|connection failure|connect error: 111|ECONNREFUSED|reset before headers/i.test(
+        bodyText,
       );
+
+    lastFailure =
+      response.status === 401
+        ? `${path} returned 401 Unauthorized. CRON_SECRET in GitHub Actions does not match Vercel production.`
+        : response.status === 404
+          ? `${path} returned 404. Check SITE_URL (${siteUrl}) and Vercel deployment.`
+          : `${path} failed (${evaluated.reason}).`;
+
+    if (transientUpstream && attempt < maxAttempts) {
+      const waitMs = 1500 * attempt;
+      console.warn(`${lastFailure} Transient upstream — retrying in ${waitMs}ms…`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      continue;
     }
-    if (response.status === 404) {
-      fail(`${path} returned 404. Check SITE_URL (${siteUrl}) and Vercel deployment.`);
-    }
-    fail(`${path} failed (${evaluated.reason}).`);
+
+    fail(lastFailure);
   }
+
+  fail(lastFailure || `${path} failed after retries.`);
 }
 
 async function main() {

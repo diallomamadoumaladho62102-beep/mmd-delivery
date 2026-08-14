@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   didTaxiConfirmSucceed,
+  isExpectedTaxiPaymentPendingResponse,
   nextActionAfterCheckoutReturn,
 } from "./taxiPaymentAbandonFlow";
 
@@ -81,6 +82,23 @@ test("timeout / network blip treated as not paid yet", () => {
 test("double callback already_paid is idempotent success", () => {
   assert.equal(didTaxiConfirmSucceed({ already_paid: true }), true);
   assert.equal(didTaxiConfirmSucceed({ ok: true, already_paid: true }), true);
+});
+
+test("unpaid confirm-taxi-paid 409 is expected business pending", () => {
+  assert.equal(
+    isExpectedTaxiPaymentPendingResponse(409, {
+      ok: false,
+      error: "Stripe payment not confirmed yet",
+      payment_status: "unpaid",
+    }),
+    true
+  );
+  assert.equal(
+    isExpectedTaxiPaymentPendingResponse(409, {
+      error: "Ride or offer status changed",
+    }),
+    false
+  );
 });
 
 console.log("taxiPaymentAbandonFlow tests passed");
