@@ -88,4 +88,46 @@ test("ops cannot open Administrators nav", () => {
   assert.equal(hrefs.includes("/admin/staff"), false);
 });
 
+test("Business Accounts appears in Operations for roles with taxi_business.read", () => {
+  const ops = navHrefs("operations_admin", false);
+  assert.equal(
+    ops.includes("/admin/taxi-business-accounts"),
+    true,
+    "operations_admin should see Business Accounts",
+  );
+  const founder = navHrefs("super_admin", true);
+  assert.equal(
+    founder.includes("/admin/taxi-business-accounts"),
+    true,
+    "founder should see Business Accounts",
+  );
+});
+
+test("Business Accounts is hidden without taxi_business.read", () => {
+  const groups = filterNavGroups({
+    role: "finance_admin",
+    isFounder: false,
+    hasPermission: (permission) =>
+      permission === "hub.access" ||
+      permission === "finance.read" ||
+      permission === "payments.read",
+  });
+  const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+  assert.equal(hrefs.includes("/admin/taxi-business-accounts"), false);
+});
+
+test("Business Accounts nav item uses taxi_business.read and sits in Operations", () => {
+  const groups = filterNavGroups({
+    role: "operations_admin",
+    isFounder: false,
+    hasPermission: (p) => hasPermission("operations_admin", p),
+  });
+  const ops = groups.find((g) => g.id === "operations");
+  assert.ok(ops, "operations group exists");
+  const item = ops!.items.find((i) => i.href === "/admin/taxi-business-accounts");
+  assert.ok(item, "Business Accounts item present");
+  assert.equal(item!.label, "Business Accounts");
+  assert.equal(item!.permission, "taxi_business.read");
+});
+
 console.log("adminNav tests passed");

@@ -247,7 +247,7 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
   },
   {
     href: "/admin/taxi-business-accounts",
-    title: "Taxi Business",
+    title: "Business Accounts",
     description: "Comptes entreprise taxi — membres et dépenses",
     permission: "taxi_business.read",
   },

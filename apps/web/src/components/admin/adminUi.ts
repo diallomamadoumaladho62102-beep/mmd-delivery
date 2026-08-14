@@ -46,6 +46,7 @@ export const NAV_ICONS: Record<string, string> = {
   "/admin/driver-offers": "🎯",
   "/admin/delivery-requests": "📮",
   "/admin/taxi-rides": "🚕",
+  "/admin/taxi-business-accounts": "🏢",
   "/admin/live-map": "🗺️",
   "/admin/supervision": "👁️",
   "/admin/clients": "👤",

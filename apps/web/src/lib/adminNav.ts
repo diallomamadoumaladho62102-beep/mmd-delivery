@@ -56,6 +56,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       },
       { href: "/admin/taxi-rides", label: "Taxi", permission: "taxi_rides.read" },
       {
+        href: "/admin/taxi-business-accounts",
+        label: "Business Accounts",
+        permission: "taxi_business.read",
+      },
+      {
         href: "/admin/live-map",
         label: "Live Map",
         permission: "supervision.read",
