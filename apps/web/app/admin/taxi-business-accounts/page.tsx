@@ -74,7 +74,15 @@ export default function AdminTaxiBusinessAccountsPage() {
 
   return (
     <AdminGate requiredPermission="taxi_business.read">
-      <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
+      <main
+        style={{
+          padding: 24,
+          maxWidth: 1100,
+          margin: "0 auto",
+          // Match MMD Control Center shell (.admin-figma --cc-bg)
+          backgroundColor: "#0033cc",
+        }}
+      >
         <h1>Taxi Business Accounts</h1>
         {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
         {canEdit ? (
