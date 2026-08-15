@@ -94,7 +94,7 @@ export async function createFullAvailableConnectPayout(params: {
   idempotencyKey: string;
   metadata?: Record<string, string>;
 }): Promise<
-  | { ok: true; payout: Stripe.Payout; amountCents: number; skipped?: false }
+  | { ok: true; payout: Stripe.Payout; amountCents: number; skipped: false }
   | { ok: true; skipped: true; amountCents: 0; reason: string }
   | { ok: false; error: string }
 > {
@@ -144,7 +144,7 @@ export async function createFullAvailableConnectPayout(params: {
         idempotencyKey: params.idempotencyKey,
       },
     );
-    return { ok: true, payout, amountCents: availableCents };
+    return { ok: true, payout, amountCents: availableCents, skipped: false };
   } catch (e) {
     return {
       ok: false,
