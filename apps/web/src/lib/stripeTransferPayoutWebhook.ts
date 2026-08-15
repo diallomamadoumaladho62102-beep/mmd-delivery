@@ -101,6 +101,65 @@ export async function syncStripeTransferEvent(
     if (Array.isArray(data) && data.length > 0) tables.push(table);
   }
 
+  // Taxi fare SCT → taxi_commissions (Stripe is SoT for paid state).
+  if (failedLike) {
+    const { data: taxiRows, error: taxiErr } = await supabaseAdmin
+      .from("taxi_commissions")
+      .update({
+        driver_paid_out: false,
+        driver_paid_out_at: null,
+        driver_transfer_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("driver_transfer_id", transferId)
+      .select("id");
+    if (taxiErr) {
+      console.error(
+        "[stripe-transfer-webhook] taxi_commissions reverse failed",
+        taxiErr.message,
+      );
+    } else if (Array.isArray(taxiRows) && taxiRows.length > 0) {
+      tables.push("taxi_commissions");
+    }
+
+    const { data: tipRows, error: tipErr } = await supabaseAdmin
+      .from("taxi_rides")
+      .update({
+        tip_paid_out: false,
+        tip_transfer_id: null,
+        tip_paid_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("tip_transfer_id", transferId)
+      .select("id");
+    if (tipErr) {
+      console.error(
+        "[stripe-transfer-webhook] taxi tip reverse failed",
+        tipErr.message,
+      );
+    } else if (Array.isArray(tipRows) && tipRows.length > 0) {
+      tables.push("taxi_rides_tips");
+    }
+  } else {
+    const { data: taxiRows, error: taxiErr } = await supabaseAdmin
+      .from("taxi_commissions")
+      .update({
+        driver_paid_out: true,
+        driver_paid_out_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("driver_transfer_id", transferId)
+      .select("id");
+    if (taxiErr) {
+      console.error(
+        "[stripe-transfer-webhook] taxi_commissions confirm failed",
+        taxiErr.message,
+      );
+    } else if (Array.isArray(taxiRows) && taxiRows.length > 0) {
+      tables.push("taxi_commissions");
+    }
+  }
+
   console.log("[stripe-transfer-webhook] synced", {
     event_type: event.type,
     transferId,

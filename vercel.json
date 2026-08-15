@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/daily-ops",
       "schedule": "30 5 * * *"
+    },
+    {
+      "path": "/api/cron/driver-connect-bank-payouts",
+      "schedule": "0 8,9 * * 0"
     }
   ]
 }

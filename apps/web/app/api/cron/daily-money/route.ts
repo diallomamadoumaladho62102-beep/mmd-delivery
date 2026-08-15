@@ -12,7 +12,8 @@ export const maxDuration = 60;
  */
 const MONEY_PATHS = [
   "/api/cron/expire-stale-payments",
-  "/api/cron/taxi-payouts",
+  // Explicit limit so taxi fare→driver SCTs are not capped at the global cron default of 1.
+  "/api/cron/taxi-payouts?limit=10",
   "/api/cron/marketplace-payouts",
   "/api/admin/process-payouts",
 ] as const;

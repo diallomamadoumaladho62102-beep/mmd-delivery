@@ -63,14 +63,25 @@ test("blocks zero/negative amount", () => {
   if (!result.ok) assert.equal(result.reason, "invalid_amount");
 });
 
-test("blocks hold window", () => {
+test("blocks hold window when configured", () => {
   const result = evaluateTaxiPayoutEligibility({
     ...base,
     completedAt: "2026-07-12T12:00:00.000Z",
     nowMs: Date.parse("2026-07-12T18:00:00.000Z"),
+    holdUntilMs: 24 * 60 * 60 * 1000,
   });
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.reason, "hold_window");
+});
+
+test("zero hold allows immediate payout", () => {
+  const result = evaluateTaxiPayoutEligibility({
+    ...base,
+    completedAt: "2026-07-13T00:00:00.000Z",
+    nowMs: Date.parse("2026-07-13T00:00:01.000Z"),
+    holdUntilMs: 0,
+  });
+  assert.deepEqual(result, { ok: true, alreadyPaid: false });
 });
 
 test("blocks connect not ready", () => {

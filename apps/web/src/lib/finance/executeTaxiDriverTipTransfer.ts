@@ -112,14 +112,26 @@ export async function executeTaxiDriverTipTransfer(
   }
   if (tipCents <= 0) return { ok: false, error: "tip_cents_not_positive" };
 
-  const { data: driver, error: driverErr } = await supabaseAdmin
-    .from("driver_profiles")
-    .select("user_id,stripe_account_id")
+  // Same Connect resolution order as fare SCT (taxi-run): features first, then profile.
+  let destination = "";
+  const { data: features } = await supabaseAdmin
+    .from("taxi_driver_features")
+    .select("stripe_connect_account_id")
     .eq("user_id", tipRide.driver_id)
     .maybeSingle();
+  destination = String(features?.stripe_connect_account_id ?? "").trim();
 
-  if (driverErr) return { ok: false, error: driverErr.message };
-  const destination = String(driver?.stripe_account_id ?? "").trim();
+  if (!destination) {
+    const { data: driver, error: driverErr } = await supabaseAdmin
+      .from("driver_profiles")
+      .select("user_id,stripe_account_id")
+      .eq("user_id", tipRide.driver_id)
+      .maybeSingle();
+
+    if (driverErr) return { ok: false, error: driverErr.message };
+    destination = String(driver?.stripe_account_id ?? "").trim();
+  }
+
   if (!/^acct_[A-Za-z0-9]+$/.test(destination)) {
     return { ok: false, error: "driver_connect_not_ready" };
   }

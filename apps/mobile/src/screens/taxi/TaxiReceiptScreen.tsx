@@ -9,6 +9,8 @@ import {
   Share,
   Linking,
   RefreshControl,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
@@ -24,6 +26,10 @@ import { financialStatusColor } from "../../components/wallet/walletStatusColor"
 import { fetchTaxiReceipt } from "../../lib/taxiReceiptApi";
 import type { TaxiReceipt } from "../../lib/taxiReceiptTypes";
 import { printTaxiReceiptPdf } from "../../lib/taxiReceiptPrint";
+import {
+  fetchTaxiRideRating,
+  submitTaxiRideRating,
+} from "../../lib/taxiClientApi";
 import {
   formatMoneyFromCents,
   formatDateTime,
@@ -54,6 +60,8 @@ export default function TaxiReceiptScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<TaxiReceipt | null>(null);
+  const [myRating, setMyRating] = useState<number | null>(null);
+  const [ratingSaving, setRatingSaving] = useState(false);
 
   const currency = receipt?.invoice.currency ?? "USD";
   const lang = i18n.language;
@@ -118,17 +126,53 @@ export default function TaxiReceiptScreen() {
     if (!rideId) {
       setError(t("taxi.receipt.missingRide", "Missing ride id"));
       setReceipt(null);
+      setLoading(false);
       return;
     }
-    setError(null);
     try {
-      const data = await fetchTaxiReceipt(rideId);
+      setError(null);
+      const [data, ratingRes] = await Promise.all([
+        fetchTaxiReceipt(rideId),
+        fetchTaxiRideRating(rideId).catch(() => ({ ok: false, rating: null })),
+      ]);
       setReceipt(data);
+      const existing = ratingRes && "rating" in ratingRes ? ratingRes.rating : null;
+      setMyRating(
+        existing && typeof existing.rating === "number" ? existing.rating : null,
+      );
     } catch (e) {
-      setError(toUserFacingError(e, t("taxi.receipt.loadFailed", "Unable to load receipt")));
       setReceipt(null);
+      setError(
+        toUserFacingError(e, t("taxi.receipt.loadError", "Unable to load receipt")),
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   }, [rideId, t]);
+
+  const onSubmitRating = useCallback(
+    async (stars: number) => {
+      if (!rideId || ratingSaving) return;
+      try {
+        setRatingSaving(true);
+        const res = await submitTaxiRideRating({ rideId, rating: stars });
+        setMyRating(Number(res.rating?.rating ?? stars));
+        Alert.alert(
+          t("taxi.receipt.ratingSavedTitle", "Thank you"),
+          t("taxi.receipt.ratingSavedBody", "Your rating was saved."),
+        );
+      } catch (e) {
+        Alert.alert(
+          t("taxi.receipt.ratingErrorTitle", "Rating"),
+          toUserFacingError(e, t("taxi.receipt.ratingErrorBody", "Unable to save rating.")),
+        );
+      } finally {
+        setRatingSaving(false);
+      }
+    },
+    [rideId, ratingSaving, t],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -280,6 +324,35 @@ export default function TaxiReceiptScreen() {
                     {t("taxi.receipt.rating", "Rating")}:{" "}
                     {receipt.driver.rating.toFixed(1)}
                   </Text>
+                ) : null}
+              </View>
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.label}>
+                {myRating
+                  ? t("taxi.receipt.yourRating", "Your rating")
+                  : t("taxi.receipt.rateDriver", "Rate your driver")}
+              </Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const active = (myRating ?? 0) >= star;
+                  return (
+                    <TouchableOpacity
+                      key={star}
+                      disabled={ratingSaving || myRating != null}
+                      onPress={() => void onSubmitRating(star)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${star} stars`}
+                      style={styles.starBtn}
+                    >
+                      <Text style={[styles.star, active && styles.starActive]}>
+                        {active ? "★" : "☆"}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                {ratingSaving ? (
+                  <ActivityIndicator color={MMD_GOLD_CLASSIC} style={{ marginLeft: 8 }} />
                 ) : null}
               </View>
             </View>
@@ -589,6 +662,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   link: { color: MMD_GOLD_CLASSIC, fontWeight: "700", fontFamily: MMD_FONT.bold, marginTop: 8 },
+  starsRow: { flexDirection: "row", alignItems: "center", marginTop: 8, gap: 4 },
+  starBtn: { padding: 4 },
+  star: { fontSize: 28, color: "rgba(255,255,255,0.35)" },
+  starActive: { color: MMD_GOLD_CLASSIC },
   actions: { gap: 10, marginBottom: 24 },
   actionBtn: {
     backgroundColor: MMD_ACTION_NAVY,

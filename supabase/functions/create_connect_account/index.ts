@@ -256,6 +256,11 @@ serve(async (req) => {
             card_payments: { requested: true },
           },
           business_type: "company",
+          settings: {
+            payouts: {
+              schedule: { interval: "manual" },
+            },
+          },
           metadata: {
             mmd_role: "business",
             business_account_id: businessAccountId,
@@ -468,6 +473,11 @@ serve(async (req) => {
       const baseAccountParams = {
         type: "express" as const,
         country: connectCountry,
+        settings: {
+          payouts: {
+            schedule: { interval: "manual" as const },
+          },
+        },
         metadata: { user_id: userId, role, country: connectCountry },
       };
 
@@ -505,6 +515,24 @@ serve(async (req) => {
       }
 
       accountId = account.id;
+
+      // Bank payouts are MMD-scheduled (Sunday 04:00 ET). Disable Stripe auto daily.
+      try {
+        await stripe.accounts.update(accountId, {
+          settings: {
+            payouts: {
+              schedule: {
+                interval: "manual",
+              },
+            },
+          },
+        });
+      } catch (schedErr) {
+        console.warn(
+          "create_connect_account: could not set manual payout schedule",
+          schedErr instanceof Error ? schedErr.message : schedErr,
+        );
+      }
 
       const createPayload =
         role === "driver"

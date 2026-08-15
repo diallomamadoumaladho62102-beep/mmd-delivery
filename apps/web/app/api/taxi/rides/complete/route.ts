@@ -9,6 +9,7 @@ import {
 } from "@/lib/taxiProximityGate";
 import { awardTaxiRideLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 import { notifyClientTaxiRideCompleted } from "@/lib/clientPushNotifications";
+import { executeTaxiDriverFareTransfer } from "@/lib/finance/executeTaxiDriverFareTransfer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     const { data: rideBeforeComplete } = await auth.supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,status,client_user_id,created_by,client_preferences,ambiance_preference,country_code,vehicle_class,assigned_fuel_type,prefer_electric_or_hybrid,dropoff_lat,dropoff_lng",
+        "id,status,payment_status,client_user_id,created_by,client_preferences,ambiance_preference,country_code,vehicle_class,assigned_fuel_type,prefer_electric_or_hybrid,dropoff_lat,dropoff_lng",
       )
       .eq("id", rideId)
       .maybeSingle();
@@ -115,11 +116,39 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Immediate platform→Connect SCT (fail-open: ride stays completed; cron retries).
+    let driverPayout: Record<string, unknown> | null = null;
+    try {
+      const payout = await executeTaxiDriverFareTransfer({
+        supabaseAdmin: auth.supabaseAdmin,
+        taxiRideId: rideId,
+        dryRun: false,
+        actor: `driver_complete:${auth.user.id}`,
+      });
+      driverPayout = { ...payout };
+      if (payout.ok === false) {
+        console.warn("[taxi complete] immediate SCT deferred", {
+          rideId,
+          error: payout.error,
+        });
+      }
+    } catch (e) {
+      console.warn(
+        "[taxi complete] immediate SCT fail-open",
+        e instanceof Error ? e.message : e,
+      );
+      driverPayout = {
+        ok: false,
+        error: e instanceof Error ? e.message : "sct_exception",
+      };
+    }
+
     return taxiJson({
       ok: true,
       taxi_ride_id: rideId,
       result,
       distance_meters: proximity.distanceMeters,
+      driver_payout: driverPayout,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";

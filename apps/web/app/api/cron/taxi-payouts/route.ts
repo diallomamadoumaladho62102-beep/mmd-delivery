@@ -20,7 +20,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const JOB = "taxi-payouts";
-const DEFAULT_HOLD_HOURS = 24;
+/** Immediate SCT after complete; cron is retry/backfill only. Bank payout stays weekly. */
+const DEFAULT_HOLD_HOURS = 0;
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -61,7 +62,9 @@ type RideRow = {
 
 async function handle(req: NextRequest) {
   const dryRun = readDryRun(req);
-  const limit = readCronBatchLimit(req.nextUrl.searchParams, 1);
+  // Default 10 (not global cron default of 1): fare SCT is delayed after a 24h
+  // hold, so a once-daily run must clear a realistic backlog or drivers appear unpaid.
+  const limit = readCronBatchLimit(req.nextUrl.searchParams, 10);
   const start = startCronRun(JOB, dryRun);
   const trace = createCronPhaseTracer(JOB, start.run_id);
   trace.mark("request_received", { batch_size: limit });

@@ -401,3 +401,39 @@ export function fetchTaxiCountries(): Promise<{
 export function fetchTaxiSharedRideSegment(sharedRideId: string) {
   return taxiGet(`/api/taxi/shared/${sharedRideId}`);
 }
+
+export async function fetchTaxiRideRating(rideId: string): Promise<{
+  ok: boolean;
+  rating: {
+    id: string;
+    rating: number;
+    comment: string | null;
+    driver_id: string;
+    created_at: string;
+    updated_at: string;
+  } | null;
+}> {
+  return taxiGet(`/api/taxi/rides/${encodeURIComponent(rideId)}/rating`);
+}
+
+export async function submitTaxiRideRating(params: {
+  rideId: string;
+  rating: number;
+  comment?: string | null;
+}): Promise<{
+  ok: boolean;
+  created?: boolean;
+  updated?: boolean;
+  rating: {
+    id: string;
+    taxi_ride_id: string;
+    driver_id: string;
+    rating: number;
+    comment: string | null;
+  };
+}> {
+  return taxiPost(`/api/taxi/rides/${encodeURIComponent(params.rideId)}/rating`, {
+    rating: params.rating,
+    comment: params.comment ?? null,
+  });
+}

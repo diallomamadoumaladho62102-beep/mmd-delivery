@@ -49,13 +49,16 @@ export async function loadTaxiDriverEarnings(
     driver_cents: number | null;
     currency: string | null;
     driver_paid_out: boolean | null;
+    driver_transfer_id: string | null;
     taxi_ride_id: string;
   }> = [];
 
   if (rideIds.length > 0) {
     const { data, error: comErr } = await supabase
       .from("taxi_commissions")
-      .select("driver_cents, currency, driver_paid_out, taxi_ride_id")
+      .select(
+        "driver_cents, currency, driver_paid_out, driver_transfer_id, taxi_ride_id",
+      )
       .in("taxi_ride_id", rideIds);
 
     if (comErr) {
@@ -78,8 +81,10 @@ export async function loadTaxiDriverEarnings(
 
     const commission = commissionByRide.get(row.id);
     const driverCents = Number(commission?.driver_cents ?? cents);
+    // Stripe Connect SoT: paid only when Transfer id exists.
+    const transferred = Boolean(String(commission?.driver_transfer_id ?? "").trim());
 
-    if (commission?.driver_paid_out) {
+    if (transferred) {
       bucket.paidPayoutCents += driverCents;
     } else {
       bucket.pendingPayoutCents += driverCents;

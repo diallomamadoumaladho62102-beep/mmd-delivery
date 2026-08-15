@@ -33,6 +33,12 @@ import { taxiPendingPaymentExpiresAt } from "@/lib/taxiUnpaidExpiry";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Taxi fare Checkout is platform-collected only (no transfer_data / application_fee).
+ * Funds settle on the MMD Stripe balance; driver share SCT runs immediately on ride
+ * complete (executeTaxiDriverFareTransfer); cron retries failures (see moneyOutArchitecture).
+ */
+
 type Body = {
   taxiRideId?: string;
   taxi_ride_id?: string;
