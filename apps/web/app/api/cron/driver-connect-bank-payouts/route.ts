@@ -171,7 +171,7 @@ async function handle(req: NextRequest) {
           continue;
         }
 
-        if (payout.skipped) {
+        if (!("payout" in payout)) {
           skipped += 1;
           results.push({
             driver_id: userId,
@@ -182,6 +182,9 @@ async function handle(req: NextRequest) {
           continue;
         }
 
+        const stripePayout = payout.payout;
+        const amountCents = payout.amountCents;
+
         try {
           const audit = await createPayoutTransaction(supabaseAdmin, {
             countryCode: "US",
@@ -189,15 +192,15 @@ async function handle(req: NextRequest) {
             recipientUserId: userId,
             provider: "stripe_connect",
             methodCode: "payout_stripe_connect_sunday",
-            amountCents: payout.amountCents,
-            currency: String(payout.payout.currency ?? "usd").toUpperCase(),
+            amountCents,
+            currency: String(stripePayout.currency ?? "usd").toUpperCase(),
             status: "processing",
             payoutMode: "automatic",
             destinationAccount: acct,
-            externalReference: payout.payout.id,
+            externalReference: stripePayout.id,
             providerPayload: {
               source: "cron_driver_sunday_bank_payout",
-              stripe_payout_id: payout.payout.id,
+              stripe_payout_id: stripePayout.id,
               et_date: parts.dateKey,
               timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
               no_minimum: true,
@@ -205,10 +208,10 @@ async function handle(req: NextRequest) {
             },
           });
           await updatePayoutTransactionStatus(supabaseAdmin, audit.id, "paid", {
-            external_reference: payout.payout.id,
+            external_reference: stripePayout.id,
             provider_payload: {
               source: "cron_driver_sunday_bank_payout",
-              stripe_payout_id: payout.payout.id,
+              stripe_payout_id: stripePayout.id,
               money_out_model: MONEY_OUT_MODEL.driverBankPayout,
             },
           });
@@ -223,9 +226,9 @@ async function handle(req: NextRequest) {
         results.push({
           driver_id: userId,
           ok: true,
-          stripe_payout_id: payout.payout.id,
-          amount_cents: payout.amountCents,
-          currency: payout.payout.currency,
+          stripe_payout_id: stripePayout.id,
+          amount_cents: amountCents,
+          currency: stripePayout.currency,
         });
       }
 
