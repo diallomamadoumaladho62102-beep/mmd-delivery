@@ -37,13 +37,17 @@ export function getNowPartsInTimeZone(
   return { weekday, hour, dateKey };
 }
 
-/** True only during Sunday 04:00–04:59 America/New_York (DST-aware). */
+/** True during Sunday 03:00–04:59 America/New_York (DST-aware).
+ * Vercel Hobby allows only one cron fire/day; schedule is Sunday 08:00 UTC:
+ * - EDT (UTC-4): 08:00 UTC = 04:00 ET (exact target)
+ * - EST (UTC-5): 08:00 UTC = 03:00 ET (one hour early in winter)
+ */
 export function isDriverBankPayoutWindow(now = new Date()): boolean {
   const { weekday, hour } = getNowPartsInTimeZone(
     DRIVER_BANK_PAYOUT_TIMEZONE,
     now,
   );
-  return weekday === "Sun" && hour === 4;
+  return weekday === "Sun" && (hour === 3 || hour === 4);
 }
 
 export function driverBankPayoutIdempotencyKey(

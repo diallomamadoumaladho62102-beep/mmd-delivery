@@ -37,8 +37,10 @@ function json(body: Record<string, unknown>, status = 200) {
 /**
  * Sunday 04:00 America/New_York bank payouts for drivers (full Connect available).
  *
- * Vercel cron: `0 8,9 * * 0` UTC (covers EST 09:00 UTC and EDT 08:00 UTC = 4am ET).
- * Handler no-ops unless local NY time is Sunday 04:xx (or force=1).
+ * Vercel cron: `0 8 * * 0` UTC Sunday (Hobby: one fire/day).
+ * - EDT: 08:00 UTC = 04:00 ET (exact)
+ * - EST: 08:00 UTC = 03:00 ET (handler window includes hour 3–4)
+ * Handler no-ops unless local NY time is Sunday 03–04 (or force=1).
  *
  * No $20 minimum — 100% of eligible available balance is paid out.
  * Manual Cash Out keeps its own minimum separately.

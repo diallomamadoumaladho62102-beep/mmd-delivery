@@ -47,7 +47,7 @@ test("sunday bank payout cron has no cashout minimum", () => {
 test("vercel schedules sunday bank payout covering EST and EDT", () => {
   const root = fs.readFileSync(path.join(webRoot, "../../vercel.json"), "utf8");
   assert.match(root, /driver-connect-bank-payouts/);
-  assert.match(root, /0 8,9 \* \* 0/);
+  assert.match(root, /0 8 \* \* 0/);
 });
 
 test("receipt screen submits rating via API", () => {

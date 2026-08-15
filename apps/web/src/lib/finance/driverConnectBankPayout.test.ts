@@ -34,7 +34,11 @@ test("window helper uses America/New_York parts", () => {
   const sun5edt = new Date("2026-08-16T09:30:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun5edt), false);
 
-  // Winter: Sunday 2026-01-11 09:15 UTC = 04:15 EST (UTC-5)
+  // Winter: Sunday 2026-01-11 08:15 UTC = 03:15 EST (UTC-5) — Hobby single fire
+  const sun3est = new Date("2026-01-11T08:15:00.000Z");
+  assert.equal(isDriverBankPayoutWindow(sun3est), true);
+
+  // Winter exact 4am EST would be 09:00 UTC — outside Hobby schedule, not in window for cron
   const sun4est = new Date("2026-01-11T09:15:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun4est), true);
 });

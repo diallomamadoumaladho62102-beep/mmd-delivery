@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/driver-connect-bank-payouts",
-      "schedule": "0 8,9 * * 0"
+      "schedule": "0 8 * * 0"
     }
   ]
 }
