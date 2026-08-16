@@ -1,4 +1,11 @@
 # Dependabot — dependency and Actions version updates for MMD Delivery
+#
+# pnpm monorepo rules:
+# - Update ONLY at workspace root "/" so package.json + pnpm-lock.yaml stay in sync.
+# - Do NOT also scan "/apps/web": that created package.json-only PRs which fail
+#   Vercel/CI with ERR_PNPM_OUTDATED_LOCKFILE (frozen-lockfile in CI).
+# - Ignore Expo SDK 54 pins and finance-critical clients; upgrade those in
+#   dedicated PRs with Taxi/Delivery/Restaurant regression tests.
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -17,27 +24,30 @@ updates:
         update-types:
           - "minor"
           - "patch"
-
-  - package-ecosystem: "npm"
-    directory: "/apps/web"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "security"
-    groups:
-      web-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+    ignore:
+      # Expo SDK 54 / RN 0.81.x — "minor" bumps here break the mobile toolchain
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "babel-preset-expo"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "@types/react"
+      - dependency-name: "@types/react-dom"
+      # Pinned by root pnpm.overrides / maps stability before store build
+      - dependency-name: "next"
+      - dependency-name: "mapbox-gl"
+      # Stripe Connect / native SDK — upgrade only with wallet/transfer live tests
+      - dependency-name: "@stripe/stripe-react-native"
+      - dependency-name: "@sentry/react-native"
+      # Large client jumps — dedicated finance/auth regression PR only
+      - dependency-name: "@supabase/supabase-js"
+      - dependency-name: "@supabase/ssr"
 
   # Mobile is part of the root pnpm workspace (directory "/").
-  # Do not scan /apps/mobile separately — that previously tracked a legacy
-  # package-lock.json and created false Dependabot + Vercel Preview noise.
+  # Do not scan /apps/mobile or /apps/web separately — nested scans previously
+  # produced lockfile-less PRs and false Vercel Preview failures.
 
   - package-ecosystem: "github-actions"
     directory: "/"
