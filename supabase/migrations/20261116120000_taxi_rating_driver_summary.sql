@@ -1,26 +1,25 @@
--- Wire taxi_ride_ratings into driver_rating_summary (+ driver_ratings log).
--- Incremental avg/count on INSERT only (anti-double via UNIQUE + trigger).
+-- Wire taxi_ride_ratings into driver_rating_summary (VIEW over reviews)
+-- and extend driver_ratings for taxi history. Production already has:
+--   driver_rating_summary VIEW = avg(stars) FROM driver_reviews
+--   driver_ratings TABLE = order_id, rater_user_id, ratee_driver_id, ...
 
-create table if not exists public.driver_rating_summary (
-  driver_id uuid primary key references auth.users (id) on delete cascade,
-  rating numeric(4, 2) not null default 0
-    check (rating >= 0 and rating <= 5),
-  rating_count integer not null default 0
-    check (rating_count >= 0),
-  updated_at timestamptz not null default now()
-);
+-- 1) Extend driver_ratings for taxi sources (additive).
+alter table public.driver_ratings
+  add column if not exists taxi_ride_id uuid references public.taxi_rides (id) on delete set null;
 
-create table if not exists public.driver_ratings (
-  id uuid primary key default gen_random_uuid(),
-  ratee_driver_id uuid not null references auth.users (id) on delete cascade,
-  rater_id uuid references auth.users (id) on delete set null,
-  rating integer not null check (rating between 1 and 5),
-  comment text,
-  source_type text not null default 'taxi_ride',
-  source_id uuid,
-  taxi_ride_id uuid references public.taxi_rides (id) on delete set null,
-  created_at timestamptz not null default now()
-);
+alter table public.driver_ratings
+  add column if not exists source_type text;
+
+alter table public.driver_ratings
+  add column if not exists source_id uuid;
+
+alter table public.driver_ratings
+  add column if not exists rater_id uuid references auth.users (id) on delete set null;
+
+update public.driver_ratings
+set rater_id = rater_user_id
+where rater_id is null
+  and rater_user_id is not null;
 
 create unique index if not exists driver_ratings_taxi_ride_uq
   on public.driver_ratings (taxi_ride_id)
@@ -28,33 +27,35 @@ create unique index if not exists driver_ratings_taxi_ride_uq
 
 create unique index if not exists driver_ratings_source_uq
   on public.driver_ratings (source_type, source_id)
-  where source_id is not null;
+  where source_type is not null and source_id is not null;
 
 create index if not exists driver_ratings_ratee_created_idx
   on public.driver_ratings (ratee_driver_id, created_at desc);
 
-alter table public.driver_rating_summary enable row level security;
-alter table public.driver_ratings enable row level security;
+-- 2) Replace summary VIEW so Taxi ratings feed the same Driver UI path.
+create or replace view public.driver_rating_summary
+with (security_invoker = true)
+as
+select
+  x.driver_id,
+  round(coalesce(avg(x.stars), 0)::numeric, 2) as rating,
+  count(*)::integer as rating_count
+from (
+  select dr.driver_id, dr.stars
+  from public.driver_reviews dr
+  union all
+  select tr.driver_id, tr.rating as stars
+  from public.taxi_ride_ratings tr
+) x
+group by x.driver_id;
 
-drop policy if exists driver_rating_summary_select_own on public.driver_rating_summary;
-create policy driver_rating_summary_select_own
-  on public.driver_rating_summary
-  for select
-  to authenticated
-  using (driver_id = auth.uid());
-
-drop policy if exists driver_ratings_select_own on public.driver_ratings;
-create policy driver_ratings_select_own
-  on public.driver_ratings
-  for select
-  to authenticated
-  using (ratee_driver_id = auth.uid() or rater_id = auth.uid());
+comment on view public.driver_rating_summary is
+  'Driver avg/count from food driver_reviews + taxi_ride_ratings (Driver Menu SoT).';
 
 grant select on public.driver_rating_summary to authenticated;
-grant select on public.driver_ratings to authenticated;
-grant select, insert, update, delete on public.driver_rating_summary to service_role;
-grant select, insert, update, delete on public.driver_ratings to service_role;
+grant select on public.driver_rating_summary to service_role;
 
+-- 3) Trigger: mirror taxi rating into driver_ratings + sync profile fields.
 create or replace function public.apply_taxi_ride_rating_to_driver_summary()
 returns trigger
 language plpgsql
@@ -62,74 +63,61 @@ security definer
 set search_path = public
 as $$
 declare
-  v_old_count integer := 0;
-  v_old_rating numeric := 0;
-  v_new_count integer;
-  v_new_rating numeric;
+  v_avg numeric := 0;
+  v_count integer := 0;
 begin
   if tg_op <> 'INSERT' then
     return new;
   end if;
 
-  select coalesce(rating_count, 0), coalesce(rating, 0)
-    into v_old_count, v_old_rating
-  from public.driver_rating_summary
-  where driver_id = new.driver_id
-  for update;
-
-  if not found then
-    v_old_count := 0;
-    v_old_rating := 0;
-  end if;
-
-  v_new_count := v_old_count + 1;
-  v_new_rating := round(
-    ((v_old_rating * v_old_count) + new.rating)::numeric / v_new_count,
-    2
-  );
-
-  insert into public.driver_rating_summary as s (driver_id, rating, rating_count, updated_at)
-  values (new.driver_id, v_new_rating, v_new_count, now())
-  on conflict (driver_id) do update
-    set rating = excluded.rating,
-        rating_count = excluded.rating_count,
-        updated_at = now();
-
   begin
     insert into public.driver_ratings (
       ratee_driver_id,
+      rater_user_id,
       rater_id,
       rating,
       comment,
       source_type,
       source_id,
-      taxi_ride_id
+      taxi_ride_id,
+      order_id
     )
     values (
       new.driver_id,
+      new.rater_id,
       new.rater_id,
       new.rating,
       new.comment,
       'taxi_ride',
       new.taxi_ride_id,
+      new.taxi_ride_id,
+      -- Legacy NOT NULL order_id: use taxi_ride_id as surrogate when no food order.
       new.taxi_ride_id
     );
   exception
     when unique_violation then
       null;
+    when not_null_violation then
+      null;
+    when foreign_key_violation then
+      null;
   end;
 
-  -- Keep driver_profiles in sync for dispatch/eligibility readers.
+  select coalesce(rating, 0), coalesce(rating_count, 0)
+    into v_avg, v_count
+  from public.driver_rating_summary
+  where driver_id = new.driver_id;
+
   update public.driver_profiles
   set
-    rating = v_new_rating,
-    rating_count = v_new_count,
+    rating = v_avg,
+    rating_count = v_count,
     updated_at = now()
   where user_id = new.driver_id;
 
   update public.taxi_driver_features
   set
-    rating_taxi = v_new_rating,
+    rating_taxi = v_avg,
     updated_at = now()
   where user_id = new.driver_id;
 
@@ -145,4 +133,4 @@ for each row
 execute function public.apply_taxi_ride_rating_to_driver_summary();
 
 comment on function public.apply_taxi_ride_rating_to_driver_summary() is
-  'On taxi rating insert: bump driver_rating_summary avg/count, mirror driver_ratings, sync profiles.';
+  'On taxi rating insert: mirror driver_ratings when possible; sync profiles from driver_rating_summary VIEW.';
