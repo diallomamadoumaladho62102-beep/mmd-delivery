@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
-import { getTaxiRideId, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import {
+  assertDriverOwnsTaxiRide,
+  getProfileRole,
+  getTaxiRideId,
+  requireTaxiApiUser,
+  taxiJson,
+} from "@/lib/taxiApi";
 import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
 import {
   assertTaxiPickupProximity,
@@ -28,6 +34,17 @@ export async function POST(req: NextRequest) {
     const gps = parseRequiredTaxiGps(body);
     if (gps.ok === false) {
       return taxiJson({ ok: false, error: gps.error }, 400);
+    }
+
+    const role = await getProfileRole(auth.supabaseAdmin, auth.user.id);
+    const ownership = await assertDriverOwnsTaxiRide({
+      supabaseAdmin: auth.supabaseAdmin,
+      rideId,
+      userId: auth.user.id,
+      role,
+    });
+    if (ownership.ok === false) {
+      return taxiJson({ ok: false, error: ownership.error }, ownership.status);
     }
 
     const { data: ride, error: rideError } = await auth.supabaseAdmin

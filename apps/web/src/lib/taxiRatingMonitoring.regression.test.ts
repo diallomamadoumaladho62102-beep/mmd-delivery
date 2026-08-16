@@ -31,6 +31,20 @@ test("rating migration wires taxi ratings into driver_rating_summary", () => {
   assert.match(mig, /rating_count/);
 });
 
+test("compat harden keeps food driver_ratings visible in summary VIEW", () => {
+  const mig = fs.readFileSync(
+    path.join(
+      root,
+      "supabase/migrations/20261116140000_taxi_rating_compat_harden.sql",
+    ),
+    "utf8",
+  );
+  assert.match(mig, /from public\.driver_ratings d/i);
+  assert.match(mig, /taxi_ride_id is null/i);
+  assert.match(mig, /alter column order_id drop not null/i);
+  assert.doesNotMatch(mig, /\bdelete from public\.driver_ratings\b/i);
+});
+
 test("rating API returns driver_rating_summary after create", () => {
   const src = fs.readFileSync(
     path.join(webRoot, "app/api/taxi/rides/[id]/rating/route.ts"),

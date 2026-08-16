@@ -307,6 +307,15 @@ export async function executeTaxiDriverFareTransfer(params: {
     };
   }
 
+  if (!/^acct_[A-Za-z0-9]+$/.test(destination)) {
+    return {
+      ok: false,
+      error: "invalid_connect_account_id",
+      taxi_ride_id: rideId,
+      httpStatus: 400,
+    };
+  }
+
   const paymentIntentId = String(ride.stripe_payment_intent_id ?? "").trim();
   if (!paymentIntentId) {
     return {

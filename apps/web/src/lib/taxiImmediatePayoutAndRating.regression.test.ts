@@ -101,6 +101,34 @@ test("rating API returns driver summary after insert", () => {
   assert.match(src, /driver_rating_summary/);
 });
 
+test("arrive and complete check driver ownership before proximity oracle", () => {
+  const arrive = fs.readFileSync(
+    path.join(webRoot, "app/api/taxi/rides/arrive/route.ts"),
+    "utf8",
+  );
+  const complete = fs.readFileSync(
+    path.join(webRoot, "app/api/taxi/rides/complete/route.ts"),
+    "utf8",
+  );
+  assert.match(arrive, /assertDriverOwnsTaxiRide/);
+  assert.match(complete, /assertDriverOwnsTaxiRide/);
+  const arriveOwn = arrive.indexOf("assertDriverOwnsTaxiRide");
+  const arriveProx = arrive.indexOf("assertTaxiPickupProximity");
+  assert.ok(arriveOwn > 0 && arriveOwn < arriveProx);
+  const completeOwn = complete.indexOf("assertDriverOwnsTaxiRide");
+  const completeProx = complete.indexOf("assertTaxiDropoffProximity");
+  assert.ok(completeOwn > 0 && completeOwn < completeProx);
+});
+
+test("fare transfer rejects non-acct_ destinations", () => {
+  const src = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/executeTaxiDriverFareTransfer.ts"),
+    "utf8",
+  );
+  assert.match(src, /invalid_connect_account_id/);
+  assert.match(src, /\^acct_\[A-Za-z0-9\]\+/);
+});
+
 test("cron hold default is zero", () => {
   const src = fs.readFileSync(
     path.join(webRoot, "app/api/cron/taxi-payouts/route.ts"),

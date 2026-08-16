@@ -168,3 +168,39 @@ export async function assertClientOwnsTaxiRide(params: {
 
   return { ok: true };
 }
+
+/**
+ * Driver mutate ownership. Staff bypass for ops. Call BEFORE proximity /
+ * GPS oracles so a non-assigned driver cannot probe another ride's coords.
+ */
+export async function assertDriverOwnsTaxiRide(params: {
+  supabaseAdmin: SupabaseClient;
+  rideId: string;
+  userId: string;
+  role?: UserRole | null;
+}): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (params.role && isStaffRole(params.role)) {
+    return { ok: true };
+  }
+
+  const { data, error } = await params.supabaseAdmin
+    .from("taxi_rides")
+    .select("id, driver_id")
+    .eq("id", params.rideId)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, status: 500, error: error.message };
+  }
+
+  if (!data) {
+    return { ok: false, status: 404, error: "ride_not_found" };
+  }
+
+  const driverId = String(data.driver_id ?? "").trim();
+  if (!driverId || driverId !== params.userId) {
+    return { ok: false, status: 403, error: "Forbidden" };
+  }
+
+  return { ok: true };
+}

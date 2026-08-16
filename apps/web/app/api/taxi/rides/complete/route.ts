@@ -1,6 +1,12 @@
 import { NextRequest } from "next/server";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
-import { getTaxiRideId, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import {
+  assertDriverOwnsTaxiRide,
+  getProfileRole,
+  getTaxiRideId,
+  requireTaxiApiUser,
+  taxiJson,
+} from "@/lib/taxiApi";
 import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
 import { recordTaxiPreferenceStats } from "@/lib/taxiPreferenceDispatch";
 import {
@@ -34,10 +40,21 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: gps.error }, 400);
     }
 
+    const role = await getProfileRole(auth.supabaseAdmin, auth.user.id);
+    const ownership = await assertDriverOwnsTaxiRide({
+      supabaseAdmin: auth.supabaseAdmin,
+      rideId,
+      userId: auth.user.id,
+      role,
+    });
+    if (ownership.ok === false) {
+      return taxiJson({ ok: false, error: ownership.error }, ownership.status);
+    }
+
     const { data: rideBeforeComplete } = await auth.supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,status,payment_status,client_user_id,created_by,client_preferences,ambiance_preference,country_code,vehicle_class,assigned_fuel_type,prefer_electric_or_hybrid,dropoff_lat,dropoff_lng",
+        "id,status,payment_status,client_user_id,created_by,driver_id,client_preferences,ambiance_preference,country_code,vehicle_class,assigned_fuel_type,prefer_electric_or_hybrid,dropoff_lat,dropoff_lng",
       )
       .eq("id", rideId)
       .maybeSingle();

@@ -31,7 +31,7 @@ const externalCrons = [
   { name: "retry-taxi-dispatch", path: "/api/cron/retry-taxi-dispatch" },
   { name: "retry-delivery-request-dispatch", path: "/api/cron/retry-delivery-request-dispatch" },
   { name: "taxi-scheduled-dispatch", path: "/api/cron/taxi-scheduled-dispatch" },
-  { name: "taxi-active-ride-compliance", path: "/api/cron/taxi-active-ride-compliance", schedule: "GitHub Actions every 3 min" },
+  { name: "taxi-active-ride-compliance", path: "/api/cron/taxi-active-ride-compliance", schedule: "GitHub Actions every 10 min" },
   { name: "ride-safety-recording-retention", path: "/api/cron/ride-safety-recording-retention", schedule: "GitHub Actions every 6 h" },
 ];
 
