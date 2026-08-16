@@ -41,6 +41,8 @@ test("sunday bank payout cron has no cashout minimum", () => {
   assert.match(cron, /no_minimum_cents: true/);
   assert.match(cron, /America\/New_York/);
   assert.doesNotMatch(helper, /DRIVER_CASHOUT_MINIMUM/);
+  assert.match(cron, /restaurant_profiles/);
+  assert.match(cron, /restaurantBankPayoutIdempotencyKey/);
   assert.match(helper, /interval: "manual"/);
   assert.match(helper, /hour === 4/);
 });

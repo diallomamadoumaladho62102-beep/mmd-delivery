@@ -13,6 +13,7 @@ import {
 import {
   createFullAvailableConnectPayout,
   driverBankPayoutIdempotencyKey,
+  restaurantBankPayoutIdempotencyKey,
   ensureDriverConnectManualPayoutSchedule,
   getNowPartsInTimeZone,
   isDriverBankPayoutWindow,
@@ -35,7 +36,8 @@ function json(body: Record<string, unknown>, status = 200) {
 }
 
 /**
- * Sunday 04:00 America/New_York bank payouts for drivers (full Connect available).
+ * Sunday 04:00 America/New_York bank payouts for drivers AND restaurants
+ * (full Connect available balance).
  *
  * Trigger: GitHub Actions (dual Sunday UTC schedules — Hobby Vercel cannot do both):
  * - `0 8 * * 0` → 04:00 EDT
@@ -44,7 +46,7 @@ function json(body: Record<string, unknown>, status = 200) {
  * schedule_only=1 (+ force): set Connect payout interval=manual without creating payouts.
  *
  * No $20 minimum — 100% of eligible available balance is paid out.
- * Manual Cash Out keeps its own minimum separately.
+ * Manual Cash Out (drivers) keeps its own minimum separately; restaurants have no MMD cash out.
  */
 async function handle(req: NextRequest) {
   const force =
@@ -94,7 +96,7 @@ async function handle(req: NextRequest) {
     JOB,
     async () => {
       const pageSize = 100;
-      const rows: Array<{
+      const driverRows: Array<{
         user_id: string;
         stripe_account_id: string | null;
       }> = [];
@@ -107,14 +109,55 @@ async function handle(req: NextRequest) {
         if (error) {
           throw new Error(`driver_profiles_select_failed: ${error.message}`);
         }
-        const batch = (data ?? []).filter((d) =>
+        const page = (data ?? []).filter((d) =>
           String(d.stripe_account_id ?? "").startsWith("acct_"),
         );
-        rows.push(...batch);
+        driverRows.push(...page);
         if ((data ?? []).length < pageSize) break;
       }
 
-      const batch = rows.slice(0, Math.max(0, limit));
+      const restaurantRows: Array<{
+        user_id: string;
+        stripe_account_id: string | null;
+      }> = [];
+      for (let from = 0; from < 5000; from += pageSize) {
+        const { data, error } = await supabaseAdmin
+          .from("restaurant_profiles")
+          .select("user_id, stripe_account_id")
+          .not("stripe_account_id", "is", null)
+          .range(from, from + pageSize - 1);
+        if (error) {
+          throw new Error(
+            `restaurant_profiles_select_failed: ${error.message}`,
+          );
+        }
+        const page = (data ?? []).filter((d) =>
+          String(d.stripe_account_id ?? "").startsWith("acct_"),
+        );
+        restaurantRows.push(...page);
+        if ((data ?? []).length < pageSize) break;
+      }
+
+      const driverBatch = driverRows.slice(0, Math.max(0, limit));
+      const restaurantBatch = restaurantRows.slice(0, Math.max(0, limit));
+      // Separate caps so restaurant Sunday bank is never starved by a large driver set.
+      type BankTarget = {
+        role: "driver" | "restaurant";
+        user_id: string;
+        stripe_account_id: string | null;
+      };
+      const batch: BankTarget[] = [
+        ...driverBatch.map((r) => ({
+          role: "driver" as const,
+          user_id: r.user_id,
+          stripe_account_id: r.stripe_account_id,
+        })),
+        ...restaurantBatch.map((r) => ({
+          role: "restaurant" as const,
+          user_id: r.user_id,
+          stripe_account_id: r.stripe_account_id,
+        })),
+      ];
       const results: Array<Record<string, unknown>> = [];
       let paid = 0;
       let skipped = 0;
@@ -128,13 +171,15 @@ async function handle(req: NextRequest) {
           break;
         }
 
+        const role = row.role;
         const userId = String(row.user_id);
         const acct = String(row.stripe_account_id);
         const schedule = await ensureDriverConnectManualPayoutSchedule(acct);
         if (schedule.ok === false) {
           failed += 1;
           results.push({
-            driver_id: userId,
+            role,
+            recipient_user_id: userId,
             ok: false,
             error: `manual_schedule:${schedule.error}`,
           });
@@ -145,7 +190,8 @@ async function handle(req: NextRequest) {
         if (scheduleOnly || dryRun) {
           skipped += 1;
           results.push({
-            driver_id: userId,
+            role,
+            recipient_user_id: userId,
             ok: true,
             dry_run: dryRun || undefined,
             schedule_only: scheduleOnly || undefined,
@@ -155,13 +201,24 @@ async function handle(req: NextRequest) {
           continue;
         }
 
-        const idempotencyKey = driverBankPayoutIdempotencyKey(
-          acct,
-          parts.dateKey,
-        );
+        const idempotencyKey =
+          role === "restaurant"
+            ? restaurantBankPayoutIdempotencyKey(acct, parts.dateKey)
+            : driverBankPayoutIdempotencyKey(acct, parts.dateKey);
+        const moneyModel =
+          role === "restaurant"
+            ? MONEY_OUT_MODEL.restaurantBankPayout
+            : MONEY_OUT_MODEL.driverBankPayout;
+        const ledgerSource =
+          role === "restaurant"
+            ? "cron_restaurant_sunday_bank_payout"
+            : "cron_driver_sunday_bank_payout";
+
         const payout = await createFullAvailableConnectPayout({
           stripeAccountId: acct,
-          driverUserId: userId,
+          recipientUserId: userId,
+          recipientType: role,
+          driverUserId: role === "driver" ? userId : undefined,
           idempotencyKey,
           metadata: {
             et_date: parts.dateKey,
@@ -172,7 +229,8 @@ async function handle(req: NextRequest) {
         if (payout.ok === false) {
           failed += 1;
           results.push({
-            driver_id: userId,
+            role,
+            recipient_user_id: userId,
             ok: false,
             error: payout.error,
           });
@@ -182,7 +240,8 @@ async function handle(req: NextRequest) {
         if (!("payout" in payout)) {
           skipped += 1;
           results.push({
-            driver_id: userId,
+            role,
+            recipient_user_id: userId,
             ok: true,
             skipped: true,
             reason: payout.reason,
@@ -196,7 +255,7 @@ async function handle(req: NextRequest) {
         try {
           const audit = await createPayoutTransaction(supabaseAdmin, {
             countryCode: "US",
-            recipientType: "driver",
+            recipientType: role,
             recipientUserId: userId,
             provider: "stripe_connect",
             methodCode: "payout_stripe_connect_sunday",
@@ -207,20 +266,20 @@ async function handle(req: NextRequest) {
             destinationAccount: acct,
             externalReference: stripePayout.id,
             providerPayload: {
-              source: "cron_driver_sunday_bank_payout",
+              source: ledgerSource,
               stripe_payout_id: stripePayout.id,
               et_date: parts.dateKey,
               timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
               no_minimum: true,
-              money_out_model: MONEY_OUT_MODEL.driverBankPayout,
+              money_out_model: moneyModel,
             },
           });
           await updatePayoutTransactionStatus(supabaseAdmin, audit.id, "paid", {
             external_reference: stripePayout.id,
             provider_payload: {
-              source: "cron_driver_sunday_bank_payout",
+              source: ledgerSource,
               stripe_payout_id: stripePayout.id,
-              money_out_model: MONEY_OUT_MODEL.driverBankPayout,
+              money_out_model: moneyModel,
             },
           });
         } catch (ledgerErr) {
@@ -232,7 +291,8 @@ async function handle(req: NextRequest) {
 
         paid += 1;
         results.push({
-          driver_id: userId,
+          role,
+          recipient_user_id: userId,
           ok: true,
           stripe_payout_id: stripePayout.id,
           amount_cents: amountCents,
@@ -244,7 +304,9 @@ async function handle(req: NextRequest) {
         ok: true as const,
         timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
         local_date: parts.dateKey,
-        scanned: rows.length,
+        scanned: driverRows.length + restaurantRows.length,
+        scanned_drivers: driverRows.length,
+        scanned_restaurants: restaurantRows.length,
         eligible: batch.length,
         paid,
         skipped,

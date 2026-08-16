@@ -310,15 +310,27 @@ export async function createFoodOrderServerSide(
     throw new Error(`Commission refresh failed: ${commissionErr.message}`);
   }
 
+  // Keep legacy restaurant_net_amount aligned with order_commissions (display only; SCT uses cents).
+  const commissionObj =
+    commissionData && typeof commissionData === "object"
+      ? (commissionData as Record<string, unknown>)
+      : null;
+  const restaurantAmount = Number(commissionObj?.restaurant_amount);
+  if (Number.isFinite(restaurantAmount) && restaurantAmount >= 0) {
+    await supabaseAdmin
+      .from("orders")
+      .update({
+        restaurant_net_amount: Number(restaurantAmount.toFixed(2)),
+      })
+      .eq("id", orderId);
+  }
+
   return {
     ...pricing,
     total: chargedTotal,
     totalCents: chargedTotalCents,
     orderId,
-    commissions:
-      commissionData && typeof commissionData === "object"
-        ? (commissionData as Record<string, unknown>)
-        : null,
+    commissions: commissionObj,
   };
 }
 

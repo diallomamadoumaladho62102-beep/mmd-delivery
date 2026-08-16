@@ -1,10 +1,11 @@
 /**
- * Driver Connect → bank payout schedule helpers.
+ * Connect → bank payout schedule helpers (drivers + restaurants).
  *
  * Product rule:
- * - SCT (fare) → Connect: immediate after ride complete
+ * - SCT (platform → Connect): immediate after delivered/completed + paid
  * - Connect → bank: Sunday 04:00 America/New_York, full available balance, no $20 minimum
- * - Manual MMD Cash Out may keep its own $20 minimum (separate path)
+ * - Manual MMD Cash Out (drivers) may keep its own $20 minimum (separate path)
+ * - Restaurants: no MMD Cash Out; Sunday bank only
  */
 
 import type Stripe from "stripe";
@@ -56,6 +57,14 @@ export function driverBankPayoutIdempotencyKey(
   return `driver_sunday_bank_payout:${stripeAccountId}:${etDateKey}`;
 }
 
+/** Same Sunday window / full-available rule for restaurant Connect → bank. */
+export function restaurantBankPayoutIdempotencyKey(
+  stripeAccountId: string,
+  etDateKey: string,
+): string {
+  return `restaurant_sunday_bank_payout:${stripeAccountId}:${etDateKey}`;
+}
+
 /**
  * Force Express auto-payouts OFF so bank payouts are driven by MMD Sunday cron
  * (or explicit manual Cash Out), not Stripe daily defaults.
@@ -88,7 +97,10 @@ export async function ensureDriverConnectManualPayoutSchedule(
 
 export async function createFullAvailableConnectPayout(params: {
   stripeAccountId: string;
-  driverUserId: string;
+  /** @deprecated prefer recipientUserId */
+  driverUserId?: string;
+  recipientUserId?: string;
+  recipientType?: "driver" | "restaurant";
   currency?: string;
   idempotencyKey: string;
   metadata?: Record<string, string>;
@@ -99,6 +111,10 @@ export async function createFullAvailableConnectPayout(params: {
 > {
   const stripeAccountId = String(params.stripeAccountId ?? "").trim();
   const currency = String(params.currency ?? "usd").trim().toLowerCase() || "usd";
+  const recipientUserId = String(
+    params.recipientUserId ?? params.driverUserId ?? "",
+  ).trim();
+  const recipientType = params.recipientType === "restaurant" ? "restaurant" : "driver";
 
   let availableCents = 0;
   try {
@@ -133,8 +149,13 @@ export async function createFullAvailableConnectPayout(params: {
         amount: availableCents,
         currency,
         metadata: {
-          source: "cron_driver_sunday_bank_payout",
-          driver_id: params.driverUserId,
+          source:
+            recipientType === "restaurant"
+              ? "cron_restaurant_sunday_bank_payout"
+              : "cron_driver_sunday_bank_payout",
+          driver_id: recipientType === "driver" ? recipientUserId : "",
+          recipient_user_id: recipientUserId,
+          recipient_type: recipientType,
           ...(params.metadata ?? {}),
         },
       },

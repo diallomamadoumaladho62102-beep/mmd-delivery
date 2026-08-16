@@ -4,6 +4,10 @@ import {
   getRestaurantTaxSummary,
 } from "@/lib/restaurantTax";
 import { applyLiveTripFilters } from "@/lib/tripVisibility";
+import {
+  isRestaurantOrderAwaitingTransfer,
+  restaurantAwaitingDollars,
+} from "@/lib/finance/restaurantWalletSoT";
 
 type GenericRow = Record<string, unknown>;
 
@@ -128,15 +132,16 @@ export async function getRestaurantFinancialOverview(params: {
     });
   }
 
+  // Stripe Transfer SoT: paid history requires restaurant_transfer_id (not restaurant_paid_out alone).
   const { data: payoutRows, error: payoutError } = await applyLiveTripFilters(
     supabase
       .from("orders")
       .select(
-        "id, restaurant_net_amount, restaurant_paid_out_at, restaurant_id, restaurant_user_id"
+        "id, restaurant_net_amount, restaurant_paid_out_at, restaurant_transfer_id, restaurant_id, restaurant_user_id, order_commissions(restaurant_cents)"
       ),
   )
     .eq("payment_status", "paid")
-    .eq("restaurant_paid_out", true)
+    .not("restaurant_transfer_id", "is", null)
     .order("restaurant_paid_out_at", { ascending: false })
     .limit(10);
 
@@ -144,15 +149,16 @@ export async function getRestaurantFinancialOverview(params: {
     throw new Error(payoutError.message || "Failed to load payout history");
   }
 
+  // Awaiting = delivered+paid with no Transfer id (ignore restaurant_paid_out alone).
   const { data: pendingRows, error: pendingError } = await applyLiveTripFilters(
     supabase
       .from("orders")
       .select(
-        "id, restaurant_net_amount, restaurant_paid_out, restaurant_id, restaurant_user_id"
+        "id, status, payment_status, refund_status, restaurant_net_amount, restaurant_transfer_id, restaurant_id, restaurant_user_id, order_commissions(restaurant_cents)"
       ),
   )
     .eq("payment_status", "paid")
-    .or("restaurant_paid_out.is.null,restaurant_paid_out.eq.false")
+    .is("restaurant_transfer_id", null)
     .in("status", ["delivered", "completed"]);
 
   if (pendingError) {
@@ -163,20 +169,37 @@ export async function getRestaurantFinancialOverview(params: {
 
   for (const row of (pendingRows ?? []) as GenericRow[]) {
     if (!isRestaurantOrderForUser(row, restaurantUserId)) continue;
-    const net = asNumber(row.restaurant_net_amount);
-    pendingPayout += net > 0 ? net : 0;
+    if (!isRestaurantOrderAwaitingTransfer(row)) continue;
+    const commissionRaw = (row as { order_commissions?: unknown }).order_commissions;
+    const commission = Array.isArray(commissionRaw) ? commissionRaw[0] : commissionRaw;
+    const cents = (commission as { restaurant_cents?: unknown } | null)?.restaurant_cents;
+    pendingPayout += restaurantAwaitingDollars({
+      restaurant_cents: cents,
+      restaurant_net_amount: row.restaurant_net_amount,
+    });
   }
 
   pendingPayout = roundMoney(pendingPayout);
 
   const recentPayouts = ((payoutRows ?? []) as GenericRow[])
     .filter((row) => isRestaurantOrderForUser(row, restaurantUserId))
-    .map((row) => ({
-      id: String(row.id ?? ""),
-      amount: roundMoney(asNumber(row.restaurant_net_amount)),
-      status: "paid",
-      date: String(row.restaurant_paid_out_at ?? "").slice(0, 10) || "",
-    }))
+    .filter((row) => String(row.restaurant_transfer_id ?? "").trim().length > 0)
+    .map((row) => {
+      const commissionRaw = (row as { order_commissions?: unknown }).order_commissions;
+      const commission = Array.isArray(commissionRaw) ? commissionRaw[0] : commissionRaw;
+      const cents = (commission as { restaurant_cents?: unknown } | null)?.restaurant_cents;
+      return {
+        id: String(row.id ?? ""),
+        amount: roundMoney(
+          restaurantAwaitingDollars({
+            restaurant_cents: cents,
+            restaurant_net_amount: row.restaurant_net_amount,
+          }),
+        ),
+        status: "paid",
+        date: String(row.restaurant_paid_out_at ?? "").slice(0, 10) || "",
+      };
+    })
     .filter((row) => row.id);
 
   const lastPayout = recentPayouts[0] ?? null;

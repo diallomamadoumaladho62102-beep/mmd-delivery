@@ -540,10 +540,11 @@ export function RestaurantEarningsScreen() {
 
   const delivered = useMemo(() => rows, [rows]);
 
+  // Awaiting SCT = no live restaurant_transfer_id (ignore restaurant_paid_out alone).
   const unpaidDelivered = useMemo(
     () =>
       delivered.filter(
-        (r) => r.restaurant_paid_out == null || r.restaurant_paid_out === false
+        (r) => String(r.restaurant_transfer_id ?? "").trim().length === 0,
       ),
     [delivered]
   );
@@ -551,20 +552,19 @@ export function RestaurantEarningsScreen() {
   const paidDeliveredReal = useMemo(
     () =>
       delivered.filter(
-        (r) =>
-          r.restaurant_paid_out === true &&
-          (!!r.restaurant_transfer_id || !!r.restaurant_payout_id)
+        (r) => String(r.restaurant_transfer_id ?? "").trim().length > 0,
       ),
     [delivered]
   );
 
+  // Legacy false-paid rows (restaurant_paid_out without Stripe Transfer) — never count as paid.
   const paidDeliveredManual = useMemo(
     () =>
       delivered.filter(
         (r) =>
           r.restaurant_paid_out === true &&
-          !r.restaurant_transfer_id &&
-          !r.restaurant_payout_id
+          !String(r.restaurant_transfer_id ?? "").trim() &&
+          !String(r.restaurant_payout_id ?? "").trim(),
       ),
     [delivered]
   );
@@ -681,30 +681,8 @@ export function RestaurantEarningsScreen() {
     }).start();
   }, [barAnim, monthSummary.bars]);
 
-  const markOrderPaid = useCallback(
-    async (orderId: string) => {
-      if (!restaurantId)
-        throw new Error(
-          t("restaurant.earnings.errors.notConnected", "Restaurant non connecté.")
-        );
-
-      const now = new Date().toISOString();
-
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          restaurant_paid_out: true,
-          restaurant_paid_out_at: now,
-        })
-        .eq("id", orderId)
-        .or(`restaurant_id.eq.${restaurantId},restaurant_user_id.eq.${restaurantId}`)
-        .eq("status", "delivered")
-        .or("restaurant_paid_out.is.null,restaurant_paid_out.eq.false");
-
-      if (error) throw error;
-    },
-    [restaurantId, t]
-  );
+  // Intentionally removed: client must never mark restaurant_paid_out without a Stripe Transfer.
+  // Wallet / earnings SoT is restaurant_transfer_id (server transfers/run + webhooks).
 
   const payoutStatus = useMemo(() => {
     const code: StripeConnectStatusCode = !payoutProfile?.stripe_account_id

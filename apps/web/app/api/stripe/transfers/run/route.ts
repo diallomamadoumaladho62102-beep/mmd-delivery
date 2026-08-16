@@ -623,6 +623,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    {
+      const statusLower = lower(order.status);
+      if (statusLower !== "delivered" && statusLower !== "completed") {
+        return json(
+          {
+            error: "Order is not yet eligible for transfer",
+            status: order.status,
+          },
+          409
+        );
+      }
+    }
+
     let afterReversedTransferId: string | null = null;
 
     if (isOrderAlreadyPaidOut(order, target)) {
@@ -896,6 +909,38 @@ export async function POST(req: NextRequest) {
         target,
       });
       return json({ error: "Invalid payout destination" }, 400);
+    }
+
+    // Live Connect readiness (SCT needs transfers capability; bank schedule is separate).
+    try {
+      const connectAccount = await stripe.accounts.retrieve(destination);
+      const transfersCap = String(connectAccount.capabilities?.transfers ?? "");
+      const connectReady =
+        transfersCap === "active" ||
+        (connectAccount.charges_enabled === true &&
+          connectAccount.payouts_enabled === true);
+      if (!connectReady) {
+        return json(
+          {
+            error: "connect_not_ready",
+            message:
+              "Stripe Connect account is not ready to receive transfers yet",
+            destination,
+            charges_enabled: connectAccount.charges_enabled ?? null,
+            payouts_enabled: connectAccount.payouts_enabled ?? null,
+            transfers_capability: transfersCap || null,
+          },
+          400
+        );
+      }
+    } catch (e: unknown) {
+      logStripeError("[transfers/run] connect account retrieve failed", e, {
+        order_id: order.id,
+        target,
+        destination,
+        actor,
+      });
+      return json({ error: "Failed to verify Connect destination" }, 500);
     }
 
     let sourceChargeId: string | null = null;
@@ -1357,6 +1402,7 @@ export async function POST(req: NextRequest) {
           restaurant_paid_out: true,
           restaurant_paid_out_at: nowIso,
           restaurant_transfer_id: transfer.id,
+          restaurant_net_amount: Number(((amount ?? 0) / 100).toFixed(2)),
           updated_at: nowIso,
         })
         .eq("id", order.id)

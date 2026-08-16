@@ -79,15 +79,16 @@ function isTerminalStatus(status: string) {
 }
 
 /**
- * When a client cancels a paid food order before restaurant acceptance,
- * execute the Stripe refund immediately (parity with delivery-requests cancel).
+ * When a paid food order is cancelled by client (pre-accept) or restaurant
+ * (reject/cancel before ready), execute the Stripe refund immediately.
  * Idempotent on stripe_refund_id.
  */
-async function refundPaidFoodOrderOnClientCancel(params: {
+async function refundPaidFoodOrderOnCancel(params: {
   supabaseAdmin: SupabaseClient;
   order: Record<string, unknown>;
   orderId: string;
   reason: string;
+  idempotencyKey: string;
 }): Promise<{
   refunded: boolean;
   refundId: string | null;
@@ -142,7 +143,7 @@ async function refundPaidFoodOrderOnClientCancel(params: {
         source: "api/orders/cancel",
       },
     },
-    { idempotencyKey: `food_client_cancel_refund_${params.orderId}` }
+    { idempotencyKey: params.idempotencyKey }
   );
 
   await params.supabaseAdmin
@@ -160,6 +161,19 @@ async function refundPaidFoodOrderOnClientCancel(params: {
     refundStatus: "refunded",
     stripeRefund: { id: refund.id, status: refund.status ?? null },
   };
+}
+
+/** @deprecated use refundPaidFoodOrderOnCancel */
+async function refundPaidFoodOrderOnClientCancel(params: {
+  supabaseAdmin: SupabaseClient;
+  order: Record<string, unknown>;
+  orderId: string;
+  reason: string;
+}) {
+  return refundPaidFoodOrderOnCancel({
+    ...params,
+    idempotencyKey: `food_client_cancel_refund_${params.orderId}`,
+  });
 }
 
 function isClientOrderOwner(order: any, userId: string) {
@@ -721,8 +735,48 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Phase 4: restaurant cancel/reject marks refund as required without moving
-      // Live Stripe money here. Admin cancel-refund remains the money-movement path.
+      // Restaurant reject/cancel before ready: execute Stripe full refund immediately
+      // (parity with client pre-accept cancel). Idempotent on stripe_refund_id.
+      let refundLabel: CancelRefund = "REQUIRED";
+      let stripeRefund: { id: string; status: string | null } | null = null;
+      let linkedRefundStatus = "full_refund_required";
+      try {
+        const refundResult = await refundPaidFoodOrderOnCancel({
+          supabaseAdmin,
+          order,
+          orderId,
+          reason,
+          idempotencyKey: `food_restaurant_cancel_refund_${orderId}`,
+        });
+        stripeRefund = refundResult.stripeRefund;
+        linkedRefundStatus = refundResult.refundStatus;
+        if (refundResult.refunded) {
+          refundLabel = "FULL";
+        } else {
+          refundLabel = "REQUIRED";
+          linkedRefundStatus =
+            refundResult.refundStatus || "full_refund_required";
+        }
+      } catch (refundErr: unknown) {
+        console.error("[orders/cancel] restaurant Stripe refund failed", {
+          order_id: orderId,
+          error:
+            refundErr instanceof Error ? refundErr.message : String(refundErr),
+        });
+        await supabaseAdmin
+          .from("orders")
+          .update({ refund_status: "refund_failed" })
+          .eq("id", orderId);
+        return json(
+          {
+            error:
+              "Order cancelled but Stripe refund failed. Support will retry.",
+            refund_status: "refund_failed",
+          },
+          502
+        );
+      }
+
       const eventType =
         status === "pending" ? "restaurant_reject" : "restaurant_cancel";
 
@@ -743,9 +797,9 @@ export async function POST(req: NextRequest) {
         metadata: {
           source: "api/orders/cancel",
           role: "restaurant",
-          refund: "REQUIRED",
-          refund_status: "full_refund_required",
-          stripe_refund_deferred: true,
+          refund: refundLabel,
+          refund_status: linkedRefundStatus,
+          stripe_refund_deferred: false,
           at: canceledAt,
         },
       });
@@ -758,17 +812,21 @@ export async function POST(req: NextRequest) {
 
       return successResponse({
         by: "restaurant",
-        refund: "REQUIRED",
+        refund: refundLabel,
         status: "canceled",
         stripeRefund: {
-          refunded: false,
-          deferred: true,
-          refundId: null,
+          refunded: refundLabel === "FULL",
+          deferred: false,
+          refundId: stripeRefund?.id ?? null,
         },
         message:
           status === "pending"
-            ? "Commande refusée. Remboursement complet à traiter (aucun mouvement Stripe immédiat)."
-            : "Commande annulée. Remboursement complet à traiter (aucun mouvement Stripe immédiat).",
+            ? refundLabel === "FULL"
+              ? "Commande refusée. Remboursement Stripe exécuté."
+              : "Commande refusée. Remboursement complet à traiter."
+            : refundLabel === "FULL"
+              ? "Commande annulée. Remboursement Stripe exécuté."
+              : "Commande annulée. Remboursement complet à traiter.",
       });
     }
 

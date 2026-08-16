@@ -11,9 +11,9 @@ export type SharedWalletSummary = {
   currency: string;
   /** Legacy ledger balance (kept for backward compatibility). */
   balance_cents: number;
-  /** Cashable now — restaurants/sellers typically 0 (Express auto after SCT). */
+  /** Cashable now — restaurants/sellers typically 0 (Sunday bank cron; no MMD cash out). */
   available_cents: number;
-  /** Earnings not yet SCT'd to Connect (or pending Express bank payout). */
+  /** Earnings not yet SCT'd to Connect (awaiting platform→Connect Transfer). */
   awaiting_transfer_cents: number;
   pending_cents: number;
   /** Seller: total net already transferred (paid payouts). */
@@ -33,8 +33,9 @@ function currencyForCountry(countryCode: string): string {
 }
 
 /**
- * Restaurant wallets: SCT funds Connect; Express auto-pays bank.
- * Unpaid order nets show as awaiting_transfer; available cashout is 0.
+ * Restaurant wallets: SCT funds Connect; Sunday cron pays bank (manual schedule).
+ * Awaiting = delivered+paid with no restaurant_transfer_id (Stripe Transfer SoT).
+ * available/can_cashout remain 0 (no MMD Cash Out for restaurants).
  */
 export async function buildRestaurantWalletSummary(
   supabaseAdmin: SupabaseClient,
@@ -67,11 +68,11 @@ export async function buildRestaurantWalletSummary(
     awaiting_transfer_cents: awaitingTransferCents,
     pending_cents: awaitingTransferCents,
     can_cashout: false,
-    cashout_block_reason: "express_auto_payout",
+    cashout_block_reason: "sunday_bank_payout_only",
     note:
       awaitingTransferCents > 0
-        ? "Pending restaurant earnings await SCT transfer; bank payout is Stripe Express automatic."
-        : "Restaurants cash out via Stripe Express auto-payout after SCT.",
+        ? "Pending restaurant earnings await platform→Connect SCT; bank payout is Sunday 04:00 America/New_York (no $20 minimum)."
+        : "Restaurants receive bank payouts Sunday 04:00 America/New_York after SCT (full available balance, no $20 minimum).",
     money_out_model: MONEY_OUT_MODEL,
   };
 }

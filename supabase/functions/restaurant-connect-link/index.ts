@@ -268,6 +268,8 @@ Deno.serve(async (req) => {
         country: connectCountry,
         "metadata[supabase_user_id]": userId,
         "metadata[country]": connectCountry,
+        // Bank payouts are MMD-scheduled (Sunday 04:00 ET), not Stripe daily auto.
+        "settings[payouts][schedule][interval]": "manual",
       };
 
       let acct;
@@ -300,6 +302,18 @@ Deno.serve(async (req) => {
       }
 
       stripeAccountId = acct.id as string;
+
+      // Re-assert manual payout schedule (create may ignore nested settings on some markets).
+      try {
+        await stripePOST(`accounts/${stripeAccountId}`, {
+          "settings[payouts][schedule][interval]": "manual",
+        });
+      } catch (schedErr: any) {
+        console.warn(
+          "restaurant-connect-link: could not set manual payout schedule",
+          schedErr?.message ?? schedErr,
+        );
+      }
 
       const { error: upErr } = await supabaseAdmin
         .from("restaurant_profiles")
