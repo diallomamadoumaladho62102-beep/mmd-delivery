@@ -91,7 +91,7 @@ test("restaurant cancel executes Stripe refund immediately", () => {
   assert.doesNotMatch(src, /stripe_refund_deferred: true/);
 });
 
-test("restaurant bank payout is Sunday ET full available no \$20 min", () => {
+test("restaurant bank payout is Sunday ET full available no $20 min", () => {
   assert.equal(
     MONEY_OUT_MODEL.restaurantBankPayout,
     "sunday_0400_america_new_york_full_available_no_minimum",

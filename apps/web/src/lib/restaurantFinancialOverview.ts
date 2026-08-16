@@ -15,11 +15,6 @@ function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-function asNumber(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
 function isRestaurantOrderForUser(row: GenericRow, restaurantUserId: string): boolean {
   const keys = [
     "restaurant_id",
