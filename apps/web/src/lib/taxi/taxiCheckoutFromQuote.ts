@@ -20,6 +20,7 @@ import { assertTaxiCheckoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { captureEntityCredit } from "@/lib/loyalty/loyaltyCredit";
+import { finalizeTaxiPromotionAfterPaidMaterialize } from "@/lib/taxi/taxiQuoteCheckoutDiscounts";
 
 export const TAXI_QUOTE_CHECKOUT_TTL_MS = 30 * 60 * 1000;
 
@@ -273,9 +274,37 @@ export async function materializePaidTaxiRideFromQuoteCheckout(params: {
   if (!intent) return { ok: false, error: "quote_checkout_not_found" };
 
   if (intent.taxi_ride_id) {
+    const existingRideId = String(intent.taxi_ride_id);
+    // Idempotent: webhook/confirm retries must still finalize promo if missing.
+    await finalizeTaxiPromotionAfterPaidMaterialize({
+      supabaseAdmin,
+      taxiRideId: existingRideId,
+      promoCode:
+        String((intent.snapshot as TaxiCheckoutIntentSnapshot | null)?.promo_code ?? "").trim() ||
+        null,
+      fareBasisCents: Math.round(
+        Number(
+          (intent.snapshot as TaxiCheckoutIntentSnapshot | null)?.gross_total_cents ??
+            intent.amount_cents ??
+            0,
+        ),
+      ),
+      vehicleClass:
+        String((intent.snapshot as TaxiCheckoutIntentSnapshot | null)?.vehicle_class ?? "").trim() ||
+        null,
+      countryCode:
+        String((intent.snapshot as TaxiCheckoutIntentSnapshot | null)?.country_code ?? "").trim() ||
+        null,
+      currency:
+        String((intent.snapshot as TaxiCheckoutIntentSnapshot | null)?.currency ?? "").trim() ||
+        null,
+      clientUserId:
+        String((intent.snapshot as TaxiCheckoutIntentSnapshot | null)?.client_user_id ?? "").trim() ||
+        null,
+    });
     return {
       ok: true,
-      taxi_ride_id: String(intent.taxi_ride_id),
+      taxi_ride_id: existingRideId,
       already_paid: true,
       created: false,
     };
@@ -417,10 +446,23 @@ export async function materializePaidTaxiRideFromQuoteCheckout(params: {
       .select("taxi_ride_id")
       .eq("id", quoteCheckoutId)
       .maybeSingle();
-    if (again?.taxi_ride_id) {
+  if (again?.taxi_ride_id) {
+      const racedRideId = String(again.taxi_ride_id);
+      await finalizeTaxiPromotionAfterPaidMaterialize({
+        supabaseAdmin,
+        taxiRideId: racedRideId,
+        promoCode: String(snapshot.promo_code ?? "").trim() || null,
+        fareBasisCents: Math.round(
+          Number(snapshot.gross_total_cents ?? snapshot.amount_cents ?? 0),
+        ),
+        vehicleClass: String(snapshot.vehicle_class ?? "").trim() || null,
+        countryCode: String(snapshot.country_code ?? "").trim() || null,
+        currency: String(snapshot.currency ?? "").trim() || null,
+        clientUserId: String(snapshot.client_user_id ?? "").trim() || null,
+      });
       return {
         ok: true,
-        taxi_ride_id: String(again.taxi_ride_id),
+        taxi_ride_id: racedRideId,
         already_paid: true,
         created: false,
       };
@@ -429,6 +471,19 @@ export async function materializePaidTaxiRideFromQuoteCheckout(params: {
   }
 
   const taxiRideId = String(ride.id);
+
+  await finalizeTaxiPromotionAfterPaidMaterialize({
+    supabaseAdmin,
+    taxiRideId,
+    promoCode: String(snapshot.promo_code ?? "").trim() || null,
+    fareBasisCents: Math.round(
+      Number(snapshot.gross_total_cents ?? snapshot.amount_cents ?? 0),
+    ),
+    vehicleClass: String(snapshot.vehicle_class ?? "").trim() || null,
+    countryCode: String(snapshot.country_code ?? "").trim() || null,
+    currency: String(snapshot.currency ?? "").trim() || null,
+    clientUserId: String(snapshot.client_user_id ?? "").trim() || null,
+  });
 
   if (stops.length > 0) {
     await supabaseAdmin.from("taxi_ride_stops").insert(

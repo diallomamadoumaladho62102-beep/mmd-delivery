@@ -185,3 +185,89 @@ export async function resolveTaxiCheckoutDiscounts(params: {
     marketing_campaign_ids: [],
   };
 }
+
+/**
+ * After pay-then-create materialize (PI succeeded + ride inserted as paid),
+ * consume classic taxi promo the same way mark_taxi_ride_paid does:
+ * revalidate → finalize_taxi_promotion_redemption (idempotent per ride).
+ *
+ * Failed / abandoned Checkout never reaches this path, so promo is not consumed.
+ */
+export async function finalizeTaxiPromotionAfterPaidMaterialize(params: {
+  supabaseAdmin: SupabaseClient;
+  taxiRideId: string;
+  promoCode?: string | null;
+  fareBasisCents?: number | null;
+  vehicleClass?: string | null;
+  countryCode?: string | null;
+  currency?: string | null;
+  clientUserId?: string | null;
+}): Promise<{ ok: true; skipped?: boolean; already?: boolean } | { ok: false; error: string }> {
+  const rideId = String(params.taxiRideId ?? "").trim();
+  if (!rideId) {
+    return { ok: false, error: "missing_taxi_ride_id" };
+  }
+
+  const promoCode = String(params.promoCode ?? "").trim();
+  if (promoCode && params.clientUserId) {
+    const fareBasis = Math.max(0, Math.round(Number(params.fareBasisCents ?? 0)));
+    const { data: validation, error: validationError } =
+      await params.supabaseAdmin.rpc("validate_taxi_promotion", {
+        p_code: promoCode,
+        p_user_id: params.clientUserId,
+        p_total_cents: fareBasis > 0 ? fareBasis : null,
+        p_ride_id: rideId,
+        p_vehicle_class: String(params.vehicleClass ?? "").trim() || null,
+        p_country_code: String(params.countryCode ?? "").trim() || null,
+        p_currency: String(params.currency ?? "").trim() || null,
+      });
+
+    if (validationError) {
+      console.warn(
+        "[taxi quote-checkout] promo revalidate error",
+        validationError.message,
+      );
+      return { ok: false, error: validationError.message };
+    }
+
+    const result = (validation ?? {}) as Record<string, unknown>;
+    if (result.ok === false) {
+      console.warn(
+        "[taxi quote-checkout] promo revalidate refused after paid materialize",
+        {
+          rideId,
+          message: String(result.message ?? result.error ?? "promotion_invalid"),
+        },
+      );
+      // Payment already captured — do not consume redemption when no longer valid.
+      return {
+        ok: false,
+        error: String(result.message ?? result.error ?? "promotion_invalid"),
+      };
+    }
+  }
+
+  const { data, error } = await params.supabaseAdmin.rpc(
+    "finalize_taxi_promotion_redemption",
+    { p_ride_id: rideId },
+  );
+
+  if (error) {
+    console.warn("[taxi quote-checkout] promo finalize error", error.message);
+    return { ok: false, error: error.message };
+  }
+
+  const body = (data ?? {}) as Record<string, unknown>;
+  if (body.ok === false) {
+    return {
+      ok: false,
+      error: String(body.message ?? body.error ?? "promo_finalize_failed"),
+    };
+  }
+
+  return {
+    ok: true,
+    skipped: body.skipped === true,
+    already: body.already === true,
+  };
+}

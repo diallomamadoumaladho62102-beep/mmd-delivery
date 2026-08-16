@@ -67,4 +67,33 @@ test("pay-then-create checkout applies server promo before Stripe amount", () =>
   assert.match(src, /intentId: discounts\.checkout_entity_id/);
 });
 
+test("pay-then-create materialize finalizes promo redemption after paid ride", () => {
+  const materialize = fs.readFileSync(
+    path.join(webRoot, "src/lib/taxi/taxiCheckoutFromQuote.ts"),
+    "utf8",
+  );
+  const discounts = fs.readFileSync(
+    path.join(webRoot, "src/lib/taxi/taxiQuoteCheckoutDiscounts.ts"),
+    "utf8",
+  );
+  assert.match(materialize, /finalizeTaxiPromotionAfterPaidMaterialize/);
+  assert.match(discounts, /finalize_taxi_promotion_redemption/);
+  assert.match(discounts, /validate_taxi_promotion/);
+  // Failures never reach materialize → promo not consumed until PI succeeded.
+  assert.match(discounts, /Failed \/ abandoned Checkout never reaches this path/);
+});
+
+test("promo finalize is idempotent per ride via unique redemption", () => {
+  const mig = fs.readFileSync(
+    path.join(
+      webRoot,
+      "../../supabase/migrations/20260612120000_taxi_premium_sprint1.sql",
+    ),
+    "utf8",
+  );
+  assert.match(mig, /taxi_promotion_redemptions_ride_uq unique \(taxi_ride_id\)/);
+  assert.match(mig, /already.*true/);
+  assert.match(mig, /finalize_taxi_promotion_redemption/);
+});
+
 console.log("taxiQuoteCheckoutPromo.regression passed");
