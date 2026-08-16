@@ -22,7 +22,7 @@ test("idempotency key is stable per account+ET date", () => {
   );
 });
 
-test("window helper uses America/New_York parts", () => {
+test("window helper uses America/New_York parts — exact Sunday 4am ET only", () => {
   // Fixed instant: Sunday 2026-08-16 08:30 UTC = 04:30 EDT (UTC-4)
   const sun4edt = new Date("2026-08-16T08:30:00.000Z");
   const parts = getNowPartsInTimeZone("America/New_York", sun4edt);
@@ -34,11 +34,11 @@ test("window helper uses America/New_York parts", () => {
   const sun5edt = new Date("2026-08-16T09:30:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun5edt), false);
 
-  // Winter: Sunday 2026-01-11 08:15 UTC = 03:15 EST (UTC-5) — Hobby single fire
+  // Winter EST: Sunday 08:15 UTC = 03:15 EST → NOT 4am (must skip; GH fires 09:00 UTC instead)
   const sun3est = new Date("2026-01-11T08:15:00.000Z");
-  assert.equal(isDriverBankPayoutWindow(sun3est), true);
+  assert.equal(isDriverBankPayoutWindow(sun3est), false);
 
-  // Winter exact 4am EST would be 09:00 UTC — outside Hobby schedule, not in window for cron
+  // Winter: Sunday 2026-01-11 09:15 UTC = 04:15 EST (UTC-5) → exact target
   const sun4est = new Date("2026-01-11T09:15:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun4est), true);
 });

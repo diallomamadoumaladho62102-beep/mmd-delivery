@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const JOB = "taxi-payouts";
-/** Immediate SCT after complete; cron is retry/backfill only. Bank payout stays weekly. */
+/** Immediate SCT after complete; cron is retry/backfill only. Bank payout = Sunday ET GH Actions. */
 const DEFAULT_HOLD_HOURS = 0;
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -62,8 +62,7 @@ type RideRow = {
 
 async function handle(req: NextRequest) {
   const dryRun = readDryRun(req);
-  // Default 10 (not global cron default of 1): fare SCT is delayed after a 24h
-  // hold, so a once-daily run must clear a realistic backlog or drivers appear unpaid.
+  // Default 10 (not global cron default of 1): retry/backfill unpaid fare SCTs.
   const limit = readCronBatchLimit(req.nextUrl.searchParams, 10);
   const start = startCronRun(JOB, dryRun);
   const trace = createCronPhaseTracer(JOB, start.run_id);
@@ -116,7 +115,8 @@ async function handle(req: NextRequest) {
           .select(
             "taxi_ride_id, driver_cents, platform_cents, driver_paid_out, driver_transfer_id"
           )
-          .eq("driver_paid_out", false)
+          // Stripe SoT: unpaid = missing transfer id (covers stale paid_out without transfer).
+          .is("driver_transfer_id", null)
           .gt("driver_cents", 0)
           .limit(Math.max(1, limit) * 3);
         if (comErr) {

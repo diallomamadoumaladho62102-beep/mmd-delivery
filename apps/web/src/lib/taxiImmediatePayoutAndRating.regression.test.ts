@@ -42,12 +42,19 @@ test("sunday bank payout cron has no cashout minimum", () => {
   assert.match(cron, /America\/New_York/);
   assert.doesNotMatch(helper, /DRIVER_CASHOUT_MINIMUM/);
   assert.match(helper, /interval: "manual"/);
+  assert.match(helper, /hour === 4/);
 });
 
-test("vercel schedules sunday bank payout covering EST and EDT", () => {
+test("exact Sunday 4am ET is driven by GitHub Actions dual schedules", () => {
+  const wf = fs.readFileSync(
+    path.join(webRoot, "../../.github/workflows/production-driver-bank-payouts.yml"),
+    "utf8",
+  );
+  assert.match(wf, /0 8 \* \* 0/);
+  assert.match(wf, /0 9 \* \* 0/);
+  assert.match(wf, /driver-connect-bank-payouts/);
   const root = fs.readFileSync(path.join(webRoot, "../../vercel.json"), "utf8");
-  assert.match(root, /driver-connect-bank-payouts/);
-  assert.match(root, /0 8 \* \* 0/);
+  assert.doesNotMatch(root, /driver-connect-bank-payouts/);
 });
 
 test("receipt screen submits rating via API", () => {

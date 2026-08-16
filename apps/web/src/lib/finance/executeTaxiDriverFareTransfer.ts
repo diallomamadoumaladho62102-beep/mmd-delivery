@@ -213,8 +213,11 @@ export async function executeTaxiDriverFareTransfer(params: {
   if (destination) {
     try {
       const account = await stripe.accounts.retrieve(destination);
+      // SCT needs transfers capability; bank payouts_enabled is separate (Sunday cron).
+      const transfersCap = String(account.capabilities?.transfers ?? "");
       connectReady =
-        account.charges_enabled === true && account.payouts_enabled === true;
+        transfersCap === "active" ||
+        (account.charges_enabled === true && account.payouts_enabled === true);
     } catch {
       connectReady = false;
     }

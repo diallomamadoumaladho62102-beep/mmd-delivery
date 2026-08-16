@@ -37,10 +37,11 @@ function json(body: Record<string, unknown>, status = 200) {
 /**
  * Sunday 04:00 America/New_York bank payouts for drivers (full Connect available).
  *
- * Vercel cron: `0 8 * * 0` UTC Sunday (Hobby: one fire/day).
- * - EDT: 08:00 UTC = 04:00 ET (exact)
- * - EST: 08:00 UTC = 03:00 ET (handler window includes hour 3–4)
- * Handler no-ops unless local NY time is Sunday 03–04 (or force=1).
+ * Trigger: GitHub Actions (dual Sunday UTC schedules — Hobby Vercel cannot do both):
+ * - `0 8 * * 0` → 04:00 EDT
+ * - `0 9 * * 0` → 04:00 EST
+ * Handler pays only when local NY time is Sunday 04:xx (or force=1).
+ * schedule_only=1 (+ force): set Connect payout interval=manual without creating payouts.
  *
  * No $20 minimum — 100% of eligible available balance is paid out.
  * Manual Cash Out keeps its own minimum separately.
@@ -52,6 +53,9 @@ async function handle(req: NextRequest) {
   const dryRun =
     req.nextUrl.searchParams.get("dry_run") === "1" ||
     req.nextUrl.searchParams.get("dry_run") === "true";
+  const scheduleOnly =
+    req.nextUrl.searchParams.get("schedule_only") === "1" ||
+    req.nextUrl.searchParams.get("schedule_only") === "true";
   const limit = readCronBatchLimit(req.nextUrl.searchParams, 50);
   const start = startCronRun(JOB, dryRun);
   const parts = getNowPartsInTimeZone(DRIVER_BANK_PAYOUT_TIMEZONE);
@@ -115,6 +119,7 @@ async function handle(req: NextRequest) {
       let paid = 0;
       let skipped = 0;
       let failed = 0;
+      let schedulesUpdated = 0;
       let partial = false;
 
       for (const row of batch) {
@@ -135,14 +140,17 @@ async function handle(req: NextRequest) {
           });
           continue;
         }
+        schedulesUpdated += 1;
 
-        if (dryRun) {
+        if (scheduleOnly || dryRun) {
           skipped += 1;
           results.push({
             driver_id: userId,
             ok: true,
-            dry_run: true,
+            dry_run: dryRun || undefined,
+            schedule_only: scheduleOnly || undefined,
             stripe_account_id: acct,
+            payout_interval: "manual",
           });
           continue;
         }
@@ -241,6 +249,8 @@ async function handle(req: NextRequest) {
         paid,
         skipped,
         failed,
+        schedules_updated: schedulesUpdated,
+        schedule_only: scheduleOnly,
         partial,
         no_minimum_cents: true,
         results,

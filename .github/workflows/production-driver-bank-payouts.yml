@@ -1,0 +1,60 @@
+name: Production driver Connect bank payouts
+
+# Exact Sunday 04:00 America/New_York year-round (DST-aware).
+# Vercel Hobby cannot schedule two Sunday UTC times; GitHub Actions can.
+# Handler /api/cron/driver-connect-bank-payouts only pays when local NY hour === 4.
+on:
+  schedule:
+    # EDT (UTC-4): Sunday 08:00 UTC = 04:00 America/New_York
+    - cron: "0 8 * * 0"
+    # EST (UTC-5): Sunday 09:00 UTC = 04:00 America/New_York
+    - cron: "0 9 * * 0"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Bypass Sunday 4am ET window (force=1)"
+        required: false
+        default: "0"
+      dry_run:
+        description: "Dry run only (dry_run=1)"
+        required: false
+        default: "0"
+      schedule_only:
+        description: "Only set Connect payout schedule to manual (schedule_only=1)"
+        required: false
+        default: "0"
+
+concurrency:
+  group: production-driver-connect-bank-payouts
+  cancel-in-progress: false
+
+jobs:
+  bank-payouts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
+      FORCE: ${{ github.event.inputs.force || '0' }}
+      DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+      SCHEDULE_ONLY: ${{ github.event.inputs.schedule_only || '0' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate cron configuration
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::Missing GitHub repository secret CRON_SECRET."
+            exit 1
+          fi
+          echo "CRON_SECRET configured (length ${#CRON_SECRET})."
+          echo "SITE_URL=${SITE_URL}"
+
+      - name: Run driver Connect bank payout cron
+        run: node scripts/run-production-driver-bank-payouts.mjs
