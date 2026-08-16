@@ -70,13 +70,17 @@ export async function fetchConnectUsdBalanceCents(
 }
 
 /**
- * Unpaid delivery earnings not yet SCT'd to Connect (orders + delivery_requests).
- * Exported for parity / wallet awaiting_transfer_cents.
+ * Earnings not yet SCT'd to Connect — shown as Wallet awaiting_transfer_cents.
+ * Includes: delivered orders, delivery_requests, and completed+paid taxi fares
+ * whose `driver_transfer_id` is still null.
  *
  * Tips are intentionally EXCLUDED here — see
  * `@/lib/finance/tipMoneyArchitecture` for the single tip rule. A tip is only
  * ever moved once its own PaymentIntent has succeeded (executeDriverTipTransfer),
  * so it must never inflate this "awaiting platform SCT" figure.
+ *
+ * Taxi cashout SoT is Stripe Connect: never treat taxi fare as available until
+ * `driver_transfer_id` is set (transfer succeeded, not reversed).
  */
 export async function computeDriverAvailableCents(
   supabaseAdmin: SupabaseClient,
@@ -102,6 +106,18 @@ export async function computeDriverAvailableCents(
 
   if (requestsErr) throw new Error(requestsErr.message);
 
+  const { data: taxiAwaitingRows, error: taxiErr } = await supabaseAdmin
+    .from("taxi_commissions")
+    .select(
+      "driver_cents, taxi_rides!inner(driver_id, status, payment_status, refund_status)",
+    )
+    .eq("taxi_rides.driver_id", driverUserId)
+    .eq("taxi_rides.status", "completed")
+    .eq("taxi_rides.payment_status", "paid")
+    .is("driver_transfer_id", null);
+
+  if (taxiErr) throw new Error(taxiErr.message);
+
   const ordersAvailableCents = (deliveredOrders ?? []).reduce((sum, row) => {
     return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
   }, 0);
@@ -110,7 +126,25 @@ export async function computeDriverAvailableCents(
     return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
   }, 0);
 
-  return ordersAvailableCents + requestsAvailableCents;
+  const taxiAwaitingCents = (taxiAwaitingRows ?? []).reduce((sum, row) => {
+    const rideRaw = (row as { taxi_rides?: unknown }).taxi_rides;
+    const ride = Array.isArray(rideRaw) ? rideRaw[0] : rideRaw;
+    const refund = String(
+      (ride as { refund_status?: unknown } | null | undefined)?.refund_status ??
+        "",
+    ).toLowerCase();
+    if (
+      refund === "refunded" ||
+      refund === "partially_refunded" ||
+      refund === "disputed"
+    ) {
+      return sum;
+    }
+    // taxi_commissions.driver_cents is already integer cents.
+    return sum + Math.max(0, Math.round(toNumber(row.driver_cents)));
+  }, 0);
+
+  return ordersAvailableCents + requestsAvailableCents + taxiAwaitingCents;
 }
 
 async function computeDriverPendingPayoutTxCents(

@@ -83,6 +83,15 @@ test("complete triggers immediate fare transfer helper", () => {
   assert.match(src, /executeTaxiDriverFareTransfer/);
 });
 
+test("fare transfer guards block reversed idempotency replay", () => {
+  const src = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/executeTaxiDriverFareTransfer.ts"),
+    "utf8",
+  );
+  assert.match(src, /stripe_transfer_reversed/);
+  assert.match(src, /buildTaxiFareTransferIdempotencyKey/);
+});
+
 test("cron hold default is zero", () => {
   const src = fs.readFileSync(
     path.join(webRoot, "app/api/cron/taxi-payouts/route.ts"),

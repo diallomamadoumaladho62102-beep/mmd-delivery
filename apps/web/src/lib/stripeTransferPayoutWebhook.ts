@@ -102,6 +102,7 @@ export async function syncStripeTransferEvent(
   }
 
   // Taxi fare SCT → taxi_commissions (Stripe is SoT for paid state).
+  // Reversed → unpaid/pending (clear transfer id so retry can mint a new SCT).
   if (failedLike) {
     const { data: taxiRows, error: taxiErr } = await supabaseAdmin
       .from("taxi_commissions")

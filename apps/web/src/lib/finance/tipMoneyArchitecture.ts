@@ -11,7 +11,8 @@
  *    been created and has succeeded (see createDriverTipPaymentIntent route
  *    + webhook wiring). Until then it MUST NOT inflate any "awaiting SCT"
  *    figure — see `computeDriverAvailableCents` in `@/lib/driverWalletService`,
- *    which intentionally excludes `tip_cents`.
+ *    which intentionally excludes `tip_cents` (taxi fare commissions without
+ *    `driver_transfer_id` are included as awaiting transfer; tips are not).
  * 3. Once the tip PaymentIntent succeeds, exactly one Stripe Connect Transfer
  *    (SCT) is created to the driver's Connect account, funded with
  *    `source_transaction = <tip charge id>` (never the food order's charge),

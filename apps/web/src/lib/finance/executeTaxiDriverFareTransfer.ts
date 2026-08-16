@@ -17,6 +17,12 @@ import { toStripeAmount } from "@/lib/taxiStripeAmounts";
 import { normalizeTaxiCurrencyForStripe } from "@/lib/taxiCountries";
 import { evaluateTaxiPayoutEligibility } from "@/lib/taxiPayoutEligibility";
 import { stripe } from "@/lib/stripe";
+import {
+  buildTaxiFareTransferIdempotencyKey,
+  isStripeTransferReversed,
+  resolveTaxiFareTransferReusePlan,
+  taxiFareTransferGroup,
+} from "@/lib/finance/taxiFareTransferGuards";
 
 export type ExecuteTaxiDriverFareTransferResult =
   | {
@@ -162,14 +168,52 @@ export async function executeTaxiDriverFareTransfer(params: {
     return { ok: false, error: "Taxi commission missing", httpStatus: 409 };
   }
 
-  // Stripe SoT: transfer id present = paid confirmed.
-  if (String(commission.driver_transfer_id ?? "").trim()) {
-    return {
-      ok: true,
-      already_succeeded: true,
-      taxi_ride_id: rideId,
-      transfer_id: String(commission.driver_transfer_id),
-    };
+  // Stripe SoT: transfer id present usually means paid — but re-check Stripe so a
+  // reversed Transfer never stays "paid" while waiting for (or missing) the webhook.
+  const existingTransferId = String(commission.driver_transfer_id ?? "").trim();
+  if (existingTransferId) {
+    try {
+      const existingTransfer = await stripe.transfers.retrieve(existingTransferId);
+      if (isStripeTransferReversed(existingTransfer)) {
+        const nowIso = new Date().toISOString();
+        await params.supabaseAdmin
+          .from("taxi_commissions")
+          .update({
+            driver_paid_out: false,
+            driver_paid_out_at: null,
+            driver_transfer_id: null,
+            updated_at: nowIso,
+          })
+          .eq("id", commission.id)
+          .eq("driver_transfer_id", existingTransferId);
+        commission = {
+          ...commission,
+          driver_paid_out: false,
+          driver_paid_out_at: null,
+          driver_transfer_id: null,
+        };
+      } else {
+        return {
+          ok: true,
+          already_succeeded: true,
+          taxi_ride_id: rideId,
+          transfer_id: existingTransferId,
+        };
+      }
+    } catch (e) {
+      // Fail closed on Stripe lookup errors: do not invent a new Transfer while an
+      // id is still claimed locally (webhook/retry can heal after reverse clear).
+      console.error(
+        "[executeTaxiDriverFareTransfer] existing transfer retrieve failed",
+        { rideId, transfer_id: existingTransferId, error: e },
+      );
+      return {
+        ok: true,
+        already_succeeded: true,
+        taxi_ride_id: rideId,
+        transfer_id: existingTransferId,
+      };
+    }
   }
 
   // Repair stale lock: paid_out without transfer id must not block retry.
@@ -338,8 +382,71 @@ export async function executeTaxiDriverFareTransfer(params: {
     };
   }
 
-  const idempotencyKey = `taxi_driver_payout:${rideId}`;
-  const transferGroup = `taxi_ride:${rideId}`;
+  const transferGroup = taxiFareTransferGroup(rideId);
+
+  // Reconcile against Stripe before create: reuse active Transfer; after reverse,
+  // mint a new idempotency key so Stripe cannot return the reversed object.
+  let afterReversedTransferId: string | null = null;
+  try {
+    const listed = await stripe.transfers.list({
+      transfer_group: transferGroup,
+      limit: 100,
+    });
+    const plan = resolveTaxiFareTransferReusePlan(listed.data ?? []);
+    if (plan.reusableTransferId) {
+      if (dryRun) {
+        return {
+          ok: true,
+          dry_run: true,
+          already_succeeded: true,
+          taxi_ride_id: rideId,
+          transfer_id: plan.reusableTransferId,
+          amount,
+          stripe_amount: stripeTransferAmount,
+          currency,
+          destination,
+          source_charge_id: sourceChargeId,
+          idempotency_key: buildTaxiFareTransferIdempotencyKey(rideId, null),
+        };
+      }
+      const persisted = await persistTaxiFareTransferId({
+        supabaseAdmin: params.supabaseAdmin,
+        commissionId: commission.id,
+        transferId: plan.reusableTransferId,
+        rideId,
+        actor,
+        amount,
+        stripeTransferAmount,
+        currency,
+        paymentIntentId,
+        destination,
+        alreadySucceeded: true,
+      });
+      if (persisted.ok) {
+        return {
+          ...persisted,
+          amount,
+          stripe_amount: stripeTransferAmount,
+          currency,
+          destination,
+          source_charge_id: sourceChargeId,
+          idempotency_key: buildTaxiFareTransferIdempotencyKey(rideId, null),
+        };
+      }
+      return persisted;
+    }
+    afterReversedTransferId = plan.afterReversedTransferId;
+  } catch (e) {
+    console.error(
+      "[executeTaxiDriverFareTransfer] transfer list failed; continuing with keyed create",
+      e,
+    );
+  }
+
+  const idempotencyKey = buildTaxiFareTransferIdempotencyKey(
+    rideId,
+    afterReversedTransferId,
+  );
 
   if (dryRun) {
     return {
@@ -371,6 +478,9 @@ export async function executeTaxiDriverFareTransfer(params: {
           driver_id: String(ride.driver_id ?? ""),
           amount_cents: String(amount),
           payment_intent_id: paymentIntentId,
+          ...(afterReversedTransferId
+            ? { after_reversed_transfer_id: afterReversedTransferId }
+            : {}),
         },
       },
       { idempotencyKey },
@@ -385,17 +495,87 @@ export async function executeTaxiDriverFareTransfer(params: {
     };
   }
 
+  // Never credit Wallet / mark paid for a reversed Transfer (idempotency replay).
+  if (isStripeTransferReversed(transfer)) {
+    console.error(
+      "[executeTaxiDriverFareTransfer] refused reversed transfer",
+      {
+        rideId,
+        transfer_id: transfer.id,
+        idempotency_key: idempotencyKey,
+      },
+    );
+    return {
+      ok: false,
+      error: "stripe_transfer_reversed",
+      taxi_ride_id: rideId,
+      message:
+        "Stripe returned a reversed Transfer; refusing to mark payout paid",
+      httpStatus: 409,
+    };
+  }
+
+  const persisted = await persistTaxiFareTransferId({
+    supabaseAdmin: params.supabaseAdmin,
+    commissionId: commission.id,
+    transferId: transfer.id,
+    rideId,
+    actor,
+    amount,
+    stripeTransferAmount,
+    currency,
+    paymentIntentId,
+    destination,
+    alreadySucceeded: false,
+  });
+
+  if (!persisted.ok) return persisted;
+
+  return {
+    ...persisted,
+    amount,
+    stripe_amount: stripeTransferAmount,
+    currency,
+    destination,
+    source_charge_id: sourceChargeId,
+    idempotency_key: idempotencyKey,
+  };
+}
+
+async function persistTaxiFareTransferId(params: {
+  supabaseAdmin: SupabaseClient;
+  commissionId: string;
+  transferId: string;
+  rideId: string;
+  actor: string;
+  amount: number;
+  stripeTransferAmount: number;
+  currency: string;
+  paymentIntentId: string;
+  destination: string;
+  alreadySucceeded: boolean;
+}): Promise<ExecuteTaxiDriverFareTransferResult> {
+  const transferId = String(params.transferId ?? "").trim();
+  if (!transferId) {
+    return {
+      ok: false,
+      error: "Missing transfer id",
+      taxi_ride_id: params.rideId,
+      httpStatus: 500,
+    };
+  }
+
   const nowIso = new Date().toISOString();
-  // Paid only when transfer id is persisted (Stripe SoT).
+  // Paid only when a non-reversed transfer id is persisted (Stripe SoT).
   const { data: saved, error: saveErr } = await params.supabaseAdmin
     .from("taxi_commissions")
     .update({
-      driver_transfer_id: transfer.id,
+      driver_transfer_id: transferId,
       driver_paid_out: true,
       driver_paid_out_at: nowIso,
       updated_at: nowIso,
     })
-    .eq("id", commission.id)
+    .eq("id", params.commissionId)
     .is("driver_transfer_id", null)
     .select("id, driver_transfer_id")
     .maybeSingle();
@@ -404,7 +584,7 @@ export async function executeTaxiDriverFareTransfer(params: {
     return {
       ok: false,
       error: "Transfer created but commission update failed",
-      taxi_ride_id: rideId,
+      taxi_ride_id: params.rideId,
       httpStatus: 500,
     };
   }
@@ -413,54 +593,54 @@ export async function executeTaxiDriverFareTransfer(params: {
     const { data: current } = await params.supabaseAdmin
       .from("taxi_commissions")
       .select("driver_transfer_id")
-      .eq("id", commission.id)
+      .eq("id", params.commissionId)
       .maybeSingle();
     const existing = String(current?.driver_transfer_id ?? "").trim();
     if (existing) {
       return {
         ok: true,
         already_succeeded: true,
-        taxi_ride_id: rideId,
+        taxi_ride_id: params.rideId,
         transfer_id: existing,
       };
     }
     return {
       ok: false,
       error: "Transfer created but commission update raced",
-      taxi_ride_id: rideId,
+      taxi_ride_id: params.rideId,
       httpStatus: 500,
     };
   }
 
-  await logTaxiEventServer(params.supabaseAdmin, {
-    rideId,
-    eventType: "driver_payout",
-    triggeredRole: "system",
-    actorId: actor.startsWith("secret:") || actor.startsWith("cron:") || actor.startsWith("system:")
-      ? null
-      : actor,
-    description: "Driver taxi fare Connect transfer",
-    metadata: {
-      transfer_id: transfer.id,
-      amount,
-      stripe_amount: stripeTransferAmount,
-      currency,
-      payment_intent_id: paymentIntentId,
-      destination,
-      actor,
-    },
-  });
+  if (!params.alreadySucceeded) {
+    await logTaxiEventServer(params.supabaseAdmin, {
+      rideId: params.rideId,
+      eventType: "driver_payout",
+      triggeredRole: "system",
+      actorId:
+        params.actor.startsWith("secret:") ||
+        params.actor.startsWith("cron:") ||
+        params.actor.startsWith("system:")
+          ? null
+          : params.actor,
+      description: "Driver taxi fare Connect transfer",
+      metadata: {
+        transfer_id: transferId,
+        amount: params.amount,
+        stripe_amount: params.stripeTransferAmount,
+        currency: params.currency,
+        payment_intent_id: params.paymentIntentId,
+        destination: params.destination,
+        actor: params.actor,
+      },
+    });
+  }
 
   return {
     ok: true,
+    already_succeeded: params.alreadySucceeded,
     dry_run: false,
-    taxi_ride_id: rideId,
-    transfer_id: transfer.id,
-    amount,
-    stripe_amount: stripeTransferAmount,
-    currency,
-    destination,
-    source_charge_id: sourceChargeId,
-    idempotency_key: idempotencyKey,
+    taxi_ride_id: params.rideId,
+    transfer_id: transferId,
   };
 }
