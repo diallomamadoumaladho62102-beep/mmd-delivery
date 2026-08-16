@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  TextInput,
   AppState,
   type AppStateStatus,
 } from "react-native";
