@@ -33,7 +33,34 @@ async function handle(req: NextRequest) {
     let batches = 0;
     let totals = { scanned: 0, posted: 0, failed: 0, skipped: 0 };
 
-    while (Date.now() - started < TIME_BUDGET_MS && batches < 10) {
+    // First batch: if the ledger is idle, exit early (skip balance refresh).
+    // Called from GitHub Actions — empty runs must stay cheap on Hobby Fluid CPU.
+    const first = await processFinancePendingBatch(supabaseAdmin, 200);
+    if (!first.ok) {
+      return json({ ok: false, error: first.error, ...totals, batches }, 500);
+    }
+    totals.scanned += Number(first.scanned ?? 0);
+    totals.posted += Number(first.posted ?? 0);
+    totals.failed += Number(first.failed ?? 0);
+    totals.skipped += Number(first.skipped ?? 0);
+    batches += 1;
+
+    if (totals.scanned === 0 && totals.posted === 0) {
+      console.log("[cron:process-finance] idle early-exit", { ...totals, batches });
+      return json({
+        ok: true,
+        ...totals,
+        batches,
+        idle: true,
+        balances_skipped: true,
+      });
+    }
+
+    while (
+      first.next_cursor &&
+      Date.now() - started < TIME_BUDGET_MS &&
+      batches < 10
+    ) {
       const result = await processFinancePendingBatch(supabaseAdmin, 200);
       if (!result.ok) return json({ ok: false, error: result.error, ...totals, batches }, 500);
       totals.scanned += Number(result.scanned ?? 0);

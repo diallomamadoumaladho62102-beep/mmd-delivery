@@ -21,8 +21,7 @@ const cronPaths = [
   "/api/cron/retry-delivery-request-dispatch",
   "/api/cron/taxi-scheduled-dispatch",
   "/api/cron/taxi-active-ride-compliance",
-  // Hobby Vercel forbids sub-daily crons; finance posting runs here instead.
-  "/api/cron/process-finance",
+  // process-finance moved to production-finance-cron.yml (hourly) to cut Hobby Fluid CPU.
 ];
 
 function fail(message) {
