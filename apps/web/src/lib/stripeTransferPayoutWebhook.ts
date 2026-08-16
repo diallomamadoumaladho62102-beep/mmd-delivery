@@ -141,6 +141,59 @@ export async function syncStripeTransferEvent(
     } else if (Array.isArray(tipRows) && tipRows.length > 0) {
       tables.push("taxi_rides_tips");
     }
+
+    // Delivery Food/Package SCT → orders (Stripe Transfer id is Wallet SoT).
+    const { data: orderDriverRows, error: orderDriverErr } = await supabaseAdmin
+      .from("orders")
+      .update({
+        driver_paid_out: false,
+        driver_paid_out_at: null,
+        driver_transfer_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("driver_transfer_id", transferId)
+      .select("id, external_ref_type, external_ref_id");
+    if (orderDriverErr) {
+      console.error(
+        "[stripe-transfer-webhook] orders driver reverse failed",
+        orderDriverErr.message,
+      );
+    } else if (Array.isArray(orderDriverRows) && orderDriverRows.length > 0) {
+      tables.push("orders_driver");
+      for (const row of orderDriverRows) {
+        const refType = String(row.external_ref_type ?? "").toLowerCase();
+        const refId = String(row.external_ref_id ?? "").trim();
+        if (refType === "delivery_request" && refId) {
+          await supabaseAdmin
+            .from("delivery_requests")
+            .update({
+              driver_paid_out: false,
+              driver_paid_out_at: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", refId);
+        }
+      }
+    }
+
+    const { data: orderRestRows, error: orderRestErr } = await supabaseAdmin
+      .from("orders")
+      .update({
+        restaurant_paid_out: false,
+        restaurant_paid_out_at: null,
+        restaurant_transfer_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("restaurant_transfer_id", transferId)
+      .select("id");
+    if (orderRestErr) {
+      console.error(
+        "[stripe-transfer-webhook] orders restaurant reverse failed",
+        orderRestErr.message,
+      );
+    } else if (Array.isArray(orderRestRows) && orderRestRows.length > 0) {
+      tables.push("orders_restaurant");
+    }
   } else {
     const { data: taxiRows, error: taxiErr } = await supabaseAdmin
       .from("taxi_commissions")

@@ -64,4 +64,13 @@ test("wallet awaiting_transfer includes unpaid taxi commissions", () => {
   assert.match(src, /\.eq\("taxi_rides\.payment_status", "paid"\)/);
 });
 
+test("delivery orders use driver_transfer_id for wallet awaiting", () => {
+  const src = fs.readFileSync(
+    path.join(webRoot, "src/lib/driverWalletService.ts"),
+    "utf8",
+  );
+  assert.match(src, /\.is\("driver_transfer_id", null\)/);
+  assert.match(src, /Never treat driver_paid_out/);
+});
+
 console.log("taxiFareTransferWallet.regression passed");

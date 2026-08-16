@@ -2440,22 +2440,41 @@ export function ClientOrderDetailsScreen() {
                       const finalTipDollars = tipCustom.trim() ? tipFromInput : tipDollars;
                       const tip_cents = Math.max(0, Math.round((finalTipDollars || 0) * 100));
 
-                      // Official RPC: rating independent of tip; tip_cents only;
-                      // never rewrites paid grand_total / total_cents.
+                                            // Official API: order_ratings (restaurant/order) + driver_ratings (driver summary).
                       // Tip money movement requires a separate Stripe charge (Wave 2c).
-                      const { data: reviewResult, error: reviewErr } = await supabase.rpc(
-                        "submit_order_review_and_tip",
+                      const apiBase = String(getApiBaseUrl() || "").replace(/\/$/, "");
+                      const reviewRes = await fetch(
+                        `${apiBase}/api/orders/${encodeURIComponent(order.id)}/rating`,
                         {
-                          p_order_id: order.id,
-                          p_rating: rating,
-                          p_comment: comment.trim() ? comment.trim().slice(0, 800) : null,
-                          p_tip_cents: tip_cents,
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${s.session.access_token}`,
+                          },
+                          body: JSON.stringify({
+                            rating,
+                            comment: comment.trim() ? comment.trim().slice(0, 800) : null,
+                            tip_cents,
+                          }),
                         }
                       );
-                      if (reviewErr) throw reviewErr;
-                      if (!reviewResult || (reviewResult as { ok?: boolean }).ok !== true) {
+                      const reviewResult = (await reviewRes.json().catch(() => ({}))) as {
+                        ok?: boolean;
+                        error?: string;
+                      };
+                      if (
+                        reviewRes.status === 409 &&
+                        String(reviewResult.error ?? "") === "rating_already_exists"
+                      ) {
+                        setAlreadyRated(true);
                         throw new Error(
-                          ts("client.orderDetails.reviewSaveError", "Unable to save your review.")
+                          ts("client.orderDetails.alreadyRated", "Review submitted")
+                        );
+                      }
+                      if (!reviewRes.ok || reviewResult.ok !== true) {
+                        throw new Error(
+                          reviewResult.error ||
+                            ts("client.orderDetails.reviewSaveError", "Unable to save your review.")
                         );
                       }
 

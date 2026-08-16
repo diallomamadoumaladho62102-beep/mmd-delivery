@@ -57,8 +57,9 @@ test("official review+tip RPC freezes paid totals", () => {
   assert.match(migration, /on conflict \(order_id, rater_id\)/);
 });
 
-test("mobile client uses official review+tip RPC", () => {
-  assert.match(mobileScreen, /submit_order_review_and_tip/);
+test("mobile client uses official order rating API", () => {
+  assert.match(mobileScreen, /\/api\/orders\//);
+  assert.match(mobileScreen, /rating/);
   assert.doesNotMatch(
     mobileScreen,
     /\.from\("orders"\)\s*\n\s*\.update\(\{\s*tip_cents/,

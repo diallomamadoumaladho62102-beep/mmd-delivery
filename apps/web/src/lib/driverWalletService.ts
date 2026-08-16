@@ -71,40 +71,78 @@ export async function fetchConnectUsdBalanceCents(
 
 /**
  * Earnings not yet SCT'd to Connect — shown as Wallet awaiting_transfer_cents.
- * Includes: delivered orders, delivery_requests, and completed+paid taxi fares
- * whose `driver_transfer_id` is still null.
+ * Includes: delivered orders (food + package-linked), orphan delivery_requests,
+ * and completed+paid taxi fares whose `driver_transfer_id` is still null.
  *
  * Tips are intentionally EXCLUDED here — see
- * `@/lib/finance/tipMoneyArchitecture` for the single tip rule. A tip is only
- * ever moved once its own PaymentIntent has succeeded (executeDriverTipTransfer),
- * so it must never inflate this "awaiting platform SCT" figure.
+ * `@/lib/finance/tipMoneyArchitecture` for the single tip rule.
  *
- * Taxi cashout SoT is Stripe Connect: never treat taxi fare as available until
- * `driver_transfer_id` is set (transfer succeeded, not reversed).
+ * Stripe Connect is the cashable SoT. Delivery orders are awaiting until
+ * `orders.driver_transfer_id` is set (Transfer succeeded, not reversed).
+ * Internal `driver_paid_out` / `driver_payout_id` alone must never mark paid.
  */
 export async function computeDriverAvailableCents(
   supabaseAdmin: SupabaseClient,
   driverUserId: string
 ): Promise<number> {
+  // Food + package linked orders: Stripe Transfer id is the paid SoT (Taxi parity).
+  // Never treat driver_paid_out / driver_payout_id alone as paid.
   const { data: deliveredOrders, error: ordersErr } = await supabaseAdmin
     .from("orders")
-    .select("driver_delivery_payout, driver_payout_id")
+    .select(
+      "id, driver_delivery_payout, driver_transfer_id, payment_status, refund_status, external_ref_type, external_ref_id",
+    )
     .eq("driver_id", driverUserId)
     .eq("status", "delivered")
-    .eq("driver_paid_out", false)
-    .is("driver_payout_id", null);
+    .eq("payment_status", "paid")
+    .is("driver_transfer_id", null);
 
   if (ordersErr) throw new Error(ordersErr.message);
 
+  const linkedDeliveryRequestIds = new Set<string>();
+  const ordersAvailableCents = (deliveredOrders ?? []).reduce((sum, row) => {
+    const refund = String(row.refund_status ?? "").toLowerCase();
+    if (
+      refund === "refunded" ||
+      refund === "partially_refunded" ||
+      refund === "disputed"
+    ) {
+      return sum;
+    }
+    const refType = String(row.external_ref_type ?? "").toLowerCase();
+    const refId = String(row.external_ref_id ?? "").trim();
+    if (refType === "delivery_request" && refId) {
+      linkedDeliveryRequestIds.add(refId);
+    }
+    return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
+  }, 0);
+
+  // Orphan package rows without a linked order (legacy). Prefer order SoT when linked.
   const { data: deliveredRequests, error: requestsErr } = await supabaseAdmin
     .from("delivery_requests")
-    .select("driver_delivery_payout, driver_payout_id")
+    .select(
+      "id, driver_delivery_payout, driver_paid_out, driver_payout_id, payment_status, refund_status",
+    )
     .eq("driver_id", driverUserId)
-    .eq("status", "delivered")
-    .or("driver_paid_out.eq.false,driver_paid_out.is.null")
-    .is("driver_payout_id", null);
+    .eq("status", "delivered");
 
   if (requestsErr) throw new Error(requestsErr.message);
+
+  const requestsAvailableCents = (deliveredRequests ?? []).reduce((sum, row) => {
+    const id = String(row.id ?? "").trim();
+    if (id && linkedDeliveryRequestIds.has(id)) return sum;
+    if (row.driver_paid_out === true) return sum;
+    if (row.driver_payout_id) return sum;
+    const refund = String(row.refund_status ?? "").toLowerCase();
+    if (
+      refund === "refunded" ||
+      refund === "partially_refunded" ||
+      refund === "disputed"
+    ) {
+      return sum;
+    }
+    return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
+  }, 0);
 
   const { data: taxiAwaitingRows, error: taxiErr } = await supabaseAdmin
     .from("taxi_commissions")
@@ -117,14 +155,6 @@ export async function computeDriverAvailableCents(
     .is("driver_transfer_id", null);
 
   if (taxiErr) throw new Error(taxiErr.message);
-
-  const ordersAvailableCents = (deliveredOrders ?? []).reduce((sum, row) => {
-    return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
-  }, 0);
-
-  const requestsAvailableCents = (deliveredRequests ?? []).reduce((sum, row) => {
-    return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
-  }, 0);
 
   const taxiAwaitingCents = (taxiAwaitingRows ?? []).reduce((sum, row) => {
     const rideRaw = (row as { taxi_rides?: unknown }).taxi_rides;
@@ -140,7 +170,6 @@ export async function computeDriverAvailableCents(
     ) {
       return sum;
     }
-    // taxi_commissions.driver_cents is already integer cents.
     return sum + Math.max(0, Math.round(toNumber(row.driver_cents)));
   }, 0);
 

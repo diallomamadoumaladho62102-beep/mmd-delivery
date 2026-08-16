@@ -49,8 +49,22 @@ function isClientDeliveryRequestOwner(row: Record<string, unknown>, userId: stri
   );
 }
 
+/** Pre-assignment (incl. pay-then-create) → cancel+FULL refund if paid. */
+function clientCanCancelWithFullRefund(status: string) {
+  return (
+    status === "pending" ||
+    status === "paid_pending" ||
+    status === "processing_pending"
+  );
+}
+
+/** Driver assigned but not yet in transit pickup/dropoff → cancel, no refund. */
+function clientCanCancelWithoutRefund(status: string) {
+  return status === "accepted";
+}
+
 function clientCanCancelStatus(status: string) {
-  return status === "pending" || status === "accepted";
+  return clientCanCancelWithFullRefund(status) || clientCanCancelWithoutRefund(status);
 }
 
 async function refundStripePayment(params: {
@@ -265,11 +279,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const refundPolicy: CancelRefund = status === "pending" ? "FULL" : "NONE";
-    const reason =
-      status === "pending"
-        ? "client_cancelled_before_driver_assigned"
-        : "client_cancelled_after_driver_assigned";
+    const refundPolicy: CancelRefund = clientCanCancelWithFullRefund(status)
+      ? "FULL"
+      : "NONE";
+    const reason = clientCanCancelWithFullRefund(status)
+      ? "client_cancelled_before_driver_assigned"
+      : "client_cancelled_after_driver_assigned";
     const canceledAt = nowIso();
 
     const { data: updatedRequest, error: updateError } = await supabaseAdmin

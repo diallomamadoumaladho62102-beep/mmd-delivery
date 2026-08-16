@@ -454,6 +454,10 @@ export function ClientDeliveryRequestDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [ratingStars, setRatingStars] = useState(5);
+  const [ratingComment, setRatingComment] = useState("");
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [alreadyRatedDriver, setAlreadyRatedDriver] = useState(false);
   const [data, setData] = useState<ScreenData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
@@ -877,9 +881,35 @@ export function ClientDeliveryRequestDetailsScreen() {
 
   const codesAvailable = !!(data?.pickup_code || data?.dropoff_code);
 
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDriverRating() {
+      if (!data?.requestId || normalizeStatus(data.status) !== "delivered") return;
+      if (!API_URL) return;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) return;
+        const res = await fetch(
+          `${String(API_URL).replace(/\/$/, "")}/api/delivery-requests/${encodeURIComponent(data.requestId)}/rating`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const out = await res.json().catch(() => ({}));
+        if (!cancelled && out?.rating?.id) setAlreadyRatedDriver(true);
+      } catch {
+        /* ignore */
+      }
+    }
+    loadDriverRating();
+    return () => {
+      cancelled = true;
+    };
+  }, [data?.requestId, data?.status]);
+
   const canCancel = useMemo(() => {
     const status = normalizeStatus(data?.status);
-    return !!data && (status === "pending" || status === "accepted") && !canceling;
+    return !!data && (status === "pending" || status === "paid_pending" || status === "processing_pending" || status === "accepted") && !canceling;
   }, [data, canceling]);
 
   const driverAvatarUri = normalizeAvatarUrl(driverProfile?.avatar_url);
@@ -897,7 +927,7 @@ export function ClientDeliveryRequestDetailsScreen() {
     const status = normalizeStatus(data.status);
     const cancelTitle = t("client.deliveryRequest.cancelTrip", "Cancel trip");
 
-    if (!(status === "pending" || status === "accepted")) {
+    if (!(status === "pending" || status === "paid_pending" || status === "processing_pending" || status === "accepted")) {
       Alert.alert(
         cancelTitle,
         t(
@@ -1404,6 +1434,118 @@ export function ClientDeliveryRequestDetailsScreen() {
                 {t("order.receipt.view", "View receipt")}
               </Text>
             </TouchableOpacity>
+          )}
+
+          {normalizeStatus(data.status) === "delivered" && (
+            <View
+              style={{
+                marginBottom: 14,
+                padding: 14,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: MMD_CARD_BORDER,
+                backgroundColor: MMD_CARD_BG,
+              }}
+            >
+              <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold, fontSize: 15 }}>
+                ⭐ {t("client.deliveryRequest.rateDriver", "Rate your driver")}
+              </Text>
+              {alreadyRatedDriver ? (
+                <Text style={{ color: MMD_GREEN, marginTop: 10, fontWeight: "700" }}>
+                  {t("client.deliveryRequest.alreadyRated", "Review submitted")}
+                </Text>
+              ) : (
+                <>
+                  <View style={{ flexDirection: "row", marginTop: 12, gap: 8 }}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <TouchableOpacity key={n} onPress={() => setRatingStars(n)}>
+                        <Text style={{ fontSize: 28, color: n <= ratingStars ? MMD_GOLD_BRIGHT : "#64748B" }}>
+                          ★
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput
+                    value={ratingComment}
+                    onChangeText={setRatingComment}
+                    placeholder={t("client.deliveryRequest.ratingComment", "Optional comment")}
+                    placeholderTextColor="#64748B"
+                    style={{
+                      marginTop: 12,
+                      minHeight: 70,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: "rgba(148,163,184,0.25)",
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      color: MMD_WHITE,
+                    }}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    disabled={ratingSubmitting}
+                    onPress={async () => {
+                      if (!API_URL || !data?.requestId || ratingSubmitting) return;
+                      try {
+                        setRatingSubmitting(true);
+                        const { data: sessionData } = await supabase.auth.getSession();
+                        const token = sessionData.session?.access_token;
+                        if (!token) throw new Error(t("client.deliveryRequest.loginRequired", "You must be logged in."));
+                        const res = await fetch(
+                          `${String(API_URL).replace(/\/$/, "")}/api/delivery-requests/${encodeURIComponent(data.requestId)}/rating`,
+                          {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                              rating: ratingStars,
+                              comment: ratingComment.trim() || null,
+                            }),
+                          }
+                        );
+                        const out = await res.json().catch(() => ({}));
+                        if (res.status === 409 && out?.error === "rating_already_exists") {
+                          setAlreadyRatedDriver(true);
+                          return;
+                        }
+                        if (!res.ok || out?.ok !== true) {
+                          throw new Error(out?.error || t("client.deliveryRequest.ratingFailed", "Unable to save rating."));
+                        }
+                        setAlreadyRatedDriver(true);
+                        Alert.alert(
+                          t("common.thanks", "Thanks"),
+                          t("client.deliveryRequest.ratingSaved", "Driver rating saved.")
+                        );
+                      } catch (e) {
+                        Alert.alert(
+                          t("client.deliveryRequest.rateDriver", "Rate your driver"),
+                          toUserFacingError(e, t("client.deliveryRequest.ratingFailed", "Unable to save rating."))
+                        );
+                      } finally {
+                        setRatingSubmitting(false);
+                      }
+                    }}
+                    style={{
+                      marginTop: 12,
+                      backgroundColor: ratingSubmitting ? "rgba(148,163,184,0.18)" : MMD_GREEN,
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      alignItems: "center",
+                    }}
+                  >
+                    {ratingSubmitting ? (
+                      <ActivityIndicator color="#052E16" />
+                    ) : (
+                      <Text style={{ color: "#052E16", fontWeight: "800" }}>
+                        {t("client.deliveryRequest.sendRating", "Send rating")}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           )}
 
           {canCancel && (

@@ -16,6 +16,11 @@ import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
 import { recordSuccessfulStripeOrderPayout } from "@/lib/payoutExecutionBridge";
 import { recordProductionCriticalError } from "@/lib/productionMonitoring";
 import { stripe } from "@/lib/stripe";
+import {
+  buildOrderTransferIdempotencyKey,
+  isStripeTransferReversed,
+  orderTransferGroup,
+} from "@/lib/finance/orderTransferGuards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -361,8 +366,84 @@ function resolveDriverAmountCents(
   );
 }
 
-function makeIdempotencyKey(orderId: string, target: "restaurant" | "driver") {
-  return `transfer:${orderId}:${target}`;
+function makeIdempotencyKey(
+  orderId: string,
+  target: "restaurant" | "driver",
+  afterReversedTransferId: string | null = null,
+) {
+  return buildOrderTransferIdempotencyKey(orderId, target, afterReversedTransferId);
+}
+
+async function clearReversedOrderTransfer(params: {
+  supabaseAdmin: SupabaseClient;
+  orderId: string;
+  target: "restaurant" | "driver";
+  transferId: string;
+}) {
+  const nowIso = new Date().toISOString();
+  if (params.target === "driver") {
+    await params.supabaseAdmin
+      .from("orders")
+      .update({
+        driver_paid_out: false,
+        driver_paid_out_at: null,
+        driver_transfer_id: null,
+        updated_at: nowIso,
+      })
+      .eq("id", params.orderId)
+      .eq("driver_transfer_id", params.transferId);
+
+    const { data: orderRow } = await params.supabaseAdmin
+      .from("orders")
+      .select("external_ref_type, external_ref_id")
+      .eq("id", params.orderId)
+      .maybeSingle();
+    const refType = String(orderRow?.external_ref_type ?? "").toLowerCase();
+    const refId = String(orderRow?.external_ref_id ?? "").trim();
+    if (refType === "delivery_request" && refId) {
+      await params.supabaseAdmin
+        .from("delivery_requests")
+        .update({
+          driver_paid_out: false,
+          driver_paid_out_at: null,
+          updated_at: nowIso,
+        })
+        .eq("id", refId);
+    }
+  } else {
+    await params.supabaseAdmin
+      .from("orders")
+      .update({
+        restaurant_paid_out: false,
+        restaurant_paid_out_at: null,
+        restaurant_transfer_id: null,
+        updated_at: nowIso,
+      })
+      .eq("id", params.orderId)
+      .eq("restaurant_transfer_id", params.transferId);
+  }
+
+  await params.supabaseAdmin
+    .from("order_payouts")
+    .update({
+      status: "pending",
+      stripe_transfer_id: null,
+      failure_code: null,
+      failure_message: null,
+      last_error: null,
+      failed_at: null,
+      succeeded_at: null,
+      locked_at: null,
+      locked_by: null,
+      updated_at: nowIso,
+      idempotency_key: buildOrderTransferIdempotencyKey(
+        params.orderId,
+        params.target,
+        params.transferId,
+      ),
+    })
+    .eq("order_id", params.orderId)
+    .eq("target", params.target);
 }
 
 function mapRpcErrorToHttpStatus(message: string): number {
@@ -542,17 +623,88 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let afterReversedTransferId: string | null = null;
+
     if (isOrderAlreadyPaidOut(order, target)) {
-      return json(
-        {
-          ok: true,
-          already_succeeded: true,
-          order_id: order.id,
-          target,
-          transfer_id: getExistingTransferId(order, target),
-        },
-        200
-      );
+      const existingTransferId = getExistingTransferId(order, target);
+      if (existingTransferId) {
+        try {
+          const existingTransfer = await stripe.transfers.retrieve(existingTransferId);
+          if (isStripeTransferReversed(existingTransfer)) {
+            await clearReversedOrderTransfer({
+              supabaseAdmin,
+              orderId: order.id,
+              target,
+              transferId: existingTransferId,
+            });
+            afterReversedTransferId = existingTransferId;
+            if (target === "driver") {
+              order.driver_paid_out = false;
+              order.driver_transfer_id = null;
+            } else {
+              order.restaurant_paid_out = false;
+              order.restaurant_transfer_id = null;
+            }
+          } else {
+            return json(
+              {
+                ok: true,
+                already_succeeded: true,
+                order_id: order.id,
+                target,
+                transfer_id: existingTransferId,
+              },
+              200
+            );
+          }
+        } catch (e: unknown) {
+          console.error("[transfers/run] existing transfer retrieve failed", {
+            order_id: order.id,
+            target,
+            transfer_id: existingTransferId,
+            error: getErrorMessage(e),
+          });
+          return json(
+            {
+              ok: true,
+              already_succeeded: true,
+              order_id: order.id,
+              target,
+              transfer_id: existingTransferId,
+            },
+            200
+          );
+        }
+      }
+    }
+
+    if (target === "driver" && order.driver_paid_out && !order.driver_transfer_id) {
+      await supabaseAdmin
+        .from("orders")
+        .update({
+          driver_paid_out: false,
+          driver_paid_out_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id)
+        .is("driver_transfer_id", null);
+      order.driver_paid_out = false;
+    }
+    if (
+      target === "restaurant" &&
+      order.restaurant_paid_out &&
+      !order.restaurant_transfer_id
+    ) {
+      await supabaseAdmin
+        .from("orders")
+        .update({
+          restaurant_paid_out: false,
+          restaurant_paid_out_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id)
+        .is("restaurant_transfer_id", null);
+      order.restaurant_paid_out = false;
     }
 
     let { data: commission, error: comErr } = await supabaseAdmin
@@ -817,8 +969,12 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid source charge id" }, 400);
     }
 
-    const transferGroup = `ORDER_${order.id}`;
-    const idempotencyKey = makeIdempotencyKey(order.id, target);
+    const transferGroup = orderTransferGroup(order.id);
+    const idempotencyKey = makeIdempotencyKey(
+      order.id,
+      target,
+      afterReversedTransferId,
+    );
 
     if (dryRun) {
       return json({
@@ -926,6 +1082,45 @@ export async function POST(req: NextRequest) {
     }
 
     const lockNowIso = new Date().toISOString();
+
+    // Re-open failed payout after reverse / transient Stripe failure for retry.
+    if (payout.status === "failed") {
+      const { data: reopened, error: reopenErr } = await supabaseAdmin
+        .from("order_payouts")
+        .update({
+          status: "pending",
+          stripe_transfer_id: null,
+          failure_code: null,
+          failure_message: null,
+          last_error: null,
+          failed_at: null,
+          succeeded_at: null,
+          locked_at: null,
+          locked_by: null,
+          amount_cents: amount,
+          currency: currency.toUpperCase(),
+          destination_account_id: destination,
+          source_charge_id: sourceChargeId,
+          idempotency_key: idempotencyKey,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payout.id)
+        .eq("status", "failed")
+        .select("*")
+        .maybeSingle();
+      if (reopenErr) {
+        logSupabaseError("[transfers/run] reopen failed payout failed", reopenErr, {
+          order_id: order.id,
+          payout_id: payout.id,
+          actor,
+        });
+        return json({ error: "Failed to reopen payout for retry" }, 500);
+      }
+      if (!reopened) {
+        return json({ error: "Payout reopen race — retry later" }, 409);
+      }
+      Object.assign(payout, reopened);
+    }
 
     if (payout.status === "pending") {
       const { data: lockedRow, error: lockErr } = await supabaseAdmin
@@ -1046,6 +1241,42 @@ export async function POST(req: NextRequest) {
       }
 
       return json({ error: "Stripe transfer failed" }, 500);
+    }
+
+    if (isStripeTransferReversed(transfer)) {
+      console.error("[transfers/run] refused reversed transfer", {
+        order_id: order.id,
+        target,
+        transfer_id: transfer.id,
+        actor,
+      });
+      const nowIsoReversed = new Date().toISOString();
+      await supabaseAdmin
+        .from("order_payouts")
+        .update({
+          status: "failed",
+          failure_code: "stripe_transfer_reversed",
+          failure_message:
+            "Stripe returned a reversed Transfer; refusing to mark payout paid",
+          failed_at: nowIsoReversed,
+          updated_at: nowIsoReversed,
+          stripe_transfer_id: null,
+          idempotency_key: buildOrderTransferIdempotencyKey(
+            order.id,
+            target,
+            transfer.id,
+          ),
+        })
+        .eq("id", payout.id);
+      return json(
+        {
+          error: "stripe_transfer_reversed",
+          message:
+            "Stripe returned a reversed Transfer; refusing to mark payout paid",
+          transfer_id: transfer.id,
+        },
+        409
+      );
     }
 
     const nowIso = new Date().toISOString();
