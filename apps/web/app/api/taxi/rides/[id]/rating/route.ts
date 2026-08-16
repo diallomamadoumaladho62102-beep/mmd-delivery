@@ -150,10 +150,17 @@ export async function POST(
       return taxiJson({ ok: false, error: insErr.message }, 500);
     }
 
+    const { data: summary } = await auth.supabaseAdmin
+      .from("driver_rating_summary")
+      .select("driver_id, rating, rating_count, updated_at")
+      .eq("driver_id", driverId)
+      .maybeSingle();
+
     return taxiJson({
       ok: true,
       created: true,
       rating: inserted,
+      driver_rating_summary: summary ?? null,
     });
   } catch (e: unknown) {
     return taxiJson(

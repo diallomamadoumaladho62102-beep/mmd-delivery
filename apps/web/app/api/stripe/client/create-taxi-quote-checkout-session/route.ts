@@ -40,6 +40,10 @@ import {
   type TaxiCheckoutIntentSnapshot,
 } from "@/lib/taxi/taxiCheckoutFromQuote";
 import { quoteRideFinalSot } from "@/lib/pricingEngine";
+import {
+  resolveTaxiCheckoutDiscounts,
+  splitTaxiNetCommissionCents,
+} from "@/lib/taxi/taxiQuoteCheckoutDiscounts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -386,20 +390,77 @@ export async function POST(req: NextRequest) {
       deliveryFeeCents: 0,
     });
     const mmdPlusDiscountCents = Math.max(0, mmdPlusBenefits.order_discount_cents || 0);
+
+    const pickupAddress =
+      route.pickupAddress ||
+      body.pickupAddress?.trim() ||
+      `${route.pickupLat}, ${route.pickupLng}`;
+    const dropoffAddress =
+      route.dropoffAddress ||
+      body.dropoffAddress?.trim() ||
+      `${route.dropoffLat}, ${route.dropoffLng}`;
+    const pickupCity = await resolveTaxiPickupCity({
+      supabaseAdmin: auth.supabaseAdmin,
+      pickupLocationId: locationInput.pickupLocationId,
+      pickupLat: route.pickupLat,
+      pickupLng: route.pickupLng,
+      pickupAddress,
+    });
+
+    const fareBasisCents = Math.round(
+      Number(
+        quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0,
+      ),
+    );
+    const discounts = await resolveTaxiCheckoutDiscounts({
+      supabaseAdmin: auth.supabaseAdmin,
+      userId: auth.user.id,
+      promoCode,
+      fareBasisCents,
+      subtotalCents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
+      vehicleClass,
+      countryCode,
+      currency: String(quoteWithServiceFee.currency ?? "USD"),
+      city: pickupCity,
+    });
+    if (discounts.ok === false) {
+      return taxiJson(
+        { ok: false, error: discounts.error },
+        discounts.httpStatus,
+      );
+    }
+
     const pricedSnapshot = quoteRideFinalSot({
       subtotal_cents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
       tax_cents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
-      gross_total_cents: Math.round(
-        Number(
-          quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0,
-        ),
-      ),
+      gross_total_cents: fareBasisCents,
       mmd_plus_discount_cents: mmdPlusDiscountCents,
+      promo_discount_cents: discounts.promo_discount_cents,
       shared_ride: sharedRide,
     });
-    const netTotalCents = pricedSnapshot.total_cents;
+    const netTotalCents = Math.max(
+      0,
+      pricedSnapshot.total_cents - discounts.marketing_discount_cents,
+    );
+    if (netTotalCents <= 0) {
+      return taxiJson({ ok: false, error: "invalid_quote_total" }, 400);
+    }
 
-    if (Math.abs(netTotalCents - expectedQuoteTotalCents) > 1) {
+    const commission = splitTaxiNetCommissionCents({
+      netTotalCents,
+      driverPayoutCents: Math.round(
+        Number(quoteWithServiceFee.driver_payout_cents ?? 0),
+      ),
+      platformFeeCents: Math.round(
+        Number(quoteWithServiceFee.platform_fee_cents ?? 0),
+      ),
+    });
+
+    if (
+      Number.isFinite(expectedQuoteTotalCents) &&
+      expectedQuoteTotalCents > 0 &&
+      Math.abs(netTotalCents - expectedQuoteTotalCents) > 1
+    ) {
       return taxiJson(
         {
           ok: false,
@@ -445,6 +506,9 @@ export async function POST(req: NextRequest) {
         distance_miles: route.distanceMiles,
         duration_minutes: route.durationMinutes,
         mmd_plus_discount_cents: mmdPlusDiscountCents,
+        discount_cents: discounts.promo_discount_cents,
+        marketing_discount_cents: discounts.marketing_discount_cents,
+        total_cents: netTotalCents,
       },
     });
 
@@ -475,23 +539,6 @@ export async function POST(req: NextRequest) {
       businessApprovalStatus =
         businessObj.requires_approval === true ? "pending" : "approved";
     }
-
-    const pickupAddress =
-      route.pickupAddress ||
-      body.pickupAddress?.trim() ||
-      `${route.pickupLat}, ${route.pickupLng}`;
-    const dropoffAddress =
-      route.dropoffAddress ||
-      body.dropoffAddress?.trim() ||
-      `${route.dropoffLat}, ${route.dropoffLng}`;
-
-    const pickupCity = await resolveTaxiPickupCity({
-      supabaseAdmin: auth.supabaseAdmin,
-      pickupLocationId: locationInput.pickupLocationId,
-      pickupLat: route.pickupLat,
-      pickupLng: route.pickupLng,
-      pickupAddress,
-    });
 
     let electricSearchUntil: string | null = null;
     if (preferElectricOrHybrid) {
@@ -525,20 +572,21 @@ export async function POST(req: NextRequest) {
       pricing_snapshot_id: String(quoteWithServiceFee.pricing_id ?? "") || null,
       subtotal_cents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
       tax_cents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
-      platform_fee_cents: Math.round(Number(quoteWithServiceFee.platform_fee_cents ?? 0)),
-      driver_payout_cents: Math.round(Number(quoteWithServiceFee.driver_payout_cents ?? 0)),
+      platform_fee_cents: commission.platform_fee_cents,
+      driver_payout_cents: commission.driver_payout_cents,
       service_fee_cents: Math.round(Number(quoteWithServiceFee.service_fee_cents ?? 0)),
       service_fee_pct: Number(quoteWithServiceFee.service_fee_pct ?? 0),
       service_fee_enabled: quoteWithServiceFee.service_fee_enabled === true,
       service_fee_fixed_cents: Math.round(
         Number(quoteWithServiceFee.service_fee_fixed_cents ?? 0),
       ),
-      gross_total_cents: Math.round(
-        Number(
-          quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0,
-        ),
-      ),
+      gross_total_cents: fareBasisCents,
       mmd_plus_discount_cents: mmdPlusDiscountCents,
+      discount_cents: discounts.promo_discount_cents,
+      marketing_discount_cents: discounts.marketing_discount_cents,
+      promotion_id: discounts.promotion_id,
+      marketing_reservation_id: discounts.marketing_reservation_id,
+      marketing_campaign_ids: discounts.marketing_campaign_ids,
       fare_components: fareComponents as unknown as Record<string, unknown>,
       stops: route.stops.map((stop) => ({
         stop_order: stop.stopOrder,
@@ -568,7 +616,7 @@ export async function POST(req: NextRequest) {
       return_wait_minutes: returnWaitMinutes,
       return_scheduled_at: returnScheduledAt,
       is_shared_ride: sharedRide,
-      promo_code: promoCode || null,
+      promo_code: discounts.promo_code,
       charge_path: "engine",
       engine_quote_snapshot_id: null,
     };
@@ -576,6 +624,7 @@ export async function POST(req: NextRequest) {
     const intent = await createTaxiCheckoutIntent({
       supabaseAdmin: auth.supabaseAdmin,
       snapshot,
+      intentId: discounts.checkout_entity_id,
     });
     if (intent.ok === false) {
       return taxiJson({ ok: false, error: intent.error }, 500);
@@ -606,6 +655,9 @@ export async function POST(req: NextRequest) {
       engine_quote_snapshot_id: null,
       currency: snapshot.currency,
       taxi_ride_id: null,
+      discount_cents: discounts.promo_discount_cents,
+      marketing_discount_cents: discounts.marketing_discount_cents,
+      promo_code: discounts.promo_code,
     });
   } catch (e: unknown) {
     console.error("[create-taxi-quote-checkout-session]", e);

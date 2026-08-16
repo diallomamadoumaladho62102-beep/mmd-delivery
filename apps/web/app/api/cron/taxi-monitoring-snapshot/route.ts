@@ -9,6 +9,14 @@ import {
   CronTimeoutError,
 } from "@/lib/cronTimeouts";
 
+/**
+ * Manual / ops probe for taxi admin monitoring KPIs.
+ *
+ * Production schedule: Supabase pg_cron job `mmd-db-daily-maintenance`
+ * (daily ~05:20 UTC) already calls `refresh_taxi_monitoring_snapshot()`.
+ * Do NOT add this route to Vercel or GitHub Actions — that would duplicate
+ * CPU work. Observability only (not money/dispatch/safety control plane).
+ */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 /** Confirmed ceiling for this Vercel project (same as /api/ai/chat). */

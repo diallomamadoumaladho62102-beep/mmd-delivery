@@ -90,6 +90,15 @@ test("fare transfer guards block reversed idempotency replay", () => {
   );
   assert.match(src, /stripe_transfer_reversed/);
   assert.match(src, /buildTaxiFareTransferIdempotencyKey/);
+  assert.match(src, /transfers\.retrieve/);
+});
+
+test("rating API returns driver summary after insert", () => {
+  const src = fs.readFileSync(
+    path.join(webRoot, "app/api/taxi/rides/[id]/rating/route.ts"),
+    "utf8",
+  );
+  assert.match(src, /driver_rating_summary/);
 });
 
 test("cron hold default is zero", () => {

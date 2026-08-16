@@ -8,7 +8,7 @@ MMD Delivery uses **Vercel cron** for low-frequency jobs and **GitHub Actions** 
 |----------------|------|---------|
 | Sun 03:00 | `/api/admin/process-payouts` | Weekly payout batch |
 | Daily 05:00 | `/api/orders/expire-unpaid` | Expire stale unpaid orders |
-| Daily 06:00 | `/api/cron/taxi-monitoring-snapshot` | Taxi ops monitoring |
+| Daily (Supabase pg_cron `mmd-db-daily-maintenance`) | `refresh_taxi_monitoring_snapshot()` | Taxi ops monitoring KPIs/alerts (observability only). Next.js `/api/cron/taxi-monitoring-snapshot` is a **manual probe** — not scheduled on Vercel. |
 | Daily 00:05 | `/api/cron/vehicle-eligibility-refresh` | Driver vehicle category eligibility |
 
 **Authentication (unified on `CRON_SECRET`).** Every cron route validates the request via `isAuthorizedCronRequest()` (`apps/web/src/lib/cronAuth.ts`), which accepts **only**:

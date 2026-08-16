@@ -53,6 +53,11 @@ export type TaxiCheckoutIntentSnapshot = {
   service_fee_fixed_cents: number;
   gross_total_cents: number;
   mmd_plus_discount_cents: number;
+  discount_cents?: number;
+  marketing_discount_cents?: number;
+  promotion_id?: string | null;
+  marketing_reservation_id?: string | null;
+  marketing_campaign_ids?: string[];
   fare_components?: Record<string, unknown> | null;
   stops?: Array<{
     stop_order: number;
@@ -106,12 +111,15 @@ export function pickTaxiQuoteCheckoutId(
 export async function createTaxiCheckoutIntent(params: {
   supabaseAdmin: SupabaseClient;
   snapshot: TaxiCheckoutIntentSnapshot;
+  intentId?: string;
 }): Promise<{ ok: true; intentId: string } | { ok: false; error: string }> {
   const quoteHash = hashTaxiCheckoutSnapshot(params.snapshot);
   const expiresAt = new Date(Date.now() + TAXI_QUOTE_CHECKOUT_TTL_MS).toISOString();
+  const intentId = String(params.intentId ?? "").trim();
   const { data, error } = await params.supabaseAdmin
     .from("taxi_checkout_intents")
     .insert({
+      ...(intentId ? { id: intentId } : {}),
       client_user_id: params.snapshot.client_user_id,
       status: "pending",
       currency: params.snapshot.currency,
@@ -351,6 +359,12 @@ export async function materializePaidTaxiRideFromQuoteCheckout(params: {
     total_cents: snapshot.amount_cents,
     gross_total_cents: snapshot.gross_total_cents ?? snapshot.amount_cents,
     mmd_plus_discount_cents: snapshot.mmd_plus_discount_cents ?? 0,
+    discount_cents: snapshot.discount_cents ?? 0,
+    marketing_discount_cents: snapshot.marketing_discount_cents ?? 0,
+    promotion_id: snapshot.promotion_id ?? null,
+    promo_code: snapshot.promo_code ?? null,
+    marketing_reservation_id: snapshot.marketing_reservation_id ?? null,
+    marketing_campaign_ids: snapshot.marketing_campaign_ids ?? [],
     passenger_count: snapshot.passenger_count ?? 1,
     client_notes: snapshot.client_notes ?? null,
     preferred_driver_id: snapshot.preferred_driver_id ?? null,
@@ -461,7 +475,12 @@ export async function materializePaidTaxiRideFromQuoteCheckout(params: {
     const { captureEntityMarketing } = await import(
       "@/lib/marketing/marketingCheckoutLifecycle"
     );
-    await captureEntityMarketing(supabaseAdmin, "taxi", taxiRideId);
+    await captureEntityMarketing(
+      supabaseAdmin,
+      "taxi",
+      taxiRideId,
+      snapshot.marketing_reservation_id ?? null,
+    );
   } catch (e) {
     console.warn("[taxi quote-checkout] marketing capture", e);
   }
