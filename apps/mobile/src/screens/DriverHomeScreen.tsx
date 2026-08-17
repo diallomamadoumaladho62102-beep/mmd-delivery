@@ -103,6 +103,13 @@ import {
   fetchDriverMarketplaceJobs,
   mapMarketplaceJobToDriverOrder,
 } from "../lib/driverMarketplaceApi";
+import {
+  DRIVER_ACTIVE_ASSIGNED_STATUSES,
+  isActiveAssignedJob,
+} from "../lib/driverActiveJobs";
+import { foldHeroTotals } from "../lib/driverRevenueAggregate";
+import { getLocalDayRangeIso } from "../lib/driverHomeTodayRange";
+import { loadTaxiDriverEarnings } from "../lib/taxiEarnings";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type AnyNav = NativeStackNavigationProp<any>;
@@ -141,6 +148,10 @@ type DriverOrder = {
   offer_expires_at?: string | null;
   is_dispatch_offer?: boolean;
   marketplace_job_status?: string | null;
+  delivered_at?: string | null;
+  delivered_confirmed_at?: string | null;
+  dropoff_code_verified_at?: string | null;
+  tip_cents?: number | null;
 };
 
 type ZoneDemand = "calm" | "busy" | "very_busy";
@@ -233,11 +244,6 @@ const DRIVER_LEVELS = [
 
 const DEFAULT_DAILY_EARNINGS_GOAL = 150;
 
-function getTodayStartIso() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-}
-
 function getRecordNumber(record: any, keys: string[]) {
   for (const key of keys) {
     const value = toFiniteNumber(record?.[key]);
@@ -277,10 +283,11 @@ function getNextDriverLevel(points: number) {
 
 function buildDriverPerformanceStats(params: {
   rewardAccount: any | null;
-  todayDeliveredRows: any[];
+  todayEarnings: number;
+  completedTripsToday: number;
   profile?: any | null;
 }) {
-  const { rewardAccount, todayDeliveredRows, profile } = params;
+  const { rewardAccount, todayEarnings, completedTripsToday, profile } = params;
 
   const accountPoints = getRecordNumber(rewardAccount, ["points"]) ?? 0;
   const lifetimePoints =
@@ -291,13 +298,6 @@ function buildDriverPerformanceStats(params: {
 
   const lifetimeEarnings =
     getRecordNumber(rewardAccount, ["total_earnings"]) ?? 0;
-
-  const todayEarnings = todayDeliveredRows.reduce(
-    (sum, row) => sum + (getConfiguredDriverPayout(row) ?? 0),
-    0,
-  );
-
-  const completedTripsToday = todayDeliveredRows.length;
 
   const accountLevel = normalizeDriverLevelName(rewardAccount?.level);
   const profileLevel = normalizeDriverLevelName(
@@ -484,21 +484,7 @@ function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined)
   return false;
 }
 
-const DRIVER_ASSIGNED_EXCLUDED_STATUSES =
-  '("delivered","canceled","cancelled","expired","rejected","refunded","completed")';
-
-function isTerminalDriverStatus(status: unknown): boolean {
-  const s = normalizeStatus(status);
-  return (
-    s === "delivered" ||
-    s === "canceled" ||
-    s === "cancelled" ||
-    s === "expired" ||
-    s === "rejected" ||
-    s === "refunded" ||
-    s === "completed"
-  );
-}
+const DRIVER_ACTIVE_ASSIGNED_STATUS_LIST = [...DRIVER_ACTIVE_ASSIGNED_STATUSES];
 
 function declinedOrdersStorageKey(driverId: string) {
   return `@mmd/driver_declined_orders:${driverId}`;
@@ -1334,7 +1320,8 @@ export function DriverHomeScreen() {
   const fetchDriverPerformance = useCallback(async () => {
     try {
       const driverId = await getUserIdOrThrow();
-      const todayStartIso = getTodayStartIso();
+      // Same local calendar day as Earnings → Today (fromISO/toISO).
+      const { fromISO, toISO } = getLocalDayRangeIso(new Date());
 
       const { data: rewardAccount, error: rewardAccountError } = await supabase
         .from("driver_reward_accounts")
@@ -1352,15 +1339,17 @@ export function DriverHomeScreen() {
         .eq("user_id", driverId)
         .maybeSingle();
 
+      // Food SoT: same tables/filters as DriverRevenueScreen (delivered + created_at day).
       const { data: todayOrders, error: todayOrdersError } = await applyLiveTripFilters(
         supabase
           .from("orders")
-          .select("id, status, updated_at, created_at, driver_delivery_payout"),
+          .select("id, status, created_at, driver_delivery_payout, tip_cents"),
       )
         .eq("driver_id", driverId)
         .eq("status", "delivered")
-        .gte("updated_at", todayStartIso)
-        .order("updated_at", { ascending: false })
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO)
+        .order("created_at", { ascending: false })
         .limit(500);
 
       if (todayOrdersError) throw todayOrdersError;
@@ -1368,23 +1357,59 @@ export function DriverHomeScreen() {
       const { data: todayRequests, error: todayRequestsError } = await applyLiveTripFilters(
         supabase
           .from("delivery_requests")
-          .select("id, status, updated_at, created_at, driver_delivery_payout"),
+          .select("id, status, created_at, driver_delivery_payout"),
       )
         .eq("driver_id", driverId)
         .eq("status", "delivered")
-        .gte("updated_at", todayStartIso)
-        .order("updated_at", { ascending: false })
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO)
+        .order("created_at", { ascending: false })
         .limit(500);
 
       if (todayRequestsError) throw todayRequestsError;
 
+      let taxiDriverCents = 0;
+      let taxiTrips = 0;
+      try {
+        const taxi = await loadTaxiDriverEarnings(driverId, { fromISO, toISO });
+        taxiDriverCents = Number(taxi.totalDriverCents ?? 0);
+        taxiTrips = Number(taxi.completedRides ?? 0);
+      } catch (taxiErr) {
+        console.log("Home today taxi earnings error:", taxiErr);
+      }
+
       if (!mountedRef.current) return;
+
+      const foodRows = [
+        ...((todayOrders ?? []) as any[]).map((row) => {
+          const tipCents = Number(row.tip_cents ?? 0);
+          return {
+            created_at: row.created_at ?? null,
+            baseDollars: getConfiguredDriverPayout(row) ?? 0,
+            tipDollars:
+              Number.isFinite(tipCents) && tipCents > 0 ? tipCents / 100 : 0,
+          };
+        }),
+        ...((todayRequests ?? []) as any[]).map((row) => ({
+          created_at: row.created_at ?? null,
+          baseDollars: getConfiguredDriverPayout(row) ?? 0,
+          tipDollars: 0,
+        })),
+      ];
+
+      // Food + Delivery + Taxi — same fold as Earnings hero.
+      const totals = foldHeroTotals({
+        foodRows,
+        taxiDriverCents,
+        taxiTrips,
+      });
 
       setDriverStats(
         buildDriverPerformanceStats({
           rewardAccount,
           profile,
-          todayDeliveredRows: [...(todayOrders ?? []), ...(todayRequests ?? [])],
+          todayEarnings: totals.totalEarnings,
+          completedTripsToday: totals.trips,
         }),
       );
     } catch (e) {
@@ -1566,7 +1591,7 @@ export function DriverHomeScreen() {
 
         if (deliveryAvailableError) throw deliveryAvailableError;
 
-        // 3) Commandes orders déjà assignées au driver.
+        // 3) Commandes orders déjà assignées au driver (allowlist actifs uniquement).
         const { data: mine, error: mineError } = await applyLiveTripFilters(
           supabase
             .from("orders")
@@ -1574,11 +1599,12 @@ export function DriverHomeScreen() {
               `id, kind, status, created_at,
              restaurant_name, pickup_address, dropoff_address,
              distance_miles, delivery_fee, driver_delivery_payout, total,
-             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
+             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng,
+             delivered_at, delivered_confirmed_at`,
             ),
         )
           .eq("driver_id", driverId)
-          .not("status", "in", DRIVER_ASSIGNED_EXCLUDED_STATUSES)
+          .in("status", DRIVER_ACTIVE_ASSIGNED_STATUS_LIST)
           .order("created_at", { ascending: false });
 
         if (mineError) throw mineError;
@@ -1592,11 +1618,12 @@ export function DriverHomeScreen() {
              pickup_address,dropoff_address,
              pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
              distance_miles,eta_minutes,delivery_fee,total,currency,
-             driver_delivery_payout,platform_fee`
+             driver_delivery_payout,platform_fee,
+             delivered_at,dropoff_code_verified_at`,
             ),
         )
           .eq("driver_id", driverId)
-          .not("status", "in", DRIVER_ASSIGNED_EXCLUDED_STATUSES)
+          .in("status", DRIVER_ACTIVE_ASSIGNED_STATUS_LIST)
           .order("created_at", { ascending: false });
 
         if (myDeliveryRequestsError) throw myDeliveryRequestsError;
@@ -1662,6 +1689,8 @@ export function DriverHomeScreen() {
           pickup_lng: toFiniteNumber(request.pickup_lng),
           dropoff_lat: toFiniteNumber(request.dropoff_lat),
           dropoff_lng: toFiniteNumber(request.dropoff_lng),
+          delivered_at: request.delivered_at ?? null,
+          dropoff_code_verified_at: request.dropoff_code_verified_at ?? null,
           source_table: "delivery_requests" as const,
         }));
 
@@ -1718,12 +1747,18 @@ export function DriverHomeScreen() {
           return statusVisible && hasPickupCoordinates && (!driverLocation || withinDispatchMiles);
         });
 
-        const myList = [...myOrderList, ...myDeliveryList, ...marketplaceMineList].filter(
-          (o) => !isTerminalDriverStatus(o.status),
+        const myList = [...myOrderList, ...myDeliveryList, ...marketplaceMineList].filter((o) =>
+          isActiveAssignedJob({
+            status: o.status,
+            delivered_at: (o as any).delivered_at ?? null,
+            delivered_confirmed_at: (o as any).delivered_confirmed_at ?? null,
+            dropoff_code_verified_at: (o as any).dropoff_code_verified_at ?? null,
+          }),
         );
 
         setAvailableOrders(visibleAvailable);
         setMyOrders(myList);
+        void fetchDriverPerformance();
         setActiveOffer((prev) => {
           if (visibleAvailable.length === 0) {
             if (prev) lastOfferIdRef.current = null;
@@ -1749,7 +1784,7 @@ export function DriverHomeScreen() {
         if (mountedRef.current && fetchSeq === fetchSeqRef.current) setLoading(false);
       }
     },
-    [isOnline, getUserIdOrThrow, t, driverLocation],
+    [isOnline, getUserIdOrThrow, t, driverLocation, fetchDriverPerformance],
   );
 
   const scheduleDriverOrdersRefresh = useCallback(
@@ -2059,7 +2094,14 @@ export function DriverHomeScreen() {
 
   const premiumJobs = useMemo(() => {
     const foodDeliveryJobs = myOrders
-      .filter((order) => !isTerminalDriverStatus(order.status))
+      .filter((order) =>
+        isActiveAssignedJob({
+          status: order.status,
+          delivered_at: order.delivered_at ?? null,
+          delivered_confirmed_at: order.delivered_confirmed_at ?? null,
+          dropoff_code_verified_at: order.dropoff_code_verified_at ?? null,
+        }),
+      )
       .map((order) => {
       const kindRaw = String(order.kind ?? "").toLowerCase();
       const isFood =

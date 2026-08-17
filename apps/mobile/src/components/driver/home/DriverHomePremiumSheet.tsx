@@ -21,6 +21,7 @@ import {
   MMD_TEXT_MUTED_BLUE,
   MMD_WHITE,
 } from "../../../theme/mmdUi";
+import { formatHiddenEarningsLabel } from "../../../lib/driverActiveJobs";
 
 /** Figma Driver Home PremiumSheet — MMD_BLUE chrome (file m1YPra9RLUz38tGTPmYczj). */
 const C = {
@@ -212,7 +213,7 @@ export function DriverHomePremiumSheet({
       <View style={styles.summaryStats}>
         <View style={styles.statCol}>
           <Text style={styles.statValue} numberOfLines={1}>
-            {earningsHidden ? "••••" : stats.todayEarningsLabel}
+            {formatHiddenEarningsLabel(earningsHidden, stats.todayEarningsLabel)}
           </Text>
           <Text style={styles.statLabel}>Earnings</Text>
         </View>
