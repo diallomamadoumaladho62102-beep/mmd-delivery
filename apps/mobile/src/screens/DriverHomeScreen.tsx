@@ -1964,6 +1964,18 @@ export function DriverHomeScreen() {
                 scheduleDriverOrdersRefresh(0);
               },
             },
+            {
+              event: "INSERT",
+              table: "marketplace_delivery_jobs",
+              filter: `assigned_driver_id=eq.${driverId}`,
+              callback: () => scheduleDriverOrdersRefresh(150),
+            },
+            {
+              event: "UPDATE",
+              table: "marketplace_delivery_jobs",
+              filter: `assigned_driver_id=eq.${driverId}`,
+              callback: () => scheduleDriverOrdersRefresh(150),
+            },
           ],
           (status) => {
             console.log("DRIVER_HOME_REALTIME_STATUS", status);
@@ -2046,7 +2058,9 @@ export function DriverHomeScreen() {
   }, [navAny]);
 
   const premiumJobs = useMemo(() => {
-    const foodDeliveryJobs = myOrders.map((order) => {
+    const foodDeliveryJobs = myOrders
+      .filter((order) => !isTerminalDriverStatus(order.status))
+      .map((order) => {
       const kindRaw = String(order.kind ?? "").toLowerCase();
       const isFood =
         kindRaw.includes("food") ||
@@ -2070,17 +2084,24 @@ export function DriverHomeScreen() {
       };
     });
 
-    if (!activeTaxiRide?.id) return foodDeliveryJobs;
+    const taxiStatus = String(activeTaxiRide?.status ?? "")
+      .trim()
+      .toLowerCase();
+    const taxiActive =
+      Boolean(activeTaxiRide?.id) &&
+      ["accepted", "driver_arrived", "in_progress"].includes(taxiStatus);
 
-    const rideId = String(activeTaxiRide.id);
+    if (!taxiActive) return foodDeliveryJobs;
+
+    const rideId = String(activeTaxiRide!.id);
     const payoutCents = Number(
-      activeTaxiRide.driver_payout_cents ?? activeTaxiRide.driver_earnings_cents ?? NaN,
+      activeTaxiRide!.driver_payout_cents ?? activeTaxiRide!.driver_earnings_cents ?? NaN,
     );
-    const currency = String(activeTaxiRide.currency ?? "USD");
+    const currency = String(activeTaxiRide!.currency ?? "USD");
     const amountLabel = Number.isFinite(payoutCents)
       ? formatDriverPayout(payoutCents, currency)
       : "—";
-    const distanceMiles = Number(activeTaxiRide.distance_miles ?? NaN);
+    const distanceMiles = Number(activeTaxiRide!.distance_miles ?? NaN);
 
     return [
       {
@@ -2088,9 +2109,9 @@ export function DriverHomeScreen() {
         key: `taxi_rides:${rideId}`,
         kind: "taxi" as const,
         kindLabel: "Taxi ride",
-        statusLabel: String(activeTaxiRide.status ?? "active"),
-        pickup: String(activeTaxiRide.pickup_address ?? "—"),
-        dropoff: String(activeTaxiRide.dropoff_address ?? "—"),
+        statusLabel: String(activeTaxiRide!.status ?? "active"),
+        pickup: String(activeTaxiRide!.pickup_address ?? "—"),
+        dropoff: String(activeTaxiRide!.dropoff_address ?? "—"),
         amountLabel,
         distanceLabel: Number.isFinite(distanceMiles)
           ? `${distanceMiles.toFixed(1)} mi`
@@ -2595,6 +2616,49 @@ export function DriverHomeScreen() {
       if (mountedRef.current) setActiveTaxiRide(null);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isOnline) return;
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    void (async () => {
+      try {
+        const driverId = await getUserIdOrThrow();
+        if (cancelled || !mountedRef.current) return;
+        channel = subscribePostgresChannel(
+          `driver-taxi-ride-live-${driverId}`,
+          [
+            {
+              event: "UPDATE",
+              table: "taxi_rides",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => {
+                void refreshActiveTaxiRide();
+                scheduleDriverOrdersRefresh(150);
+              },
+            },
+            {
+              event: "DELETE",
+              table: "taxi_rides",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => {
+                void refreshActiveTaxiRide();
+                scheduleDriverOrdersRefresh(150);
+              },
+            },
+          ],
+        );
+      } catch (e) {
+        console.log("driver taxi_rides realtime error:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) void unsubscribeSupabaseChannel(channel);
+    };
+  }, [getUserIdOrThrow, isOnline, refreshActiveTaxiRide, scheduleDriverOrdersRefresh]);
 
   const refreshNextReward = useCallback(async () => {
     try {
@@ -3141,6 +3205,9 @@ export function DriverHomeScreen() {
                 isOnline={isOnline}
                 elevated={taxiSurfaceActive}
                 onActiveOffersChange={setHasTaxiActiveOffers}
+                onActiveRideChange={(ride) => {
+                  setActiveTaxiRide(ride);
+                }}
               />
             </View>
           ) : null}

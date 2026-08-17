@@ -18,6 +18,13 @@ export type TaxiEarningsSummary = {
   byCurrency: TaxiEarningsByCurrency[];
 };
 
+export type LoadTaxiDriverEarningsOptions = {
+  /** Inclusive lower bound (ISO). Filters on completed_at, falling back to created_at. */
+  fromISO?: string | null;
+  /** Inclusive upper bound (ISO). */
+  toISO?: string | null;
+};
+
 function emptyBucket(currency: string): TaxiEarningsByCurrency {
   return {
     currency,
@@ -28,14 +35,46 @@ function emptyBucket(currency: string): TaxiEarningsByCurrency {
   };
 }
 
-/** Aggregates completed taxi rides and commission payout state for the signed-in driver. */
+function rideInRange(
+  row: { completed_at?: string | null; created_at?: string | null },
+  fromISO?: string | null,
+  toISO?: string | null,
+): boolean {
+  if (!fromISO && !toISO) return true;
+  const stamp = String(row.completed_at ?? row.created_at ?? "").trim();
+  if (!stamp) return false;
+  const t = new Date(stamp).getTime();
+  if (!Number.isFinite(t)) return false;
+  if (fromISO) {
+    const from = new Date(fromISO).getTime();
+    if (Number.isFinite(from) && t < from) return false;
+  }
+  if (toISO) {
+    const to = new Date(toISO).getTime();
+    if (Number.isFinite(to) && t > to) return false;
+  }
+  return true;
+}
+
+/**
+ * Aggregates completed taxi rides and commission payout state for the signed-in driver.
+ *
+ * Financial SoT:
+ * - Display amount: taxi_rides.driver_payout_cents (fallback) / taxi_commissions.driver_cents
+ * - Paid vs pending: Stripe Connect Transfer id on taxi_commissions.driver_transfer_id
+ *   (NOT bank payouts — those are Sunday Connect→bank cron)
+ */
 export async function loadTaxiDriverEarnings(
-  driverId: string
+  driverId: string,
+  options?: LoadTaxiDriverEarningsOptions,
 ): Promise<TaxiEarningsSummary> {
+  const fromISO = options?.fromISO ?? null;
+  const toISO = options?.toISO ?? null;
+
   const { data: rides, error: ridesErr } = await applyLiveTripFilters(
     supabase
       .from("taxi_rides")
-      .select("id, driver_payout_cents, currency, status"),
+      .select("id, driver_payout_cents, currency, status, completed_at, created_at"),
   )
     .eq("driver_id", driverId)
     .eq("status", "completed");
@@ -44,7 +83,11 @@ export async function loadTaxiDriverEarnings(
     throw new Error(ridesErr.message);
   }
 
-  const rideIds = (rides ?? []).map((row) => row.id);
+  const rangedRides = (rides ?? []).filter((row) =>
+    rideInRange(row, fromISO, toISO),
+  );
+
+  const rideIds = rangedRides.map((row) => row.id);
   let commissions: Array<{
     driver_cents: number | null;
     currency: string | null;
@@ -71,7 +114,7 @@ export async function loadTaxiDriverEarnings(
   const byCurrencyMap = new Map<string, TaxiEarningsByCurrency>();
   const commissionByRide = new Map(commissions.map((c) => [c.taxi_ride_id, c]));
 
-  for (const row of rides ?? []) {
+  for (const row of rangedRides) {
     const currency = String(row.currency ?? "USD").toUpperCase();
     const bucket = byCurrencyMap.get(currency) ?? emptyBucket(currency);
     bucket.completedRides += 1;
@@ -100,11 +143,20 @@ export async function loadTaxiDriverEarnings(
   const primary = byCurrency[0] ?? emptyBucket("USD");
 
   return {
-    completedRides: rides?.length ?? 0,
-    totalDriverCents: primary.totalDriverCents,
-    pendingPayoutCents: primary.pendingPayoutCents,
-    paidPayoutCents: primary.paidPayoutCents,
+    completedRides: rangedRides.length,
+    totalDriverCents: byCurrency.reduce((s, b) => s + b.totalDriverCents, 0),
+    pendingPayoutCents: byCurrency.reduce((s, b) => s + b.pendingPayoutCents, 0),
+    paidPayoutCents: byCurrency.reduce((s, b) => s + b.paidPayoutCents, 0),
     currency: primary.currency,
     byCurrency,
   };
+}
+
+/** Exported for unit tests — date window membership. */
+export function taxiRideInEarningsRange(
+  row: { completed_at?: string | null; created_at?: string | null },
+  fromISO?: string | null,
+  toISO?: string | null,
+): boolean {
+  return rideInRange(row, fromISO, toISO);
 }

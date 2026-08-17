@@ -278,7 +278,7 @@ export function DriverRevenueScreen() {
       );
 
       try {
-        const taxi = await loadTaxiDriverEarnings(uid);
+        const taxi = await loadTaxiDriverEarnings(uid, { fromISO, toISO });
         setTaxiEarnings(taxi);
       } catch (taxiErr) {
         console.log("loadTaxiDriverEarnings error:", taxiErr);
@@ -308,14 +308,22 @@ export function DriverRevenueScreen() {
   }, [range, fetchRevenue]);
 
   const totals = useMemo(() => {
-    const trips = orders.length;
-    const baseEarnings = orders.reduce((sum, o) => sum + getGain(o), 0);
+    const foodTrips = orders.length;
+    const foodBase = orders.reduce((sum, o) => sum + getGain(o), 0);
     const tips = orders.reduce((sum, o) => sum + getTip(o), 0);
+
+    // Taxi SoT is cents on taxi_rides / taxi_commissions — fold into hero totals.
+    const taxiCents = Number(taxiEarnings?.totalDriverCents ?? 0);
+    const taxiTrips = Number(taxiEarnings?.completedRides ?? 0);
+    const taxiDollars = Number.isFinite(taxiCents) ? taxiCents / 100 : 0;
+
+    const baseEarnings = foodBase + taxiDollars;
+    const trips = foodTrips + taxiTrips;
     const totalEarnings = baseEarnings + tips;
     const points = trips;
     const averageTrip = trips > 0 ? totalEarnings / trips : 0;
     return { trips, baseEarnings, tips, totalEarnings, points, averageTrip };
-  }, [orders]);
+  }, [orders, taxiEarnings]);
 
   const weekBars = useMemo(() => {
     const days = [
@@ -485,14 +493,20 @@ export function DriverRevenueScreen() {
                       value={String(bucket.completedRides)}
                     />
                     <Metric
-                      label={t("driver.revenue.taxi_pending", "Pending payout")}
+                      label={t(
+                        "driver.revenue.taxi_pending",
+                        "Pending Connect transfer",
+                      )}
                       value={formatDriverPayout(
                         bucket.pendingPayoutCents,
                         bucket.currency
                       )}
                     />
                     <Metric
-                      label={t("driver.revenue.taxi_paid", "Paid payout")}
+                      label={t(
+                        "driver.revenue.taxi_paid",
+                        "Transferred to Connect",
+                      )}
                       value={formatDriverPayout(
                         bucket.paidPayoutCents,
                         bucket.currency
@@ -501,6 +515,12 @@ export function DriverRevenueScreen() {
                   </View>
                 </View>
               ))}
+              <Text style={[styles.mutedLabel, { marginTop: 4 }]}>
+                {t(
+                  "driver.revenue.taxi_transfer_hint",
+                  "Pending = awaiting platform→Connect Transfer. Transferred = SCT done (bank payout is Sunday cron).",
+                )}
+              </Text>
             </View>
           ) : null}
 
@@ -515,13 +535,25 @@ export function DriverRevenueScreen() {
             <View style={styles.loadingBrand}>
               <DriverBrandLoadingState title={t("shared.common.loading", "Loading")} />
             </View>
-          ) : orders.length === 0 ? (
+          ) : orders.length === 0 && !(taxiEarnings && taxiEarnings.completedRides > 0) ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>{t("driver.revenue.no_trips_title", "No trips")}</Text>
               <Text style={styles.emptySub}>
                 {t(
                   "driver.revenue.no_trips_hint",
                   "No delivered trips in this period. Completed deliveries will appear here after they are delivered.",
+                )}
+              </Text>
+            </View>
+          ) : orders.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>
+                {t("driver.revenue.no_food_trips_title", "No food/package trips")}
+              </Text>
+              <Text style={styles.emptySub}>
+                {t(
+                  "driver.revenue.taxi_only_hint",
+                  "Taxi earnings for this period are shown above. Food and package sessions will appear here when delivered.",
                 )}
               </Text>
             </View>

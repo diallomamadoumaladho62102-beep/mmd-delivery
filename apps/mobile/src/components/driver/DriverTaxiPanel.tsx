@@ -86,6 +86,8 @@ type Props = {
   /** When true, panel is the primary bottom offer surface (sheet is hidden). */
   elevated?: boolean;
   onActiveOffersChange?: (hasActiveOffers: boolean) => void;
+  /** Sync Home Active jobs taxi card with panel ride state (clear on complete). */
+  onActiveRideChange?: (ride: Record<string, unknown> | null) => void;
 };
 
 function formatOfferRemaining(expiresAt: string, nowMs: number): string {
@@ -96,6 +98,7 @@ export function DriverTaxiPanel({
   isOnline,
   elevated = false,
   onActiveOffersChange,
+  onActiveRideChange,
 }: Props) {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
@@ -118,6 +121,10 @@ export function DriverTaxiPanel({
   useEffect(() => {
     onActiveOffersChange?.(activeOffers.length > 0);
   }, [activeOffers.length, onActiveOffersChange]);
+
+  useEffect(() => {
+    onActiveRideChange?.(activeRide);
+  }, [activeRide, onActiveRideChange]);
 
   useEffect(() => {
     if (!showPanel || !isOnline) {
