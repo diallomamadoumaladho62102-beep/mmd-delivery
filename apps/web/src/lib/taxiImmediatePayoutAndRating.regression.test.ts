@@ -103,6 +103,20 @@ test("rating API returns driver summary after insert", () => {
   assert.match(src, /driver_rating_summary/);
 });
 
+test("complete does not select nonexistent taxi_rides.created_by", () => {
+  const src = fs.readFileSync(
+    path.join(webRoot, "app/api/taxi/rides/complete/route.ts"),
+    "utf8",
+  );
+  // Schema uses client_user_id only — selecting created_by masked PostgREST
+  // errors as ride_not_found and broke Driver "Complete ride".
+  const selectMatch = src.match(/\.select\(\s*`?["']([^"'`]+)["'`]/);
+  assert.ok(selectMatch, "expected a taxi_rides .select(...) string");
+  assert.doesNotMatch(selectMatch[1], /\bcreated_by\b/);
+  assert.match(selectMatch[1], /\bclient_user_id\b/);
+  assert.match(src, /rideLoadError/);
+});
+
 test("arrive and complete check driver ownership before proximity oracle", () => {
   const arrive = fs.readFileSync(
     path.join(webRoot, "app/api/taxi/rides/arrive/route.ts"),

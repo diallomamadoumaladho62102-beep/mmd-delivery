@@ -1037,7 +1037,7 @@ export function DriverOrderDetailsScreen() {
         const { data, error } = await supabase
           .from("taxi_rides")
           .select(
-            `id,status,payment_status,driver_user_id,client_user_id,created_at,updated_at,
+            `id,status,payment_status,driver_id,client_user_id,created_at,updated_at,
              pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
              pickup_location_id,dropoff_location_id,distance_miles,duration_minutes,
              driver_payout_cents,total_cents,currency`

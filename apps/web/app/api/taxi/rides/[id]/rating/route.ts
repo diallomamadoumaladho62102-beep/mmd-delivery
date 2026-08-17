@@ -89,7 +89,7 @@ export async function POST(
 
     const { data: ride, error: rideErr } = await auth.supabaseAdmin
       .from("taxi_rides")
-      .select("id, status, driver_id, client_user_id, created_by")
+      .select("id, status, driver_id, client_user_id")
       .eq("id", rideId)
       .maybeSingle();
 
