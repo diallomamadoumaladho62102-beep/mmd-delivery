@@ -9,6 +9,12 @@ export type TaxiEarningsByCurrency = {
   paidPayoutCents: number;
 };
 
+/** One completed ride for hero chart bucketing (Mon–Sun). */
+export type TaxiEarningsChartPoint = {
+  completedAt: string;
+  driverCents: number;
+};
+
 export type TaxiEarningsSummary = {
   completedRides: number;
   totalDriverCents: number;
@@ -16,6 +22,8 @@ export type TaxiEarningsSummary = {
   paidPayoutCents: number;
   currency: string;
   byCurrency: TaxiEarningsByCurrency[];
+  /** Per-ride points for the week chart (same range as totals). */
+  chartPoints: TaxiEarningsChartPoint[];
 };
 
 export type LoadTaxiDriverEarningsOptions = {
@@ -113,6 +121,7 @@ export async function loadTaxiDriverEarnings(
 
   const byCurrencyMap = new Map<string, TaxiEarningsByCurrency>();
   const commissionByRide = new Map(commissions.map((c) => [c.taxi_ride_id, c]));
+  const chartPoints: TaxiEarningsChartPoint[] = [];
 
   for (const row of rangedRides) {
     const currency = String(row.currency ?? "USD").toUpperCase();
@@ -121,6 +130,11 @@ export async function loadTaxiDriverEarnings(
 
     const cents = Number(row.driver_payout_cents ?? 0);
     bucket.totalDriverCents += cents;
+
+    const stamp = String(row.completed_at ?? row.created_at ?? "").trim();
+    if (stamp && Number.isFinite(cents) && cents > 0) {
+      chartPoints.push({ completedAt: stamp, driverCents: cents });
+    }
 
     const commission = commissionByRide.get(row.id);
     const driverCents = Number(commission?.driver_cents ?? cents);
@@ -149,6 +163,7 @@ export async function loadTaxiDriverEarnings(
     paidPayoutCents: byCurrency.reduce((s, b) => s + b.paidPayoutCents, 0),
     currency: primary.currency,
     byCurrency,
+    chartPoints,
   };
 }
 

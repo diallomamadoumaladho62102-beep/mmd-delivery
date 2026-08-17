@@ -18,6 +18,7 @@ import {
   loadTaxiDriverEarnings,
   type TaxiEarningsSummary,
 } from "../lib/taxiEarnings";
+import { foldHeroTotals, foldWeekBars } from "../lib/driverRevenueAggregate";
 import { formatDriverPayout } from "../lib/taxiDriverApi";
 import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
 import {
@@ -308,21 +309,16 @@ export function DriverRevenueScreen() {
   }, [range, fetchRevenue]);
 
   const totals = useMemo(() => {
-    const foodTrips = orders.length;
-    const foodBase = orders.reduce((sum, o) => sum + getGain(o), 0);
-    const tips = orders.reduce((sum, o) => sum + getTip(o), 0);
-
-    // Taxi SoT is cents on taxi_rides / taxi_commissions — fold into hero totals.
-    const taxiCents = Number(taxiEarnings?.totalDriverCents ?? 0);
-    const taxiTrips = Number(taxiEarnings?.completedRides ?? 0);
-    const taxiDollars = Number.isFinite(taxiCents) ? taxiCents / 100 : 0;
-
-    const baseEarnings = foodBase + taxiDollars;
-    const trips = foodTrips + taxiTrips;
-    const totalEarnings = baseEarnings + tips;
-    const points = trips;
-    const averageTrip = trips > 0 ? totalEarnings / trips : 0;
-    return { trips, baseEarnings, tips, totalEarnings, points, averageTrip };
+    // Food + Delivery + Taxi → hero TOTAL / Trips / Avg (Taxi SoT in cents).
+    return foldHeroTotals({
+      foodRows: orders.map((o) => ({
+        created_at: o.created_at,
+        baseDollars: getGain(o),
+        tipDollars: getTip(o),
+      })),
+      taxiDriverCents: Number(taxiEarnings?.totalDriverCents ?? 0),
+      taxiTrips: Number(taxiEarnings?.completedRides ?? 0),
+    });
   }, [orders, taxiEarnings]);
 
   const weekBars = useMemo(() => {
@@ -336,25 +332,17 @@ export function DriverRevenueScreen() {
       t("driver.revenue.days.sun", "Sun"),
     ];
 
-    const map: Record<string, number> = {};
-    for (const d of days) map[d] = 0;
-
-    for (const o of orders) {
-      if (!o.created_at) continue;
-      const d = new Date(o.created_at);
-      const js = d.getDay();
-      const idx = js === 0 ? 6 : js - 1;
-      const key = days[idx];
-      map[key] += getGain(o) + getTip(o);
-    }
-
-    const max = Math.max(1, ...Object.values(map));
-    return days.map((label) => ({
-      label,
-      value: map[label],
-      h: Math.max(10, Math.round((map[label] / max) * 70)),
-    }));
-  }, [orders, t]);
+    // Chart must include taxi completed_at points — not food/delivery only.
+    return foldWeekBars(
+      orders.map((o) => ({
+        created_at: o.created_at,
+        baseDollars: getGain(o),
+        tipDollars: getTip(o),
+      })),
+      taxiEarnings?.chartPoints ?? [],
+      days,
+    );
+  }, [orders, taxiEarnings, t]);
 
   const safeNavigate = useCallback(
     (routeName: string, params?: any) => {

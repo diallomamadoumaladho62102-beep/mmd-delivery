@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { foldHeroTotals, foldWeekBars } from "./driverRevenueAggregate";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const mobileRoot = path.resolve(__dirname, "..");
@@ -52,24 +53,72 @@ test("taxi earnings range filter uses completed_at", () => {
   );
 });
 
-test("revenue screen folds taxi into hero totals", () => {
+test("hero totals fold food + taxi (regression: taxi-only must not be $0)", () => {
+  const totals = foldHeroTotals({
+    foodRows: [],
+    taxiDriverCents: 2485,
+    taxiTrips: 4,
+  });
+  assert.equal(totals.trips, 4);
+  assert.equal(totals.totalEarnings, 24.85);
+  assert.equal(totals.baseEarnings, 24.85);
+  assert.ok(Math.abs(totals.averageTrip - 6.2125) < 1e-9);
+});
+
+test("week bars include taxi completed_at (not food-only)", () => {
+  // Monday 2026-08-17
+  const bars = foldWeekBars(
+    [],
+    [
+      { completedAt: "2026-08-17T15:00:00.000Z", driverCents: 1000 },
+      { completedAt: "2026-08-17T18:00:00.000Z", driverCents: 1485 },
+    ],
+  );
+  const mon = bars.find((b) => b.label === "Mon");
+  assert.ok(mon);
+  assert.ok(Math.abs(mon!.value - 24.85) < 1e-9);
+  assert.ok(mon!.h > 10);
+  const zeroDays = bars.filter((b) => b.label !== "Mon");
+  for (const d of zeroDays) {
+    assert.equal(d.value, 0);
+  }
+});
+
+test("week bars combine food created_at + taxi completed_at", () => {
+  const bars = foldWeekBars(
+    [
+      {
+        created_at: "2026-08-18T12:00:00.000Z", // Tue
+        baseDollars: 5,
+        tipDollars: 1,
+      },
+    ],
+    [{ completedAt: "2026-08-17T12:00:00.000Z", driverCents: 400 }], // Mon $4
+  );
+  assert.equal(bars.find((b) => b.label === "Mon")?.value, 4);
+  assert.equal(bars.find((b) => b.label === "Tue")?.value, 6);
+});
+
+test("revenue screen wires taxi into hero + chart", () => {
   const src = fs.readFileSync(
     path.join(mobileRoot, "screens/DriverRevenueScreen.tsx"),
     "utf8",
   );
   assert.match(src, /loadTaxiDriverEarnings\(uid, \{ fromISO, toISO \}\)/);
-  assert.match(src, /taxiEarnings\?\.totalDriverCents/);
-  assert.match(src, /taxiTrips/);
+  assert.match(src, /foldHeroTotals/);
+  assert.match(src, /foldWeekBars/);
+  assert.match(src, /taxiEarnings\?\.chartPoints/);
   assert.match(src, /Pending Connect transfer/);
   assert.match(src, /Transferred to Connect/);
 });
 
-test("taxi earnings paid uses transfer id SoT", () => {
+test("taxi earnings exports chartPoints from completed rides", () => {
   const src = fs.readFileSync(path.join(mobileRoot, "lib/taxiEarnings.ts"), "utf8");
   assert.match(src, /driver_transfer_id/);
   assert.match(src, /paid only when Transfer id exists/i);
   assert.match(src, /fromISO/);
   assert.match(src, /completed_at/);
+  assert.match(src, /chartPoints/);
 });
 
 test("active jobs exclude terminal statuses and stale taxi", () => {
