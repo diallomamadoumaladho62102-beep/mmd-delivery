@@ -57,6 +57,21 @@ if (safetyOk.ok) {
   );
 }
 
+const uploadedPath =
+  "11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/1710000000000.m4a";
+const safetyPreserveClientPath = resolveSafetyRecordingUpload({
+  rideId: "11111111-1111-1111-1111-111111111111",
+  recordingId: "22222222-2222-2222-2222-222222222222",
+  mimeType: "audio/mp4",
+  extension: "m4a",
+  fileSizeBytes: 1024,
+  clientPath: uploadedPath,
+});
+assert.equal(safetyPreserveClientPath.ok, true);
+if (safetyPreserveClientPath.ok) {
+  assert.equal(safetyPreserveClientPath.storagePath, uploadedPath);
+}
+
 const safetyBadPath = resolveSafetyRecordingUpload({
   rideId: "11111111-1111-1111-1111-111111111111",
   recordingId: "22222222-2222-2222-2222-222222222222",

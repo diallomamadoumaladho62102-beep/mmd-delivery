@@ -82,7 +82,12 @@ test("complete triggers immediate fare transfer helper", () => {
     path.join(webRoot, "app/api/taxi/rides/complete/route.ts"),
     "utf8",
   );
-  assert.match(src, /executeTaxiDriverFareTransfer/);
+  const core = fs.readFileSync(
+    path.join(webRoot, "src/lib/taxiCompleteRideCore.ts"),
+    "utf8",
+  );
+  assert.match(src, /runTaxiRideCompletionSideEffects/);
+  assert.match(core, /executeTaxiDriverFareTransfer/);
 });
 
 test("fare transfer guards block reversed idempotency replay", () => {

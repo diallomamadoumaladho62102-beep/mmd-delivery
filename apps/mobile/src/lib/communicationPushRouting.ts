@@ -124,6 +124,14 @@ export function navigateFromCommunicationPush(
     case "chat_message":
       if (orderId) {
         const role = targetRole.toLowerCase();
+        if (sourceTable === "taxi_rides") {
+          if (role === "driver") {
+            nav.navigate("DriverTaxiChat", { rideId: orderId });
+            return true;
+          }
+          nav.navigate("TaxiChat", { rideId: orderId });
+          return true;
+        }
         if (role === "driver") {
           nav.navigate("DriverChat", { orderId, targetRole: "client", sourceTable });
           return true;

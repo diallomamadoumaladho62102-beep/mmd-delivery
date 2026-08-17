@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { logTaxiEventServer } from "@/lib/taxiEvents";
 import {
   assertDriverOwnsTaxiRide,
   getProfileRole,
@@ -8,14 +7,14 @@ import {
   taxiJson,
 } from "@/lib/taxiApi";
 import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
-import { recordTaxiPreferenceStats } from "@/lib/taxiPreferenceDispatch";
 import {
   assertTaxiDropoffProximity,
   parseRequiredTaxiGps,
 } from "@/lib/taxiProximityGate";
-import { awardTaxiRideLoyalty } from "@/lib/loyalty/loyaltyAccrual";
-import { notifyClientTaxiRideCompleted } from "@/lib/clientPushNotifications";
-import { executeTaxiDriverFareTransfer } from "@/lib/finance/executeTaxiDriverFareTransfer";
+import {
+  runTaxiRideCompletionSideEffects,
+  type TaxiCompleteRideRow,
+} from "@/lib/taxiCompleteRideCore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,6 +70,7 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: "ride_not_found" }, 404);
     }
 
+    // Drivers MUST stay GPS-gated — no admin bypass on this endpoint.
     const proximity = assertTaxiDropoffProximity({
       driverLat: gps.lat,
       driverLng: gps.lng,
@@ -106,73 +106,26 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: mapped.message }, mapped.status);
     }
 
-    await recordTaxiPreferenceStats(auth.supabaseAdmin, rideBeforeComplete).catch((err) => {
-      console.log("[taxi preferences] stats error:", err instanceof Error ? err.message : err);
-    });
-
-    await logTaxiEventServer(auth.supabaseAdmin, {
+    const sideEffects = await runTaxiRideCompletionSideEffects({
+      supabaseAdmin: auth.supabaseAdmin,
+      ride: rideBeforeComplete as TaxiCompleteRideRow,
       rideId,
-      eventType: "ride_completed",
-      newStatus: "completed",
       actorId: auth.user.id,
       triggeredRole: "driver",
+      eventType: "ride_completed",
       description: "Driver completed taxi ride via API (GPS gated)",
       metadata: {
         commissions: (result as Record<string, unknown>).commissions ?? null,
-        distance_meters: proximity.distanceMeters,
       },
+      distanceMeters: proximity.distanceMeters,
     });
-
-    await awardTaxiRideLoyalty(auth.supabaseAdmin, rideId);
-
-    try {
-      await notifyClientTaxiRideCompleted({
-        supabaseAdmin: auth.supabaseAdmin,
-        userIds: [
-          (rideBeforeComplete as { client_user_id?: string | null }).client_user_id,
-        ],
-        taxiRideId: rideId,
-      });
-    } catch (e) {
-      console.warn(
-        "[taxi complete] client push fail-open",
-        e instanceof Error ? e.message : e,
-      );
-    }
-
-    // Immediate platform→Connect SCT (fail-open: ride stays completed; cron retries).
-    let driverPayout: Record<string, unknown> | null = null;
-    try {
-      const payout = await executeTaxiDriverFareTransfer({
-        supabaseAdmin: auth.supabaseAdmin,
-        taxiRideId: rideId,
-        dryRun: false,
-        actor: `driver_complete:${auth.user.id}`,
-      });
-      driverPayout = { ...payout };
-      if (payout.ok === false) {
-        console.warn("[taxi complete] immediate SCT deferred", {
-          rideId,
-          error: payout.error,
-        });
-      }
-    } catch (e) {
-      console.warn(
-        "[taxi complete] immediate SCT fail-open",
-        e instanceof Error ? e.message : e,
-      );
-      driverPayout = {
-        ok: false,
-        error: e instanceof Error ? e.message : "sct_exception",
-      };
-    }
 
     return taxiJson({
       ok: true,
       taxi_ride_id: rideId,
       result,
       distance_meters: proximity.distanceMeters,
-      driver_payout: driverPayout,
+      driver_payout: sideEffects.driver_payout,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";

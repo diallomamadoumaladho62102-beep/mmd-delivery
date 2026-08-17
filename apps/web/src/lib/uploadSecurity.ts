@@ -230,6 +230,21 @@ export function resolveSafetyRecordingUpload(params: {
     }
   }
 
+  // Prefer validated client path so DB matches the object already uploaded.
+  // Regenerating Date.now() here caused "Object not found" on download.
+  if (clientPath) {
+    const clientExt = (clientPath.split(".").pop() ?? "").toLowerCase();
+    if (!["m4a", "mp4", "aac", "mp3", "mov"].includes(clientExt)) {
+      return { ok: false, error: "invalid_storage_path" };
+    }
+    return {
+      ok: true,
+      storagePath: clientPath,
+      mimeType: mime === "image/jpg" ? "image/jpeg" : mime,
+      fileSizeBytes: size,
+    };
+  }
+
   const storagePath = `${expectedPrefix}${Date.now()}.${ext}`;
   return { ok: true, storagePath, mimeType: mime === "image/jpg" ? "image/jpeg" : mime, fileSizeBytes: size };
 }

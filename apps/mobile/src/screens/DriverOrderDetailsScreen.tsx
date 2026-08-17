@@ -2418,11 +2418,19 @@ export function DriverOrderDetailsScreen() {
     }
 
     try {
+      if (isTaxiRide && targetRole === "client") {
+        (navigation as any).navigate("DriverTaxiChat", { rideId: order.id });
+        return;
+      }
       (navigation as any).navigate("DriverChat", { orderId: order.id, targetRole, sourceTable: getOrderSourceTable(order) });
       return;
     } catch {}
 
     try {
+      if (isTaxiRide && targetRole === "client") {
+        (navigation as any).navigate("DriverTaxiChat", { rideId: order.id });
+        return;
+      }
       (navigation as any).navigate("OrderChat", { orderId: order.id, targetRole, sourceTable: getOrderSourceTable(order) });
     } catch (e) {
       console.error("Navigation chat introuvable:", e);

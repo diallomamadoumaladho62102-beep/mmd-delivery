@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import AdminGate from "@/components/AdminGate";
 import AdminTaxiCancelRefundPanel from "@/components/AdminTaxiCancelRefundPanel";
+import AdminTaxiForceCompletePanel from "@/components/AdminTaxiForceCompletePanel";
 import { canManageTaxiRides, canManageTaxiPayouts } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
 
@@ -267,10 +268,17 @@ export default function AdminTaxiRideDetailPage() {
               </section>
 
               {canManage ? (
-                <AdminTaxiCancelRefundPanel
-                  defaultRideId={rideId}
-                  onCompleted={() => void load()}
-                />
+                <>
+                  <AdminTaxiForceCompletePanel
+                    defaultRideId={rideId}
+                    rideStatus={ride.status}
+                    onCompleted={() => void load()}
+                  />
+                  <AdminTaxiCancelRefundPanel
+                    defaultRideId={rideId}
+                    onCompleted={() => void load()}
+                  />
+                </>
               ) : null}
             </>
           ) : null}
