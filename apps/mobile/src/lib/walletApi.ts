@@ -9,7 +9,7 @@ export type WalletSummaryResponse = {
   currency?: string;
   balance_cents?: number;
   available_cents?: number;
-  /** Unpaid delivery earnings awaiting platform→Connect SCT. */
+  /** Unpaid earnings (food/delivery/taxi) awaiting platform→Connect SCT. */
   awaiting_transfer_cents?: number;
   pending_cents?: number;
   paid_out_cents?: number;

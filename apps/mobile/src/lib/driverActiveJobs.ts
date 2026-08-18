@@ -68,13 +68,42 @@ export function hasCompletionSignal(row: AssignedJobVisibilityRow | null | undef
   return stamps.some((v) => Boolean(String(v ?? "").trim()));
 }
 
+/** Max age for Active Jobs (display-only). Stale assigned rows stay in DB. */
+export const MAX_ACTIVE_ASSIGNED_JOB_AGE_MS = 48 * 60 * 60 * 1000;
+
+export type AssignedJobFreshnessRow = AssignedJobVisibilityRow & {
+  updated_at?: string | null;
+  created_at?: string | null;
+};
+
 /**
- * Active Jobs gate: allowlist status AND no completion timestamp.
- * Terminal / completed jobs must never appear.
+ * True when an assigned job has not been updated recently.
+ * Does not mutate DB — hides zombie "ready"/"dispatched"/"accepted" rows from Active Jobs.
  */
-export function isActiveAssignedJob(row: AssignedJobVisibilityRow | null | undefined): boolean {
+export function isStaleAssignedJob(
+  row: AssignedJobFreshnessRow | null | undefined,
+  nowMs: number = Date.now(),
+  maxAgeMs: number = MAX_ACTIVE_ASSIGNED_JOB_AGE_MS,
+): boolean {
+  if (!row) return true;
+  const stamp = String(row.updated_at ?? row.created_at ?? "").trim();
+  if (!stamp) return false; // unknown age → status allowlist only
+  const t = new Date(stamp).getTime();
+  if (!Number.isFinite(t)) return false;
+  return nowMs - t > maxAgeMs;
+}
+
+/**
+ * Active Jobs gate: allowlist status, no completion timestamp, not stale.
+ * Terminal / completed / zombie jobs must never appear.
+ */
+export function isActiveAssignedJob(
+  row: AssignedJobFreshnessRow | null | undefined,
+  nowMs: number = Date.now(),
+): boolean {
   if (!row) return false;
   if (hasCompletionSignal(row)) return false;
+  if (isStaleAssignedJob(row, nowMs)) return false;
   return isActiveAssignedStatus(row.status);
 }
 

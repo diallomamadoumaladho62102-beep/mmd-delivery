@@ -287,7 +287,7 @@ export type DriverWalletSummary = {
   balance_cents: number;
   /** Connect available balance (cashable). */
   available_cents: number;
-  /** Unpaid delivery earnings awaiting platform→Connect SCT. */
+  /** Unpaid earnings (food + delivery + taxi) awaiting platform→Connect SCT. */
   awaiting_transfer_cents: number;
   /** Connect pending + in-flight payout transactions. */
   pending_cents: number;

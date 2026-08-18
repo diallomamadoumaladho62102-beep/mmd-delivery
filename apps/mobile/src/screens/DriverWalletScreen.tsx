@@ -601,7 +601,7 @@ export function DriverWalletScreen() {
                   <Text style={styles.reasonTextMuted}>
                     {t(
                       "driver.wallet.available.awaitingTransfer",
-                      "{{amount}} in delivery earnings await platform transfer (SCT) before they can be cashed out.",
+                      "{{amount}} in earnings awaiting platform transfer (SCT) before they can be cashed out.",
                       { amount: fmtMoney(awaitingTransferCents) },
                     )}
                   </Text>
@@ -723,7 +723,10 @@ export function DriverWalletScreen() {
                 <MetricCard
                   label={t("driver.wallet.pending.title", "Pending")}
                   amount={fmtMoney(pendingCents)}
-                  sub={t("driver.wallet.pending.desc", "Not yet available")}
+                  sub={t(
+                    "driver.wallet.pending.desc",
+                    "Connect pending + cash-out processing",
+                  )}
                 />
                 <MetricCard
                   label={t("driver.wallet.ledger.title", "Ledger balance")}

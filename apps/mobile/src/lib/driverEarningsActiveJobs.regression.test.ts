@@ -8,9 +8,14 @@ import {
   hasCompletionSignal,
   isActiveAssignedJob,
   isActiveAssignedStatus,
+  isStaleAssignedJob,
   isTerminalDriverStatus,
 } from "./driverActiveJobs";
-import { getLocalDayRangeIso } from "./driverHomeTodayRange";
+import {
+  getEarningsPeriodRange,
+  getLocalDayRangeIso,
+  isStampInEarningsRange,
+} from "./driverEarningsPeriod";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const mobileRoot = path.resolve(__dirname, "..");
@@ -106,6 +111,22 @@ test("local day range is start/end of local calendar day", () => {
   assert.equal(to.getHours(), 23);
 });
 
+test("today/week/month periods share local timezone helpers", () => {
+  const d = new Date(2026, 7, 17, 15, 0, 0); // Monday
+  const today = getEarningsPeriodRange("today", d);
+  const week = getEarningsPeriodRange("week", d);
+  const month = getEarningsPeriodRange("month", d);
+  assert.equal(today.fromISO, week.fromISO); // Monday → week starts today
+  assert.equal(today.toISO, week.toISO);
+  assert.equal(month.from.getDate(), 1);
+  assert.equal(month.from.getMonth(), 7);
+  assert.ok(isStampInEarningsRange("2026-08-17T18:00:00.000Z", today.fromISO, today.toISO));
+  assert.equal(
+    isStampInEarningsRange("2026-07-20T10:00:00.000Z", month.fromISO, month.toISO),
+    false,
+  );
+});
+
 test("week bars include taxi completed_at (not food-only)", () => {
   const bars = foldWeekBars(
     [],
@@ -141,8 +162,20 @@ test("active jobs: pending/accepted/in_progress visible; terminal hidden", () =>
   assert.equal(isActiveAssignedJob({ status: "completed" }), false);
   assert.equal(isActiveAssignedJob({ status: "delivered" }), false);
   assert.equal(isActiveAssignedJob({ status: "canceled" }), false);
-  assert.equal(isActiveAssignedJob({ status: "accepted" }), true);
-  assert.equal(isActiveAssignedJob({ status: "dispatched" }), true);
+  assert.equal(
+    isActiveAssignedJob({
+      status: "accepted",
+      updated_at: new Date().toISOString(),
+    }),
+    true,
+  );
+  assert.equal(
+    isActiveAssignedJob({
+      status: "dispatched",
+      updated_at: new Date().toISOString(),
+    }),
+    true,
+  );
 });
 
 test("active jobs: completion timestamp hides even if status lagging", () => {
@@ -150,6 +183,7 @@ test("active jobs: completion timestamp hides even if status lagging", () => {
     isActiveAssignedJob({
       status: "dispatched",
       delivered_at: "2026-08-17T12:00:00.000Z",
+      updated_at: new Date().toISOString(),
     }),
     false,
   );
@@ -157,11 +191,38 @@ test("active jobs: completion timestamp hides even if status lagging", () => {
     isActiveAssignedJob({
       status: "picked_up",
       dropoff_code_verified_at: "2026-08-17T12:00:00.000Z",
+      updated_at: new Date().toISOString(),
     }),
     false,
   );
   assert.equal(hasCompletionSignal({ delivered_confirmed_at: "x" }), true);
   assert.equal(hasCompletionSignal({ status: "accepted" }), false);
+});
+
+test("active jobs: stale ready/dispatched (>48h) hidden without mutating DB", () => {
+  const stale = "2026-08-03T06:30:00.000Z";
+  assert.equal(
+    isStaleAssignedJob({ status: "ready", updated_at: stale }, Date.parse("2026-08-17T20:00:00.000Z")),
+    true,
+  );
+  assert.equal(
+    isActiveAssignedJob(
+      { status: "ready", updated_at: stale, created_at: stale },
+      Date.parse("2026-08-17T20:00:00.000Z"),
+    ),
+    false,
+  );
+  assert.equal(
+    isActiveAssignedJob(
+      {
+        status: "dispatched",
+        updated_at: stale,
+        created_at: stale,
+      },
+      Date.parse("2026-08-17T20:00:00.000Z"),
+    ),
+    false,
+  );
 });
 
 test("revenue screen wires taxi into hero + chart", () => {
@@ -186,7 +247,27 @@ test("home today summary wires same SoT as earnings", () => {
   assert.match(home, /isActiveAssignedJob/);
   assert.match(home, /\.in\("status", DRIVER_ACTIVE_ASSIGNED_STATUS_LIST\)/);
   assert.match(home, /earningsHidden/);
-  assert.doesNotMatch(home, /todayDeliveredRows/);
+  assert.match(home, /updated_at/);
+});
+
+test("revenue screen uses shared period + completion stamp filter", () => {
+  const src = fs.readFileSync(
+    path.join(mobileRoot, "screens/DriverRevenueScreen.tsx"),
+    "utf8",
+  );
+  assert.match(src, /getEarningsPeriodRange/);
+  assert.match(src, /isStampInEarningsRange/);
+  assert.match(src, /getEarningsCompletionStamp/);
+  assert.match(src, /setRange\(tab\.k\)/);
+});
+
+test("wallet awaiting-transfer label is generic earnings not delivery-only", () => {
+  const src = fs.readFileSync(
+    path.join(mobileRoot, "screens/DriverWalletScreen.tsx"),
+    "utf8",
+  );
+  assert.match(src, /earnings awaiting platform transfer/);
+  assert.doesNotMatch(src, /delivery earnings await platform transfer/);
 });
 
 test("premium sheet hide is presentation-only", () => {

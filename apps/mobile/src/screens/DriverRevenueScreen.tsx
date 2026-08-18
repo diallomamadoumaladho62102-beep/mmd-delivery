@@ -19,6 +19,12 @@ import {
   type TaxiEarningsSummary,
 } from "../lib/taxiEarnings";
 import { foldHeroTotals, foldWeekBars } from "../lib/driverRevenueAggregate";
+import {
+  getEarningsCompletionStamp,
+  getEarningsPeriodRange,
+  isStampInEarningsRange,
+  type EarningsPeriodKey,
+} from "../lib/driverEarningsPeriod";
 import { formatDriverPayout } from "../lib/taxiDriverApi";
 import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
 import {
@@ -30,13 +36,14 @@ import {
   MMD_WHITE,
 } from "../theme/mmdUi";
 
-type RangeKey = "week" | "today" | "month";
+type RangeKey = EarningsPeriodKey;
 
 type SourceTable = "orders" | "delivery_requests";
 
 type OrderRow = {
   id: string;
   created_at: string | null;
+  completed_stamp: string | null;
   status: string | null;
   driver_id: string | null;
   driver_delivery_payout: number | null;
@@ -65,30 +72,6 @@ const TEXT = MMD_TEXT;
 const MUTED = MMD_TEXT_MUTED_BLUE;
 const DANGER = "#FCA5A5";
 const HERO_NAVY = "#001E64";
-
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
-function startOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-}
-
-function startOfWeekMonday(d: Date) {
-  const x = startOfDay(d);
-  const day = x.getDay();
-  const diff = day === 0 ? 6 : day - 1;
-  x.setDate(x.getDate() - diff);
-  return x;
-}
 
 function fmtMoney(n: number) {
   const x = Number(n);
@@ -151,36 +134,32 @@ export function DriverRevenueScreen() {
   );
 
   const { fromISO, toISO, titleLabel } = useMemo(() => {
-    const now = new Date();
-
+    const period = getEarningsPeriodRange(range, new Date());
     if (range === "today") {
-      const from = startOfDay(now);
-      const to = endOfDay(now);
       return {
-        fromISO: from.toISOString(),
-        toISO: to.toISOString(),
+        fromISO: period.fromISO,
+        toISO: period.toISO,
         titleLabel: t("driver.revenue.range.today", "Today"),
       };
     }
-
     if (range === "month") {
-      const from = startOfMonth(now);
-      const to = endOfDay(now);
       return {
-        fromISO: from.toISOString(),
-        toISO: to.toISOString(),
+        fromISO: period.fromISO,
+        toISO: period.toISO,
         titleLabel: t("driver.revenue.range.month", "Month"),
       };
     }
-
-    const from = startOfWeekMonday(now);
-    const to = endOfDay(now);
-    const fromTxt = from.toLocaleDateString(locale, { day: "2-digit", month: "short" });
-    const toTxt = now.toLocaleDateString(locale, { day: "2-digit", month: "short" });
-
+    const fromTxt = period.from.toLocaleDateString(locale, {
+      day: "2-digit",
+      month: "short",
+    });
+    const toTxt = period.to.toLocaleDateString(locale, {
+      day: "2-digit",
+      month: "short",
+    });
     return {
-      fromISO: from.toISOString(),
-      toISO: to.toISOString(),
+      fromISO: period.fromISO,
+      toISO: period.toISO,
       titleLabel: `${fromTxt} - ${toTxt}`,
     };
   }, [range, t, locale]);
@@ -203,16 +182,20 @@ export function DriverRevenueScreen() {
       const uid = sessionData.session.user.id;
       setDriverId(uid);
 
+      // Look back before fromISO so long trips created earlier still appear when
+      // completed inside the selected period (filter by completion stamp).
+      const lookback = new Date(new Date(fromISO).getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
       const { data: orderRows, error: ordersError } = await applyLiveTripFilters(
         supabase
           .from("orders")
           .select(
-            "id, created_at, status, driver_id, driver_delivery_payout, tip_cents, kind, restaurant_name",
+            "id, created_at, updated_at, delivered_at, delivered_confirmed_at, status, driver_id, driver_delivery_payout, tip_cents, kind, restaurant_name",
           ),
       )
         .eq("driver_id", uid)
         .eq("status", "delivered")
-        .gte("created_at", fromISO)
+        .gte("created_at", lookback)
         .lte("created_at", toISO)
         .order("created_at", { ascending: false });
 
@@ -221,60 +204,84 @@ export function DriverRevenueScreen() {
       const { data: deliveryRequestRows, error: deliveryRequestsError } = await applyLiveTripFilters(
         supabase
           .from("delivery_requests")
-          .select("id, created_at, status, driver_id, driver_delivery_payout, kind"),
+          .select(
+            "id, created_at, updated_at, delivered_at, dropoff_code_verified_at, status, driver_id, driver_delivery_payout, kind",
+          ),
       )
         .eq("driver_id", uid)
         .eq("status", "delivered")
-        .gte("created_at", fromISO)
+        .gte("created_at", lookback)
         .lte("created_at", toISO)
         .order("created_at", { ascending: false });
 
       if (deliveryRequestsError) throw deliveryRequestsError;
 
-      const normalizedOrders: OrderRow[] = ((orderRows ?? []) as any[]).map((row) => ({
-        id: String(row.id),
-        created_at: row.created_at ?? null,
-        status: row.status ?? null,
-        driver_id: row.driver_id ?? null,
-        driver_delivery_payout:
-          typeof row.driver_delivery_payout === "number"
-            ? row.driver_delivery_payout
-            : Number.isFinite(Number(row.driver_delivery_payout))
-              ? Number(row.driver_delivery_payout)
-              : null,
-        tip_cents:
-          typeof row.tip_cents === "number"
-            ? row.tip_cents
-            : Number.isFinite(Number(row.tip_cents))
-              ? Number(row.tip_cents)
-              : 0,
-        kind: row.kind ?? null,
-        restaurant_name: row.restaurant_name ?? null,
-        source_table: "orders",
-      }));
+      const normalizedOrders: OrderRow[] = ((orderRows ?? []) as any[])
+        .map((row) => {
+          const stamp = getEarningsCompletionStamp({
+            delivered_at: row.delivered_at,
+            delivered_confirmed_at: row.delivered_confirmed_at,
+            updated_at: row.updated_at,
+            created_at: row.created_at,
+          });
+          return {
+            id: String(row.id),
+            created_at: row.created_at ?? null,
+            completed_stamp: stamp,
+            status: row.status ?? null,
+            driver_id: row.driver_id ?? null,
+            driver_delivery_payout:
+              typeof row.driver_delivery_payout === "number"
+                ? row.driver_delivery_payout
+                : Number.isFinite(Number(row.driver_delivery_payout))
+                  ? Number(row.driver_delivery_payout)
+                  : null,
+            tip_cents:
+              typeof row.tip_cents === "number"
+                ? row.tip_cents
+                : Number.isFinite(Number(row.tip_cents))
+                  ? Number(row.tip_cents)
+                  : 0,
+            kind: row.kind ?? null,
+            restaurant_name: row.restaurant_name ?? null,
+            source_table: "orders" as const,
+          };
+        })
+        .filter((row) => isStampInEarningsRange(row.completed_stamp, fromISO, toISO));
 
-      const normalizedDeliveryRequests: OrderRow[] = ((deliveryRequestRows ?? []) as any[]).map((row) => ({
-        id: String(row.id),
-        created_at: row.created_at ?? null,
-        status: row.status ?? null,
-        driver_id: row.driver_id ?? null,
-        driver_delivery_payout:
-          typeof row.driver_delivery_payout === "number"
-            ? row.driver_delivery_payout
-            : Number.isFinite(Number(row.driver_delivery_payout))
-              ? Number(row.driver_delivery_payout)
-              : null,
-        tip_cents: 0,
-        kind: row.kind ?? "delivery",
-        restaurant_name: null,
-        source_table: "delivery_requests",
-      }));
+      const normalizedDeliveryRequests: OrderRow[] = ((deliveryRequestRows ?? []) as any[])
+        .map((row) => {
+          const stamp = getEarningsCompletionStamp({
+            delivered_at: row.delivered_at,
+            dropoff_code_verified_at: row.dropoff_code_verified_at,
+            updated_at: row.updated_at,
+            created_at: row.created_at,
+          });
+          return {
+            id: String(row.id),
+            created_at: row.created_at ?? null,
+            completed_stamp: stamp,
+            status: row.status ?? null,
+            driver_id: row.driver_id ?? null,
+            driver_delivery_payout:
+              typeof row.driver_delivery_payout === "number"
+                ? row.driver_delivery_payout
+                : Number.isFinite(Number(row.driver_delivery_payout))
+                  ? Number(row.driver_delivery_payout)
+                  : null,
+            tip_cents: 0,
+            kind: row.kind ?? "delivery",
+            restaurant_name: null,
+            source_table: "delivery_requests" as const,
+          };
+        })
+        .filter((row) => isStampInEarningsRange(row.completed_stamp, fromISO, toISO));
 
       setOrders(
         [...normalizedOrders, ...normalizedDeliveryRequests].sort(
           (a, b) =>
-            new Date(b.created_at ?? 0).getTime() -
-            new Date(a.created_at ?? 0).getTime(),
+            new Date(b.completed_stamp ?? b.created_at ?? 0).getTime() -
+            new Date(a.completed_stamp ?? a.created_at ?? 0).getTime(),
         ),
       );
 
@@ -312,7 +319,7 @@ export function DriverRevenueScreen() {
     // Food + Delivery + Taxi → hero TOTAL / Trips / Avg (Taxi SoT in cents).
     return foldHeroTotals({
       foodRows: orders.map((o) => ({
-        created_at: o.created_at,
+        created_at: o.completed_stamp ?? o.created_at,
         baseDollars: getGain(o),
         tipDollars: getTip(o),
       })),
@@ -332,10 +339,9 @@ export function DriverRevenueScreen() {
       t("driver.revenue.days.sun", "Sun"),
     ];
 
-    // Chart must include taxi completed_at points — not food/delivery only.
     return foldWeekBars(
       orders.map((o) => ({
-        created_at: o.created_at,
+        created_at: o.completed_stamp ?? o.created_at,
         baseDollars: getGain(o),
         tipDollars: getTip(o),
       })),
@@ -568,11 +574,11 @@ export function DriverRevenueScreen() {
                       <View style={{ flex: 1, paddingRight: 10 }}>
                         <Text style={styles.sessionAmount}>{fmtMoney(total)}</Text>
                         <Text style={styles.sessionMeta} numberOfLines={1}>
-                          {fmtTimeRange(o.created_at)} · #{o.id.slice(0, 8)}{o.source_table === "delivery_requests" ? " · Delivery" : ""}{o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
+                          {fmtTimeRange(o.completed_stamp ?? o.created_at)} · #{o.id.slice(0, 8)}{o.source_table === "delivery_requests" ? " · Delivery" : ""}{o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
                         </Text>
                       </View>
                       <View style={styles.datePill}>
-                        <Text style={styles.datePillText}>{fmtShortDate(o.created_at)}</Text>
+                        <Text style={styles.datePillText}>{fmtShortDate(o.completed_stamp ?? o.created_at)}</Text>
                       </View>
                     </View>
 

@@ -108,7 +108,11 @@ import {
   isActiveAssignedJob,
 } from "../lib/driverActiveJobs";
 import { foldHeroTotals } from "../lib/driverRevenueAggregate";
-import { getLocalDayRangeIso } from "../lib/driverHomeTodayRange";
+import {
+  getEarningsCompletionStamp,
+  getLocalDayRangeIso,
+  isStampInEarningsRange,
+} from "../lib/driverEarningsPeriod";
 import { loadTaxiDriverEarnings } from "../lib/taxiEarnings";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -152,6 +156,7 @@ type DriverOrder = {
   delivered_confirmed_at?: string | null;
   dropoff_code_verified_at?: string | null;
   tip_cents?: number | null;
+  updated_at?: string | null;
 };
 
 type ZoneDemand = "calm" | "busy" | "very_busy";
@@ -1339,15 +1344,21 @@ export function DriverHomeScreen() {
         .eq("user_id", driverId)
         .maybeSingle();
 
-      // Food SoT: same tables/filters as DriverRevenueScreen (delivered + created_at day).
+      // Food/Delivery: same completion-stamp period as Earnings Today.
+      const lookback = new Date(
+        new Date(fromISO).getTime() - 14 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+
       const { data: todayOrders, error: todayOrdersError } = await applyLiveTripFilters(
         supabase
           .from("orders")
-          .select("id, status, created_at, driver_delivery_payout, tip_cents"),
+          .select(
+            "id, status, created_at, updated_at, delivered_at, delivered_confirmed_at, driver_delivery_payout, tip_cents",
+          ),
       )
         .eq("driver_id", driverId)
         .eq("status", "delivered")
-        .gte("created_at", fromISO)
+        .gte("created_at", lookback)
         .lte("created_at", toISO)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -1357,11 +1368,13 @@ export function DriverHomeScreen() {
       const { data: todayRequests, error: todayRequestsError } = await applyLiveTripFilters(
         supabase
           .from("delivery_requests")
-          .select("id, status, created_at, driver_delivery_payout"),
+          .select(
+            "id, status, created_at, updated_at, delivered_at, dropoff_code_verified_at, driver_delivery_payout",
+          ),
       )
         .eq("driver_id", driverId)
         .eq("status", "delivered")
-        .gte("created_at", fromISO)
+        .gte("created_at", lookback)
         .lte("created_at", toISO)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -1381,20 +1394,48 @@ export function DriverHomeScreen() {
       if (!mountedRef.current) return;
 
       const foodRows = [
-        ...((todayOrders ?? []) as any[]).map((row) => {
-          const tipCents = Number(row.tip_cents ?? 0);
-          return {
-            created_at: row.created_at ?? null,
-            baseDollars: getConfiguredDriverPayout(row) ?? 0,
-            tipDollars:
-              Number.isFinite(tipCents) && tipCents > 0 ? tipCents / 100 : 0,
-          };
-        }),
-        ...((todayRequests ?? []) as any[]).map((row) => ({
-          created_at: row.created_at ?? null,
-          baseDollars: getConfiguredDriverPayout(row) ?? 0,
-          tipDollars: 0,
-        })),
+        ...((todayOrders ?? []) as any[])
+          .map((row) => {
+            const stamp = getEarningsCompletionStamp({
+              delivered_at: row.delivered_at,
+              delivered_confirmed_at: row.delivered_confirmed_at,
+              updated_at: row.updated_at,
+              created_at: row.created_at,
+            });
+            if (!isStampInEarningsRange(stamp, fromISO, toISO)) return null;
+            const tipCents = Number(row.tip_cents ?? 0);
+            return {
+              created_at: stamp,
+              baseDollars: getConfiguredDriverPayout(row) ?? 0,
+              tipDollars:
+                Number.isFinite(tipCents) && tipCents > 0 ? tipCents / 100 : 0,
+            };
+          })
+          .filter(Boolean) as Array<{
+          created_at: string | null;
+          baseDollars: number;
+          tipDollars: number;
+        }>,
+        ...((todayRequests ?? []) as any[])
+          .map((row) => {
+            const stamp = getEarningsCompletionStamp({
+              delivered_at: row.delivered_at,
+              dropoff_code_verified_at: row.dropoff_code_verified_at,
+              updated_at: row.updated_at,
+              created_at: row.created_at,
+            });
+            if (!isStampInEarningsRange(stamp, fromISO, toISO)) return null;
+            return {
+              created_at: stamp,
+              baseDollars: getConfiguredDriverPayout(row) ?? 0,
+              tipDollars: 0,
+            };
+          })
+          .filter(Boolean) as Array<{
+          created_at: string | null;
+          baseDollars: number;
+          tipDollars: number;
+        }>,
       ];
 
       // Food + Delivery + Taxi — same fold as Earnings hero.
@@ -1596,7 +1637,7 @@ export function DriverHomeScreen() {
           supabase
             .from("orders")
             .select(
-              `id, kind, status, created_at,
+              `id, kind, status, created_at, updated_at,
              restaurant_name, pickup_address, dropoff_address,
              distance_miles, delivery_fee, driver_delivery_payout, total,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng,
@@ -1691,6 +1732,7 @@ export function DriverHomeScreen() {
           dropoff_lng: toFiniteNumber(request.dropoff_lng),
           delivered_at: request.delivered_at ?? null,
           dropoff_code_verified_at: request.dropoff_code_verified_at ?? null,
+          updated_at: request.updated_at ?? null,
           source_table: "delivery_requests" as const,
         }));
 
@@ -1753,6 +1795,8 @@ export function DriverHomeScreen() {
             delivered_at: (o as any).delivered_at ?? null,
             delivered_confirmed_at: (o as any).delivered_confirmed_at ?? null,
             dropoff_code_verified_at: (o as any).dropoff_code_verified_at ?? null,
+            updated_at: (o as any).updated_at ?? o.created_at ?? null,
+            created_at: o.created_at ?? null,
           }),
         );
 
@@ -2100,6 +2144,8 @@ export function DriverHomeScreen() {
           delivered_at: order.delivered_at ?? null,
           delivered_confirmed_at: order.delivered_confirmed_at ?? null,
           dropoff_code_verified_at: order.dropoff_code_verified_at ?? null,
+          updated_at: order.updated_at ?? order.created_at ?? null,
+          created_at: order.created_at ?? null,
         }),
       )
       .map((order) => {
