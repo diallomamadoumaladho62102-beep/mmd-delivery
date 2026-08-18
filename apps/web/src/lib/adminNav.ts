@@ -70,6 +70,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         label: "Supervision",
         permission: "supervision.read",
       },
+      {
+        href: "/admin/ops/stale-driver-jobs",
+        label: "Stale Jobs",
+        permission: "orders.read",
+      },
     ],
   },
   {

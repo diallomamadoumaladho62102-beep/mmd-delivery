@@ -76,9 +76,22 @@ export type AssignedJobFreshnessRow = AssignedJobVisibilityRow & {
   created_at?: string | null;
 };
 
+/** Statuses that mean the driver is mid-mission — never hide for age. */
+export const DRIVER_IN_PROGRESS_STATUSES = [
+  "picked_up",
+  "pickup",
+  "on_the_way",
+  "en_route",
+  "in_progress",
+  "driver_arrived",
+  "arrived",
+  "out_for_delivery",
+] as const;
+
 /**
  * True when an assigned job has not been updated recently.
- * Does not mutate DB — hides zombie "ready"/"dispatched"/"accepted" rows from Active Jobs.
+ * Does not mutate DB — used to flag abandoned "ready"/"dispatched"/"accepted" zombies.
+ * In-progress statuses are never considered stale by age alone.
  */
 export function isStaleAssignedJob(
   row: AssignedJobFreshnessRow | null | undefined,
@@ -86,6 +99,10 @@ export function isStaleAssignedJob(
   maxAgeMs: number = MAX_ACTIVE_ASSIGNED_JOB_AGE_MS,
 ): boolean {
   if (!row) return true;
+  const status = normalizeDriverJobStatus(row.status);
+  if ((DRIVER_IN_PROGRESS_STATUSES as readonly string[]).includes(status)) {
+    return false;
+  }
   const stamp = String(row.updated_at ?? row.created_at ?? "").trim();
   if (!stamp) return false; // unknown age → status allowlist only
   const t = new Date(stamp).getTime();
@@ -94,8 +111,9 @@ export function isStaleAssignedJob(
 }
 
 /**
- * Active Jobs gate: allowlist status, no completion timestamp, not stale.
- * Terminal / completed / zombie jobs must never appear.
+ * Active Jobs UI gate: allowlist status, no completion timestamp, not stale zombie.
+ * Mid-mission statuses remain visible regardless of age.
+ * Stale zombies remain recoverable via admin + dedicated restore paths.
  */
 export function isActiveAssignedJob(
   row: AssignedJobFreshnessRow | null | undefined,
@@ -104,6 +122,16 @@ export function isActiveAssignedJob(
   if (!row) return false;
   if (hasCompletionSignal(row)) return false;
   if (isStaleAssignedJob(row, nowMs)) return false;
+  return isActiveAssignedStatus(row.status);
+}
+
+/** Backend/Admin: non-terminal assigned jobs (includes stale zombies). */
+export function isRecoverableAssignedJob(
+  row: AssignedJobFreshnessRow | null | undefined,
+): boolean {
+  if (!row) return false;
+  if (hasCompletionSignal(row)) return false;
+  if (isTerminalDriverStatus(row.status)) return false;
   return isActiveAssignedStatus(row.status);
 }
 

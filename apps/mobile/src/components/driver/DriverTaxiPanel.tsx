@@ -113,6 +113,8 @@ export function DriverTaxiPanel({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const actionLockRef = useRef(false);
   const ringingOfferIdsRef = useRef<Set<string>>(new Set());
+  /** Avoid wiping Home SoT with initial null before first successful fetch. */
+  const hydratedActiveRideRef = useRef(false);
 
   const taxiEnabled = features?.taxi_enabled === true;
   const showPanel = taxiEnabled && driverApproved;
@@ -123,6 +125,7 @@ export function DriverTaxiPanel({
   }, [activeOffers.length, onActiveOffersChange]);
 
   useEffect(() => {
+    if (!hydratedActiveRideRef.current) return;
     onActiveRideChange?.(activeRide);
   }, [activeRide, onActiveRideChange]);
 
@@ -157,9 +160,13 @@ export function DriverTaxiPanel({
   }, [activeOffers, isOnline, showPanel]);
 
   const refresh = useCallback(async () => {
-    if (!showPanel || !isOnline) {
+    // Offers require online + taxi panel; active ride must survive offline/kill.
+    if (!showPanel) {
       setOffers([]);
-      setActiveRide(null);
+      return;
+    }
+    if (!isOnline) {
+      setOffers([]);
       return;
     }
 
@@ -170,9 +177,13 @@ export function DriverTaxiPanel({
         fetchActiveTaxiRide(),
       ]);
       setOffers((offersRes?.offers as TaxiOfferRow[]) ?? []);
-      setActiveRide((activeRes?.ride as Record<string, unknown>) ?? null);
+      const ride = (activeRes?.ride as Record<string, unknown>) ?? null;
+      // Only clear when server explicitly returns no active ride.
+      hydratedActiveRideRef.current = true;
+      setActiveRide(ride);
     } catch (e) {
-      console.log("[DriverTaxiPanel]", e);
+      // Network error: keep prior activeRide — Home SoT refresh is independent.
+      console.log("[DriverTaxiPanel] refresh error (kept prior active ride):", e);
     } finally {
       setLoading(false);
     }

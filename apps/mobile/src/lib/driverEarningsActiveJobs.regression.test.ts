@@ -8,6 +8,7 @@ import {
   hasCompletionSignal,
   isActiveAssignedJob,
   isActiveAssignedStatus,
+  isRecoverableAssignedJob,
   isStaleAssignedJob,
   isTerminalDriverStatus,
 } from "./driverActiveJobs";
@@ -222,6 +223,54 @@ test("active jobs: stale ready/dispatched (>48h) hidden without mutating DB", ()
       Date.parse("2026-08-17T20:00:00.000Z"),
     ),
     false,
+  );
+  // Mid-mission never hidden by age alone (recoverable + Active Jobs).
+  assert.equal(
+    isStaleAssignedJob(
+      { status: "picked_up", updated_at: stale },
+      Date.parse("2026-08-17T20:00:00.000Z"),
+    ),
+    false,
+  );
+  assert.equal(
+    isActiveAssignedJob(
+      { status: "in_progress", updated_at: stale, created_at: stale },
+      Date.parse("2026-08-17T20:00:00.000Z"),
+    ),
+    true,
+  );
+  assert.equal(
+    isRecoverableAssignedJob({ status: "ready", updated_at: stale }),
+    true,
+  );
+  assert.equal(
+    isRecoverableAssignedJob({ status: "dispatched", updated_at: stale }),
+    true,
+  );
+});
+
+test("home restores active taxi from server and keeps state on fetch error", () => {
+  const home = fs.readFileSync(
+    path.join(mobileRoot, "screens/DriverHomeScreen.tsx"),
+    "utf8",
+  );
+  assert.match(home, /refreshActiveTaxiRide/);
+  assert.match(home, /kept prior state/);
+  assert.match(home, /resumedActiveJobKeyRef/);
+  assert.match(home, /sourceTable: "taxi_rides"/);
+  assert.match(home, /DRIVER_IN_PROGRESS_STATUSES/);
+});
+
+test("taxi panel does not clear active ride on offline or mount null", () => {
+  const panel = fs.readFileSync(
+    path.join(mobileRoot, "components/driver/DriverTaxiPanel.tsx"),
+    "utf8",
+  );
+  assert.match(panel, /hydratedActiveRideRef/);
+  assert.match(panel, /kept prior active ride/);
+  assert.doesNotMatch(
+    panel,
+    /if \(!showPanel \|\| !isOnline\) \{\s*setOffers\(\[\]\);\s*setActiveRide\(null\)/,
   );
 });
 

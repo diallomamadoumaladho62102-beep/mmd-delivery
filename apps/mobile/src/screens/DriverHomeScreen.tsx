@@ -105,6 +105,7 @@ import {
 } from "../lib/driverMarketplaceApi";
 import {
   DRIVER_ACTIVE_ASSIGNED_STATUSES,
+  DRIVER_IN_PROGRESS_STATUSES,
   isActiveAssignedJob,
 } from "../lib/driverActiveJobs";
 import { foldHeroTotals } from "../lib/driverRevenueAggregate";
@@ -851,6 +852,8 @@ export function DriverHomeScreen() {
   const fetchSeqRef = useRef(0);
   const mountedRef = useRef(true);
   const restoredOnlineStatusRef = useRef(false);
+  /** One-shot resume navigation after cold start / kill+reopen (per active job id). */
+  const resumedActiveJobKeyRef = useRef<string | null>(null);
   const lastOfferIdRef = useRef<string | null>(null);
   const declinedOrderKeysRef = useRef<Set<string>>(new Set());
   const forceOnlinePreviewRef = useRef(false);
@@ -2136,6 +2139,22 @@ export function DriverHomeScreen() {
     });
   }, [navAny]);
 
+  // Mid-mission Food/Delivery: resume order screen once after cold start (SoT = myOrders).
+  useEffect(() => {
+    if (resumedActiveJobKeyRef.current?.startsWith("taxi:")) return;
+    const mid = myOrders.find((order) => {
+      const status = String(order.status ?? "")
+        .trim()
+        .toLowerCase();
+      return (DRIVER_IN_PROGRESS_STATUSES as readonly string[]).includes(status);
+    });
+    if (!mid) return;
+    const key = `${mid.source_table ?? "orders"}:${mid.id}`;
+    if (resumedActiveJobKeyRef.current === key) return;
+    resumedActiveJobKeyRef.current = key;
+    handleOpenOrder(mid);
+  }, [handleOpenOrder, myOrders]);
+
   const premiumJobs = useMemo(() => {
     const foodDeliveryJobs = myOrders
       .filter((order) =>
@@ -2699,11 +2718,48 @@ export function DriverHomeScreen() {
       const out = await fetchActiveTaxiRide();
       if (!mountedRef.current) return;
       const ride = out?.ride ?? out?.taxi_ride ?? null;
-      setActiveTaxiRide(ride && typeof ride === "object" ? (ride as Record<string, unknown>) : null);
-    } catch {
-      if (mountedRef.current) setActiveTaxiRide(null);
+      if (ride && typeof ride === "object") {
+        setActiveTaxiRide(ride as Record<string, unknown>);
+        return;
+      }
+      // Only clear when server explicitly returns no active ride.
+      setActiveTaxiRide(null);
+    } catch (e) {
+      // Network blip must not erase local active ride — backend remains SoT on next success.
+      console.log("refreshActiveTaxiRide error (kept prior state):", e);
     }
   }, []);
+
+  // Cold start / focus: always rehydrate active taxi from server (SoT), online or offline UI.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshActiveTaxiRide();
+    }, [refreshActiveTaxiRide]),
+  );
+
+  // After kill/crash/reopen: open the active taxi mission screen once (backend SoT).
+  useEffect(() => {
+    const rideId = String(activeTaxiRide?.id ?? "").trim();
+    const status = String(activeTaxiRide?.status ?? "")
+      .trim()
+      .toLowerCase();
+    const taxiActive =
+      Boolean(rideId) &&
+      ["accepted", "driver_arrived", "in_progress"].includes(status);
+    if (!taxiActive) {
+      if (resumedActiveJobKeyRef.current?.startsWith("taxi:")) {
+        resumedActiveJobKeyRef.current = null;
+      }
+      return;
+    }
+    const key = `taxi:${rideId}`;
+    if (resumedActiveJobKeyRef.current === key) return;
+    resumedActiveJobKeyRef.current = key;
+    navAny.navigate("DriverMap", {
+      orderId: rideId,
+      sourceTable: "taxi_rides",
+    });
+  }, [activeTaxiRide, navAny]);
 
   useEffect(() => {
     if (!isOnline) return;

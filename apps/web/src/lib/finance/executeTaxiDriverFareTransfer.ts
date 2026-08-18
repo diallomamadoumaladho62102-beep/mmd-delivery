@@ -76,17 +76,36 @@ function normalizeCurrency(v: unknown): string {
   return normalizeTaxiCurrencyForStripe(v, "usd");
 }
 
+/**
+ * Stripe Charge id usable as Transfer `source_transaction`.
+ * Card charges use `ch_…`; Link / some wallets surface as `py_…` (still a Charge object).
+ * Rejecting `py_` blocked SCT for Link-paid taxi rides while card `ch_` succeeded.
+ */
+export async function resolveSourceChargeIdFromPaymentIntent(
+  stripeClient: Stripe,
+  paymentIntentId: string,
+): Promise<string | null> {
+  const pi = await stripeClient.paymentIntents.retrieve(paymentIntentId, {
+    expand: ["latest_charge"],
+  });
+  const charge = pi.latest_charge;
+  if (typeof charge === "string") {
+    const id = charge.trim();
+    if (id.startsWith("ch_") || id.startsWith("py_")) return id;
+    return null;
+  }
+  if (charge && typeof charge === "object" && "id" in charge) {
+    const id = String((charge as { id?: unknown }).id ?? "").trim();
+    if (id.startsWith("ch_") || id.startsWith("py_")) return id;
+  }
+  return null;
+}
+
 async function resolveSourceChargeId(
   stripeClient: Stripe,
   paymentIntentId: string,
 ): Promise<string | null> {
-  const pi = await stripeClient.paymentIntents.retrieve(paymentIntentId);
-  const charge = pi.latest_charge;
-  if (typeof charge === "string" && charge.startsWith("ch_")) return charge;
-  if (charge && typeof charge === "object" && "id" in charge) {
-    return String(charge.id);
-  }
-  return null;
+  return resolveSourceChargeIdFromPaymentIntent(stripeClient, paymentIntentId);
 }
 
 function holdHoursMs(): number {
