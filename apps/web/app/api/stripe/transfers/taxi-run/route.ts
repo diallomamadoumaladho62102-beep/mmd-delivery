@@ -55,6 +55,16 @@ export async function POST(req: NextRequest) {
           error: result.error,
           taxi_ride_id: result.taxi_ride_id ?? rideId,
           ...(result.message ? { message: result.message } : {}),
+          ...(result.stripe_code
+            ? { stripe_code: result.stripe_code }
+            : {}),
+          ...(result.stripe_type
+            ? { stripe_type: result.stripe_type }
+            : {}),
+          ...(result.source_charge_id
+            ? { source_charge_id: result.source_charge_id }
+            : {}),
+          ...(result.destination ? { destination: result.destination } : {}),
           ...(result.country_code ? { country_code: result.country_code } : {}),
           ...(result.currency ? { currency: result.currency } : {}),
         },

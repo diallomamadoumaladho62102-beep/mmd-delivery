@@ -45,6 +45,10 @@ export type ExecuteTaxiDriverFareTransferResult =
       message?: string;
       country_code?: string;
       currency?: string;
+      stripe_code?: string | null;
+      stripe_type?: string | null;
+      source_charge_id?: string;
+      destination?: string;
       httpStatus?: number;
     };
 
@@ -514,13 +518,133 @@ export async function executeTaxiDriverFareTransfer(params: {
       { idempotencyKey },
     );
   } catch (e) {
-    console.error("[executeTaxiDriverFareTransfer] transfer create failed", e);
-    return {
-      ok: false,
-      error: "Stripe transfer failed",
-      taxi_ride_id: rideId,
-      httpStatus: 500,
+    const stripeErr = e as {
+      message?: string;
+      code?: string;
+      type?: string;
+      raw?: { message?: string; code?: string };
     };
+    const stripeMessage = String(
+      stripeErr?.raw?.message ?? stripeErr?.message ?? e,
+    ).slice(0, 500);
+    const stripeCode = String(
+      stripeErr?.code ?? stripeErr?.raw?.code ?? "",
+    )
+      .trim()
+      .toLowerCase();
+
+    // Old charges whose funds already left platform (bank payout) cannot use
+    // source_transaction. Fall back once to available platform balance when
+    // Stripe reports insufficient funds — never invent money; still idempotent.
+    const balanceRelated =
+      stripeCode.includes("insufficient") ||
+      stripeMessage.toLowerCase().includes("insufficient") ||
+      stripeCode === "balance_insufficient";
+
+    if (balanceRelated) {
+      try {
+        const bal = await stripe.balance.retrieve();
+        const available = (bal.available ?? [])
+          .filter((b) => String(b.currency).toLowerCase() === currency)
+          .reduce((s, b) => s + Number(b.amount ?? 0), 0);
+        if (available >= stripeTransferAmount) {
+          const fallbackKey = `${idempotencyKey}:from_available`;
+          transfer = await stripe.transfers.create(
+            {
+              amount: stripeTransferAmount,
+              currency,
+              destination,
+              transfer_group: transferGroup,
+              metadata: {
+                module: "taxi",
+                taxi_ride_id: rideId,
+                taxi_commission_id: commission.id,
+                driver_id: String(ride.driver_id ?? ""),
+                amount_cents: String(amount),
+                payment_intent_id: paymentIntentId,
+                source_transaction_fallback: "platform_available",
+                original_source_charge_id: sourceChargeId,
+                original_stripe_code: stripeCode,
+              },
+            },
+            { idempotencyKey: fallbackKey },
+          );
+        } else {
+          console.error(
+            "[executeTaxiDriverFareTransfer] transfer create failed",
+            {
+              rideId,
+              sourceChargeId,
+              destination,
+              amount: stripeTransferAmount,
+              currency,
+              stripeCode,
+              stripeMessage,
+              platform_available: available,
+            },
+          );
+          return {
+            ok: false,
+            error: "Stripe transfer failed",
+            message: `${stripeMessage} (platform_available_${currency}=${available})`,
+            stripe_code: stripeCode || null,
+            stripe_type: stripeErr?.type ?? null,
+            taxi_ride_id: rideId,
+            source_charge_id: sourceChargeId,
+            destination,
+            httpStatus: 500,
+          };
+        }
+      } catch (e2) {
+        const err2 = e2 as {
+          message?: string;
+          code?: string;
+          type?: string;
+          raw?: { message?: string; code?: string };
+        };
+        const msg2 = String(err2?.raw?.message ?? err2?.message ?? e2).slice(
+          0,
+          500,
+        );
+        const code2 = String(err2?.code ?? err2?.raw?.code ?? "").trim();
+        console.error(
+          "[executeTaxiDriverFareTransfer] available-balance fallback failed",
+          { rideId, stripeCode, stripeMessage, msg2 },
+        );
+        return {
+          ok: false,
+          error: "Stripe transfer failed",
+          message: msg2 || stripeMessage,
+          stripe_code: code2 || stripeCode || null,
+          stripe_type: err2?.type ?? stripeErr?.type ?? null,
+          taxi_ride_id: rideId,
+          source_charge_id: sourceChargeId,
+          destination,
+          httpStatus: 500,
+        };
+      }
+    } else {
+      console.error("[executeTaxiDriverFareTransfer] transfer create failed", {
+        rideId,
+        sourceChargeId,
+        destination,
+        amount: stripeTransferAmount,
+        currency,
+        stripeCode,
+        stripeMessage,
+      });
+      return {
+        ok: false,
+        error: "Stripe transfer failed",
+        message: stripeMessage,
+        stripe_code: stripeCode || null,
+        stripe_type: stripeErr?.type ?? null,
+        taxi_ride_id: rideId,
+        source_charge_id: sourceChargeId,
+        destination,
+        httpStatus: 500,
+      };
+    }
   }
 
   // Never credit Wallet / mark paid for a reversed Transfer (idempotency replay).
