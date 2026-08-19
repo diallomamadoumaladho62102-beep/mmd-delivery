@@ -15,6 +15,11 @@
  * funds so `source_transaction` Transfers fail with `balance_insufficient` for older
  * rides; cron then retries from platform available when balance recovers.
  *
+ * Note: Stripe API cannot change the **platform's own** payout schedule
+ * (`accounts.update` only works on Connected Accounts). Founder must set
+ * Dashboard → Settings → Payouts → Manual. Cron records `requires_dashboard`
+ * when unpaid SCTs exist and schedule is still automatic.
+ *
  * Tips (Wave 2c): separate PaymentIntent (kind=driver_tip) → SCT with source_transaction
  * (see tipMoneyArchitecture.ts). Tips are never folded into delivery driver_cents.
  *
