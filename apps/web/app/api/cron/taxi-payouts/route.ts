@@ -13,6 +13,10 @@ import {
   readCronBatchLimit,
 } from "@/lib/cronTimeouts";
 import { evaluateTaxiPayoutEligibility } from "@/lib/taxiPayoutEligibility";
+import {
+  ensurePlatformManualPayoutSchedule,
+  evaluatePlatformPayoutGuard,
+} from "@/lib/finance/platformPayoutGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -136,13 +140,31 @@ async function handle(req: NextRequest) {
           (sum, row) => sum + Math.max(0, Number(row.driver_cents ?? 0) || 0),
           0,
         );
+        const platform_payout_guard = evaluatePlatformPayoutGuard({
+          unpaidDriverCents,
+        });
         // Guard signal: platform bank payout must not drain funds still owed to drivers.
+        let platform_manual_payout: Record<string, unknown> | null = null;
         if (unpaidDriverCents > 0) {
           console.warn("[taxi-payouts] unpaid_driver_sct_pending", {
             unpaid_ride_count: rideIds.length,
             unpaid_driver_cents: unpaidDriverCents,
             note: "Driver SCT must settle before platform bank payout of those funds",
           });
+          const manual = await ensurePlatformManualPayoutSchedule();
+          platform_manual_payout =
+            manual.ok === true
+              ? {
+                  ok: true,
+                  already_manual: manual.already_manual,
+                  interval: manual.interval,
+                  platform_account_id: manual.platform_account_id,
+                }
+              : {
+                  ok: false,
+                  error: manual.error,
+                  requires_dashboard: manual.requires_dashboard === true,
+                };
         }
 
         if (!rideIds.length || inventoryOnly) {
@@ -161,10 +183,8 @@ async function handle(req: NextRequest) {
             inventory_only: inventoryOnly,
             unpaid_driver_cents: unpaidDriverCents,
             unpaid_ride_ids: rideIds,
-            platform_payout_guard:
-              unpaidDriverCents > 0
-                ? "block_platform_payout_until_driver_sct"
-                : "clear",
+            platform_payout_guard,
+            platform_manual_payout,
             ...counters,
             results: [] as Array<Record<string, unknown>>,
           };
@@ -350,10 +370,8 @@ async function handle(req: NextRequest) {
           no_eligible_drivers: false,
           inventory_only: false,
           unpaid_driver_cents: unpaidDriverCents,
-          platform_payout_guard:
-            unpaidDriverCents - paid > 0
-              ? "block_platform_payout_until_driver_sct"
-              : "clear",
+          platform_payout_guard,
+          platform_manual_payout,
           admin_action_required:
             failed > 0
               ? "review_stripe_balance_and_manual_payouts_if_balance_insufficient"
