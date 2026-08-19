@@ -354,6 +354,10 @@ async function handle(req: NextRequest) {
             unpaidDriverCents - paid > 0
               ? "block_platform_payout_until_driver_sct"
               : "clear",
+          admin_action_required:
+            failed > 0
+              ? "review_stripe_balance_and_manual_payouts_if_balance_insufficient"
+              : null,
           partial,
           ...counters,
           results,
