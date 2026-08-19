@@ -93,4 +93,23 @@ test("blocks connect not ready", () => {
   if (!result.ok) assert.equal(result.reason, "connect_not_ready");
 });
 
+test("blocks legacy_closed historical write-off (not paid)", () => {
+  const result = evaluateTaxiPayoutEligibility({
+    ...base,
+    sctClosureStatus: "legacy_closed",
+    driverPaidOut: false,
+    driverTransferId: null,
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, "legacy_closed");
+});
+
+test("null sct_closure_status keeps eligible open path", () => {
+  const result = evaluateTaxiPayoutEligibility({
+    ...base,
+    sctClosureStatus: null,
+  });
+  assert.deepEqual(result, { ok: true, alreadyPaid: false });
+});
+
 console.log("taxiPayoutEligibility tests passed");

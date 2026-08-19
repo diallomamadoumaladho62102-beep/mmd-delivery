@@ -23,6 +23,7 @@ import {
   resolveTaxiFareTransferReusePlan,
   taxiFareTransferGroup,
 } from "@/lib/finance/taxiFareTransferGuards";
+import { isTaxiSctHistoricallyClosed } from "@/lib/finance/taxiSctClosure";
 
 export type ExecuteTaxiDriverFareTransferResult =
   | {
@@ -74,6 +75,7 @@ type TaxiCommissionRow = {
   driver_paid_out: boolean;
   driver_transfer_id: string | null;
   driver_paid_out_at: string | null;
+  sct_closure_status?: string | null;
 };
 
 function normalizeCurrency(v: unknown): string {
@@ -146,11 +148,12 @@ export async function executeTaxiDriverFareTransfer(params: {
     return { ok: false, error: "Taxi ride not found", httpStatus: 404 };
   }
 
+  const commissionSelect =
+    "id, taxi_ride_id, currency, driver_cents, driver_paid_out, driver_transfer_id, driver_paid_out_at, sct_closure_status";
+
   let { data: commission, error: comErr } = await params.supabaseAdmin
     .from("taxi_commissions")
-    .select(
-      "id, taxi_ride_id, currency, driver_cents, driver_paid_out, driver_transfer_id, driver_paid_out_at",
-    )
+    .select(commissionSelect)
     .eq("taxi_ride_id", rideId)
     .maybeSingle<TaxiCommissionRow>();
 
@@ -172,9 +175,7 @@ export async function executeTaxiDriverFareTransfer(params: {
     }
     const reload = await params.supabaseAdmin
       .from("taxi_commissions")
-      .select(
-        "id, taxi_ride_id, currency, driver_cents, driver_paid_out, driver_transfer_id, driver_paid_out_at",
-      )
+      .select(commissionSelect)
       .eq("taxi_ride_id", rideId)
       .maybeSingle<TaxiCommissionRow>();
     commission = reload.data ?? null;
@@ -189,6 +190,18 @@ export async function executeTaxiDriverFareTransfer(params: {
 
   if (!commission) {
     return { ok: false, error: "Taxi commission missing", httpStatus: 409 };
+  }
+
+  // Historical write-off: never call Stripe (no Transfer, no invent paid).
+  if (isTaxiSctHistoricallyClosed(commission.sct_closure_status)) {
+    return {
+      ok: false,
+      error: "legacy_closed",
+      taxi_ride_id: rideId,
+      message:
+        "Historical SCT closed without Transfer — no Stripe retry allowed",
+      httpStatus: 409,
+    };
   }
 
   // Stripe SoT: transfer id present usually means paid — but re-check Stripe so a
@@ -300,6 +313,7 @@ export async function executeTaxiDriverFareTransfer(params: {
     driverCents: amount,
     driverPaidOut: false,
     driverTransferId: commission.driver_transfer_id,
+    sctClosureStatus: commission.sct_closure_status,
     completedAt: ride.completed_at ?? ride.updated_at,
     holdUntilMs: holdHoursMs(),
     connectReady,

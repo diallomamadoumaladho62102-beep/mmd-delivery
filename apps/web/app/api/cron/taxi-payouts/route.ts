@@ -52,6 +52,7 @@ type CommissionRow = {
   platform_cents: number | null;
   driver_paid_out: boolean | null;
   driver_transfer_id: string | null;
+  sct_closure_status?: string | null;
 };
 
 type RideRow = {
@@ -117,10 +118,12 @@ async function handle(req: NextRequest) {
         const { data: commissions, error: comErr } = await supabaseAdmin
           .from("taxi_commissions")
           .select(
-            "taxi_ride_id, driver_cents, platform_cents, driver_paid_out, driver_transfer_id"
+            "taxi_ride_id, driver_cents, platform_cents, driver_paid_out, driver_transfer_id, sct_closure_status"
           )
           // Stripe SoT: unpaid = missing transfer id (covers stale paid_out without transfer).
+          // legacy_closed = historical write-off — not unpaid inventory.
           .is("driver_transfer_id", null)
+          .is("sct_closure_status", null)
           .gt("driver_cents", 0)
           .limit(Math.max(1, limit) * 3);
         if (comErr) {
@@ -222,6 +225,7 @@ async function handle(req: NextRequest) {
             driverCents: commission.driver_cents,
             driverPaidOut: commission.driver_paid_out,
             driverTransferId: commission.driver_transfer_id,
+            sctClosureStatus: commission.sct_closure_status,
             completedAt: ride.completed_at ?? ride.updated_at,
             holdUntilMs: holdMs,
             nowMs,
@@ -232,7 +236,9 @@ async function handle(req: NextRequest) {
             continue;
           }
           if (gate.ok === false) {
-            if (gate.reason === "refund_or_dispute") {
+            if (gate.reason === "legacy_closed") {
+              counters.other_skipped += 1;
+            } else if (gate.reason === "refund_or_dispute") {
               const refund = String(ride.refund_status ?? "").toLowerCase();
               if (refund === "disputed") counters.disputed += 1;
               else counters.refunded += 1;

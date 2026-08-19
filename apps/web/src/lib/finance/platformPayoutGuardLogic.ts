@@ -2,6 +2,8 @@
  * Pure platform bank-payout guard helpers (no Stripe I/O).
  */
 
+import { isTaxiSctHistoricallyClosed } from "@/lib/finance/taxiSctClosure";
+
 export const PLATFORM_PAYOUT_GUARD_BLOCK =
   "block_platform_payout_until_driver_sct" as const;
 export const PLATFORM_PAYOUT_GUARD_CLEAR = "clear" as const;
@@ -32,6 +34,7 @@ export function classifyUnpaidDriverSctStatus(params: {
   driverCents: number;
   platformAvailableCents: number;
   driverTransferId?: string | null;
+  sctClosureStatus?: string | null;
 }): {
   status: string;
   action_required: string | null;
@@ -40,6 +43,13 @@ export function classifyUnpaidDriverSctStatus(params: {
   if (String(params.driverTransferId ?? "").trim().startsWith("tr_")) {
     return {
       status: "transferred",
+      action_required: null,
+      can_retry_now: false,
+    };
+  }
+  if (isTaxiSctHistoricallyClosed(params.sctClosureStatus)) {
+    return {
+      status: "legacy_closed",
       action_required: null,
       can_retry_now: false,
     };

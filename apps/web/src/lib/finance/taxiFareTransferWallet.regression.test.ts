@@ -60,6 +60,7 @@ test("wallet awaiting_transfer includes unpaid taxi commissions", () => {
   );
   assert.match(src, /from\("taxi_commissions"\)/);
   assert.match(src, /\.is\("driver_transfer_id", null\)/);
+  assert.match(src, /\.is\("sct_closure_status", null\)/);
   assert.match(src, /taxiAwaitingCents/);
   assert.match(src, /\.eq\("taxi_rides\.payment_status", "paid"\)/);
 });

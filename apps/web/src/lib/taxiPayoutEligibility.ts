@@ -2,6 +2,8 @@
  * Pure eligibility helpers for Taxi driver payouts (cron + taxi-run).
  */
 
+import { isTaxiSctHistoricallyClosed } from "@/lib/finance/taxiSctClosure";
+
 export type TaxiPayoutEligibilityInput = {
   rideStatus: string | null | undefined;
   paymentStatus: string | null | undefined;
@@ -10,6 +12,8 @@ export type TaxiPayoutEligibilityInput = {
   driverCents: number | null | undefined;
   driverPaidOut: boolean | null | undefined;
   driverTransferId: string | null | undefined;
+  /** Historical write-off — not a payment; blocks SCT retry. */
+  sctClosureStatus?: string | null | undefined;
   completedAt: string | null | undefined;
   holdUntilMs?: number;
   nowMs?: number;
@@ -29,6 +33,11 @@ export function evaluateTaxiPayoutEligibility(
 ): TaxiPayoutEligibilityResult {
   if (input.driverPaidOut === true && String(input.driverTransferId ?? "").trim()) {
     return { ok: true, alreadyPaid: true };
+  }
+
+  // Historical closure ≠ paid. Exclude from SCT retry / cron without Stripe calls.
+  if (isTaxiSctHistoricallyClosed(input.sctClosureStatus)) {
+    return { ok: false, reason: "legacy_closed" };
   }
 
   if (lower(input.rideStatus) !== "completed") {

@@ -72,7 +72,8 @@ export async function fetchConnectUsdBalanceCents(
 /**
  * Earnings not yet SCT'd to Connect — shown as Wallet awaiting_transfer_cents.
  * Includes: delivered orders (food + package-linked), orphan delivery_requests,
- * and completed+paid taxi fares whose `driver_transfer_id` is still null.
+ * and completed+paid taxi fares whose `driver_transfer_id` is still null
+ * and `sct_closure_status` is null (legacy_closed is historical write-off, not awaiting).
  *
  * Tips are intentionally EXCLUDED here — see
  * `@/lib/finance/tipMoneyArchitecture` for the single tip rule.
@@ -147,12 +148,14 @@ export async function computeDriverAvailableCents(
   const { data: taxiAwaitingRows, error: taxiErr } = await supabaseAdmin
     .from("taxi_commissions")
     .select(
-      "driver_cents, taxi_rides!inner(driver_id, status, payment_status, refund_status)",
+      "driver_cents, sct_closure_status, taxi_rides!inner(driver_id, status, payment_status, refund_status)",
     )
     .eq("taxi_rides.driver_id", driverUserId)
     .eq("taxi_rides.status", "completed")
     .eq("taxi_rides.payment_status", "paid")
-    .is("driver_transfer_id", null);
+    .is("driver_transfer_id", null)
+    // Historical write-off ≠ awaiting Transfer (keeps driver_transfer_id null).
+    .is("sct_closure_status", null);
 
   if (taxiErr) throw new Error(taxiErr.message);
 

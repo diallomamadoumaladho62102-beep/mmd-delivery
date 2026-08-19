@@ -18,26 +18,47 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/admin/finance/driver-sct-reconciliation
  * READ-ONLY inventory of unpaid taxi SCTs + platform balance + payout schedule.
+ * Also returns legacy_closed_items for audit (not unpaid / not retryable / no Stripe).
  */
 export async function GET(req: NextRequest) {
   try {
     await assertCanManageTaxiPayouts(req);
     const admin = buildSupabaseAdminClient();
 
-    const { data: unpaid, error } = await admin
-      .from("taxi_commissions")
-      .select(
-        "taxi_ride_id, driver_cents, platform_cents, driver_transfer_id, driver_paid_out, currency, updated_at",
-      )
-      .is("driver_transfer_id", null)
-      .gt("driver_cents", 0)
-      .limit(100);
+    const [
+      { data: unpaid, error },
+      { data: legacyClosed, error: legacyErr },
+    ] = await Promise.all([
+      admin
+        .from("taxi_commissions")
+        .select(
+          "taxi_ride_id, driver_cents, platform_cents, driver_transfer_id, driver_paid_out, sct_closure_status, sct_closure_reason, sct_closed_at, currency, updated_at",
+        )
+        .is("driver_transfer_id", null)
+        .is("sct_closure_status", null)
+        .gt("driver_cents", 0)
+        .limit(100),
+      admin
+        .from("taxi_commissions")
+        .select(
+          "id, taxi_ride_id, driver_cents, platform_cents, driver_transfer_id, driver_paid_out, sct_closure_status, sct_closure_reason, sct_closed_at, currency, updated_at",
+        )
+        .eq("sct_closure_status", "legacy_closed")
+        .limit(50),
+    ]);
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
+    if (legacyErr) {
+      return NextResponse.json(
+        { ok: false, error: legacyErr.message },
+        { status: 500 },
+      );
+    }
 
     const unpaidRows = unpaid ?? [];
+    const legacyClosedRows = legacyClosed ?? [];
     const rideIds = unpaidRows
       .map((r) => String(r.taxi_ride_id ?? "").trim())
       .filter(Boolean);
@@ -89,6 +110,8 @@ export async function GET(req: NextRequest) {
         driverCents,
         platformAvailableCents: availableUsd,
         driverTransferId: row.driver_transfer_id,
+        sctClosureStatus: (row as { sct_closure_status?: string | null })
+          .sct_closure_status,
       });
 
       let existingTransfers: Array<{ id: string; amount: number; reversed: boolean }> =
@@ -142,6 +165,8 @@ export async function GET(req: NextRequest) {
         completed_at:
           (ride?.completed_at as string | null | undefined) ?? null,
         driver_transfer_id: row.driver_transfer_id,
+        driver_paid_out: row.driver_paid_out ?? false,
+        sct_closure_status: null,
         transfer_status: classified.status,
         stripe_error:
           classified.status ===
@@ -157,6 +182,30 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Audit-only: historical write-offs (never unpaid / never retry / no Stripe calls).
+    const legacy_closed_items = legacyClosedRows.map((row) => {
+      const rideId = String(row.taxi_ride_id ?? "").trim();
+      return {
+        commission_id: String((row as { id?: unknown }).id ?? ""),
+        taxi_ride_id: rideId,
+        driver_cents: Math.max(0, Number(row.driver_cents ?? 0) || 0),
+        platform_cents: row.platform_cents,
+        currency: row.currency,
+        driver_transfer_id: row.driver_transfer_id,
+        driver_paid_out: row.driver_paid_out ?? false,
+        sct_closure_status: "legacy_closed" as const,
+        sct_closure_reason:
+          (row as { sct_closure_reason?: string | null }).sct_closure_reason ??
+          null,
+        sct_closed_at:
+          (row as { sct_closed_at?: string | null }).sct_closed_at ?? null,
+        transfer_status: "legacy_closed",
+        action_required: null,
+        can_retry_now: false,
+        note: "Historical SCT write-off — Driver was never paid via Transfer; not unpaid inventory.",
+      };
+    });
+
     return NextResponse.json({
       ok: true,
       unpaid_count: unpaidRows.length,
@@ -171,8 +220,10 @@ export async function GET(req: NextRequest) {
       platform_payouts_manual: payoutInterval === "manual",
       platform_account_id: platformAcct.id,
       items,
+      legacy_closed_count: legacy_closed_items.length,
+      legacy_closed_items,
       formula:
-        "DRIVER_EARNINGS = TRANSFERRED + AWAITING_PLATFORM_TRANSFER; PLATFORM_NET ≈ GROSS - FEES - DRIVER_TRANSFERS - OTHER",
+        "DRIVER_EARNINGS = TRANSFERRED + AWAITING_PLATFORM_TRANSFER; PLATFORM_NET ≈ GROSS - FEES - DRIVER_TRANSFERS - OTHER; legacy_closed is audit-only (not unpaid).",
     });
   } catch (e) {
     if (e instanceof AdminAccessError) {

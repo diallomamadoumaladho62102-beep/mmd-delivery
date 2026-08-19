@@ -77,6 +77,17 @@ test("transferred id short-circuits classification", () => {
   assert.equal(c.can_retry_now, false);
 });
 
+test("legacy_closed short-circuits classification without retry", () => {
+  const c = classifyUnpaidDriverSctStatus({
+    driverCents: 577,
+    platformAvailableCents: 10_000,
+    driverTransferId: null,
+    sctClosureStatus: "legacy_closed",
+  });
+  assert.equal(c.status, "legacy_closed");
+  assert.equal(c.can_retry_now, false);
+});
+
 test("taxi-payouts wires ensurePlatformManualPayoutSchedule on unpaid", () => {
   const src = fs.readFileSync(
     path.join(repoRoot, "apps/web/app/api/cron/taxi-payouts/route.ts"),
@@ -98,6 +109,7 @@ test("reconciliation API classifies balance_insufficient clearly", () => {
   assert.match(src, /driver_payment_pending_insufficient_platform_balance/);
   assert.match(src, /ensure_manual/);
   assert.match(src, /platform_payouts_manual/);
+  assert.match(src, /legacy_closed_items/);
 });
 
 console.log("platformPayoutGuard regression passed");
