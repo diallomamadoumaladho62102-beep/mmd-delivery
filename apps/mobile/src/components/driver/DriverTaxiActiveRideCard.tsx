@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -18,6 +19,7 @@ import { TaxiSafetyRecordingPanel } from "../taxi/TaxiSafetyRecordingPanel";
 import { SafetyAudioCard } from "../tracking/SafetyAudioCard";
 import { OtpDigitInput } from "../shared/OtpDigitInput";
 import { formatDriverPayout } from "../../lib/taxiDriverApi";
+import { clientDisplayInitials } from "../../lib/driverTaxiClientDisplay";
 
 type Props = {
   rideId: string;
@@ -29,6 +31,9 @@ type Props = {
   paymentLabel?: string | null;
   preferenceLines?: Array<{ emoji: string; label: string }>;
   stops?: Array<{ stop_order: number; address?: string; status?: string }>;
+  /** Client identification for the assigned ride (from /api/taxi/rides/active). */
+  clientName?: string | null;
+  clientAvatarUrl?: string | null;
   actionId: string | null;
   onNavigate: (stage: "pickup" | "dropoff") => void;
   onChat: () => void;
@@ -56,6 +61,8 @@ export function DriverTaxiActiveRideCard({
   paymentLabel,
   preferenceLines,
   stops,
+  clientName,
+  clientAvatarUrl,
   actionId,
   onNavigate,
   onChat,
@@ -76,6 +83,12 @@ export function DriverTaxiActiveRideCard({
   const [verifying, setVerifying] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
   const busy = actionId === rideId || verifying;
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const showAvatar = Boolean(clientAvatarUrl) && !avatarFailed;
+
+  React.useEffect(() => {
+    setAvatarFailed(false);
+  }, [clientAvatarUrl]);
 
   const pressIn = () =>
     Animated.spring(scale, {
@@ -174,6 +187,37 @@ export function DriverTaxiActiveRideCard({
             <Ionicons name="star" size={11} color="#F5C542" />
             <Text style={styles.classText}>
               {String(vehicleClass ?? "STANDARD").toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.clientRow}>
+          <View style={styles.clientAvatarWrap}>
+            {showAvatar ? (
+              <Image
+                source={{ uri: String(clientAvatarUrl) }}
+                style={styles.clientAvatar}
+                accessibilityLabel={t(
+                  "taxi.driver.activeRide.clientPhoto",
+                  "Client photo",
+                )}
+                onError={() => setAvatarFailed(true)}
+              />
+            ) : (
+              <View style={styles.clientAvatarFallback}>
+                <Text style={styles.clientAvatarInitials}>
+                  {clientDisplayInitials(clientName)}
+                </Text>
+              </View>
+            )}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.clientLabel}>
+              {t("taxi.driver.activeRide.client", "Client")}
+            </Text>
+            <Text style={styles.clientName} numberOfLines={1}>
+              {String(clientName ?? "").trim() ||
+                t("taxi.driver.activeRide.clientFallback", "Client")}
             </Text>
           </View>
         </View>
@@ -524,6 +568,52 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.35)",
   },
   classText: { color: "#FDE68A", fontWeight: "800", fontSize: 10 },
+  clientRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: "rgba(15,23,42,0.75)",
+    borderWidth: 1,
+    borderColor: "rgba(51,65,85,0.9)",
+  },
+  clientAvatarWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: "hidden",
+  },
+  clientAvatar: { width: 56, height: 56, borderRadius: 28 },
+  clientAvatarFallback: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "rgba(34,197,94,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  clientAvatarInitials: {
+    color: "#86EFAC",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  clientLabel: {
+    color: "#94A3B8",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  clientName: {
+    color: "#F8FAFC",
+    fontSize: 17,
+    fontWeight: "800",
+    marginTop: 2,
+  },
   price: {
     color: "#4ADE80",
     fontSize: 40,

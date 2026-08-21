@@ -487,6 +487,14 @@ export function DriverTaxiPanel({
               status?: string;
             }>) ?? []
           }
+          clientName={
+            (activeRide.client_display as { full_name?: string | null } | null)
+              ?.full_name ?? null
+          }
+          clientAvatarUrl={
+            (activeRide.client_display as { avatar_url?: string | null } | null)
+              ?.avatar_url ?? null
+          }
           actionId={actionId}
           onNavigate={(stage) =>
             navigation.navigate("DriverMap", {

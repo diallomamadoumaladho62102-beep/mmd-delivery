@@ -47,7 +47,10 @@ export function resolveOverlayInsets(insets: EdgeInsets): {
   hudHeightEstimate: number;
   statusBannerTop: number;
   controlsTop: number;
+  /** @deprecated Arrival banner is top-anchored — kept for legacy callers. */
   arrivalBannerBottom: number;
+  /** Top offset for arrival panel (below HUD / safe area). */
+  arrivalBannerTop: number;
   alertPillBottom: number;
 } {
   const top = Math.max(MIN_TOP_SAFE, clampInset(insets.top));
@@ -61,6 +64,8 @@ export function resolveOverlayInsets(insets: EdgeInsets): {
     statusBannerTop: hudHeightEstimate + 8,
     controlsTop: hudHeightEstimate + 12,
     arrivalBannerBottom: bottom + 96,
+    // Sit just under the instruction HUD so speed/radar chrome never covers it.
+    arrivalBannerTop: hudHeightEstimate + 8,
     alertPillBottom: bottom + 100,
   };
 }

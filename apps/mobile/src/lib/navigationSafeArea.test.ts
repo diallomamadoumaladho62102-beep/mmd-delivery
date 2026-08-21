@@ -46,12 +46,14 @@ const overlay = resolveOverlayInsets({ top: 59, bottom: 34, left: 0, right: 0 })
 assert(overlay.statusBannerTop > overlay.hudHeightEstimate, "status banner below HUD");
 assert(overlay.controlsTop > overlay.hudHeightEstimate, "controls below HUD");
 assert(overlay.arrivalBannerBottom >= 34 + 96, "arrival banner above home indicator");
+assert(overlay.arrivalBannerTop >= overlay.hudHeightEstimate, "arrival panel below HUD (top-anchored)");
 assert(overlay.alertPillBottom >= 34 + 100, "alert pill above home indicator");
 
 // Larger notch pushes chrome further from the edge.
 const small = resolveOverlayInsets({ top: 0, bottom: 0, left: 0, right: 0 });
 const large = resolveOverlayInsets({ top: 59, bottom: 34, left: 0, right: 0 });
 assert(large.statusBannerTop > small.statusBannerTop, "bigger notch → lower banner");
+assert(large.arrivalBannerTop > small.arrivalBannerTop, "bigger notch → lower arrival top");
 assert(large.arrivalBannerBottom > small.arrivalBannerBottom, "bigger inset → higher arrival");
 
 // --- Camera layout folds real insets into padding. ---

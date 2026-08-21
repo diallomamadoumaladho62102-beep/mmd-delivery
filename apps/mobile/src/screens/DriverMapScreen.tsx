@@ -86,6 +86,7 @@ import { DriverNavigationHud } from "../components/driver/DriverNavigationHud";
 import { DriverNavigationBottomBar } from "../components/driver/DriverNavigationBottomBar";
 import { DriverNavigationControls } from "../components/driver/DriverNavigationControls";
 import { DriverArrivalBanner } from "../components/driver/DriverArrivalBanner";
+import { DriverTripEndpointMarkers } from "../components/driver/DriverTripEndpointMarkers";
 import {
   DriverNavigationStatusBanner,
   previewStatusBannerFromQa,
@@ -97,6 +98,7 @@ import { DriverNavigationSafetyPanel } from "../components/driver/DriverNavigati
 import { DriverNavigationSafetyMarkers } from "../components/driver/DriverNavigationSafetyMarkers";
 import { MmdDriverLocationMarker } from "../components/driver/home/MmdDriverLocationMarker";
 import { DriverMapFallbackStates } from "../components/driver/DriverMapFallbackStates";
+import { resolveClientMeetingPoint } from "../lib/driverTaxiClientDisplay";
 import { useDriverTripHistory } from "../hooks/useDriverTripHistory";
 import {
   estimateRemainingMinutes,
@@ -651,6 +653,16 @@ export default function DriverMapScreen() {
     trip,
   ]);
 
+  /** Authorized client meeting pin = ride pickup coords only (no live client GPS). */
+  const clientMeetingPoint = useMemo(() => {
+    if (!trip || trip.stage !== "pickup") return null;
+    return resolveClientMeetingPoint({
+      stage: "pickup",
+      pickupLat: trip.pickup?.latitude,
+      pickupLng: trip.pickup?.longitude,
+    });
+  }, [trip]);
+
   const statusBanner = useMemo(() => {
     if (previewMode && previewQa.status) {
       return previewStatusBannerFromQa(previewQa.status);
@@ -1162,6 +1174,14 @@ export default function DriverMapScreen() {
             </Mapbox.MarkerView>
           ) : null}
 
+          {trip && navigationActive ? (
+            <DriverTripEndpointMarkers
+              stage={trip.stage}
+              destination={activeDestination}
+              clientMeeting={clientMeetingPoint}
+            />
+          ) : null}
+
           {navigationActive && projectedSafetyEvents.length > 0 && (
             <DriverNavigationSafetyMarkers
               events={projectedSafetyEvents}
@@ -1171,18 +1191,22 @@ export default function DriverMapScreen() {
 
         </Mapbox.MapView>
 
-        <DriverNavigationHud
-          visible={!!instruction}
-          instruction={instruction}
-          locale={navLocale}
-          countryCode={trip?.orderCountryCode ?? null}
-        />
+        {!destinationArrived ? (
+          <DriverNavigationHud
+            visible={!!instruction}
+            instruction={instruction}
+            locale={navLocale}
+            countryCode={trip?.orderCountryCode ?? null}
+          />
+        ) : null}
 
-        <DriverNavigationStatusBanner
-          banner={statusBanner}
-          onResume={navigationPaused ? handleResumeNavigation : undefined}
-          topOffset={overlayInsets.statusBannerTop}
-        />
+        {!destinationArrived ? (
+          <DriverNavigationStatusBanner
+            banner={statusBanner}
+            onResume={navigationPaused ? handleResumeNavigation : undefined}
+            topOffset={overlayInsets.statusBannerTop}
+          />
+        ) : null}
 
         {navigationActive && !destinationArrived ? (
           <DriverNavigationSafetyPanel
@@ -1193,28 +1217,32 @@ export default function DriverMapScreen() {
           />
         ) : null}
 
-        <DriverNavigationControls
-          topOffset={controlsTopOffset}
-          voiceEnabled={voiceEnabled}
-          trafficEnabled={trafficEnabled}
-          navigationPaused={navigationPaused}
-          routes={routes}
-          selectedRouteIndex={selectedRouteIndex}
-          navLocale={navLocale}
-          onSelectRouteIndex={handleSelectRouteIndex}
-          onToggleVoice={handleToggleVoice}
-          onToggleTraffic={handleToggleTraffic}
-          onRecenter={handleRecenter}
-          onRouteOverview={handleRouteOverview}
-          onOpenOrderDetails={handleOpenOrderDetails}
-          onTogglePause={handleTogglePause}
-          onStopNavigation={handleStopNavigation}
-        />
+        {!destinationArrived ? (
+          <DriverNavigationControls
+            topOffset={controlsTopOffset}
+            voiceEnabled={voiceEnabled}
+            trafficEnabled={trafficEnabled}
+            navigationPaused={navigationPaused}
+            routes={routes}
+            selectedRouteIndex={selectedRouteIndex}
+            navLocale={navLocale}
+            onSelectRouteIndex={handleSelectRouteIndex}
+            onToggleVoice={handleToggleVoice}
+            onToggleTraffic={handleToggleTraffic}
+            onRecenter={handleRecenter}
+            onRouteOverview={handleRouteOverview}
+            onOpenOrderDetails={handleOpenOrderDetails}
+            onTogglePause={handleTogglePause}
+            onStopNavigation={handleStopNavigation}
+          />
+        ) : null}
 
-        <DriverNavigationAlertPill
-          alert={navigationAlert}
-          bottomOffset={overlayInsets.alertPillBottom}
-        />
+        {!destinationArrived ? (
+          <DriverNavigationAlertPill
+            alert={navigationAlert}
+            bottomOffset={overlayInsets.alertPillBottom}
+          />
+        ) : null}
 
         {trip && destinationArrived ? (
           <DriverArrivalBanner
@@ -1223,8 +1251,9 @@ export default function DriverMapScreen() {
             address={
               trip.stage === "pickup" ? trip.pickupAddress : trip.dropoffAddress
             }
+            remainingMeters={displayRemainingMeters}
             onOpenOrderDetails={handleOpenOrderDetails}
-            bottomOffset={overlayInsets.arrivalBannerBottom}
+            topOffsetExtra={0}
           />
         ) : null}
 
