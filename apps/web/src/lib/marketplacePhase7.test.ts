@@ -107,7 +107,7 @@ async function main() {
     process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED = previous;
   });
 
-  await test("seller cancel deferred stripe (no stripe call)", async () => {
+  await test("seller cancel without PI flags missing_payment_intent (no stripe call)", async () => {
     const updates: Record<string, unknown>[] = [];
     const admin = {
       from: (table: string) => {
@@ -135,6 +135,7 @@ async function main() {
                     status: "paid",
                     payment_status: "paid",
                     refund_status: null,
+                    stripe_payment_intent_id: null,
                   },
                   error: null,
                 }),
@@ -174,14 +175,28 @@ async function main() {
     assert.equal(result.ok, true);
     if (result.ok) {
       assert.equal(result.stripe_refund_deferred, true);
-      assert.equal(result.refund_status, "full_refund_required");
+      // No PaymentIntent on the order → finance-safe marker, never invent a Stripe refund.
+      assert.equal(result.refund_status, "missing_payment_intent");
       assert.equal(result.order.status, "canceled");
     }
-    assert.equal(updates[0]?.refund_status, "full_refund_required");
     assert.equal(updates[0]?.status, "canceled");
+    assert.ok(
+      updates.some((u) => u.refund_status === "missing_payment_intent"),
+      "refund service must mark missing_payment_intent when PI absent",
+    );
   });
 
   await test("seller refuse sets deferred refund without stripe", async () => {
+    const orderRow = {
+      id: "order-1",
+      seller_id: "seller-1",
+      client_user_id: "client-1",
+      status: "paid",
+      payment_status: "paid",
+      refund_status: null as string | null,
+      stripe_payment_intent_id: null as string | null,
+    };
+
     const admin = {
       from: (table: string) => {
         if (table === "sellers") {
@@ -197,37 +212,19 @@ async function main() {
           };
         }
         if (table === "seller_orders") {
-          return {
-            select: () => ({
-              eq: () => ({
-                eq: () => ({
-                  maybeSingle: async () => ({
-                    data: {
-                      id: "order-1",
-                      seller_id: "seller-1",
-                      status: "paid",
-                      payment_status: "paid",
-                    },
-                    error: null,
-                  }),
-                }),
-              }),
-            }),
-            update: (payload: Record<string, unknown>) => ({
-              eq: () => ({
-                eq: () => ({
-                  eq: () => ({
-                    select: () => ({
-                      maybeSingle: async () => ({
-                        data: { id: "order-1", ...payload },
-                        error: null,
-                      }),
-                    }),
-                  }),
-                }),
-              }),
+          const chain: any = {
+            select: () => chain,
+            eq: () => chain,
+            update: (payload: Record<string, unknown>) => {
+              Object.assign(orderRow, payload);
+              return chain;
+            },
+            maybeSingle: async () => ({
+              data: { ...orderRow },
+              error: null,
             }),
           };
+          return chain;
         }
         throw new Error(`unexpected table ${table}`);
       },
@@ -242,7 +239,8 @@ async function main() {
     assert.equal(result.ok, true);
     if (result.ok) {
       assert.equal(result.stripe_refund_deferred, true);
-      assert.equal(result.refund_status, "full_refund_required");
+      // No PaymentIntent → finance-safe marker (not a fake Stripe refund).
+      assert.equal(result.refund_status, "missing_payment_intent");
       assert.equal(result.order.status, "refused");
     }
   });

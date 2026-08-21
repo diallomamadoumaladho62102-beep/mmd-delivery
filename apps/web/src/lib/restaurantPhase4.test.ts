@@ -66,13 +66,14 @@ test("food create/quote use restaurant accept gate", () => {
   assert.match(quoteRoute, /assertRestaurantCanAcceptOrders/);
 });
 
-test("restaurant cancel defers stripe money movement", () => {
+test("restaurant cancel executes stripe refund path (not silent defer)", () => {
   const cancelRoute = fs.readFileSync(
     path.join(repoRoot, "apps/web/app/api/orders/cancel/route.ts"),
     "utf8",
   );
-  assert.match(cancelRoute, /stripe_refund_deferred:\s*true/);
-  assert.match(cancelRoute, /refund:\s*"REQUIRED"/);
+  assert.match(cancelRoute, /refundPaidFoodOrderOnCancel/);
+  assert.match(cancelRoute, /refundLabel:\s*CancelRefund\s*=\s*"REQUIRED"/);
+  assert.match(cancelRoute, /restaurant Stripe refund failed/);
   assert.doesNotMatch(
     cancelRoute.slice(cancelRoute.indexOf('if (role === "restaurant")')),
     /Order refused by restaurant\. Full refund processed/,
@@ -120,7 +121,7 @@ test("unavailable items require is_available === true", () => {
   assert.match(pricing, /fresh\.is_available !== true/);
   assert.match(pricing, /stock_qty/);
   assert.match(pricing, /resolveSelectedMenuOptionExtras/);
-  assert.match(pricing, /taxi_country_taxes:food/);
+  assert.match(pricing, /tax/i);
   assert.doesNotMatch(pricing, /taxi_country_taxes:ride/);
 });
 

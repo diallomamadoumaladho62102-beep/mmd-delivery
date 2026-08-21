@@ -30,6 +30,7 @@ test("material vehicle field detection flags plate/year changes", () => {
 test("online gate requires approved active vehicle for car mode", async () => {
   const calls: Array<{ table: string; filters: Record<string, unknown> }> = [];
   const supabase = {
+    rpc: async () => ({ data: true, error: null }),
     from(table: string) {
       const state: { filters: Record<string, unknown>; maybeSingle?: () => Promise<any> } = {
         filters: {},
@@ -93,6 +94,7 @@ test("online gate requires approved active vehicle for car mode", async () => {
 
 test("online gate allows bike without vehicle when a service is enabled", async () => {
   const supabase = {
+    rpc: async () => ({ data: true, error: null }),
     from(table: string) {
       const builder: any = {
         select() {
