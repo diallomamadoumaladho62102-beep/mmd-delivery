@@ -23,6 +23,10 @@ import {
   updateDriverServicePreferences,
   type DriverServicePreferences,
 } from "../../lib/driverServicePreferencesApi";
+import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   MMD_ACTION_NAVY,
@@ -88,7 +92,11 @@ export function DriverServicesScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchDriverServicePreferences();
+      const data = await withTimeout(
+        fetchDriverServicePreferences(),
+        BOOT_AUTH_TIMEOUT_MS,
+        "driver_services_load",
+      );
       setPrefs(data.preferences);
     } catch (error) {
       Alert.alert(

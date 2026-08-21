@@ -27,6 +27,10 @@ import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useRestaurantPlatformFeatures } from "../hooks/useRestaurantPlatformFeatures";
 import { toUserFacingError } from "../lib/userFacingError";
+import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import MarketScopePill from "../components/market/MarketScopePill";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import {
@@ -1021,62 +1025,69 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
     (async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        const session = data.session ?? null;
+        await withTimeout(
+          (async () => {
+            const { data } = await supabase.auth.getSession();
+            const session = data.session ?? null;
 
-        if (!alive) return;
+            if (!alive) return;
 
-        if (!session?.user?.id) {
-          navigation.replace("RestaurantAuth");
-          return;
-        }
+            if (!session?.user?.id) {
+              navigation.replace("RestaurantAuth");
+              return;
+            }
 
-        const uid = session.user.id;
+            const uid = session.user.id;
 
-        const { data: profile, error: roleError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", uid)
-          .maybeSingle();
+            const { data: profile, error: roleError } = await supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", uid)
+              .maybeSingle();
 
-        if (roleError) {
-          console.log("RestaurantHome role guard error:", roleError);
-        }
+            if (roleError) {
+              console.log("RestaurantHome role guard error:", roleError);
+            }
 
-        const currentRole = String((profile as any)?.role ?? "")
-          .trim()
-          .toLowerCase();
+            const currentRole = String((profile as any)?.role ?? "")
+              .trim()
+              .toLowerCase();
 
-        if (currentRole === "driver") {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "DriverTabs" }],
-          });
-          return;
-        }
+            if (currentRole === "driver") {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "DriverTabs" }],
+              });
+              return;
+            }
 
-        if (currentRole === "client") {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "ClientHome" }],
-          });
-          return;
-        }
+            if (currentRole === "client") {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "ClientHome" }],
+              });
+              return;
+            }
 
-        if (currentRole && currentRole !== "restaurant") {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "RoleSelect" }],
-          });
-          return;
-        }
+            if (currentRole && currentRole !== "restaurant") {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "RoleSelect" }],
+              });
+              return;
+            }
 
-        setRestaurantUserId(uid);
-        await loadRestaurantProfile(uid);
-        setCheckingAuth(false);
+            setRestaurantUserId(uid);
+            await loadRestaurantProfile(uid);
+          })(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "restaurant_home_auth",
+        );
       } catch {
         if (!alive) return;
         navigation.replace("RestaurantAuth");
+      } finally {
+        if (alive) setCheckingAuth(false);
       }
     })();
 

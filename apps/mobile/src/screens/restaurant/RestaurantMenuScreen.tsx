@@ -1402,7 +1402,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 16,
   },
-  modalScroll: { flexGrow: 1, justifyContent: "center", paddingVertical: 24 },
+  modalScroll: { flexGrow: 1, justifyContent: "flex-start", paddingVertical: 24 },
   modalCard: {
     backgroundColor: MMD_BLUE,
     borderRadius: 16,

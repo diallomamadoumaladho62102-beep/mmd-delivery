@@ -1,5 +1,4 @@
 import React from "react";
-import { SafeAreaView, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { AppNavigator } from "../navigation/AppNavigator";
@@ -55,45 +54,17 @@ function getStripeConfigurationError(publishableKey: string): string | null {
   return null;
 }
 
-function StripeConfigurationError({ message }: { message: string }) {
-  return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: "#020617",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <View style={{ maxWidth: 420, gap: 12 }}>
-        <Text
-          style={{
-            color: "#F8FAFC",
-            fontSize: 18,
-            fontWeight: "700",
-            textAlign: "center",
-          }}
-        >
-          Paiement indisponible
-        </Text>
-        <Text style={{ color: "#CBD5E1", textAlign: "center", lineHeight: 22 }}>
-          {message}
-        </Text>
-      </View>
-    </SafeAreaView>
-  );
-}
-
 export default function StripeGate({ initialRouteName }: StripeGateProps) {
   const publishableKey = getPublishableKey();
   const configurationError = getStripeConfigurationError(publishableKey);
 
+  // Never block RoleSelect / Login for Stripe config issues (Apple 2.1 App Completeness).
+  // Payments still fail clearly at checkout; auth entry must always render.
   if (configurationError) {
     if (__DEV__) {
-      console.log("[StripeGate] configuration error:", configurationError);
+      console.log("[StripeGate] configuration error (non-blocking):", configurationError);
     }
-    return <StripeConfigurationError message={configurationError} />;
+    return <AppNavigator initialRouteName={initialRouteName as any} />;
   }
 
   if (!publishableKey) {

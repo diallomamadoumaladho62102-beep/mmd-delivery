@@ -231,19 +231,16 @@ export function DriverHelpScreen() {
 
   const reportIssue = useCallback(() => {
     void runBusyAction("report", async () => {
-      try {
-        navigation.navigate("DriverReportIssue");
-      } catch {
-        Alert.alert(
-          t("driver.help.reportIssueTitle", "Report issue"),
-          t(
-            "driver.help.reportIssueBody",
-            "For now, please contact support by email with the order ID and details."
-          )
-        );
-      }
+      // No dedicated DriverReportIssue screen — keep Help usable for Review.
+      Alert.alert(
+        t("driver.help.reportIssueTitle", "Report issue"),
+        t(
+          "driver.help.reportIssueBody",
+          "For now, please contact support by email with the order ID and details."
+        )
+      );
     });
-  }, [navigation, runBusyAction, t]);
+  }, [runBusyAction, t]);
 
   const busy = busyAction !== null;
 

@@ -144,6 +144,9 @@ export function DriverNavigationBottomBar({
           paddingRight: 16 + Math.max(0, insets.right),
           paddingBottom: resolveBottomBarPadding(insets.bottom),
           backgroundColor: MMD_BLUE,
+          // Flush to screen edges — no rounded bottom corners (iOS artifact regression).
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
         }}
       >
         <View

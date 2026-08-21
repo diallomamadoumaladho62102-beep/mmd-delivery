@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
   useWindowDimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,6 +21,7 @@ import { supabase } from "../lib/supabase";
 import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
 import { rowDirection, textAlignStart } from "../i18n/rtl";
+import { BOOT_AUTH_TIMEOUT_MS } from "../lib/bootFailOpen";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -97,6 +99,11 @@ export default function ResetPasswordScreen() {
   useEffect(() => {
     let alive = true;
 
+    const failOpenTimer = setTimeout(() => {
+      if (!alive) return;
+      setCheckingSession(false);
+    }, BOOT_AUTH_TIMEOUT_MS);
+
     Linking.getInitialURL()
       .then((url) => {
         if (!alive) return;
@@ -113,6 +120,7 @@ export default function ResetPasswordScreen() {
 
     return () => {
       alive = false;
+      clearTimeout(failOpenTimer);
       sub.remove();
     };
   }, [prepareRecoverySession]);
@@ -241,14 +249,19 @@ export default function ResetPasswordScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <View
-          style={{
+        <ScrollView
+          contentContainerStyle={{
             padding: 16,
             marginTop: 24,
             maxWidth: 560,
             width: "100%",
             alignSelf: "center",
+            flexGrow: 1,
+            justifyContent: "flex-start",
+            paddingBottom: 40,
           }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={{ alignItems: "center", height: 100, marginBottom: 16 }}>
             <Image
@@ -487,7 +500,7 @@ export default function ResetPasswordScreen() {
               {t("common.back", "Back")}
             </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

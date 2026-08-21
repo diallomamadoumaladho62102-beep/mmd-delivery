@@ -23,6 +23,12 @@ import { syncLocaleForRole } from "./src/i18n";
 import { logStartupProbe, reportBootError } from "./src/lib/startupProbe";
 import { initMobileSentry, wrapWithSentry } from "./src/lib/sentry";
 import { checkAndApplyExpoUpdates } from "./src/lib/expoOtaUpdates";
+import {
+  areFontsReady,
+  BOOT_AUTH_TIMEOUT_MS,
+  BOOT_FONT_TIMEOUT_MS,
+  withTimeout,
+} from "./src/lib/bootFailOpen";
 
 type Role = "client" | "driver" | "restaurant";
 
@@ -82,12 +88,13 @@ function Splash(): React.JSX.Element {
 function App(): React.JSX.Element {
   initMobileSentry();
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Sora_400Regular,
     Sora_600SemiBold,
     Sora_700Bold,
     Sora_800ExtraBold,
   });
+  const [fontTimedOut, setFontTimedOut] = useState(false);
 
   const [session, setSession] = useState<SessionLike>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -100,7 +107,22 @@ function App(): React.JSX.Element {
     logStartupProbe("app-mounted");
   }, []);
 
+  // Never block RoleSelect/Login forever if font download/embed hangs (iPad Review).
+  useEffect(() => {
+    if (fontsLoaded || fontError) return;
+    const timer = setTimeout(() => {
+      setFontTimedOut(true);
+      reportBootError(
+        "fonts-timeout",
+        new Error(`fonts_timeout_${BOOT_FONT_TIMEOUT_MS}ms`),
+      );
+      logStartupProbe("fonts-timeout-fail-open");
+    }, BOOT_FONT_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [fontsLoaded, fontError]);
+
   // Production OTA: apply JS updates on launch so store binaries stay stable.
+  // Must never gate the Login UI — fire-and-forget only.
   useEffect(() => {
     void checkAndApplyExpoUpdates().catch((error) => {
       reportBootError("expo-ota-updates", error);
@@ -150,16 +172,20 @@ function App(): React.JSX.Element {
     };
 
     void (async () => {
-      await syncLocale();
+      // Locale sync must not block auth fail-open (AsyncStorage hang → Splash forever).
+      void syncLocale();
 
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "getSession",
+        );
 
         if (!isMounted) return;
 
         const currentSession = (data.session ?? null) as SessionLike;
         setSession(currentSession);
-        setAuthLoading(false);
         logStartupProbe("auth-ready");
 
         const userId = currentSession?.user?.id;
@@ -169,8 +195,10 @@ function App(): React.JSX.Element {
 
         if (!isMounted) return;
 
-        setAuthLoading(false);
+        setSession(null);
         logStartupProbe("auth-ready-with-error");
+      } finally {
+        if (isMounted) setAuthLoading(false);
       }
     })();
 
@@ -186,7 +214,7 @@ function App(): React.JSX.Element {
 
         const userId = currentSession?.user?.id;
         if (userId) void registerToken(userId);
-      }
+      },
     );
 
     const rolePoll = setInterval(() => {
@@ -230,7 +258,13 @@ function App(): React.JSX.Element {
 
   const navKey = session?.user?.id ? `authed-${session.user.id}` : "guest";
 
-  if (authLoading || !fontsLoaded) {
+  const fontsReady = areFontsReady({
+    fontsLoaded,
+    fontError,
+    fontTimedOut,
+  });
+
+  if (authLoading || !fontsReady) {
     return <Splash />;
   }
 

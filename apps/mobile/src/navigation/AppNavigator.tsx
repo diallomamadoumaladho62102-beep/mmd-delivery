@@ -19,8 +19,8 @@ import {
 import { supabase } from "../lib/supabase";
 import { getSelectedRole } from "../lib/authRole";
 import { isClientProfileComplete as scoreClientProfileComplete } from "../lib/profileCompleteness";
+import { withTimeout, BOOT_AUTH_TIMEOUT_MS } from "../lib/bootFailOpen";
 
-import { HomeScreen } from "../screens/HomeScreen";
 import { RoleSelectScreen } from "../screens/RoleSelectScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import { ClientAuthScreen } from "../screens/ClientAuthScreen";
@@ -61,7 +61,6 @@ import {
 import { RestaurantOrderAlertBanner } from "../components/RestaurantOrderAlertBanner";
 
 export type RootStackParamList = {
-  Home: undefined;
   RoleSelect: undefined;
   ResetPassword: undefined;
 
@@ -870,6 +869,8 @@ export function AppNavigator({
     syncingRef.current = true;
 
     try {
+      await withTimeout(
+        (async () => {
       if (!navReady()) return;
 
       const cur = currentRoute();
@@ -885,7 +886,11 @@ export function AppNavigator({
         return;
       }
 
-      const { data } = await supabase.auth.getSession();
+      const { data } = await withTimeout(
+        supabase.auth.getSession(),
+        BOOT_AUTH_TIMEOUT_MS,
+        "nav_getSession",
+      );
       const session = data.session ?? null;
 
       if (!session) {
@@ -1004,6 +1009,28 @@ export function AppNavigator({
       }
 
       resetTo("RoleSelect");
+        })(),
+        20_000,
+        "nav_sync",
+      );
+    } catch (e) {
+      console.log("AppNavigator sync fail-open:", e);
+      try {
+        if (!navReady()) return;
+        const cur = currentRoute();
+        if (
+          cur &&
+          cur !== "RoleSelect" &&
+          cur !== "ClientAuth" &&
+          cur !== "DriverAuth" &&
+          cur !== "RestaurantAuth" &&
+          cur !== "ResetPassword" &&
+          !isGuestMarketplaceBrowse(cur)
+        ) {
+          // Soft fail-open: do not yank users mid-mission; only log.
+          // Session hangs already timed out above.
+        }
+      } catch {}
     } finally {
       syncingRef.current = false;
     }
@@ -1218,7 +1245,6 @@ export function AppNavigator({
         initialRouteName={initialRouteName}
         screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
 

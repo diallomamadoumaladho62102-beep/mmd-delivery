@@ -24,7 +24,10 @@ import {
   getLegalTermsUrl,
   openLegalUrl,
 } from "../lib/legalUrls";
-import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import {
   MMD_BLUE,
   MMD_CARD_BORDER,
@@ -233,10 +236,14 @@ export function RestaurantAuthScreen() {
     setMsg(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: e,
-        password: p,
-      });
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: e,
+          password: p,
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "restaurant_signIn",
+      );
 
       if (error) throw new Error(toUserFacingError(error));
 
@@ -420,18 +427,6 @@ export function RestaurantAuthScreen() {
   const onPrimary = mode === "login" ? signIn : signUp;
   const { width } = useWindowDimensions();
   const contentMax = width >= 768 ? 560 : undefined;
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
-        <RestaurantBrandLoadingState
-          title={t("restaurant.auth.loading", "Connecting...")}
-          logoAtBottom
-        />
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.root}>

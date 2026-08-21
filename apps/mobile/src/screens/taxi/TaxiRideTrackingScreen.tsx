@@ -48,6 +48,11 @@ import {
 import { useLiveDriverLocation } from "../../hooks/useLiveDriverLocation";
 import { useLiveTripEta } from "../../hooks/useLiveTripEta";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { useSmoothedDriverMarker } from "../../hooks/useSmoothedDriverMarker";
 import { LiveTripMap } from "../../components/tracking/LiveTripMap";
 import { TrackingTopBar } from "../../components/tracking/TrackingTopBar";
@@ -170,20 +175,26 @@ export default function TaxiRideTrackingScreen() {
   const load = useCallback(async () => {
     try {
       setLoadError(null);
-      const result = await fetchTaxiRide(rideId);
-      let nextRide = (result?.ride as Record<string, unknown>) ?? null;
-      nextRide = await maybeConfirmPayment(nextRide);
-      if (nextRide) {
-        const stopsFromResult = Array.isArray(result?.stops)
-          ? result.stops
-          : Array.isArray(nextRide.stops)
-            ? nextRide.stops
-            : [];
-        nextRide = { ...nextRide, stops: stopsFromResult };
-      }
-      if (mountedRef.current) {
-        setRide(nextRide);
-      }
+      await withTimeout(
+        (async () => {
+          const result = await fetchTaxiRide(rideId);
+          let nextRide = (result?.ride as Record<string, unknown>) ?? null;
+          nextRide = await maybeConfirmPayment(nextRide);
+          if (nextRide) {
+            const stopsFromResult = Array.isArray(result?.stops)
+              ? result.stops
+              : Array.isArray(nextRide.stops)
+                ? nextRide.stops
+                : [];
+            nextRide = { ...nextRide, stops: stopsFromResult };
+          }
+          if (mountedRef.current) {
+            setRide(nextRide);
+          }
+        })(),
+        BOOT_AUTH_TIMEOUT_MS,
+        "taxi_ride_tracking_load",
+      );
     } catch (e: unknown) {
       const message =
         e instanceof Error
@@ -522,12 +533,19 @@ export default function TaxiRideTrackingScreen() {
 
   if (loading && !ride) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
+      <View style={[styles.centered, { paddingTop: insets.top, flex: 1 }]}>
         <StatusBar
           barStyle="light-content"
           translucent={Platform.OS === "android"}
           backgroundColor="transparent"
         />
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
+          <ScreenHeader
+            title={t("taxi.tracking.title", "Ride tracking")}
+            fallbackRoute="TaxiHome"
+            variant="mmd"
+          />
+        </View>
         <ActivityIndicator color={MMD_TAXI_GREEN} size="large" />
         <Text style={styles.loadingHint}>
           {t("taxi.tracking.loading", "Loading your ride…")}

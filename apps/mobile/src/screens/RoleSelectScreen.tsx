@@ -27,6 +27,7 @@ import {
   userMessageForProfileGateKind,
 } from "../lib/roleSelectProfileGate";
 import { logTechnicalError } from "../lib/userFacingError";
+import { BOOT_AUTH_TIMEOUT_MS, withTimeout } from "../lib/bootFailOpen";
 import { useTranslation } from "react-i18next";
 import {
   MMD_BLUE,
@@ -113,26 +114,54 @@ function FadeIn({
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(14)).current;
+  // Start visible (opacity 1): Apple iPad Review must never see blank CTAs if
+  // native-driver animation fails to start. Soften with a short fade when possible.
+  const initialOpacity = 1;
+  const opacity = useRef(new Animated.Value(initialOpacity)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const opacityFailsafe = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    opacity.setValue(0.01);
+    translateY.setValue(14);
+
+    opacityFailsafe.current = setTimeout(() => {
+      opacity.setValue(1);
+      translateY.setValue(0);
+    }, Math.max(delay, 0) + 900);
+
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 520,
+        duration: 420,
         delay,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(translateY, {
         toValue: 0,
-        duration: 520,
+        duration: 420,
         delay,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start(({ finished }) => {
+      if (opacityFailsafe.current) {
+        clearTimeout(opacityFailsafe.current);
+        opacityFailsafe.current = null;
+      }
+      if (!finished) {
+        opacity.setValue(1);
+        translateY.setValue(0);
+      }
+    });
+
+    return () => {
+      if (opacityFailsafe.current) {
+        clearTimeout(opacityFailsafe.current);
+        opacityFailsafe.current = null;
+      }
+    };
   }, [delay, opacity, translateY]);
 
   return (
@@ -479,13 +508,21 @@ export function RoleSelectScreen() {
     try {
       await setSelectedRole(role);
 
-      const { data, error } = await supabase.auth.getSession();
-
-      if (error) {
-        console.log("RoleSelect session error:", error);
+      let session: { user?: { id?: string } | null } | null = null;
+      try {
+        const { data, error } = await withTimeout(
+          supabase.auth.getSession(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "roleSelect_getSession",
+        );
+        if (error) {
+          console.log("RoleSelect session error:", error);
+        }
+        session = data.session ?? null;
+      } catch (sessionErr) {
+        console.log("RoleSelect session timeout/fail-open:", sessionErr);
+        session = null;
       }
-
-      const session = data.session ?? null;
 
       if (!session?.user?.id) {
         if (role === "client") {
@@ -539,7 +576,7 @@ export function RoleSelectScreen() {
               width: "100%",
             },
           ]}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator
           bounces
           keyboardShouldPersistTaps="handled"
         >
@@ -626,6 +663,23 @@ export function RoleSelectScreen() {
                     "Select a role to access the corresponding interface.",
                   )}
                 </Text>
+
+                <FadeIn delay={220}>
+                  <Pressable
+                    onPress={() => navigation.navigate("ClientAuth")}
+                    style={({ pressed }) => [
+                      styles.loginEntryBtn,
+                      pressed && { opacity: 0.9 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("client.auth.loginBtn", "Log in")}
+                    testID="role-select-login-button"
+                  >
+                    <Text style={styles.loginEntryText}>
+                      {t("client.auth.loginBtn", "Log in")}
+                    </Text>
+                  </Pressable>
+                </FadeIn>
 
                 <View style={styles.rolesStack}>
                   {roleCards.map((card, index) => (
@@ -727,7 +781,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center",
+    // flex-start (not center): RN ScrollView + justifyContent center clips
+    // tall content on iPad — Login / role CTAs can sit off-screen / unreachable.
+    justifyContent: "flex-start",
   },
   brandBlock: {
     alignItems: "center",
@@ -800,6 +856,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
     paddingHorizontal: 4,
+  },
+  loginEntryBtn: {
+    minHeight: 52,
+    borderRadius: 14,
+    backgroundColor: MMD_GOLD,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+    paddingHorizontal: 16,
+  },
+  loginEntryText: {
+    color: MMD_BLUE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 17,
   },
   rolesStack: {
     gap: 12,

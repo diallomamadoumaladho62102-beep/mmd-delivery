@@ -255,8 +255,6 @@ export default ({ config }) => {
           "MMD Delivery uses the camera for in-app safety video recording and optional delivery proof photos, without opening the system Camera app.",
         NSPhotoLibraryUsageDescription:
           "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos.",
-        NSPhotoLibraryAddUsageDescription:
-          "MMD Delivery may save delivery proof photos to your photo library when you choose to keep a copy.",
         NSMicrophoneUsageDescription:
           "MMD Delivery uses the microphone for optional in-ride Safety Audio (and safety video) during an active taxi trip when you explicitly start a recording. Recording never starts silently.",
         NSLocationWhenInUseUsageDescription:

@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Image, StatusBar, StyleSheet, Text, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { loadOwnSeller, requireSellerPlatformEnabled } from "../../lib/sellerApi";
 import { useTranslation } from "react-i18next";
@@ -7,6 +15,10 @@ import {
   SellerFeedbackCard,
   SellerGlassCard,
 } from "../../components/seller/SellerChrome";
+import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -28,40 +40,46 @@ export default function SellerGateScreen({ navigation }: Props) {
 
     const routeSeller = async () => {
       try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+        await withTimeout(
+          (async () => {
+            const {
+              data: { user },
+              error: userError,
+            } = await supabase.auth.getUser();
 
-        if (!mounted) return;
+            if (!mounted) return;
 
-        if (userError || !user) {
-          navigation.replace("ClientAuth");
-          return;
-        }
+            if (userError || !user) {
+              navigation.replace("ClientAuth");
+              return;
+            }
 
-        const gate = await requireSellerPlatformEnabled();
-        if (!gate.enabled) {
-          setRestricted(true);
-          setMessage(
-            gate.message ??
-              t(
-                "seller.gate.unavailable",
-                "Marketplace is disabled in this county. Your products remain saved, but customers cannot place new orders until Marketplace is activated."
-              )
-          );
-          return;
-        }
+            const gate = await requireSellerPlatformEnabled();
+            if (!gate.enabled) {
+              setRestricted(true);
+              setMessage(
+                gate.message ??
+                  t(
+                    "seller.gate.unavailable",
+                    "Marketplace is disabled in this county. Your products remain saved, but customers cannot place new orders until Marketplace is activated."
+                  )
+              );
+              return;
+            }
 
-        const seller = await loadOwnSeller();
-        if (!mounted) return;
+            const seller = await loadOwnSeller();
+            if (!mounted) return;
 
-        if (!seller) {
-          navigation.replace("SellerOnboarding");
-          return;
-        }
+            if (!seller) {
+              navigation.replace("SellerOnboarding");
+              return;
+            }
 
-        navigation.replace("SellerDashboard");
+            navigation.replace("SellerDashboard");
+          })(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "seller_gate",
+        );
       } catch (e) {
         console.log("SellerGate error:", e);
         if (mounted) {
@@ -81,7 +99,7 @@ export default function SellerGateScreen({ navigation }: Props) {
   }, [navigation, t]);
 
   return (
-    <View style={styles.root}>
+    <SafeAreaView style={styles.root}>
       <StatusBar barStyle="light-content" />
       <Image
         source={MMD_LOGO}
@@ -110,18 +128,40 @@ export default function SellerGateScreen({ navigation }: Props) {
               </Text>
             </View>
           ) : null}
+          <Pressable
+            onPress={() => navigation.replace("RoleSelect")}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t("common.back", "Back")}
+          >
+            <Text style={styles.backBtnText}>
+              {t("common.back", "Back")}
+            </Text>
+          </Pressable>
         </>
       ) : (
-        <SellerFeedbackCard
-          loading
-          title={t("seller.gate.checking", "Checking Access...")}
-          message={t(
-            "seller.gate.verifying",
-            "Verifying your seller account"
-          )}
-        />
+        <>
+          <SellerFeedbackCard
+            loading
+            title={t("seller.gate.checking", "Checking Access...")}
+            message={t(
+              "seller.gate.verifying",
+              "Verifying your seller account"
+            )}
+          />
+          <Pressable
+            onPress={() => navigation.replace("RoleSelect")}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t("common.back", "Back")}
+          >
+            <Text style={styles.backBtnText}>
+              {t("common.back", "Back")}
+            </Text>
+          </Pressable>
+        </>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -183,5 +223,17 @@ const styles = StyleSheet.create({
     fontFamily: MMD_FONT.bold,
     fontWeight: "700",
     letterSpacing: 0.6,
+  },
+  backBtn: {
+    marginTop: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  backBtnText: {
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

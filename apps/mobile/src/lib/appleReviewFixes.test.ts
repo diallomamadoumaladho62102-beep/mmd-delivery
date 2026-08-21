@@ -57,7 +57,108 @@ test("iOS locales cover permission purpose strings", () => {
     for (const key of keys) {
       assert.ok(String(data[key] ?? "").trim().length > 20, `${lang} ${key}`);
     }
+    assert.ok(
+      !Object.prototype.hasOwnProperty.call(
+        data,
+        "NSPhotoLibraryAddUsageDescription",
+      ),
+      `${lang} must not declare unused Photo Library Add`,
+    );
   }
+});
+
+test("app.config does not declare unused Photo Library Add", () => {
+  const src = read("app.config.ts");
+  assert.doesNotMatch(src, /NSPhotoLibraryAddUsageDescription/);
+});
+
+test("AppNavigator sync uses getSession timeout fail-open", () => {
+  const src = read("apps/mobile/src/navigation/AppNavigator.tsx");
+  assert.match(src, /nav_getSession|withTimeout/);
+  assert.match(src, /BOOT_AUTH_TIMEOUT_MS/);
+});
+
+test("Driver/Restaurant auth do not full-screen replace Login while loading", () => {
+  const driver = read("apps/mobile/src/screens/DriverAuthScreen.tsx");
+  const restaurant = read("apps/mobile/src/screens/RestaurantAuthScreen.tsx");
+  assert.doesNotMatch(driver, /if \(loading\) \{\s*return \(/);
+  assert.doesNotMatch(restaurant, /if \(loading\) \{\s*return \(/);
+  assert.match(driver, /AUTH_ACTION_TIMEOUT_MS/);
+  assert.match(restaurant, /AUTH_ACTION_TIMEOUT_MS/);
+});
+
+test("ClientAuth auth actions use timeouts", () => {
+  const src = read("apps/mobile/src/screens/ClientAuthScreen.tsx");
+  assert.match(src, /AUTH_ACTION_TIMEOUT_MS/);
+  assert.match(src, /client_signIn/);
+  assert.match(src, /client_signUp/);
+  assert.match(src, /client_resetPassword/);
+  assert.match(src, /justifyContent:\s*"flex-start"/);
+  assert.match(src, /name:\s*"ClientHome"/);
+  assert.doesNotMatch(
+    src,
+    /signUp[\s\S]*routes:\s*\[\s*\{\s*name:\s*"Home"\s*\}\s*\]/,
+  );
+});
+
+test("Restaurant/Seller gates fail-open with timeout", () => {
+  const restaurant = read(
+    "apps/mobile/src/screens/restaurant/RestaurantGateScreen.tsx",
+  );
+  const seller = read("apps/mobile/src/screens/seller/SellerGateScreen.tsx");
+  assert.match(restaurant, /BOOT_AUTH_TIMEOUT_MS/);
+  assert.match(restaurant, /restaurant_gate/);
+  assert.match(seller, /BOOT_AUTH_TIMEOUT_MS/);
+  assert.match(seller, /seller_gate/);
+  assert.match(seller, /RoleSelect/);
+});
+
+test("DriverHelp does not navigate to missing DriverReportIssue", () => {
+  const src = read("apps/mobile/src/screens/DriverHelpScreen.tsx");
+  assert.doesNotMatch(src, /navigate\(["']DriverReportIssue["']\)/);
+});
+
+test("legacy Home route and OrderChat route are removed", () => {
+  const nav = read("apps/mobile/src/navigation/AppNavigator.tsx");
+  assert.doesNotMatch(nav, /name=["']Home["']/);
+  assert.doesNotMatch(nav, /from ["'].*\/HomeScreen["']/);
+  assert.doesNotMatch(nav, /import\s*\{\s*HomeScreen\s*\}/);
+  assert.equal(
+    fs.existsSync(path.join(repoRoot, "apps/mobile/src/screens/HomeScreen.tsx")),
+    false,
+  );
+  assert.equal(
+    fs.existsSync(
+      path.join(repoRoot, "apps/mobile/src/screens/OrderChatScreen.tsx"),
+    ),
+    false,
+  );
+  const driverOrder = read(
+    "apps/mobile/src/screens/DriverOrderDetailsScreen.tsx",
+  );
+  assert.doesNotMatch(driverOrder, /navigate\(["']OrderChat["']/);
+});
+
+test("app.json iOS notification sounds exclude >30s clips", () => {
+  const json = JSON.parse(
+    fs.readFileSync(path.join(repoRoot, "apps/mobile/app.json"), "utf8"),
+  );
+  const plugin = (json?.expo?.plugins ?? []).find(
+    (p: unknown) => Array.isArray(p) && p[0] === "expo-notifications",
+  );
+  const sounds = plugin?.[1]?.sounds ?? [];
+  assert.ok(Array.isArray(sounds));
+  for (const s of sounds) {
+    assert.ok(
+      !String(s).includes("_60s") && !String(s).includes("_120s"),
+      `iOS push sound must be ≤30s: ${s}`,
+    );
+  }
+});
+
+test("mmdAudio does not request background audio session", () => {
+  const src = read("apps/mobile/src/lib/mmdAudio.ts");
+  assert.match(src, /staysActiveInBackground:\s*false/);
 });
 
 test("signup soft-complete without full address", () => {
@@ -101,6 +202,13 @@ test("RoleSelect exposes Browse Marketplace entry", () => {
   const src = read("apps/mobile/src/screens/RoleSelectScreen.tsx");
   assert.match(src, /browseMarketplace/);
   assert.match(src, /MarketplaceHome/);
+});
+
+test("RoleSelect exposes explicit Log in entry for App Review", () => {
+  const src = read("apps/mobile/src/screens/RoleSelectScreen.tsx");
+  assert.match(src, /role-select-login-button/);
+  assert.match(src, /client\.auth\.loginBtn/);
+  assert.match(src, /justifyContent:\s*"flex-start"/);
 });
 
 console.log("appleReviewFixes tests passed");

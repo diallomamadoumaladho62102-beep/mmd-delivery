@@ -29,6 +29,10 @@ import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
 import {
+  AUTH_ACTION_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_WHITE,
@@ -309,10 +313,14 @@ export function ClientAuthScreen() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: e,
-        password,
-      });
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: e,
+          password,
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "client_signIn",
+      );
 
       if (error) {
         console.error(error);
@@ -366,9 +374,13 @@ export function ClientAuthScreen() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(e, {
-        redirectTo: RESET_PASSWORD_URL,
-      });
+      const { error } = await withTimeout(
+        supabase.auth.resetPasswordForEmail(e, {
+          redirectTo: RESET_PASSWORD_URL,
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "client_resetPassword",
+      );
 
       if (error) {
         throw new Error(
@@ -550,24 +562,28 @@ export function ClientAuthScreen() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: e,
-        password,
-        options: {
-          data: {
-            role: "client",
-            full_name: trimOrEmpty(fullName),
-            phone: p,
-            address_line1: trimOrEmpty(addressLine1),
-            address_line2: trimOrEmpty(addressLine2),
-            city: trimOrEmpty(city),
-            state: trimOrEmpty(stateRegion),
-            postal_code: trimOrEmpty(postalCode),
-            country: signupCountry,
-            referral_code: normalizeReferralCode(referralCode),
+      const { data, error } = await withTimeout(
+        supabase.auth.signUp({
+          email: e,
+          password,
+          options: {
+            data: {
+              role: "client",
+              full_name: trimOrEmpty(fullName),
+              phone: p,
+              address_line1: trimOrEmpty(addressLine1),
+              address_line2: trimOrEmpty(addressLine2),
+              city: trimOrEmpty(city),
+              state: trimOrEmpty(stateRegion),
+              postal_code: trimOrEmpty(postalCode),
+              country: signupCountry,
+              referral_code: normalizeReferralCode(referralCode),
+            },
           },
-        },
-      });
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "client_signUp",
+      );
 
       if (error) {
         console.error(error);
@@ -617,7 +633,7 @@ export function ClientAuthScreen() {
 
       navigation.reset({
         index: 0,
-        routes: [{ name: "Home" }],
+        routes: [{ name: "ClientHome" }],
       });
     } catch (e: unknown) {
       console.error(e);
@@ -939,7 +955,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
-    justifyContent: "center",
+    paddingBottom: 48,
+    // flex-start: avoid RN center-clip on tall iPad / Dynamic Type layouts
+    // so the Log in CTA stays reachable without relying on scroll quirks.
+    justifyContent: "flex-start",
     flexGrow: 1,
   },
   content: {

@@ -13,6 +13,10 @@ import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
 import { API_BASE_URL } from "../lib/apiBase";
+import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { requestOrderPrint } from "../lib/restaurantOrderAutomationApi";
 import { supabase } from "../lib/supabase";
 import {
@@ -271,33 +275,40 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
     async (silent = false) => {
       if (!silent) setLoading(true);
       try {
-        if (!orderId) {
-          setNotFound(true);
-          setOrder(null);
-          return null;
-        }
-        const uid = restaurantUserId ?? (await resolveRestaurantUser());
-        const { data, error } = await supabase
-          .from("orders")
-          .select(SELECT_FIELDS)
-          .eq("id", orderId)
-          .maybeSingle();
-        if (error || !data) {
-          throw error ?? new Error(t("order.errors.notFound", "Commande introuvable."));
-        }
+        await withTimeout(
+          (async () => {
+            if (!orderId) {
+              setNotFound(true);
+              setOrder(null);
+              return;
+            }
+            const uid = restaurantUserId ?? (await resolveRestaurantUser());
+            const { data, error } = await supabase
+              .from("orders")
+              .select(SELECT_FIELDS)
+              .eq("id", orderId)
+              .maybeSingle();
+            if (error || !data) {
+              throw (
+                error ??
+                new Error(t("order.errors.notFound", "Commande introuvable."))
+              );
+            }
 
-        validateOrder(data, uid);
-        const nextOrder = data as unknown as Order;
-        setOrder(nextOrder);
-        setNotFound(false);
-        void loadClient(nextOrder.client_user_id ?? nextOrder.client_id);
-        return nextOrder;
+            validateOrder(data, uid);
+            const nextOrder = data as unknown as Order;
+            setOrder(nextOrder);
+            setNotFound(false);
+            void loadClient(nextOrder.client_user_id ?? nextOrder.client_id);
+          })(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "restaurant_order_details_load",
+        );
       } catch (error: any) {
         if (!silent) {
           setNotFound(true);
         }
         setOrder(null);
-        return null;
       } finally {
         if (!silent) setLoading(false);
       }
@@ -421,6 +432,11 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <ScreenHeader
+          title={t("restaurant.orderDetails.title", "Order")}
+          fallbackRoute="RestaurantCommandCenter"
+          variant="mmd"
+        />
         <RestaurantBrandLoadingState
           variant="card"
           showLogo

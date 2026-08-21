@@ -34,6 +34,10 @@ import {
 } from "../lib/profileCompleteness";
 import { toUserFacingError } from "../lib/userFacingError";
 import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_GOLD_DARK,
@@ -206,77 +210,83 @@ export function ClientProfileScreen() {
     const load = async () => {
       setLoading(true);
       try {
-        const { data: sess } = await supabase.auth.getSession();
-        const session = sess.session;
-        if (!session) {
-          Alert.alert(
-            t("common.session", "Session"),
-            t("common.notLoggedIn", "Tu n’es pas connecté.")
-          );
-          return;
-        }
+        await withTimeout(
+          (async () => {
+            const { data: sess } = await supabase.auth.getSession();
+            const session = sess.session;
+            if (!session) {
+              Alert.alert(
+                t("common.session", "Session"),
+                t("common.notLoggedIn", "Tu n’es pas connecté.")
+              );
+              return;
+            }
 
-        const uid = session.user.id;
-        setEmail(session.user.email ?? "");
-        setEmailVerified(Boolean(session.user.email_confirmed_at));
+            const uid = session.user.id;
+            setEmail(session.user.email ?? "");
+            setEmailVerified(Boolean(session.user.email_confirmed_at));
 
-        const [{ data, error }, { data: baseProfile }, { data: addrRow }] =
-          await Promise.all([
-            supabase
-              .from("client_profiles")
-              .select("*")
-              .eq("user_id", uid)
-              .maybeSingle(),
-            supabase
-              .from("profiles")
-              .select("full_name, phone, phone_e164, phone_verified_at, email, avatar_url")
-              .eq("id", uid)
-              .maybeSingle(),
-            supabase
-              .from("client_addresses")
-              .select(
-                "address_line1, city, state, postal_code, country, latitude, longitude, lat, lng",
-              )
-              .eq("user_id", uid)
-              .eq("is_default", true)
-              .maybeSingle(),
-          ]);
+            const [{ data, error }, { data: baseProfile }, { data: addrRow }] =
+              await Promise.all([
+                supabase
+                  .from("client_profiles")
+                  .select("*")
+                  .eq("user_id", uid)
+                  .maybeSingle(),
+                supabase
+                  .from("profiles")
+                  .select("full_name, phone, phone_e164, phone_verified_at, email, avatar_url")
+                  .eq("id", uid)
+                  .maybeSingle(),
+                supabase
+                  .from("client_addresses")
+                  .select(
+                    "address_line1, city, state, postal_code, country, latitude, longitude, lat, lng",
+                  )
+                  .eq("user_id", uid)
+                  .eq("is_default", true)
+                  .maybeSingle(),
+              ]);
 
-        if (error) {
-          console.log("load client_profiles error (ignored):", error);
-        }
+            if (error) {
+              console.log("load client_profiles error (ignored):", error);
+            }
 
-        if (!alive) return;
+            if (!alive) return;
 
-        const row = data as ProfileRow | null;
-        setFullName(row?.full_name ?? baseProfile?.full_name ?? "");
-        setPhone(
-          row?.phone ??
-            baseProfile?.phone_e164 ??
-            baseProfile?.phone ??
-            "",
+            const row = data as ProfileRow | null;
+            setFullName(row?.full_name ?? baseProfile?.full_name ?? "");
+            setPhone(
+              row?.phone ??
+                baseProfile?.phone_e164 ??
+                baseProfile?.phone ??
+                "",
+            );
+            setPhoneVerified(Boolean(baseProfile?.phone_verified_at));
+            if (baseProfile?.email) setEmail(String(baseProfile.email));
+
+            const addr =
+              addrRow?.address_line1 ??
+              row?.address ??
+              row?.address_line1 ??
+              "";
+            setAddress(addr ?? "");
+            setCity(addrRow?.city ?? row?.city ?? "");
+            setState(addrRow?.state ?? row?.state ?? "");
+            setPostalCode(
+              addrRow?.postal_code ?? row?.postal_code ?? row?.zip ?? "",
+            );
+            setCountry(addrRow?.country ?? row?.country ?? "US");
+            setAvatarUrl(row?.avatar_url ?? baseProfile?.avatar_url ?? null);
+
+            const lat = Number(addrRow?.latitude ?? addrRow?.lat);
+            const lng = Number(addrRow?.longitude ?? addrRow?.lng);
+            setLatitude(Number.isFinite(lat) ? lat : null);
+            setLongitude(Number.isFinite(lng) ? lng : null);
+          })(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "client_profile_load",
         );
-        setPhoneVerified(Boolean(baseProfile?.phone_verified_at));
-        if (baseProfile?.email) setEmail(String(baseProfile.email));
-
-        const addr =
-          addrRow?.address_line1 ??
-          row?.address ??
-          row?.address_line1 ??
-          "";
-        setAddress(addr ?? "");
-        setCity(addrRow?.city ?? row?.city ?? "");
-        setState(addrRow?.state ?? row?.state ?? "");
-        setPostalCode(
-          addrRow?.postal_code ?? row?.postal_code ?? row?.zip ?? "",
-        );
-        setCountry(addrRow?.country ?? row?.country ?? "US");
-        setAvatarUrl(row?.avatar_url ?? baseProfile?.avatar_url ?? null);
-
-        const lat = Number(addrRow?.latitude ?? addrRow?.lat);
-        const lng = Number(addrRow?.longitude ?? addrRow?.lng);
-        setLatitude(Number.isFinite(lat) ? lat : null);
-        setLongitude(Number.isFinite(lng) ? lng : null);
       } catch (e) {
         console.log("load profile failed (ignored):", e);
       } finally {
@@ -661,6 +671,11 @@ export function ClientProfileScreen() {
     return (
       <SafeAreaView style={styles.loadingRoot} edges={["top", "bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" />
+        <ScreenHeader
+          title={t("client.profile.title", "Profil client")}
+          fallbackRoute="ClientHome"
+          variant="dark"
+        />
         <Image source={MMD_LOGO} style={styles.loadingLogo} resizeMode="contain" />
         <Text style={styles.loadingBrand}>MMD DELIVERY</Text>
         <Text style={styles.loadingTagline}>

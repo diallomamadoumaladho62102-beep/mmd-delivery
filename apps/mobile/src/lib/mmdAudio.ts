@@ -56,7 +56,8 @@ class MmdAudioService {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
       playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
+      // Must stay false: Info.plist has no UIBackgroundModes `audio` (Apple 2.5.4).
+      staysActiveInBackground: false,
       shouldDuckAndroid: true,
       interruptionModeIOS: InterruptionModeIOS.DoNotMix,
       interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,

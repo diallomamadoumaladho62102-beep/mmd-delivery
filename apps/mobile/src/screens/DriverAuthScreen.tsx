@@ -27,7 +27,10 @@ import { clearSelectedRole } from "../lib/authRole";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
-import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import {
   MMD_BLUE,
   MMD_DRIVER_CTA,
@@ -520,10 +523,14 @@ export function DriverAuthScreen() {
     try {
       setLoading(true);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: password.trim(),
-      });
+      const { error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "driver_signIn",
+      );
 
       if (error) {
         Alert.alert(t("driver.auth.alert.loginFailedTitle"), toUserFacingError(error, t("driver.auth.alert.loginFailedTitle")));
@@ -972,28 +979,19 @@ export function DriverAuthScreen() {
   const { width } = useWindowDimensions();
   const contentMax = width >= 768 ? 560 : undefined;
 
-  if (loading) {
-    return (
-      <SafeAreaView style={authStyles.root}>
-        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
-        <DriverBrandLoadingState
-          title={
-            mode === "signup"
-              ? t("driver.auth.card.signupTitle")
-              : t("driver.auth.card.loginTitle")
-          }
-          logoAtBottom
-        />
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={authStyles.root}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <View style={authStyles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={authStyles.back}>← {t("common.back")}</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.back")}
+        >
+          <Text style={[authStyles.back, loading && { opacity: 0.5 }]}>
+            ← {t("common.back")}
+          </Text>
         </TouchableOpacity>
 
         <Text style={authStyles.headerTitle}>

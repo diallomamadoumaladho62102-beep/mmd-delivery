@@ -20,18 +20,38 @@ export async function deleteMyAccount(params: {
   }
 
   const base = String(API_BASE_URL).replace(/\/$/, "");
-  const res = await fetch(`${base}/api/account/delete`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      password: params.password,
-      confirm_phrase: "DELETE",
-      expected_role: params.expectedRole,
-    }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25_000);
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/account/delete`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        password: params.password,
+        confirm_phrase: "DELETE",
+        expected_role: params.expectedRole,
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    const aborted =
+      (err instanceof Error && err.name === "AbortError") ||
+      String(err).toLowerCase().includes("abort");
+    return {
+      ok: false,
+      error: aborted
+        ? "Request timed out. Check your connection and try again."
+        : err instanceof Error
+          ? err.message
+          : "Network error",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 
   const body = (await res.json().catch(() => ({}))) as {
     ok?: boolean;

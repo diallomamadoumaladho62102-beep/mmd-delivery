@@ -47,6 +47,10 @@ import { DriverWaitTimerPanel } from "../components/driver/DriverWaitTimerPanel"
 import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
 import { OtpDigitInput } from "../components/shared/OtpDigitInput";
 import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_GOLD_CLASSIC,
@@ -1001,73 +1005,75 @@ export function DriverOrderDetailsScreen() {
     try {
       setLoading(true);
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      await withTimeout(
+        (async () => {
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser();
 
-      if (userError) throw userError;
+          if (userError) throw userError;
 
-      const uid = user?.id ?? null;
+          const uid = user?.id ?? null;
 
-      if (!uid) {
-        throw new Error(t("common.mustBeLoggedIn", "Tu dois être connecté."));
-      }
+          if (!uid) {
+            throw new Error(t("common.mustBeLoggedIn", "Tu dois être connecté."));
+          }
 
-      let nextOrder: Order | null = null;
+          let nextOrder: Order | null = null;
 
-      if (sourceTable === "delivery_requests") {
-        const { data, error } = await supabase
-          .from("delivery_requests")
-          .select(
-            `id,status,payment_status,driver_id,created_at,updated_at,
+          if (sourceTable === "delivery_requests") {
+            const { data, error } = await supabase
+              .from("delivery_requests")
+              .select(
+                `id,status,payment_status,driver_id,created_at,updated_at,
              created_by,client_user_id,user_id,
              pickup_address,dropoff_address,
              pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,dropoff_location_id,
              distance_miles,eta_minutes,delivery_fee,total,currency,
              driver_delivery_payout,platform_fee,
              pickup_code,dropoff_code,picked_up_at,delivered_at`
-          )
-          .eq("id", orderId)
-          .maybeSingle();
+              )
+              .eq("id", orderId)
+              .maybeSingle();
 
-        if (error) throw error;
-        if (data) nextOrder = mapDeliveryRequestToOrder(data);
-      } else if (sourceTable === "taxi_rides") {
-        const { data, error } = await supabase
-          .from("taxi_rides")
-          .select(
-            `id,status,payment_status,driver_id,client_user_id,created_at,updated_at,
+            if (error) throw error;
+            if (data) nextOrder = mapDeliveryRequestToOrder(data);
+          } else if (sourceTable === "taxi_rides") {
+            const { data, error } = await supabase
+              .from("taxi_rides")
+              .select(
+                `id,status,payment_status,driver_id,client_user_id,created_at,updated_at,
              pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
              pickup_location_id,dropoff_location_id,distance_miles,duration_minutes,
              driver_payout_cents,total_cents,currency`
-          )
-          .eq("id", orderId)
-          .maybeSingle();
+              )
+              .eq("id", orderId)
+              .maybeSingle();
 
-        if (error) throw error;
-        if (data) nextOrder = mapTaxiRideToOrder(data);
-      } else if (sourceTable === "marketplace_delivery_jobs") {
-        const job = await fetchDriverMarketplaceJob(orderId);
-        nextOrder = mapMarketplaceJobToOrder(job);
+            if (error) throw error;
+            if (data) nextOrder = mapTaxiRideToOrder(data);
+          } else if (sourceTable === "marketplace_delivery_jobs") {
+            const job = await fetchDriverMarketplaceJob(orderId);
+            nextOrder = mapMarketplaceJobToOrder(job);
 
-        const { data: navRow } = await supabase
-          .from("marketplace_delivery_jobs")
-          .select(
-            "pickup:pickup_location_id(pin_lat,pin_lng),dropoff:dropoff_location_id(pin_lat,pin_lng)"
-          )
-          .eq("id", orderId)
-          .maybeSingle();
+            const { data: navRow } = await supabase
+              .from("marketplace_delivery_jobs")
+              .select(
+                "pickup:pickup_location_id(pin_lat,pin_lng),dropoff:dropoff_location_id(pin_lat,pin_lng)"
+              )
+              .eq("id", orderId)
+              .maybeSingle();
 
-        nextOrder = applyMarketplaceCoordsToOrder(
-          nextOrder,
-          (navRow ?? null) as Record<string, unknown> | null
-        );
-      } else {
-        const { data, error } = await supabase
-          .from("orders")
-          .select(
-            `
+            nextOrder = applyMarketplaceCoordsToOrder(
+              nextOrder,
+              (navRow ?? null) as Record<string, unknown> | null
+            );
+          } else {
+            const { data, error } = await supabase
+              .from("orders")
+              .select(
+                `
             id,
             kind,
             status,
@@ -1088,35 +1094,39 @@ export function DriverOrderDetailsScreen() {
             dropoff_lat,
             dropoff_lng
           `
-          )
-          .eq("id", orderId)
-          .maybeSingle();
+              )
+              .eq("id", orderId)
+              .maybeSingle();
 
-        if (error) throw error;
-        if (data) nextOrder = mapOrderRowToOrder(data);
-      }
+            if (error) throw error;
+            if (data) nextOrder = mapOrderRowToOrder(data);
+          }
 
-      if (!nextOrder) {
-        Alert.alert(
-          t("common.error", "Erreur"),
-          t("driver.orderDetails.notFound", "Commande introuvable.")
-        );
-        navigation.goBack();
-        return;
-      }
+          if (!nextOrder) {
+            Alert.alert(
+              t("common.error", "Erreur"),
+              t("driver.orderDetails.notFound", "Commande introuvable.")
+            );
+            navigation.goBack();
+            return;
+          }
 
-      if (!isAllowedDriverVisibleOrder(nextOrder, uid)) {
-        throw new Error(
-          t(
-            "driver.orderDetails.notAllowed",
-            "Cette course n’est pas disponible pour ce compte chauffeur."
-          )
-        );
-      }
+          if (!isAllowedDriverVisibleOrder(nextOrder, uid)) {
+            throw new Error(
+              t(
+                "driver.orderDetails.notAllowed",
+                "Cette course n’est pas disponible pour ce compte chauffeur."
+              )
+            );
+          }
 
-      setOrder(nextOrder);
-      setMyUserId(uid);
-      didFitRef.current = false;
+          setOrder(nextOrder);
+          setMyUserId(uid);
+          didFitRef.current = false;
+        })(),
+        BOOT_AUTH_TIMEOUT_MS,
+        "driver_order_details_load",
+      );
     } catch (e: any) {
       console.error("Erreur fetch driver order details:", e);
       Alert.alert(
@@ -2422,23 +2432,18 @@ export function DriverOrderDetailsScreen() {
         (navigation as any).navigate("DriverTaxiChat", { rideId: order.id });
         return;
       }
-      (navigation as any).navigate("DriverChat", { orderId: order.id, targetRole, sourceTable: getOrderSourceTable(order) });
-      return;
-    } catch {}
-
-    try {
-      if (isTaxiRide && targetRole === "client") {
-        (navigation as any).navigate("DriverTaxiChat", { rideId: order.id });
-        return;
-      }
-      (navigation as any).navigate("OrderChat", { orderId: order.id, targetRole, sourceTable: getOrderSourceTable(order) });
+      (navigation as any).navigate("DriverChat", {
+        orderId: order.id,
+        targetRole,
+        sourceTable: getOrderSourceTable(order),
+      });
     } catch (e) {
       console.error("Navigation chat introuvable:", e);
       Alert.alert(
         t("driver.orderDetails.chatTitle", "Chat"),
         t(
           "driver.orderDetails.chatRouteMissing",
-          "Route de chat introuvable. Vérifie AppNavigator (DriverChat / OrderChat)."
+          "Chat route not found. Check AppNavigator (DriverChat)."
         )
       );
     }
@@ -2458,18 +2463,18 @@ export function DriverOrderDetailsScreen() {
 
   function openDriverChat() {
     try {
-      (navigation as any).navigate("DriverChat", { orderId, targetRole: "admin", sourceTable });
-      return;
-    } catch {}
-    try {
-      (navigation as any).navigate("OrderChat", { orderId, targetRole: "admin", sourceTable });
+      (navigation as any).navigate("DriverChat", {
+        orderId,
+        targetRole: "admin",
+        sourceTable,
+      });
     } catch (e) {
       console.error("Navigation chat introuvable:", e);
       Alert.alert(
         t("driver.orderDetails.chatTitle", "Chat"),
         t(
           "driver.orderDetails.chatRouteMissing",
-          "Route de chat introuvable. Vérifie AppNavigator (DriverChat / OrderChat)."
+          "Chat route not found. Check AppNavigator (DriverChat)."
         )
       );
     }
@@ -2479,6 +2484,11 @@ export function DriverOrderDetailsScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
         <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <ScreenHeader
+          title={t("driver.orderDetails.title", "Order details")}
+          fallbackRoute="DriverTabs"
+          variant="mmd"
+        />
         <DriverBrandLoadingState
           title={t("shared.common.loading", "Loading…")}
           logoAtBottom={false}

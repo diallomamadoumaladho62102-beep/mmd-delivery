@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {
   normalizeDriverServicePreferences,
   sanitizeDriverServicePreferencesPatch,
-} from "./driverServicePreferencesApi";
+} from "./driverServicePreferencesSanitize";
 
 function testSanitizeStripsServerOwnedFields() {
   const before = {

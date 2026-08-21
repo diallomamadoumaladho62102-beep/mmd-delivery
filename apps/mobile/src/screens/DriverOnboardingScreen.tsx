@@ -30,6 +30,10 @@ import {
   type DriverSetupProgress,
 } from "../lib/driverSetupProgress";
 import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_LINK_BLUE,
@@ -66,51 +70,69 @@ export function DriverOnboardingScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: authRes, error: authErr } = await supabase.auth.getUser();
-      if (authErr || !authRes.user?.id) {
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          t("driver.home.errors.mustBeLoggedIn", "You must be logged in."),
-        );
-        return;
-      }
-      const uid = authRes.user.id;
+      await withTimeout(
+        (async () => {
+          const { data: authRes, error: authErr } = await supabase.auth.getUser();
+          if (authErr || !authRes.user?.id) {
+            Alert.alert(
+              t("common.errorTitle", "Error"),
+              t("driver.home.errors.mustBeLoggedIn", "You must be logged in."),
+            );
+            return;
+          }
+          const uid = authRes.user.id;
 
-      try {
-        await supabase.functions.invoke("check_connect_status", {
-          body: { role: "driver" },
-        });
-      } catch {
-        // non-blocking
-      }
+          try {
+            await supabase.functions.invoke("check_connect_status", {
+              body: { role: "driver" },
+            });
+          } catch {
+            // non-blocking
+          }
 
-      const { data: profile } = await supabase
-        .from("driver_profiles")
-        .select("transport_mode, active_vehicle_id, stripe_onboarded")
-        .or(`user_id.eq.${uid},id.eq.${uid}`)
-        .maybeSingle();
+          const { data: profile } = await supabase
+            .from("driver_profiles")
+            .select("transport_mode, active_vehicle_id, stripe_onboarded")
+            .or(`user_id.eq.${uid},id.eq.${uid}`)
+            .maybeSingle();
 
-      const tm = (String(profile?.transport_mode ?? "bike").toLowerCase() ||
-        "bike") as TransportMode;
-      setTransportMode(tm === "car" || tm === "moto" || tm === "bike" ? tm : "bike");
+          const tm = (String(profile?.transport_mode ?? "bike").toLowerCase() ||
+            "bike") as TransportMode;
+          setTransportMode(
+            tm === "car" || tm === "moto" || tm === "bike" ? tm : "bike",
+          );
 
-      let docs: { doc_type?: string | null; status?: string | null }[] = [];
-      const docsRes = await supabase
-        .from("driver_documents")
-        .select("doc_type, status, driver_id, user_id")
-        .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
-      if (!docsRes.error) docs = docsRes.data ?? [];
+          let docs: { doc_type?: string | null; status?: string | null }[] = [];
+          const docsRes = await supabase
+            .from("driver_documents")
+            .select("doc_type, status, driver_id, user_id")
+            .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
+          if (!docsRes.error) docs = docsRes.data ?? [];
 
-      setProgress(
-        computeDriverSetupProgress({
-          profile: {
-            transport_mode: profile?.transport_mode,
-            active_vehicle_id: (profile as { active_vehicle_id?: string | null })
-              ?.active_vehicle_id,
-            stripe_onboarded: profile?.stripe_onboarded,
-          },
-          docs,
-        }),
+          setProgress(
+            computeDriverSetupProgress({
+              profile: {
+                transport_mode: profile?.transport_mode,
+                active_vehicle_id: (
+                  profile as { active_vehicle_id?: string | null }
+                )?.active_vehicle_id,
+                stripe_onboarded: profile?.stripe_onboarded,
+              },
+              docs,
+            }),
+          );
+        })(),
+        BOOT_AUTH_TIMEOUT_MS,
+        "driver_onboarding_load",
+      );
+    } catch (error) {
+      console.log("DriverOnboarding load timeout/error:", error);
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        t(
+          "driver.onboarding.loadTimeout",
+          "Unable to load setup. Check your connection and try again.",
+        ),
       );
     } finally {
       setLoading(false);
@@ -144,6 +166,11 @@ export function DriverOnboardingScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("driver.onboarding.title", "Driver Setup")}
+          fallbackRoute="DriverTabs"
+          variant="dark"
+        />
         <DriverBrandLoadingState title="Driver Setup" logoAtBottom />
       </SafeAreaView>
     );

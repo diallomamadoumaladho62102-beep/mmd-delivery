@@ -17,6 +17,10 @@ import ScreenHeader from "../../components/navigation/ScreenHeader";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { payTaxiTipWithPaymentSheet } from "../../utils/stripe";
 import { formatTaxiCents, fetchTaxiRide } from "../../lib/taxiClientApi";
+import {
+  BOOT_AUTH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import { toUserFacingError } from "../../lib/userFacingError";
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -74,7 +78,11 @@ export default function TaxiTipScreen() {
     setLoading(true);
     setError(null);
     try {
-      const out = await fetchTaxiRide(rideId);
+      const out = await withTimeout(
+        fetchTaxiRide(rideId),
+        BOOT_AUTH_TIMEOUT_MS,
+        "taxi_tip_load",
+      );
       const ride = (out?.ride ?? out) as Record<string, unknown>;
       setCurrency(String(ride?.currency ?? "USD"));
       const tip = Math.max(0, Math.round(Number(ride?.tip_cents ?? 0)));

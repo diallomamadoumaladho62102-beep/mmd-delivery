@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { ensureMapboxTokenApplied } from "../lib/mapboxConfig";
 import {
@@ -7,6 +7,7 @@ import {
   logStartupProbe,
   reportBootError,
 } from "../lib/startupProbe";
+import { BOOT_SHELL_TIMEOUT_MS, withTimeout } from "../lib/bootFailOpen";
 import { NetworkBanner } from "./NetworkBanner";
 
 type StripeGateComponent = React.ComponentType<{
@@ -31,14 +32,23 @@ function isExpoGo(): boolean {
   return ownership === "expo";
 }
 
+async function loadNavigatorOnly(): Promise<StripeGateComponent> {
+  const navModule = await import("../navigation/AppNavigator");
+  return ({ initialRouteName: routeName }) => (
+    <navModule.AppNavigator initialRouteName={routeName as never} />
+  );
+}
+
 export function AppRootShell({
   initialRouteName,
   navKey,
 }: AppRootShellProps): React.JSX.Element {
   const [boot, setBoot] = useState<BootState>({ status: "loading" });
+  const [bootAttempt, setBootAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    setBoot({ status: "loading" });
 
     void (async () => {
       logStartupProbe("shell-import-start");
@@ -46,25 +56,31 @@ export function AppRootShell({
       try {
         ensureMapboxTokenApplied();
 
-        if (isExpoGo()) {
-          const navModule = await import("../navigation/AppNavigator");
-          if (!alive) return;
-          setBoot({
-            status: "ready",
-            StripeGate: ({ initialRouteName: routeName }) => (
-              <navModule.AppNavigator initialRouteName={routeName as never} />
-            ),
-          });
-          logStartupProbe("shell-import-expo-go-ready");
-          return;
-        }
+        const bootImport = (async (): Promise<StripeGateComponent> => {
+          if (isExpoGo()) {
+            return loadNavigatorOnly();
+          }
 
-        const stripeModule = await import("../lib/StripeGate");
-        const StripeGate = (stripeModule.default ?? stripeModule) as StripeGateComponent;
+          try {
+            const stripeModule = await import("../lib/StripeGate");
+            const StripeGate = (stripeModule.default ??
+              stripeModule) as StripeGateComponent;
+            if (!StripeGate) {
+              throw new Error("StripeGate export missing");
+            }
+            return StripeGate;
+          } catch (stripeErr) {
+            reportBootError("stripe-gate-import-fallback", stripeErr);
+            // Fail open: Login / RoleSelect must still render without Stripe.
+            return loadNavigatorOnly();
+          }
+        })();
 
-        if (!StripeGate) {
-          throw new Error("StripeGate export missing");
-        }
+        const StripeGate = await withTimeout(
+          bootImport,
+          BOOT_SHELL_TIMEOUT_MS,
+          "shell_import",
+        );
 
         if (!alive) return;
         setBoot({ status: "ready", StripeGate });
@@ -72,17 +88,32 @@ export function AppRootShell({
       } catch (error) {
         reportBootError("shell-import-failed", error);
         if (!alive) return;
-        setBoot({
-          status: "error",
-          message: formatBootError(error),
-        });
+
+        // Last resort: try navigator-only without timeout wrapper leftover.
+        try {
+          const StripeGate = await withTimeout(
+            loadNavigatorOnly(),
+            BOOT_SHELL_TIMEOUT_MS,
+            "shell_navigator_fallback",
+          );
+          if (!alive) return;
+          setBoot({ status: "ready", StripeGate });
+          logStartupProbe("shell-import-navigator-fallback");
+        } catch (fallbackError) {
+          reportBootError("shell-import-fallback-failed", fallbackError);
+          if (!alive) return;
+          setBoot({
+            status: "error",
+            message: formatBootError(error),
+          });
+        }
       }
     })();
 
     return () => {
       alive = false;
     };
-  }, []);
+  }, [bootAttempt]);
 
   if (boot.status === "loading") {
     return (
@@ -125,6 +156,21 @@ export function AppRootShell({
         >
           {boot.message}
         </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Retry"
+          onPress={() => setBootAttempt((n) => n + 1)}
+          style={{
+            marginTop: 24,
+            alignSelf: "flex-start",
+            backgroundColor: "#F8FAFC",
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: 10,
+          }}
+        >
+          <Text style={{ color: "#111827", fontWeight: "700" }}>Retry</Text>
+        </Pressable>
       </View>
     );
   }
