@@ -5,6 +5,11 @@ import {
   cancelSubscription,
 } from "@/lib/subscriptions/subscriptionEngine";
 import { mapStripeSubscriptionStatus } from "@/lib/subscriptions/stripeBilling";
+import {
+  readStripeSubscriptionPeriod,
+  stripePeriodEndIso,
+  stripePeriodStartIso,
+} from "@/lib/stripeSubscriptionPeriod";
 
 export const SUBSCRIPTION_STRIPE_EVENT_TYPES = [
   "customer.subscription.created",
@@ -104,12 +109,9 @@ async function upsertFromStripeSubscription(
     }
 
     const status = mapStripeSubscriptionStatus(sub.status);
-    const periodStart = sub.current_period_start
-      ? new Date(sub.current_period_start * 1000).toISOString()
-      : null;
-    const periodEnd = sub.current_period_end
-      ? new Date(sub.current_period_end * 1000).toISOString()
-      : null;
+    const period = readStripeSubscriptionPeriod(sub);
+    const periodStart = stripePeriodStartIso(sub);
+    const periodEnd = stripePeriodEndIso(sub);
 
     await supabaseAdmin
       .from("partner_subscriptions")
@@ -117,9 +119,11 @@ async function upsertFromStripeSubscription(
         status,
         current_period_start: periodStart,
         current_period_end: periodEnd,
-        cancel_at_period_end: Boolean(sub.cancel_at_period_end),
-        canceled_at: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
-        renews: !sub.cancel_at_period_end && status !== "canceled",
+        cancel_at_period_end: period.cancelAtPeriodEnd,
+        canceled_at: period.canceledAt
+          ? new Date(period.canceledAt * 1000).toISOString()
+          : null,
+        renews: !period.cancelAtPeriodEnd && status !== "canceled",
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id);
@@ -173,20 +177,17 @@ async function upsertFromStripeSubscription(
 
   // Align period dates from Stripe
   if (result.subscription_id) {
+    const period = readStripeSubscriptionPeriod(sub);
     await supabaseAdmin
       .from("partner_subscriptions")
       .update({
         status,
-        current_period_start: sub.current_period_start
-          ? new Date(sub.current_period_start * 1000).toISOString()
-          : null,
-        current_period_end: sub.current_period_end
-          ? new Date(sub.current_period_end * 1000).toISOString()
-          : null,
+        current_period_start: stripePeriodStartIso(sub),
+        current_period_end: stripePeriodEndIso(sub),
         trial_ends_at: sub.trial_end
           ? new Date(sub.trial_end * 1000).toISOString()
           : null,
-        cancel_at_period_end: Boolean(sub.cancel_at_period_end),
+        cancel_at_period_end: period.cancelAtPeriodEnd,
         stripe_price_id: priceId,
         updated_at: new Date().toISOString(),
       })

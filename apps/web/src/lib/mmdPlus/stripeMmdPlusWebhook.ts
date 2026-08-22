@@ -6,6 +6,11 @@ import {
   invalidateMmdPlusCache,
 } from "@/lib/mmdPlus/mmdPlusEngine";
 import { mapMmdPlusStripeStatus } from "@/lib/mmdPlus/stripeMmdPlusBilling";
+import {
+  readStripeSubscriptionPeriod,
+  stripePeriodEndIso,
+  stripePeriodStartIso,
+} from "@/lib/stripeSubscriptionPeriod";
 import { notifyMmdPlusEvent } from "@/lib/mmdPlus/mmdPlusNotifications";
 
 function meta(obj: { metadata?: Stripe.Metadata | null } | null | undefined) {
@@ -83,19 +88,18 @@ async function upsertFromStripeSubscription(
     if (!existing) return { skipped: "not_mmd_plus" };
 
     const status = mapMmdPlusStripeStatus(sub.status);
+    const period = readStripeSubscriptionPeriod(sub);
     await supabaseAdmin
       .from("mmd_plus_subscriptions")
       .update({
         status,
-        current_period_start: sub.current_period_start
-          ? new Date(sub.current_period_start * 1000).toISOString()
+        current_period_start: stripePeriodStartIso(sub),
+        current_period_end: stripePeriodEndIso(sub),
+        cancel_at_period_end: period.cancelAtPeriodEnd,
+        canceled_at: period.canceledAt
+          ? new Date(period.canceledAt * 1000).toISOString()
           : null,
-        current_period_end: sub.current_period_end
-          ? new Date(sub.current_period_end * 1000).toISOString()
-          : null,
-        cancel_at_period_end: Boolean(sub.cancel_at_period_end),
-        canceled_at: sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString() : null,
-        renews: !sub.cancel_at_period_end && status !== "canceled",
+        renews: !period.cancelAtPeriodEnd && status !== "canceled",
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id);
@@ -155,18 +159,15 @@ async function upsertFromStripeSubscription(
   });
 
   if (result.subscription_id) {
+    const period = readStripeSubscriptionPeriod(sub);
     await supabaseAdmin
       .from("mmd_plus_subscriptions")
       .update({
         status,
-        current_period_start: sub.current_period_start
-          ? new Date(sub.current_period_start * 1000).toISOString()
-          : null,
-        current_period_end: sub.current_period_end
-          ? new Date(sub.current_period_end * 1000).toISOString()
-          : null,
+        current_period_start: stripePeriodStartIso(sub),
+        current_period_end: stripePeriodEndIso(sub),
         trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-        cancel_at_period_end: Boolean(sub.cancel_at_period_end),
+        cancel_at_period_end: period.cancelAtPeriodEnd,
         stripe_price_id: priceId,
         updated_at: new Date().toISOString(),
       })
