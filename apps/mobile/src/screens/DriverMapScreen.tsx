@@ -1257,7 +1257,7 @@ export default function DriverMapScreen() {
           />
         ) : null}
 
-        {trip ? (
+        {trip && !destinationArrived ? (
           <DriverNavigationBottomBar
             etaMinutes={displayRemainingMinutes}
             remainingMeters={displayRemainingMeters}

@@ -619,7 +619,13 @@ export default function TaxiRideTrackingScreen() {
         </View>
         <Image
           source={MMD_LOGO}
-          style={{ width: 48, height: 48, borderRadius: 14, position: "absolute", bottom: 60 }}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 14,
+            position: "absolute",
+            bottom: Math.max(60, insets.bottom + 24),
+          }}
           resizeMode="contain"
           accessibilityLabel="MMD"
         />

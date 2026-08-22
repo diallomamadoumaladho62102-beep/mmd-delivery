@@ -8,7 +8,10 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { resolveDriverTabBottomPadding } from "../../lib/driverScreenSafeArea";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
@@ -94,6 +97,11 @@ function formatOfferRemaining(expiresAt: string, nowMs: number): string {
   return formatOfferCountdown(expiresAt, nowMs);
 }
 
+const DRIVER_TAB_CLEARANCE = Platform.select({ android: 78, ios: 58, default: 68 }) ?? 64;
+const DRIVER_NAV_SAFE_OFFSET = Platform.select({ android: 36, ios: 22, default: 28 }) ?? 28;
+/** Clearance above the home bottom sheet peek when taxi offers float over the map. */
+const TAXI_IDLE_SHEET_PEEK = 112;
+
 export function DriverTaxiPanel({
   isOnline,
   elevated = false,
@@ -102,6 +110,13 @@ export function DriverTaxiPanel({
 }: Props) {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
+  const idleBottomOffset =
+    resolveDriverTabBottomPadding({
+      tabClearance: DRIVER_TAB_CLEARANCE,
+      navSafeOffset: DRIVER_NAV_SAFE_OFFSET,
+      insetBottom: insets.bottom,
+    }) + TAXI_IDLE_SHEET_PEEK;
   const [features, setFeatures] = useState<TaxiDriverFeatures | null>(null);
   const [driverApproved, setDriverApproved] = useState(false);
   const [offers, setOffers] = useState<TaxiOfferRow[]>([]);
@@ -540,7 +555,10 @@ export function DriverTaxiPanel({
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.wrap, elevated ? styles.wrapElevated : null]}
+      style={[
+        styles.wrap,
+        elevated ? styles.wrapElevated : { bottom: idleBottomOffset },
+      ]}
     >
       <View style={[styles.card, elevated ? styles.cardElevated : null]}>
         <View style={styles.headerRow}>
@@ -653,7 +671,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 12,
     right: 12,
-    bottom: 190,
     zIndex: 30,
   },
   wrapElevated: {

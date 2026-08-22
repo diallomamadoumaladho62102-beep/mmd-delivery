@@ -28,6 +28,7 @@ import {
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
 import { nextActionAfterCheckoutReturn } from "../../lib/taxiPaymentAbandonFlow";
+import { isValidCoordinate } from "../../lib/coordinates";
 import {
   formatTaxiLocalizedCurrency,
   getTaxiCountryLabel,
@@ -318,10 +319,8 @@ export default function TaxiQuoteScreen() {
     const dropoffLat = Number(routeInfo?.dropoffLat);
     const dropoffLng = Number(routeInfo?.dropoffLng);
     const hasCoords =
-      Number.isFinite(pickupLat) &&
-      Number.isFinite(pickupLng) &&
-      Number.isFinite(dropoffLat) &&
-      Number.isFinite(dropoffLng);
+      isValidCoordinate(pickupLat, pickupLng) &&
+      isValidCoordinate(dropoffLat, dropoffLng);
     const hasLocationIds = Boolean(pickupLocationId || dropoffLocationId);
     if (!hasCoords && !hasLocationIds && !pickupAddress.trim()) {
       Alert.alert(
