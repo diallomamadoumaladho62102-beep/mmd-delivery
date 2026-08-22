@@ -39,11 +39,41 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const driverId = String(body.driver_id ?? "").trim();
   const reason = String(body.reason ?? "Client identity concern").trim();
-  const orderId = String(body.order_id ?? "").trim() || null;
+  const orderId = String(body.order_id ?? "").trim();
+
+  if (!orderId) return clientJson({ ok: false, error: "order_id_required" }, 400);
 
   if (!driverId) return clientJson({ ok: false, error: "driver_id_required" }, 400);
 
   const admin = buildSupabaseAdminClient();
+
+  const { data: reporterAllowed, error: reporterCheckError } = await admin.rpc(
+    "is_order_message_participant",
+    { p_resource_id: orderId, p_user_id: reporterId },
+  );
+
+  if (reporterCheckError) {
+    return clientJson({ ok: false, error: "access_check_failed" }, 503);
+  }
+
+  if (!reporterAllowed) {
+    return clientJson({ ok: false, error: "forbidden" }, 403);
+  }
+
+  const { data: orderRow, error: orderError } = await admin
+    .from("orders")
+    .select("driver_id")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (orderError || !orderRow) {
+    return clientJson({ ok: false, error: "order_not_found" }, 404);
+  }
+
+  const assignedDriverId = String(orderRow.driver_id ?? "").trim();
+  if (!assignedDriverId || assignedDriverId !== driverId) {
+    return clientJson({ ok: false, error: "driver_order_mismatch" }, 403);
+  }
 
   const { data: report, error } = await admin
     .from("driver_identity_reports")

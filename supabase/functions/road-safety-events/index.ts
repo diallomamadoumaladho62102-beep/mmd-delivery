@@ -10,6 +10,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
 import { resolveEnabledTypes, validateBbox } from "../_shared/roadSafetyValidation.ts";
 import {
+  getEdgePublishableKeyOptional,
   getEdgeSecretKeyOptional,
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
@@ -53,8 +54,21 @@ Deno.serve(async (req: Request) => {
     } catch {
       url = "";
     }
+    const anonKey = getEdgePublishableKeyOptional();
     const serviceKey = getEdgeSecretKeyOptional();
-    if (!url || !serviceKey) return json(req, { error: "server_misconfigured" }, 500);
+    if (!url || !serviceKey || !anonKey) return json(req, { error: "server_misconfigured" }, 500);
+
+    const authHeader =
+      req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (!token) return json(req, { error: "unauthorized" }, 401);
+
+    const supabaseAuth = createClient(url, anonKey, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !userData?.user?.id) return json(req, { error: "unauthorized" }, 401);
 
     const body = (await req.json().catch(() => ({}))) as {
       bbox?: Bbox;

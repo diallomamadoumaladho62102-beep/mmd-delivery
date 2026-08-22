@@ -65,6 +65,25 @@ try {
     }
   });
 
+  test("cron auth rejects missing secret on Vercel preview", () => {
+    const savedCron = env.CRON_SECRET;
+    const savedVercel = env.VERCEL;
+    const savedNode = env.NODE_ENV;
+    delete env.CRON_SECRET;
+    env.VERCEL = "1";
+    env.NODE_ENV = "development";
+    try {
+      assert.equal(isAuthorizedCronRequest(fakeReq({})), false);
+    } finally {
+      if (savedCron == null) delete env.CRON_SECRET;
+      else env.CRON_SECRET = savedCron;
+      if (savedVercel == null) delete env.VERCEL;
+      else env.VERCEL = savedVercel;
+      if (savedNode == null) delete env.NODE_ENV;
+      else env.NODE_ENV = savedNode;
+    }
+  });
+
   test("isProductionRuntime true when NODE_ENV=production", () => {
     assert.equal(isProductionRuntime(), true);
   });

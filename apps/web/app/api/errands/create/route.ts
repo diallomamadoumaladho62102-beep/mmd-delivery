@@ -5,6 +5,7 @@ import { createServerClient } from "@supabase/ssr";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveClientPlatformCountry } from "@/lib/platformCountryResolver";
+import { resolveErrandServerSubtotal } from "@/lib/errandServerPricing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -109,7 +110,16 @@ export async function POST(req: Request) {
       maxLength: 32,
       uppercase: true,
     });
-    const subtotal = toMoneyNumber(body.subtotal, 0);
+
+    if (body.subtotal !== undefined && body.subtotal !== null) {
+      const clientSubtotal = toMoneyNumber(body.subtotal, 0);
+      if (clientSubtotal > 0) {
+        console.warn("[api/errands/create] client subtotal ignored", {
+          userId: user.id,
+          clientSubtotal,
+        });
+      }
+    }
 
     if (!pickupAddress) {
       return jsonError("pickupAddress is required", 400);
@@ -119,10 +129,10 @@ export async function POST(req: Request) {
       return jsonError("dropoffAddress is required", 400);
     }
 
-    assertNonNegativeMoney("subtotal", subtotal);
-
     const supabaseAdmin = buildSupabaseAdminClient();
     const clientCountry = await resolveClientPlatformCountry(supabaseAdmin, user.id);
+    const subtotal = await resolveErrandServerSubtotal(supabaseAdmin, clientCountry);
+    assertNonNegativeMoney("subtotal", subtotal);
     const platformCheck = await assertPlatformFeature(
       supabaseAdmin,
       clientCountry,

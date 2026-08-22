@@ -10,8 +10,8 @@ type AuthUser = {
 };
 
 export default function CreateErrandPage() {
-  const [subtotal, setSubtotal] = useState<number>(25);
-  const [currency, setCurrency] = useState<string>("USD");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [dropoffAddress, setDropoffAddress] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -27,12 +27,12 @@ export default function CreateErrandPage() {
         setUser(null);
         return;
       }
-      setUser((data.user as any) ?? null);
+      setUser((data.user as AuthUser) ?? null);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, sess) => {
       if (!mounted) return;
-      setUser((sess?.user as any) ?? null);
+      setUser((sess?.user as AuthUser) ?? null);
     });
 
     return () => {
@@ -49,11 +49,11 @@ export default function CreateErrandPage() {
       return;
     }
 
-    const safeSubtotal = Number.isFinite(subtotal) ? subtotal : 0;
-    const safeCurrency = (currency || "USD").trim() || "USD";
+    const pickup = pickupAddress.trim();
+    const dropoff = dropoffAddress.trim();
 
-    if (safeSubtotal <= 0) {
-      setErr("Le montant doit être supérieur à 0.");
+    if (!pickup || !dropoff) {
+      setErr("Les adresses pickup et dropoff sont requises.");
       return;
     }
 
@@ -65,9 +65,8 @@ export default function CreateErrandPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          pickupAddress: "Pickup address required",
-          dropoffAddress: "Dropoff address required",
-          subtotal: safeSubtotal,
+          pickupAddress: pickup,
+          dropoffAddress: dropoff,
         }),
       });
 
@@ -80,8 +79,9 @@ export default function CreateErrandPage() {
       if (!orderId) throw new Error("Order ID manquant après création.");
 
       router.push(`/orders/${orderId}?pay=1`);
-    } catch (e: any) {
-      setErr(e?.message || String(e));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      setErr(message);
     } finally {
       setPending(false);
     }
@@ -105,20 +105,23 @@ export default function CreateErrandPage() {
         </div>
       )}
 
-      <label className="block text-sm">Montant (subtotal)</label>
+      <label className="block text-sm">Adresse pickup</label>
       <input
-        type="number"
         className="w-full border rounded px-3 py-2"
-        value={subtotal}
-        onChange={(e) => setSubtotal(Number(e.target.value))}
+        value={pickupAddress}
+        onChange={(e) => setPickupAddress(e.target.value)}
       />
 
-      <label className="block text-sm">Devise</label>
+      <label className="block text-sm">Adresse dropoff</label>
       <input
         className="w-full border rounded px-3 py-2"
-        value={currency}
-        onChange={(e) => setCurrency(e.target.value)}
+        value={dropoffAddress}
+        onChange={(e) => setDropoffAddress(e.target.value)}
       />
+
+      <p className="text-sm text-gray-600">
+        Le montant est calculé côté serveur selon la configuration plateforme.
+      </p>
 
       {err && <div className="text-red-600 text-sm">Erreur: {err}</div>}
 

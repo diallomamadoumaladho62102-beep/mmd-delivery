@@ -18,15 +18,19 @@ export function isProductionRuntime(): boolean {
   );
 }
 
-/** Cron / monitoring probes only — no public health in production. */
-export function isInternalHealthAuthorized(req: NextRequest | Request): boolean {
-  if (!isProductionRuntime()) return true;
+function isDeployedRuntime(): boolean {
+  return Boolean(String(process.env.VERCEL ?? "").trim());
+}
 
+/** Cron / monitoring probes only — no public health on deployed environments without secret. */
+export function isInternalHealthAuthorized(req: NextRequest | Request): boolean {
   const cronSecret = String(process.env.CRON_SECRET ?? "").trim();
   const monitoringSecret = String(process.env.MONITORING_SECRET ?? "").trim();
   const expected = monitoringSecret || cronSecret;
 
-  if (!expected) return false;
+  if (!expected) {
+    return !isProductionRuntime() && !isDeployedRuntime();
+  }
 
   const headerSecret = String(req.headers.get("x-cron-secret") ?? "").trim();
   if (headerSecret && timingSafeEqual(headerSecret, expected)) return true;

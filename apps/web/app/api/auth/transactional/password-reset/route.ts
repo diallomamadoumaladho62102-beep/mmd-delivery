@@ -7,6 +7,12 @@ import { isTransactionalEmailEnabled, notifyPasswordResetEmail } from "@/lib/tra
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function allowedResetRedirectBase(): string {
+  const fromEnv = String(process.env.NEXT_PUBLIC_SITE_URL ?? "").trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, "");
+  return "https://www.mmddelivery.com";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const ip = getRequestClientIp(req.headers);
@@ -23,11 +29,9 @@ export async function POST(req: NextRequest) {
 
     const body = (await req.json().catch(() => null)) as {
       email?: string;
-      resetUrl?: string;
     } | null;
 
     const email = String(body?.email ?? "").trim().toLowerCase();
-    const resetUrl = String(body?.resetUrl ?? "").trim();
 
     if (!email) {
       return NextResponse.json({ ok: false, error: "Missing email" }, { status: 400 });
@@ -37,26 +41,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, skipped: true });
     }
 
-    let finalResetUrl = resetUrl;
+    const admin = buildSupabaseAdminClient();
+    const redirectTo = `${allowedResetRedirectBase()}/auth/reset-password`;
 
-    if (!finalResetUrl) {
-      const admin = buildSupabaseAdminClient();
-      const redirectTo =
-        process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-        "https://mmddelivery.com/auth/reset-password";
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
+    });
 
-      const { data, error } = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email,
-        options: { redirectTo },
-      });
-
-      if (error || !data?.properties?.action_link) {
-        return NextResponse.json({ ok: false, error: "Unable to generate reset link" }, { status: 500 });
-      }
-
-      finalResetUrl = String(data.properties.action_link);
+    if (error || !data?.properties?.action_link) {
+      // Generic response — do not reveal whether the email exists.
+      return NextResponse.json({ ok: true, skipped: false });
     }
+
+    const finalResetUrl = String(data.properties.action_link);
 
     const result = await notifyPasswordResetEmail({
       to: email,

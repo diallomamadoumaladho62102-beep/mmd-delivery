@@ -18,6 +18,11 @@ export function isProductionRuntime(): boolean {
   );
 }
 
+/** Any Vercel deployment (preview or production) — not open local dev. */
+export function isDeployedRuntime(): boolean {
+  return Boolean(String(process.env.VERCEL ?? "").trim());
+}
+
 /**
  * Authorize cron / internal money-adjacent jobs.
  *
@@ -28,13 +33,14 @@ export function isProductionRuntime(): boolean {
  * - Authorization: Bearer <CRON_SECRET>
  * - x-cron-secret: <CRON_SECRET>
  *
- * Outside production, missing CRON_SECRET is allowed for local smoke tests.
+ * Outside production, missing CRON_SECRET is allowed for local smoke tests only
+ * (not on Vercel preview/staging).
  */
 export function isAuthorizedCronRequest(req: NextRequest | Request): boolean {
   const expected = String(process.env.CRON_SECRET ?? "").trim();
 
   if (!expected) {
-    return !isProductionRuntime();
+    return !isProductionRuntime() && !isDeployedRuntime();
   }
 
   const headerSecret = String(req.headers.get("x-cron-secret") ?? "").trim();

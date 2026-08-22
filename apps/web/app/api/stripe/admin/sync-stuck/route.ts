@@ -13,6 +13,7 @@ import {
   isPaymentSettlementFailure,
   requirePaymentIntentSucceeded,
 } from "@/lib/requirePaymentIntentSucceeded";
+import { isProductionRuntime } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -216,6 +217,7 @@ async function authorizeRequest(req: NextRequest): Promise<AuthorizeResult> {
   const admin = await assertCanRetryPayout(req);
 
   const secretRequired =
+    isProductionRuntime() ||
     safeLower(process.env.STRIPE_SYNC_REQUIRE_ADMIN_SECRET) === "true";
   const usedSecret = hasValidAdminSecret(req);
 

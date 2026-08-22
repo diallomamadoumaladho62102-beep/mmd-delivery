@@ -91,6 +91,18 @@ export async function POST(req: NextRequest) {
 
     if (!allowed) return jsonError("Forbidden", 403);
 
+    const { data: targetAllowed, error: targetParticipantError } = await admin.rpc(
+      "is_order_message_participant",
+      { p_resource_id: orderId, p_user_id: targetUserId },
+    );
+
+    if (targetParticipantError) {
+      console.error("[chat/push-notify] target participant check failed", targetParticipantError);
+      return jsonError("Access check failed", 503);
+    }
+
+    if (!targetAllowed) return jsonError("Invalid target user", 403);
+
     const result = await notifyOrderChatMessage({
       supabaseAdmin: admin,
       orderId,

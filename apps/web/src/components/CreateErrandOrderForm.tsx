@@ -7,7 +7,6 @@ export default function CreateErrandOrderForm() {
   const [pickupContact, setPickupContact] = useState("");
   const [dropoffContact, setDropoffContact] = useState("");
   const [desc, setDesc] = useState("");
-  const [subtotal, setSubtotal] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
@@ -22,7 +21,6 @@ export default function CreateErrandOrderForm() {
           pickupContact,
           dropoffContact,
           desc,
-          subtotal,
         }),
       });
       if (!res.ok) {
@@ -76,18 +74,9 @@ export default function CreateErrandOrderForm() {
         value={desc}
         onChange={(e) => setDesc(e.target.value)}
       />
-      <input
-        className="border rounded px-3 py-2 w-full"
-        type="number"
-        min={0}
-        step="0.01"
-        placeholder="Sous-total estimé ($)"
-        value={Number.isFinite(subtotal) ? subtotal : 0}
-        onChange={(e) => {
-          const v = parseFloat(e.target.value);
-          setSubtotal(Number.isFinite(v) ? v : 0);
-        }}
-      />
+      <p className="text-sm text-gray-600">
+        Le tarif est calculé côté serveur selon la configuration plateforme.
+      </p>
       <button
         onClick={submit}
         disabled={loading}
