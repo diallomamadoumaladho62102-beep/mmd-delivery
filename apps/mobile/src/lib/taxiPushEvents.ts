@@ -51,6 +51,7 @@ export function extractTaxiPushPayload(data: unknown): {
 export function isClientTaxiPushType(type: string): boolean {
   return (
     type === "ride_accepted" ||
+    type === "driver_en_route" ||
     type === "taxi_ride_cancelled" ||
     type === "driver_arrived"
   );

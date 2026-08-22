@@ -35,6 +35,24 @@ export function MmdDriverLocationMarker({
   online = true,
 }: Props) {
   const breath = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(normalizeHeading(headingDeg))).current;
+  const displayedHeadingRef = useRef(normalizeHeading(headingDeg));
+
+  useEffect(() => {
+    const target = normalizeHeading(headingDeg);
+    const from = displayedHeadingRef.current;
+    let delta = target - from;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    const animTarget = from + delta;
+    displayedHeadingRef.current = normalizeHeading(animTarget);
+
+    Animated.timing(rotateAnim, {
+      toValue: animTarget,
+      duration: moving ? 280 : 420,
+      useNativeDriver: true,
+    }).start();
+  }, [headingDeg, moving, rotateAnim]);
 
   useEffect(() => {
     const duration = !online ? 2800 : moving ? 1300 : 2000;
@@ -71,8 +89,17 @@ export function MmdDriverLocationMarker({
     outputRange: [1, online ? 1.045 : 1.02],
   });
 
-  const heading = normalizeHeading(headingDeg);
-  const rotateStyle = { transform: [{ rotate: `${heading}deg` }] };
+  const rotateStyle = {
+    transform: [
+      {
+        rotate: rotateAnim.interpolate({
+          inputRange: [-360, 0, 360, 720],
+          outputRange: ["-360deg", "0deg", "360deg", "720deg"],
+          extrapolate: "clamp",
+        }),
+      },
+    ],
+  };
 
   return (
     <View style={styles.host} pointerEvents="none">

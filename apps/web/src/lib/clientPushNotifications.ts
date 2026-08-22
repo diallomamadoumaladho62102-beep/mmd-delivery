@@ -75,6 +75,70 @@ async function sendExpoPushMessages(
   }
 }
 
+export function taxiRideAcceptedDedupKey(taxiRideId: string): string {
+  return `taxi_ride_accepted:${String(taxiRideId).trim()}`;
+}
+
+export function taxiDriverArrivedDedupKey(
+  entityType: string,
+  entityId: string,
+): string {
+  return `taxi_driver_arrived:${String(entityType).trim()}:${String(entityId).trim()}`;
+}
+
+/** 3-minute ETA buckets — significant change only, no spam. */
+export function taxiDriverEtaDedupKey(
+  taxiRideId: string,
+  etaMinutes: number,
+): string {
+  const bucket = Math.max(1, Math.round(etaMinutes / 3) * 3);
+  return `taxi_driver_eta:${String(taxiRideId).trim()}:${bucket}`;
+}
+
+async function wasTaxiPushAlreadySent(
+  supabaseAdmin: SupabaseClient,
+  dedupKey: string,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("notification_logs")
+    .select("id")
+    .eq("dedup_key", dedupKey)
+    .eq("status", "sent")
+    .limit(1);
+
+  if (error) {
+    console.log("[clientPush] dedup lookup failed:", error.message);
+    return false;
+  }
+  return (data ?? []).length > 0;
+}
+
+async function logTaxiClientPush(params: {
+  supabaseAdmin: SupabaseClient;
+  userId: string | null | undefined;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  dedupKey: string;
+  sent: boolean;
+  errorMessage?: string | null;
+}): Promise<void> {
+  const { error } = await params.supabaseAdmin.from("notification_logs").insert({
+    user_id: params.userId ?? null,
+    role: "client",
+    title: params.title,
+    body: params.body,
+    data: params.data,
+    status: params.sent ? "sent" : "failed",
+    error_message: params.sent ? null : params.errorMessage ?? "push_failed",
+    dedup_key: params.dedupKey,
+    sent_at: params.sent ? new Date().toISOString() : null,
+  });
+  if (error) {
+    console.log("[clientPush] notification_logs insert failed:", error.message);
+  }
+}
+
 export async function notifyClientOrderCreated(params: {
   supabaseAdmin: SupabaseClient;
   userIds: Array<string | null | undefined>;
@@ -243,23 +307,51 @@ export async function notifyClientDriverArrived(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
 
-  const label = params.entityKind === "taxi" ? "chauffeur" : "livreur";
+  const dedupKey =
+    params.entityKind === "taxi"
+      ? taxiDriverArrivedDedupKey(params.entityType, params.entityId)
+      : `driver_arrived:${params.entityType}:${params.entityId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) {
+    return;
+  }
+
   const data = {
     type: "driver_arrived",
     entity_type: params.entityType,
     entity_id: params.entityId,
+    ...(params.entityKind === "taxi"
+      ? {
+          taxi_ride_id: params.entityId,
+          taxiRideId: params.entityId,
+        }
+      : {}),
   };
+
+  const title = "Your driver has arrived";
+  const body =
+    params.entityKind === "taxi"
+      ? "Your driver is at the pickup point. Join your driver when ready."
+      : "Your driver has arrived. You have 5 minutes of free wait time.";
 
   const messages = tokens.map((to) => ({
     to,
     sound: resolvePushSound(data.type),
-    title: "Arrivée sur place",
-    body: `Votre ${label} est arrivé. Vous avez 5 minutes d'attente gratuite.`,
+    title,
+    body,
     data,
     priority: "high",
   }));
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title,
+    body,
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientWaitFeeStarted(params: {
@@ -333,22 +425,89 @@ export async function notifyClientTaxiRideAccepted(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
 
+  const dedupKey = taxiRideAcceptedDedupKey(params.taxiRideId);
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) {
+    return;
+  }
+
   const data = {
     type: "ride_accepted",
     taxi_ride_id: params.taxiRideId,
     taxiRideId: params.taxiRideId,
   };
 
+  const title = "Driver assigned";
+  const body = "Your driver has been assigned and is on the way.";
+
   const messages = tokens.map((to) => ({
     to,
     sound: resolvePushSound(data.type),
-    title: "Chauffeur trouvé",
-    body: "Un chauffeur a accepté votre course. Suivez-le en direct.",
+    title,
+    body,
     data,
     priority: "high",
   }));
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title,
+    body,
+    data,
+    dedupKey,
+    sent: true,
+  });
+}
+
+export async function notifyClientTaxiDriverEnRoute(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  taxiRideId: string;
+  etaMinutes: number;
+}): Promise<void> {
+  const etaMinutes = Number(params.etaMinutes);
+  if (!Number.isFinite(etaMinutes) || etaMinutes <= 0) return;
+
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const roundedEta = Math.max(1, Math.round(etaMinutes));
+  const dedupKey = taxiDriverEtaDedupKey(params.taxiRideId, roundedEta);
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) {
+    return;
+  }
+
+  const data = {
+    type: "driver_en_route",
+    taxi_ride_id: params.taxiRideId,
+    taxiRideId: params.taxiRideId,
+    eta_minutes: roundedEta,
+  };
+
+  const title = "Driver on the way";
+  const body = `Your driver is arriving in approximately ${roundedEta} minutes.`;
+
+  const messages = tokens.map((to) => ({
+    to,
+    sound: resolvePushSound(data.type),
+    title,
+    body,
+    data,
+    priority: "high",
+  }));
+
+  await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title,
+    body,
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientTaxiRideCompleted(params: {

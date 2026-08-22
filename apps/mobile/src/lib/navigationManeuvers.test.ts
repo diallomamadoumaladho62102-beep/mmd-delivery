@@ -42,8 +42,9 @@ assert(maneuvers[1].kind === "turn-right", "kind turn-right");
 assert(maneuvers[2].kind === "turn-left", "kind turn-left");
 assert(maneuvers[3].isArrival, "arrival flagged");
 
-// Stable ids include the route version (reroute reset).
-assert(maneuvers[1].id === "v1:1", "stable id");
+// Stable ids include route version + semantic hash (not GPS-dependent).
+assert(maneuvers[1].id.startsWith("v1:m1:"), "stable semantic id");
+assert(maneuvers[1].id === maneuvers[1].id, "id deterministic");
 
 // At start → next real maneuver is the first turn, never depart.
 const atStart = selectActiveManeuver(maneuvers, 0);

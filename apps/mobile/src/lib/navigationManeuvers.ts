@@ -14,6 +14,7 @@ import {
   resolveNavigationLocale,
   type NavigationLocale,
 } from "./navigationLocale";
+import { hashNavigationSignature } from "./navigationRouteVersion";
 
 export type ManeuverKind =
   | "turn-left"
@@ -121,6 +122,16 @@ function fallbackStreetName(instruction: string): string {
   return trimmed;
 }
 
+function buildManeuverStableId(
+  routeVersion: string,
+  step: NavigationRouteStep,
+  index: number,
+  kind: ManeuverKind,
+): string {
+  const semantic = `${kind}:${step.maneuverType ?? ""}:${step.maneuverModifier ?? ""}:${(step.instruction ?? "").trim()}`;
+  return `${routeVersion}:m${index}:${hashNavigationSignature(semantic)}`;
+}
+
 /**
  * Build the ordered maneuver list for a route. The `depart` step (index 0) is
  * kept for positioning but is never treated as an upcoming maneuver.
@@ -137,7 +148,7 @@ export function buildManeuverList(
     cumulative = along + (step.distanceMeters ?? 0);
     const kind = normalizeKind(step);
     return {
-      id: `${routeVersion}:${index}`,
+      id: buildManeuverStableId(routeVersion, step, index, kind),
       index,
       alongRouteMeters: along,
       kind,

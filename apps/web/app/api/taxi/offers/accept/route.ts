@@ -5,7 +5,7 @@ import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
 import { fireTaxiRideDispatchedTransactional } from "@/lib/transactionalDispatchNotify";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 import { notifyDriverVehicleEvent } from "@/lib/driverPushNotifications";
-import { notifyClientTaxiRideAccepted } from "@/lib/clientPushNotifications";
+import { notifyClientTaxiRideAccepted, notifyClientTaxiDriverEnRoute } from "@/lib/clientPushNotifications";
 import {
   TAXI_ACCEPT_REASON_MESSAGES,
   type TaxiAcceptRejectReason,
@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
 
       const { data: rideRow } = await auth.supabaseAdmin
         .from("taxi_rides")
-        .select("client_user_id")
+        .select("client_user_id,duration_minutes")
         .eq("id", taxiRideId)
         .maybeSingle();
 
@@ -162,6 +162,21 @@ export async function POST(req: NextRequest) {
           err instanceof Error ? err.message : err,
         );
       });
+
+      const etaMinutes = Number(rideRow?.duration_minutes);
+      if (Number.isFinite(etaMinutes) && etaMinutes > 0) {
+        await notifyClientTaxiDriverEnRoute({
+          supabaseAdmin: auth.supabaseAdmin,
+          userIds: [rideRow?.client_user_id],
+          taxiRideId,
+          etaMinutes,
+        }).catch((err) => {
+          console.log(
+            "[taxi accept] client eta push error:",
+            err instanceof Error ? err.message : err,
+          );
+        });
+      }
     }
 
     return taxiJson({ ok: true, offer_id: offerId, result });

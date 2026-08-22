@@ -1,9 +1,17 @@
 import * as Speech from "expo-speech";
+import {
+  getLastNavigationSpeechAt,
+  markNavigationSpeech,
+  resetNavigationVoiceLedger,
+  shouldSkipTextRepeat,
+} from "./navigationVoiceLedger";
 
-let lastSpokenText = "";
-let lastSpokenAt = 0;
+export {
+  canSpeakInstructionKey,
+  recordInstructionKeySpoken,
+  resetNavigationVoiceLedger,
+} from "./navigationVoiceLedger";
 
-const MIN_REPEAT_DELAY_MS = 12_000;
 const PROGRESS_VOICE_MS = 30_000;
 
 export type NavigationVoiceLanguage = "en-US" | "fr-FR";
@@ -12,23 +20,18 @@ export async function speakNavigation(
   text: string,
   force = false,
   language: NavigationVoiceLanguage = "en-US",
+  instructionKey?: string,
 ): Promise<void> {
   try {
     const cleanText = text.trim();
     if (!cleanText) return;
 
     const now = Date.now();
-
-    if (
-      !force &&
-      cleanText === lastSpokenText &&
-      now - lastSpokenAt < MIN_REPEAT_DELAY_MS
-    ) {
+    if (shouldSkipTextRepeat(cleanText, force, instructionKey, now)) {
       return;
     }
 
-    lastSpokenText = cleanText;
-    lastSpokenAt = now;
+    markNavigationSpeech(cleanText, instructionKey, now);
 
     await Speech.stop();
 
@@ -47,7 +50,7 @@ export async function speakNavigationProgress(
   language: NavigationVoiceLanguage = "en-US",
 ): Promise<void> {
   const now = Date.now();
-  if (now - lastSpokenAt < PROGRESS_VOICE_MS) return;
+  if (now - getLastNavigationSpeechAt() < PROGRESS_VOICE_MS) return;
   await speakNavigation(text, false, language);
 }
 
@@ -79,8 +82,7 @@ export async function speakReroute(
 export async function stopNavigationVoice(): Promise<void> {
   try {
     await Speech.stop();
-    lastSpokenText = "";
-    lastSpokenAt = 0;
+    resetNavigationVoiceLedger();
   } catch {
     // ignore
   }

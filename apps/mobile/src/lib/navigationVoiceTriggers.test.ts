@@ -121,4 +121,26 @@ const arb = resolveVoicePriority([safety500, nav200]);
 assert(arb.primary?.text === "nav", "nav200 wins over safety500");
 assert(arb.deferred.length === 1 && arb.deferred[0].text === "safety", "safety deferred");
 
+// --- Hard cap: third announcement blocked even if flags glitch ---
+let capState = initVoiceTriggerState();
+capState = {
+  routeVersion: "cap",
+  byManeuver: {
+    "cap:1": {
+      a500: true,
+      a200: true,
+      immediate: true,
+      arrival: false,
+      spokenCount: 2,
+    },
+  },
+};
+const capped = evaluateManeuverVoice({
+  state: capState,
+  routeVersion: "cap",
+  selection: selection(180, "cap:1"),
+  locale: "en",
+});
+assert(capped.announcement === null, "spokenCount>=2 blocks any further announce");
+
 console.log("navigationVoiceTriggers tests passed");

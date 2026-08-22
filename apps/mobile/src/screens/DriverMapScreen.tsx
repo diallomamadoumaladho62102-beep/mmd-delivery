@@ -51,8 +51,11 @@ import {
   takeNextVoice,
 } from "../lib/navigationVoiceQueue";
 import { resolveOverlayInsets } from "../lib/navigationSafeArea";
+import { buildStableRouteVersion } from "../lib/navigationRouteVersion";
+import { useSmoothedDriverMarker } from "../hooks/useSmoothedDriverMarker";
 import {
   resolveNavigationVoiceLanguage,
+  resetNavigationVoiceLedger,
   speakArrival,
   speakNavigation,
   speakReroute,
@@ -461,8 +464,22 @@ export default function DriverMapScreen() {
   /** Stable route identity — changes on reroute / alternative selection. */
   const routeVersion = useMemo(() => {
     if (!activeRouteGeometry) return "";
-    return `${selectedRouteIndex}:${activeRouteGeometry.geometry?.coordinates?.length ?? 0}`;
-  }, [activeRouteGeometry, selectedRouteIndex]);
+    return buildStableRouteVersion({
+      selectedRouteIndex,
+      steps: navigationRoute?.steps,
+      coordinates: activeRouteGeometry.geometry?.coordinates,
+    });
+  }, [activeRouteGeometry, navigationRoute?.steps, selectedRouteIndex]);
+
+  const lastRouteVersionRef = useRef(routeVersion);
+  useEffect(() => {
+    if (!routeVersion || routeVersion === lastRouteVersionRef.current) return;
+    lastRouteVersionRef.current = routeVersion;
+    voiceTriggerStateRef.current = initVoiceTriggerState(routeVersion);
+    safetyVoiceStateRef.current = initSafetyVoiceState(routeVersion);
+    voiceQueueRef.current = initVoiceQueue();
+    resetNavigationVoiceLedger();
+  }, [routeVersion]);
 
   /** Ordered maneuvers with cumulative along-route distances. */
   const maneuvers = useMemo(
@@ -611,6 +628,12 @@ export default function DriverMapScreen() {
     previewQa.speeding,
     routeProgress?.traveledMeters,
   ]);
+
+  const animatedVehicle = useSmoothedDriverMarker(vehicleMarkerPoint, {
+    headingDeg: camera.mode === "follow" ? 0 : vehicleBearing,
+    speedMps: previewSpeedMps,
+  });
+  const displayVehiclePoint = animatedVehicle ?? vehicleMarkerPoint;
 
   const speedLimitState = useMemo(() => {
     if (!navigationRoute) {
@@ -1012,11 +1035,18 @@ export default function DriverMapScreen() {
     const { state: nextQueue, announcement } = takeNextVoice(queue, now);
     voiceQueueRef.current = nextQueue;
     if (announcement) {
-      void speakNavigation(announcement.text, true, voiceLanguage);
+      const instructionKey = `${announcement.maneuverId}:${announcement.bucket}`;
+      void speakNavigation(
+        announcement.text,
+        true,
+        voiceLanguage,
+        instructionKey,
+      );
     }
   }, [
     destinationArrived,
-    maneuverSelection,
+    maneuverSelection?.active.id,
+    maneuverSelection?.distanceMeters,
     navLocale,
     navigationActive,
     navigationPaused,
@@ -1149,12 +1179,12 @@ export default function DriverMapScreen() {
             />
           )}
 
-          {vehicleMarkerPoint && navigationActive ? (
+          {displayVehiclePoint && navigationActive ? (
             <Mapbox.MarkerView
               id="driver-nav-aurora"
               coordinate={[
-                vehicleMarkerPoint.longitude,
-                vehicleMarkerPoint.latitude,
+                displayVehiclePoint.longitude,
+                displayVehiclePoint.latitude,
               ]}
               anchor={{ x: 0.5, y: 0.5 }}
               allowOverlap
@@ -1162,12 +1192,15 @@ export default function DriverMapScreen() {
             >
               <MmdDriverLocationMarker
                 headingDeg={
-                  camera.mode === "follow" ? 0 : vehicleBearing
+                  camera.mode === "follow"
+                    ? 0
+                    : animatedVehicle?.headingDeg ?? vehicleBearing
                 }
                 moving={
-                  previewSpeedMps != null &&
-                  Number.isFinite(previewSpeedMps) &&
-                  previewSpeedMps > 0.8
+                  animatedVehicle?.moving ??
+                  (previewSpeedMps != null &&
+                    Number.isFinite(previewSpeedMps) &&
+                    previewSpeedMps > 0.8)
                 }
                 online
               />

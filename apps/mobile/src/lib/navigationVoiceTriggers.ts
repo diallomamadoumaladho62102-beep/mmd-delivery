@@ -35,6 +35,8 @@ type ManeuverAnnounceFlags = {
   a200: boolean;
   immediate: boolean;
   arrival: boolean;
+  /** Total spoken announcements for this maneuver (hard cap = 2). */
+  spokenCount: number;
 };
 
 export type VoiceTriggerState = {
@@ -81,6 +83,7 @@ function flagsFor(
       a200: false,
       immediate: false,
       arrival: false,
+      spokenCount: 0,
     }
   );
 }
@@ -113,6 +116,17 @@ export function evaluateManeuverVoice(params: {
   const flags = { ...flagsFor(state, active.id) };
   let announcement: VoiceAnnouncement | null = null;
 
+  // Hard lock — same maneuver cannot produce more than two announcements.
+  if (flags.spokenCount >= 2) {
+    return {
+      state: {
+        routeVersion: params.routeVersion,
+        byManeuver: { ...state.byManeuver, [active.id]: flags },
+      },
+      announcement: null,
+    };
+  }
+
   const speak = (bucket: VoiceBucket, distance: number | null, priority: VoicePriority) => {
     announcement = {
       bucket,
@@ -120,6 +134,7 @@ export function evaluateManeuverVoice(params: {
       priority,
       text: formatManeuverVoice({ maneuver: active, distanceMeters: distance, locale }),
     };
+    flags.spokenCount += 1;
   };
 
   if (active.isArrival) {

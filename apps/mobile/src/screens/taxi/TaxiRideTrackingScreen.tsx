@@ -703,6 +703,34 @@ export default function TaxiRideTrackingScreen() {
           safetyLine={trackingLabels.safetyLine}
         />
 
+        {status === "driver_arrived" ? (
+          <TouchableOpacity
+            style={styles.joinDriverBanner}
+            accessibilityRole="button"
+            accessibilityLabel={t(
+              "taxi.tracking.joinDriver",
+              "Join your driver",
+            )}
+            onPress={() => {
+              navigation.navigate("TaxiRideTracking", { rideId });
+            }}
+          >
+            <Ionicons name="car-sport" size={20} color={MMD_TAXI_GREEN} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.joinDriverTitle}>
+                {t("taxi.tracking.joinDriver", "Join your driver")}
+              </Text>
+              <Text style={styles.joinDriverBody}>
+                {t(
+                  "taxi.tracking.joinDriverBody",
+                  "Your driver is waiting at the pickup point. Follow them on the map above.",
+                )}
+              </Text>
+            </View>
+            <Ionicons name="chevron-up" size={18} color={MMD_GOLD_CLASSIC} />
+          </TouchableOpacity>
+        ) : null}
+
         {status === "accepted" || status === "driver_arrived" ? (
           <VerificationCodeCard
             title={t(
@@ -1005,6 +1033,30 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "800",
     fontFamily: MMD_FONT.extrabold,
+  },
+  joinDriverBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: "rgba(22,163,74,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(74,222,128,0.45)",
+  },
+  joinDriverTitle: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  joinDriverBody: {
+    color: "rgba(255,255,255,0.72)",
+    fontSize: 13,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+    textAlign: textAlignStart(),
   },
   inlineError: {
     flexDirection: "row",
