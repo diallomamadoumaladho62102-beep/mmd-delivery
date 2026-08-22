@@ -3,7 +3,7 @@
  */
 
 import type Stripe from "stripe";
-import { stripe } from "@/lib/stripe";
+import { retrievePlatformStripeAccount, stripe } from "@/lib/stripe";
 export {
   PLATFORM_PAYOUT_GUARD_BLOCK,
   PLATFORM_PAYOUT_GUARD_CLEAR,
@@ -32,11 +32,10 @@ export async function ensurePlatformManualPayoutSchedule(params?: {
 > {
   const client = params?.stripeClient ?? stripe;
   try {
-    const acct =
-      params?.platformAccountId &&
-      String(params.platformAccountId).startsWith("acct_")
-        ? await client.accounts.retrieve(params.platformAccountId)
-        : await client.accounts.retrieve();
+    const acct = await retrievePlatformStripeAccount(
+      client,
+      params?.platformAccountId,
+    );
 
     const platformAccountId = String(acct.id ?? "").trim();
     const interval = String(

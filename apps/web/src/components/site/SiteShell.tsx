@@ -6,6 +6,7 @@ import type { SiteMenuItem, SiteSettingsPayload } from "@/lib/siteCms";
 import NewsletterForm from "./NewsletterForm";
 import SiteImage from "./SiteImage";
 import SocialLinks from "./SocialLinks";
+import MobileAppComingSoonBanner from "./MobileAppComingSoonBanner";
 import {
   resolveSiteLogo,
   siteContainerClass,
@@ -105,6 +106,8 @@ export default function SiteShell({
       >
         Skip to content
       </a>
+
+      <MobileAppComingSoonBanner />
 
       {topOverlays.map((o) => (
         <div
