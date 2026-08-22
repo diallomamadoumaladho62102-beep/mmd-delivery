@@ -6,7 +6,9 @@ import {
 } from "@/lib/subscriptions/subscriptionEngine";
 import { mapStripeSubscriptionStatus } from "@/lib/subscriptions/stripeBilling";
 import {
+  readStripeInvoicePaymentIntentId,
   readStripeInvoiceSubscriptionId,
+  readStripeInvoiceTaxCents,
   readStripeSubscriptionPeriod,
   stripePeriodEndIso,
   stripePeriodStartIso,
@@ -298,12 +300,9 @@ export async function handleSubscriptionStripeEvent(
             p_status: "paid",
             p_amount_cents: invoice.amount_paid ?? invoice.amount_due ?? 0,
             p_currency: (invoice.currency ?? "usd").toUpperCase(),
-            p_tax_cents: invoice.tax ?? 0,
+            p_tax_cents: readStripeInvoiceTaxCents(invoice),
             p_stripe_invoice_id: invoice.id,
-            p_stripe_payment_intent_id:
-              typeof invoice.payment_intent === "string"
-                ? invoice.payment_intent
-                : invoice.payment_intent?.id ?? null,
+            p_stripe_payment_intent_id: readStripeInvoicePaymentIntentId(invoice),
             p_idempotency_key: `invoice-paid:${invoice.id}`,
             p_description: invoice.description,
             p_period_start: invoice.period_start
