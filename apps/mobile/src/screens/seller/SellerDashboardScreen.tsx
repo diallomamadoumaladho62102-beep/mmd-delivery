@@ -14,6 +14,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import {
   SellerBottomNav,
   SellerBrandHeader,
+  SellerContentWrap,
   SellerFeedbackCard,
   SellerGlassCard,
 } from "../../components/seller/SellerChrome";
@@ -214,6 +215,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
         />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          <SellerContentWrap style={{ gap: 16 }}>
           <SellerGlassCard style={styles.shopCard}>
             <View style={styles.shopTop}>
               <View style={styles.shopIcon}>
@@ -385,6 +387,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
               }
             />
           </View>
+          </SellerContentWrap>
         </ScrollView>
       )}
 

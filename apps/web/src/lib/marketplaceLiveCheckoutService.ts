@@ -15,6 +15,11 @@ import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { quoteMarketplaceSot } from "@/lib/pricingEngine";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import { resolveMarketplaceUnitPriceCents } from "@/lib/marketplaceOrderService";
+import { applyMarketplaceCheckoutBenefits } from "@/lib/marketplaceCheckoutPricing";
+import {
+  reserveMarketplaceStockForCheckout,
+  releaseMarketplaceStockReservation,
+} from "@/lib/marketplaceStockService";
 
 type ApprovedSellerRow = {
   id: string;
@@ -190,20 +195,70 @@ export async function prepareMarketplaceLiveCheckoutOrder(
 
   const totalsBase = await assertActiveOrderProducts(supabaseAdmin, order);
 
+  const totalsWithBenefits = await applyMarketplaceCheckoutBenefits(supabaseAdmin, {
+    clientUserId: params.clientUserId,
+    sellerId: order.seller_id,
+    countryCode: order.country_code ?? seller.country_code ?? null,
+    shadowBase: totalsBase,
+  });
+
   const totals: MarketplaceCheckoutShadow = {
-    subtotal_cents: totalsBase.subtotal_cents,
-    delivery_fee_cents: totalsBase.delivery_fee_cents,
-    service_fee_cents: totalsBase.service_fee_cents,
-    service_fee_pct: totalsBase.service_fee_pct,
-    service_fee_enabled: totalsBase.service_fee_enabled,
-    service_fee_fixed_cents: totalsBase.service_fee_fixed_cents,
-    total_cents: totalsBase.total_cents,
-    checkout_enabled: totalsBase.checkout_enabled,
+    subtotal_cents: totalsWithBenefits.subtotal_cents,
+    delivery_fee_cents: totalsWithBenefits.delivery_fee_cents,
+    service_fee_cents: totalsWithBenefits.service_fee_cents,
+    service_fee_pct: totalsWithBenefits.service_fee_pct,
+    service_fee_enabled: totalsWithBenefits.service_fee_enabled,
+    service_fee_fixed_cents: totalsWithBenefits.service_fee_fixed_cents,
+    total_cents: totalsWithBenefits.total_cents,
+    checkout_enabled: totalsWithBenefits.checkout_enabled,
     pricing_engine_version: "marketplace_checkout_shadow_v2",
-    message: totalsBase.message,
+    message: totalsWithBenefits.message,
   };
 
   if (totals.total_cents <= 0) throw new Error("Invalid order total");
+
+  try {
+    const { reserveAndAttachMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    const { isLikelyFirstOrder } = await import("@/lib/marketing/marketingEngine");
+    const firstOrder = await isLikelyFirstOrder(
+      supabaseAdmin,
+      params.clientUserId,
+      "marketplace"
+    );
+    const marketingAttach = await reserveAndAttachMarketing(supabaseAdmin, {
+      kind: "marketplace",
+      entityId: order.id,
+      userId: params.clientUserId,
+      subtotalCents: totalsBase.subtotal_cents,
+      deliveryFeeCents: totalsBase.delivery_fee_cents,
+      countryCode: order.country_code ?? seller.country_code ?? null,
+      partnerUserId: order.seller_id,
+      hasMmdPlus: Boolean(totalsWithBenefits.mmd_plus?.active),
+      isFirstOrder: firstOrder,
+    });
+    if (!marketingAttach.ok && marketingAttach.fail_closed) {
+      throw new Error(
+        marketingAttach.error ?? "Impossible de réserver la promotion"
+      );
+    }
+    (totals as Record<string, unknown>).marketing_reservation_id =
+      marketingAttach.marketing_reservation_id;
+    (totals as Record<string, unknown>).marketing_discount_cents =
+      marketingAttach.marketing_discount_cents;
+    (totals as Record<string, unknown>).marketing_campaign_ids =
+      marketingAttach.marketing_campaign_ids;
+  } catch (marketingError) {
+    const message =
+      marketingError instanceof Error ? marketingError.message : String(marketingError);
+    if (/Impossible de réserver|marketing_reserve|fail_closed/i.test(message)) {
+      throw marketingError instanceof Error
+        ? marketingError
+        : new Error(message);
+    }
+    console.warn("[marketplace-live-checkout] marketing reserve fail-open", message);
+  }
 
   // Phase 4: freeze marketplace commission at checkout (write-once).
   const { snapshotOrderCommission } = await import("@/lib/commission/commissionEngine");
@@ -278,7 +333,18 @@ export async function createMarketplaceLiveCheckoutSession(
     }
   }
 
-  const session = await stripe.checkout.sessions.create({
+  const stockReserve = await reserveMarketplaceStockForCheckout(supabaseAdmin, order.id);
+  if (!stockReserve.ok) {
+    throw new Error(
+      stockReserve.error?.includes("insufficient_stock")
+        ? "Insufficient stock for one or more products"
+        : stockReserve.error ?? "stock_reserve_failed"
+    );
+  }
+
+  let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
+  try {
+    session = await stripe.checkout.sessions.create({
     mode: "payment",
     client_reference_id: order.id,
     customer_email: undefined,
@@ -315,8 +381,15 @@ export async function createMarketplaceLiveCheckoutSession(
       },
     },
   });
+  } catch (stripeError) {
+    await releaseMarketplaceStockReservation(supabaseAdmin, order.id);
+    throw stripeError;
+  }
 
-  if (!session.url) throw new Error("Stripe session missing checkout URL");
+  if (!session.url) {
+    await releaseMarketplaceStockReservation(supabaseAdmin, order.id);
+    throw new Error("Stripe session missing checkout URL");
+  }
 
   const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
 

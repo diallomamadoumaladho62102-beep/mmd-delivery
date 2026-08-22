@@ -27,6 +27,7 @@ import {
 import {
   SellerBottomNav,
   SellerBrandHeader,
+  SellerContentWrap,
   SellerFeedbackCard,
   SellerGlassCard,
 } from "../../components/seller/SellerChrome";
@@ -222,6 +223,7 @@ export default function SellerWalletScreen() {
           />
         }
       >
+        <SellerContentWrap style={{ gap: 16 }}>
         <SellerGlassCard style={styles.hero}>
           <Text style={styles.heroLabel}>
             {t("seller.wallet.available", "Available Balance")}
@@ -332,6 +334,7 @@ export default function SellerWalletScreen() {
             );
           })
         )}
+        </SellerContentWrap>
       </ScrollView>
 
       <SellerBottomNav active="earnings" />

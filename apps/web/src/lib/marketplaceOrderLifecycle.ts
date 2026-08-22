@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notifyMarketplaceClientOrderStatus } from "@/lib/marketplacePushNotifications";
+import { releaseMarketplaceStockAfterCheckoutAbandon } from "@/lib/marketplaceStockService";
 import { refundMarketplaceSellerOrder } from "@/lib/marketplaceRefundService";
 
 const PAID_STATUSES = new Set(["paid", "confirmed"]);
@@ -228,6 +229,11 @@ export async function cancelMarketplaceOrder(
 
     if (updateError) return { ok: false, error: updateError.message };
     if (!updated) return { ok: false, error: "order_update_failed" };
+    await releaseMarketplaceStockAfterCheckoutAbandon(
+      supabaseAdmin,
+      params.orderId,
+      `cancel:${params.actorRole}`
+    );
     void notifyMarketplaceClientOrderStatus({
       supabaseAdmin,
       clientUserId: String(updated.client_user_id ?? order.client_user_id ?? ""),

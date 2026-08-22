@@ -15,6 +15,10 @@ function assert(condition: boolean, message: string) {
 
 const chrome = read("components/seller/SellerChrome.tsx");
 assert(chrome.includes("CommonActions.reset"), "seller bottom nav resets stack");
+assert(chrome.includes("SellerContentWrap"), "seller content wrap in chrome");
+
+const layout = read("lib/sellerScreenLayout.ts");
+assert(layout.includes("SELLER_CONTENT_MAX_WIDTH"), "seller layout module exists");
 assert(chrome.includes("SellerDashboard"), "seller nav routes wired");
 
 const onboarding = read("screens/seller/SellerOnboardingScreen.tsx");

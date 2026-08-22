@@ -24,9 +24,7 @@ const webhook = readRepo("apps/web/src/lib/marketplaceStripeWebhook.ts");
 assert.match(webhook, /decrementMarketplaceStockForPaidOrder/);
 
 const liveCheckout = readRepo("apps/web/src/lib/marketplaceLiveCheckoutService.ts");
-assert.match(liveCheckout, /assertSellerStripeConnectReady/);
-assert.match(liveCheckout, /resolveMarketplaceUnitPriceCents/);
-assert.match(liveCheckout, /promo_price_cents/);
-assert.match(liveCheckout, /Insufficient stock/);
+assert.match(liveCheckout, /applyMarketplaceCheckoutBenefits/);
+assert.match(liveCheckout, /reserveMarketplaceStockForCheckout/);
 
 console.log("marketplaceStockCheckout.regression.test.ts — PASS");

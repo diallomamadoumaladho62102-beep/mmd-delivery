@@ -18,6 +18,11 @@ import {
   PAYMENT_EXPIRATION_LOCK_JOB,
   runExpireStalePayments,
 } from "@/lib/expireStalePayments";
+import {
+  runExpireStaleMarketplaceStockReservations,
+  releaseMarketplaceStockAfterCheckoutAbandon,
+} from "@/lib/marketplaceStockService";
+import { handleMarketplaceCheckoutSessionExpired } from "@/lib/marketplaceStripeWebhook";
 import { assertStripeModeAllowed } from "@/lib/paymentLiveGuard";
 
 export const runtime = "nodejs";
@@ -27,8 +32,9 @@ export const maxDuration = 60;
 
 /**
  * Canonical payment-expiration cron.
- * Owns: unpaid/processing orders + delivery_requests past expires_at (+15m margin),
- * Stripe PaymentIntent cancel when safe, shared lock `payment-expiration`.
+ * Owns: unpaid/processing orders + delivery_requests + taxi_rides past expires_at (+15m margin),
+ * stale marketplace stock reservations, Stripe PaymentIntent cancel when safe,
+ * shared lock `payment-expiration`.
  */
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
@@ -158,7 +164,36 @@ async function handle(req: NextRequest) {
     }
 
     const result = locked.result;
-    const criticalFail = result.errors > 0 && result.canceled_local === 0;
+
+    const marketplaceStock = await runExpireStaleMarketplaceStockReservations({
+      supabaseAdmin,
+      stripe,
+      dryRun,
+      limit,
+      abandonCheckout: async (row, source) => {
+        if (row.status === "payment_failed") {
+          const release = await releaseMarketplaceStockAfterCheckoutAbandon(
+            supabaseAdmin,
+            row.id,
+            source
+          );
+          return release.ok
+            ? { ok: true }
+            : { ok: false, error: release.error ?? "stock_release_failed" };
+        }
+        return handleMarketplaceCheckoutSessionExpired({
+          supabaseAdmin,
+          sellerOrderId: row.id,
+          sessionId: row.stripe_checkout_session_id,
+          paymentIntentId: row.stripe_payment_intent_id,
+          source,
+        });
+      },
+    });
+
+    const criticalFail =
+      (result.errors > 0 && result.canceled_local === 0) ||
+      (marketplaceStock.errors > 0 && marketplaceStock.released === 0);
     trace.mark("response_sent");
     return json(
       finishCronRun(start, {
@@ -175,6 +210,7 @@ async function handle(req: NextRequest) {
         eligible: result.scanned,
         skipped: result.stripe_pi_skipped,
         failed: result.errors,
+        marketplace_stock: marketplaceStock,
         lock_acquired: true,
         job_lock: PAYMENT_EXPIRATION_LOCK_JOB,
         partial: result.partial === true,

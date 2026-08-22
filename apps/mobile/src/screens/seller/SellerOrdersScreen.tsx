@@ -28,6 +28,7 @@ import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
 import {
   SellerBottomNav,
   SellerBrandHeader,
+  SellerContentWrap,
   SellerFeedbackCard,
   SellerGlassCard,
 } from "../../components/seller/SellerChrome";
@@ -243,7 +244,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
           )}
         />
       ) : (
-        <>
+        <SellerContentWrap style={{ flex: 1 }}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -350,7 +351,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
               );
             }}
           />
-        </>
+        </SellerContentWrap>
       )}
 
       <SellerBottomNav active="orders" />

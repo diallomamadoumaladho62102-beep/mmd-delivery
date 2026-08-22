@@ -19,6 +19,16 @@ export type MarketplaceCheckoutShadow = {
   checkout_enabled: boolean;
   pricing_engine_version: "marketplace_checkout_shadow_v2";
   message: string | null;
+  marketing?: {
+    order_discount_cents: number;
+    delivery_fee_discount_cents: number;
+    applied: Array<Record<string, unknown>>;
+  };
+  mmd_plus?: {
+    delivery_fee_discount_cents: number;
+    order_discount_cents: number;
+    active: boolean;
+  };
 };
 
 export function isMarketplaceCheckoutEnabled(): boolean {

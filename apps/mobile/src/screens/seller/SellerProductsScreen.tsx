@@ -29,8 +29,10 @@ import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
 import {
   SellerBottomNav,
   SellerBrandHeader,
+  SellerContentWrap,
   SellerFeedbackCard,
   SellerGlassCard,
+  useSellerContentLayout,
 } from "../../components/seller/SellerChrome";
 import {
   MMD_BLUE,
@@ -74,6 +76,7 @@ const EMPTY_DRAFT: ProductDraft = {
 export default function SellerProductsScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { contentStyle } = useSellerContentLayout();
   const [loading, setLoading] = useState(true);
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [products, setProducts] = useState<SellerProductRow[]>([]);
@@ -315,7 +318,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
             data={filtered}
             keyExtractor={(item) => item.id}
             {...MARKETPLACE_LIST_PERF}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[styles.list, contentStyle]}
             renderItem={({ item }) => {
               const outOfStock = item.stock_qty != null && item.stock_qty <= 0;
               return (
@@ -401,6 +404,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
 
       <Modal visible={modalOpen} animationType="slide" transparent>
         <View style={styles.modalRoot}>
+          <SellerContentWrap>
           <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <ScrollView
               contentContainerStyle={{
@@ -484,6 +488,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
               </TouchableOpacity>
             </ScrollView>
           </View>
+          </SellerContentWrap>
         </View>
       </Modal>
 

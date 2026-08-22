@@ -6,7 +6,10 @@ import { prepareMarketplaceSellerPayoutAfterPayment } from "@/lib/marketplacePay
 import { notifyMarketplaceSellerNewPaidOrder } from "@/lib/marketplacePushNotifications";
 import { awardMarketplaceOrderLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 import { awardSellerOrderPerformance } from "@/lib/loyalty/marketplaceLoyaltyHooks";
-import { decrementMarketplaceStockForPaidOrder } from "@/lib/marketplaceStockService";
+import {
+  decrementMarketplaceStockForPaidOrder,
+  releaseMarketplaceStockAfterCheckoutAbandon,
+} from "@/lib/marketplaceStockService";
 import {
   requirePaymentIntentSucceeded,
   assertSettlementMatchesExpectation,
@@ -341,6 +344,12 @@ export async function handleMarketplaceCheckoutSessionExpired(params: {
     source,
   });
 
+  await releaseMarketplaceStockAfterCheckoutAbandon(
+    supabaseAdmin,
+    sellerOrderId,
+    source
+  );
+
   try {
     const { releaseEntityMarketing } = await import(
       "@/lib/marketing/marketingCheckoutLifecycle"
@@ -410,6 +419,12 @@ export async function handleMarketplaceStripePaymentFailed(params: {
     paymentIntentId,
     source,
   });
+
+  await releaseMarketplaceStockAfterCheckoutAbandon(
+    supabaseAdmin,
+    sellerOrderId,
+    source
+  );
 
   return {
     ok: true,

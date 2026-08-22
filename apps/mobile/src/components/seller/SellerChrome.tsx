@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +22,10 @@ import {
   MMD_TEXT,
   MMD_WHITE,
 } from "../../theme/mmdUi";
+import {
+  resolveSellerContentMaxWidth,
+  sellerContentWidthStyle,
+} from "../../lib/sellerScreenLayout";
 
 const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
@@ -47,6 +52,7 @@ export function SellerBrandHeader({
 
   return (
     <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }, style]}>
+      <SellerContentWrap style={styles.headerInner}>
       {showBack ? (
         <TouchableOpacity
           onPress={safeBack}
@@ -70,6 +76,7 @@ export function SellerBrandHeader({
         </View>
       </View>
       {rightSlot ? <View style={styles.rightSlot}>{rightSlot}</View> : null}
+      </SellerContentWrap>
     </View>
   );
 }
@@ -81,6 +88,28 @@ type GlassCardProps = {
 
 export function SellerGlassCard({ children, style }: GlassCardProps) {
   return <View style={[styles.glassCard, style]}>{children}</View>;
+}
+
+type SellerContentWrapProps = {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+};
+
+/** Centers seller main content on iPad / large phones with max width. */
+export function SellerContentWrap({ children, style }: SellerContentWrapProps) {
+  const { width } = useWindowDimensions();
+  const maxWidth = resolveSellerContentMaxWidth(width);
+  const layout = sellerContentWidthStyle(maxWidth);
+  return <View style={[layout, style]}>{children}</View>;
+}
+
+export function useSellerContentLayout() {
+  const { width } = useWindowDimensions();
+  const maxWidth = resolveSellerContentMaxWidth(width);
+  return {
+    maxWidth,
+    contentStyle: sellerContentWidthStyle(maxWidth),
+  };
 }
 
 type FeedbackProps = {
@@ -202,12 +231,15 @@ export function SellerBottomNav({ active }: BottomNavProps) {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
     paddingHorizontal: 16,
     paddingBottom: 12,
     backgroundColor: MMD_BLUE,
+  },
+  headerInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minWidth: 0,
   },
   backBtn: {
     width: 44,

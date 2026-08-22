@@ -24,6 +24,7 @@ import MarketScopeCard from "../../components/market/MarketScopeCard";
 import {
   SellerBrandHeader,
   SellerBottomNav,
+  SellerContentWrap,
   SellerFeedbackCard,
   SellerGlassCard,
 } from "../../components/seller/SellerChrome";
@@ -244,6 +245,7 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
         />
       ) : (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <SellerContentWrap style={{ gap: 16 }}>
           <SellerGlassCard style={styles.formCard}>
             <View style={styles.cardHeader}>
               <View style={styles.shopIcon}>
@@ -318,6 +320,7 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
               </Text>
             </TouchableOpacity>
           ) : null}
+          </SellerContentWrap>
         </ScrollView>
       )}
       {editMode ? <SellerBottomNav active="profile" /> : null}
