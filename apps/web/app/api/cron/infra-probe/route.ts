@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
+import { STRIPE_API_VERSION } from "@/lib/stripe";
 import { withCronJobLock } from "@/lib/cronJobLock";
 import { finishCronRun, startCronRun } from "@/lib/cronObservability";
 import { createCronPhaseTracer } from "@/lib/cronPhaseTrace";
@@ -92,7 +93,7 @@ async function handle(req: NextRequest) {
             stripeProbe = { ok: false, error: gate.error };
           } else {
             const stripeClient = new Stripe(key, {
-              apiVersion: "2023-10-16",
+              apiVersion: STRIPE_API_VERSION,
               timeout: CRON_STRIPE_TIMEOUT_MS,
               maxNetworkRetries: 0,
             });
