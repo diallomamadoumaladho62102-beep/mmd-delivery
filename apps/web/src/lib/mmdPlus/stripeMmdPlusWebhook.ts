@@ -7,6 +7,7 @@ import {
 } from "@/lib/mmdPlus/mmdPlusEngine";
 import { mapMmdPlusStripeStatus } from "@/lib/mmdPlus/stripeMmdPlusBilling";
 import {
+  readStripeInvoiceSubscriptionId,
   readStripeSubscriptionPeriod,
   stripePeriodEndIso,
   stripePeriodStartIso,
@@ -189,10 +190,7 @@ async function handleInvoice(
   invoice: Stripe.Invoice,
   eventType: string
 ): Promise<Record<string, unknown>> {
-  const subId =
-    typeof invoice.subscription === "string"
-      ? invoice.subscription
-      : invoice.subscription?.id ?? null;
+  const subId = readStripeInvoiceSubscriptionId(invoice);
   if (!subId) return { skipped: "no_subscription_on_invoice" };
 
   const { data: local } = await supabaseAdmin

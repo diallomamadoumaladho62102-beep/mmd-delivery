@@ -36,3 +36,14 @@ export function stripePeriodEndIso(sub: Stripe.Subscription): string | null {
     ? new Date(currentPeriodEnd * 1000).toISOString()
     : null;
 }
+
+export function readStripeInvoiceSubscriptionId(
+  invoice: Stripe.Invoice,
+): string | null {
+  const legacy = invoice as Stripe.Invoice & {
+    subscription?: string | Stripe.Subscription | null;
+  };
+  const sub = legacy.subscription;
+  if (typeof sub === "string") return sub.trim() || null;
+  return sub?.id ? String(sub.id) : null;
+}

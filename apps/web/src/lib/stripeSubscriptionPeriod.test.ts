@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import {
+  readStripeInvoiceSubscriptionId,
   readStripeSubscriptionPeriod,
   stripePeriodEndIso,
   stripePeriodStartIso,
@@ -24,5 +25,11 @@ assert(period.currentPeriodStart === 1_700_000_100, "period start");
 assert(period.currentPeriodEnd === 1_700_086_500, "period end");
 assert(period.cancelAtPeriodEnd === true, "cancel at period end");
 assert(stripePeriodStartIso(sub)?.includes("2023"), "start iso");
+
+const invoice = { subscription: "sub_test_1" } as Stripe.Invoice;
+assert(
+  readStripeInvoiceSubscriptionId(invoice) === "sub_test_1",
+  "invoice subscription id",
+);
 
 console.log("stripeSubscriptionPeriod tests passed");
