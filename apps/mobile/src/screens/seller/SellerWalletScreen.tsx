@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
+import { loadOwnSeller } from "../../lib/sellerApi";
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { formatWalletAmount, fetchWalletSummary } from "../../lib/walletApi";
 import { startStripeOnboarding } from "../../utils/stripe";
@@ -95,9 +96,12 @@ export default function SellerWalletScreen() {
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Session expired");
 
+      const seller = await loadOwnSeller();
+      const countryCode = seller?.country_code?.trim().toUpperCase() || "US";
+
       const base = getApiBaseUrl().replace(/\/$/, "");
       const [summary, activityRes, connectRes] = await Promise.all([
-        fetchWalletSummary(token, { accountType: "seller", countryCode: "US" }),
+        fetchWalletSummary(token, { accountType: "seller", countryCode }),
         fetch(`${base}/api/wallet/seller-activity?limit=50`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then(async (r) => {

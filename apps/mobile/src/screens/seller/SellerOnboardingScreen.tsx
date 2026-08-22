@@ -23,9 +23,15 @@ import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
 import {
   SellerBrandHeader,
+  SellerBottomNav,
   SellerFeedbackCard,
   SellerGlassCard,
 } from "../../components/seller/SellerChrome";
+import {
+  confirmSignOutToRoleSelect,
+  sellerSignOutLabels,
+} from "../../lib/confirmSignOutToRoleSelect";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -135,7 +141,7 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
         Alert.alert(
           t("seller.onboarding.updatedTitle", "Profile updated"),
           t("seller.onboarding.updatedBody", "Your business profile was saved."),
-          [{ text: "OK", onPress: () => navigation.goBack() }]
+          [{ text: "OK", onPress: () => navigation.navigate("SellerDashboard") }]
         );
       } else {
         await upsertSellerOnboarding({
@@ -294,8 +300,27 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
               </Text>
             )}
           </TouchableOpacity>
+
+          {editMode ? (
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={() =>
+                confirmSignOutToRoleSelect({
+                  navigation,
+                  labels: sellerSignOutLabels(t),
+                  formatError: (e, fb) => toUserFacingError(e, fb),
+                })
+              }
+              accessibilityRole="button"
+            >
+              <Text style={styles.logoutLabel}>
+                {t("seller.signOut.title", "Log out")}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
       )}
+      {editMode ? <SellerBottomNav active="profile" /> : null}
     </SafeAreaView>
   );
 }
@@ -351,5 +376,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: MMD_FONT.bold,
     fontWeight: "700",
+  },
+  logoutBtn: {
+    marginTop: 8,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.45)",
+    backgroundColor: "rgba(239,68,68,0.12)",
+  },
+  logoutLabel: {
+    color: "#FCA5A5",
+    fontSize: 15,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
   },
 });

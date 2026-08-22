@@ -5,6 +5,7 @@ import { Alert } from "react-native";
 import {
   driverSignOutLabels,
   restaurantSignOutLabels,
+  sellerSignOutLabels,
   signOutToRoleSelect,
   type ConfirmSignOutLabels,
   type SignOutDeps,
@@ -72,5 +73,5 @@ export function confirmSignOutToRoleSelect(params: {
   ]);
 }
 
-export { restaurantSignOutLabels, driverSignOutLabels, signOutToRoleSelect };
+export { restaurantSignOutLabels, driverSignOutLabels, sellerSignOutLabels, signOutToRoleSelect };
 export type { ConfirmSignOutLabels, SignOutDeps, SignOutNavigation };

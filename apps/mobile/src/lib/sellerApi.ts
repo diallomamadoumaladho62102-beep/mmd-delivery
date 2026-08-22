@@ -196,6 +196,20 @@ export async function toggleSellerProductActive(
   if (error) throw error;
 }
 
+/** Hard delete — RLS restricts to the owning seller. */
+export async function deleteSellerProduct(
+  sellerId: string,
+  productId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("seller_products")
+    .delete()
+    .eq("id", productId)
+    .eq("seller_id", sellerId);
+
+  if (error) throw error;
+}
+
 export async function loadSellerOrders(sellerId: string): Promise<SellerOrderRow[]> {
   const { data, error } = await supabase
     .from("seller_orders")

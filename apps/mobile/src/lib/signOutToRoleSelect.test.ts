@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   driverSignOutLabels,
   restaurantSignOutLabels,
+  sellerSignOutLabels,
   signOutToRoleSelect,
 } from "./signOutToRoleSelect";
 
@@ -73,6 +74,13 @@ async function main() {
     assert.match(labels.confirm, /log out/i);
     assert.match(labels.title, /log out/i);
     assert.match(labels.body, /driver/i);
+  });
+
+  await test("sellerSignOutLabels expose Log out copy", () => {
+    const labels = sellerSignOutLabels((_k, fb) => fb);
+    assert.match(labels.confirm, /log out/i);
+    assert.match(labels.title, /log out/i);
+    assert.match(labels.body, /seller/i);
   });
 
   await test("restaurant logout reset target is RoleSelect only (Back-safe stack)", async () => {

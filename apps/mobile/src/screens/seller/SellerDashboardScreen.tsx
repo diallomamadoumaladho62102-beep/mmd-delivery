@@ -36,6 +36,10 @@ import {
 } from "../../lib/stripeConnectStatus";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
+  confirmSignOutToRoleSelect,
+  sellerSignOutLabels,
+} from "../../lib/confirmSignOutToRoleSelect";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_GLASS,
@@ -183,6 +187,23 @@ export default function SellerDashboardScreen({ navigation }: Props) {
       <SellerBrandHeader
         subtitle={t("seller.dashboard.title", "Seller Dashboard")}
         showBack={false}
+        rightSlot={
+          <TouchableOpacity
+            onPress={() =>
+              confirmSignOutToRoleSelect({
+                navigation,
+                labels: sellerSignOutLabels(t),
+                formatError: (e, fb) => toUserFacingError(e, fb),
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel={t("seller.signOut.title", "Log out")}
+          >
+            <Text style={styles.logoutLink}>
+              {t("seller.signOut.title", "Log out")}
+            </Text>
+          </TouchableOpacity>
+        }
       />
 
       {loading ? (
@@ -275,6 +296,14 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                 {stripeLabel}
               </Text>
               <Text style={styles.muted}>{stripeMessage}</Text>
+              {stripeStatus !== "ready_for_payouts" ? (
+                <Text style={styles.danger}>
+                  {t(
+                    "seller.dashboard.payoutBlocked",
+                    "Payouts are blocked until Stripe Connect is complete. Earnings stay on the ledger and retry automatically after onboarding.",
+                  )}
+                </Text>
+              ) : null}
               <TouchableOpacity
                 onPress={() => void onOpenStripe()}
                 disabled={stripeBusy}
@@ -429,6 +458,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   danger: { color: "#FCA5A5", marginTop: 4, fontSize: 13 },
+  logoutLink: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
   kpiRow: { flexDirection: "row", gap: 12 },
   kpiCard: { flex: 1, gap: 10, borderRadius: 20 },
   kpiIcon: {

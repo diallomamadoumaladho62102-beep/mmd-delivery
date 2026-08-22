@@ -273,6 +273,47 @@ export async function updateMarketplaceJobStatusForDriver(
         error: prepError instanceof Error ? prepError.message : String(prepError),
       });
     }
+
+    const { error: orderError } = await supabaseAdmin
+      .from("seller_orders")
+      .update({
+        status: "delivered",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", job.seller_order_id)
+      .in("status", ["out_for_delivery", "ready"]);
+
+    if (orderError) {
+      console.error("[marketplaceDriverJobs] seller order delivered sync failed", {
+        seller_order_id: job.seller_order_id,
+        error: orderError.message,
+      });
+    } else {
+      try {
+        const { notifyMarketplaceClientOrderStatus } = await import(
+          "@/lib/marketplacePushNotifications"
+        );
+        const { data: orderRow } = await supabaseAdmin
+          .from("seller_orders")
+          .select("client_user_id")
+          .eq("id", job.seller_order_id)
+          .maybeSingle();
+        if (orderRow?.client_user_id) {
+          await notifyMarketplaceClientOrderStatus({
+            supabaseAdmin,
+            clientUserId: String(orderRow.client_user_id),
+            orderId: job.seller_order_id,
+            status: "delivered",
+          });
+        }
+      } catch (notifyError) {
+        console.error("[marketplaceDriverJobs] delivered notify failed", {
+          seller_order_id: job.seller_order_id,
+          error:
+            notifyError instanceof Error ? notifyError.message : String(notifyError),
+        });
+      }
+    }
   }
 
   return { ok: true, job };

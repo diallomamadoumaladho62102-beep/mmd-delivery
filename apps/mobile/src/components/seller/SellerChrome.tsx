@@ -3,13 +3,14 @@ import {
   ActivityIndicator,
   Image,
   StyleSheet,
+  StyleProp,
   Text,
   TouchableOpacity,
   View,
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, CommonActions } from "@react-navigation/native";
 import { useSafeBackNavigation } from "../../navigation/navigationBack";
 import {
   MMD_BLUE,
@@ -75,7 +76,7 @@ export function SellerBrandHeader({
 
 type GlassCardProps = {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function SellerGlassCard({ children, style }: GlassCardProps) {
@@ -176,11 +177,16 @@ export function SellerBottomNav({ active }: BottomNavProps) {
             style={styles.navItem}
             onPress={() => {
               if (selected) return;
-              if (item.params) {
-                navigation.navigate(item.route, item.params);
-              } else {
-                navigation.navigate(item.route);
-              }
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [
+                    item.params
+                      ? { name: item.route, params: item.params }
+                      : { name: item.route },
+                  ],
+                }),
+              );
             }}
             accessibilityRole="button"
             accessibilityState={{ selected }}

@@ -13,13 +13,14 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   loadOwnSeller,
   loadSellerProducts,
   saveSellerProduct,
   toggleSellerProductActive,
+  deleteSellerProduct,
 } from "../../lib/sellerApi";
 import { formatMoney, type SellerProductRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
@@ -72,6 +73,7 @@ const EMPTY_DRAFT: ProductDraft = {
 
 export default function SellerProductsScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [products, setProducts] = useState<SellerProductRow[]>([]);
@@ -160,8 +162,11 @@ export default function SellerProductsScreen({ navigation }: Props) {
   const save = async () => {
     if (!sellerId) return;
     const priceCents = Math.round(Number(draft.price) * 100);
-    if (!draft.title.trim() || !Number.isFinite(priceCents) || priceCents < 0) {
-      Alert.alert(t("common.errorTitle", "Error"), t("seller.products.invalid", "Invalid product data"));
+    if (!draft.title.trim() || !Number.isFinite(priceCents) || priceCents <= 0) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        t("seller.products.invalidPrice", "Enter a valid price greater than zero.")
+      );
       return;
     }
 
@@ -234,6 +239,39 @@ export default function SellerProductsScreen({ navigation }: Props) {
         e?.message ?? t("seller.products.updateFailed", "Unable to update the product.")
       );
     }
+  };
+
+  const removeProduct = (product: SellerProductRow) => {
+    if (!sellerId) return;
+    Alert.alert(
+      t("seller.products.deleteTitle", "Delete product"),
+      t(
+        "seller.products.deleteBody",
+        "Remove this product permanently? This cannot be undone.",
+      ),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("common.delete", "Delete"),
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteSellerProduct(sellerId, product.id);
+                await refresh();
+              } catch (e: unknown) {
+                Alert.alert(
+                  t("common.errorTitle", "Error"),
+                  e instanceof Error
+                    ? e.message
+                    : t("seller.products.deleteFailed", "Unable to delete the product."),
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -337,6 +375,11 @@ export default function SellerProductsScreen({ navigation }: Props) {
                               : t("seller.products.activate", "Activate")}
                           </Text>
                         </TouchableOpacity>
+                        <TouchableOpacity onPress={() => removeProduct(item)}>
+                          <Text style={[styles.link, { color: "#FCA5A5" }]}>
+                            {t("common.delete", "Delete")}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
                     </View>
                     <Text style={styles.chevron}>›</Text>
@@ -358,8 +401,13 @@ export default function SellerProductsScreen({ navigation }: Props) {
 
       <Modal visible={modalOpen} animationType="slide" transparent>
         <View style={styles.modalRoot}>
-          <View style={styles.sheet}>
-            <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 24 }}>
+          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <ScrollView
+              contentContainerStyle={{
+                gap: 14,
+                paddingBottom: Math.max(insets.bottom, 12),
+              }}
+            >
               <View style={styles.sheetTitleRow}>
                 <View style={styles.sheetIcon}>
                   <Text>{draft.id ? "✏️" : "✨"}</Text>

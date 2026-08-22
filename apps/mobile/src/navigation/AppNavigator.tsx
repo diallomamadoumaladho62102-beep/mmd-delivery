@@ -104,7 +104,7 @@ export type RootStackParamList = {
   SellerOnboarding: { mode?: "edit" } | undefined;
   SellerDashboard: undefined;
   SellerProducts: undefined;
-  SellerOrders: undefined;
+  SellerOrders: { highlightOrderId?: string } | undefined;
   SellerWallet: undefined;
 
   MarketplaceHome: undefined;

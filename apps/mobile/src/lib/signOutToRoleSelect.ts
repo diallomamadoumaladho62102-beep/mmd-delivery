@@ -88,3 +88,21 @@ export function driverSignOutLabels(t: (key: string, fallback: string) => string
     ),
   } satisfies ConfirmSignOutLabels;
 }
+
+/** Stable i18n defaults for Seller logout (EN primary for App Store). */
+export function sellerSignOutLabels(t: (key: string, fallback: string) => string) {
+  return {
+    title: t("seller.signOut.title", "Log out"),
+    body: t(
+      "seller.signOut.body",
+      "Sign out of this device? Your seller account and products stay intact.",
+    ),
+    confirm: t("common.logout", "Log out"),
+    cancel: t("common.cancel", "Cancel"),
+    errorTitle: t("common.errorTitle", "Error"),
+    errorBody: t(
+      "seller.signOut.error",
+      "Unable to sign out right now.",
+    ),
+  } satisfies ConfirmSignOutLabels;
+}

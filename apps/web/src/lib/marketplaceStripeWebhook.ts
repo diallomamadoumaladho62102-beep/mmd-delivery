@@ -6,6 +6,7 @@ import { prepareMarketplaceSellerPayoutAfterPayment } from "@/lib/marketplacePay
 import { notifyMarketplaceSellerNewPaidOrder } from "@/lib/marketplacePushNotifications";
 import { awardMarketplaceOrderLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 import { awardSellerOrderPerformance } from "@/lib/loyalty/marketplaceLoyaltyHooks";
+import { decrementMarketplaceStockForPaidOrder } from "@/lib/marketplaceStockService";
 import {
   requirePaymentIntentSucceeded,
   assertSettlementMatchesExpectation,
@@ -178,6 +179,17 @@ export async function handleMarketplaceStripePayment(params: {
     paymentIntentId,
     source,
   });
+
+  const stockResult = await decrementMarketplaceStockForPaidOrder(
+    supabaseAdmin,
+    sellerOrderId
+  );
+  if (!stockResult.ok) {
+    console.error("[marketplace-stripe-webhook] stock decrement failed", {
+      sellerOrderId,
+      error: stockResult.error,
+    });
+  }
 
   void prepareMarketplaceDeliveryJobAfterPayment(supabaseAdmin, {
     sellerOrderId,

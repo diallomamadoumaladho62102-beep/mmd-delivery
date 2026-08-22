@@ -28,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
+import { resolvePostAuthRoute } from "../lib/authRole";
 import {
   AUTH_ACTION_TIMEOUT_MS,
   withTimeout,
@@ -343,9 +344,10 @@ export function ClientAuthScreen() {
 
       await applyReferralIfAny();
 
+      const postAuthRoute = await resolvePostAuthRoute();
       navigation.reset({
         index: 0,
-        routes: [{ name: "ClientHome" }],
+        routes: [{ name: postAuthRoute }],
       });
     } catch (e: unknown) {
       console.error(e);
@@ -633,7 +635,7 @@ export function ClientAuthScreen() {
 
       navigation.reset({
         index: 0,
-        routes: [{ name: "ClientHome" }],
+        routes: [{ name: await resolvePostAuthRoute() }],
       });
     } catch (e: unknown) {
       console.error(e);

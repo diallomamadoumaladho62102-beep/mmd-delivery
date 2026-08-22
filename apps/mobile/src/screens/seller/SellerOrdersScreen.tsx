@@ -11,7 +11,8 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useRoute, type RouteProp } from "@react-navigation/native";
+import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { loadOwnSeller, loadSellerOrders } from "../../lib/sellerApi";
 import { formatMoney, type SellerOrderRow } from "../../lib/sellerTypes";
 import { updateMarketplaceSellerOrderStatus } from "../../lib/marketplaceApi";
@@ -41,7 +42,7 @@ import {
 } from "../../theme/mmdUi";
 
 type Props = { navigation: any };
-type FilterKey = "all" | "pending" | "accepted" | "refused";
+type OrdersRoute = RouteProp<RootStackParamList, "SellerOrders">;
 
 function statusTone(status: string): { bg: string; color: string; label: string } {
   const s = status.toLowerCase();
@@ -61,7 +62,11 @@ function statusTone(status: string): { bg: string; color: string; label: string 
   return { bg: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.8)", label: status };
 }
 
+type FilterKey = "all" | "pending" | "accepted" | "refused";
+
 export default function SellerOrdersScreen({ navigation }: Props) {
+  const route = useRoute<OrdersRoute>();
+  const highlightOrderId = route.params?.highlightOrderId?.trim() ?? "";
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -69,6 +74,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
   const [sellerId, setSellerId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const listRef = useRef<FlatList<SellerOrderRow> | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -138,6 +144,16 @@ export default function SellerOrdersScreen({ navigation }: Props) {
     }
     return orders.filter((o) => o.status.toLowerCase() === "refused");
   }, [orders, filter]);
+
+  useEffect(() => {
+    if (!highlightOrderId || loading || filtered.length === 0) return;
+    const index = filtered.findIndex((o) => o.id === highlightOrderId);
+    if (index < 0) return;
+    const timer = setTimeout(() => {
+      listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.2 });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [filtered, highlightOrderId, loading]);
 
   const actionsFor = useMemo(
     () =>
@@ -250,9 +266,11 @@ export default function SellerOrdersScreen({ navigation }: Props) {
           </ScrollView>
 
           <FlatList
+            ref={listRef}
             data={filtered}
             keyExtractor={(item) => item.id}
             {...MARKETPLACE_LIST_PERF}
+            onScrollToIndexFailed={() => {}}
             contentContainerStyle={styles.list}
             ListEmptyComponent={
               <Text style={styles.emptyFilter}>
@@ -262,8 +280,17 @@ export default function SellerOrdersScreen({ navigation }: Props) {
             renderItem={({ item }) => {
               const actions = actionsFor(item.status);
               const tone = statusTone(item.status);
+              const highlighted = highlightOrderId === item.id;
               return (
-                <SellerGlassCard style={styles.card}>
+                <SellerGlassCard
+                  style={[
+                    styles.card,
+                    highlighted && {
+                      borderColor: MMD_GOLD_CLASSIC,
+                      borderWidth: 2,
+                    },
+                  ]}
+                >
                   <View style={styles.cardTop}>
                     <Text style={styles.orderId}>
                       📋 #{item.id.slice(0, 8)}

@@ -35,4 +35,17 @@ const marketplaceHome = fs.readFileSync(
 assert.match(marketplaceHome, /is_accepting_orders/);
 assert.match(marketplaceHome, /shopOpen/);
 
+const sellerLogout = fs.readFileSync(
+  path.join(root, "src", "screens", "seller", "SellerOnboardingScreen.tsx"),
+  "utf8"
+);
+assert.match(sellerLogout, /sellerSignOutLabels/);
+assert.match(sellerLogout, /confirmSignOutToRoleSelect/);
+
+const sellerNav = fs.readFileSync(
+  path.join(root, "src", "components", "seller", "SellerChrome.tsx"),
+  "utf8"
+);
+assert.match(sellerNav, /CommonActions\.reset/);
+
 console.log("marketplace-seller-role.test.mjs ALL PASS");

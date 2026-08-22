@@ -14,6 +14,7 @@ import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { quoteMarketplaceSot } from "@/lib/pricingEngine";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
+import { resolveMarketplaceUnitPriceCents } from "@/lib/marketplaceOrderService";
 
 type ApprovedSellerRow = {
   id: string;
@@ -22,6 +23,10 @@ type ApprovedSellerRow = {
   business_name: string;
   country_code: string | null;
   city: string | null;
+  stripe_account_id: string | null;
+  stripe_details_submitted: boolean | null;
+  stripe_charges_enabled: boolean | null;
+  stripe_payouts_enabled: boolean | null;
 };
 
 function normalizeCurrency(value: unknown): string {
@@ -54,7 +59,9 @@ async function assertApprovedSeller(
 ): Promise<ApprovedSellerRow> {
   const { data, error } = await supabaseAdmin
     .from("sellers")
-    .select("id,user_id,status,business_name,country_code,city")
+    .select(
+      "id,user_id,status,business_name,country_code,city,stripe_account_id,stripe_details_submitted,stripe_charges_enabled,stripe_payouts_enabled"
+    )
     .eq("id", sellerId)
     .eq("status", "approved")
     .maybeSingle();
@@ -62,6 +69,18 @@ async function assertApprovedSeller(
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Seller not approved");
   return data as ApprovedSellerRow;
+}
+
+function assertSellerStripeConnectReady(seller: ApprovedSellerRow): void {
+  const destination = String(seller.stripe_account_id ?? "").trim();
+  const ready =
+    Boolean(seller.stripe_details_submitted) &&
+    Boolean(seller.stripe_charges_enabled) &&
+    Boolean(seller.stripe_payouts_enabled) &&
+    /^acct_[A-Za-z0-9]+$/.test(destination);
+  if (!ready) {
+    throw new Error("seller_stripe_connect_not_ready");
+  }
 }
 
 async function assertActiveOrderProducts(
@@ -77,7 +96,7 @@ async function assertActiveOrderProducts(
 
   const { data: products, error } = await supabaseAdmin
     .from("seller_products")
-    .select("id,price_cents,active")
+    .select("id,price_cents,promo_price_cents,active,stock_qty")
     .eq("seller_id", order.seller_id)
     .in("id", productIds)
     .eq("active", true);
@@ -85,11 +104,15 @@ async function assertActiveOrderProducts(
   if (error) throw new Error(error.message);
 
   const activeById = new Map(
-    (products ?? []).map((row) => [String(row.id), Number(row.price_cents)])
+    (products ?? []).map((row) => [String(row.id), row])
   );
   for (const item of items) {
-    if (!item.product_id || !activeById.has(item.product_id)) {
+    const product = item.product_id ? activeById.get(String(item.product_id)) : null;
+    if (!item.product_id || !product) {
       throw new Error(`Inactive or invalid product: ${item.title}`);
+    }
+    if (product.stock_qty != null && Number(product.stock_qty) < item.quantity) {
+      throw new Error(`Insufficient stock for product: ${item.title}`);
     }
   }
 
@@ -101,10 +124,13 @@ async function assertActiveOrderProducts(
   // Always price from live catalog — never trust stale cart line prices.
   // Phase 5F — PE exclusive SoT.
   const pe = quoteMarketplaceSot(
-    items.map((item) => ({
-      price_cents: activeById.get(String(item.product_id)) ?? 0,
-      quantity: item.quantity,
-    })),
+    items.map((item) => {
+      const product = activeById.get(String(item.product_id))!;
+      return {
+        price_cents: resolveMarketplaceUnitPriceCents(product),
+        quantity: item.quantity,
+      };
+    }),
     {
       deliveryFeeCents: order.delivery_fee_cents ?? undefined,
       serviceFeeConfig,
@@ -153,6 +179,7 @@ export async function prepareMarketplaceLiveCheckoutOrder(
   }
 
   const seller = await assertApprovedSeller(supabaseAdmin, order.seller_id);
+  assertSellerStripeConnectReady(seller);
 
   const stripeGate = assertStripeCheckoutAllowed(
     seller.country_code ?? order.country_code ?? "US"

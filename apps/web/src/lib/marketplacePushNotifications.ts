@@ -98,14 +98,18 @@ export async function notifyMarketplaceClientOrderStatus(params: {
             ? "Commande prête"
             : status === "out_for_delivery"
               ? "Commande en livraison"
-              : status === "canceled" || status === "cancelled"
+              : status === "delivered"
+                ? "Commande livrée"
+                : status === "canceled" || status === "cancelled"
                 ? "Commande annulée"
                 : "Mise à jour commande";
 
   const body =
     status === "refused"
       ? "Le vendeur a refusé votre commande. Un remboursement différé est enregistré."
-      : `Statut Marketplace : ${status}.`;
+      : status === "delivered"
+        ? "Votre commande Marketplace a été livrée."
+        : `Statut Marketplace : ${status}.`;
 
   const data = {
     type: "marketplace_order_update",
