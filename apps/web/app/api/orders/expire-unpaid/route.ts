@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
+import { STRIPE_API_VERSION } from "@/lib/stripe";
 import { withCronJobLock } from "@/lib/cronJobLock";
 import { finishCronRun, startCronRun } from "@/lib/cronObservability";
 import {
@@ -62,7 +63,7 @@ function getStripe(): Stripe | null {
   if (!key) return null;
   const gate = assertStripeModeAllowed("orders/expire-unpaid");
   if (gate.ok === false) throw new Error(gate.error);
-  return new Stripe(key, { apiVersion: "2023-10-16" });
+  return new Stripe(key, { apiVersion: STRIPE_API_VERSION });
 }
 
 function readDryRun(req: NextRequest): boolean {

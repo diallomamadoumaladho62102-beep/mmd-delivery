@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
+import { STRIPE_API_VERSION } from "@/lib/stripe";
 import { withCronJobLock } from "@/lib/cronJobLock";
 import { finishCronRun, startCronRun } from "@/lib/cronObservability";
 import { createCronPhaseTracer, maskResourceId } from "@/lib/cronPhaseTrace";
@@ -52,7 +53,7 @@ function getStripe(): Stripe | null {
   const gate = assertStripeModeAllowed("cron/expire-stale-payments");
   if (gate.ok === false) throw new Error(gate.error);
   return new Stripe(key, {
-    apiVersion: "2023-10-16",
+    apiVersion: STRIPE_API_VERSION,
     timeout: CRON_STRIPE_TIMEOUT_MS,
     maxNetworkRetries: 0,
   });
