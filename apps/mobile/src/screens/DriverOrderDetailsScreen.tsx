@@ -12,7 +12,7 @@ import {
   Linking,
   Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Mapbox from "@rnmapbox/maps";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -33,6 +33,10 @@ import {
 import { DriverTripLocationCard } from "../components/location/DriverTripLocationCard";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
+import {
+  resolveDriverStackActionBottom,
+  resolveDriverStackScrollBottomPadding,
+} from "../lib/driverScreenSafeArea";
 import {
   ensureMapboxTokenApplied,
   getMapStyleStreets,
@@ -771,6 +775,15 @@ export function DriverOrderDetailsScreen() {
 
   const { t } = useTranslation();
   const safeBack = useSafeBackNavigation("DriverTabs");
+  const insets = useSafeAreaInsets();
+  const stackActionBottom = useMemo(
+    () => resolveDriverStackActionBottom(insets.bottom),
+    [insets.bottom],
+  );
+  const scrollBottomPadding = useMemo(
+    () => resolveDriverStackScrollBottomPadding(100, insets.bottom),
+    [insets.bottom],
+  );
 
   useEffect(() => {
     ensureMapboxTokenApplied();
@@ -2868,7 +2881,12 @@ export function DriverOrderDetailsScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 10, paddingVertical: 8, paddingBottom: 140, gap: 8 }}
+        contentContainerStyle={{
+          paddingHorizontal: 10,
+          paddingVertical: 8,
+          paddingBottom: scrollBottomPadding,
+          gap: 8,
+        }}
       >
         <View
           style={{
@@ -3644,7 +3662,7 @@ export function DriverOrderDetailsScreen() {
             position: "absolute",
             left: 16,
             right: 16,
-            bottom: 16,
+            bottom: stackActionBottom,
             borderRadius: 18,
             padding: 12,
             backgroundColor: "rgba(2,6,23,0.985)",
@@ -3693,7 +3711,7 @@ export function DriverOrderDetailsScreen() {
             position: "absolute",
             left: 10,
             right: 10,
-            bottom: 16,
+            bottom: stackActionBottom,
             borderRadius: 18,
             padding: 12,
             backgroundColor: "rgba(0,51,153,0.99)",

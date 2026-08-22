@@ -30,6 +30,8 @@ const DEVICES: DeviceSpec[] = [
   { platform: "ios", name: "iPhone SE", width: 375, height: 667 },
   { platform: "ios", name: "iPhone 15", width: 393, height: 852 },
   { platform: "ios", name: "iPhone 15 Pro Max", width: 430, height: 932 },
+  { platform: "ios", name: "iPad 11", width: 834, height: 1194 },
+  { platform: "ios", name: "iPad 12.9", width: 1024, height: 1366 },
 ];
 
 function anchorCenterY(

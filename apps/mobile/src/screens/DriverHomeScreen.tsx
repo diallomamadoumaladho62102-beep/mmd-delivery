@@ -82,6 +82,7 @@ import {
 } from "../lib/driverPresenceConfig";
 import { subscribeDriverMissionPushRefresh } from "../lib/driverMissionPushEvents";
 import { toUserFacingError } from "../lib/userFacingError";
+import { resolveDriverTabBottomPadding } from "../lib/driverScreenSafeArea";
 import {
   MMD_BLUE,
   MMD_GOLD_CLASSIC,
@@ -743,6 +744,15 @@ function demandColor(demand: ZoneDemand) {
 export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
+  const bottomPanelOffset = useMemo(
+    () =>
+      resolveDriverTabBottomPadding({
+        tabClearance: DRIVER_BOTTOM_TAB_CLEARANCE ?? 64,
+        navSafeOffset: DRIVER_BOTTOM_NAV_SAFE_OFFSET ?? 28,
+        insetBottom: insets.bottom,
+      }),
+    [insets.bottom],
+  );
   const navAny = navigation as unknown as AnyNav;
   const { t } = useTranslation();
   const { features: platformFeatures, refresh: refreshDriverPlatformFeatures } =
@@ -3236,6 +3246,7 @@ export function DriverHomeScreen() {
               formatDate={formatDate}
               onDecline={handleDeclineActiveOffer}
               onAccept={() => handleAccept(activeOffer)}
+              bottomPadding={bottomPanelOffset}
               t={t}
             />
           ) : null}
@@ -3334,7 +3345,7 @@ export function DriverHomeScreen() {
                 jobsError={error}
                 searchPulseStyle={{ transform: [{ scale: searchPulseScale }] }}
                 radarPulseStyle={{ transform: [{ scale: radarInnerScale }] }}
-                bottomPadding={DRIVER_BOTTOM_PANEL_OFFSET}
+                bottomPadding={bottomPanelOffset}
               />
             </Animated.View>
           ) : null}
@@ -3491,6 +3502,7 @@ function OfferCard({
   formatDate,
   onDecline,
   onAccept,
+  bottomPadding,
   t,
 }: {
   offer: DriverOrder;
@@ -3500,11 +3512,12 @@ function OfferCard({
   formatDate: (iso: string | null) => string;
   onDecline: () => void;
   onAccept: () => void;
+  bottomPadding: number;
   t: any;
 }) {
   const amount = getBestDriverAmount(offer);
   return (
-    <View style={styles.offerWrap}>
+    <View style={[styles.offerWrap, { paddingBottom: bottomPadding }]}>
       <View style={styles.offerCard}>
         <View style={styles.offerHeader}>
           <Text style={styles.offerTitle}>{t("driver.home.offer.title", "New delivery available")}</Text>
@@ -3898,7 +3911,7 @@ const styles = StyleSheet.create({
   detailBlockSmall: { width: 48 },
   detailLabel: { color: "#64748B", fontSize: 10, fontWeight: "700" },
   detailValue: { color: "#E2E8F0", fontSize: 11, fontWeight: "700", marginTop: 3 },
-  offerWrap: { paddingHorizontal: 16, paddingBottom: DRIVER_BOTTOM_PANEL_OFFSET },
+  offerWrap: { paddingHorizontal: 16 },
   offerCard: {
     borderRadius: 24,
     padding: 16,
