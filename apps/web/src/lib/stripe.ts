@@ -33,8 +33,12 @@ if (
   );
 }
 
+/** Pinned Stripe API version (runtime). Cast preserves TS when Dependabot bumps stripe major. */
+export const STRIPE_API_VERSION =
+  "2023-10-16" as unknown as Stripe.LatestApiVersion;
+
 export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: "2023-10-16",
+  apiVersion: STRIPE_API_VERSION,
 });
 
 export const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
