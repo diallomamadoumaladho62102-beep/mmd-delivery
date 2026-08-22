@@ -7,6 +7,9 @@ import {
 } from "@/lib/mmdPlus/mmdPlusEngine";
 import { mapMmdPlusStripeStatus } from "@/lib/mmdPlus/stripeMmdPlusBilling";
 import {
+  readStripeInvoicePaymentIntentId,
+  readStripeInvoiceSubscriptionId,
+  readStripeInvoiceTaxCents,
   readStripeSubscriptionPeriod,
   stripePeriodEndIso,
   stripePeriodStartIso,
@@ -189,10 +192,7 @@ async function handleInvoice(
   invoice: Stripe.Invoice,
   eventType: string
 ): Promise<Record<string, unknown>> {
-  const subId =
-    typeof invoice.subscription === "string"
-      ? invoice.subscription
-      : invoice.subscription?.id ?? null;
+  const subId = readStripeInvoiceSubscriptionId(invoice);
   if (!subId) return { skipped: "no_subscription_on_invoice" };
 
   const { data: local } = await supabaseAdmin
@@ -212,12 +212,9 @@ async function handleInvoice(
     p_status: failed ? "failed" : paid ? "paid" : "open",
     p_amount_cents: invoice.amount_paid ?? invoice.amount_due ?? 0,
     p_currency: (invoice.currency ?? "usd").toUpperCase(),
-    p_tax_cents: invoice.tax ?? 0,
+    p_tax_cents: readStripeInvoiceTaxCents(invoice),
     p_stripe_invoice_id: invoice.id,
-    p_stripe_payment_intent_id:
-      typeof invoice.payment_intent === "string"
-        ? invoice.payment_intent
-        : invoice.payment_intent?.id ?? null,
+    p_stripe_payment_intent_id: readStripeInvoicePaymentIntentId(invoice),
     p_idempotency_key: `mmd-plus-inv:${invoice.id}:${eventType}`,
     p_description: invoice.description ?? eventType,
     p_period_start: invoice.period_start

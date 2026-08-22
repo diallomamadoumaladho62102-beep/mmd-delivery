@@ -6,6 +6,9 @@ import {
 } from "@/lib/subscriptions/subscriptionEngine";
 import { mapStripeSubscriptionStatus } from "@/lib/subscriptions/stripeBilling";
 import {
+  readStripeInvoicePaymentIntentId,
+  readStripeInvoiceSubscriptionId,
+  readStripeInvoiceTaxCents,
   readStripeSubscriptionPeriod,
   stripePeriodEndIso,
   stripePeriodStartIso,
@@ -228,10 +231,7 @@ export async function handleSubscriptionStripeEvent(
   // invoice.* without subscription module metadata may still belong to us if linked.
   if (type.startsWith("invoice.")) {
     const invoice = event.data.object as Stripe.Invoice;
-    const subId =
-      typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription?.id ?? null;
+    const subId = readStripeInvoiceSubscriptionId(invoice);
     if (!subId && !isSubscriptionModule(meta(invoice))) {
       return { handled: false };
     }
@@ -284,10 +284,7 @@ export async function handleSubscriptionStripeEvent(
       }
     } else if (type === "invoice.paid" || type === "invoice.payment_succeeded") {
       const invoice = event.data.object as Stripe.Invoice;
-      const stripeSubId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id ?? null;
+      const stripeSubId = readStripeInvoiceSubscriptionId(invoice);
 
       if (stripeSubId) {
         const { data: sub } = await supabaseAdmin
@@ -303,12 +300,9 @@ export async function handleSubscriptionStripeEvent(
             p_status: "paid",
             p_amount_cents: invoice.amount_paid ?? invoice.amount_due ?? 0,
             p_currency: (invoice.currency ?? "usd").toUpperCase(),
-            p_tax_cents: invoice.tax ?? 0,
+            p_tax_cents: readStripeInvoiceTaxCents(invoice),
             p_stripe_invoice_id: invoice.id,
-            p_stripe_payment_intent_id:
-              typeof invoice.payment_intent === "string"
-                ? invoice.payment_intent
-                : invoice.payment_intent?.id ?? null,
+            p_stripe_payment_intent_id: readStripeInvoicePaymentIntentId(invoice),
             p_idempotency_key: `invoice-paid:${invoice.id}`,
             p_description: invoice.description,
             p_period_start: invoice.period_start
@@ -335,10 +329,7 @@ export async function handleSubscriptionStripeEvent(
       }
     } else if (type === "invoice.payment_failed") {
       const invoice = event.data.object as Stripe.Invoice;
-      const stripeSubId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id ?? null;
+      const stripeSubId = readStripeInvoiceSubscriptionId(invoice);
       if (stripeSubId) {
         await supabaseAdmin
           .from("partner_subscriptions")
