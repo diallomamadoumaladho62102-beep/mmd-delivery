@@ -702,26 +702,21 @@ export async function POST(req: NextRequest) {
         dispatchOrigin: req.nextUrl.origin,
       });
 
-      try {
-        const { enqueuePaymentSucceeded } = await import(
-          "@/lib/finance/financeEvents"
-        );
-        await enqueuePaymentSucceeded({
-          supabaseAdmin,
+      const { enqueuePaymentSucceededAndProcessBatch } = await import(
+        "@/lib/finance/financeEvents"
+      );
+      const finance = await enqueuePaymentSucceededAndProcessBatch(
+        supabaseAdmin,
+        {
           entityType: "order",
           entityId: orderId,
           vertical: "food",
-          amountCents: Number(order.total_cents ?? 0),
+          amountCents: resolveOrderAmountCents(order),
           currency: order.currency ?? "USD",
           countryCode: resolveOrderPlatformCountry(order),
           paymentIntentId: paymentIntentIdOnOrder,
-        });
-      } catch (e) {
-        console.warn(
-          "[finance] confirm-paid food_paid enqueue fail-open",
-          e instanceof Error ? e.message : e
-        );
-      }
+        },
+      );
 
       return json({
         ok: true,
@@ -729,6 +724,8 @@ export async function POST(req: NextRequest) {
         stripe_status: piStatus,
         via: "payment_intent",
         rpcData,
+        finance_sync_pending: finance.ok === false,
+        finance_error: finance.ok === false ? finance.error : undefined,
       });
     }
 
@@ -924,26 +921,21 @@ export async function POST(req: NextRequest) {
       dispatchOrigin: req.nextUrl.origin,
     });
 
-    try {
-      const { enqueuePaymentSucceeded } = await import(
-        "@/lib/finance/financeEvents"
-      );
-      await enqueuePaymentSucceeded({
-        supabaseAdmin,
+    const { enqueuePaymentSucceededAndProcessBatch } = await import(
+      "@/lib/finance/financeEvents"
+    );
+    const finance = await enqueuePaymentSucceededAndProcessBatch(
+      supabaseAdmin,
+      {
         entityType: "order",
         entityId: orderId,
         vertical: "food",
-        amountCents: Number(order.total_cents ?? 0),
+        amountCents: resolveOrderAmountCents(order),
         currency: order.currency ?? "USD",
         countryCode: resolveOrderPlatformCountry(order),
         paymentIntentId,
-      });
-    } catch (e) {
-      console.warn(
-        "[finance] confirm-paid food_paid enqueue fail-open",
-        e instanceof Error ? e.message : e
-      );
-    }
+      },
+    );
 
     return json({
       ok: true,
@@ -951,6 +943,8 @@ export async function POST(req: NextRequest) {
       stripe_status: stripePayStatus,
       via: "rpc_resync",
       rpcData,
+      finance_sync_pending: finance.ok === false,
+      finance_error: finance.ok === false ? finance.error : undefined,
     });
   } catch (e: unknown) {
     logTechnicalError("confirm-paid", e);

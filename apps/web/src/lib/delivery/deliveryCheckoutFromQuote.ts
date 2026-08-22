@@ -227,16 +227,6 @@ export async function materializePaidDeliveryRequestFromQuoteCheckout(params: {
     };
   }
 
-  if (new Date(String(intent.expires_at)).getTime() < Date.now()) {
-    if (String(intent.status) !== "paid") {
-      await supabaseAdmin
-        .from("delivery_checkout_intents")
-        .update({ status: "expired", updated_at: new Date().toISOString() })
-        .eq("id", deliveryCheckoutId);
-    }
-    return { ok: false, error: "delivery_checkout_expired" };
-  }
-
   const snapshot = intent.snapshot as DeliveryCheckoutIntentSnapshot;
   if (!snapshot || typeof snapshot !== "object") {
     return { ok: false, error: "delivery_snapshot_missing" };
@@ -256,8 +246,21 @@ export async function materializePaidDeliveryRequestFromQuoteCheckout(params: {
     paymentIntent: params.paymentIntent ?? null,
   });
   if (!settled.ok) {
+    const intentExpired =
+      new Date(String(intent.expires_at)).getTime() < Date.now() &&
+      String(intent.status) !== "paid";
+    if (intentExpired) {
+      await supabaseAdmin
+        .from("delivery_checkout_intents")
+        .update({ status: "expired", updated_at: new Date().toISOString() })
+        .eq("id", deliveryCheckoutId)
+        .neq("status", "paid");
+      return { ok: false, error: "delivery_checkout_expired" };
+    }
     return { ok: false, error: `payment_intent_not_succeeded:${settled.reason}` };
   }
+
+  // Succeeded Stripe settlement uses frozen snapshot even if local TTL elapsed.
 
   const paymentIntentId =
     settled.payment_intent_id ||

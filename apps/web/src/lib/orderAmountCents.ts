@@ -2,6 +2,7 @@ export type OrderAmountSource = {
   total_cents?: unknown;
   total?: unknown;
   grand_total?: unknown;
+  net_charge_cents?: unknown;
 };
 
 function toPositiveNumber(value: unknown): number | null {
@@ -10,7 +11,14 @@ function toPositiveNumber(value: unknown): number | null {
   return n;
 }
 
+/** Prefer frozen net charge (MMD credit) when present — matches Stripe webhook settlement. */
 export function resolveOrderAmountCents(order: OrderAmountSource): number | null {
+  const netCharge = toPositiveNumber(order.net_charge_cents);
+  const grossForNet = toPositiveNumber(order.total_cents);
+  if (netCharge != null && (grossForNet == null || netCharge <= grossForNet)) {
+    return Math.round(netCharge);
+  }
+
   const totalCents = toPositiveNumber(order.total_cents);
   if (totalCents != null) return Math.round(totalCents);
 

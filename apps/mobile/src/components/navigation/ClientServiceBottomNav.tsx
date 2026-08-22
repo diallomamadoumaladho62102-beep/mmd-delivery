@@ -25,7 +25,14 @@ export function ClientServiceBottomNav({ active }: Props) {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
 
-  const go = (route: keyof RootStackParamList) => {
+  const go = (
+    route: keyof RootStackParamList,
+    params?: RootStackParamList[typeof route],
+  ) => {
+    if (params !== undefined) {
+      (navigation.navigate as (name: string, p?: object) => void)(route, params);
+      return;
+    }
     navigation.navigate(route as never);
   };
 
@@ -50,7 +57,7 @@ export function ClientServiceBottomNav({ active }: Props) {
         emoji="🧭"
         label={t("client.delivery.tabs.track", "Track")}
         active={active === "track"}
-        onPress={() => go("ClientOrderHistory")}
+        onPress={() => go("ClientOrderHistory", { focusActive: true })}
       />
       <Tab
         emoji="👤"

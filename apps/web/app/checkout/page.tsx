@@ -8,6 +8,13 @@ export default function Checkout() {
   const [error, setError] = useState<string | null>(null);
 
   const pay = async () => {
+    if (process.env.NODE_ENV === "production") {
+      setError(
+        "Legacy checkout test page is disabled in production. Create an order from /orders/new or the mobile app."
+      );
+      return;
+    }
+
     setLoading(true);
     setError(null);
 

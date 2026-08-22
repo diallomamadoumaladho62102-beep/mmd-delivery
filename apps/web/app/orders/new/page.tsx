@@ -11,6 +11,8 @@ import {
 type DeliveryPricingResult = DeliveryFeeV1Result;
 import { getZoneBoostFromCoords } from "@/lib/driverZones";
 import { createFoodOrderWithDelivery } from "@/lib/createFoodOrderWithDelivery";
+import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
+import { usesLocalMobileMoney } from "@/lib/paymentProviderRouting";
 
 type Profile = {
   id: string;
@@ -464,6 +466,84 @@ export default function NewOrderPage() {
 
     try {
       const coords = await ensureCoords();
+      const countryCode = inferPlatformCountryCode({
+        lat: coords.dropoffLat,
+        lng: coords.dropoffLng,
+      });
+
+      if (!usesLocalMobileMoney(countryCode)) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        if (!token) {
+          setErr("Session expirée. Reconnecte-toi pour payer.");
+          return;
+        }
+
+        const orderBody = {
+          restaurant_user_id: selectedRestaurantId,
+          restaurant_name: selectedRestaurant.restaurant_name ?? "Restaurant",
+          pickup_address: pickupAddress.trim(),
+          pickup_lat: coords.pickupLat,
+          pickup_lng: coords.pickupLng,
+          dropoff_address: dropoffAddress.trim(),
+          dropoff_lat: coords.dropoffLat,
+          dropoff_lng: coords.dropoffLng,
+          items: cart.map((c) => ({
+            item_id: c.id,
+            quantity: c.quantity,
+          })),
+          promo_code: normalizePromoCode(promoCode),
+        };
+
+        const quoteRes = await fetch("/api/orders/food/quote", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(orderBody),
+        });
+        const quoteJson = await quoteRes.json().catch(() => ({}));
+        if (!quoteRes.ok) {
+          throw new Error(
+            String(quoteJson?.message ?? quoteJson?.error ?? "Quote failed")
+          );
+        }
+
+        const expectedTotalCents = Math.round(
+          Number(quoteJson?.totalCents ?? quoteJson?.total_cents ?? 0)
+        );
+
+        const checkoutRes = await fetch(
+          "/api/stripe/client/create-food-quote-checkout-session",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              ...orderBody,
+              expectedQuoteTotalCents: expectedTotalCents,
+            }),
+          }
+        );
+        const checkoutJson = await checkoutRes.json().catch(() => ({}));
+        if (!checkoutRes.ok || !checkoutJson?.url) {
+          throw new Error(
+            String(
+              checkoutJson?.message ??
+                checkoutJson?.error ??
+                "Impossible d'ouvrir le paiement Stripe."
+            )
+          );
+        }
+
+        window.location.href = String(checkoutJson.url);
+        return;
+      }
 
       const result = await createFoodOrderWithDelivery({
         clientId: profile.id,

@@ -12,6 +12,8 @@ import {
   resolveDeliveryRequestPlatformCountry,
   resolveOrderPlatformCountry,
 } from "@/lib/platformCountryResolver";
+import { resolveDeliveryRequestAmountCents } from "@/lib/deliveryRequestAmountCents";
+import { resolveOrderAmountCents } from "@/lib/orderAmountCents";
 
 export type StripeInboundWalletInput = {
   paymentIntentId: string;
@@ -192,6 +194,7 @@ export async function bridgeStripeWalletFromPaidOrder(
       total_cents?: number | null;
       total?: number | null;
       grand_total?: number | null;
+      net_charge_cents?: number | null;
       currency?: string | null;
       pickup_lat?: number | null;
       pickup_lng?: number | null;
@@ -210,7 +213,7 @@ export async function bridgeStripeWalletFromPaidOrder(
       ""
   ).trim();
 
-  const amountCents = resolveAmountCentsFromTotals(input.order);
+  const amountCents = resolveOrderAmountCents(input.order);
   if (!userId || !amountCents) {
     return { ok: false as const, error: "missing_wallet_bridge_fields" };
   }
@@ -251,7 +254,7 @@ export async function bridgeStripeWalletFromPaidDeliveryRequest(
     input.deliveryRequest.client_user_id ?? input.deliveryRequest.created_by ?? ""
   ).trim();
 
-  const amountCents = resolveAmountCentsFromTotals(input.deliveryRequest);
+  const amountCents = resolveDeliveryRequestAmountCents(input.deliveryRequest);
   if (!userId || !amountCents) {
     return { ok: false as const, error: "missing_wallet_bridge_fields" };
   }

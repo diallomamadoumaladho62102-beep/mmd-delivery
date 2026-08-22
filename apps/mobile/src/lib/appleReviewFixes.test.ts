@@ -94,7 +94,8 @@ test("ClientAuth auth actions use timeouts", () => {
   assert.match(src, /client_signUp/);
   assert.match(src, /client_resetPassword/);
   assert.match(src, /justifyContent:\s*"flex-start"/);
-  assert.match(src, /name:\s*"ClientHome"/);
+  assert.match(src, /resolvePostAuthRoute/);
+  assert.match(src, /postAuthRoute/);
   assert.doesNotMatch(
     src,
     /signUp[\s\S]*routes:\s*\[\s*\{\s*name:\s*"Home"\s*\}\s*\]/,

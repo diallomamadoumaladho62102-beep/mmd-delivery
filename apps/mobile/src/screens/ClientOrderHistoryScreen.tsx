@@ -13,7 +13,9 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
@@ -123,6 +125,8 @@ export default function ClientOrderHistoryScreen() {
   const { t } = useTranslation();
   const tr = t as unknown as Tr;
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<RootStackParamList, "ClientOrderHistory">>();
+  const focusActive = route.params?.focusActive === true;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const contentMaxWidth = width >= 768 ? 720 : undefined;
@@ -249,6 +253,15 @@ export default function ClientOrderHistoryScreen() {
   );
 
   const stats = useMemo(() => computeClientOrderStats(items), [items]);
+  const visibleItems = useMemo(
+    () =>
+      focusActive
+        ? items.filter((i) =>
+            isClientActiveStatus(i.status, i.payment_status, null),
+          )
+        : items,
+    [focusActive, items],
+  );
   const noValue = t("client.orderHistory.noValue", "—");
 
   const openItem = useCallback(
@@ -275,7 +288,9 @@ export default function ClientOrderHistoryScreen() {
           <Text style={styles.back}>{t("common.back", "← Back")}</Text>
         </Pressable>
         <Text style={styles.title}>
-          {t("client.orderHistory.title", "Order history")}
+          {focusActive
+            ? t("client.orderHistory.trackTitle", "Track orders")
+            : t("client.orderHistory.title", "Order history")}
         </Text>
         <View style={{ width: 48 }} />
       </View>
@@ -303,7 +318,7 @@ export default function ClientOrderHistoryScreen() {
         <ActivityIndicator style={{ marginTop: 40 }} color={MMD_GOLD_BRIGHT} />
       ) : (
         <FlatList
-          data={items}
+          data={visibleItems}
           keyExtractor={(item) => `${item.kind}-${item.id}`}
           refreshControl={
             <RefreshControl

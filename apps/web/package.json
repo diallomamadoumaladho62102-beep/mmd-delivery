@@ -34,6 +34,7 @@
     "test:marketplace-shadow": "node scripts/smoke-marketplace-shadow.mjs",
     "test:marketplace-driver-jobs": "node scripts/marketplace-driver-jobs.test.mjs",
     "test:marketplace-seller": "tsx src/lib/marketplaceCheckout.test.ts && tsx src/lib/marketplaceLiveCheckout.test.ts && tsx src/lib/marketplacePhase7.test.ts && tsx src/lib/marketplacePayoutService.test.ts && tsx src/lib/finance/sellerConnectSecurity.regression.test.ts && tsx src/lib/marketplaceDriverDelivered.regression.test.ts && tsx src/lib/marketplaceStockCheckout.regression.test.ts && tsx src/lib/marketplaceCheckoutPricing.regression.test.ts && tsx src/lib/marketplaceStockConcurrency.regression.test.ts && tsx src/lib/marketplaceStockExpiry.regression.test.ts && tsx src/lib/marketplaceStockExpiry.test.ts",
+    "test:customer": "tsx src/lib/orderAmountCents.test.ts && tsx src/lib/customerPaymentAmount.regression.test.ts && tsx src/lib/foodOrderTrustBoundary.test.ts && tsx src/lib/orderPaymentSelect.test.ts && tsx src/lib/deliveryRequestPaymentSelect.test.ts && tsx src/lib/inboundWalletLedgerIdempotency.test.ts",
     "test:mmd-ai": "tsx scripts/smoke-mmd-ai.mjs",
     "test:store-submission": "node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts && tsx src/lib/twilioMaskedCallReadiness.test.ts",
     "test:maps-places-parse": "tsx src/lib/mapboxPlacesRoute.parse.test.ts",

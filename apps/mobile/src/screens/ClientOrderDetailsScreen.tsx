@@ -14,7 +14,7 @@ import {
   TextInput,
   Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -376,6 +376,7 @@ export function ClientOrderDetailsScreen() {
   const { t, i18n } = useTranslation();
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { orderId } = route.params ?? ({} as typeof route.params);
 
   useEffect(() => {
@@ -1794,7 +1795,14 @@ export function ClientOrderDetailsScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <View style={{ position: "absolute", left: 12, bottom: 12, right: 12 }}>
+                <View
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    bottom: Math.max(12, insets.bottom + 8),
+                    right: 12,
+                  }}
+                >
                   <View
                     style={{
                       borderRadius: 14,

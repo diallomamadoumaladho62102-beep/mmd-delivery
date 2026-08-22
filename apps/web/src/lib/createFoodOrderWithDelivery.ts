@@ -5,6 +5,7 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { createFoodOrderServerSide } from "@/lib/foodOrderService";
 import type { FoodOrderLineInput } from "@/lib/foodOrderServerPricing";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
+import { usesLocalMobileMoney } from "@/lib/paymentProviderRouting";
 
 export type CartItem = {
   id?: string;
@@ -85,6 +86,12 @@ export async function createFoodOrderWithDelivery(args: CreateFoodOrderWithDeliv
     lat: dropoffLat,
     lng: dropoffLng,
   });
+
+  if (!usesLocalMobileMoney(countryCode)) {
+    throw new Error(
+      "use_quote_checkout: Stripe food orders must be paid before creation. Use /api/stripe/client/create-food-quote-checkout-session."
+    );
+  }
 
   const result = await createFoodOrderServerSide({
     supabaseAdmin,

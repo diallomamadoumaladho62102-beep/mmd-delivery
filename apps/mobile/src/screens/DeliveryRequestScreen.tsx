@@ -13,7 +13,7 @@ import {
   ScrollView,
   Switch,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -235,6 +235,7 @@ function sleep(ms: number) {
 export function DeliveryRequestScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DeliveryRequestRoute>();
+  const insets = useSafeAreaInsets();
   const safeBack = useSafeBackNavigation("ClientHome");
   const { t } = useTranslation();
 
@@ -1122,7 +1123,7 @@ export function DeliveryRequestScreen() {
 
   return (
     <>
-    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["top", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
       <ScreenHeader
@@ -1144,7 +1145,7 @@ export function DeliveryRequestScreen() {
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 24,
-            paddingBottom: 112,
+            paddingBottom: Math.max(insets.bottom + 88, 112),
             gap: 24,
           }}
           keyboardShouldPersistTaps="handled"

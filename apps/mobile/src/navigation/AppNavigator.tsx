@@ -135,7 +135,7 @@ export type RootStackParamList = {
   ClientRestaurantMenu: { restaurantId: string; restaurantName: string };
   ClientOrderDetails: { orderId: string };
   ClientDeliveryRequestDetails: { requestId: string };
-  ClientOrderHistory: undefined;
+  ClientOrderHistory: { focusActive?: boolean } | undefined;
   ClientInbox: undefined;
   ClientChat: {
     orderId: string;

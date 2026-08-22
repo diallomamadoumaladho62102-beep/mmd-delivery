@@ -22,7 +22,7 @@ import type { AppLanguageCode } from "../../../i18n/languageOptions";
 import type { PlatformFeaturesResponse } from "../../../lib/platformFeaturesApi";
 import type { ClientAdvertisement } from "../../../lib/clientAdvertisementsApi";
 import { ClientHomeLanguageSheet } from "./ClientHomeLanguageSheet";
-import { V4, V4_SHADOW, V4_SHADOW_SOFT, v4Styles } from "./clientHomeTheme";
+import { V4, V4_BOTTOM_SAFE, V4_SHADOW, V4_SHADOW_SOFT, v4Styles } from "./clientHomeTheme";
 
 export type ClientHomeItem = {
   id: string;
@@ -313,7 +313,10 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           v4Styles.scrollContent,
-          { paddingTop: Math.max(insets.top, 6) },
+          {
+            paddingTop: Math.max(insets.top, 6),
+            paddingBottom: Math.max(insets.bottom + 88, V4_BOTTOM_SAFE),
+          },
         ]}
         refreshControl={
           <RefreshControl

@@ -176,6 +176,44 @@ export async function enqueuePaymentSucceeded(params: {
   });
 }
 
+/** Enqueue payment finance event and process pending batch; surfaces enqueue/batch failures. */
+export async function enqueuePaymentSucceededAndProcessBatch(
+  supabaseAdmin: SupabaseClient,
+  params: {
+    entityType: string;
+    entityId: string;
+    vertical: "food" | "delivery" | "taxi" | "marketplace";
+    amountCents: number;
+    currency?: string | null;
+    countryCode?: string | null;
+    commissionCents?: number;
+    partnerCents?: number;
+    taxCents?: number;
+    serviceFeeCents?: number;
+    providerFeeCents?: number;
+    partnerUserId?: string | null;
+    paymentIntentId?: string | null;
+  },
+  batchLimit = 50,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const enqueue = await enqueuePaymentSucceeded({
+    supabaseAdmin,
+    ...params,
+  });
+  if (enqueue.ok === false) {
+    const msg = enqueue.error ?? "finance_enqueue_failed";
+    console.warn("[finance] payment enqueue failed", msg);
+    return { ok: false, error: String(msg) };
+  }
+  const batch = await processFinancePendingBatch(supabaseAdmin, batchLimit);
+  if (batch.ok === false) {
+    const msg = batch.error ?? "finance_batch_failed";
+    console.warn("[finance] payment batch failed", msg);
+    return { ok: false, error: String(msg) };
+  }
+  return { ok: true };
+}
+
 export function enqueueRefundEvent(params: {
   supabaseAdmin: SupabaseClient;
   entityType: string;

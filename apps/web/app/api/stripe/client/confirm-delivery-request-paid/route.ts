@@ -18,6 +18,7 @@ import { bridgeStripeWalletFromPaidDeliveryRequest } from "@/lib/stripeInboundWa
 import { toUserFacingError } from "@/lib/userFacingError";
 import { DELIVERY_REQUEST_CONFIRM_PAID_SELECT } from "@/lib/deliveryRequestPaymentSelect";
 import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
+import { resolveDeliveryRequestAmountCents } from "@/lib/deliveryRequestAmountCents";
 import { materializePaidDeliveryRequestFromQuoteCheckout } from "@/lib/delivery/deliveryCheckoutFromQuote";
 import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
 
@@ -792,27 +793,21 @@ export async function POST(req: NextRequest) {
       deliveryRequestId: deliveryRequest.id,
     });
 
-    try {
-      const { enqueuePaymentSucceeded, processFinancePendingBatch } = await import(
-        "@/lib/finance/financeEvents"
-      );
-      await enqueuePaymentSucceeded({
-        supabaseAdmin,
+    const { enqueuePaymentSucceededAndProcessBatch } = await import(
+      "@/lib/finance/financeEvents"
+    );
+    const finance = await enqueuePaymentSucceededAndProcessBatch(
+      supabaseAdmin,
+      {
         entityType: "delivery_request",
         entityId: deliveryRequest.id,
         vertical: "delivery",
-        amountCents: Number(deliveryRequest.total_cents ?? 0),
+        amountCents: resolveDeliveryRequestAmountCents(deliveryRequest),
         currency: deliveryRequest.currency ?? "USD",
         countryCode: resolveDeliveryRequestPlatformCountry(deliveryRequest),
         paymentIntentId: paymentIntentIdForBridge ?? undefined,
-      });
-      await processFinancePendingBatch(supabaseAdmin, 50);
-    } catch (e) {
-      console.warn(
-        "[finance] delivery_paid enqueue fail-open",
-        e instanceof Error ? e.message : e,
-      );
-    }
+      },
+    );
 
     return json({
       ok: true,
@@ -832,6 +827,8 @@ export async function POST(req: NextRequest) {
         deliveryRequest.paid_at ??
         nowIso,
       stripe_check_source: stripeCheck.source,
+      finance_sync_pending: finance.ok === false,
+      finance_error: finance.ok === false ? finance.error : undefined,
     });
   } catch (e: unknown) {
     const message = getErrorMessage(e);

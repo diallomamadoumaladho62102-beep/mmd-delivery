@@ -27,6 +27,7 @@ import {
 } from "../lib/walletApi";
 import { formatDateTime } from "../i18n/formatters";
 import { toUserFacingError } from "../lib/userFacingError";
+import { signOutToRoleSelect } from "../lib/signOutToRoleSelect";
 import {
   MMD_BLUE,
   MMD_CARD_BORDER,
@@ -73,7 +74,10 @@ export default function ClientWalletScreen() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-      if (!token) throw new Error("Session expired");
+      if (!token) {
+        await signOutToRoleSelect(navigation);
+        return;
+      }
 
       const [summary, history] = await Promise.all([
         fetchWalletSummary(token, {
