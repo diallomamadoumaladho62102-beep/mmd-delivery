@@ -72,3 +72,25 @@ export async function retrievePlatformStripeAccount(
 export function stripeWebhookPayload(rawBody: Buffer): string {
   return rawBody.toString("utf8");
 }
+
+export function stripeConnectRequestOptions(
+  stripeAccountId: string,
+  extra?: Stripe.RequestOptions,
+): Stripe.RequestOptions {
+  const id = String(stripeAccountId ?? "").trim();
+  if (!id.startsWith("acct_")) {
+    throw new Error("invalid_stripe_connect_account_id");
+  }
+  return { ...extra, stripeAccount: id };
+}
+
+/** Connect balance retrieve — `stripeAccount` belongs in RequestOptions for Stripe SDK 22+. */
+export async function retrieveConnectBalance(
+  stripeAccountId: string,
+  client: Stripe = stripe,
+): Promise<Stripe.Balance> {
+  return client.balance.retrieve(
+    {},
+    stripeConnectRequestOptions(stripeAccountId),
+  );
+}

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPayoutMethodsForRecipient } from "@/lib/payoutMethodRouting";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
-import { stripe } from "@/lib/stripe";
+import { retrieveConnectBalance, stripe } from "@/lib/stripe";
 import {
   deriveStripeConnectStatus,
   stripeConnectStatusLabel,
@@ -57,9 +57,7 @@ function payloadSource(payload: unknown): string {
 export async function fetchConnectUsdBalanceCents(
   stripeAccountId: string
 ): Promise<{ availableCents: number; pendingCents: number }> {
-  const balance = await stripe.balance.retrieve({
-    stripeAccount: stripeAccountId,
-  });
+  const balance = await retrieveConnectBalance(stripeAccountId);
   const availableCents = (balance.available ?? [])
     .filter((row) => String(row.currency ?? "").toLowerCase() === "usd")
     .reduce((sum, row) => sum + Math.max(0, Math.round(Number(row.amount ?? 0))), 0);
