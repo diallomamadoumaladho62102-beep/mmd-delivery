@@ -9,7 +9,7 @@ import {
   type PostgrestError,
   type SupabaseClient,
 } from "@supabase/supabase-js";
-import { stripe, webhookSecret } from "@/lib/stripe";
+import { stripe, stripeWebhookPayload, webhookSecret } from "@/lib/stripe";
 import { handleSubscriptionStripeEvent } from "@/lib/subscriptions/stripeSubscriptionWebhook";
 import { handleMmdPlusStripeEvent } from "@/lib/mmdPlus/stripeMmdPlusWebhook";
 import {
@@ -3297,7 +3297,11 @@ export async function POST(req: NextRequest) {
 
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+      event = stripe.webhooks.constructEvent(
+        stripeWebhookPayload(rawBody),
+        sig,
+        webhookSecret,
+      );
     } catch (e: unknown) {
       console.log("❌ WEBHOOK signature error", getErrorMessage(e));
       return new NextResponse("Webhook signature verification failed", {

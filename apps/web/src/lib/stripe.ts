@@ -67,3 +67,8 @@ export async function retrievePlatformStripeAccount(
   ) => Promise<Stripe.Account>;
   return retrieveLegacy();
 }
+
+/** Stripe webhook verification payload compatible across stripe Node SDK majors. */
+export function stripeWebhookPayload(rawBody: Buffer): string {
+  return rawBody.toString("utf8");
+}
