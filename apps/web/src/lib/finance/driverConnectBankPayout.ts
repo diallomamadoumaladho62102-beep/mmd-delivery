@@ -9,7 +9,7 @@
  */
 
 import type Stripe from "stripe";
-import { stripe } from "@/lib/stripe";
+import { retrieveConnectBalance, stripe } from "@/lib/stripe";
 
 /** IANA zone for founder-requested Sunday 4:00 local New York time. */
 export const DRIVER_BANK_PAYOUT_TIMEZONE = "America/New_York";
@@ -118,9 +118,7 @@ export async function createFullAvailableConnectPayout(params: {
 
   let availableCents = 0;
   try {
-    const balance = await stripe.balance.retrieve({
-      stripeAccount: stripeAccountId,
-    });
+    const balance = await retrieveConnectBalance(stripeAccountId);
     availableCents = (balance.available ?? [])
       .filter((row) => String(row.currency ?? "").toLowerCase() === currency)
       .reduce(
