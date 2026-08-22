@@ -36,3 +36,32 @@ export function stripePeriodEndIso(sub: Stripe.Subscription): string | null {
     ? new Date(currentPeriodEnd * 1000).toISOString()
     : null;
 }
+
+export function readStripeInvoiceSubscriptionId(
+  invoice: Stripe.Invoice,
+): string | null {
+  const legacy = invoice as StripeInvoiceLegacy;
+  const sub = legacy.subscription;
+  if (typeof sub === "string") return sub.trim() || null;
+  return sub?.id ? String(sub.id) : null;
+}
+
+type StripeInvoiceLegacy = Stripe.Invoice & {
+  subscription?: string | Stripe.Subscription | null;
+  tax?: number | null;
+  payment_intent?: string | Stripe.PaymentIntent | null;
+};
+
+export function readStripeInvoiceTaxCents(invoice: Stripe.Invoice): number {
+  const legacy = invoice as StripeInvoiceLegacy;
+  return Math.max(0, Math.round(Number(legacy.tax ?? 0)));
+}
+
+export function readStripeInvoicePaymentIntentId(
+  invoice: Stripe.Invoice,
+): string | null {
+  const legacy = invoice as StripeInvoiceLegacy;
+  const pi = legacy.payment_intent;
+  if (typeof pi === "string") return pi.trim() || null;
+  return pi?.id ? String(pi.id) : null;
+}
