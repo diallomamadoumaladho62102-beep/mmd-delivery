@@ -22,6 +22,10 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { toUserFacingError } from "../lib/userFacingError";
+import {
+  confirmSignOutToRoleSelect,
+  restaurantSignOutLabels,
+} from "../lib/confirmSignOutToRoleSelect";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import {
   MMD_BLUE,
@@ -48,6 +52,7 @@ export function RestaurantSecurityScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -76,8 +81,18 @@ export function RestaurantSecurityScreen() {
   const canSubmit = useMemo(() => {
     const p1 = newPassword.trim();
     const p2 = confirm.trim();
-    return p1.length >= 8 && p1 === p2 && !saving && hasUser;
-  }, [newPassword, confirm, saving, hasUser]);
+    return p1.length >= 8 && p1 === p2 && !saving && !signingOut && hasUser;
+  }, [newPassword, confirm, saving, signingOut, hasUser]);
+
+  const onSignOut = useCallback(() => {
+    if (signingOut) return;
+    confirmSignOutToRoleSelect({
+      navigation,
+      labels: restaurantSignOutLabels(t),
+      onBusyChange: setSigningOut,
+      formatError: (e, fallback) => toUserFacingError(e, fallback),
+    });
+  }, [navigation, signingOut, t]);
 
   const onSave = useCallback(async () => {
     if (saving) return;
@@ -272,6 +287,40 @@ export function RestaurantSecurityScreen() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.sessionCard}>
+          <View style={styles.cardHeader}>
+            <View style={styles.iconPill}>
+              <Ionicons name="log-out-outline" size={22} color={MMD_GOLD_CLASSIC} />
+            </View>
+            <Text style={styles.cardTitle}>
+              {t("restaurant.signOut.sectionTitle", "Session")}
+            </Text>
+          </View>
+          <Text style={styles.sessionHint}>
+            {t(
+              "restaurant.signOut.hint",
+              "End your session on this device. You can sign in again anytime.",
+            )}
+          </Text>
+          <TouchableOpacity
+            onPress={onSignOut}
+            disabled={signingOut}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t("restaurant.signOut.confirm", "Log out")}
+            testID="restaurant-security-sign-out"
+            style={[styles.signOutBtn, { opacity: signingOut ? 0.55 : 1 }]}
+          >
+            {signingOut ? (
+              <ActivityIndicator color={MMD_WHITE} />
+            ) : (
+              <Text style={styles.signOutText}>
+                {t("restaurant.signOut.confirm", "Log out")}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.dangerCard}>
           <View style={styles.dangerHeader}>
             <View style={styles.dangerIcon}>
@@ -399,6 +448,39 @@ const styles = StyleSheet.create({
   },
   saveText: {
     color: MMD_WHITE,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  sessionCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: MMD_GLASS,
+    padding: 24,
+    gap: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 4,
+  },
+  sessionHint: {
+    color: "rgba(255,255,255,0.7)",
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  signOutBtn: {
+    backgroundColor: MMD_GOLD_CLASSIC,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 52,
+  },
+  signOutText: {
+    color: MMD_BLUE,
     fontFamily: MMD_FONT.bold,
     fontWeight: "700",
     fontSize: 15,

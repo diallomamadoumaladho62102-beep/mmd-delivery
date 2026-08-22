@@ -82,6 +82,8 @@ function normalizeCurrency(v: unknown): string {
   return normalizeTaxiCurrencyForStripe(v, "usd");
 }
 
+import { isStripeSourceChargeId } from "./stripeSourceChargeId";
+
 /**
  * Stripe Charge id usable as Transfer `source_transaction`.
  * Card charges use `ch_…`; Link / some wallets surface as `py_…` (still a Charge object).
@@ -97,12 +99,11 @@ export async function resolveSourceChargeIdFromPaymentIntent(
   const charge = pi.latest_charge;
   if (typeof charge === "string") {
     const id = charge.trim();
-    if (id.startsWith("ch_") || id.startsWith("py_")) return id;
-    return null;
+    return isStripeSourceChargeId(id) ? id : null;
   }
   if (charge && typeof charge === "object" && "id" in charge) {
     const id = String((charge as { id?: unknown }).id ?? "").trim();
-    if (id.startsWith("ch_") || id.startsWith("py_")) return id;
+    return isStripeSourceChargeId(id) ? id : null;
   }
   return null;
 }

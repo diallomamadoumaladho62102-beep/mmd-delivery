@@ -739,7 +739,12 @@ async function resolveSellerOrderSourceChargeId(
   const storedCharge = String(
     (data as { stripe_charge_id?: string | null }).stripe_charge_id ?? ""
   ).trim();
-  if (storedCharge) return storedCharge;
+  if (storedCharge) {
+    const { isStripeSourceChargeId } = await import(
+      "@/lib/finance/stripeSourceChargeId"
+    );
+    return isStripeSourceChargeId(storedCharge) ? storedCharge : null;
+  }
 
   const paymentIntentId = String(
     (data as { stripe_payment_intent_id?: string | null }).stripe_payment_intent_id ?? ""
@@ -748,6 +753,9 @@ async function resolveSellerOrderSourceChargeId(
 
   try {
     const { stripe } = await import("@/lib/stripe");
+    const { isStripeSourceChargeId } = await import(
+      "@/lib/finance/stripeSourceChargeId"
+    );
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
     const latest = pi.latest_charge;
     let chargeId: string | null = null;
@@ -755,6 +763,9 @@ async function resolveSellerOrderSourceChargeId(
     else if (latest && typeof latest === "object" && "id" in latest) {
       const id = (latest as { id?: unknown }).id;
       if (typeof id === "string" && id.trim()) chargeId = id.trim();
+    }
+    if (chargeId && !isStripeSourceChargeId(chargeId)) {
+      return null;
     }
     if (chargeId) {
       await supabaseAdmin

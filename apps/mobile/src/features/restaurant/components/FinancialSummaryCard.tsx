@@ -13,12 +13,14 @@ type Props = {
   financial: RestaurantCommandCenterData["financial"];
   language: string;
   onViewFullReport?: () => void;
+  onConnectPayouts?: () => void;
 };
 
 function FinancialSummaryCardComponent({
   financial,
   language,
   onViewFullReport,
+  onConnectPayouts,
 }: Props) {
   const { t } = useTranslation();
   const fmt = (value: number) => formatMoney(value, financial.currency, language);
@@ -76,6 +78,20 @@ function FinancialSummaryCardComponent({
         </View>
       </View>
 
+      {onConnectPayouts ? (
+        <Pressable
+          style={styles.connectBtn}
+          onPress={onConnectPayouts}
+          testID="restaurant-command-center-connect-payouts"
+        >
+          <Text style={styles.connectText}>
+            {t(
+              "restaurant.commandCenter.connectBank",
+              "Connect bank account",
+            )}
+          </Text>
+        </Pressable>
+      ) : null}
       {onViewFullReport ? (
         <Pressable style={styles.actionBtn} onPress={onViewFullReport}>
           <Text style={styles.actionText}>{t("restaurant.commandCenter.viewFullReport")}</Text>
@@ -151,8 +167,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
   },
-  actionBtn: {
+  connectBtn: {
     marginTop: 16,
+    backgroundColor: CC.cta,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  connectText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 14,
+  },
+  actionBtn: {
+    marginTop: 10,
     backgroundColor: CC.purpleGlow,
     borderRadius: 14,
     paddingVertical: 14,

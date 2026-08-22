@@ -21,6 +21,7 @@ import {
   isStripeTransferReversed,
   orderTransferGroup,
 } from "@/lib/finance/orderTransferGuards";
+import { isStripeSourceChargeId } from "@/lib/finance/stripeSourceChargeId";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -834,7 +835,16 @@ export async function POST(req: NextRequest) {
       }
 
       if (!rest?.stripe_account_id) {
-        return json({ error: "Restaurant payout account missing" }, 400);
+        return json(
+          {
+            error: "Restaurant payout account missing",
+            code: "restaurant_connect_account_missing",
+            message:
+              "Restaurant has not completed Stripe Connect onboarding. Open Restaurant Earnings → Connect Stripe, then retry payout.",
+            restaurant_user_id: restaurantUserId,
+          },
+          400,
+        );
       }
 
       amount = resolveRestaurantAmountCents(order, commission ?? null);
@@ -1010,7 +1020,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!/^ch_[A-Za-z0-9]+$/.test(sourceChargeId)) {
+    // Card charges: ch_… ; Link / some wallets: py_… (still valid source_transaction).
+    if (!isStripeSourceChargeId(sourceChargeId)) {
       return json({ error: "Invalid source charge id" }, 400);
     }
 

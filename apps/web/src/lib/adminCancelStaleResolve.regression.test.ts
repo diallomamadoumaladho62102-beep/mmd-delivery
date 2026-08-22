@@ -59,7 +59,7 @@ test("py_ + ch_ source charge still accepted for SCT", () => {
     ),
     "utf8",
   );
-  assert.match(src, /startsWith\("ch_"\) \|\| id\.startsWith\("py_"\)/);
+  assert.match(src, /isStripeSourceChargeId/);
 });
 
 console.log("admin cancel + stale resolve regression passed");

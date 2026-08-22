@@ -112,12 +112,12 @@ Deno.serve(async (req) => {
         ? "verification_in_progress"
         : "verification_pending";
 
-    // 4) Update DB (restaurant_profiles has no stripe_onboarded boolean)
     const updatePayload: Record<string, any> = {
       stripe_charges_enabled: chargesEnabled,
       stripe_payouts_enabled: payoutsEnabled,
       stripe_details_submitted: detailsSubmitted,
       stripe_onboarding_status: onboardingStatus,
+      stripe_onboarded: ready,
       stripe_onboarded_at: ready ? new Date().toISOString() : null,
     };
 

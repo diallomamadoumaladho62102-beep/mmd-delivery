@@ -21,6 +21,7 @@ import {
 } from "../../lib/walletApi";
 import { formatDateTime } from "../../i18n/formatters";
 import { toUserFacingError } from "../../lib/userFacingError";
+import { RestaurantStripeConnectCard } from "../../features/restaurant/components/RestaurantStripeConnectCard";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -198,7 +199,23 @@ export default function RestaurantWalletScreen() {
         variant="mmd"
       />
       {empty ? (
-        <View style={styles.centered}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true);
+                await refresh();
+                setRefreshing(false);
+              }}
+              tintColor={MMD_WHITE}
+            />
+          }
+        >
+          <RestaurantStripeConnectCard
+            heldAmountLabel={awaitingCents > 0 ? fmt(awaitingCents) : null}
+          />
           <View style={styles.glassCard}>
             <Text style={styles.emoji}>💳</Text>
             <Text style={styles.cardTitle}>
@@ -211,7 +228,7 @@ export default function RestaurantWalletScreen() {
               )}
             </Text>
           </View>
-        </View>
+        </ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={styles.content}
@@ -228,6 +245,9 @@ export default function RestaurantWalletScreen() {
           }
           showsVerticalScrollIndicator={false}
         >
+          <RestaurantStripeConnectCard
+            heldAmountLabel={awaitingCents > 0 ? fmt(awaitingCents) : null}
+          />
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>
               {t("restaurant.wallet.available", "Available")}

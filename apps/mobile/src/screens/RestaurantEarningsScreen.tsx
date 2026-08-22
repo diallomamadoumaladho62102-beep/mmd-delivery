@@ -16,17 +16,15 @@ import { useTranslation } from "react-i18next";
 import * as Clipboard from "expo-clipboard";
 import { supabase } from "../lib/supabase";
 import { getApiBaseUrl } from "../lib/apiBase";
-import { clearSelectedRole } from "../lib/authRole";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
-import { startStripeOnboarding } from "../utils/stripe";
-import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
+import { logTechnicalError } from "../lib/userFacingError";
 import {
-  normalizeStripeConnectStatus,
+  deriveRestaurantConnectStatus,
   stripeConnectStatusLabel,
   stripeConnectUserMessage,
-  type StripeConnectStatusCode,
 } from "../lib/stripeConnectStatus";
+import { RestaurantStripeConnectCard } from "../features/restaurant/components/RestaurantStripeConnectCard";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -99,7 +97,6 @@ export function RestaurantEarningsScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const [payoutLoading, setPayoutLoading] = useState(false);
   const [payoutProfile, setPayoutProfile] =
     useState<RestaurantPayoutProfile | null>(null);
 
@@ -247,50 +244,6 @@ export function RestaurantEarningsScreen() {
       cancelled = true;
     };
   }, [navigation]);
-
-  const doLogout = useCallback(async () => {
-    Alert.alert(
-      t("restaurant.earnings.logout.title", "Se déconnecter"),
-      t("restaurant.earnings.logout.body", "Tu veux vraiment te déconnecter ?"),
-      [
-        { text: t("common.cancel", "Annuler"), style: "cancel" },
-        {
-          text: t("common.yes", "Oui"),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await clearSelectedRole();
-              const { error } = await supabase.auth.signOut();
-              if (error) throw error;
-
-              setRows([]);
-              setError(null);
-              setRestaurantId(null);
-              setPayoutProfile(null);
-              setServerPendingPayout(null);
-
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "RoleSelect" }],
-              });
-            } catch (e: any) {
-              Alert.alert(
-                t("common.error", "Erreur"),
-                e?.message ??
-                  t(
-                    "restaurant.earnings.logout.error",
-                    "Impossible de se déconnecter."
-                  )
-              );
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  }, [navigation, t]);
 
   const fetchPayoutProfile = useCallback(async () => {
     try {
@@ -685,19 +638,7 @@ export function RestaurantEarningsScreen() {
   // Wallet / earnings SoT is restaurant_transfer_id (server transfers/run + webhooks).
 
   const payoutStatus = useMemo(() => {
-    const code: StripeConnectStatusCode = !payoutProfile?.stripe_account_id
-      ? "setup_required"
-      : normalizeStripeConnectStatus(
-          payoutProfile.stripe_onboarding_status ??
-            (payoutProfile.stripe_payouts_enabled &&
-            payoutProfile.stripe_charges_enabled &&
-            payoutProfile.stripe_details_submitted
-              ? "ready_for_payouts"
-              : payoutProfile.stripe_details_submitted
-                ? "verification_in_progress"
-                : "verification_pending"),
-        );
-
+    const code = deriveRestaurantConnectStatus(payoutProfile);
     return {
       code,
       label: stripeConnectStatusLabel(code),
@@ -705,29 +646,6 @@ export function RestaurantEarningsScreen() {
       ok: code === "ready_for_payouts",
     };
   }, [payoutProfile]);
-
-  async function openRestaurantStripe() {
-    if (payoutLoading) return;
-
-    try {
-      setPayoutLoading(true);
-      await startStripeOnboarding("restaurant");
-      await fetchPayoutProfile();
-    } catch (e: any) {
-      Alert.alert(
-        t("common.error", "Erreur"),
-        toUserFacingError(
-          e,
-          t(
-            "restaurant.earnings.errors.openStripe",
-            "Impossible d’ouvrir Stripe Connect.",
-          ),
-        ),
-      );
-    } finally {
-      setPayoutLoading(false);
-    }
-  }
 
   const debugCopyJwt = useCallback(async () => {
     try {
@@ -816,8 +734,6 @@ export function RestaurantEarningsScreen() {
     [locale, currency, money]
   );
 
-  const stripeNotConnected = !payoutStatus.ok;
-
   if (initialLoad && loading) {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -876,53 +792,6 @@ export function RestaurantEarningsScreen() {
     );
   }
 
-  if (stripeNotConnected && !loading) {
-    return (
-      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
-        <ScreenHeader
-          title={t("restaurant.earnings.header.title", "Earnings")}
-          subtitle="💰"
-          fallbackRoute="RestaurantCommandCenter"
-          variant="mmd"
-        />
-        <View style={styles.stripeBody}>
-          <View style={styles.stripeCard}>
-            <Text style={styles.emoji}>💳</Text>
-            <View style={{ gap: 8, width: "100%" }}>
-              <Text style={[styles.cardTitle, { textAlign: "left" }]}>
-                {t("restaurant.earnings.stripe.title", "Stripe Connect")}
-              </Text>
-              <Text style={[styles.cardBody, { textAlign: "left" }]}>
-                {t(
-                  "restaurant.earnings.stripe.body",
-                  "Connect Stripe to receive payouts and track your earnings."
-                )}
-              </Text>
-            </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>
-                {t("restaurant.earnings.stripe.notConnected", "Not Connected")}
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[styles.ctaFull, payoutLoading && { opacity: 0.7 }]}
-            disabled={payoutLoading}
-            onPress={() => void openRestaurantStripe()}
-            accessibilityRole="button"
-          >
-            <Text style={styles.ctaLabel}>
-              {payoutLoading
-                ? t("common.loading", "Loading…")
-                : t("restaurant.earnings.stripe.connect", "Connect Stripe")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
@@ -949,17 +818,31 @@ export function RestaurantEarningsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <RestaurantStripeConnectCard
+          heldAmountLabel={
+            !payoutStatus.ok && displayAvailableNet > 0
+              ? fmtUsd(displayAvailableNet)
+              : null
+          }
+        />
+
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>
             {t("restaurant.earnings.today", "Today")}
           </Text>
           <Text style={styles.heroAmount}>{fmtUsd(periodStats.todayNet)}</Text>
           <Text style={styles.heroFoot}>
-            {t(
-              "restaurant.earnings.todayMeta",
-              "{{n}} orders • Stripe ready",
-              { n: periodStats.todayCount }
-            )}
+            {payoutStatus.ok
+              ? t(
+                  "restaurant.earnings.todayMetaReady",
+                  "{{n}} orders • payouts enabled",
+                  { n: periodStats.todayCount },
+                )
+              : t(
+                  "restaurant.earnings.todayMetaBlocked",
+                  "{{n}} orders • payouts blocked until Stripe Connect",
+                  { n: periodStats.todayCount },
+                )}
           </Text>
         </View>
 

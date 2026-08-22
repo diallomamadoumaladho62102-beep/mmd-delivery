@@ -225,6 +225,7 @@ serve(async (req) => {
           stripe_payouts_enabled: payoutsEnabled,
           stripe_details_submitted: detailsSubmitted,
           stripe_onboarding_status: status,
+          ...(role === "restaurant" ? { stripe_onboarded: onboarded } : {}),
         })
         .eq("user_id", userId);
     }

@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { AdminAccessError, assertCanRetryPayout } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
+import { isStripeSourceChargeId } from "@/lib/finance/stripeSourceChargeId";
 import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -108,7 +109,7 @@ function normalizeDestinationAccountId(value: unknown): string {
 
 function normalizeSourceChargeId(value: unknown): string {
   const raw = String(value ?? "").trim();
-  if (!/^ch_[A-Za-z0-9]+$/.test(raw)) {
+  if (!isStripeSourceChargeId(raw)) {
     throw new Error("Invalid source_charge_id on payout row.");
   }
   return raw;

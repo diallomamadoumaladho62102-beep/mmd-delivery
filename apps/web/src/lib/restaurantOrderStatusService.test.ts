@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 
 /**
  * Pure helpers mirroring the production fallback used when accept timestamp
@@ -59,6 +61,15 @@ test("fallback accept payload omits missing timestamp columns", () => {
   assert.equal(fallback.status, "accepted");
   assert.equal("accepted_at" in fallback, false);
   assert.equal("restaurant_accepted_at" in fallback, false);
+});
+
+test("same-status restaurant update is treated as a no-op retry", () => {
+  const src = fs.readFileSync(
+    fileURLToPath(new URL("./restaurantOrderStatusService.ts", import.meta.url)),
+    "utf8",
+  );
+  assert.match(src, /currentStatus === nextStatus/);
+  assert.match(src, /\.eq\("status", order\.status\)/);
 });
 
 test("detects PostgREST missing-column errors for retry", () => {

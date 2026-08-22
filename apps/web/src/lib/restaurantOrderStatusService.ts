@@ -102,6 +102,14 @@ export async function transitionRestaurantOrderStatus(
   }
 
   const currentStatus = normalize(order.status);
+  if (currentStatus === nextStatus) {
+    return {
+      ok: true,
+      orderId,
+      status: currentStatus,
+      smartDispatch: null,
+    };
+  }
   const allowedNext = NEXT_STATUS[currentStatus] ?? [];
   if (!allowedNext.includes(nextStatus)) {
     return {

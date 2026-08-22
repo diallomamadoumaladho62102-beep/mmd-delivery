@@ -315,15 +315,19 @@ export function RestaurantAuthScreen() {
     try {
       const geocoded = await geocodeRestaurantAddress(address);
 
-      const { data, error } = await supabase.auth.signUp({
-        email: e,
-        password: p,
-        options: {
-          data: {
-            role: "restaurant",
+      const { data, error } = await withTimeout(
+        supabase.auth.signUp({
+          email: e,
+          password: p,
+          options: {
+            data: {
+              role: "restaurant",
+            },
           },
-        },
-      });
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "restaurant_signUp",
+      );
 
       if (error) throw new Error(toUserFacingError(error));
 
@@ -383,9 +387,13 @@ export function RestaurantAuthScreen() {
     setMsg(null);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(e, {
-        redirectTo: RESET_PASSWORD_URL,
-      });
+      const { error } = await withTimeout(
+        supabase.auth.resetPasswordForEmail(e, {
+          redirectTo: RESET_PASSWORD_URL,
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "restaurant_resetPassword",
+      );
 
       if (error) throw new Error(toUserFacingError(error));
 

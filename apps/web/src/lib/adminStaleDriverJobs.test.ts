@@ -95,7 +95,7 @@ test("Link py_ charge ids accepted as Transfer source_transaction", () => {
     "utf8",
   );
   assert.match(src, /resolveSourceChargeIdFromPaymentIntent/);
-  assert.match(src, /startsWith\("ch_"\) \|\| id\.startsWith\("py_"\)/);
+  assert.match(src, /isStripeSourceChargeId/);
   assert.match(src, /expand:\s*\[["']latest_charge["']\]/);
 });
 

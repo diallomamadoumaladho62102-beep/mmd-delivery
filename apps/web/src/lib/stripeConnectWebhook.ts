@@ -19,6 +19,7 @@ export type ConnectAccountSyncResult = {
     restaurant: boolean;
     seller: boolean;
   };
+  payout_retry?: unknown;
   error?: string;
 };
 
@@ -120,7 +121,10 @@ export async function syncStripeConnectAccountUpdated(
 
   const { data: restaurantRows, error: restaurantErr } = await supabaseAdmin
     .from("restaurant_profiles")
-    .update(restaurantPayload)
+    .update({
+      ...restaurantPayload,
+      stripe_onboarded: onboarded,
+    })
     .eq("stripe_account_id", accountId)
     .select("user_id");
 
@@ -154,10 +158,37 @@ export async function syncStripeConnectAccountUpdated(
     updated,
   });
 
+  let payout_retry: unknown = null;
+  if (
+    onboarded &&
+    (updated.restaurant || updated.seller)
+  ) {
+    try {
+      const { retryAwaitingConnectTransfers } = await import(
+        "@/lib/finance/retryAwaitingConnectTransfers"
+      );
+      const restaurantUserIds = (restaurantRows ?? []).map((r) =>
+        String((r as { user_id?: unknown }).user_id ?? ""),
+      );
+      payout_retry = await retryAwaitingConnectTransfers({
+        supabaseAdmin,
+        restaurantUserIds: updated.restaurant ? restaurantUserIds : [],
+        sellerReady: updated.seller,
+        limit: 8,
+      });
+      console.log("[stripe-connect-webhook] awaiting payout retry", payout_retry);
+    } catch (e) {
+      console.error("[stripe-connect-webhook] awaiting payout retry failed", {
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   return {
     ok: true,
     stripe_account_id: accountId,
     status,
     updated,
+    payout_retry,
   };
 }

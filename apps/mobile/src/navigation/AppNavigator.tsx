@@ -680,7 +680,6 @@ export function AppNavigator({
       r === "FoodOrderReceipt" ||
       r === "DeliveryRequestReceipt" ||
       r === "BusinessWallet" ||
-      r === "RestaurantWallet" ||
       r === "TaxiHistory" ||
       r === "TaxiFavorites" ||
       r === "TaxiLoyalty" ||

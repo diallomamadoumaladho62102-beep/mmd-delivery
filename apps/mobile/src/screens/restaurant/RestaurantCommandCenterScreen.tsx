@@ -23,11 +23,17 @@ import { RestaurantLiveMap } from "../../features/restaurant/components/Restaura
 import { RestaurantAiGrowthManager } from "../../features/restaurant/components/RestaurantAiGrowthManager";
 import { TopProductsCard } from "../../features/restaurant/components/TopProductsCard";
 import { FinancialSummaryCard } from "../../features/restaurant/components/FinancialSummaryCard";
+import { RestaurantStripeConnectCard } from "../../features/restaurant/components/RestaurantStripeConnectCard";
 import { RevenueHeroCard } from "../../features/restaurant/components/RevenueHeroCard";
 import { RevenueTrendChart } from "../../features/restaurant/components/RevenueTrendChart";
 import { OrderInsightsCard } from "../../features/restaurant/components/OrderInsightsCard";
 import { CC } from "../../features/restaurant/components/commandCenterTheme";
 import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
+import { toUserFacingError } from "../../lib/userFacingError";
+import {
+  confirmSignOutToRoleSelect,
+  restaurantSignOutLabels,
+} from "../../lib/confirmSignOutToRoleSelect";
 import { formatDate, formatMoney } from "../../i18n/formatters";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
 import { MMD_BLUE, MMD_FONT, MMD_TAXI_GREEN, MMD_WHITE } from "../../theme/mmdUi";
@@ -137,8 +143,23 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
         onPress: () => navigation.navigate("RestaurantFinancialCenter"),
       },
       {
+        text: t("restaurant.commandCenter.connectBank", "Connect bank account"),
+        onPress: () => navigation.navigate("RestaurantEarnings"),
+      },
+      {
         text: t("restaurant.security.title", "Security"),
         onPress: () => navigation.navigate("RestaurantSecurity"),
+      },
+      {
+        text: t("restaurant.signOut.confirm", "Log out"),
+        style: "destructive",
+        onPress: () => {
+          confirmSignOutToRoleSelect({
+            navigation,
+            labels: restaurantSignOutLabels(t),
+            formatError: (e, fallback) => toUserFacingError(e, fallback),
+          });
+        },
       },
       { text: t("common.cancel", "Cancel"), style: "cancel" },
     ]);
@@ -371,9 +392,12 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
 
         <TopProductsCard products={data.topProducts} language={i18n.language} loading={loading} />
 
+        <RestaurantStripeConnectCard />
+
         <FinancialSummaryCard
           financial={data.financial}
           language={i18n.language}
+          onConnectPayouts={() => navigation.navigate("RestaurantEarnings")}
           onViewFullReport={() => navigation.navigate("RestaurantFinancialCenter")}
         />
 

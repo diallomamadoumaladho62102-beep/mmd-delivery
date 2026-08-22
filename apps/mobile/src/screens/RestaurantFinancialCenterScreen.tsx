@@ -8,7 +8,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { RestaurantStripeConnectCard } from "../features/restaurant/components/RestaurantStripeConnectCard";
 import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
 import { formatMoney } from "../i18n/formatters";
@@ -45,6 +47,7 @@ const DEBIT = "#FCA5A5";
  * Keeps /api/restaurant/financial/overview RPC.
  */
 export default function RestaurantFinancialCenterScreen() {
+  const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -213,6 +216,33 @@ export default function RestaurantFinancialCenterScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        <RestaurantStripeConnectCard
+          heldAmountLabel={
+            overview.pendingPayout > 0
+              ? fmtMoney(overview.pendingPayout, overview.currency)
+              : null
+          }
+        />
+
+        <TouchableOpacity
+          style={styles.cta}
+          onPress={() => navigation.navigate("RestaurantEarnings")}
+          accessibilityRole="button"
+        >
+          <Text style={styles.ctaLabel}>
+            {t("restaurant.financial.viewEarnings", "View Earnings")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryCta}
+          onPress={() => navigation.navigate("RestaurantWallet")}
+          accessibilityRole="button"
+        >
+          <Text style={styles.secondaryCtaLabel}>
+            {t("restaurant.financial.viewWallet", "View Wallet")}
+          </Text>
+        </TouchableOpacity>
+
         <View style={styles.heroCard}>
           <Text style={styles.heroTitle}>
             📊 {t("restaurant.financial.overview", "Financial Overview")}
@@ -329,6 +359,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   ctaLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+  },
+  secondaryCta: {
+    backgroundColor: MMD_GLASS,
+    minHeight: 44,
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: CARD_BORDER,
+  },
+  secondaryCtaLabel: {
     color: MMD_WHITE,
     fontSize: 14,
     fontFamily: MMD_FONT.semibold,

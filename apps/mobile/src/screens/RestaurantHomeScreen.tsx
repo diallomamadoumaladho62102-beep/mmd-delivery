@@ -28,6 +28,10 @@ import { useTranslation } from "react-i18next";
 import { useRestaurantPlatformFeatures } from "../hooks/useRestaurantPlatformFeatures";
 import { toUserFacingError } from "../lib/userFacingError";
 import {
+  confirmSignOutToRoleSelect,
+  restaurantSignOutLabels,
+} from "../lib/confirmSignOutToRoleSelect";
+import {
   BOOT_AUTH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
@@ -1524,6 +1528,17 @@ export function RestaurantHomeScreen({ navigation }: any) {
           text: t("restaurant.home.nav.security", "Sécurité"),
           onPress: () => navigation.navigate("RestaurantSecurity"),
         },
+        {
+          text: t("restaurant.signOut.confirm", "Log out"),
+          style: "destructive",
+          onPress: () => {
+            confirmSignOutToRoleSelect({
+              navigation,
+              labels: restaurantSignOutLabels(t),
+              formatError: (e, fallback) => toUserFacingError(e, fallback),
+            });
+          },
+        },
         { text: t("common.cancel", "Cancel"), style: "cancel" },
       ],
     );
@@ -1549,6 +1564,9 @@ export function RestaurantHomeScreen({ navigation }: any) {
         case "stats":
           navigation.navigate("RestaurantEarnings");
           break;
+        case "payouts":
+          navigation.navigate("RestaurantEarnings");
+          break;
         case "finance":
           navigation.navigate("RestaurantFinancialCenter");
           break;
@@ -1563,6 +1581,13 @@ export function RestaurantHomeScreen({ navigation }: any) {
           break;
         case "language":
           navigation.navigate("RestaurantLanguage");
+          break;
+        case "logout":
+          confirmSignOutToRoleSelect({
+            navigation,
+            labels: restaurantSignOutLabels(t),
+            formatError: (e, fallback) => toUserFacingError(e, fallback),
+          });
           break;
         case "heatmap":
           setShowHeatmap((v) => !v);

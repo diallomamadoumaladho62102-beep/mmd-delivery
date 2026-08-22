@@ -8,11 +8,13 @@ export type RestaurantHomeNavKey =
   | "menu"
   | "drivers"
   | "stats"
+  | "payouts"
   | "finance"
   | "tax"
   | "security"
   | "settings"
   | "language"
+  | "logout"
   | "ai"
   | "heatmap"
   | "dash";
@@ -73,6 +75,12 @@ export const RESTAURANT_HOME_NAV: RestaurantHomeNavItem[] = [
     badge: "ordersToday",
   },
   {
+    key: "payouts",
+    icon: "card-outline",
+    labelKey: "restaurant.home.nav.payouts",
+    labelFallback: "Payouts",
+  },
+  {
     key: "finance",
     icon: "briefcase-outline",
     labelKey: "restaurant.home.nav.finance",
@@ -120,6 +128,12 @@ export const RESTAURANT_HOME_NAV: RestaurantHomeNavItem[] = [
     icon: "globe-outline",
     labelKey: "restaurant.home.nav.language",
     labelFallback: "Langue",
+  },
+  {
+    key: "logout",
+    icon: "log-out-outline",
+    labelKey: "restaurant.signOut.confirm",
+    labelFallback: "Log out",
   },
 ];
 
