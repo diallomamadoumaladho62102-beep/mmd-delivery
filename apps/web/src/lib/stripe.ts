@@ -37,7 +37,16 @@ if (
 export const STRIPE_API_VERSION =
   "2023-10-16" as unknown as Stripe.LatestApiVersion;
 
-export const stripe = new Stripe(stripeSecretKey, {
+/**
+ * Stripe Node SDK ≥22 throws when constructed with an empty apiKey.
+ * Next.js `collect page data` imports this module at build time without secrets
+ * (Dependabot / Preview builds). Use a non-empty placeholder only when no key
+ * is present; real requests still fail auth until STRIPE_SECRET_KEY is set.
+ */
+const stripeClientKey =
+  stripeSecretKey || "sk_test_mmd_build_placeholder_do_not_charge";
+
+export const stripe = new Stripe(stripeClientKey, {
   apiVersion: STRIPE_API_VERSION,
 });
 
