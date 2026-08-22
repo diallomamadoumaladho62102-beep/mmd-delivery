@@ -4,7 +4,7 @@ import {
   assertCanManageTaxiPayouts,
 } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { stripe } from "@/lib/stripe";
+import { retrievePlatformStripeAccount, stripe } from "@/lib/stripe";
 import {
   classifyUnpaidDriverSctStatus,
   ensurePlatformManualPayoutSchedule,
@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
             .in("id", rideIds)
         : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
       stripe.balance.retrieve(),
-      stripe.accounts.retrieve(),
+      retrievePlatformStripeAccount(),
     ]);
 
     const rideById = new Map<string, Record<string, unknown>>(

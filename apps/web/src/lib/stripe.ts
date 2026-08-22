@@ -38,3 +38,28 @@ export const stripe = new Stripe(stripeSecretKey, {
 });
 
 export const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+
+/** Platform Connect account id (`acct_*`). Required for Stripe Node SDK ≥22 when retrieving payout schedule. */
+export function resolveStripePlatformAccountId(): string | null {
+  const id = String(process.env.STRIPE_PLATFORM_ACCOUNT_ID ?? "").trim();
+  return id.startsWith("acct_") ? id : null;
+}
+
+/**
+ * Retrieve the platform Stripe account (payout schedule, settings).
+ * Stripe Node SDK <22 allowed omitting the id with a platform secret key; SDK 22+ requires `acct_*`.
+ */
+export async function retrievePlatformStripeAccount(
+  client: Stripe = stripe,
+  explicitId?: string,
+): Promise<Stripe.Account> {
+  const accountId = (explicitId ?? resolveStripePlatformAccountId() ?? "").trim();
+  if (accountId.startsWith("acct_")) {
+    return client.accounts.retrieve(accountId);
+  }
+  const retrieveLegacy = client.accounts.retrieve.bind(client.accounts) as (
+    account?: string,
+    ...rest: unknown[]
+  ) => Promise<Stripe.Account>;
+  return retrieveLegacy();
+}
