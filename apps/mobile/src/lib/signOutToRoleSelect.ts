@@ -70,3 +70,21 @@ export function restaurantSignOutLabels(t: (key: string, fallback: string) => st
     ),
   } satisfies ConfirmSignOutLabels;
 }
+
+/** Stable i18n defaults for Driver logout (EN primary for App Store). */
+export function driverSignOutLabels(t: (key: string, fallback: string) => string) {
+  return {
+    title: t("driver.signOut.title", "Log out"),
+    body: t(
+      "driver.signOut.body",
+      "Sign out of this device? Your driver account and data stay intact.",
+    ),
+    confirm: t("common.logout", "Log out"),
+    cancel: t("common.cancel", "Cancel"),
+    errorTitle: t("common.errorTitle", "Error"),
+    errorBody: t(
+      "driver.account.logoutFailed",
+      "Something went wrong temporarily. Please try again.",
+    ),
+  } satisfies ConfirmSignOutLabels;
+}

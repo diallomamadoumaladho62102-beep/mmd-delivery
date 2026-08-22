@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/DriverAuthScreen.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TextInput,
@@ -16,6 +15,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import * as Linking from "expo-linking";
@@ -581,9 +581,13 @@ export function DriverAuthScreen() {
       const redirectTo = getResetPasswordRedirectUrl();
       console.log("RESET PASSWORD REDIRECT_TO =", redirectTo);
 
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanedEmail, {
-        redirectTo,
-      });
+      const { error } = await withTimeout(
+        supabase.auth.resetPasswordForEmail(cleanedEmail, {
+          redirectTo,
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "driver_resetPassword",
+      );
 
       if (error) {
         Alert.alert(
@@ -819,17 +823,21 @@ export function DriverAuthScreen() {
       const cleanedPlateNumber = plateNumber.trim().toUpperCase();
       const cleanedLicenseNumber = licenseNumber.trim().toUpperCase();
 
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanedEmail,
-        password: cleanedPassword,
-        options: {
-          data: {
-            full_name: cleanedFullName,
-            role: "driver",
-            referral_code: referralCode.trim().toUpperCase() || null,
+      const { data, error } = await withTimeout(
+        supabase.auth.signUp({
+          email: cleanedEmail,
+          password: cleanedPassword,
+          options: {
+            data: {
+              full_name: cleanedFullName,
+              role: "driver",
+              referral_code: referralCode.trim().toUpperCase() || null,
+            },
           },
-        },
-      });
+        }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "driver_signUp",
+      );
 
       if (error) {
         Alert.alert(t("driver.auth.alert.signupFailedTitle"), toUserFacingError(error, t("driver.auth.alert.signupFailedTitle")));
@@ -980,7 +988,7 @@ export function DriverAuthScreen() {
   const contentMax = width >= 768 ? 560 : undefined;
 
   return (
-    <SafeAreaView style={authStyles.root}>
+    <SafeAreaView style={authStyles.root} edges={["top", "bottom"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <View style={authStyles.topBar}>
         <TouchableOpacity

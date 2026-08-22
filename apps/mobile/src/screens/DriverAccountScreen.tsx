@@ -16,6 +16,10 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
+import {
+  confirmSignOutToRoleSelect,
+  driverSignOutLabels,
+} from "../lib/confirmSignOutToRoleSelect";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DriverAccountCard } from "../components/DriverAccountCard";
 import ScreenHeader from "../components/navigation/ScreenHeader";
@@ -334,31 +338,13 @@ export function DriverAccountScreen() {
     }, [loadProgress, loadLocaleFromStorage]),
   );
 
-  const onLogout = useCallback(async () => {
-    try {
-      setLoading(true);
-      await clearSelectedRole();
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          toUserFacingError(
-            error,
-            t(
-              "driver.account.logoutFailed",
-              "Something went wrong temporarily. Please try again.",
-            ),
-          ),
-        );
-        return;
-      }
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "RoleSelect" }],
-      });
-    } finally {
-      setLoading(false);
-    }
+  const onLogout = useCallback(() => {
+    confirmSignOutToRoleSelect({
+      navigation,
+      labels: driverSignOutLabels(t),
+      onBusyChange: setLoading,
+      formatError: (e, fallback) => toUserFacingError(e, fallback),
+    });
   }, [navigation, t]);
 
   const onSwitchAccount = useCallback(async () => {
