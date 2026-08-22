@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import {
   resolveStripePlatformAccountId,
   retrievePlatformStripeAccount,
+  stripeWebhookPayload,
 } from "./stripe";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -53,6 +54,11 @@ async function run() {
   assert(
     retrieveCalls.length === 1 && retrieveCalls[0] === "",
     "legacy no-arg fallback",
+  );
+
+  assert(
+    stripeWebhookPayload(Buffer.from("{\"id\":\"evt_test\"}")) === "{\"id\":\"evt_test\"}",
+    "webhook payload utf8",
   );
 
   console.log("stripePlatformAccount tests passed");
