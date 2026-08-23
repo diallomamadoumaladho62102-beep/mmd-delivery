@@ -96,7 +96,8 @@ html:has(.admin-figma) body {
 .admin-figma .text-slate-800,
 .admin-figma .text-slate-700,
 .admin-figma .text-gray-800,
-.admin-figma .text-gray-700 {
+.admin-figma .text-gray-700,
+.admin-figma .text-black {
   color: #ffffff !important;
 }
 
@@ -105,6 +106,19 @@ html:has(.admin-figma) body {
 .admin-figma .text-gray-600,
 .admin-figma .text-gray-500 {
   color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.admin-figma .text-slate-400,
+.admin-figma .text-gray-400,
+.admin-figma .text-slate-300,
+.admin-figma .text-gray-300 {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.admin-figma button:disabled,
+.admin-figma [aria-disabled="true"] {
+  opacity: 0.55;
+  color: rgba(255, 255, 255, 0.75) !important;
 }
 
 .admin-figma .border-slate-200,
@@ -167,11 +181,6 @@ html:has(.admin-figma) body {
 .admin-figma .border-slate-900,
 .admin-figma .border-gray-900 {
   border-color: rgba(255, 255, 255, 0.24) !important;
-}
-
-.admin-figma .text-slate-400,
-.admin-figma .text-gray-400 {
-  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 .admin-figma .text-red-600,

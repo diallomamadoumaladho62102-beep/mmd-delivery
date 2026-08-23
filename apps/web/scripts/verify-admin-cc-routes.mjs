@@ -47,34 +47,47 @@ const ALLOW_WITHOUT_NAV = new Set([
   "/admin/orders/[orderId]",
   "/admin/orders/[orderId]/chat",
   "/admin/payouts/[orderId]",
-  "/admin/clients", // in nav as Customers
-  "/admin/hr",
-  "/admin/teams",
-  "/admin/tasks",
-  "/admin/staff",
-  "/admin/supervision",
+  "/admin/payouts/audit",
+  "/admin/payouts/reconciliation",
+  "/admin/taxi-rides/[rideId]",
+  "/admin/driver-identity/settings",
+  "/admin/site/contact",
+  "/admin/site/faq",
+  "/admin/site/media",
+  "/admin/site/menus",
+  "/admin/site/newsletter",
+  "/admin/site/overlays",
+  "/admin/site/pages",
+  "/admin/site/pages/[id]",
+  "/admin/site/posts",
+  "/admin/site/posts/[id]",
+  "/admin/site/settings",
 ]);
 
-// Normalize: ensure known new enterprise routes are present on disk.
 const requiredNew = [
   "/admin/staff",
   "/admin/staff/[id]",
   "/admin/teams",
   "/admin/tasks",
   "/admin/hr",
+  "/admin/taxi-pricing",
 ];
 for (const r of requiredNew) {
   if (!pages.includes(r)) {
-    console.error(`FAIL missing new enterprise route page: ${r}`);
+    console.error(`FAIL missing required admin route page: ${r}`);
     process.exit(1);
   }
+}
+
+if (!nav.has("/admin/taxi-pricing")) {
+  console.error("FAIL Taxi Pricing missing from sidebar nav");
+  process.exit(1);
 }
 
 const missingCoverage = pages.filter((p) => {
   if (ALLOW_WITHOUT_NAV.has(p)) return false;
   if (p.includes("[")) return false;
   if (covered.has(p)) return false;
-  // Covered if a nav prefix matches (e.g. /admin/mmd-ai covers /admin/mmd-ai/launch via nav)
   for (const href of covered) {
     if (p === href || p.startsWith(href + "/")) return false;
   }
@@ -89,8 +102,8 @@ console.log(
       nav_count: nav.size,
       hub_count: hub.size,
       missing_nav_coverage: missingCoverage,
-      new_enterprise_routes: requiredNew,
-      pages,
+      required_routes: requiredNew,
+      taxi_pricing_in_nav: nav.has("/admin/taxi-pricing"),
     },
     null,
     2

@@ -56,6 +56,26 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       },
       { href: "/admin/taxi-rides", label: "Taxi", permission: "taxi_rides.read" },
       {
+        href: "/admin/taxi-scheduled",
+        label: "Taxi Scheduled",
+        permission: "taxi_rides.read",
+      },
+      {
+        href: "/admin/taxi-shared-rides",
+        label: "Taxi Shared Rides",
+        permission: "taxi_shared_rides.read",
+      },
+      {
+        href: "/admin/taxi-promotions",
+        label: "Taxi Promotions",
+        permission: "taxi_promotions.read",
+      },
+      {
+        href: "/admin/taxi-dispatch-preferences",
+        label: "Taxi Dispatch Prefs",
+        permission: "taxi_drivers.read",
+      },
+      {
         href: "/admin/taxi-business-accounts",
         label: "Business Accounts",
         permission: "taxi_business.read",
@@ -75,6 +95,26 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         label: "Stale Jobs",
         permission: "orders.read",
       },
+      {
+        href: "/admin/marketplace-orders",
+        label: "Marketplace Orders",
+        permission: "users.sellers.read",
+      },
+      {
+        href: "/admin/marketplace-dispatch",
+        label: "Marketplace Dispatch",
+        permission: "users.sellers.read",
+      },
+      {
+        href: "/admin/marketplace-delivery-shadow",
+        label: "Marketplace Shadow",
+        permission: "users.sellers.read",
+      },
+      {
+        href: "/admin/marketplace-payouts",
+        label: "Marketplace Payouts",
+        permission: "users.sellers.read",
+      },
     ],
   },
   {
@@ -83,6 +123,21 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     items: [
       { href: "/admin/clients", label: "Customers", permission: "users.clients.read" },
       { href: "/admin/drivers", label: "Drivers", permission: "users.drivers.read" },
+      {
+        href: "/admin/taxi-drivers",
+        label: "Taxi Drivers",
+        permission: "taxi_drivers.read",
+      },
+      {
+        href: "/admin/driver-vehicles",
+        label: "Driver Vehicles",
+        permission: "taxi_drivers.read",
+      },
+      {
+        href: "/admin/taxi-driver-quality",
+        label: "Taxi Driver Quality",
+        permission: "taxi_driver_quality.read",
+      },
       {
         href: "/admin/driver-identity",
         label: "Driver Identity",
@@ -97,6 +152,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         href: "/admin/restaurants",
         label: "Restaurants",
         permission: "users.restaurants.read",
+      },
+      {
+        href: "/admin/restaurants/order-automation",
+        label: "Restaurant Automation",
+        permission: "users.restaurants.manage",
       },
       { href: "/admin/sellers", label: "Sellers", permission: "users.sellers.read" },
     ],
@@ -114,7 +174,52 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         permission: "commissions.read",
       },
       { href: "/admin/pricing", label: "Pricing", permission: "pricing.read" },
+      {
+        href: "/admin/taxi-pricing",
+        label: "Taxi Pricing",
+        permission: "taxi_pricing.read",
+      },
+      {
+        href: "/admin/taxi-taxes",
+        label: "Taxi Taxes",
+        permission: "taxi_taxes.read",
+      },
+      {
+        href: "/admin/taxi-exchange-rates",
+        label: "Taxi Exchange Rates",
+        permission: "taxi_exchange_rates.read",
+      },
+      {
+        href: "/admin/payment-methods",
+        label: "Payment Methods",
+        permission: "pricing.read",
+      },
+      {
+        href: "/admin/payout-methods",
+        label: "Payout Methods",
+        permission: "pricing.read",
+      },
       { href: "/admin/loyalty", label: "Loyalty", permission: "loyalty.read" },
+      {
+        href: "/admin/taxi-loyalty",
+        label: "Taxi Loyalty",
+        permission: "taxi_rides.read",
+      },
+      {
+        href: "/admin/taxi-loyalty-rewards",
+        label: "Taxi Rewards",
+        permission: "taxi_rides.read",
+      },
+      {
+        href: "/admin/subscriptions",
+        label: "Subscriptions",
+        permission: "subscriptions.read",
+      },
+      {
+        href: "/admin/mmd-plus",
+        label: "MMD Plus",
+        permission: "mmd_plus.read",
+      },
     ],
   },
   {
@@ -170,6 +275,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         href: "/admin/taxi-launch",
         label: "Taxi Launch",
         permission: "taxi_launch.read",
+      },
+      {
+        href: "/admin/taxi-monitoring",
+        label: "Taxi Monitoring",
+        permission: "taxi_monitoring.read",
       },
     ],
   },
