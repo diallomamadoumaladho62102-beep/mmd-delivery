@@ -65,6 +65,14 @@ export function restaurantBankPayoutIdempotencyKey(
   return `restaurant_sunday_bank_payout:${stripeAccountId}:${etDateKey}`;
 }
 
+/** Seller Sunday bank payout idempotency (remaining Connect available). */
+export function sellerBankPayoutIdempotencyKey(
+  stripeAccountId: string,
+  etDateKey: string,
+): string {
+  return `seller_sunday_bank_payout:${stripeAccountId}:${etDateKey}`;
+}
+
 /**
  * Force Express auto-payouts OFF so bank payouts are driven by MMD Sunday cron
  * (or explicit manual Cash Out), not Stripe daily defaults.
@@ -100,7 +108,7 @@ export async function createFullAvailableConnectPayout(params: {
   /** @deprecated prefer recipientUserId */
   driverUserId?: string;
   recipientUserId?: string;
-  recipientType?: "driver" | "restaurant";
+  recipientType?: "driver" | "restaurant" | "seller";
   currency?: string;
   idempotencyKey: string;
   metadata?: Record<string, string>;
@@ -114,7 +122,12 @@ export async function createFullAvailableConnectPayout(params: {
   const recipientUserId = String(
     params.recipientUserId ?? params.driverUserId ?? "",
   ).trim();
-  const recipientType = params.recipientType === "restaurant" ? "restaurant" : "driver";
+  const recipientType =
+    params.recipientType === "restaurant"
+      ? "restaurant"
+      : params.recipientType === "seller"
+        ? "seller"
+        : "driver";
 
   let availableCents = 0;
   try {
@@ -150,7 +163,9 @@ export async function createFullAvailableConnectPayout(params: {
           source:
             recipientType === "restaurant"
               ? "cron_restaurant_sunday_bank_payout"
-              : "cron_driver_sunday_bank_payout",
+              : recipientType === "seller"
+                ? "cron_seller_sunday_bank_payout"
+                : "cron_driver_sunday_bank_payout",
           driver_id: recipientType === "driver" ? recipientUserId : "",
           recipient_user_id: recipientUserId,
           recipient_type: recipientType,

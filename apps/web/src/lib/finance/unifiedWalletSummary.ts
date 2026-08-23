@@ -1,9 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  isManualCashoutBlockedToday,
+  MANUAL_CASHOUT_MINIMUM_CENTS,
+} from "@/lib/finance/manualCashoutService";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import { getRestaurantFinancialOverview } from "@/lib/restaurantFinancialOverview";
 import { currencyForPlatformCountry } from "@/lib/platformCurrency";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
+import { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
+import { stripe } from "@/lib/stripe";
 
 export type SharedWalletSummary = {
   account_type: "restaurant" | "seller" | "partner" | "client";
@@ -11,11 +17,16 @@ export type SharedWalletSummary = {
   currency: string;
   /** Legacy ledger balance (kept for backward compatibility). */
   balance_cents: number;
-  /** Cashable now — restaurants/sellers typically 0 (Sunday bank cron; no MMD cash out). */
+  /** Cashable now — Stripe Connect available balance. */
   available_cents: number;
   /** Earnings not yet SCT'd to Connect (awaiting platform→Connect Transfer). */
   awaiting_transfer_cents: number;
   pending_cents: number;
+  minimum_payout_cents?: number;
+  cashout_blocked_today?: boolean;
+  last_cashout_at?: string | null;
+  stripe_account_id?: string | null;
+  stripe_onboarded?: boolean;
   /** Seller: total net already transferred (paid payouts). */
   paid_out_cents?: number;
   /** Seller: cumulative platform commission fees. */
@@ -32,58 +43,151 @@ function currencyForCountry(countryCode: string): string {
   return currencyForPlatformCountry(normalizeCountryCode(countryCode));
 }
 
+async function hasActiveManualCashoutToday(
+  supabaseAdmin: SupabaseClient,
+  recipientType: "restaurant" | "seller",
+  userId: string,
+): Promise<{ blocked: boolean; lastCashoutAt: string | null }> {
+  return isManualCashoutBlockedToday(supabaseAdmin, recipientType, userId);
+}
+
+async function loadLiveConnectState(stripeAccountId: string | null): Promise<{
+  onboarded: boolean;
+  liveVerified: boolean;
+  availableCents: number;
+  pendingCents: number;
+}> {
+  if (!stripeAccountId) {
+    return {
+      onboarded: false,
+      liveVerified: false,
+      availableCents: 0,
+      pendingCents: 0,
+    };
+  }
+  try {
+    const account = await stripe.accounts.retrieve(stripeAccountId);
+    const onboarded = Boolean(
+      account.details_submitted &&
+        account.charges_enabled &&
+        account.payouts_enabled,
+    );
+    let availableCents = 0;
+    let pendingCents = 0;
+    try {
+      const bal = await fetchConnectUsdBalanceCents(stripeAccountId);
+      availableCents = bal.availableCents;
+      pendingCents = bal.pendingCents;
+    } catch {
+      availableCents = 0;
+      pendingCents = 0;
+    }
+    return { onboarded, liveVerified: true, availableCents, pendingCents };
+  } catch {
+    return {
+      onboarded: false,
+      liveVerified: false,
+      availableCents: 0,
+      pendingCents: 0,
+    };
+  }
+}
+
+function resolveCashoutGate(input: {
+  stripeAccountId: string | null;
+  onboarded: boolean;
+  liveVerified: boolean;
+  availableCents: number;
+  blockedToday: boolean;
+}): { canCashout: boolean; reason: string | null } {
+  if (!input.stripeAccountId || !input.onboarded || !input.liveVerified) {
+    return { canCashout: false, reason: "stripe_setup_required" };
+  }
+  if (input.blockedToday) {
+    return { canCashout: false, reason: "already_cashed_out_today" };
+  }
+  if (input.availableCents < MANUAL_CASHOUT_MINIMUM_CENTS) {
+    return { canCashout: false, reason: "below_minimum" };
+  }
+  return { canCashout: true, reason: null };
+}
+
 /**
- * Restaurant wallets: SCT funds Connect; Sunday cron pays bank (manual schedule).
- * Awaiting = delivered+paid with no restaurant_transfer_id (Stripe Transfer SoT).
- * available/can_cashout remain 0 (no MMD Cash Out for restaurants).
+ * Restaurant wallets: SCT → Connect available → manual Cash Out ($20 / 1/day)
+ * and/or Sunday 04:00 America/New_York bank cron for remaining balance.
  */
 export async function buildRestaurantWalletSummary(
   supabaseAdmin: SupabaseClient,
   restaurantUserId: string,
-  countryCodeInput?: string | null
+  countryCodeInput?: string | null,
 ): Promise<SharedWalletSummary> {
   const countryCode = normalizeCountryCode(countryCodeInput ?? "US");
   const currency = currencyForCountry(countryCode);
 
-  const [balanceCents, overview] = await Promise.all([
+  const [balanceCents, overview, profileRes, dayLimit] = await Promise.all([
     getWalletBalance(supabaseAdmin, "restaurant", restaurantUserId, currency),
     getRestaurantFinancialOverview({
       supabase: supabaseAdmin,
       restaurantUserId,
     }),
+    supabaseAdmin
+      .from("restaurant_profiles")
+      .select("stripe_account_id, stripe_onboarded")
+      .eq("user_id", restaurantUserId)
+      .maybeSingle(),
+    hasActiveManualCashoutToday(supabaseAdmin, "restaurant", restaurantUserId),
   ]);
 
-  // pendingPayout is in currency units (dollars); convert to cents.
+  if (profileRes.error) throw new Error(profileRes.error.message);
+
   const awaitingTransferCents = Math.max(
     0,
-    Math.round(Number(overview.pendingPayout ?? 0) * 100)
+    Math.round(Number(overview.pendingPayout ?? 0) * 100),
   );
+
+  const stripeAccountId = profileRes.data?.stripe_account_id
+    ? String(profileRes.data.stripe_account_id)
+    : null;
+  const connect = await loadLiveConnectState(stripeAccountId);
+  const gate = resolveCashoutGate({
+    stripeAccountId,
+    onboarded: connect.onboarded,
+    liveVerified: connect.liveVerified,
+    availableCents: connect.availableCents,
+    blockedToday: dayLimit.blocked,
+  });
 
   return {
     account_type: "restaurant",
     country_code: countryCode,
     currency: overview.currency || currency,
     balance_cents: balanceCents,
-    available_cents: 0,
+    available_cents: connect.availableCents,
     awaiting_transfer_cents: awaitingTransferCents,
-    pending_cents: awaitingTransferCents,
-    can_cashout: false,
-    cashout_block_reason: "sunday_bank_payout_only",
+    pending_cents: connect.pendingCents + awaitingTransferCents,
+    minimum_payout_cents: MANUAL_CASHOUT_MINIMUM_CENTS,
+    cashout_blocked_today: dayLimit.blocked,
+    last_cashout_at: dayLimit.lastCashoutAt,
+    stripe_account_id: stripeAccountId,
+    stripe_onboarded: connect.onboarded,
+    can_cashout: gate.canCashout,
+    cashout_block_reason: gate.reason,
     note:
       awaitingTransferCents > 0
-        ? "Pending restaurant earnings await platform→Connect SCT; bank payout is Sunday 04:00 America/New_York (no $20 minimum)."
-        : "Restaurants receive bank payouts Sunday 04:00 America/New_York after SCT (full available balance, no $20 minimum).",
+        ? "Pending restaurant earnings await platform→Connect SCT. Cash out when Connect available ≥ $20 (max 1/day). Sunday 04:00 ET pays remaining bank balance."
+        : "Cash out Connect available (≥ $20, max 1/day) or wait for Sunday 04:00 America/New_York bank payout.",
     money_out_model: MONEY_OUT_MODEL,
   };
 }
 
 /**
- * Seller wallets: sum unpaid marketplace_seller_payouts as awaiting_transfer.
+ * Seller wallets: unpaid marketplace_seller_payouts as awaiting_transfer;
+ * Connect available is cashable via manual Cash Out ($20 / 1/day).
  */
 export async function buildSellerWalletSummary(
   supabaseAdmin: SupabaseClient,
   sellerUserId: string,
-  countryCodeInput?: string | null
+  countryCodeInput?: string | null,
 ): Promise<SharedWalletSummary> {
   const countryCode = normalizeCountryCode(countryCodeInput ?? "US");
   const currency = currencyForCountry(countryCode);
@@ -92,13 +196,12 @@ export async function buildSellerWalletSummary(
     supabaseAdmin,
     "seller",
     sellerUserId,
-    currency
+    currency,
   );
 
-  // Resolve seller profile id(s) owned by this user if needed; payouts key on seller_id.
   const { data: sellerRows, error: sellerErr } = await supabaseAdmin
     .from("sellers")
-    .select("id")
+    .select("id, stripe_account_id, stripe_onboarding_status")
     .eq("user_id", sellerUserId)
     .limit(20);
 
@@ -109,6 +212,16 @@ export async function buildSellerWalletSummary(
   const sellerIds = (sellerRows ?? [])
     .map((row) => String((row as { id?: string }).id ?? "").trim())
     .filter(Boolean);
+
+  const stripeAccountId = (() => {
+    for (const row of sellerRows ?? []) {
+      const acct = String(
+        (row as { stripe_account_id?: string | null }).stripe_account_id ?? "",
+      ).trim();
+      if (acct.startsWith("acct_")) return acct;
+    }
+    return null;
+  })();
 
   let awaitingTransferCents = 0;
   let paidOutCents = 0;
@@ -153,23 +266,41 @@ export async function buildSellerWalletSummary(
     }, 0);
   }
 
+  const [connect, dayLimit] = await Promise.all([
+    loadLiveConnectState(stripeAccountId),
+    hasActiveManualCashoutToday(supabaseAdmin, "seller", sellerUserId),
+  ]);
+
+  const gate = resolveCashoutGate({
+    stripeAccountId,
+    onboarded: connect.onboarded,
+    liveVerified: connect.liveVerified,
+    availableCents: connect.availableCents,
+    blockedToday: dayLimit.blocked,
+  });
+
   return {
     account_type: "seller",
     country_code: countryCode,
     currency,
     balance_cents: balanceCents,
-    available_cents: paidOutCents,
+    available_cents: connect.availableCents,
     awaiting_transfer_cents: awaitingTransferCents,
-    pending_cents: awaitingTransferCents,
+    pending_cents: connect.pendingCents + awaitingTransferCents,
+    minimum_payout_cents: MANUAL_CASHOUT_MINIMUM_CENTS,
+    cashout_blocked_today: dayLimit.blocked,
+    last_cashout_at: dayLimit.lastCashoutAt,
+    stripe_account_id: stripeAccountId,
+    stripe_onboarded: connect.onboarded,
     paid_out_cents: paidOutCents,
     platform_fees_cents: platformFeesCents,
     refunded_cents: refundedCents,
-    can_cashout: false,
-    cashout_block_reason: "express_auto_payout",
+    can_cashout: gate.canCashout,
+    cashout_block_reason: gate.reason,
     note:
       awaitingTransferCents > 0
-        ? "Unpaid marketplace seller payouts await SCT transfer to Connect."
-        : "Sellers receive funds via Stripe Connect transfer + Express auto-payout.",
+        ? "Unpaid marketplace seller payouts await SCT to Connect. Cash out when Connect available ≥ $20 (max 1/day)."
+        : "Cash out Connect available (≥ $20, max 1/day). Sunday 04:00 ET pays remaining bank balance.",
     money_out_model: MONEY_OUT_MODEL,
   };
 }

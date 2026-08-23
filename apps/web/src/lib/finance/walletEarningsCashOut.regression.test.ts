@@ -8,7 +8,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveCommissionDisplayCents } from "../commissionDisplayCents";
 import {
-  DRIVER_CASHOUT_COOLDOWN_MS,
   DRIVER_CASHOUT_MINIMUM_CENTS,
 } from "../driverWalletService";
 import { MONEY_OUT_MODEL } from "./moneyOutArchitecture";
@@ -16,7 +15,14 @@ import {
   isRestaurantOrderAwaitingTransfer,
   restaurantAwaitingDollars,
 } from "./restaurantWalletSoT";
-import { isDriverBankPayoutWindow } from "./driverConnectBankPayout";
+import {
+  isDriverBankPayoutWindow,
+  sellerBankPayoutIdempotencyKey,
+} from "./driverConnectBankPayout";
+import {
+  isManualCashoutAmountEligible,
+  MANUAL_CASHOUT_MINIMUM_CENTS,
+} from "./manualCashoutService";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, "../../..");
@@ -32,31 +38,38 @@ function test(name: string, fn: () => void) {
   }
 }
 
-test("driver cash out minimum is $20.00 (2000 cents)", () => {
+test("unified manual cash out minimum is $20.00 (2000 cents) for all roles", () => {
+  assert.equal(MANUAL_CASHOUT_MINIMUM_CENTS, 2000);
   assert.equal(DRIVER_CASHOUT_MINIMUM_CENTS, 2000);
-  assert.equal(1999 < DRIVER_CASHOUT_MINIMUM_CENTS, true, "$19.99 refused");
-  assert.equal(2000 >= DRIVER_CASHOUT_MINIMUM_CENTS, true, "$20.00 accepted");
-  assert.equal(5000 >= DRIVER_CASHOUT_MINIMUM_CENTS, true, "$50.00 accepted");
+  assert.equal(isManualCashoutAmountEligible(1999), false, "$19.99 refused");
+  assert.equal(isManualCashoutAmountEligible(2000), true, "$20.00 accepted");
+  assert.equal(isManualCashoutAmountEligible(5000), true, "$50.00 accepted");
 });
 
-test("driver cash out cooldown is 24 hours", () => {
-  assert.equal(DRIVER_CASHOUT_COOLDOWN_MS, 24 * 60 * 60 * 1000);
-});
-
-test("driver cashout route enforces minimum, rate limit, idempotency", () => {
+test("driver cashout route uses shared manual cashout service", () => {
   const route = fs.readFileSync(
     path.join(webRoot, "app/api/wallet/driver-cashout/route.ts"),
     "utf8",
   );
-  assert.match(route, /below_minimum/);
-  assert.match(route, /cashout_rate_limited/);
-  assert.match(route, /DRIVER_CASHOUT_MINIMUM_CENTS/);
-  assert.match(route, /isDriverCashoutRateLimited/);
-  assert.match(route, /idempotencyKey:\s*`driver-connect-payout:/);
-  assert.match(route, /createPayoutTransaction/);
+  assert.match(route, /executeManualConnectCashout/);
   assert.match(route, /bodyDriverId !== driverUserId/);
-  assert.match(route, /payouts_enabled/);
-  assert.match(route, /fetchConnectUsdBalanceCents/);
+  assert.match(route, /Driver role required/);
+  assert.doesNotMatch(route, /isDriverCashoutRateLimited/);
+});
+
+test("restaurant and seller manual cashout routes exist", () => {
+  const restaurant = fs.readFileSync(
+    path.join(webRoot, "app/api/wallet/restaurant-cashout/route.ts"),
+    "utf8",
+  );
+  const seller = fs.readFileSync(
+    path.join(webRoot, "app/api/wallet/seller-cashout/route.ts"),
+    "utf8",
+  );
+  assert.match(restaurant, /executeManualConnectCashout/);
+  assert.match(seller, /executeManualConnectCashout/);
+  assert.match(restaurant, /recipientType: "restaurant"/);
+  assert.match(seller, /recipientType: "seller"/);
 });
 
 test("driver wallet SoT uses driver_transfer_id not driver_paid_out alone", () => {
@@ -66,6 +79,7 @@ test("driver wallet SoT uses driver_transfer_id not driver_paid_out alone", () =
   );
   assert.match(src, /driver_transfer_id/);
   assert.match(src, /Never treat driver_paid_out/);
+  assert.match(src, /marketplace_driver_payouts/);
 });
 
 test("restaurant Fouta Halal $5.36 SoT beats drifted fee_restaurant_cents $6.51", () => {
@@ -107,25 +121,38 @@ test("restaurant wallet uses restaurant_transfer_id SoT", () => {
   assert.equal(restaurantAwaitingDollars({ restaurant_cents: 536 }), 5.36);
 });
 
-test("restaurant has no manual cash out — Sunday bank cron only", () => {
+test("all roles have manual cash out + Sunday bank cron models", () => {
   assert.equal(
-    "restaurantCashout" in MONEY_OUT_MODEL,
-    false,
-    "restaurants use Sunday bank cron, not manual cash out",
+    MONEY_OUT_MODEL.driverCashout,
+    "connect_available_balance_payout_only",
   );
-  const cron = fs.readFileSync(
-    path.join(webRoot, "app/api/cron/driver-connect-bank-payouts/route.ts"),
-    "utf8",
+  assert.equal(
+    MONEY_OUT_MODEL.restaurantCashout,
+    "connect_available_balance_payout_only",
   );
-  assert.match(cron, /restaurant/i);
-  assert.match(cron, /createFullAvailableConnectPayout/);
+  assert.equal(
+    MONEY_OUT_MODEL.sellerCashout,
+    "connect_available_balance_payout_only",
+  );
+  assert.match(MONEY_OUT_MODEL.driverBankPayout, /sunday_0400/);
+  assert.match(MONEY_OUT_MODEL.restaurantBankPayout, /sunday_0400/);
+  assert.match(MONEY_OUT_MODEL.sellerBankPayout, /sunday_0400/);
 });
 
-test("Sunday 4:00 AM America/New_York bank payout window", () => {
+test("Sunday 4:00 AM America/New_York bank payout window (EDT + EST)", () => {
   const sun4edt = new Date("2026-08-16T08:30:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun4edt), true);
   const sun5edt = new Date("2026-08-16T09:30:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun5edt), false);
+  const sun4est = new Date("2026-01-11T09:15:00.000Z");
+  assert.equal(isDriverBankPayoutWindow(sun4est), true);
+});
+
+test("seller Sunday bank idempotency key is stable per account+ET date", () => {
+  assert.equal(
+    sellerBankPayoutIdempotencyKey("acct_seller", "2026-08-16"),
+    "seller_sunday_bank_payout:acct_seller:2026-08-16",
+  );
 });
 
 test("marketplace seller payout service idempotency and live gates", () => {
@@ -143,15 +170,6 @@ test("seller connect security blocks client stripe_account_id tampering", () => 
     "utf8",
   );
   assert.match(src, /stripe_account_id/);
-});
-
-test("money out models separate manual cash out vs Sunday cron", () => {
-  assert.equal(
-    MONEY_OUT_MODEL.driverCashout,
-    "connect_available_balance_payout_only",
-  );
-  assert.match(MONEY_OUT_MODEL.driverBankPayout, /sunday_0400/);
-  assert.match(MONEY_OUT_MODEL.restaurantBankPayout, /sunday_0400/);
 });
 
 test("GitHub Actions schedules Sunday driver/restaurant bank payouts", () => {

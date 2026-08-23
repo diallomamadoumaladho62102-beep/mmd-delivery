@@ -14,6 +14,7 @@ import {
   createFullAvailableConnectPayout,
   driverBankPayoutIdempotencyKey,
   restaurantBankPayoutIdempotencyKey,
+  sellerBankPayoutIdempotencyKey,
   ensureDriverConnectManualPayoutSchedule,
   getNowPartsInTimeZone,
   isDriverBankPayoutWindow,
@@ -138,11 +139,32 @@ async function handle(req: NextRequest) {
         if ((data ?? []).length < pageSize) break;
       }
 
+      const sellerRows: Array<{
+        user_id: string;
+        stripe_account_id: string | null;
+      }> = [];
+      for (let from = 0; from < 5000; from += pageSize) {
+        const { data, error } = await supabaseAdmin
+          .from("sellers")
+          .select("user_id, stripe_account_id")
+          .not("stripe_account_id", "is", null)
+          .range(from, from + pageSize - 1);
+        if (error) {
+          throw new Error(`sellers_select_failed: ${error.message}`);
+        }
+        const page = (data ?? []).filter((d) =>
+          String(d.stripe_account_id ?? "").startsWith("acct_"),
+        );
+        sellerRows.push(...page);
+        if ((data ?? []).length < pageSize) break;
+      }
+
       const driverBatch = driverRows.slice(0, Math.max(0, limit));
       const restaurantBatch = restaurantRows.slice(0, Math.max(0, limit));
-      // Separate caps so restaurant Sunday bank is never starved by a large driver set.
+      const sellerBatch = sellerRows.slice(0, Math.max(0, limit));
+      // Separate caps so restaurant/seller Sunday bank is never starved by a large driver set.
       type BankTarget = {
-        role: "driver" | "restaurant";
+        role: "driver" | "restaurant" | "seller";
         user_id: string;
         stripe_account_id: string | null;
       };
@@ -154,6 +176,11 @@ async function handle(req: NextRequest) {
         })),
         ...restaurantBatch.map((r) => ({
           role: "restaurant" as const,
+          user_id: r.user_id,
+          stripe_account_id: r.stripe_account_id,
+        })),
+        ...sellerBatch.map((r) => ({
+          role: "seller" as const,
           user_id: r.user_id,
           stripe_account_id: r.stripe_account_id,
         })),
@@ -204,15 +231,21 @@ async function handle(req: NextRequest) {
         const idempotencyKey =
           role === "restaurant"
             ? restaurantBankPayoutIdempotencyKey(acct, parts.dateKey)
-            : driverBankPayoutIdempotencyKey(acct, parts.dateKey);
+            : role === "seller"
+              ? sellerBankPayoutIdempotencyKey(acct, parts.dateKey)
+              : driverBankPayoutIdempotencyKey(acct, parts.dateKey);
         const moneyModel =
           role === "restaurant"
             ? MONEY_OUT_MODEL.restaurantBankPayout
-            : MONEY_OUT_MODEL.driverBankPayout;
+            : role === "seller"
+              ? MONEY_OUT_MODEL.sellerBankPayout
+              : MONEY_OUT_MODEL.driverBankPayout;
         const ledgerSource =
           role === "restaurant"
             ? "cron_restaurant_sunday_bank_payout"
-            : "cron_driver_sunday_bank_payout";
+            : role === "seller"
+              ? "cron_seller_sunday_bank_payout"
+              : "cron_driver_sunday_bank_payout";
 
         const payout = await createFullAvailableConnectPayout({
           stripeAccountId: acct,
@@ -304,9 +337,10 @@ async function handle(req: NextRequest) {
         ok: true as const,
         timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
         local_date: parts.dateKey,
-        scanned: driverRows.length + restaurantRows.length,
+        scanned: driverRows.length + restaurantRows.length + sellerRows.length,
         scanned_drivers: driverRows.length,
         scanned_restaurants: restaurantRows.length,
+        scanned_sellers: sellerRows.length,
         eligible: batch.length,
         paid,
         skipped,

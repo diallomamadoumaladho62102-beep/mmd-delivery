@@ -8,7 +8,9 @@
  * Connect → bank: Express accounts use **manual** payout schedule; GitHub Actions
  * calls `/api/cron/driver-connect-bank-payouts` at Sunday 04:00 America/New_York
  * (dual UTC schedules for EDT/EST) for drivers and restaurants. No $20 minimum.
- * Manual Cash Out (drivers) may still enforce $20; restaurants use Sunday bank only.
+ * Manual Cash Out (Driver + Restaurant + Seller) enforces $20 and max 1/day
+ * (America/New_York calendar day, atomic DB claim). Sunday bank cron remains
+ * separate and pays only remaining Connect available balance (no $20 minimum).
  *
  * CRITICAL — Platform (MMD) Stripe payout schedule must stay **manual** (or delayed)
  * until unpaid Driver SCTs clear. Automatic platform bank payouts can drain charge
@@ -33,7 +35,10 @@ export const MONEY_OUT_MODEL = {
   platformBankPayout: "manual_until_unpaid_driver_sct_clear",
   driverBankPayout: "sunday_0400_america_new_york_full_available_no_minimum",
   restaurantBankPayout: "sunday_0400_america_new_york_full_available_no_minimum",
+  sellerBankPayout: "sunday_0400_america_new_york_full_available_no_minimum",
   driverCashout: "connect_available_balance_payout_only",
+  restaurantCashout: "connect_available_balance_payout_only",
+  sellerCashout: "connect_available_balance_payout_only",
   tipFunding: "separate_payment_intent_then_sct",
   legacyEdgePayouts: "disabled_by_default",
 } as const;

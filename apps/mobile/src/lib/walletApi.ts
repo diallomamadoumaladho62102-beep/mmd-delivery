@@ -104,6 +104,18 @@ export type DriverWalletSnapshot = {
   payoutTransactions: PayoutTransactionsResponse;
 };
 
+export type WalletCashOutResponse = {
+  ok: boolean;
+  stripe_payout_id?: string | null;
+  payout_amount_cents?: number;
+  currency?: string;
+  payout_transaction_id?: string;
+  claim_id?: string;
+  message?: string;
+  error?: string;
+  last_cashout_at?: string | null;
+};
+
 const CURRENCY_COUNTRY: Record<string, string> = {
   USD: "US",
   CAD: "CA",
@@ -233,4 +245,29 @@ export async function fetchDriverWalletSnapshot(
   }
 
   return { summary, history, payoutMethods, payoutTransactions };
+}
+
+/** Manual Connect Cash Out — amount is never client-controlled. */
+export async function requestWalletCashOut(
+  accessToken: string,
+  params: {
+    accountType: "driver" | "restaurant" | "seller";
+    currency?: string;
+    source?: string;
+  },
+): Promise<WalletCashOutResponse> {
+  const path =
+    params.accountType === "driver"
+      ? "/api/wallet/driver-cashout"
+      : params.accountType === "restaurant"
+        ? "/api/wallet/restaurant-cashout"
+        : "/api/wallet/seller-cashout";
+
+  return authFetch<WalletCashOutResponse>(path, accessToken, {
+    method: "POST",
+    body: JSON.stringify({
+      currency: params.currency ?? "USD",
+      source: params.source ?? "mobile_wallet_cashout",
+    }),
+  });
 }

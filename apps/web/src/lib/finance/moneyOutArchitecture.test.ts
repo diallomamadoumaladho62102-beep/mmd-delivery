@@ -15,6 +15,18 @@ assert.equal(
   "sunday_0400_america_new_york_full_available_no_minimum",
 );
 assert.equal(
+  MONEY_OUT_MODEL.sellerBankPayout,
+  "sunday_0400_america_new_york_full_available_no_minimum",
+);
+assert.equal(
+  MONEY_OUT_MODEL.restaurantCashout,
+  "connect_available_balance_payout_only",
+);
+assert.equal(
+  MONEY_OUT_MODEL.sellerCashout,
+  "connect_available_balance_payout_only",
+);
+assert.equal(
   MONEY_OUT_MODEL.driverCashout,
   "connect_available_balance_payout_only",
 );

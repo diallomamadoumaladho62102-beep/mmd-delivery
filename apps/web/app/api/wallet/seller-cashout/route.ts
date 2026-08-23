@@ -12,17 +12,20 @@ import { toUserFacingError } from "@/lib/userFacingError";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function isDriverRole(role: string | null | undefined): boolean {
+function isSellerRole(role: string | null | undefined): boolean {
   const normalized = String(role ?? "")
     .trim()
     .toLowerCase();
-  return normalized === "driver" || normalized === "livreur";
+  return (
+    normalized === "seller" ||
+    normalized === "marketplace_seller" ||
+    normalized === "vendeur"
+  );
 }
 
 /**
- * Canonical Driver wallet Cash Out (Vercel).
- * Withdraws Stripe Connect available balance only via Express payout.
- * Amount is never client-controlled. Atomic 1/day claim via DB.
+ * Seller / Marketplace manual Cash Out — same MMD rules as Driver ($20 min, 1/day ET).
+ * Destination acct_ is always sellers.stripe_account_id (server-side).
  */
 export async function POST(req: NextRequest) {
   const token = getBearerToken(req);
@@ -36,7 +39,7 @@ export async function POST(req: NextRequest) {
     return mmdLocationJson({ ok: false, error: "Invalid token" }, 401);
   }
 
-  const driverUserId = userData.user.id;
+  const sellerUserId = userData.user.id;
 
   let body: Record<string, unknown> = {};
   try {
@@ -45,13 +48,24 @@ export async function POST(req: NextRequest) {
     body = {};
   }
 
-  const bodyDriverId = String(body.driver_id ?? "").trim();
-  if (bodyDriverId && bodyDriverId !== driverUserId) {
+  const bodySellerId = String(body.seller_id ?? body.seller_user_id ?? "").trim();
+  if (bodySellerId && bodySellerId !== sellerUserId) {
     return mmdLocationJson(
       {
         ok: false,
         error: "Forbidden",
-        message: "driver_id body parameter is not accepted",
+        message: "seller_id body parameter is not accepted",
+      },
+      403,
+    );
+  }
+
+  if (body.amount_cents != null || body.amount != null || body.stripe_account_id) {
+    return mmdLocationJson(
+      {
+        ok: false,
+        error: "Forbidden",
+        message: "amount and stripe_account_id are not client-controllable",
       },
       403,
     );
@@ -62,7 +76,7 @@ export async function POST(req: NextRequest) {
     const { data: profileRow, error: roleErr } = await supabaseAdmin
       .from("profiles")
       .select("role")
-      .eq("id", driverUserId)
+      .eq("id", sellerUserId)
       .maybeSingle();
 
     if (roleErr) {
@@ -72,17 +86,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!isDriverRole((profileRow as { role?: string } | null)?.role)) {
+    if (!isSellerRole((profileRow as { role?: string } | null)?.role)) {
       return mmdLocationJson(
-        { ok: false, error: "Forbidden", message: "Driver role required" },
+        { ok: false, error: "Forbidden", message: "Seller role required" },
         403,
       );
     }
 
     const result = await executeManualConnectCashout({
       supabaseAdmin,
-      recipientType: "driver",
-      recipientUserId: driverUserId,
+      recipientType: "seller",
+      recipientUserId: sellerUserId,
       currency: String(body.currency ?? "USD"),
       source: "mobile_wallet_cashout",
     });
@@ -111,10 +125,10 @@ export async function POST(req: NextRequest) {
       message: result.message,
       payout_transaction_id: result.payout_transaction_id,
       claim_id: result.claim_id,
-      driver_id: driverUserId,
+      seller_user_id: sellerUserId,
     });
   } catch (e) {
-    console.error("[wallet/driver-cashout]", e);
+    console.error("[wallet/seller-cashout]", e);
     return mmdLocationJson(
       {
         ok: false,

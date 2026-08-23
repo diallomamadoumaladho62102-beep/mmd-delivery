@@ -1,8 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPayoutMethodsForRecipient } from "@/lib/payoutMethodRouting";
+import { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
+import {
+  isManualCashoutBlockedToday,
+  MANUAL_CASHOUT_MINIMUM_CENTS,
+} from "@/lib/finance/manualCashoutService";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
-import { retrieveConnectBalance, stripe } from "@/lib/stripe";
+import { stripe } from "@/lib/stripe";
 import {
   deriveStripeConnectStatus,
   stripeConnectStatusLabel,
@@ -10,6 +15,8 @@ import {
   type StripeConnectStatusCode,
 } from "@/lib/stripeConnectStatus";
 import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
+
+export { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
 
 const CURRENCY_BY_COUNTRY: Record<string, string> = {
   US: "USD",
@@ -22,13 +29,11 @@ const CURRENCY_BY_COUNTRY: Record<string, string> = {
 };
 
 /** Minimum Cash Out from Connect available balance ($20). Phase 1 config. */
-export const DRIVER_CASHOUT_MINIMUM_CENTS = getPricingBusinessDefault(
-  "driver_cashout_minimum_cents"
-);
+export const DRIVER_CASHOUT_MINIMUM_CENTS = MANUAL_CASHOUT_MINIMUM_CENTS;
 
-/** Rolling 24h cashout cooldown window. Phase 1 config. */
+/** Rolling 24h cashout cooldown window (legacy payout_transactions scan). */
 export const DRIVER_CASHOUT_COOLDOWN_MS = getPricingBusinessDefault(
-  "driver_cashout_cooldown_ms"
+  "driver_cashout_cooldown_ms",
 );
 
 function toNumber(value: unknown): number {
@@ -40,38 +45,17 @@ function currencyForCountry(countryCode: string): string {
   return CURRENCY_BY_COUNTRY[normalizeCountryCode(countryCode)] ?? "USD";
 }
 
-function isWithinCashoutCooldown(lastCashoutAt: string | null, now = new Date()): boolean {
-  if (!lastCashoutAt) return false;
-  const last = new Date(lastCashoutAt).getTime();
-  if (!Number.isFinite(last)) return false;
-  return now.getTime() - last < DRIVER_CASHOUT_COOLDOWN_MS;
-}
-
 function payloadSource(payload: unknown): string {
   if (!payload || typeof payload !== "object") return "";
   const source = (payload as { source?: unknown }).source;
   return String(source ?? "").trim().toLowerCase();
 }
 
-/** Live Connect USD balances (available + pending). */
-export async function fetchConnectUsdBalanceCents(
-  stripeAccountId: string
-): Promise<{ availableCents: number; pendingCents: number }> {
-  const balance = await retrieveConnectBalance(stripeAccountId);
-  const availableCents = (balance.available ?? [])
-    .filter((row) => String(row.currency ?? "").toLowerCase() === "usd")
-    .reduce((sum, row) => sum + Math.max(0, Math.round(Number(row.amount ?? 0))), 0);
-  const pendingCents = (balance.pending ?? [])
-    .filter((row) => String(row.currency ?? "").toLowerCase() === "usd")
-    .reduce((sum, row) => sum + Math.max(0, Math.round(Number(row.amount ?? 0))), 0);
-  return { availableCents, pendingCents };
-}
-
 /**
  * Earnings not yet SCT'd to Connect — shown as Wallet awaiting_transfer_cents.
  * Includes: delivered orders (food + package-linked), orphan delivery_requests,
- * and completed+paid taxi fares whose `driver_transfer_id` is still null
- * and `sct_closure_status` is null (legacy_closed is historical write-off, not awaiting).
+ * completed+paid taxi fares, and marketplace driver payouts whose
+ * `stripe_transfer_id` is still null.
  *
  * Tips are intentionally EXCLUDED here — see
  * `@/lib/finance/tipMoneyArchitecture` for the single tip rule.
@@ -174,7 +158,32 @@ export async function computeDriverAvailableCents(
     return sum + Math.max(0, Math.round(toNumber(row.driver_cents)));
   }, 0);
 
-  return ordersAvailableCents + requestsAvailableCents + taxiAwaitingCents;
+  // Marketplace delivery: awaiting until stripe_transfer_id is set (SCT to Connect).
+  const { data: marketplaceAwaitingRows, error: marketplaceErr } =
+    await supabaseAdmin
+      .from("marketplace_driver_payouts")
+      .select("total_driver_payout_cents, status, stripe_transfer_id")
+      .eq("driver_id", driverUserId)
+      .in("status", ["pending", "approved"])
+      .is("stripe_transfer_id", null);
+
+  if (marketplaceErr && marketplaceErr.code !== "42P01") {
+    throw new Error(marketplaceErr.message);
+  }
+
+  const marketplaceAwaitingCents = (marketplaceAwaitingRows ?? []).reduce(
+    (sum, row) => {
+      return sum + Math.max(0, Math.round(toNumber(row.total_driver_payout_cents)));
+    },
+    0,
+  );
+
+  return (
+    ordersAvailableCents +
+    requestsAvailableCents +
+    taxiAwaitingCents +
+    marketplaceAwaitingCents
+  );
 }
 
 async function computeDriverPendingPayoutTxCents(
@@ -257,30 +266,6 @@ export async function isDriverCashoutRateLimited(
   return { limited: false, lastCashoutAt: null };
 }
 
-async function resolveLastCashoutAt(
-  supabaseAdmin: SupabaseClient,
-  driverUserId: string
-): Promise<string | null> {
-  const rate = await isDriverCashoutRateLimited(supabaseAdmin, driverUserId);
-  if (rate.lastCashoutAt) return rate.lastCashoutAt;
-
-  const { data: payoutRows, error: payoutErr } = await supabaseAdmin
-    .from("payout_transactions")
-    .select("created_at, status, provider, provider_payload")
-    .eq("recipient_user_id", driverUserId)
-    .eq("recipient_type", "driver")
-    .eq("provider", "stripe_connect")
-    .in("status", ["processing", "paid"])
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  if (payoutErr && payoutErr.code !== "42P01") {
-    throw new Error(payoutErr.message);
-  }
-
-  return payoutRows?.[0]?.created_at ? String(payoutRows[0].created_at) : null;
-}
-
 export type DriverWalletSummary = {
   account_type: "driver";
   country_code: string;
@@ -327,16 +312,17 @@ export async function buildDriverWalletSummary(
     awaitingTransferCents,
     pendingPayoutTxCents,
     payoutMethods,
-    lastCashoutAt,
-    rateLimit,
+    dayLimit,
   ] = await Promise.all([
     getWalletBalance(supabaseAdmin, "driver", driverUserId, currency),
     computeDriverAvailableCents(supabaseAdmin, driverUserId),
     computeDriverPendingPayoutTxCents(supabaseAdmin, driverUserId),
     loadPayoutMethodsForRecipient(supabaseAdmin, countryCode, "driver"),
-    resolveLastCashoutAt(supabaseAdmin, driverUserId),
-    isDriverCashoutRateLimited(supabaseAdmin, driverUserId),
+    isManualCashoutBlockedToday(supabaseAdmin, "driver", driverUserId),
   ]);
+
+  const lastCashoutAt = dayLimit.lastCashoutAt;
+  const rateLimit = { limited: dayLimit.blocked, lastCashoutAt: dayLimit.lastCashoutAt };
 
   const defaultMethod =
     payoutMethods.find((method) => method.available) ?? payoutMethods[0] ?? null;
@@ -395,8 +381,7 @@ export async function buildDriverWalletSummary(
     payouts_enabled: payoutsEnabled,
   });
 
-  const cashoutBlockedCooldown =
-    rateLimit.limited || isWithinCashoutCooldown(lastCashoutAt);
+  const cashoutBlockedCooldown = rateLimit.limited;
   const availableCents = stripeAccountId ? connectAvailableCents : 0;
   const pendingCents = connectPendingCents + pendingPayoutTxCents;
 

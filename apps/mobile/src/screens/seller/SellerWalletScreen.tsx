@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
 import { loadOwnSeller } from "../../lib/sellerApi";
 import { getApiBaseUrl } from "../../lib/apiBase";
-import { formatWalletAmount, fetchWalletSummary } from "../../lib/walletApi";
+import { formatWalletAmount, fetchWalletSummary, requestWalletCashOut } from "../../lib/walletApi";
 import { startStripeOnboarding } from "../../utils/stripe";
 import { toUserFacingError } from "../../lib/userFacingError";
 import { formatDateTime } from "../../i18n/formatters";
@@ -58,6 +58,7 @@ export default function SellerWalletScreen() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
+  const [cashoutInFlight, setCashoutInFlight] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currency, setCurrency] = useState("USD");
@@ -65,6 +66,9 @@ export default function SellerWalletScreen() {
   const [availableCents, setAvailableCents] = useState(0);
   const [awaitingCents, setAwaitingCents] = useState(0);
   const [paidOutCents, setPaidOutCents] = useState(0);
+  const [minimumPayoutCents, setMinimumPayoutCents] = useState(2000);
+  const [canCashout, setCanCashout] = useState(false);
+  const [cashoutBlockReason, setCashoutBlockReason] = useState<string | null>(null);
   const [feesCents, setFeesCents] = useState(0);
   const [refundedCents, setRefundedCents] = useState(0);
   const [note, setNote] = useState<string | null>(null);
@@ -124,6 +128,9 @@ export default function SellerWalletScreen() {
         Number(summary.awaiting_transfer_cents ?? summary.pending_cents ?? 0)
       );
       setPaidOutCents(Number(summary.paid_out_cents ?? 0));
+      setMinimumPayoutCents(Number(summary.minimum_payout_cents ?? 2000));
+      setCanCashout(Boolean(summary.can_cashout));
+      setCashoutBlockReason(summary.cashout_block_reason ?? null);
       setFeesCents(Number(summary.platform_fees_cents ?? 0));
       setRefundedCents(Number(summary.refunded_cents ?? 0));
       setNote(summary.note ?? null);
@@ -156,6 +163,72 @@ export default function SellerWalletScreen() {
       void refresh().finally(() => setLoading(false));
     }, [refresh])
   );
+
+  const onPressCashout = useCallback(async () => {
+    if (loading || cashoutInFlight || !canCashout) return;
+
+    Alert.alert(
+      t("seller.wallet.cashoutConfirmTitle", "Instant cash out"),
+      t(
+        "seller.wallet.cashoutConfirmBody",
+        "Cash out your full available balance: {{amount}}.\n\nMinimum {{min}} • 1 cash out / day.",
+        { amount: fmt(availableCents), min: fmt(minimumPayoutCents) }
+      ),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("common.ok", "OK"),
+          onPress: async () => {
+            if (cashoutInFlight) return;
+            try {
+              setCashoutInFlight(true);
+              const { data: sessionData } = await supabase.auth.getSession();
+              const token = sessionData.session?.access_token;
+              if (!token) throw new Error("Session expired");
+
+              const payload = await requestWalletCashOut(token, {
+                accountType: "seller",
+                currency,
+                source: "mobile_wallet_cashout",
+              });
+
+              if (!payload.ok || payload.error) {
+                throw new Error(payload.error ?? "cashout_failed");
+              }
+
+              Alert.alert(
+                t("seller.wallet.cashoutRequested", "Cash out requested"),
+                t("seller.wallet.cashoutAmount", "Amount: {{amount}}", {
+                  amount: fmt(payload.payout_amount_cents ?? availableCents),
+                })
+              );
+              await refresh();
+            } catch (e) {
+              Alert.alert(
+                t("common.errorTitle", "Error"),
+                toUserFacingError(
+                  e,
+                  t("seller.wallet.cashoutFailed", "Unable to request cash out.")
+                )
+              );
+            } finally {
+              setCashoutInFlight(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [
+    loading,
+    cashoutInFlight,
+    canCashout,
+    availableCents,
+    minimumPayoutCents,
+    currency,
+    fmt,
+    refresh,
+    t,
+  ]);
 
   if (loading) {
     return (
@@ -235,8 +308,28 @@ export default function SellerWalletScreen() {
             {t("seller.wallet.awaiting", "Awaiting transfer")}: {fmt(awaitingCents)}
           </Text>
           {note ? <Text style={styles.heroMeta}>{note}</Text> : null}
+          <Text style={styles.heroMeta}>
+            {t("seller.wallet.cashoutRules", "Minimum {{min}} • 1 cash out / day", {
+              min: fmt(minimumPayoutCents),
+            })}
+          </Text>
           <TouchableOpacity
-            style={styles.payoutBtn}
+            style={[
+              styles.payoutBtn,
+              (!canCashout || cashoutInFlight) && styles.payoutBtnDisabled,
+            ]}
+            onPress={() => void onPressCashout()}
+            disabled={!canCashout || cashoutInFlight || loading}
+            accessibilityRole="button"
+          >
+            <Text style={styles.payoutLabel}>
+              {cashoutInFlight
+                ? t("shared.common.loadingEllipsis", "…")
+                : t("seller.wallet.cashOut", "Cash out")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.manageBtn}
             onPress={() => {
               void startStripeOnboarding("seller").catch((e) =>
                 Alert.alert(
@@ -250,7 +343,7 @@ export default function SellerWalletScreen() {
             }}
             accessibilityRole="button"
           >
-            <Text style={styles.payoutLabel}>
+            <Text style={styles.manageBtnLabel}>
               {t("seller.wallet.manageConnect", "Manage payouts")}
             </Text>
           </TouchableOpacity>
@@ -370,9 +463,27 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: "center",
   },
+  payoutBtnDisabled: {
+    opacity: 0.55,
+  },
   payoutLabel: {
     color: MMD_WHITE,
     fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  manageBtn: {
+    marginTop: 8,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  manageBtnLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
     fontFamily: MMD_FONT.bold,
     fontWeight: "700",
   },

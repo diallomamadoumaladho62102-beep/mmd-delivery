@@ -22,13 +22,13 @@ import { supabase } from "../lib/supabase";
 import {
   fetchDriverWalletSnapshot,
   formatWalletAmount,
+  requestWalletCashOut,
   type PayoutMethodOption,
   type PayoutTransactionItem,
   type WalletLedgerEntry,
 } from "../lib/walletApi";
 import { startStripeOnboarding } from "../utils/stripe";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
-import { getApiBaseUrl } from "../lib/apiBase";
 import {
   isStripeConnectReady,
   normalizeStripeConnectStatus,
@@ -144,6 +144,7 @@ export function DriverWalletScreen() {
   const { t, i18n } = useTranslation();
 
   const [loading, setLoading] = useState(true);
+  const [cashoutInFlight, setCashoutInFlight] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [currency, setCurrency] = useState("USD");
@@ -364,7 +365,7 @@ export function DriverWalletScreen() {
   }, [loading, fetchWallet, t]);
 
   const onPressCashout = useCallback(async () => {
-    if (!driverId || loading) return;
+    if (!driverId || loading || cashoutInFlight) return;
 
     if (!canCashout) {
       Alert.alert(
@@ -388,7 +389,9 @@ export function DriverWalletScreen() {
         {
           text: t("common.ok", "OK"),
           onPress: async () => {
+            if (cashoutInFlight) return;
             try {
+              setCashoutInFlight(true);
               setLoading(true);
 
               const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
@@ -402,34 +405,19 @@ export function DriverWalletScreen() {
                 return;
               }
 
-              const base = getApiBaseUrl().replace(/\/+$/, "");
-              const cashoutRes = await fetch(`${base}/api/wallet/driver-cashout`, {
-                method: "POST",
-                headers: {
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                  currency,
-                  source: "mobile_wallet_cashout",
-                }),
+              const payload = await requestWalletCashOut(accessToken, {
+                accountType: "driver",
+                currency,
+                source: "mobile_wallet_cashout",
               });
 
-              const payload = (await cashoutRes.json().catch(() => ({}))) as Record<
-                string,
-                unknown
-              >;
-
-              if (!cashoutRes.ok || payload?.ok === false || payload?.error) {
-                logTechnicalError("driver.wallet.driver-cashout", payload, {
-                  status: cashoutRes.status,
-                });
+              if (!payload?.ok || payload?.error) {
+                logTechnicalError("driver.wallet.driver-cashout", payload);
                 Alert.alert(
                   t("driver.wallet.cashout.title", "Cash out"),
                   toUserFacingError(
                     {
-                      code: payload.error ?? payload.code,
+                      code: payload.error,
                       message: payload.message ?? payload.error,
                     },
                     t("driver.wallet.cashout.requestError", "Unable to request cash out."),
@@ -438,12 +426,10 @@ export function DriverWalletScreen() {
                 return;
               }
 
-              const data = payload;
               const paidCents =
-                typeof data?.payout_amount_cents === "number"
-                  ? data.payout_amount_cents
-                  : Math.round(Number(data?.payout_amount ?? data?.amount ?? 0) * 100) ||
-                    availableCents;
+                typeof payload?.payout_amount_cents === "number"
+                  ? payload.payout_amount_cents
+                  : availableCents;
 
               Alert.alert(
                 t("driver.wallet.cashoutRequested.title", "Cash out requested"),
@@ -463,6 +449,7 @@ export function DriverWalletScreen() {
                 ),
               );
             } finally {
+              setCashoutInFlight(false);
               setLoading(false);
             }
           },
@@ -472,6 +459,7 @@ export function DriverWalletScreen() {
   }, [
     driverId,
     loading,
+    cashoutInFlight,
     canCashout,
     cashoutReason,
     stripeStatusMessage,
@@ -627,18 +615,24 @@ export function DriverWalletScreen() {
 
                 <TouchableOpacity
                   onPress={onPressCashout}
-                  disabled={loading || !canCashout}
+                  disabled={loading || cashoutInFlight || !canCashout}
                   style={[
                     styles.cashoutButton,
-                    canCashout ? styles.cashoutReady : styles.cashoutDisabled,
+                    canCashout && !cashoutInFlight
+                      ? styles.cashoutReady
+                      : styles.cashoutDisabled,
                   ]}
                   activeOpacity={0.88}
                   accessibilityRole="button"
-                  accessibilityState={{ disabled: loading || !canCashout }}
+                  accessibilityState={{
+                    disabled: loading || cashoutInFlight || !canCashout,
+                  }}
                   accessibilityLabel={t("driver.wallet.available.cashoutButton", "Cash out")}
                 >
                   <Text style={[styles.cashoutText, !canCashout && { color: MMD_MUTED }]}>
-                    {t("driver.wallet.available.cashoutButton", "Cash out")}
+                    {cashoutInFlight
+                      ? t("shared.common.loadingEllipsis", "…")
+                      : t("driver.wallet.available.cashoutButton", "Cash out")}
                   </Text>
                 </TouchableOpacity>
               </>

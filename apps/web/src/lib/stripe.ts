@@ -3,14 +3,20 @@ import Stripe from "stripe";
 const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY ?? "").trim();
 
 /**
- * Only Vercel Production runtime (`VERCEL_ENV=production`).
- * Do NOT use NODE_ENV: Next.js sets NODE_ENV=production for Preview builds too,
- * which previously made Preview deploys throw when a sk_test key was present.
+ * Only true Vercel Production **runtime** (not local `next build` with production-like env).
+ * Requires VERCEL=1 so `.env.production.local` with VERCEL_ENV=production + sk_test_
+ * does not break local/CI builds. Preview uses VERCEL_ENV=preview.
  */
 const isVercelProductionRuntime =
+  process.env.VERCEL === "1" &&
   String(process.env.VERCEL_ENV ?? "").trim() === "production";
 
+/** Next.js imports API routes during `collect page data`; skip key-mode throws then. */
+const isStripeKeyModeGuardActive =
+  process.env.NEXT_PHASE !== "phase-production-build";
+
 if (
+  isStripeKeyModeGuardActive &&
   isVercelProductionRuntime &&
   stripeSecretKey &&
   !stripeSecretKey.startsWith("sk_live_")
@@ -23,6 +29,7 @@ if (
 
 // Phase 10: never allow Live Stripe secrets on Preview/local (prevents real charges).
 if (
+  isStripeKeyModeGuardActive &&
   !isVercelProductionRuntime &&
   stripeSecretKey &&
   stripeSecretKey.startsWith("sk_live_")

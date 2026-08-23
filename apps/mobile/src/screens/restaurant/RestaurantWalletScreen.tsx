@@ -6,6 +6,7 @@ import {
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -17,6 +18,7 @@ import {
   fetchWalletHistory,
   fetchWalletSummary,
   formatWalletAmount,
+  requestWalletCashOut,
   type WalletLedgerEntry,
 } from "../../lib/walletApi";
 import { formatDateTime } from "../../i18n/formatters";
@@ -42,6 +44,7 @@ const DEBIT = "#FCA5A5";
 export default function RestaurantWalletScreen() {
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
+  const [cashoutInFlight, setCashoutInFlight] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currency, setCurrency] = useState("USD");
@@ -49,6 +52,9 @@ export default function RestaurantWalletScreen() {
   const [availableCents, setAvailableCents] = useState(0);
   const [awaitingCents, setAwaitingCents] = useState(0);
   const [paidOutCents, setPaidOutCents] = useState(0);
+  const [minimumPayoutCents, setMinimumPayoutCents] = useState(2000);
+  const [canCashout, setCanCashout] = useState(false);
+  const [cashoutBlockReason, setCashoutBlockReason] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [items, setItems] = useState<WalletLedgerEntry[]>([]);
 
@@ -80,6 +86,9 @@ export default function RestaurantWalletScreen() {
       setAvailableCents(Number(summary.available_cents ?? 0));
       setAwaitingCents(Number(summary.awaiting_transfer_cents ?? 0));
       setPaidOutCents(Number(summary.paid_out_cents ?? 0));
+      setMinimumPayoutCents(Number(summary.minimum_payout_cents ?? 2000));
+      setCanCashout(Boolean(summary.can_cashout));
+      setCashoutBlockReason(summary.cashout_block_reason ?? null);
       setNote(summary.note ?? null);
       setItems(history.items ?? []);
     } catch (e) {
@@ -131,6 +140,83 @@ export default function RestaurantWalletScreen() {
       when: formatDateTime(payout.created_at, i18n.language),
     });
   }, [items, paidOutCents, note, awaitingCents, fmt, t, i18n.language]);
+
+  const onPressCashout = useCallback(async () => {
+    if (loading || cashoutInFlight || !canCashout) {
+      if (cashoutBlockReason === "below_minimum") {
+        Alert.alert(
+          t("restaurant.wallet.cashoutUnavailable", "Cash out unavailable"),
+          t("restaurant.wallet.minCashout", "Minimum cash out: {{min}}.", {
+            min: fmt(minimumPayoutCents),
+          })
+        );
+      }
+      return;
+    }
+
+    Alert.alert(
+      t("restaurant.wallet.cashoutConfirmTitle", "Instant cash out"),
+      t(
+        "restaurant.wallet.cashoutConfirmBody",
+        "Cash out your full available balance: {{amount}}.\n\nMinimum {{min}} • 1 cash out / day.",
+        { amount: fmt(availableCents), min: fmt(minimumPayoutCents) }
+      ),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("common.ok", "OK"),
+          onPress: async () => {
+            if (cashoutInFlight) return;
+            try {
+              setCashoutInFlight(true);
+              const { data: sessionData } = await supabase.auth.getSession();
+              const token = sessionData.session?.access_token;
+              if (!token) throw new Error("Session expired");
+
+              const payload = await requestWalletCashOut(token, {
+                accountType: "restaurant",
+                currency,
+                source: "mobile_wallet_cashout",
+              });
+
+              if (!payload.ok || payload.error) {
+                throw new Error(payload.error ?? "cashout_failed");
+              }
+
+              Alert.alert(
+                t("restaurant.wallet.cashoutRequested", "Cash out requested"),
+                t("restaurant.wallet.cashoutAmount", "Amount: {{amount}}", {
+                  amount: fmt(payload.payout_amount_cents ?? availableCents),
+                })
+              );
+              await refresh();
+            } catch (e) {
+              Alert.alert(
+                t("common.errorTitle", "Error"),
+                toUserFacingError(
+                  e,
+                  t("restaurant.wallet.cashoutFailed", "Unable to request cash out.")
+                )
+              );
+            } finally {
+              setCashoutInFlight(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [
+    loading,
+    cashoutInFlight,
+    canCashout,
+    cashoutBlockReason,
+    minimumPayoutCents,
+    availableCents,
+    currency,
+    fmt,
+    refresh,
+    t,
+  ]);
 
   if (loading && items.length === 0 && !error) {
     return (
@@ -258,6 +344,28 @@ export default function RestaurantWalletScreen() {
             {lastPayoutLabel ? (
               <Text style={styles.balanceFoot}>{lastPayoutLabel}</Text>
             ) : null}
+            <Text style={styles.balanceFoot}>
+              {t(
+                "restaurant.wallet.cashoutRules",
+                "Minimum {{min}} • 1 cash out / day",
+                { min: fmt(minimumPayoutCents) }
+              )}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.cashoutBtn,
+                (!canCashout || cashoutInFlight) && styles.cashoutBtnDisabled,
+              ]}
+              onPress={() => void onPressCashout()}
+              disabled={!canCashout || cashoutInFlight || loading}
+              accessibilityRole="button"
+            >
+              <Text style={styles.cashoutBtnLabel}>
+                {cashoutInFlight
+                  ? t("shared.common.loadingEllipsis", "…")
+                  : t("restaurant.wallet.cashOut", "Cash out")}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.section}>
@@ -371,6 +479,24 @@ const styles = StyleSheet.create({
     color: MMD_TAXI_GREEN,
     fontSize: 14,
     fontFamily: MMD_FONT.regular,
+  },
+  cashoutBtn: {
+    marginTop: 12,
+    backgroundColor: MMD_TAXI_GREEN,
+    minHeight: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  cashoutBtnDisabled: {
+    opacity: 0.55,
+  },
+  cashoutBtnLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
   },
   section: {
     color: MMD_WHITE,

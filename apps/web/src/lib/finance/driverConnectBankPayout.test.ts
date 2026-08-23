@@ -3,6 +3,7 @@ import {
   driverBankPayoutIdempotencyKey,
   getNowPartsInTimeZone,
   isDriverBankPayoutWindow,
+  sellerBankPayoutIdempotencyKey,
 } from "./driverConnectBankPayout";
 
 function test(name: string, fn: () => void) {
@@ -19,6 +20,10 @@ test("idempotency key is stable per account+ET date", () => {
   assert.equal(
     driverBankPayoutIdempotencyKey("acct_123", "2026-08-16"),
     "driver_sunday_bank_payout:acct_123:2026-08-16",
+  );
+  assert.equal(
+    sellerBankPayoutIdempotencyKey("acct_seller", "2026-08-16"),
+    "seller_sunday_bank_payout:acct_seller:2026-08-16",
   );
 });
 
