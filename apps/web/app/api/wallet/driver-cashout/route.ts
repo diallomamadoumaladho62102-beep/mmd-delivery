@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { executeManualConnectCashout } from "@/lib/finance/manualCashoutService";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
+import { executeWorkerCashOut } from "@/lib/finance/workerFinance";
 import {
   getBearerToken,
   getSupabaseAdminClient,
@@ -45,6 +45,18 @@ export async function POST(req: NextRequest) {
     body = {};
   }
 
+  // Reject client-controlled amount / Connect destination (server SoT only).
+  if (body.amount_cents != null || body.amount != null || body.stripe_account_id) {
+    return mmdLocationJson(
+      {
+        ok: false,
+        error: "Forbidden",
+        message: "amount and stripe_account_id are not client-controllable",
+      },
+      403,
+    );
+  }
+
   const bodyDriverId = String(body.driver_id ?? "").trim();
   if (bodyDriverId && bodyDriverId !== driverUserId) {
     return mmdLocationJson(
@@ -79,7 +91,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await executeManualConnectCashout({
+    const result = await executeWorkerCashOut({
       supabaseAdmin,
       recipientType: "driver",
       recipientUserId: driverUserId,

@@ -38,20 +38,23 @@ function test(name: string, fn: () => void) {
   }
 }
 
-test("unified manual cash out minimum is $20.00 (2000 cents) for all roles", () => {
-  assert.equal(MANUAL_CASHOUT_MINIMUM_CENTS, 2000);
-  assert.equal(DRIVER_CASHOUT_MINIMUM_CENTS, 2000);
-  assert.equal(isManualCashoutAmountEligible(1999), false, "$19.99 refused");
+test("unified manual cash out has no dollar minimum — Instant amount > 0", () => {
+  assert.equal(MANUAL_CASHOUT_MINIMUM_CENTS, 0);
+  assert.equal(DRIVER_CASHOUT_MINIMUM_CENTS, 0);
+  assert.equal(isManualCashoutAmountEligible(1), true, "$0.01 accepted if Instant");
+  assert.equal(isManualCashoutAmountEligible(1999), true, "$19.99 accepted");
   assert.equal(isManualCashoutAmountEligible(2000), true, "$20.00 accepted");
   assert.equal(isManualCashoutAmountEligible(5000), true, "$50.00 accepted");
+  assert.equal(isManualCashoutAmountEligible(0), false, "$0.00 refused");
 });
 
-test("driver cashout route uses shared manual cashout service", () => {
+test("driver cashout route uses WorkerFinance cash out entrypoint", () => {
   const route = fs.readFileSync(
     path.join(webRoot, "app/api/wallet/driver-cashout/route.ts"),
     "utf8",
   );
-  assert.match(route, /executeManualConnectCashout/);
+  assert.match(route, /executeWorkerCashOut/);
+  assert.match(route, /from "@\/lib\/finance\/workerFinance"/);
   assert.match(route, /bodyDriverId !== driverUserId/);
   assert.match(route, /Driver role required/);
   assert.doesNotMatch(route, /isDriverCashoutRateLimited/);
@@ -66,8 +69,8 @@ test("restaurant and seller manual cashout routes exist", () => {
     path.join(webRoot, "app/api/wallet/seller-cashout/route.ts"),
     "utf8",
   );
-  assert.match(restaurant, /executeManualConnectCashout/);
-  assert.match(seller, /executeManualConnectCashout/);
+  assert.match(restaurant, /executeWorkerCashOut/);
+  assert.match(seller, /executeWorkerCashOut/);
   assert.match(restaurant, /recipientType: "restaurant"/);
   assert.match(seller, /recipientType: "seller"/);
 });
@@ -121,18 +124,18 @@ test("restaurant wallet uses restaurant_transfer_id SoT", () => {
   assert.equal(restaurantAwaitingDollars({ restaurant_cents: 536 }), 5.36);
 });
 
-test("all roles have manual cash out + Sunday bank cron models", () => {
+test("all roles have Instant debit Cash Out + Sunday bank cron models", () => {
   assert.equal(
     MONEY_OUT_MODEL.driverCashout,
-    "connect_available_balance_payout_only",
+    "connect_instant_payout_full_balance_debit_card_no_minimum",
   );
   assert.equal(
     MONEY_OUT_MODEL.restaurantCashout,
-    "connect_available_balance_payout_only",
+    "connect_instant_payout_full_balance_debit_card_no_minimum",
   );
   assert.equal(
     MONEY_OUT_MODEL.sellerCashout,
-    "connect_available_balance_payout_only",
+    "connect_instant_payout_full_balance_debit_card_no_minimum",
   );
   assert.match(MONEY_OUT_MODEL.driverBankPayout, /sunday_0400/);
   assert.match(MONEY_OUT_MODEL.restaurantBankPayout, /sunday_0400/);

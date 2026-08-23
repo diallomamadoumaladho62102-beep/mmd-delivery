@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isManualCashoutBlockedToday,
-  MANUAL_CASHOUT_MINIMUM_CENTS,
 } from "@/lib/finance/manualCashoutService";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
@@ -9,6 +8,7 @@ import { getRestaurantFinancialOverview } from "@/lib/restaurantFinancialOvervie
 import { currencyForPlatformCountry } from "@/lib/platformCurrency";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
 import { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
+import { resolveManualCashoutFunding } from "@/lib/finance/resolveManualCashoutFunding";
 import { stripe } from "@/lib/stripe";
 
 export type SharedWalletSummary = {
@@ -17,11 +17,22 @@ export type SharedWalletSummary = {
   currency: string;
   /** Legacy ledger balance (kept for backward compatibility). */
   balance_cents: number;
-  /** Cashable now — Stripe Connect available balance. */
+  /**
+   * Cashable now for manual Cash Out (Instant-eligible amount or standard
+   * Connect available — never pending alone).
+   */
   available_cents: number;
   /** Earnings not yet SCT'd to Connect (awaiting platform→Connect Transfer). */
   awaiting_transfer_cents: number;
+  /** Connect pending settlement only. */
+  settling_cents: number;
+  /** @deprecated Prefer settling_cents; kept for older clients (= settling only). */
   pending_cents: number;
+  confirmed_earnings_cents: number;
+  connect_available_cents: number;
+  instant_available_cents: number;
+  instant_payout_eligible: boolean;
+  instant_block_reason: string | null;
   minimum_payout_cents?: number;
   cashout_blocked_today?: boolean;
   last_cashout_at?: string | null;
@@ -56,6 +67,10 @@ async function loadLiveConnectState(stripeAccountId: string | null): Promise<{
   liveVerified: boolean;
   availableCents: number;
   pendingCents: number;
+  instantAvailableCents: number;
+  cashableCents: number;
+  instantEligible: boolean;
+  instantBlockReason: string | null;
 }> {
   if (!stripeAccountId) {
     return {
@@ -63,6 +78,10 @@ async function loadLiveConnectState(stripeAccountId: string | null): Promise<{
       liveVerified: false,
       availableCents: 0,
       pendingCents: 0,
+      instantAvailableCents: 0,
+      cashableCents: 0,
+      instantEligible: false,
+      instantBlockReason: null,
     };
   }
   try {
@@ -74,21 +93,54 @@ async function loadLiveConnectState(stripeAccountId: string | null): Promise<{
     );
     let availableCents = 0;
     let pendingCents = 0;
+    let instantAvailableCents = 0;
+    let cashableCents = 0;
+    let instantEligible = false;
+    let instantBlockReason: string | null = null;
     try {
-      const bal = await fetchConnectUsdBalanceCents(stripeAccountId);
-      availableCents = bal.availableCents;
-      pendingCents = bal.pendingCents;
+      const funding = await resolveManualCashoutFunding(stripeAccountId);
+      availableCents = funding.availableCents;
+      pendingCents = funding.pendingCents;
+      instantAvailableCents = funding.instantAvailableCents;
+      cashableCents = funding.cashableCents;
+      instantEligible = funding.instantEligible;
+      instantBlockReason = funding.instantBlockReason;
     } catch {
-      availableCents = 0;
-      pendingCents = 0;
+      try {
+        const bal = await fetchConnectUsdBalanceCents(stripeAccountId);
+        availableCents = bal.availableCents;
+        pendingCents = bal.pendingCents;
+        instantAvailableCents = bal.instantAvailableCents;
+        cashableCents = 0;
+        instantEligible = false;
+        instantBlockReason = "funding_resolve_failed";
+      } catch {
+        availableCents = 0;
+        pendingCents = 0;
+        instantAvailableCents = 0;
+        cashableCents = 0;
+      }
     }
-    return { onboarded, liveVerified: true, availableCents, pendingCents };
+    return {
+      onboarded,
+      liveVerified: true,
+      availableCents,
+      pendingCents,
+      instantAvailableCents,
+      cashableCents,
+      instantEligible,
+      instantBlockReason,
+    };
   } catch {
     return {
       onboarded: false,
       liveVerified: false,
       availableCents: 0,
       pendingCents: 0,
+      instantAvailableCents: 0,
+      cashableCents: 0,
+      instantEligible: false,
+      instantBlockReason: null,
     };
   }
 }
@@ -106,8 +158,8 @@ function resolveCashoutGate(input: {
   if (input.blockedToday) {
     return { canCashout: false, reason: "already_cashed_out_today" };
   }
-  if (input.availableCents < MANUAL_CASHOUT_MINIMUM_CENTS) {
-    return { canCashout: false, reason: "below_minimum" };
+  if (input.availableCents <= 0) {
+    return { canCashout: false, reason: "instant_not_eligible" };
   }
   return { canCashout: true, reason: null };
 }
@@ -153,7 +205,7 @@ export async function buildRestaurantWalletSummary(
     stripeAccountId,
     onboarded: connect.onboarded,
     liveVerified: connect.liveVerified,
-    availableCents: connect.availableCents,
+    availableCents: connect.cashableCents,
     blockedToday: dayLimit.blocked,
   });
 
@@ -162,10 +214,17 @@ export async function buildRestaurantWalletSummary(
     country_code: countryCode,
     currency: overview.currency || currency,
     balance_cents: balanceCents,
-    available_cents: connect.availableCents,
+    available_cents: connect.cashableCents,
     awaiting_transfer_cents: awaitingTransferCents,
-    pending_cents: connect.pendingCents + awaitingTransferCents,
-    minimum_payout_cents: MANUAL_CASHOUT_MINIMUM_CENTS,
+    settling_cents: connect.pendingCents,
+    pending_cents: connect.pendingCents,
+    confirmed_earnings_cents:
+      awaitingTransferCents + connect.availableCents + connect.pendingCents,
+    connect_available_cents: connect.availableCents,
+    instant_available_cents: connect.instantAvailableCents,
+    instant_payout_eligible: connect.instantEligible,
+    instant_block_reason: connect.instantBlockReason,
+    minimum_payout_cents: 0,
     cashout_blocked_today: dayLimit.blocked,
     last_cashout_at: dayLimit.lastCashoutAt,
     stripe_account_id: stripeAccountId,
@@ -174,8 +233,8 @@ export async function buildRestaurantWalletSummary(
     cashout_block_reason: gate.reason,
     note:
       awaitingTransferCents > 0
-        ? "Pending restaurant earnings await platform→Connect SCT. Cash out when Connect available ≥ $20 (max 1/day). Sunday 04:00 ET pays remaining bank balance."
-        : "Cash out Connect available (≥ $20, max 1/day) or wait for Sunday 04:00 America/New_York bank payout.",
+        ? "Confirmed restaurant earnings await platform→Connect SCT. Instant Cash Out when debit card Instant-eligible (no minimum, 1/day ET). Sunday 04:00 ET pays remaining available to bank."
+        : "Instant Cash Out when Instant-eligible (no minimum, 1/day ET). Sunday 04:00 America/New_York pays remaining available to bank.",
     money_out_model: MONEY_OUT_MODEL,
   };
 }
@@ -275,7 +334,7 @@ export async function buildSellerWalletSummary(
     stripeAccountId,
     onboarded: connect.onboarded,
     liveVerified: connect.liveVerified,
-    availableCents: connect.availableCents,
+    availableCents: connect.cashableCents,
     blockedToday: dayLimit.blocked,
   });
 
@@ -284,10 +343,17 @@ export async function buildSellerWalletSummary(
     country_code: countryCode,
     currency,
     balance_cents: balanceCents,
-    available_cents: connect.availableCents,
+    available_cents: connect.cashableCents,
     awaiting_transfer_cents: awaitingTransferCents,
-    pending_cents: connect.pendingCents + awaitingTransferCents,
-    minimum_payout_cents: MANUAL_CASHOUT_MINIMUM_CENTS,
+    settling_cents: connect.pendingCents,
+    pending_cents: connect.pendingCents,
+    confirmed_earnings_cents:
+      awaitingTransferCents + connect.availableCents + connect.pendingCents,
+    connect_available_cents: connect.availableCents,
+    instant_available_cents: connect.instantAvailableCents,
+    instant_payout_eligible: connect.instantEligible,
+    instant_block_reason: connect.instantBlockReason,
+    minimum_payout_cents: 0,
     cashout_blocked_today: dayLimit.blocked,
     last_cashout_at: dayLimit.lastCashoutAt,
     stripe_account_id: stripeAccountId,
@@ -299,8 +365,8 @@ export async function buildSellerWalletSummary(
     cashout_block_reason: gate.reason,
     note:
       awaitingTransferCents > 0
-        ? "Unpaid marketplace seller payouts await SCT to Connect. Cash out when Connect available ≥ $20 (max 1/day)."
-        : "Cash out Connect available (≥ $20, max 1/day). Sunday 04:00 ET pays remaining bank balance.",
+        ? "Confirmed seller earnings await SCT to Connect. Instant Cash Out when debit card Instant-eligible (no minimum, 1/day ET)."
+        : "Instant Cash Out when Instant-eligible (no minimum, 1/day ET). Sunday 04:00 ET pays remaining available to bank.",
     money_out_model: MONEY_OUT_MODEL,
   };
 }

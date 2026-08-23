@@ -19,9 +19,20 @@ const manualSrc = fs.readFileSync(
 
 assert.match(driverRoute, /bodyDriverId !== driverUserId/, "rejects mismatched driver_id body");
 assert.match(driverRoute, /Driver role required/, "requires driver role");
-assert.match(driverRoute, /executeManualConnectCashout/, "uses shared manual cashout");
+assert.match(driverRoute, /executeWorkerCashOut/, "uses WorkerFinance cash out");
+assert.match(driverRoute, /from "@\/lib\/finance\/workerFinance"/);
 assert.match(manualSrc, /createPayoutTransaction/, "uses payout transaction ledger");
 assert.match(manualSrc, /manual-cashout:/, "Stripe idempotency on claim id");
 assert.match(manualSrc, /claim_manual_cashout_day/, "atomic daily claim RPC");
+
+const ledgerSrc = fs.readFileSync(
+  path.join(webRoot, "src/lib/payoutTransactionService.ts"),
+  "utf8",
+);
+assert.match(
+  ledgerSrc,
+  /toLowerCase\(\)/,
+  "ledger balance normalizes currency case (USD vs usd)",
+);
 
 console.log("driverCashoutSecurity.regression.test.ts OK");

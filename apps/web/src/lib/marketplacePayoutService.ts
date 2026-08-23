@@ -487,6 +487,10 @@ export async function prepareMarketplaceDriverPayout(
   );
   const now = new Date().toISOString();
 
+  // MMD: Driver completed + earning confirmed → SCT path without admin gate.
+  // Sellers stay pending until admin approve; drivers auto-approve when live.
+  const initialStatus = liveEnabled ? "approved" : "pending";
+
   const { data: inserted, error: insertError } = await supabaseAdmin
     .from("marketplace_driver_payouts")
     .insert({
@@ -497,7 +501,7 @@ export async function prepareMarketplaceDriverPayout(
       bonus_cents: amounts.bonus_cents,
       total_driver_payout_cents: amounts.total_driver_payout_cents,
       currency: String(order?.currency ?? "USD").toUpperCase(),
-      status: "pending",
+      status: initialStatus,
       payout_live_enabled: liveEnabled,
       created_at: now,
       updated_at: now,
@@ -815,7 +819,13 @@ async function assertSellerOrderStillPayoutEligible(
  */
 export async function executeMarketplacePayouts(
   supabaseAdmin: SupabaseClient,
-  params?: { limit?: number }
+  params?: {
+    limit?: number;
+    /** When set, only this payout row is considered (WorkerFinance SCT dispatcher). */
+    payoutId?: string;
+    /** Restrict to seller or driver ledger when payoutId is set. */
+    role?: "seller" | "driver";
+  }
 ): Promise<{
   ok: boolean;
   executed?: number;
@@ -842,10 +852,15 @@ export async function executeMarketplacePayouts(
     return { ok: true, executed: 0, failed: 0 };
   }
   const limit = Math.max(1, Math.min(50, Math.floor(requested)));
+  const payoutIdFilter = String(params?.payoutId ?? "").trim();
+  const roleFilter = params?.role;
   let executed = 0;
   let failed = 0;
 
-  const { data: sellerRows, error: sellerLoadErr } = await supabaseAdmin
+  const runSeller = !roleFilter || roleFilter === "seller";
+  const runDriver = !roleFilter || roleFilter === "driver";
+
+  let sellerQuery = supabaseAdmin
     .from("marketplace_seller_payouts")
     .select(
       "id,seller_id,seller_order_id,seller_net_amount_cents,currency,status,stripe_transfer_id,payout_live_enabled"
@@ -855,6 +870,13 @@ export async function executeMarketplacePayouts(
     .is("stripe_transfer_id", null)
     .order("created_at", { ascending: true })
     .limit(limit);
+  if (payoutIdFilter) {
+    sellerQuery = sellerQuery.eq("id", payoutIdFilter);
+  }
+
+  const { data: sellerRows, error: sellerLoadErr } = runSeller
+    ? await sellerQuery
+    : { data: [] as never[], error: null };
 
   if (sellerLoadErr) {
     return { ok: false, error: sellerLoadErr.message };
@@ -1010,8 +1032,27 @@ export async function executeMarketplacePayouts(
     }
   }
 
+  // Backfill: promote live pending driver payouts → approved (completed → SCT).
+  // Historical rows prepared as "pending" before auto-approve must not stay stuck.
+  // Skip when a seller-only payoutId filter is active.
+  if (runDriver) {
+    let pendingPromote = supabaseAdmin
+      .from("marketplace_driver_payouts")
+      .update({
+        status: "approved",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("status", "pending")
+      .eq("payout_live_enabled", true)
+      .is("stripe_transfer_id", null);
+    if (payoutIdFilter) {
+      pendingPromote = pendingPromote.eq("id", payoutIdFilter);
+    }
+    await pendingPromote;
+  }
+
   // Driver marketplace payouts: transfer to driver Connect account.
-  const { data: driverRows, error: driverLoadErr } = await supabaseAdmin
+  let driverQuery = supabaseAdmin
     .from("marketplace_driver_payouts")
     .select(
       "id,driver_id,seller_order_id,marketplace_delivery_job_id,total_driver_payout_cents,currency,status,stripe_transfer_id,payout_live_enabled"
@@ -1021,6 +1062,13 @@ export async function executeMarketplacePayouts(
     .is("stripe_transfer_id", null)
     .order("created_at", { ascending: true })
     .limit(limit);
+  if (payoutIdFilter) {
+    driverQuery = driverQuery.eq("id", payoutIdFilter);
+  }
+
+  const { data: driverRows, error: driverLoadErr } = runDriver
+    ? await driverQuery
+    : { data: [] as never[], error: null };
 
   if (driverLoadErr) {
     return {
@@ -1047,13 +1095,12 @@ export async function executeMarketplacePayouts(
       .maybeSingle();
 
     if (driverErr || !driver?.stripe_account_id || !driver.stripe_onboarded) {
-      await supabaseAdmin
-        .from("marketplace_driver_payouts")
-        .update({
-          status: "failed",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", payoutId);
+      // Keep approved + null stripe_transfer_id so wallet awaiting stays visible
+      // and cron/webhook retry can run after Connect is ready. Never mark failed.
+      console.warn("[marketplace-payout] driver Connect not ready — leave awaiting", {
+        payoutId,
+        driver_id: row.driver_id,
+      });
       failed += 1;
       continue;
     }
@@ -1061,13 +1108,9 @@ export async function executeMarketplacePayouts(
     const destination = String(driver.stripe_account_id).trim();
 
     if (!/^acct_[A-Za-z0-9]+$/.test(destination)) {
-      await supabaseAdmin
-        .from("marketplace_driver_payouts")
-        .update({
-          status: "failed",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", payoutId);
+      console.warn("[marketplace-payout] invalid destination — leave awaiting", {
+        payoutId,
+      });
       failed += 1;
       continue;
     }

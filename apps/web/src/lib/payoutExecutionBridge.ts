@@ -115,9 +115,11 @@ export async function recordSuccessfulStripeOrderPayout(
         recipientType,
         recipientUserId: input.recipientUserId,
         provider: method?.provider ?? "stripe_connect",
-        methodCode: method?.method_code ?? "payout_stripe_connect",
+        methodCode: "connect_internal_transfer",
         amountCents: input.amountCents,
         currency: input.currency,
+        // SCT credit only — NOT a worker bank/card Cash Out (po_*).
+        // Status "paid" here means transfer settled to Connect, not bank arrival.
         status: "paid",
         payoutMode: method?.auto_payout_enabled ? "automatic" : "manual",
         entityType: "order",
@@ -125,7 +127,11 @@ export async function recordSuccessfulStripeOrderPayout(
         orderPayoutId: input.orderPayoutId,
         externalReference: input.stripeTransferId,
         destinationAccount: input.destinationAccountId,
-        providerPayload: { source: "stripe_connect_transfer" },
+        providerPayload: {
+          source: "stripe_connect_transfer",
+          money_rail: "sct_internal",
+          not_worker_bank_payout: true,
+        },
       });
     } catch (err) {
       // Concurrent insert — re-read by business keys.

@@ -87,7 +87,8 @@ test("complete triggers immediate fare transfer helper", () => {
     "utf8",
   );
   assert.match(src, /runTaxiRideCompletionSideEffects/);
-  assert.match(core, /executeTaxiDriverFareTransfer/);
+  assert.match(core, /ensureWorkerConnectCredit/);
+  assert.match(core, /vertical:\s*"taxi"/);
 });
 
 test("fare transfer guards block reversed idempotency replay", () => {

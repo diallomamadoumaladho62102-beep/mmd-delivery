@@ -1,30 +1,28 @@
 /**
  * Shared MMD manual Cash Out (Driver / Restaurant / Seller).
  *
- * Rules:
- * - Amount = Stripe Connect available balance only (never client-supplied)
- * - Minimum $20 (2000 cents)
- * - Max 1 manual cash out per America/New_York calendar day (DB atomic claim)
- * - Connect must be ready (details_submitted + charges_enabled + payouts_enabled)
- * - Destination acct_ always loaded server-side from the recipient's own profile
- * - Stripe idempotency key = manual-cashout:{claim_id}
- * - Sunday bank cron remains separate and only pays remaining Connect available
+ * Rules (founder-locked):
+ * - Amount = 100% of Instant-eligible Connect balance (server only)
+ * - Instant Payout ONLY → Instant-eligible debit card
+ * - No dollar minimum (any Instant-eligible amount > 0)
+ * - Max 1 manual Cash Out per America/New_York calendar day (DB atomic claim)
+ * - No standard fallback (Sunday cron pays remaining available → bank)
+ * - Stripe Instant payout create → local status "processing" (never "paid")
+ * - "paid" / "failed" / "canceled" come from Stripe webhooks + reconciliation
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
 import { ensureDriverConnectManualPayoutSchedule } from "@/lib/finance/driverConnectBankPayout";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
+import { resolveManualCashoutFunding } from "@/lib/finance/resolveManualCashoutFunding";
 import {
   createPayoutTransaction,
   updatePayoutTransactionStatus,
 } from "@/lib/payoutTransactionService";
-import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
 import { stripe } from "@/lib/stripe";
 import { toUserFacingError } from "@/lib/userFacingError";
 
-export const MANUAL_CASHOUT_MINIMUM_CENTS = getPricingBusinessDefault(
-  "driver_cashout_minimum_cents",
-);
+/** No Cash Out dollar minimum — Instant-eligible amount > 0 is enough. */
+export const MANUAL_CASHOUT_MINIMUM_CENTS = 0;
 export const MANUAL_CASHOUT_TIMEZONE = "America/New_York";
 
 export type ManualCashoutRecipientType = "driver" | "restaurant" | "seller";
@@ -41,6 +39,8 @@ export type ManualCashoutResult =
       message: string;
       recipient_type: ManualCashoutRecipientType;
       recipient_user_id: string;
+      payout_method?: "instant";
+      instant_eligible?: boolean;
     }
   | {
       ok: false;
@@ -51,6 +51,7 @@ export type ManualCashoutResult =
       currency?: string;
       last_cashout_at?: string | null;
       money_out_model?: typeof MONEY_OUT_MODEL;
+      instant_block_reason?: string | null;
     };
 
 type ConnectProfile = {
@@ -69,8 +70,9 @@ export function americaNewYorkDateKey(now = new Date()): string {
   }).format(now);
 }
 
+/** Eligible when Instant amount > 0 (no $20 floor). */
 export function isManualCashoutAmountEligible(amountCents: number): boolean {
-  return Number.isFinite(amountCents) && amountCents >= MANUAL_CASHOUT_MINIMUM_CENTS;
+  return Number.isFinite(amountCents) && amountCents > MANUAL_CASHOUT_MINIMUM_CENTS;
 }
 
 /** True when an active manual cash out claim exists for today (America/New_York). */
@@ -102,12 +104,17 @@ export async function isManualCashoutBlockedToday(
 }
 
 function moneyOutKey(recipientType: ManualCashoutRecipientType): string {
-  const model = MONEY_OUT_MODEL as Record<string, string>;
   if (recipientType === "restaurant") {
-    return model.restaurantCashout ?? MONEY_OUT_MODEL.driverCashout;
+    return (
+      (MONEY_OUT_MODEL as { restaurantCashout?: string }).restaurantCashout ??
+      MONEY_OUT_MODEL.driverCashout
+    );
   }
   if (recipientType === "seller") {
-    return model.sellerCashout ?? MONEY_OUT_MODEL.driverCashout;
+    return (
+      (MONEY_OUT_MODEL as { sellerCashout?: string }).sellerCashout ??
+      MONEY_OUT_MODEL.driverCashout
+    );
   }
   return MONEY_OUT_MODEL.driverCashout;
 }
@@ -227,7 +234,7 @@ async function claimDailySlot(
 
   const existingStatus = String(payload.status ?? "");
   if (
-    existingStatus === "paid" &&
+    (existingStatus === "paid" || existingStatus === "processing") &&
     (payload.stripe_payout_id || payload.payout_transaction_id)
   ) {
     return {
@@ -279,7 +286,7 @@ async function finalizeClaim(
 }
 
 /**
- * Execute one manual Connect → bank Cash Out for the authenticated recipient.
+ * Execute Instant Cash Out (100% Instant-eligible → debit card).
  * Never trusts client amount / stripe account / foreign ids.
  */
 export async function executeManualConnectCashout(params: {
@@ -357,10 +364,9 @@ export async function executeManualConnectCashout(params: {
 
   await ensureDriverConnectManualPayoutSchedule(profile.stripeAccountId);
 
-  let availableCents = 0;
+  let funding;
   try {
-    const balance = await fetchConnectUsdBalanceCents(profile.stripeAccountId);
-    availableCents = balance.availableCents;
+    funding = await resolveManualCashoutFunding(profile.stripeAccountId);
   } catch (balanceErr) {
     return {
       ok: false,
@@ -374,29 +380,41 @@ export async function executeManualConnectCashout(params: {
     };
   }
 
-  if (!Number.isFinite(availableCents) || availableCents <= 0) {
+  const cashableCents = funding.cashableCents;
+
+  if (
+    !funding.instantEligible ||
+    !funding.instantDestinationId ||
+    !Number.isFinite(cashableCents) ||
+    cashableCents <= 0
+  ) {
     return {
-      ok: true,
-      stripe_payout_id: null,
-      payout_amount_cents: 0,
+      ok: false,
+      error: "instant_not_eligible",
+      message:
+        funding.instantBlockReason === "no_instant_debit_card"
+          ? "Ajoutez une carte de débit Instant dans votre profil de paiement pour Cash Out."
+          : funding.pendingCents > 0 || funding.instantAvailableCents > 0
+            ? "Cash Out Instant indisponible pour le moment. Vos gains restent confirmés — paiement bancaire automatique dimanche 04:00 ET si un compte bancaire est configuré."
+            : "Aucun montant Instant disponible. Attendez le paiement bancaire automatique (dimanche 04:00 ET) ou de nouveaux gains Instant-éligibles.",
+      status: 400,
+      payout_amount_cents: Math.max(0, cashableCents),
       currency,
       money_out_model: MONEY_OUT_MODEL,
-      message:
-        "Nothing to pay — Connect available balance is empty. Unpaid earnings await SCT transfer.",
-      recipient_type: params.recipientType,
-      recipient_user_id: params.recipientUserId,
+      instant_block_reason: funding.instantBlockReason,
     };
   }
 
-  if (!isManualCashoutAmountEligible(availableCents)) {
+  if (!isManualCashoutAmountEligible(cashableCents)) {
     return {
       ok: false,
-      error: "below_minimum",
-      message: `Minimum cash out is ${MANUAL_CASHOUT_MINIMUM_CENTS} cents.`,
+      error: "nothing_to_cashout",
+      message: "Aucun montant Instant disponible pour Cash Out.",
       status: 400,
-      payout_amount_cents: availableCents,
+      payout_amount_cents: cashableCents,
       currency,
       money_out_model: MONEY_OUT_MODEL,
+      instant_block_reason: funding.instantBlockReason,
     };
   }
 
@@ -413,13 +431,15 @@ export async function executeManualConnectCashout(params: {
       return {
         ok: true,
         stripe_payout_id: claim.resumePaid.stripePayoutId,
-        payout_amount_cents: availableCents,
+        payout_amount_cents: cashableCents,
         currency,
         payout_transaction_id: claim.resumePaid.payoutTransactionId ?? undefined,
         money_out_model: MONEY_OUT_MODEL,
-        message: "Cash out already completed today.",
+        message: "Cash out already requested today.",
         recipient_type: params.recipientType,
         recipient_user_id: params.recipientUserId,
+        payout_method: "instant",
+        instant_eligible: true,
       };
     }
     return {
@@ -433,7 +453,7 @@ export async function executeManualConnectCashout(params: {
     };
   }
 
-  const amountCents = availableCents;
+  const amountCents = cashableCents;
   await finalizeClaim(params.supabaseAdmin, {
     claimId: claim.claimId,
     status: "processing",
@@ -447,7 +467,7 @@ export async function executeManualConnectCashout(params: {
       recipientType: params.recipientType,
       recipientUserId: params.recipientUserId,
       provider: "stripe_connect",
-      methodCode: "payout_stripe_connect",
+      methodCode: "payout_stripe_connect_instant",
       amountCents,
       currency,
       status: "processing",
@@ -458,6 +478,11 @@ export async function executeManualConnectCashout(params: {
         claim_id: claim.claimId,
         money_out_model: moneyOutKey(params.recipientType),
         et_date: etDate,
+        payout_method: "instant",
+        instant_destination_id: funding.instantDestinationId,
+        instant_available_cents: funding.instantAvailableCents,
+        available_cents: funding.availableCents,
+        pending_cents: funding.pendingCents,
       },
     });
   } catch (ledgerErr) {
@@ -482,6 +507,8 @@ export async function executeManualConnectCashout(params: {
       {
         amount: amountCents,
         currency: currency.toLowerCase(),
+        method: "instant",
+        destination: funding.instantDestinationId,
         metadata: {
           recipient_type: params.recipientType,
           recipient_user_id: params.recipientUserId,
@@ -489,6 +516,7 @@ export async function executeManualConnectCashout(params: {
           payout_transaction_id: String(audit.id),
           claim_id: claim.claimId,
           source,
+          payout_method: "instant",
         },
       },
       {
@@ -498,19 +526,36 @@ export async function executeManualConnectCashout(params: {
     );
   } catch (stripeErr) {
     await updatePayoutTransactionStatus(params.supabaseAdmin, audit.id, "failed", {
-      failure_reason: toUserFacingError(stripeErr, "Stripe payout create failed"),
+      failure_reason: toUserFacingError(
+        stripeErr,
+        "Stripe Instant payout create failed",
+      ),
     });
+    const stripeCode = String(
+      (stripeErr as { code?: unknown })?.code ??
+        (stripeErr as { raw?: { code?: unknown } })?.raw?.code ??
+        "",
+    ).toLowerCase();
+    const clearEligibilityFailure = [
+      "instant_payouts_unsupported",
+      "method_unsupported",
+      "payouts_not_allowed",
+    ].includes(stripeCode);
     await finalizeClaim(params.supabaseAdmin, {
       claimId: claim.claimId,
-      status: "released",
+      status: clearEligibilityFailure ? "released" : "failed",
       payoutTransactionId: audit.id,
       amountCents,
-      failureReason: toUserFacingError(stripeErr, "Stripe payout create failed"),
+      failureReason: toUserFacingError(
+        stripeErr,
+        "Stripe Instant payout create failed",
+      ),
     });
     throw stripeErr;
   }
 
-  await updatePayoutTransactionStatus(params.supabaseAdmin, audit.id, "paid", {
+  // NEVER mark paid here — wait for payout.paid / reconciliation.
+  await updatePayoutTransactionStatus(params.supabaseAdmin, audit.id, "processing", {
     external_reference: payout.id,
     provider_payload: {
       source,
@@ -518,27 +563,36 @@ export async function executeManualConnectCashout(params: {
       stripe_payout_id: payout.id,
       money_out_model: moneyOutKey(params.recipientType),
       et_date: etDate,
+      payout_method: "instant",
+      destination: funding.instantDestinationId,
+      stripe_status: payout.status,
+      amount_cents: Number(payout.amount ?? amountCents),
     },
   });
 
+  const processingAmountCents = Number(payout.amount ?? amountCents);
+
   await finalizeClaim(params.supabaseAdmin, {
     claimId: claim.claimId,
-    status: "paid",
+    status: "processing",
     payoutTransactionId: audit.id,
     stripePayoutId: payout.id,
-    amountCents,
+    amountCents: processingAmountCents,
   });
 
   return {
     ok: true,
     stripe_payout_id: payout.id,
-    payout_amount_cents: amountCents,
+    payout_amount_cents: processingAmountCents,
     currency,
     payout_transaction_id: audit.id,
     claim_id: claim.claimId,
     money_out_model: MONEY_OUT_MODEL,
-    message: "Connect available balance payout created.",
+    message:
+      "Instant Cash Out requested. Status will update to Paid when Stripe confirms the debit-card payout.",
     recipient_type: params.recipientType,
     recipient_user_id: params.recipientUserId,
+    payout_method: "instant",
+    instant_eligible: true,
   };
 }

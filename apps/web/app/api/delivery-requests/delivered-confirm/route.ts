@@ -208,15 +208,38 @@ export async function POST(req: NextRequest) {
       proofPhotoUrl,
     });
 
+    // Package SCT requires a linked order with Stripe source + driver payout.
+    // Historical deliveries can finish without a mirror order → stuck awaiting.
+    let sctOrderId = linkedOrderId;
+    try {
+      const { ensurePackageDriverSctOrder } = await import(
+        "@/lib/finance/ensurePackageDriverSctOrder"
+      );
+      const ensured = await ensurePackageDriverSctOrder(supabaseAdmin, requestId);
+      if (ensured.ok === true) {
+        sctOrderId = ensured.orderId;
+      } else if (ensured.ok === false) {
+        console.error("[delivery-request delivered-confirm] ensure package SCT order failed", {
+          delivery_request_id: requestId,
+          error: ensured.error,
+        });
+      }
+    } catch (ensureErr) {
+      console.error("[delivery-request delivered-confirm] ensure package SCT order threw", {
+        delivery_request_id: requestId,
+        message: ensureErr instanceof Error ? ensureErr.message : String(ensureErr),
+      });
+    }
+
     // Fire-and-forget; RPC is idempotent. Never block delivery confirmation.
     void awardDeliveryRequestLoyalty(supabaseAdmin, requestId);
 
     let payout: Record<string, unknown> = { attempted: false };
 
-    if (linkedOrderId) {
+    if (sctOrderId) {
       payout = {
         attempted: true,
-        ...(await triggerDriverPayoutForOrder(req, linkedOrderId)),
+        ...(await triggerDriverPayoutForOrder(req, sctOrderId)),
       };
     }
 

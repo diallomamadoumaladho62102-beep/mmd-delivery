@@ -145,6 +145,7 @@ async function callTransferRun(params: {
   orderId: string;
   target: "restaurant" | "driver";
   cron: boolean;
+  vertical?: "food" | "package";
 }) {
   const { request, orderId, target, cron } = params;
 
@@ -174,22 +175,31 @@ async function callTransferRun(params: {
     headers.Authorization = bearer;
   }
 
-  const response = await fetch(`${getOrigin(request)}/api/stripe/transfers/run`, {
-    method: "POST",
-    cache: "no-store",
-    headers,
-    body: JSON.stringify({
-      order_id: orderId,
-      target,
-      dry_run: false,
-    }),
+  // Shared WorkerFinance SCT client (same path as ensureWorkerConnectCredit).
+  const { invokeOrderConnectTransfer } = await import(
+    "@/lib/finance/orderConnectTransferClient"
+  );
+  const credit = await invokeOrderConnectTransfer({
+    baseUrl: getOrigin(request),
+    authorizationHeader: headers.Authorization,
+    orderId,
+    target,
+    dryRun: false,
   });
 
-  const data = await response.json().catch(() => null);
-
   return {
-    response,
-    data,
+    response: {
+      ok: credit.ok,
+      status: credit.status,
+    } as Response,
+    data: credit.raw ?? {
+      ok: credit.ok,
+      error: credit.error,
+      transfer_id: credit.transferId,
+      already: credit.already,
+      worker_finance_sct: true,
+      vertical: params.vertical ?? "food",
+    },
   };
 }
 
@@ -236,15 +246,19 @@ async function processTarget(params: {
     });
 
     if (!response.ok) {
+      const errMsg =
+        data &&
+        typeof data === "object" &&
+        "error" in data &&
+        typeof (data as { error?: unknown }).error === "string"
+          ? (data as { error: string }).error
+          : `Transfer failed with status ${response.status}`;
       return {
         order_id: order.id,
         target,
         ok: false,
         status: response.status,
-        error:
-          typeof data?.error === "string"
-            ? data.error
-            : `Transfer failed with status ${response.status}`,
+        error: errMsg,
         data,
       };
     }
@@ -278,17 +292,9 @@ async function runProcessPayouts(request: NextRequest) {
 
     const payoutMode = getPayoutMode();
 
-    if (!forceRun && payoutMode === "immediate" && cron) {
-      return json({
-        ok: true,
-        skipped: true,
-        actor,
-        cron,
-        message:
-          "MMD_PAYOUT_MODE=immediate: batch cron disabled; payouts run via delivered-confirm → transfers/run.",
-        payout_mode: payoutMode,
-      });
-    }
+    // immediate: first SCT still runs on delivered-confirm, but cron MUST retry
+    // unpaid rows (driver_transfer_id / restaurant_transfer_id still null).
+    // Skipping cron entirely left confirmed earnings stuck in awaiting_transfer.
 
     if (!forceRun && payoutMode === "weekly" && !isWeeklyPayoutDay()) {
       return json({
@@ -306,16 +312,58 @@ async function runProcessPayouts(request: NextRequest) {
       supabase,
       PROCESS_PAYOUTS_JOB,
       async () => {
+        // Attempt to keep platform payouts manual so auto bank payouts cannot
+        // drain funds needed for worker SCTs. Stripe often requires Dashboard
+        // for the platform account itself — surface requires_dashboard clearly.
+        let platformPayoutSchedule: unknown = null;
+        try {
+          const { ensurePlatformManualPayoutSchedule } = await import(
+            "@/lib/finance/platformPayoutGuard"
+          );
+          platformPayoutSchedule = await ensurePlatformManualPayoutSchedule();
+        } catch (schedErr) {
+          platformPayoutSchedule = {
+            ok: false,
+            error:
+              schedErr instanceof Error ? schedErr.message : String(schedErr),
+            requires_dashboard: true,
+          };
+        }
+
         const limit = Math.min(
           Math.max(Number(searchParams.get("limit") ?? 25), 1),
           100
         );
+
+        // Package orphans: create/repair linked orders BEFORE the order SCT loop
+        // so delivered+paid delivery_requests with null transfer enter the queue.
+        let packageOrphanEnsure: unknown = null;
+        try {
+          const { ensureOrphanPackageDriverSctOrders } = await import(
+            "@/lib/finance/ensurePackageDriverSctOrder"
+          );
+          packageOrphanEnsure = await ensureOrphanPackageDriverSctOrders(
+            supabase,
+            { limit: Math.min(limit, 25) },
+          );
+        } catch (orphanErr) {
+          console.error("[process-payouts] package orphan ensure failed", {
+            message:
+              orphanErr instanceof Error ? orphanErr.message : String(orphanErr),
+          });
+          packageOrphanEnsure = {
+            error:
+              orphanErr instanceof Error ? orphanErr.message : String(orphanErr),
+          };
+        }
 
         const { weekStartIso, weekEndIso } = getPreviousWeekWindowUtc();
         const hybridSinceIso = new Date(
           Date.now() - HYBRID_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
         ).toISOString();
 
+        // Unpaid SCT only — confirmed earnings must not age out of lookback
+        // and sit forever in awaiting_transfer_cents.
         let query = supabase
           .from("orders")
           .select(
@@ -335,6 +383,7 @@ async function runProcessPayouts(request: NextRequest) {
           )
           .eq("payment_status", "paid")
           .in("status", ["delivered", "completed"])
+          .or("driver_transfer_id.is.null,restaurant_transfer_id.is.null")
           .order("delivered_confirmed_at", { ascending: true, nullsFirst: false })
           .limit(limit);
 
@@ -343,9 +392,9 @@ async function runProcessPayouts(request: NextRequest) {
             query = query
               .gte("created_at", weekStartIso)
               .lt("created_at", weekEndIso);
-          } else {
-            query = query.gte("delivered_confirmed_at", hybridSinceIso);
           }
+          // hybrid + immediate: process all unpaid delivered/paid SCTs (no
+          // delivered_confirmed_at window) so stuck transfers keep retrying.
         }
 
         const { data: orders, error } = await query;
@@ -433,6 +482,8 @@ async function runProcessPayouts(request: NextRequest) {
             forceRun || payoutMode !== "weekly" ? null : weekEndIso,
           hybrid_lookback_since:
             forceRun || payoutMode === "weekly" ? null : hybridSinceIso,
+          package_orphan_ensure: packageOrphanEnsure,
+          platform_payout_schedule: platformPayoutSchedule,
           checked_orders: typedOrders.length,
           processed,
           skipped,

@@ -31,7 +31,7 @@ test("admin force complete reuses same SCT side effects", () => {
     path.join(webRoot, "src/lib/taxiCompleteRideCore.ts"),
     "utf8",
   );
-  assert.match(src, /executeTaxiDriverFareTransfer/);
+  assert.match(src, /ensureWorkerConnectCredit/);
   assert.match(src, /admin_force_complete/);
   assert.match(src, /bypassed_proximity/);
   assert.doesNotMatch(src, /\.rpc\(\s*["']driver_complete_taxi_ride["']/);

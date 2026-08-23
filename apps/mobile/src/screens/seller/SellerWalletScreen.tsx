@@ -66,7 +66,7 @@ export default function SellerWalletScreen() {
   const [availableCents, setAvailableCents] = useState(0);
   const [awaitingCents, setAwaitingCents] = useState(0);
   const [paidOutCents, setPaidOutCents] = useState(0);
-  const [minimumPayoutCents, setMinimumPayoutCents] = useState(2000);
+  const [minimumPayoutCents, setMinimumPayoutCents] = useState(0);
   const [canCashout, setCanCashout] = useState(false);
   const [cashoutBlockReason, setCashoutBlockReason] = useState<string | null>(null);
   const [feesCents, setFeesCents] = useState(0);
@@ -124,11 +124,9 @@ export default function SellerWalletScreen() {
       setCurrency(String(summary.currency ?? "USD"));
       setBalanceCents(Number(summary.balance_cents ?? 0));
       setAvailableCents(Number(summary.available_cents ?? 0));
-      setAwaitingCents(
-        Number(summary.awaiting_transfer_cents ?? summary.pending_cents ?? 0)
-      );
+      setAwaitingCents(Number(summary.awaiting_transfer_cents ?? 0));
       setPaidOutCents(Number(summary.paid_out_cents ?? 0));
-      setMinimumPayoutCents(Number(summary.minimum_payout_cents ?? 2000));
+      setMinimumPayoutCents(Number(summary.minimum_payout_cents ?? 0));
       setCanCashout(Boolean(summary.can_cashout));
       setCashoutBlockReason(summary.cashout_block_reason ?? null);
       setFeesCents(Number(summary.platform_fees_cents ?? 0));

@@ -5,8 +5,8 @@ import {
 } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
+import { ensureWorkerConnectCredit } from "@/lib/finance/ensureWorkerConnectCredit";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { executeTaxiDriverFareTransfer } from "@/lib/finance/executeTaxiDriverFareTransfer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,42 +41,40 @@ export async function POST(req: NextRequest) {
       return json({ error: "taxi_ride_id required" }, 400);
     }
 
-    const result = await executeTaxiDriverFareTransfer({
+    const result = await ensureWorkerConnectCredit(
       supabaseAdmin,
-      taxiRideId: rideId,
-      dryRun,
-      actor,
-    });
+      { vertical: "taxi", taxiRideId: rideId },
+      { dryRun, actor },
+    );
+
+    const detail =
+      result.detail && typeof result.detail === "object"
+        ? (result.detail as Record<string, unknown>)
+        : {};
 
     if (result.ok === false) {
       return json(
         {
           ok: false,
           error: result.error,
-          taxi_ride_id: result.taxi_ride_id ?? rideId,
-          ...(result.message ? { message: result.message } : {}),
-          ...(result.stripe_code
-            ? { stripe_code: result.stripe_code }
-            : {}),
-          ...(result.stripe_type
-            ? { stripe_type: result.stripe_type }
-            : {}),
-          ...(result.source_charge_id
-            ? { source_charge_id: result.source_charge_id }
-            : {}),
-          ...(result.destination ? { destination: result.destination } : {}),
-          ...(result.country_code ? { country_code: result.country_code } : {}),
-          ...(result.currency ? { currency: result.currency } : {}),
+          taxi_ride_id: rideId,
+          engine: result.engine,
+          ...detail,
         },
-        result.httpStatus ?? 400,
+        Number(detail.httpStatus ?? 400) || 400,
       );
     }
 
+    const transferId =
+      result.transferId ??
+      (typeof detail.transfer_id === "string" ? detail.transfer_id : null);
+    const alreadySucceeded =
+      result.already === true || detail.already_succeeded === true;
+
     if (
-      result.ok &&
-      !result.dry_run &&
-      result.transfer_id &&
-      !result.already_succeeded &&
+      !dryRun &&
+      transferId &&
+      !alreadySucceeded &&
       !actor.startsWith("cron:") &&
       !actor.startsWith("secret:") &&
       !actor.startsWith("system:")
@@ -88,29 +86,31 @@ export async function POST(req: NextRequest) {
         targetType: "taxi_ride",
         targetId: rideId,
         newValues: {
-          transfer_id: result.transfer_id,
-          amount: result.amount,
-          stripe_amount: result.stripe_amount,
-          currency: result.currency,
-          destination: result.destination,
+          transfer_id: transferId,
+          amount: detail.amount,
+          stripe_amount: detail.stripe_amount,
+          currency: detail.currency,
+          destination: detail.destination,
         },
-        metadata: {},
+        metadata: { worker_finance_sct: true },
         request: req,
       });
     }
 
     return json({
       ok: true,
-      dry_run: result.dry_run === true,
-      already_succeeded: result.already_succeeded === true,
-      taxi_ride_id: result.taxi_ride_id,
-      transfer_id: result.transfer_id,
-      amount: result.amount,
-      stripe_amount: result.stripe_amount,
-      currency: result.currency,
-      destination: result.destination,
-      source_charge_id: result.source_charge_id,
-      idempotency_key: result.idempotency_key,
+      dry_run: dryRun,
+      already_succeeded: alreadySucceeded,
+      taxi_ride_id: rideId,
+      transfer_id: transferId,
+      amount: detail.amount,
+      stripe_amount: detail.stripe_amount,
+      currency: detail.currency,
+      destination: detail.destination,
+      source_charge_id: detail.source_charge_id,
+      idempotency_key: detail.idempotency_key,
+      engine: result.engine,
+      worker_finance_sct: true,
     });
   } catch (e) {
     if (e instanceof AdminAccessError) {

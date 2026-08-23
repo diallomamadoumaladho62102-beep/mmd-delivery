@@ -1,11 +1,7 @@
 import { NextRequest } from "next/server";
 import { getBearerToken, getSupabaseAdminClient, getSupabaseUserClient, mmdLocationJson } from "@/lib/mmdLocationCore";
-import { buildDriverWalletSummary } from "@/lib/driverWalletService";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
-import {
-  buildRestaurantWalletSummary,
-  buildSellerWalletSummary,
-} from "@/lib/finance/unifiedWalletSummary";
+import { buildWorkerWalletSummary } from "@/lib/finance/workerWalletSummary";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import type { WalletAccountType } from "@/lib/payoutTypes";
 import { currencyForPlatformCountry } from "@/lib/platformCurrency";
@@ -54,29 +50,29 @@ export async function GET(req: NextRequest) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     if (accountType === "driver") {
-      const summary = await buildDriverWalletSummary(
-        supabaseAdmin,
-        data.user.id,
-        countryCode
-      );
+      const summary = await buildWorkerWalletSummary(supabaseAdmin, {
+        role: "driver",
+        userId: data.user.id,
+        countryCode,
+      });
       return mmdLocationJson({ ok: true, ...summary });
     }
 
     if (accountType === "restaurant") {
-      const summary = await buildRestaurantWalletSummary(
-        supabaseAdmin,
-        data.user.id,
-        countryCode
-      );
+      const summary = await buildWorkerWalletSummary(supabaseAdmin, {
+        role: "restaurant",
+        userId: data.user.id,
+        countryCode,
+      });
       return mmdLocationJson({ ok: true, ...summary });
     }
 
     if (accountType === "seller") {
-      const summary = await buildSellerWalletSummary(
-        supabaseAdmin,
-        data.user.id,
-        countryCode
-      );
+      const summary = await buildWorkerWalletSummary(supabaseAdmin, {
+        role: "seller",
+        userId: data.user.id,
+        countryCode,
+      });
       return mmdLocationJson({ ok: true, ...summary });
     }
 

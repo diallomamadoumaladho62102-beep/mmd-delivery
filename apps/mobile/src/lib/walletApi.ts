@@ -8,10 +8,19 @@ export type WalletSummaryResponse = {
   country_code?: string;
   currency?: string;
   balance_cents?: number;
+  /** Cashable now (Instant-eligible or Connect standard available). */
   available_cents?: number;
-  /** Unpaid earnings (food/delivery/taxi) awaiting platform→Connect SCT. */
+  /** Unpaid earnings awaiting platform→Connect SCT. */
   awaiting_transfer_cents?: number;
+  /** Connect pending settlement only. */
+  settling_cents?: number;
+  /** Legacy: settling + in-flight bank payouts (drivers). Prefer settling_cents. */
   pending_cents?: number;
+  confirmed_earnings_cents?: number;
+  connect_available_cents?: number;
+  instant_available_cents?: number;
+  instant_payout_eligible?: boolean;
+  instant_block_reason?: string | null;
   paid_out_cents?: number;
   platform_fees_cents?: number;
   refunded_cents?: number;

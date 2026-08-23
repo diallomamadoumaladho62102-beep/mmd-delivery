@@ -3,9 +3,9 @@
  *
  * Product rule:
  * - SCT (platform → Connect): immediate after delivered/completed + paid
- * - Connect → bank: Sunday 04:00 America/New_York, full available balance, no $20 minimum
- * - Manual MMD Cash Out (drivers) may keep its own $20 minimum (separate path)
- * - Restaurants: no MMD Cash Out; Sunday bank only
+ * - Connect → bank: Sunday 04:00 America/New_York, full available → bank account
+ * - Manual Instant Cash Out: debit card Instant only, no $ minimum, 1/day ET
+ * - Restaurants + sellers: same Cash Out + Sunday bank rules as drivers
  */
 
 import type Stripe from "stripe";
@@ -154,11 +154,43 @@ export async function createFullAvailableConnectPayout(params: {
     };
   }
 
+  // Sunday payout must land on a bank account (routing/account), never Instant debit card.
+  let bankDestinationId: string | null = null;
+  try {
+    const banks = await stripe.accounts.listExternalAccounts(stripeAccountId, {
+      object: "bank_account",
+      limit: 10,
+    });
+    const preferred =
+      (banks.data ?? []).find(
+        (row) => String((row as { status?: string }).status ?? "") === "verified",
+      ) ?? (banks.data ?? [])[0];
+    const id = String((preferred as { id?: string } | undefined)?.id ?? "");
+    if (id.startsWith("ba_")) bankDestinationId = id;
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "bank_account_lookup_failed",
+    };
+  }
+
+  if (!bankDestinationId) {
+    return {
+      ok: true,
+      skipped: true,
+      amountCents: 0,
+      reason: "no_bank_account_destination",
+    };
+  }
+
   try {
     const payout = await stripe.payouts.create(
       {
         amount: availableCents,
         currency,
+        // Standard bank payout only — never Instant on Sunday.
+        method: "standard",
+        destination: bankDestinationId,
         metadata: {
           source:
             recipientType === "restaurant"
@@ -169,6 +201,7 @@ export async function createFullAvailableConnectPayout(params: {
           driver_id: recipientType === "driver" ? recipientUserId : "",
           recipient_user_id: recipientUserId,
           recipient_type: recipientType,
+          bank_destination_id: bankDestinationId,
           ...(params.metadata ?? {}),
         },
       },

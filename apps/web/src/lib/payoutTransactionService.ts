@@ -109,6 +109,10 @@ export async function getPayoutTransactionById(
   return (data as PayoutTransactionRow | null) ?? null;
 }
 
+/**
+ * Worker-facing payout history: Connect → bank/card (po_*) only.
+ * Internal SCT rows (tr_*) are never shown as Cash Out / bank payouts.
+ */
 export async function listPayoutTransactionsForUser(
   supabaseAdmin: SupabaseClient,
   userId: string,
@@ -118,6 +122,7 @@ export async function listPayoutTransactionsForUser(
     .from("payout_transactions")
     .select("*")
     .eq("recipient_user_id", userId)
+    .like("external_reference", "po_%")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
@@ -184,7 +189,7 @@ export async function appendWalletLedgerEntry(
       account_type: input.accountType,
       account_user_id: input.accountUserId ?? null,
       country_code: input.countryCode,
-      currency: input.currency,
+      currency: String(input.currency || "usd").trim().toLowerCase(),
       direction: input.direction,
       amount_cents: input.amountCents,
       balance_after_cents: balanceAfter,
@@ -235,11 +240,14 @@ export async function sumWalletLedgerBalanceCents(
   accountUserId: string | null,
   currency: string
 ): Promise<number> {
+  // Ledger rows are written with lowercase ISO currency (Stripe convention).
+  // Callers often pass "USD" from country maps — normalize so Ledger ≠ $0 by case mismatch.
+  const currencyCode = String(currency || "usd").trim().toLowerCase();
   let query = supabaseAdmin
     .from("wallet_ledger")
     .select("direction, amount_cents")
     .eq("account_type", accountType)
-    .eq("currency", currency);
+    .eq("currency", currencyCode);
 
   const { data, error } = accountUserId
     ? await query.eq("account_user_id", accountUserId)

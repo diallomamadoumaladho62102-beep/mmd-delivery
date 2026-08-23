@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { distanceMeters } from "@/lib/driverZones";
-import { executeTaxiDriverFareTransfer } from "@/lib/finance/executeTaxiDriverFareTransfer";
+import { ensureWorkerConnectCredit } from "@/lib/finance/ensureWorkerConnectCredit";
 import { awardTaxiRideLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 import { notifyClientTaxiRideCompleted } from "@/lib/clientPushNotifications";
 import { recordTaxiPreferenceStats } from "@/lib/taxiPreferenceDispatch";
@@ -88,12 +88,14 @@ export async function runTaxiRideCompletionSideEffects(params: {
 
   let driverPayout: Record<string, unknown> | null = null;
   try {
-    const payout = await executeTaxiDriverFareTransfer({
+    const payout = await ensureWorkerConnectCredit(
       supabaseAdmin,
-      taxiRideId: rideId,
-      dryRun: false,
-      actor: `${params.triggeredRole}_complete:${params.actorId}`,
-    });
+      { vertical: "taxi", taxiRideId: rideId },
+      {
+        dryRun: false,
+        actor: `${params.triggeredRole}_complete:${params.actorId}`,
+      },
+    );
     driverPayout = { ...payout };
     if (payout.ok === false) {
       console.warn("[taxi complete] immediate SCT deferred", {

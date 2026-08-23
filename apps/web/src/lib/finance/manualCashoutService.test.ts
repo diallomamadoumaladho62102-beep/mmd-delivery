@@ -1,5 +1,5 @@
 /**
- * Manual Cash Out — amount gates, atomic claim guards, route wiring, concurrency ordering.
+ * Manual Cash Out — Instant-only, no $ minimum, atomic claim, no create⇒paid.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -26,17 +26,12 @@ function test(name: string, fn: () => void) {
   }
 }
 
-test("$19.99 below minimum — refused", () => {
-  assert.equal(isManualCashoutAmountEligible(1999), false);
-  assert.equal(1999 < MANUAL_CASHOUT_MINIMUM_CENTS, true);
-});
-
-test("$20.00 minimum — accepted", () => {
-  assert.equal(MANUAL_CASHOUT_MINIMUM_CENTS, 2000);
+test("no Cash Out dollar minimum — $0.01 eligible when Instant amount > 0", () => {
+  assert.equal(MANUAL_CASHOUT_MINIMUM_CENTS, 0);
+  assert.equal(isManualCashoutAmountEligible(1), true);
+  assert.equal(isManualCashoutAmountEligible(0), false);
+  assert.equal(isManualCashoutAmountEligible(1999), true);
   assert.equal(isManualCashoutAmountEligible(2000), true);
-});
-
-test("$50.00 — accepted", () => {
   assert.equal(isManualCashoutAmountEligible(5000), true);
 });
 
@@ -67,12 +62,43 @@ test("executeManualConnectCashout claims daily slot BEFORE Stripe payout", () =>
     path.join(webRoot, "src/lib/finance/manualCashoutService.ts"),
     "utf8",
   );
-  const claimIdx = src.indexOf("claimDailySlot");
+  const claimIdx = src.indexOf("claim_manual_cashout_day");
   const stripeIdx = src.indexOf("stripe.payouts.create");
   assert.ok(claimIdx > 0 && stripeIdx > claimIdx, "claim before Stripe payout");
   assert.match(src, /idempotencyKey:\s*`manual-cashout:\$\{claim\.claimId\}`/);
-  assert.match(src, /fetchConnectUsdBalanceCents/);
+  assert.match(src, /resolveManualCashoutFunding/);
+  assert.match(src, /method:\s*"instant"/);
   assert.doesNotMatch(src, /body\.amount/, "client amount never trusted");
+});
+
+test("Cash Out is Instant-only — no standard fallback", () => {
+  const src = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/manualCashoutService.ts"),
+    "utf8",
+  );
+  assert.doesNotMatch(src, /standard-fallback/);
+  assert.doesNotMatch(src, /method:\s*"standard"/);
+  assert.match(src, /NEVER mark paid here/);
+  assert.match(src, /status:\s*"processing"/);
+});
+
+test("resolveManualCashoutFunding requires Instant debit card + instant_available", () => {
+  const src = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/resolveManualCashoutFunding.ts"),
+    "utf8",
+  );
+  assert.match(src, /instant_available/);
+  assert.match(src, /listExternalAccounts/);
+  assert.match(src, /no_instant_debit_card/);
+  assert.match(src, /object:\s*"card"/);
+  assert.match(src, /instant_payouts/);
+  assert.match(src, /available_payout_methods/);
+  assert.doesNotMatch(src, /cashableCents:\s*bal\.availableCents/);
+  assert.doesNotMatch(
+    src,
+    /cashableCents:\s*bal\.pendingCents/,
+    "never treat pending alone as cashable",
+  );
 });
 
 test("driver / restaurant / seller cashout routes delegate to shared service", () => {
@@ -88,9 +114,12 @@ test("driver / restaurant / seller cashout routes delegate to shared service", (
     path.join(webRoot, "app/api/wallet/seller-cashout/route.ts"),
     "utf8",
   );
-  assert.match(driverRoute, /executeManualConnectCashout/);
-  assert.match(restaurantRoute, /executeManualConnectCashout/);
-  assert.match(sellerRoute, /executeManualConnectCashout/);
+  assert.match(driverRoute, /executeWorkerCashOut/);
+  assert.match(restaurantRoute, /executeWorkerCashOut/);
+  assert.match(sellerRoute, /executeWorkerCashOut/);
+  assert.match(driverRoute, /from "@\/lib\/finance\/workerFinance"/);
+  assert.match(restaurantRoute, /from "@\/lib\/finance\/workerFinance"/);
+  assert.match(sellerRoute, /from "@\/lib\/finance\/workerFinance"/);
   assert.match(driverRoute, /bodyDriverId !== driverUserId/);
   assert.match(restaurantRoute, /restaurant_id body parameter is not accepted/);
   assert.match(sellerRoute, /seller_id body parameter is not accepted/);
@@ -113,36 +142,23 @@ test("concurrent claim simulation — second claim rejected", () => {
   assert.equal(claims, 2);
 });
 
-test("driver wallet includes marketplace awaiting transfer", () => {
-  const src = fs.readFileSync(
-    path.join(webRoot, "src/lib/driverWalletService.ts"),
+test("Sunday bank payout requires ba_ destination and stays processing", () => {
+  const bank = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/driverConnectBankPayout.ts"),
     "utf8",
   );
-  assert.match(src, /marketplace_driver_payouts/);
-  assert.match(src, /marketplaceAwaitingCents/);
-  assert.match(src, /isManualCashoutBlockedToday/);
-});
-
-test("Sunday cron includes drivers, restaurants, and sellers", () => {
   const cron = fs.readFileSync(
     path.join(webRoot, "app/api/cron/driver-connect-bank-payouts/route.ts"),
     "utf8",
   );
-  assert.match(cron, /sellerRows/);
-  assert.match(cron, /sellerBankPayoutIdempotencyKey/);
-  assert.match(cron, /scanned_sellers/);
-  assert.match(cron, /from\("sellers"\)/);
-});
-
-test("mobile wallet API exposes requestWalletCashOut for all roles", () => {
-  const mobileApi = fs.readFileSync(
-    path.join(webRoot, "../mobile/src/lib/walletApi.ts"),
-    "utf8",
+  assert.match(bank, /object:\s*"bank_account"/);
+  assert.match(bank, /method:\s*"standard"/);
+  assert.match(bank, /no_bank_account_destination/);
+  assert.match(cron, /status:\s*"processing"/);
+  assert.doesNotMatch(
+    cron,
+    /updatePayoutTransactionStatus\([^)]*,\s*"paid"/,
   );
-  assert.match(mobileApi, /requestWalletCashOut/);
-  assert.match(mobileApi, /restaurant-cashout/);
-  assert.match(mobileApi, /seller-cashout/);
-  assert.match(mobileApi, /driver-cashout/);
 });
 
 test("mobile screens use cashoutInFlight guard", () => {

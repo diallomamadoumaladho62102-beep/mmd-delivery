@@ -161,7 +161,7 @@ export async function syncStripeConnectAccountUpdated(
   let payout_retry: unknown = null;
   if (
     onboarded &&
-    (updated.restaurant || updated.seller)
+    (updated.restaurant || updated.seller || updated.driver)
   ) {
     try {
       const { retryAwaitingConnectTransfers } = await import(
@@ -170,10 +170,15 @@ export async function syncStripeConnectAccountUpdated(
       const restaurantUserIds = (restaurantRows ?? []).map((r) =>
         String((r as { user_id?: unknown }).user_id ?? ""),
       );
+      const driverUserIds = (driverRows ?? []).map((r) =>
+        String((r as { user_id?: unknown }).user_id ?? ""),
+      );
       payout_retry = await retryAwaitingConnectTransfers({
         supabaseAdmin,
         restaurantUserIds: updated.restaurant ? restaurantUserIds : [],
+        driverUserIds: updated.driver ? driverUserIds : [],
         sellerReady: updated.seller,
+        marketplaceReady: updated.driver || updated.seller,
         limit: 8,
       });
       console.log("[stripe-connect-webhook] awaiting payout retry", payout_retry);

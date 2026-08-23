@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPayoutMethodsForRecipient } from "@/lib/payoutMethodRouting";
 import { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
+import { resolveManualCashoutFunding } from "@/lib/finance/resolveManualCashoutFunding";
 import {
   isManualCashoutBlockedToday,
   MANUAL_CASHOUT_MINIMUM_CENTS,
@@ -28,7 +29,7 @@ const CURRENCY_BY_COUNTRY: Record<string, string> = {
   CI: "XOF",
 };
 
-/** Minimum Cash Out from Connect available balance ($20). Phase 1 config. */
+/** No Cash Out dollar minimum — Instant-eligible amount > 0. */
 export const DRIVER_CASHOUT_MINIMUM_CENTS = MANUAL_CASHOUT_MINIMUM_CENTS;
 
 /** Rolling 24h cashout cooldown window (legacy payout_transactions scan). */
@@ -100,11 +101,27 @@ export async function computeDriverAvailableCents(
     return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
   }, 0);
 
+  // Any linked mirror order (paid or unpaid transfer) owns the SoT — never
+  // double-count the delivery_request orphan path once a link exists.
+  const { data: linkedAny } = await supabaseAdmin
+    .from("orders")
+    .select("external_ref_id")
+    .eq("driver_id", driverUserId)
+    .eq("external_ref_type", "delivery_request")
+    .not("external_ref_id", "is", null)
+    .limit(500);
+  for (const row of linkedAny ?? []) {
+    const refId = String(row.external_ref_id ?? "").trim();
+    if (refId) linkedDeliveryRequestIds.add(refId);
+  }
+
   // Orphan package rows without a linked order (legacy). Prefer order SoT when linked.
+  // Only fundable orphans (Stripe PI / session present) belong in awaiting SCT —
+  // unfunded "paid" ghosts must not inflate awaiting forever.
   const { data: deliveredRequests, error: requestsErr } = await supabaseAdmin
     .from("delivery_requests")
     .select(
-      "id, driver_delivery_payout, driver_paid_out, driver_payout_id, payment_status, refund_status",
+      "id, driver_delivery_payout, driver_paid_out, driver_payout_id, payment_status, refund_status, stripe_payment_intent_id, stripe_session_id",
     )
     .eq("driver_id", driverUserId)
     .eq("status", "delivered");
@@ -124,6 +141,10 @@ export async function computeDriverAvailableCents(
     ) {
       return sum;
     }
+    const hasStripeSource =
+      Boolean(String(row.stripe_payment_intent_id ?? "").trim()) ||
+      Boolean(String(row.stripe_session_id ?? "").trim());
+    if (!hasStripeSource) return sum;
     return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
   }, 0);
 
@@ -271,12 +292,25 @@ export type DriverWalletSummary = {
   country_code: string;
   currency: string;
   balance_cents: number;
-  /** Connect available balance (cashable). */
+  /**
+   * Cashable now for manual Cash Out: Instant-eligible amount when Instant
+   * Payouts is ready, otherwise Connect standard available. Never pending alone.
+   */
   available_cents: number;
-  /** Unpaid earnings (food + delivery + taxi) awaiting platform→Connect SCT. */
+  /** Unpaid earnings (food + delivery + taxi + marketplace) awaiting platform→Connect SCT. */
   awaiting_transfer_cents: number;
-  /** Connect pending + in-flight payout transactions. */
+  /** Connect pending settlement only (not awaiting SCT). */
+  settling_cents: number;
+  /** @deprecated Alias of settling_cents + in-flight bank payout txs for older clients. */
   pending_cents: number;
+  /** Confirmed earnings = awaiting SCT + Connect available + Connect pending. */
+  confirmed_earnings_cents: number;
+  /** Live Connect standard available (Sunday bank SoT). */
+  connect_available_cents: number;
+  /** Live Connect instant_available (may include settling funds). */
+  instant_available_cents: number;
+  instant_payout_eligible: boolean;
+  instant_block_reason: string | null;
   minimum_payout_cents: number;
   cashout_blocked_today: boolean;
   last_cashout_at: string | null;
@@ -326,10 +360,7 @@ export async function buildDriverWalletSummary(
 
   const defaultMethod =
     payoutMethods.find((method) => method.available) ?? payoutMethods[0] ?? null;
-  const minimumPayoutCents = Math.max(
-    DRIVER_CASHOUT_MINIMUM_CENTS,
-    defaultMethod?.minimum_payout_cents ?? DRIVER_CASHOUT_MINIMUM_CENTS,
-  );
+  const minimumPayoutCents = 0;
 
   const stripeAccountId = profile?.stripe_account_id
     ? String(profile.stripe_account_id)
@@ -342,6 +373,10 @@ export async function buildDriverWalletSummary(
   let stripeLiveVerified = false;
   let connectAvailableCents = 0;
   let connectPendingCents = 0;
+  let instantAvailableCents = 0;
+  let instantEligible = false;
+  let instantBlockReason: string | null = null;
+  let cashableCents = 0;
 
   // Same live triad as POST /api/wallet/driver-cashout — never enable cashout
   // from the DB boolean alone when an Express account id exists.
@@ -355,12 +390,28 @@ export async function buildDriverWalletSummary(
       stripeLiveVerified = true;
 
       try {
-        const bal = await fetchConnectUsdBalanceCents(stripeAccountId);
-        connectAvailableCents = bal.availableCents;
-        connectPendingCents = bal.pendingCents;
+        const funding = await resolveManualCashoutFunding(stripeAccountId);
+        connectAvailableCents = funding.availableCents;
+        connectPendingCents = funding.pendingCents;
+        instantAvailableCents = funding.instantAvailableCents;
+        instantEligible = funding.instantEligible;
+        instantBlockReason = funding.instantBlockReason;
+        cashableCents = funding.cashableCents;
       } catch {
-        connectAvailableCents = 0;
-        connectPendingCents = 0;
+        try {
+          const bal = await fetchConnectUsdBalanceCents(stripeAccountId);
+          connectAvailableCents = bal.availableCents;
+          connectPendingCents = bal.pendingCents;
+          instantAvailableCents = bal.instantAvailableCents;
+          cashableCents = 0;
+          instantEligible = false;
+          instantBlockReason = "funding_resolve_failed";
+        } catch {
+          connectAvailableCents = 0;
+          connectPendingCents = 0;
+          instantAvailableCents = 0;
+          cashableCents = 0;
+        }
       }
     } catch {
       // Fail closed for cashout eligibility when Stripe is unreachable.
@@ -371,6 +422,8 @@ export async function buildDriverWalletSummary(
       stripeLiveVerified = false;
       connectAvailableCents = 0;
       connectPendingCents = 0;
+      instantAvailableCents = 0;
+      cashableCents = 0;
     }
   }
 
@@ -382,23 +435,26 @@ export async function buildDriverWalletSummary(
   });
 
   const cashoutBlockedCooldown = rateLimit.limited;
-  const availableCents = stripeAccountId ? connectAvailableCents : 0;
-  const pendingCents = connectPendingCents + pendingPayoutTxCents;
+  const availableCents = stripeAccountId ? cashableCents : 0;
+  const settlingCents = connectPendingCents;
+  const pendingCents = settlingCents + pendingPayoutTxCents;
+  const confirmedEarningsCents =
+    awaitingTransferCents + connectAvailableCents + connectPendingCents;
 
   let cashoutBlockReason: string | null = null;
   if (!stripeAccountId || !stripeOnboarded) {
     cashoutBlockReason = "stripe_setup_required";
   } else if (cashoutBlockedCooldown) {
     cashoutBlockReason = "already_cashed_out_today";
-  } else if (availableCents < minimumPayoutCents) {
-    cashoutBlockReason = "below_minimum";
+  } else if (availableCents <= 0) {
+    cashoutBlockReason = instantBlockReason || "instant_not_eligible";
   }
 
   const canCashout =
     cashoutBlockReason === null &&
     stripeLiveVerified &&
     stripeOnboarded &&
-    availableCents >= minimumPayoutCents &&
+    availableCents > 0 &&
     !cashoutBlockedCooldown;
 
   return {
@@ -408,7 +464,13 @@ export async function buildDriverWalletSummary(
     balance_cents: balanceCents,
     available_cents: availableCents,
     awaiting_transfer_cents: awaitingTransferCents,
+    settling_cents: settlingCents,
     pending_cents: pendingCents,
+    confirmed_earnings_cents: confirmedEarningsCents,
+    connect_available_cents: connectAvailableCents,
+    instant_available_cents: instantAvailableCents,
+    instant_payout_eligible: instantEligible,
+    instant_block_reason: instantBlockReason,
     minimum_payout_cents: minimumPayoutCents,
     cashout_blocked_today: cashoutBlockedCooldown,
     last_cashout_at: rateLimit.lastCashoutAt ?? lastCashoutAt,

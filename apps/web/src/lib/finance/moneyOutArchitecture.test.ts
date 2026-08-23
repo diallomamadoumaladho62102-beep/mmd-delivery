@@ -4,39 +4,39 @@ import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
 assert.equal(MONEY_OUT_MODEL.platformToConnect, "stripe_transfer_sct");
 assert.equal(
   MONEY_OUT_MODEL.connectToBank,
-  "manual_schedule_plus_github_actions_sunday_et",
+  "manual_instant_debit_plus_sunday_standard_bank_et",
 );
 assert.equal(
   MONEY_OUT_MODEL.driverBankPayout,
-  "sunday_0400_america_new_york_full_available_no_minimum",
+  "sunday_0400_america_new_york_full_available_to_bank_no_minimum",
 );
 assert.equal(
   MONEY_OUT_MODEL.restaurantBankPayout,
-  "sunday_0400_america_new_york_full_available_no_minimum",
+  "sunday_0400_america_new_york_full_available_to_bank_no_minimum",
 );
 assert.equal(
   MONEY_OUT_MODEL.sellerBankPayout,
-  "sunday_0400_america_new_york_full_available_no_minimum",
+  "sunday_0400_america_new_york_full_available_to_bank_no_minimum",
 );
 assert.equal(
   MONEY_OUT_MODEL.restaurantCashout,
-  "connect_available_balance_payout_only",
+  "connect_instant_payout_full_balance_debit_card_no_minimum",
 );
 assert.equal(
   MONEY_OUT_MODEL.sellerCashout,
-  "connect_available_balance_payout_only",
+  "connect_instant_payout_full_balance_debit_card_no_minimum",
 );
 assert.equal(
   MONEY_OUT_MODEL.driverCashout,
-  "connect_available_balance_payout_only",
+  "connect_instant_payout_full_balance_debit_card_no_minimum",
 );
+assert.equal(MONEY_OUT_MODEL.manualCashoutMinimumCents, 0);
 assert.equal(
   MONEY_OUT_MODEL.tipFunding,
   "separate_payment_intent_then_sct",
 );
-assert.equal(MONEY_OUT_MODEL.legacyEdgePayouts, "disabled_by_default");
+assert.equal(MONEY_OUT_MODEL.legacyEdgePayouts, "permanently_disabled");
 
-// Decision guard: cashout must never fund Connect by marking delivery ledgers paid.
 const FORBIDDEN_CASHOUT_RPCS = [
   "admin_pay_driver_now",
   "finalize_driver_payout",

@@ -150,9 +150,12 @@ export function DriverWalletScreen() {
   const [currency, setCurrency] = useState("USD");
   const [availableCents, setAvailableCents] = useState(0);
   const [awaitingTransferCents, setAwaitingTransferCents] = useState(0);
+  const [settlingCents, setSettlingCents] = useState(0);
+  const [confirmedEarningsCents, setConfirmedEarningsCents] = useState(0);
   const [pendingCents, setPendingCents] = useState(0);
   const [ledgerBalanceCents, setLedgerBalanceCents] = useState(0);
-  const [minimumPayoutCents, setMinimumPayoutCents] = useState(2000);
+  const [instantEligible, setInstantEligible] = useState(false);
+  const [minimumPayoutCents, setMinimumPayoutCents] = useState(0);
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatusCode>("setup_required");
   const [stripeStatusLabel, setStripeStatusLabel] = useState(
@@ -212,9 +215,18 @@ export function DriverWalletScreen() {
           "You already requested a cash out today. Try again tomorrow.",
         );
       case "below_minimum":
-        return t("driver.wallet.cashoutReason.min", "Minimum cash out: {{min}}.", {
-          min: fmtMoney(minimumPayoutCents),
-        });
+      case "instant_not_eligible":
+      case "nothing_to_cashout":
+        return (
+          cashoutBlockReason === "below_minimum"
+            ? t("driver.wallet.cashoutReason.min", "Minimum cash out: {{min}}.", {
+                min: fmtMoney(minimumPayoutCents),
+              })
+            : t(
+                "driver.wallet.cashoutReason.instant",
+                "Instant Cash Out unavailable. Add an Instant debit card or wait for Sunday bank payout.",
+              )
+        );
       default:
         return cashoutBlockReason
           ? toUserFacingError({ code: cashoutBlockReason }, "")
@@ -249,8 +261,11 @@ export function DriverWalletScreen() {
           applyStripeStatus("setup_required");
           setAvailableCents(0);
           setAwaitingTransferCents(0);
+          setSettlingCents(0);
+          setConfirmedEarningsCents(0);
           setPendingCents(0);
           setLedgerBalanceCents(0);
+          setInstantEligible(false);
           setCanCashout(false);
           setCashoutBlockReason(null);
           setCashoutBlockedToday(false);
@@ -294,9 +309,19 @@ export function DriverWalletScreen() {
         setCurrency(walletCurrency);
         setAvailableCents(summary.available_cents ?? 0);
         setAwaitingTransferCents(summary.awaiting_transfer_cents ?? 0);
-        setPendingCents(summary.pending_cents ?? 0);
+        setSettlingCents(
+          summary.settling_cents ?? summary.pending_cents ?? 0,
+        );
+        setConfirmedEarningsCents(
+          summary.confirmed_earnings_cents ??
+            (summary.awaiting_transfer_cents ?? 0) +
+              (summary.connect_available_cents ?? summary.available_cents ?? 0) +
+              (summary.settling_cents ?? summary.pending_cents ?? 0),
+        );
+        setPendingCents(summary.pending_cents ?? summary.settling_cents ?? 0);
         setLedgerBalanceCents(summary.balance_cents ?? 0);
-        setMinimumPayoutCents(summary.minimum_payout_cents ?? 2000);
+        setInstantEligible(Boolean(summary.instant_payout_eligible));
+        setMinimumPayoutCents(summary.minimum_payout_cents ?? 0);
         setStripeAccountId(summary.stripe_account_id ?? null);
         if (summary.stripe_status) {
           applyStripeStatus(
@@ -381,8 +406,8 @@ export function DriverWalletScreen() {
       t("driver.wallet.cashoutConfirm.title", "Instant cash out"),
       t(
         "driver.wallet.cashoutConfirm.body",
-        "You will cash out your full available balance: {{amount}}.\n\nReminder: minimum {{min}} • 1 cash out / day.",
-        { amount: fmtMoney(availableCents), min: fmtMoney(minimumPayoutCents) },
+        "You will cash out your full Instant-eligible balance: {{amount}}.\n\n1 Cash Out / day (America/New_York).",
+        { amount: fmtMoney(availableCents) },
       ),
       [
         { text: t("common.cancel", "Cancel"), style: "cancel" },
@@ -543,7 +568,7 @@ export function DriverWalletScreen() {
                     💰 {t("driver.wallet.title", "Earnings")}
                   </Text>
                   <Text style={styles.heroLabel}>
-                    {t("driver.wallet.available.title", "Available")}
+                    {t("driver.wallet.available.title", "Available to cash out")}
                   </Text>
                 </View>
                 <View style={[styles.statusPill, statusPillStyle]}>
@@ -564,33 +589,33 @@ export function DriverWalletScreen() {
                   {fmtMoney(availableCents)}
                 </Text>
                 <Text style={styles.rulesText}>
-                  {t(
-                    "driver.wallet.available.connectHint",
-                    "Available to cash out from your Stripe Connect balance",
-                  )}
+                  {instantEligible
+                    ? t(
+                        "driver.wallet.available.instantHint",
+                        "Retirable via Instant Payout when eligible (Stripe Connect)",
+                      )
+                    : t(
+                        "driver.wallet.available.connectHint",
+                        "Available to cash out from your Stripe Connect balance",
+                      )}
                 </Text>
-                {statusReady ? (
-                  <Text style={styles.rulesText}>
-                    {t(
-                      "driver.wallet.available.readyHint",
-                      "Payouts enabled. You can cash out your available balance.",
-                    )}
-                  </Text>
-                ) : (
-                  <Text style={styles.rulesText}>
-                    {t(
-                      "driver.wallet.available.rules",
-                      "Minimum cash out: {{min}} • 1 cash out / day",
-                      { min: fmtMoney(minimumPayoutCents) },
-                    )}
-                  </Text>
-                )}
-                {awaitingTransferCents > 0 ? (
+                {confirmedEarningsCents > 0 ? (
                   <Text style={styles.reasonTextMuted}>
                     {t(
-                      "driver.wallet.available.awaitingTransfer",
-                      "{{amount}} in earnings awaiting platform transfer (SCT) before they can be cashed out.",
-                      { amount: fmtMoney(awaitingTransferCents) },
+                      "driver.wallet.confirmed.hint",
+                      "Confirmed earnings: {{amount}}",
+                      { amount: fmtMoney(confirmedEarningsCents) },
+                    )}
+                  </Text>
+                ) : null}
+                {settlingCents > 0 || awaitingTransferCents > 0 ? (
+                  <Text style={styles.reasonTextMuted}>
+                    {t(
+                      "driver.wallet.processingHint",
+                      "{{amount}} still processing — available when Stripe allows payout.",
+                      {
+                        amount: fmtMoney(settlingCents + awaitingTransferCents),
+                      },
                     )}
                   </Text>
                 ) : null}
@@ -715,31 +740,70 @@ export function DriverWalletScreen() {
             <>
               <View style={styles.cardsRow}>
                 <MetricCard
-                  label={t("driver.wallet.pending.title", "Pending")}
-                  amount={fmtMoney(pendingCents)}
+                  label={t("driver.wallet.earnings.title", "Earnings")}
+                  amount={fmtMoney(confirmedEarningsCents)}
                   sub={t(
-                    "driver.wallet.pending.desc",
-                    "Connect pending + cash-out processing",
+                    "driver.wallet.earnings.desc",
+                    "Confirmed completed work",
                   )}
                 />
                 <MetricCard
-                  label={t("driver.wallet.ledger.title", "Ledger balance")}
-                  amount={fmtMoney(ledgerBalanceCents)}
-                  sub={t("driver.wallet.ledger.desc", "Official backend balance")}
+                  label={t("driver.wallet.available.title", "Available to cash out")}
+                  amount={fmtMoney(availableCents)}
+                  sub={
+                    instantEligible
+                      ? t(
+                          "driver.wallet.available.instant",
+                          "Instant-eligible to your debit card",
+                        )
+                      : t(
+                          "driver.wallet.available.waitSunday",
+                          "Add Instant debit card, or wait for Sunday bank payout",
+                        )
+                  }
                 />
+              </View>
+
+              {awaitingTransferCents > 0 || settlingCents > 0 ? (
+                <Text style={styles.infoSub}>
+                  {t(
+                    "driver.wallet.processingHint",
+                    "Some earnings are still processing and will become available when Stripe allows payout.",
+                  )}
+                </Text>
+              ) : null}
+
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>
+                  {t("driver.wallet.nextAuto.title", "Next automatic payout")}
+                </Text>
+                <Text style={styles.infoSub}>
+                  {t(
+                    "driver.wallet.nextAuto.desc",
+                    "Sunday — 04:00 AM (America/New_York) to your bank account",
+                  )}
+                </Text>
               </View>
 
               {!fundedSetup ? (
                 <View style={styles.cardsRow}>
                   <MetricCard
-                    label={t("driver.wallet.processing.title", "Processing payouts")}
-                    amount={fmtMoney(payoutBuckets.processingCents)}
-                    sub={t("driver.wallet.processing.desc", "{{count}} in progress", {
-                      count: payoutBuckets.processingCount,
-                    })}
+                    label={t("driver.wallet.lastCashout.title", "Last cash out")}
+                    amount={fmtMoney(payoutBuckets.processingCents + payoutBuckets.completedCents)}
+                    sub={
+                      payoutBuckets.processingCount > 0
+                        ? t("driver.wallet.lastCashout.processing", "Processing")
+                        : payoutBuckets.failedCents > 0
+                          ? t("driver.wallet.lastCashout.failed", "Failed: {{amount}}", {
+                              amount: fmtMoney(payoutBuckets.failedCents),
+                            })
+                          : t("driver.wallet.lastCashout.paid", "Paid / completed: {{amount}}", {
+                              amount: fmtMoney(payoutBuckets.completedCents),
+                            })
+                    }
                   />
                   <MetricCard
-                    label={t("driver.wallet.completed.title", "Completed payouts")}
+                    label={t("driver.wallet.completed.title", "Bank payouts")}
                     amount={fmtMoney(payoutBuckets.completedCents)}
                     sub={t("driver.wallet.failed.short", "Failed: {{amount}}", {
                       amount: fmtMoney(payoutBuckets.failedCents),

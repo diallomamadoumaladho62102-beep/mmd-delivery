@@ -287,7 +287,7 @@ export async function syncPaidDeliveryRequestOrder(
   const { data: delivery, error } = await supabaseAdmin
     .from("delivery_requests")
     .select(
-      "id, created_by, client_user_id, payment_status, paid_at, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_miles, delivery_fee, total, currency"
+      "id, created_by, client_user_id, payment_status, paid_at, driver_id, driver_delivery_payout, stripe_payment_intent_id, stripe_session_id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, distance_miles, delivery_fee, total, currency"
     )
     .eq("id", deliveryRequestId)
     .maybeSingle();
@@ -307,12 +307,32 @@ export async function syncPaidDeliveryRequestOrder(
 
   const { data: existingOrder } = await supabaseAdmin
     .from("orders")
-    .select("id")
+    .select("id, stripe_payment_intent_id, stripe_session_id, driver_id, driver_delivery_payout")
     .eq("external_ref_id", deliveryRequestId)
     .eq("external_ref_type", "delivery_request")
     .maybeSingle();
 
   if (existingOrder?.id) {
+    // Backfill SCT-critical fields if the mirror was created without them.
+    const patch: Record<string, unknown> = {};
+    const pi = String(delivery.stripe_payment_intent_id ?? "").trim();
+    const session = String(delivery.stripe_session_id ?? "").trim();
+    const driverId = String(delivery.driver_id ?? "").trim();
+    const payout = Number(delivery.driver_delivery_payout ?? 0);
+    if (pi && !existingOrder.stripe_payment_intent_id) {
+      patch.stripe_payment_intent_id = pi;
+    }
+    if (session && !existingOrder.stripe_session_id) {
+      patch.stripe_session_id = session;
+    }
+    if (driverId && !existingOrder.driver_id) patch.driver_id = driverId;
+    if (payout > 0 && !(Number(existingOrder.driver_delivery_payout ?? 0) > 0)) {
+      patch.driver_delivery_payout = payout;
+    }
+    if (Object.keys(patch).length > 0) {
+      patch.updated_at = new Date().toISOString();
+      await supabaseAdmin.from("orders").update(patch).eq("id", existingOrder.id);
+    }
     return { ok: true, orderId: String(existingOrder.id) };
   }
 
@@ -324,7 +344,10 @@ export async function syncPaidDeliveryRequestOrder(
       status: "pending",
       payment_status: "paid",
       paid_at: delivery.paid_at ?? nowIso,
-      driver_id: null,
+      driver_id: delivery.driver_id ?? null,
+      driver_delivery_payout: delivery.driver_delivery_payout ?? null,
+      stripe_payment_intent_id: delivery.stripe_payment_intent_id ?? null,
+      stripe_session_id: delivery.stripe_session_id ?? null,
       created_by: delivery.created_by ?? clientId,
       client_id: delivery.client_user_id ?? delivery.created_by ?? clientId,
       user_id: delivery.client_user_id ?? delivery.created_by ?? clientId,

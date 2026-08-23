@@ -64,7 +64,7 @@ export const PRICING_BUSINESS_DEFAULTS = {
   // Tips / credit / cashout thresholds
   taxi_tip_min_cents: 50,
   mmd_credit_min_residual_cents: 50,
-  driver_cashout_minimum_cents: 2000,
+  driver_cashout_minimum_cents: 0,
   driver_cashout_cooldown_ms: 24 * 60 * 60 * 1000,
 } as const;
 

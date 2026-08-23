@@ -19,13 +19,17 @@ const transferSrc = fs.readFileSync(
   "utf8",
 );
 
-assert.match(retrySrc, /target: "restaurant"/);
+assert.match(retrySrc, /"restaurant"/);
+assert.match(retrySrc, /"driver"/);
 assert.match(retrySrc, /restaurant_transfer_id/);
+assert.match(retrySrc, /driver_transfer_id/);
+assert.match(retrySrc, /driver_attempted/);
 assert.match(retrySrc, /executeMarketplacePayouts/);
 assert.doesNotMatch(retrySrc, /accounts\.create/);
 
 assert.match(webhookSrc, /retryAwaitingConnectTransfers/);
-assert.match(webhookSrc, /sellerReady: updated\.seller/);
+assert.match(webhookSrc, /sellerReady:\s*updated\.seller/);
+assert.match(webhookSrc, /driverUserIds/);
 
 assert.match(transferSrc, /restaurant_connect_account_missing/);
 assert.match(transferSrc, /isStripeSourceChargeId/);

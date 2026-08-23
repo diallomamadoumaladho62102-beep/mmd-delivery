@@ -11,16 +11,18 @@ import {
   readCronBatchLimit,
 } from "@/lib/cronTimeouts";
 import {
-  createFullAvailableConnectPayout,
   driverBankPayoutIdempotencyKey,
   restaurantBankPayoutIdempotencyKey,
   sellerBankPayoutIdempotencyKey,
-  ensureDriverConnectManualPayoutSchedule,
   getNowPartsInTimeZone,
   isDriverBankPayoutWindow,
   DRIVER_BANK_PAYOUT_TIMEZONE,
 } from "@/lib/finance/driverConnectBankPayout";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
+import {
+  executeWorkerSundayBankPayout,
+  lockWorkerConnectManualPayoutSchedule,
+} from "@/lib/finance/workerFinance";
 import {
   createPayoutTransaction,
   updatePayoutTransactionStatus,
@@ -201,7 +203,7 @@ async function handle(req: NextRequest) {
         const role = row.role;
         const userId = String(row.user_id);
         const acct = String(row.stripe_account_id);
-        const schedule = await ensureDriverConnectManualPayoutSchedule(acct);
+        const schedule = await lockWorkerConnectManualPayoutSchedule(acct);
         if (schedule.ok === false) {
           failed += 1;
           results.push({
@@ -247,7 +249,7 @@ async function handle(req: NextRequest) {
               ? "cron_seller_sunday_bank_payout"
               : "cron_driver_sunday_bank_payout";
 
-        const payout = await createFullAvailableConnectPayout({
+        const payout = await executeWorkerSundayBankPayout({
           stripeAccountId: acct,
           recipientUserId: userId,
           recipientType: role,
@@ -307,12 +309,15 @@ async function handle(req: NextRequest) {
               money_out_model: moneyModel,
             },
           });
-          await updatePayoutTransactionStatus(supabaseAdmin, audit.id, "paid", {
+          // Keep processing until Stripe payout.paid / payout.failed webhook (or reconcile).
+          await updatePayoutTransactionStatus(supabaseAdmin, audit.id, "processing", {
             external_reference: stripePayout.id,
             provider_payload: {
               source: ledgerSource,
               stripe_payout_id: stripePayout.id,
               money_out_model: moneyModel,
+              stripe_status: stripePayout.status,
+              worker_finance: true,
             },
           });
         } catch (ledgerErr) {

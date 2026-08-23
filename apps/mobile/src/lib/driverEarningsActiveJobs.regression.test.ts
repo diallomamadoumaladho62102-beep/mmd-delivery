@@ -310,13 +310,16 @@ test("revenue screen uses shared period + completion stamp filter", () => {
   assert.match(src, /setRange\(tab\.k\)/);
 });
 
-test("wallet awaiting-transfer label is generic earnings not delivery-only", () => {
+test("wallet shows simple earnings/available labels — no SCT jargon", () => {
   const src = fs.readFileSync(
     path.join(mobileRoot, "screens/DriverWalletScreen.tsx"),
     "utf8",
   );
-  assert.match(src, /earnings awaiting platform transfer/);
+  assert.match(src, /Earnings/);
+  assert.match(src, /Available to cash out|Available/);
   assert.doesNotMatch(src, /delivery earnings await platform transfer/);
+  assert.doesNotMatch(src, /SCT not yet on Connect/);
+  assert.doesNotMatch(src, /tr_/);
 });
 
 test("premium sheet hide is presentation-only", () => {

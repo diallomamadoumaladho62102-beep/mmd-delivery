@@ -86,7 +86,7 @@ test("admin force-complete core skips proximity and blocks double complete", () 
   assert.match(src, /invalid_status/);
   assert.match(src, /bypassed_proximity/);
   assert.match(src, /refresh_taxi_commissions/);
-  assert.match(src, /executeTaxiDriverFareTransfer/);
+  assert.match(src, /ensureWorkerConnectCredit/);
   assert.match(src, /notifyClientTaxiRideCompleted/);
   assert.match(src, /admin_force_complete/);
   assert.doesNotMatch(src, /\.rpc\(\s*["']driver_complete_taxi_ride["']/);

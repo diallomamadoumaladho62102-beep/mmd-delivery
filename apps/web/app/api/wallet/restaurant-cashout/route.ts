@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { executeManualConnectCashout } from "@/lib/finance/manualCashoutService";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
+import { executeWorkerCashOut } from "@/lib/finance/workerFinance";
 import {
   getBearerToken,
   getSupabaseAdminClient,
@@ -20,7 +20,7 @@ function isRestaurantRole(role: string | null | undefined): boolean {
 }
 
 /**
- * Restaurant manual Cash Out — same MMD rules as Driver ($20 min, 1/day ET).
+ * Restaurant manual Cash Out — Instant debit card, no $ min, 1/day ET.
  * Destination acct_ is always restaurant_profiles.stripe_account_id (server-side).
  */
 export async function POST(req: NextRequest) {
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await executeManualConnectCashout({
+    const result = await executeWorkerCashOut({
       supabaseAdmin,
       recipientType: "restaurant",
       recipientUserId: restaurantUserId,

@@ -257,16 +257,27 @@ export async function updateMarketplaceJobStatusForDriver(
 
   const job = mapJobRow(data as Record<string, unknown>);
 
-  // Ledger prep only (no Stripe). Safe even while executeMarketplacePayouts is stubbed.
+  // Prepare driver earning ledger, then attempt SCT when live (completed → Connect).
   if (params.nextStatus === "delivered") {
     try {
-      const { prepareMarketplaceDriverPayout } = await import(
-        "@/lib/marketplacePayoutService"
-      );
+      const {
+        prepareMarketplaceDriverPayout,
+        executeMarketplacePayouts,
+      } = await import("@/lib/marketplacePayoutService");
       await prepareMarketplaceDriverPayout(supabaseAdmin, {
         marketplaceDeliveryJobId: job.id,
         source: "driver_status_delivered",
       });
+      // Best-effort immediate SCT; daily-money cron retries failures.
+      void executeMarketplacePayouts(supabaseAdmin, { limit: 5 }).catch(
+        (execError) => {
+          console.error("[marketplaceDriverJobs] driver SCT execute failed", {
+            job_id: job.id,
+            error:
+              execError instanceof Error ? execError.message : String(execError),
+          });
+        },
+      );
     } catch (prepError) {
       console.error("[marketplaceDriverJobs] driver payout prep failed", {
         job_id: job.id,

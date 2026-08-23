@@ -1269,16 +1269,19 @@ export async function POST(req: NextRequest) {
 
       const nowIso = new Date().toISOString();
 
+      const failureCode = getErrorCode(e);
+      const failureMessage = getErrorMessage(e);
+
       const { error: failErr } = await supabaseAdmin
         .from("order_payouts")
         .update({
           status: "failed",
-          failure_code: getErrorCode(e),
-          failure_message: getErrorMessage(e),
+          failure_code: failureCode,
+          failure_message: failureMessage,
           last_error: JSON.stringify({
             type: getStripeErrorType(e),
-            code: getErrorCode(e),
-            message: getErrorMessage(e),
+            code: failureCode,
+            message: failureMessage,
             statusCode: getStripeStatusCode(e),
             requestId: getStripeRequestId(e),
           }),
@@ -1296,7 +1299,25 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return json({ error: "Stripe transfer failed" }, 500);
+      const isBalanceInsufficient =
+        String(failureCode ?? "").toLowerCase() === "balance_insufficient" ||
+        /insufficient funds/i.test(String(failureMessage ?? ""));
+
+      return json(
+        {
+          error: "Stripe transfer failed",
+          code: failureCode,
+          message: failureMessage,
+          ...(isBalanceInsufficient
+            ? {
+                requires_dashboard: true,
+                action_required:
+                  "Set platform Stripe payouts to Manual, wait for platform available ≥ transfer amount, then retry process-payouts. Do not invent credits.",
+              }
+            : {}),
+        },
+        500,
+      );
     }
 
     if (isStripeTransferReversed(transfer)) {
@@ -1548,6 +1569,28 @@ export async function POST(req: NextRequest) {
           },
           409
         );
+      }
+
+      // Package mirror: clear delivery_request awaiting once order SCT lands.
+      const { data: packageLink } = await supabaseAdmin
+        .from("orders")
+        .select("external_ref_type, external_ref_id")
+        .eq("id", order.id)
+        .maybeSingle();
+      const packageRefType = String(
+        packageLink?.external_ref_type ?? "",
+      ).toLowerCase();
+      const packageRefId = String(packageLink?.external_ref_id ?? "").trim();
+      if (packageRefType === "delivery_request" && packageRefId) {
+        await supabaseAdmin
+          .from("delivery_requests")
+          .update({
+            driver_paid_out: true,
+            driver_paid_out_at: nowIso,
+            updated_at: nowIso,
+          })
+          .eq("id", packageRefId)
+          .or("driver_paid_out.is.null,driver_paid_out.eq.false");
       }
     }
 

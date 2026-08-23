@@ -92,6 +92,15 @@ apps/web/Backups/
 apps/web/.env.twilio-audit
 apps/web/scripts/_tmp-*
 apps/web/scripts/_audit-*
+apps/web/scripts/_inspect_*
+apps/web/scripts/_fix_*
+apps/web/scripts/_extract_*
+apps/web/scripts/_verify_*
+apps/web/scripts/_write_*
+apps/web/scripts/_helpers*
+apps/web/scripts/_tmp_*
+apps/web/tsconfig.tsbuildinfo
+store-submission/
 apps/web/scripts/live-*-*.mjs
 apps/web/scripts/delivery-quote-preflight.mjs
 apps/web/scripts/phase-prod-*.mjs
