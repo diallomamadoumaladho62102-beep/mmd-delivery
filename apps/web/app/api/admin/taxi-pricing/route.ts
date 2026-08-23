@@ -99,6 +99,33 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    const nextDriverShare = Number(
+      update.driver_share_pct ?? (existing as { driver_share_pct?: number }).driver_share_pct ?? 0
+    );
+    const nextPlatformShare = Number(
+      update.platform_share_pct ??
+        (existing as { platform_share_pct?: number }).platform_share_pct ??
+        0
+    );
+    if (
+      !Number.isFinite(nextDriverShare) ||
+      !Number.isFinite(nextPlatformShare) ||
+      nextDriverShare < 0 ||
+      nextPlatformShare < 0 ||
+      nextDriverShare > 100 ||
+      nextPlatformShare > 100 ||
+      nextDriverShare + nextPlatformShare > 100 + 1e-9
+    ) {
+      return json(
+        {
+          ok: false,
+          error:
+            "driver_share_pct + platform_share_pct must be between 0 and 100 (sum ≤ 100)",
+        },
+        400
+      );
+    }
+
     if (typeof patch.active === "boolean") update.active = patch.active;
     if (typeof patch.notes === "string") update.notes = patch.notes;
     if (typeof patch.service_fee_enabled === "boolean") {
