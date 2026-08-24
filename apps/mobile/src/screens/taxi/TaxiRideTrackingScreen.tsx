@@ -95,19 +95,19 @@ const CANCELABLE = new Set([
   "in_progress",
 ]);
 
-const CLIENT_CANCEL_REASONS: Array<{ code: string; label: string }> = [
-  { code: "driver_taking_too_long", label: "Driver taking too long" },
-  { code: "driver_too_far", label: "Driver is too far away" },
-  { code: "changed_mind", label: "Changed my mind" },
-  { code: "wrong_pickup", label: "Wrong pickup location" },
-  { code: "wrong_destination", label: "Wrong destination" },
-  { code: "found_another_option", label: "Found another option" },
-  { code: "problem_with_driver", label: "Problem with the driver" },
-  { code: "problem_with_vehicle", label: "Problem with the vehicle" },
-  { code: "pickup_problem", label: "Pickup problem" },
-  { code: "emergency", label: "Emergency" },
-  { code: "other", label: "Other" },
-];
+const CLIENT_CANCEL_REASON_CODES = [
+  "driver_taking_too_long",
+  "driver_too_far",
+  "changed_mind",
+  "wrong_pickup",
+  "wrong_destination",
+  "found_another_option",
+  "problem_with_driver",
+  "problem_with_vehicle",
+  "pickup_problem",
+  "emergency",
+  "other",
+] as const;
 
 const PAYMENT_PENDING = new Set(["pending_payment", "processing"]);
 const PAID_PAYMENT = new Set(["paid", "refunded"]);
@@ -544,10 +544,10 @@ export default function TaxiRideTrackingScreen() {
             "Select a reason. This helps improve the service.",
           ),
           [
-            ...CLIENT_CANCEL_REASONS.map((r) => ({
-              text: r.label,
+            ...CLIENT_CANCEL_REASON_CODES.map((code) => ({
+              text: t(`taxi.ride.cancelReasons.${code}`),
               onPress: () => {
-                if (r.code === "other") {
+                if (code === "other") {
                   setAddressPrompt({ mode: "cancel_other", value: "" });
                   return;
                 }
@@ -555,7 +555,7 @@ export default function TaxiRideTrackingScreen() {
                   setCancelling(true);
                   try {
                     await cancelTaxiRide(rideId, {
-                      reason_code: r.code,
+                      reason_code: code,
                     });
                     await load();
                   } catch (e: unknown) {

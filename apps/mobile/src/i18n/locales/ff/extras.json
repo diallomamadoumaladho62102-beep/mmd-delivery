@@ -307,7 +307,39 @@
       "dropoffLabel": "Jaɓorde: {{address}}",
       "driverAssigned": "Dooɓoowo tawtii",
       "lookingForDriver": "Nana yiyloo dooɓoowo…",
-      "defaultTitle": "Yahdu"
+      "defaultTitle": "Yahdu",
+      "addStop": "Ɓeydu dartinal",
+      "addStopTitle": "Ɓeydu dartinal",
+      "addStopBody": "Naatnu ñiiɓirde dartinal. Njoɓdi hesɗitinete e sarworde.",
+      "addStopConfirmTitle": "Tabitin dartinal",
+      "addStopConfirmBody": "Tabitin ɓeydude dartinal ngal? Laawol e njoɓdi hesɗitinete e sarworde.",
+      "addStopConfirmBodyUp": "Dartinal ngal ɓeydata njoɓdi {{amount}} sent (njoɓdi sarworde). Tabitin?",
+      "changeDest": "Waylu jokkere",
+      "changeDestTitle": "Waylu jokkere",
+      "changeDestBody": "Naatnu jokkere hesere. Njoɓdi hesɗitinete e sarworde.",
+      "changeDestConfirmTitle": "Tabitin jokkere hesere",
+      "changeDestConfirm": "Huutoro jokkere ndee? Sarworde hesɗitinta njaajeendi e njoɓdi.",
+      "changeDestConfirmUp": "Njoɓdi hesere ɓuri {{amount}} sent. Njoɓdi ɓeydaandi ina waawi wajde.",
+      "addressPlaceholder": "Ñiiɓirde laawol",
+      "cancelReasonTitle": "Hol ko waɗi a haɗtata?",
+      "cancelReasonBody": "Suɓo daliilu. Ɗum wallata min ɓeydude golle.",
+      "cancelOtherTitle": "Siftin ko waɗi",
+      "cancelOtherBody": "Siftin hol ko waɗi a haɗtata (wajibi).",
+      "cancelOtherPlaceholder": "Winndu sifaa juutɗo",
+      "cancelOtherTooShort": "Naatnu ko famɗi fof 3 alkule.",
+      "cancelReasons": {
+        "driver_taking_too_long": "Driwer ina ɓooytoo",
+        "driver_too_far": "Driwer ina woɗɗi no feewi",
+        "changed_mind": "Mi waylii miijo am",
+        "wrong_pickup": "Ñiiɓirde ƴettugol moƴƴaani",
+        "wrong_destination": "Jokkere moƴƴaani",
+        "found_another_option": "Mi yiyii suɓo woɗɗo",
+        "problem_with_driver": "Caɗeele e driwer",
+        "problem_with_vehicle": "Caɗeele e oto",
+        "pickup_problem": "Caɗeele ƴettugol",
+        "emergency": "Kattanɗe",
+        "other": "Woɗɗude"
+      }
     },
     "tracking": {
       "safety": {
@@ -425,7 +457,7 @@
         "call": "Noddu",
         "completeRide": "Timmin yahdu",
         "cancelTitle": "Haaltin yahdu",
-        "cancelBody": "Haaltin yahdu taxi oo? Refund (so ina woodi) admin ina ko waɗa.",
+        "cancelBody": "Accu ndee yahdu? Nde rokketee driwer woɗɗo ɓadiiɗo. Haɗtude caggal jaɓde ina waawi memde golle jaɓde maa.",
         "keepRide": "Mooftu yahdu",
         "incorrectCode": "Code moƴƴaaki. Laɓ e jeyaaɓo e ete kadi.",
         "verifyFailed": "Verify code firlitii. Ete kadi.",
@@ -830,7 +862,21 @@
       "maskedCallFailed": "Horiima fuɗɗude noddugol suuɗaango",
       "cancelFailed": "Haɗtude firlitii",
       "genericFailed": "Firlitii",
-      "invalidPickupCode": "Kod ƴettugol moƴƴaaka."
+      "invalidPickupCode": "Kod ƴettugol moƴƴaaka.",
+      "cancelTitle": "Accu ndee yahdu?",
+      "cancelWarn": "Haɗtude caggal jaɓde ina waawi memde golle jaɓde maa. Yahdu nduu rokketee driwer woɗɗo ɓadiiɗo — kelleer njoɓaaka.",
+      "cancelOtherTitle": "Siftin ko waɗi",
+      "cancelOtherPlaceholder": "Winndu sifaa juutɗo",
+      "cancelOtherTooShort": "Naatnu ko famɗi fof 3 alkule.",
+      "cancelReasons": {
+        "vehicle_issue": "Caɗeele oto",
+        "personal_emergency": "Kattanɗe keertiiɗe",
+        "unsafe_pickup": "Ƴettugol hisaani",
+        "customer_unreachable": "Kelleer heɓotaako",
+        "traffic_or_route_blocked": "Trafic / laawol tadanaama",
+        "wrong_trip_details": "Humpito yahdu moƴƴaani",
+        "other": "Woɗɗude"
+      }
     },
     "report": {
       "sessionRequiredTitle": "Session wajibi",

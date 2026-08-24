@@ -162,6 +162,15 @@ test("mmdAudio does not request background audio session", () => {
   assert.match(src, /staysActiveInBackground:\s*false/);
 });
 
+test("app does not declare App Tracking Transparency / IDFA", () => {
+  const appJson = read("apps/mobile/app.json");
+  const appConfig = read("app.config.ts");
+  assert.doesNotMatch(appJson, /NSUserTrackingUsageDescription/);
+  assert.doesNotMatch(appConfig, /NSUserTrackingUsageDescription/);
+  assert.doesNotMatch(appJson, /AppTrackingTransparency/);
+  assert.doesNotMatch(appConfig, /requestTrackingPermissionsAsync/);
+});
+
 test("signup soft-complete without full address", () => {
   assert.equal(
     isClientProfileComplete({

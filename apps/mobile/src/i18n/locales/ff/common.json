@@ -16,6 +16,7 @@
     "success": "Moƴƴi",
     "cancel": "Haɗtu",
     "confirm": "Tabit",
+    "continue": "Jokku",
     "na": "—",
     "yes": "Eey",
     "errorTitle": "Juume",
@@ -187,14 +188,14 @@
         "cancel": "Haɗtu"
       },
       "alerts": {
-        "loginTitle": "Connexion",
-        "loginBody": "Wota, log in ɗoo.",
+        "loginTitle": "Seŋaande",
+        "loginBody": "Wota, seŋo ɗoo.",
         "bikeTitle": "Welo"
       }
     },
     "permission": {
-      "title": "Permission",
-      "camera": "Naatnu permission kamera ngam nattude foto."
+      "title": "Duŋagol",
+      "camera": "Naatnu duŋagol kamera ngam nattude foto."
     }
   },
   "shared": {

@@ -307,7 +307,39 @@
       "dropoffLabel": "التوصيل: {{address}}",
       "driverAssigned": "تم تعيين السائق",
       "lookingForDriver": "جارٍ البحث عن سائق…",
-      "defaultTitle": "رحلة"
+      "defaultTitle": "رحلة",
+      "addStop": "إضافة محطة",
+      "addStopTitle": "إضافة محطة",
+      "addStopBody": "أدخل عنوان المحطة. يُعاد حساب السعر على الخادم.",
+      "addStopConfirmTitle": "تأكيد المحطة",
+      "addStopConfirmBody": "تأكيد إضافة هذه المحطة؟ يُعاد حساب المسار والسعر على الخادم.",
+      "addStopConfirmBodyUp": "إضافة هذه المحطة تزيد الأجرة بمقدار {{amount}} سنتًا (عرض الخادم). تأكيد؟",
+      "changeDest": "تغيير الوجهة",
+      "changeDestTitle": "تغيير الوجهة",
+      "changeDestBody": "أدخل الوجهة الجديدة. يُعاد حساب السعر على الخادم.",
+      "changeDestConfirmTitle": "تأكيد الوجهة الجديدة",
+      "changeDestConfirm": "تطبيق هذه الوجهة؟ سيعيد الخادم حساب المسافة والسعر.",
+      "changeDestConfirmUp": "الأجرة الجديدة أعلى بمقدار {{amount}} سنتًا. قد يلزم دفع إضافي.",
+      "addressPlaceholder": "عنوان الشارع",
+      "cancelReasonTitle": "لماذا تلغي؟",
+      "cancelReasonBody": "اختر سببًا. يساعدنا ذلك على تحسين الخدمة.",
+      "cancelOtherTitle": "صف ما حدث",
+      "cancelOtherBody": "يرجى توضيح سبب الإلغاء (مطلوب).",
+      "cancelOtherPlaceholder": "اكتب شرحًا مختصرًا",
+      "cancelOtherTooShort": "أدخل 3 أحرف على الأقل.",
+      "cancelReasons": {
+        "driver_taking_too_long": "السائق يستغرق وقتًا طويلاً",
+        "driver_too_far": "السائق بعيد جدًا",
+        "changed_mind": "غيّرت رأيي",
+        "wrong_pickup": "موقع الاستلام خاطئ",
+        "wrong_destination": "الوجهة خاطئة",
+        "found_another_option": "وجدت خيارًا آخر",
+        "problem_with_driver": "مشكلة مع السائق",
+        "problem_with_vehicle": "مشكلة في المركبة",
+        "pickup_problem": "مشكلة في الاستلام",
+        "emergency": "حالة طارئة",
+        "other": "أخرى"
+      }
     },
     "tracking": {
       "safety": {
@@ -425,7 +457,7 @@
         "call": "اتصال",
         "completeRide": "إنهاء الرحلة",
         "cancelTitle": "إلغاء الرحلة",
-        "cancelBody": "إلغاء رحلة التاكسي هذه؟ يُعالج الاسترداد (إن وُجد) من قبل الإدارة.",
+        "cancelBody": "تحرير هذه الرحلة؟ سيتم عرضها على سائق قريب آخر. الإلغاء بعد القبول قد يؤثر على نشاط قبولك.",
         "keepRide": "الإبقاء على الرحلة",
         "incorrectCode": "رمز غير صحيح. اطلب من العميل وحاول مرة أخرى.",
         "verifyFailed": "تعذّر التحقق من الرمز. حاول مرة أخرى.",
@@ -779,7 +811,21 @@
       "maskedCallFailed": "تعذّر بدء الاتصال المُقنَّع",
       "cancelFailed": "فشل الإلغاء",
       "genericFailed": "فشل",
-      "invalidPickupCode": "رمز الاستلام غير صالح."
+      "invalidPickupCode": "رمز الاستلام غير صالح.",
+      "cancelTitle": "تحرير هذه الرحلة؟",
+      "cancelWarn": "الإلغاء بعد القبول قد يؤثر على نشاط قبولك. سيتم عرض الرحلة على سائق قريب آخر — لن يُسترد المبلغ للعميل.",
+      "cancelOtherTitle": "صف ما حدث",
+      "cancelOtherPlaceholder": "اكتب شرحًا مختصرًا",
+      "cancelOtherTooShort": "أدخل 3 أحرف على الأقل.",
+      "cancelReasons": {
+        "vehicle_issue": "مشكلة في المركبة",
+        "personal_emergency": "طوارئ شخصية",
+        "unsafe_pickup": "استلام غير آمن",
+        "customer_unreachable": "العميل غير قابل للوصول",
+        "traffic_or_route_blocked": "ازدحام / مسار مسدود",
+        "wrong_trip_details": "تفاصيل الرحلة غير صحيحة",
+        "other": "أخرى"
+      }
     },
     "report": {
       "sessionRequiredTitle": "الجلسة مطلوبة",

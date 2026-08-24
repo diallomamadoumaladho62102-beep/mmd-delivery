@@ -307,7 +307,39 @@
       "dropoffLabel": "Destino: {{address}}",
       "driverAssigned": "Conductor asignado",
       "lookingForDriver": "Buscando un conductor…",
-      "defaultTitle": "Viaje"
+      "defaultTitle": "Viaje",
+      "addStop": "Añadir parada",
+      "addStopTitle": "Añadir parada",
+      "addStopBody": "Introduce la dirección de la parada. El precio se recalcula en el servidor.",
+      "addStopConfirmTitle": "Confirmar parada",
+      "addStopConfirmBody": "¿Confirmar esta parada? La ruta y el precio se recalculan en el servidor.",
+      "addStopConfirmBodyUp": "Esta parada aumenta la tarifa en {{amount}} céntimos (cotización del servidor). ¿Confirmar?",
+      "changeDest": "Cambiar destino",
+      "changeDestTitle": "Cambiar destino",
+      "changeDestBody": "Introduce el nuevo destino. El precio se recalcula en el servidor.",
+      "changeDestConfirmTitle": "Confirmar nuevo destino",
+      "changeDestConfirm": "¿Aplicar este destino? El servidor recalculará distancia y precio.",
+      "changeDestConfirmUp": "La nueva tarifa es {{amount}} céntimos más alta. Puede requerirse un pago adicional.",
+      "addressPlaceholder": "Dirección",
+      "cancelReasonTitle": "¿Por qué cancelas?",
+      "cancelReasonBody": "Selecciona un motivo. Esto nos ayuda a mejorar el servicio.",
+      "cancelOtherTitle": "Describe lo ocurrido",
+      "cancelOtherBody": "Explica por qué cancelas (obligatorio).",
+      "cancelOtherPlaceholder": "Escribe una explicación breve",
+      "cancelOtherTooShort": "Introduce al menos 3 caracteres.",
+      "cancelReasons": {
+        "driver_taking_too_long": "El conductor tarda demasiado",
+        "driver_too_far": "El conductor está demasiado lejos",
+        "changed_mind": "Cambié de opinión",
+        "wrong_pickup": "Punto de recogida incorrecto",
+        "wrong_destination": "Destino incorrecto",
+        "found_another_option": "Encontré otra opción",
+        "problem_with_driver": "Problema con el conductor",
+        "problem_with_vehicle": "Problema con el vehículo",
+        "pickup_problem": "Problema en la recogida",
+        "emergency": "Emergencia",
+        "other": "Otro"
+      }
     },
     "tracking": {
       "safety": {
@@ -425,7 +457,7 @@
         "call": "Llamar",
         "completeRide": "Completar viaje",
         "cancelTitle": "Cancelar viaje",
-        "cancelBody": "¿Cancelar este viaje de taxi? El reembolso (si aplica) lo gestiona el administrador.",
+        "cancelBody": "¿Liberar este viaje? Se ofrecerá a otro conductor cercano. Cancelar después de aceptar puede afectar tu actividad de aceptación.",
         "keepRide": "Mantener viaje",
         "incorrectCode": "Código incorrecto. Pide al cliente e inténtalo de nuevo.",
         "verifyFailed": "No se pudo verificar el código. Inténtalo de nuevo.",
@@ -779,7 +811,21 @@
       "maskedCallFailed": "No se pudo iniciar la llamada anónima",
       "cancelFailed": "No se pudo cancelar",
       "genericFailed": "Fallido",
-      "invalidPickupCode": "Código de recogida no válido."
+      "invalidPickupCode": "Código de recogida no válido.",
+      "cancelTitle": "¿Liberar este viaje?",
+      "cancelWarn": "Cancelar después de aceptar puede afectar tu actividad de aceptación. El viaje se ofrecerá a otro conductor cercano: el cliente no recibe reembolso.",
+      "cancelOtherTitle": "Describe lo ocurrido",
+      "cancelOtherPlaceholder": "Escribe una explicación breve",
+      "cancelOtherTooShort": "Introduce al menos 3 caracteres.",
+      "cancelReasons": {
+        "vehicle_issue": "Problema del vehículo",
+        "personal_emergency": "Emergencia personal",
+        "unsafe_pickup": "Recogida insegura",
+        "customer_unreachable": "Cliente inalcanzable",
+        "traffic_or_route_blocked": "Tráfico / ruta bloqueada",
+        "wrong_trip_details": "Datos del viaje incorrectos",
+        "other": "Otro"
+      }
     },
     "report": {
       "sessionRequiredTitle": "Sesión requerida",

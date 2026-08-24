@@ -470,15 +470,15 @@ export function DriverTaxiPanel({
     const rideId = String(activeRide?.id ?? "");
     if (!rideId || actionLockRef.current) return;
 
-    const reasons: Array<{ code: string; label: string }> = [
-      { code: "vehicle_issue", label: "Vehicle issue" },
-      { code: "personal_emergency", label: "Personal emergency" },
-      { code: "unsafe_pickup", label: "Unsafe pickup" },
-      { code: "customer_unreachable", label: "Customer unreachable" },
-      { code: "traffic_or_route_blocked", label: "Traffic / route blocked" },
-      { code: "wrong_trip_details", label: "Wrong trip details" },
-      { code: "other", label: "Other" },
-    ];
+    const reasonCodes = [
+      "vehicle_issue",
+      "personal_emergency",
+      "unsafe_pickup",
+      "customer_unreachable",
+      "traffic_or_route_blocked",
+      "wrong_trip_details",
+      "other",
+    ] as const;
 
     Alert.alert(
       t("driver.taxiPanel.cancelTitle", "Release this ride?"),
@@ -488,15 +488,15 @@ export function DriverTaxiPanel({
       ),
       [
         { text: t("common.cancel", "Cancel"), style: "cancel" },
-        ...reasons.map((r) => ({
-          text: r.label,
+        ...reasonCodes.map((code) => ({
+          text: t(`driver.taxiPanel.cancelReasons.${code}`),
           style: "destructive" as const,
           onPress: () => {
-            if (r.code === "other") {
+            if (code === "other") {
               setOtherDetailPrompt({ rideId, value: "" });
               return;
             }
-            void submitDriverCancel(rideId, r.code);
+            void submitDriverCancel(rideId, code);
           },
         })),
       ],

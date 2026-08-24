@@ -307,7 +307,39 @@
       "dropoffLabel": "下车：{{address}}",
       "driverAssigned": "已分配司机",
       "lookingForDriver": "正在寻找司机…",
-      "defaultTitle": "行程"
+      "defaultTitle": "行程",
+      "addStop": "添加途经点",
+      "addStopTitle": "添加途经点",
+      "addStopBody": "输入途经点地址。价格将由服务器重新计算。",
+      "addStopConfirmTitle": "确认途经点",
+      "addStopConfirmBody": "确认添加此途经点？路线和价格将由服务器重新计算。",
+      "addStopConfirmBodyUp": "添加此途经点会使车费增加 {{amount}} 美分（服务器报价）。确认？",
+      "changeDest": "更改目的地",
+      "changeDestTitle": "更改目的地",
+      "changeDestBody": "输入新的目的地。价格将由服务器重新计算。",
+      "changeDestConfirmTitle": "确认新目的地",
+      "changeDestConfirm": "应用此目的地？服务器将重新计算距离和价格。",
+      "changeDestConfirmUp": "新车费高出 {{amount}} 美分。可能需要补付。",
+      "addressPlaceholder": "街道地址",
+      "cancelReasonTitle": "您为什么取消？",
+      "cancelReasonBody": "请选择原因。这有助于我们改进服务。",
+      "cancelOtherTitle": "描述发生的情况",
+      "cancelOtherBody": "请说明取消原因（必填）。",
+      "cancelOtherPlaceholder": "写下简短说明",
+      "cancelOtherTooShort": "请至少输入 3 个字符。",
+      "cancelReasons": {
+        "driver_taking_too_long": "司机等待时间过长",
+        "driver_too_far": "司机距离太远",
+        "changed_mind": "我改变主意了",
+        "wrong_pickup": "上车地点错误",
+        "wrong_destination": "目的地错误",
+        "found_another_option": "找到了其他选择",
+        "problem_with_driver": "司机有问题",
+        "problem_with_vehicle": "车辆有问题",
+        "pickup_problem": "上车问题",
+        "emergency": "紧急情况",
+        "other": "其他"
+      }
     },
     "tracking": {
       "safety": {
@@ -425,7 +457,7 @@
         "call": "呼叫",
         "completeRide": "完成行程",
         "cancelTitle": "取消行程",
-        "cancelBody": "取消此出租车行程？退款（如有）由管理员处理。",
+        "cancelBody": "释放此行程？系统将提供给附近的其他司机。接受后再取消可能影响您的接单活跃度。",
         "keepRide": "保留行程",
         "incorrectCode": "验证码错误。请向客户确认后重试。",
         "verifyFailed": "无法验证验证码，请重试。",
@@ -779,7 +811,21 @@
       "maskedCallFailed": "无法发起匿名呼叫",
       "cancelFailed": "取消失败",
       "genericFailed": "失败",
-      "invalidPickupCode": "上车码无效。"
+      "invalidPickupCode": "上车码无效。",
+      "cancelTitle": "释放此行程？",
+      "cancelWarn": "接受后再取消可能影响您的接单活跃度。行程将提供给附近的其他司机——不会向乘客退款。",
+      "cancelOtherTitle": "描述发生的情况",
+      "cancelOtherPlaceholder": "写下简短说明",
+      "cancelOtherTooShort": "请至少输入 3 个字符。",
+      "cancelReasons": {
+        "vehicle_issue": "车辆问题",
+        "personal_emergency": "个人紧急情况",
+        "unsafe_pickup": "上车地点不安全",
+        "customer_unreachable": "无法联系乘客",
+        "traffic_or_route_blocked": "交通 / 路线受阻",
+        "wrong_trip_details": "行程信息不正确",
+        "other": "其他"
+      }
     },
     "report": {
       "sessionRequiredTitle": "需要会话",

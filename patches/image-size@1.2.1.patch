@@ -1,0 +1,60 @@
+diff --git a/dist/types/icns.js b/dist/types/icns.js
+index f2bfafef3723cb423b110304815e56e3f97f81e0..37beff38cdcb06b1e00cf879cd73d09313c3f072 100644
+--- a/dist/types/icns.js
++++ b/dist/types/icns.js
+@@ -82,7 +82,11 @@ exports.ICNS = {
+         let imageOffset = SIZE_HEADER;
+         let imageHeader = readImageHeader(input, imageOffset);
+         let imageSize = getImageSize(imageHeader[0]);
+-        imageOffset += imageHeader[1];
++        const firstEntryLength = imageHeader[1];
++        if (!Number.isFinite(firstEntryLength) || firstEntryLength < 8) {
++            return imageSize;
++        }
++        imageOffset += firstEntryLength;
+         if (imageOffset === fileLength)
+             return imageSize;
+         const result = {
+@@ -93,7 +97,12 @@ exports.ICNS = {
+         while (imageOffset < fileLength && imageOffset < inputLength) {
+             imageHeader = readImageHeader(input, imageOffset);
+             imageSize = getImageSize(imageHeader[0]);
+-            imageOffset += imageHeader[1];
++            const entryLength = imageHeader[1];
++            // CVE-2025-71330: a zero/invalid ICNS entry length never advances offset.
++            if (!Number.isFinite(entryLength) || entryLength < 8) {
++                break;
++            }
++            imageOffset += entryLength;
+             result.images.push(imageSize);
+         }
+         return result;
+diff --git a/dist/types/jxl.js b/dist/types/jxl.js
+index f557b0aea7e679d2cb84d9915e957dd2254eba97..acb665d40dd5fee7372ce70fbdc1df5151af302f 100644
+--- a/dist/types/jxl.js
++++ b/dist/types/jxl.js
+@@ -24,7 +24,9 @@ function extractPartialStreams(input) {
+         if (!jxlpBox)
+             break;
+         partialStreams.push(input.slice(jxlpBox.offset + 12, jxlpBox.offset + jxlpBox.size));
+-        offset = jxlpBox.offset + jxlpBox.size;
++        // CVE-2025-71329: zero-sized jxlp boxes must still advance the cursor.
++        const step = jxlpBox.size > 0 ? jxlpBox.size : 8;
++        offset = jxlpBox.offset + step;
+     }
+     return partialStreams;
+ }
+diff --git a/dist/types/utils.js b/dist/types/utils.js
+index 5224bbafe87551ac415cb3de234820ccc0ff6e2c..918bc2ad389de6a7096919fe7c284177c833bb93 100644
+--- a/dist/types/utils.js
++++ b/dist/types/utils.js
+@@ -67,8 +67,7 @@ function findBox(input, boxName, offset) {
+             break;
+         if (box.name === boxName)
+             return box;
+-        // Fix the infinite loop by ensuring offset always increases
+-        // If box.size is 0, advance by at least 8 bytes (the size of the box header)
++        // CVE-2025-71329: zero-sized boxes (JXL/HEIF) must still advance.
+         offset += box.size > 0 ? box.size : 8;
+     }
+ }
