@@ -116,6 +116,23 @@ html:has(.admin-figma) body {
   color: rgba(255, 255, 255, 0.55) !important;
 }
 
+.admin-figma .text-blue-700,
+.admin-figma .text-blue-600,
+.admin-figma a.text-blue-700,
+.admin-figma a.underline {
+  color: #93c5fd !important;
+}
+
+.admin-figma .text-emerald-700,
+.admin-figma .text-green-700 {
+  color: #86efac !important;
+}
+
+.admin-figma .text-red-700,
+.admin-figma .text-red-600 {
+  color: #fca5a5 !important;
+}
+
 .admin-figma button:disabled,
 .admin-figma [aria-disabled="true"] {
   opacity: 0.55;

@@ -8,6 +8,10 @@ import AdminTaxiCancelRefundPanel from "@/components/AdminTaxiCancelRefundPanel"
 import AdminTaxiForceCompletePanel from "@/components/AdminTaxiForceCompletePanel";
 import { canManageTaxiRides, canManageTaxiPayouts } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
+import {
+  buildTaxiRideAdminFinancialBreakdown,
+  formatTaxiMoney,
+} from "@/lib/taxiPricingPreview";
 
 type TaxiEvent = {
   id: string;
@@ -149,6 +153,86 @@ export default function AdminTaxiRideDetailPage() {
             </div>
           ) : ride ? (
             <>
+              {(() => {
+                const fin = buildTaxiRideAdminFinancialBreakdown(ride);
+                const cur = fin.currency;
+                return (
+                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <h2 className="text-sm font-semibold text-slate-900">
+                      Breakdown financier
+                    </h2>
+                    <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-slate-600">Prix course (fare)</dt>
+                        <dd>{formatTaxiMoney(fin.customer_fare_cents, cur)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-slate-600">Taxes</dt>
+                        <dd>{formatTaxiMoney(fin.tax_cents, cur)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-slate-600">Service fee</dt>
+                        <dd>{formatTaxiMoney(fin.service_fee_cents, cur)}</dd>
+                      </div>
+                      {fin.discount_total_cents > 0 ? (
+                        <div className="flex justify-between gap-3">
+                          <dt className="text-slate-600">Remises</dt>
+                          <dd>-{formatTaxiMoney(fin.discount_total_cents, cur)}</dd>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between gap-3 font-semibold">
+                        <dt>Total client payé</dt>
+                        <dd>{formatTaxiMoney(fin.customer_total_cents, cur)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-slate-600">Part chauffeur</dt>
+                        <dd>{formatTaxiMoney(fin.driver_earnings_cents, cur)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-slate-600">Part MMD (split interne)</dt>
+                        <dd>{formatTaxiMoney(fin.platform_share_cents, cur)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-slate-600">Revenu MMD (share + SF)</dt>
+                        <dd>{formatTaxiMoney(fin.mmd_platform_revenue_cents, cur)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-slate-600">Stripe fee (estimé)</dt>
+                        <dd>{formatTaxiMoney(fin.stripe_fee_estimate_cents, cur)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-slate-600">MMD net (estimé)</dt>
+                        <dd>{formatTaxiMoney(fin.mmd_net_estimate_cents, cur)}</dd>
+                      </div>
+                      {fin.tip_cents > 0 ? (
+                        <div className="flex justify-between gap-3">
+                          <dt className="text-slate-600">Tip</dt>
+                          <dd>
+                            {formatTaxiMoney(fin.tip_cents, cur)}
+                            {fin.tip_paid_out ? " · transféré" : " · en attente"}
+                          </dd>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between gap-3 sm:col-span-2">
+                        <dt className="text-slate-600">Statut paiement</dt>
+                        <dd>{fin.payment_status || "—"}</dd>
+                      </div>
+                      {fin.stripe_payment_intent_id ? (
+                        <div className="flex justify-between gap-3 sm:col-span-2 font-mono text-xs">
+                          <dt className="text-slate-600">PaymentIntent</dt>
+                          <dd>{fin.stripe_payment_intent_id}</dd>
+                        </div>
+                      ) : null}
+                      {fin.settlement_frozen ? (
+                        <div className="sm:col-span-2 text-xs text-emerald-700">
+                          Totaux figés après paiement — recalculate ne réécrit pas cette course.
+                        </div>
+                      ) : null}
+                    </dl>
+                  </section>
+                );
+              })()}
+
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 className="text-sm font-semibold text-slate-900">Résumé</h2>
                 <div className="mt-3 space-y-1 text-sm">

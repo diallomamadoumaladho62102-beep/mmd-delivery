@@ -106,3 +106,48 @@ export function formatTaxiMoney(cents: number, currency: string): string {
   const amount = (Math.round(Number(cents) || 0) / 100).toFixed(2);
   return `${currency} ${amount}`;
 }
+
+/** Admin taxi ride detail — uses persisted ride snapshot (no recalculation). */
+export function buildTaxiRideAdminFinancialBreakdown(
+  ride: Record<string, unknown>,
+) {
+  const currency = String(ride.currency ?? "USD").toUpperCase();
+  const subtotal = Math.max(0, Math.round(Number(ride.subtotal_cents ?? 0)));
+  const tax = Math.max(0, Math.round(Number(ride.tax_cents ?? 0)));
+  const serviceFee = Math.max(0, Math.round(Number(ride.service_fee_cents ?? 0)));
+  const totalPaid = Math.max(0, Math.round(Number(ride.total_cents ?? 0)));
+  const driver = Math.max(0, Math.round(Number(ride.driver_payout_cents ?? 0)));
+  const platformShare = Math.max(
+    0,
+    Math.round(Number(ride.platform_fee_cents ?? 0)),
+  );
+  const tip = Math.max(0, Math.round(Number(ride.tip_cents ?? 0)));
+  const discountTotal =
+    Math.max(0, Math.round(Number(ride.discount_cents ?? 0))) +
+    Math.max(0, Math.round(Number(ride.loyalty_discount_cents ?? 0))) +
+    Math.max(0, Math.round(Number(ride.shared_discount_cents ?? 0))) +
+    Math.max(0, Math.round(Number(ride.mmd_plus_discount_cents ?? 0))) +
+    Math.max(0, Math.round(Number(ride.marketing_discount_cents ?? 0)));
+  const mmdRevenue = platformShare + serviceFee;
+  const stripeFeeEst = estimateStripeUsCardFeeCents(totalPaid);
+
+  return {
+    currency,
+    customer_fare_cents: subtotal,
+    tax_cents: tax,
+    service_fee_cents: serviceFee,
+    discount_total_cents: discountTotal,
+    customer_total_cents: totalPaid,
+    driver_earnings_cents: driver,
+    platform_share_cents: platformShare,
+    mmd_platform_revenue_cents: mmdRevenue,
+    tip_cents: tip,
+    tip_paid_out: ride.tip_paid_out === true,
+    stripe_fee_estimate_cents: stripeFeeEst,
+    stripe_fee_is_estimate: true as const,
+    mmd_net_estimate_cents: mmdRevenue - stripeFeeEst,
+    payment_status: String(ride.payment_status ?? ""),
+    stripe_payment_intent_id: String(ride.stripe_payment_intent_id ?? "").trim() || null,
+    settlement_frozen: String(ride.payment_status ?? "").toLowerCase() === "paid",
+  };
+}

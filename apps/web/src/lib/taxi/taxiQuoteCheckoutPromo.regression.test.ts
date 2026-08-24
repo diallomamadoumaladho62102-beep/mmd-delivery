@@ -281,6 +281,18 @@ test("recalculate freezes paid rides; fare-only split", () => {
   assert.match(mig, /marketing_discount_cents/);
 });
 
+test("recalculate has no hardcoded 75% driver share fallback", () => {
+  const mig = fs.readFileSync(
+    path.join(
+      repoRoot,
+      "supabase/migrations/20261125120000_taxi_recalculate_no_hardcoded_share.sql",
+    ),
+    "utf8",
+  );
+  assert.doesNotMatch(mig, /v_driver_share numeric := 75/);
+  assert.match(mig, /driver_share_unresolved/);
+});
+
 test("legacy create path uses same splitTaxiNetCommissionCents SoT", () => {
   const src = fs.readFileSync(
     path.join(webRoot, "app/api/taxi/rides/create/route.ts"),

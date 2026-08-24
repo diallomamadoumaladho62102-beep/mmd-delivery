@@ -639,6 +639,19 @@ export default function TaxiQuoteScreen() {
             active={sharedRide}
             onPress={() => setSharedRide((v) => !v)}
           />
+          <Text
+            style={{
+              color: "#94A3B8",
+              fontSize: 12,
+              lineHeight: 17,
+              textAlign: textAlignStart(),
+            }}
+          >
+            {t(
+              "taxi.quote.sharedRideHint",
+              "Optional discount when another passenger shares a similar route. No passenger is matched yet — if no match is found before pickup, you keep the discounted solo fare."
+            )}
+          </Text>
           <OptionToggle
             label={t("taxi.quote.premiumDriver", "Premium driver only")}
             active={premiumDriverOnly}
