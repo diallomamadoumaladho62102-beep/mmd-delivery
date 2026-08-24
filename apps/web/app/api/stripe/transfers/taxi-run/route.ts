@@ -59,6 +59,8 @@ export async function POST(req: NextRequest) {
           error: result.error,
           taxi_ride_id: rideId,
           engine: result.engine,
+          stripe_code: detail.stripe_code ?? null,
+          source_charge_id: detail.source_charge_id ?? null,
           ...detail,
         },
         Number(detail.httpStatus ?? 400) || 400,

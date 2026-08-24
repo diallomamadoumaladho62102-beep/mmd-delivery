@@ -157,7 +157,7 @@ export async function computeDriverAvailableCents(
     .eq("taxi_rides.status", "completed")
     .eq("taxi_rides.payment_status", "paid")
     .is("driver_transfer_id", null)
-    // Historical write-off ≠ awaiting Transfer (keeps driver_transfer_id null).
+    // Historical write-off (legacy_closed) ≠ awaiting Transfer (keeps driver_transfer_id null).
     .is("sct_closure_status", null);
 
   if (taxiErr) throw new Error(taxiErr.message);

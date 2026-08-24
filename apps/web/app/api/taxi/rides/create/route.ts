@@ -39,6 +39,7 @@ import {
   normalizeTaxiTripMode,
 } from "@/lib/taxiTripMode";
 import { buildTaxiFareComponentsDoc } from "@/lib/taxi/taxiFareComponents";
+import { splitTaxiNetCommissionCents } from "@/lib/taxi/taxiQuoteCheckoutDiscounts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -409,6 +410,26 @@ export async function POST(req: NextRequest) {
       shared_ride: sharedRide,
     });
     const netTotalCents = pricedSnapshot.total_cents;
+    const sharedDiscountCents = Math.max(
+      0,
+      Math.round(Number(pricedSnapshot.shared_discount_cents ?? 0)),
+    );
+    const initialDiscountCents = mmdPlusDiscountCents + sharedDiscountCents;
+    const commission = splitTaxiNetCommissionCents({
+      customerNetTotalCents: netTotalCents,
+      quoteDriverPayoutCents: Math.round(
+        Number(quoteWithServiceFee.driver_payout_cents ?? 0),
+      ),
+      quotePlatformFeeCents: Math.round(
+        Number(quoteWithServiceFee.platform_fee_cents ?? 0),
+      ),
+      subtotalCents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
+      serviceFeeCents: Math.round(
+        Number(quoteWithServiceFee.service_fee_cents ?? 0),
+      ),
+      taxCents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
+      discountCents: initialDiscountCents,
+    });
 
     let pricingRow: Record<string, unknown> | null = null;
     const pricingId = String(quoteWithServiceFee.pricing_id ?? "").trim();
@@ -532,8 +553,8 @@ export async function POST(req: NextRequest) {
         pricing_snapshot_id: quoteWithServiceFee.pricing_id ?? null,
         subtotal_cents: quoteWithServiceFee.subtotal_cents ?? 0,
         tax_cents: quoteWithServiceFee.tax_cents ?? 0,
-        platform_fee_cents: quoteWithServiceFee.platform_fee_cents ?? 0,
-        driver_payout_cents: quoteWithServiceFee.driver_payout_cents ?? 0,
+        platform_fee_cents: commission.platform_fee_cents,
+        driver_payout_cents: commission.driver_payout_cents,
         service_fee_cents: quoteWithServiceFee.service_fee_cents ?? 0,
         service_fee_pct: quoteWithServiceFee.service_fee_pct ?? 0,
         service_fee_enabled: quoteWithServiceFee.service_fee_enabled === true,
@@ -542,6 +563,7 @@ export async function POST(req: NextRequest) {
         gross_total_cents:
           quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0,
         mmd_plus_discount_cents: mmdPlusDiscountCents,
+        shared_discount_cents: sharedDiscountCents,
         passenger_count: passengerCount,
         client_notes: clientNotes || null,
         payment_status: "unpaid",
@@ -654,23 +676,43 @@ export async function POST(req: NextRequest) {
         );
       }
       if (marketingAttach.marketing_discount_cents > 0) {
-        const nextTotal = Math.max(
+        const marketingDiscount = Math.max(
           0,
-          Number(netTotalCents) - marketingAttach.marketing_discount_cents
+          Math.round(Number(marketingAttach.marketing_discount_cents ?? 0)),
         );
+        const nextTotal = Math.max(0, Number(netTotalCents) - marketingDiscount);
+        const nextCommission = splitTaxiNetCommissionCents({
+          customerNetTotalCents: nextTotal,
+          quoteDriverPayoutCents: Math.round(
+            Number(quoteWithServiceFee.driver_payout_cents ?? 0),
+          ),
+          quotePlatformFeeCents: Math.round(
+            Number(quoteWithServiceFee.platform_fee_cents ?? 0),
+          ),
+          subtotalCents: Math.round(
+            Number(quoteWithServiceFee.subtotal_cents ?? 0),
+          ),
+          serviceFeeCents: Math.round(
+            Number(quoteWithServiceFee.service_fee_cents ?? 0),
+          ),
+          taxCents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
+          discountCents: initialDiscountCents + marketingDiscount,
+        });
         await auth.supabaseAdmin
           .from("taxi_rides")
           .update({
             total_cents: nextTotal,
-            marketing_discount_cents: marketingAttach.marketing_discount_cents,
+            marketing_discount_cents: marketingDiscount,
             marketing_reservation_id: marketingAttach.marketing_reservation_id,
             marketing_campaign_ids: marketingAttach.marketing_campaign_ids,
+            driver_payout_cents: nextCommission.driver_payout_cents,
+            platform_fee_cents: nextCommission.platform_fee_cents,
           })
           .eq("id", ride.id);
         promotionResult = {
           ok: true,
           source: "marketing",
-          discount_cents: marketingAttach.marketing_discount_cents,
+          discount_cents: marketingDiscount,
           reservation_id: marketingAttach.marketing_reservation_id,
         };
       }

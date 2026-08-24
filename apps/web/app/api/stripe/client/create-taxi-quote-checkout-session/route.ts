@@ -446,14 +446,28 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: "invalid_quote_total" }, 400);
     }
 
+    const discountTotalCents =
+      Math.max(0, Math.round(Number(mmdPlusDiscountCents ?? 0))) +
+      Math.max(0, Math.round(Number(discounts.promo_discount_cents ?? 0))) +
+      Math.max(0, Math.round(Number(discounts.marketing_discount_cents ?? 0))) +
+      Math.max(0, Math.round(Number(pricedSnapshot.shared_discount_cents ?? 0)));
+
     const commission = splitTaxiNetCommissionCents({
-      netTotalCents,
-      driverPayoutCents: Math.round(
+      customerNetTotalCents: netTotalCents,
+      quoteDriverPayoutCents: Math.round(
         Number(quoteWithServiceFee.driver_payout_cents ?? 0),
       ),
-      platformFeeCents: Math.round(
+      quotePlatformFeeCents: Math.round(
         Number(quoteWithServiceFee.platform_fee_cents ?? 0),
       ),
+      subtotalCents: Math.round(
+        Number(quoteWithServiceFee.subtotal_cents ?? 0),
+      ),
+      serviceFeeCents: Math.round(
+        Number(quoteWithServiceFee.service_fee_cents ?? 0),
+      ),
+      taxCents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
+      discountCents: discountTotalCents,
     });
 
     if (

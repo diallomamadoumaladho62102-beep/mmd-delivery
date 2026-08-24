@@ -33,26 +33,65 @@ function toPositiveInt(value: unknown): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-/** Split net fare into driver/platform using the pre-discount ratio. */
+/**
+ * Align checkout commission with quote_taxi_ride SoT (single money truth):
+ * - Driver share = (subtotal - discounts) × (quoteDriver / subtotal)
+ *   same ratio quote_taxi_ride used on the pre-discount subtotal
+ * - Tax is customer pass-through (never driver revenue)
+ * - Service fee is 100% MMD (lands in platform_fee remainder)
+ * - Discounts reduce fare only (not tax / service fee)
+ *
+ * Cash identity: driver_payout + platform_fee + tax_cents = customerNetTotal
+ * (platform absorbs rounding / share-gap / service fee).
+ */
 export function splitTaxiNetCommissionCents(params: {
-  netTotalCents: number;
-  driverPayoutCents: number;
-  platformFeeCents: number;
+  /** What the customer pays after all discounts (Stripe amount). */
+  customerNetTotalCents: number;
+  /** Quote SoT driver share of subtotal (before discounts). */
+  quoteDriverPayoutCents: number;
+  /** Quote SoT platform share of subtotal (before discounts / service fee). */
+  quotePlatformFeeCents: number;
+  /** Quote subtotal (fare) before discounts — same base as quote_taxi_ride. */
+  subtotalCents: number;
+  /** Client service fee cents (100% MMD). */
+  serviceFeeCents?: number;
+  /** Tax cents charged to customer (not driver revenue). */
+  taxCents?: number;
+  /** Total discounts reducing the customer total. */
+  discountCents?: number;
 }): { driver_payout_cents: number; platform_fee_cents: number } {
-  const net = Math.max(0, Math.round(Number(params.netTotalCents ?? 0)));
-  const driverGross = Math.max(0, Math.round(Number(params.driverPayoutCents ?? 0)));
-  const platformGross = Math.max(0, Math.round(Number(params.platformFeeCents ?? 0)));
-  const parts = driverGross + platformGross;
-  if (net <= 0) {
+  const customerNet = Math.max(
+    0,
+    Math.round(Number(params.customerNetTotalCents ?? 0)),
+  );
+  const quoteDriver = Math.max(
+    0,
+    Math.round(Number(params.quoteDriverPayoutCents ?? 0)),
+  );
+  const subtotal = Math.max(0, Math.round(Number(params.subtotalCents ?? 0)));
+  const tax = Math.max(0, Math.round(Number(params.taxCents ?? 0)));
+  const discounts = Math.max(0, Math.round(Number(params.discountCents ?? 0)));
+
+  if (customerNet <= 0) {
     return { driver_payout_cents: 0, platform_fee_cents: 0 };
   }
-  if (parts <= 0) {
-    return { driver_payout_cents: net, platform_fee_cents: 0 };
+
+  const fareNet = Math.max(0, subtotal - discounts);
+
+  let driver = 0;
+  if (subtotal > 0 && fareNet > 0 && quoteDriver > 0) {
+    // Preserve quote_taxi_ride's rounded driver/subtotal ratio after discounts.
+    driver = Math.max(0, Math.round((fareNet * quoteDriver) / subtotal));
   }
-  const driver = Math.max(0, Math.round((net * driverGross) / parts));
+
+  // Driver never exceeds (customerNet - tax). Remainder (incl. service fee) → MMD.
+  const maxDriver = Math.max(0, customerNet - tax);
+  driver = Math.min(driver, maxDriver);
+  const platform = Math.max(0, customerNet - tax - driver);
+
   return {
     driver_payout_cents: driver,
-    platform_fee_cents: Math.max(0, net - driver),
+    platform_fee_cents: platform,
   };
 }
 
