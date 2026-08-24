@@ -79,12 +79,14 @@ test("anti-double rating: taxi unique + driver_ratings taxi_ride unique index", 
   assert.match(ratingRoute, /23505/);
 });
 
-test("ownership: rating API requires client owns ride + completed", () => {
-  assert.match(ratingRoute, /assertClientOwnsTaxiRide/);
+test("ownership: rating API enforces bidirectional party + completed", () => {
+  assert.match(ratingRoute, /only_client_rates_driver/);
+  assert.match(ratingRoute, /only_driver_rates_client/);
+  assert.match(ratingRoute, /cannot_rate_self/);
   assert.match(ratingRoute, /ride_not_completed/);
   assert.match(ratingRoute, /rating_must_be_1_to_5/);
   assert.match(ratingRoute, /driver_id/);
-  assert.match(ratingRoute, /rater_id: auth\.user\.id/);
+  assert.match(ratingRoute, /rater_id: uid/);
 });
 
 test("legacy Driver Menu still reads summary then driver_ratings fallback", () => {

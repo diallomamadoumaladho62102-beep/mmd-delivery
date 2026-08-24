@@ -25,7 +25,9 @@ test("rating route enforces completed ride and 1-5 stars", () => {
   assert.match(src, /rating_must_be_1_to_5/);
   assert.match(src, /ride_not_completed/);
   assert.match(src, /taxi_ride_ratings/);
-  assert.match(src, /assertClientOwnsTaxiRide/);
+  assert.match(src, /only_client_rates_driver/);
+  assert.match(src, /only_driver_rates_client/);
+  assert.match(src, /cannot_rate_self/);
   assert.match(src, /rating_already_exists/);
 });
 

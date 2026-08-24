@@ -72,6 +72,17 @@ test("migration replaces driver cancel with release+reassign", () => {
   assert.match(mig, /ratee_role/);
 });
 
+test("ratee_role guard keeps driver→client out of driver summary", () => {
+  const mig = read(
+    "../../supabase/migrations/20261125160000_taxi_rating_ratee_role_guard.sql",
+  );
+  assert.match(mig, /coalesce\(tr\.ratee_role, 'driver'\) = 'driver'/);
+  assert.match(mig, /coalesce\(new\.ratee_role, 'driver'\) <> 'driver'/);
+  const route = read("app/api/taxi/rides/[id]/rating/route.ts");
+  assert.match(route, /driver_rating_summary/);
+  assert.match(route, /only_client_rates_driver/);
+});
+
 test("policy: after accept 30%, after start 50/100 driver", () => {
   assert.equal(
     resolveTaxiClientCancelPhase({ status: "accepted", driverId: "x" }),

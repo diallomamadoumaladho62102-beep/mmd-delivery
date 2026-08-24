@@ -185,11 +185,26 @@ export async function POST(
       return taxiJson({ ok: false, error: insErr.message }, 500);
     }
 
+    let driverRatingSummary: {
+      driver_id: string;
+      rating: number;
+      rating_count: number;
+    } | null = null;
+    if (rateeRole === "driver") {
+      const { data: summary } = await auth.supabaseAdmin
+        .from("driver_rating_summary")
+        .select("driver_id, rating, rating_count")
+        .eq("driver_id", driverId)
+        .maybeSingle();
+      driverRatingSummary = summary ?? null;
+    }
+
     // Do not return free_text to third parties; rater already knows it.
     return taxiJson({
       ok: true,
       created: true,
       rating: inserted,
+      driver_rating_summary: driverRatingSummary,
     });
   } catch (e: unknown) {
     return taxiJson(
