@@ -252,7 +252,6 @@ export default function TaxiQuoteScreen() {
     grossTotalCents - promoDiscountCents - rewardDiscountCents - sharedDiscountCents
   );
   const total = fmt(netTotalCents);
-  const platform = fmt(quoteState?.platform_fee_cents);
   const serviceFee = fmt(quoteState?.service_fee_cents);
   const subtotal = fmt(quoteState?.subtotal_cents);
   const taxCents = Number(quoteState?.tax_cents ?? 0);
@@ -613,7 +612,6 @@ export default function TaxiQuoteScreen() {
             label={t("taxi.quote.serviceFee", "Service fee")}
             value={serviceFee}
           />
-          <Row label={getTaxiUiString("platformFee", countryCode)} value={platform} />
           {promoDiscountCents > 0 ? (
             <Row
               label={t("taxi.quote.promoDiscount", "Promo discount")}

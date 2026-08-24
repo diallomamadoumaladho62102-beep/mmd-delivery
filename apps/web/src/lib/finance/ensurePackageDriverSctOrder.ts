@@ -69,6 +69,17 @@ export async function ensurePackageDriverSctOrder(
     };
   }
 
+  // Package order rows inherit paid only from a delivery_request already settled
+  // with a Stripe reference (webhook / confirm-delivery-request-paid SoT).
+  if (!delivery.paid_at) {
+    return {
+      ok: false,
+      error: "payment_not_settled",
+      fundable: false,
+      deliveryRequestId: id,
+    };
+  }
+
   const clientId = String(
     delivery.client_user_id ?? delivery.created_by ?? "",
   ).trim();
@@ -130,7 +141,9 @@ export async function ensurePackageDriverSctOrder(
     }
     if (String(existingOrder.payment_status ?? "").toLowerCase() !== "paid") {
       patch.payment_status = "paid";
-      patch.paid_at = delivery.paid_at ?? nowIso;
+      patch.paid_at = delivery.paid_at;
+      if (stripePi) patch.stripe_payment_intent_id = stripePi;
+      if (stripeSession) patch.stripe_session_id = stripeSession;
     }
 
     let updated = false;

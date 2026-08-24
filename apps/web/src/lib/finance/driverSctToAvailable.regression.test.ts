@@ -68,6 +68,7 @@ test("Package completed → earning → SCT → Available (orphan bridge)", () =
 
   assert.match(ensure, /ensurePackageDriverSctOrder/);
   assert.match(ensure, /unfunded_no_stripe_source/);
+  assert.match(ensure, /payment_not_settled/);
   assert.match(ensure, /stripe_payment_intent_id/);
   assert.match(deliveredPkg, /ensurePackageDriverSctOrder/);
   // Wallet must not keep counting orphans after linked order exists
