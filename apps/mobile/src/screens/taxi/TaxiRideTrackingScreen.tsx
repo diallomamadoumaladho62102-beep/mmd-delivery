@@ -141,7 +141,7 @@ export default function TaxiRideTrackingScreen() {
   const [startingCheckout, setStartingCheckout] = useState(false);
   const [calling, setCalling] = useState(false);
   const [addressPrompt, setAddressPrompt] = useState<null | {
-    mode: "add_stop" | "change_destination";
+    mode: "add_stop" | "change_destination" | "cancel_other";
     value: string;
   }>(null);
   const mountedRef = useRef(true);
@@ -543,17 +543,15 @@ export default function TaxiRideTrackingScreen() {
             ...CLIENT_CANCEL_REASONS.map((r) => ({
               text: r.label,
               onPress: () => {
+                if (r.code === "other") {
+                  setAddressPrompt({ mode: "cancel_other", value: "" });
+                  return;
+                }
                 void (async () => {
                   setCancelling(true);
                   try {
-                    let detail = "";
-                    if (r.code === "other") {
-                      // Prompt is limited on Alert; send a short default if empty.
-                      detail = "other";
-                    }
                     await cancelTaxiRide(rideId, {
                       reason_code: r.code,
-                      reason_detail: detail || undefined,
                     });
                     await load();
                   } catch (e: unknown) {
@@ -1159,7 +1157,9 @@ export default function TaxiRideTrackingScreen() {
             <Text style={styles.addressModalTitle}>
               {addressPrompt?.mode === "change_destination"
                 ? t("taxi.ride.changeDestTitle", "Change destination")
-                : t("taxi.ride.addStopTitle", "Add stop")}
+                : addressPrompt?.mode === "cancel_other"
+                  ? t("taxi.ride.cancelOtherTitle", "Describe what happened")
+                  : t("taxi.ride.addStopTitle", "Add stop")}
             </Text>
             <Text style={styles.addressModalBody}>
               {addressPrompt?.mode === "change_destination"
@@ -1167,10 +1167,15 @@ export default function TaxiRideTrackingScreen() {
                     "taxi.ride.changeDestBody",
                     "Enter the new destination. Price is recalculated on the server.",
                   )
-                : t(
-                    "taxi.ride.addStopBody",
-                    "Enter the stop address. Price will be recalculated on the server.",
-                  )}
+                : addressPrompt?.mode === "cancel_other"
+                  ? t(
+                      "taxi.ride.cancelOtherBody",
+                      "Please explain why you are cancelling (required).",
+                    )
+                  : t(
+                      "taxi.ride.addStopBody",
+                      "Enter the stop address. Price will be recalculated on the server.",
+                    )}
             </Text>
             <TextInput
               value={addressPrompt?.value ?? ""}
@@ -1179,17 +1184,52 @@ export default function TaxiRideTrackingScreen() {
                   prev ? { ...prev, value } : prev,
                 )
               }
-              placeholder={t("taxi.ride.addressPlaceholder", "Street address")}
+              placeholder={
+                addressPrompt?.mode === "cancel_other"
+                  ? t("taxi.ride.cancelOtherPlaceholder", "Write a short explanation")
+                  : t("taxi.ride.addressPlaceholder", "Street address")
+              }
               placeholderTextColor="rgba(255,255,255,0.35)"
               autoFocus
               style={styles.addressModalInput}
               returnKeyType="done"
               onSubmitEditing={() => {
                 const mode = addressPrompt?.mode;
-                const value = String(addressPrompt?.value ?? "");
+                const value = String(addressPrompt?.value ?? "").trim();
                 setAddressPrompt(null);
                 if (mode === "change_destination") void runChangeDest(value);
-                else void runAddStop(value);
+                else if (mode === "add_stop") void runAddStop(value);
+                else if (mode === "cancel_other") {
+                  if (value.length < 3) {
+                    Alert.alert(
+                      t("taxi.ride.cancelOtherTitle", "Describe what happened"),
+                      t(
+                        "taxi.ride.cancelOtherTooShort",
+                        "Please enter at least 3 characters.",
+                      ),
+                    );
+                    return;
+                  }
+                  void (async () => {
+                    setCancelling(true);
+                    try {
+                      await cancelTaxiRide(rideId, {
+                        reason_code: "other",
+                        reason_detail: value,
+                      });
+                      await load();
+                    } catch (e: unknown) {
+                      Alert.alert(
+                        t("taxi.ride.cancelTitle", "Cancel ride"),
+                        e instanceof Error
+                          ? e.message
+                          : t("taxi.ride.cancelFailed", "Unable to cancel"),
+                      );
+                    } finally {
+                      setCancelling(false);
+                    }
+                  })();
+                }
               }}
             />
             <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
@@ -1205,10 +1245,41 @@ export default function TaxiRideTrackingScreen() {
                 style={[styles.paymentBtn, { flex: 1 }]}
                 onPress={() => {
                   const mode = addressPrompt?.mode;
-                  const value = String(addressPrompt?.value ?? "");
+                  const value = String(addressPrompt?.value ?? "").trim();
                   setAddressPrompt(null);
                   if (mode === "change_destination") void runChangeDest(value);
-                  else void runAddStop(value);
+                  else if (mode === "add_stop") void runAddStop(value);
+                  else if (mode === "cancel_other") {
+                    if (value.length < 3) {
+                      Alert.alert(
+                        t("taxi.ride.cancelOtherTitle", "Describe what happened"),
+                        t(
+                          "taxi.ride.cancelOtherTooShort",
+                          "Please enter at least 3 characters.",
+                        ),
+                      );
+                      return;
+                    }
+                    void (async () => {
+                      setCancelling(true);
+                      try {
+                        await cancelTaxiRide(rideId, {
+                          reason_code: "other",
+                          reason_detail: value,
+                        });
+                        await load();
+                      } catch (e: unknown) {
+                        Alert.alert(
+                          t("taxi.ride.cancelTitle", "Cancel ride"),
+                          e instanceof Error
+                            ? e.message
+                            : t("taxi.ride.cancelFailed", "Unable to cancel"),
+                        );
+                      } finally {
+                        setCancelling(false);
+                      }
+                    })();
+                  }
                 }}
               >
                 <Text style={styles.paymentBtnLabel}>

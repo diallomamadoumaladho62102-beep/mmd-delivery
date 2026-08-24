@@ -9,6 +9,9 @@ import {
   Alert,
   StyleSheet,
   Platform,
+  Modal,
+  TextInput,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { resolveDriverTabBottomPadding } from "../../lib/driverScreenSafeArea";
@@ -126,6 +129,10 @@ export function DriverTaxiPanel({
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [otherDetailPrompt, setOtherDetailPrompt] = useState<{
+    rideId: string;
+    value: string;
+  } | null>(null);
   const actionLockRef = useRef(false);
   const ringingOfferIdsRef = useRef<Set<string>>(new Set());
   /** Avoid wiping Home SoT with initial null before first successful fetch. */
@@ -431,6 +438,34 @@ export function DriverTaxiPanel({
     }
   }
 
+  async function submitDriverCancel(
+    rideId: string,
+    reasonCode: string,
+    reasonDetail?: string,
+  ) {
+    if (!rideId || actionLockRef.current) return;
+    actionLockRef.current = true;
+    setActionId(rideId);
+    try {
+      await cancelTaxiRideByDriver(rideId, {
+        reason_code: reasonCode,
+        reason_detail: reasonDetail,
+      });
+      await refresh();
+    } catch (e: unknown) {
+      Alert.alert(
+        t("driver.taxiPanel.title", "Taxi"),
+        toUserFacingError(
+          e,
+          t("driver.taxiPanel.cancelFailed", "Cancel failed"),
+        ),
+      );
+    } finally {
+      actionLockRef.current = false;
+      setActionId(null);
+    }
+  }
+
   async function handleDriverCancel() {
     const rideId = String(activeRide?.id ?? "");
     if (!rideId || actionLockRef.current) return;
@@ -456,28 +491,11 @@ export function DriverTaxiPanel({
           text: r.label,
           style: "destructive" as const,
           onPress: () => {
-            void (async () => {
-              actionLockRef.current = true;
-              setActionId(rideId);
-              try {
-                await cancelTaxiRideByDriver(rideId, {
-                  reason_code: r.code,
-                  reason_detail: r.code === "other" ? "other" : undefined,
-                });
-                await refresh();
-              } catch (e: unknown) {
-                Alert.alert(
-                  t("driver.taxiPanel.title", "Taxi"),
-                  toUserFacingError(
-                    e,
-                    t("driver.taxiPanel.cancelFailed", "Cancel failed"),
-                  ),
-                );
-              } finally {
-                actionLockRef.current = false;
-                setActionId(null);
-              }
-            })();
+            if (r.code === "other") {
+              setOtherDetailPrompt({ rideId, value: "" });
+              return;
+            }
+            void submitDriverCancel(rideId, r.code);
           },
         })),
       ],
@@ -582,6 +600,74 @@ export function DriverTaxiPanel({
           }
           onNoShowCanceled={() => void refresh()}
         />
+        <Modal
+          transparent
+          visible={otherDetailPrompt != null}
+          animationType="fade"
+          onRequestClose={() => setOtherDetailPrompt(null)}
+        >
+          <Pressable
+            style={styles.otherBackdrop}
+            onPress={() => setOtherDetailPrompt(null)}
+          >
+            <View style={styles.otherCard}>
+              <Text style={styles.otherTitle}>
+                {t("driver.taxiPanel.cancelOtherTitle", "Describe what happened")}
+              </Text>
+              <TextInput
+                value={otherDetailPrompt?.value ?? ""}
+                onChangeText={(value) =>
+                  setOtherDetailPrompt((prev) =>
+                    prev ? { ...prev, value } : prev,
+                  )
+                }
+                placeholder={t(
+                  "driver.taxiPanel.cancelOtherPlaceholder",
+                  "Write a short explanation",
+                )}
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                autoFocus
+                style={styles.otherInput}
+              />
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                <TouchableOpacity
+                  style={[styles.otherBtn, { backgroundColor: "#334155" }]}
+                  onPress={() => setOtherDetailPrompt(null)}
+                >
+                  <Text style={styles.otherBtnLabel}>
+                    {t("common.cancel", "Cancel")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.otherBtn, { backgroundColor: "#DC2626" }]}
+                  onPress={() => {
+                    const ride = String(otherDetailPrompt?.rideId ?? "");
+                    const detail = String(otherDetailPrompt?.value ?? "").trim();
+                    setOtherDetailPrompt(null);
+                    if (detail.length < 3) {
+                      Alert.alert(
+                        t(
+                          "driver.taxiPanel.cancelOtherTitle",
+                          "Describe what happened",
+                        ),
+                        t(
+                          "driver.taxiPanel.cancelOtherTooShort",
+                          "Please enter at least 3 characters.",
+                        ),
+                      );
+                      return;
+                    }
+                    void submitDriverCancel(ride, "other", detail);
+                  }}
+                >
+                  <Text style={styles.otherBtnLabel}>
+                    {t("common.confirm", "Confirm")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
       </View>
     );
   }
@@ -804,4 +890,35 @@ const styles = StyleSheet.create({
   },
   prefsTitle: { color: "#E2E8F0", fontWeight: "800", marginBottom: 2 },
   prefLine: { color: "#CBD5E1", fontSize: 12 },
+  otherBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(2,6,23,0.72)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  otherCard: {
+    backgroundColor: "#0F172A",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.35)",
+  },
+  otherTitle: { color: "#F8FAFC", fontWeight: "800", fontSize: 16 },
+  otherInput: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.45)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: "#F8FAFC",
+    fontSize: 15,
+  },
+  otherBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  otherBtnLabel: { color: "#F8FAFC", fontWeight: "800" },
 });
