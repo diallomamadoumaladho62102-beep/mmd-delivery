@@ -40,6 +40,7 @@ import {
 } from "@/lib/taxiTripMode";
 import { buildTaxiFareComponentsDoc } from "@/lib/taxi/taxiFareComponents";
 import { splitTaxiNetCommissionCents } from "@/lib/taxi/taxiQuoteCheckoutDiscounts";
+import { usesLocalMobileMoney } from "@/lib/paymentProviderRouting";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -254,6 +255,19 @@ export async function POST(req: NextRequest) {
     }
 
     const countryCode = countryResult.resolution.countryCode;
+
+    // Stripe markets: pay-then-create via taxi_checkout_intents (same as food).
+    if (!usesLocalMobileMoney(countryCode)) {
+      return taxiJson(
+        {
+          ok: false,
+          error: "use_quote_checkout",
+          message:
+            "Stripe taxi rides must be paid before creation. Use /api/stripe/client/create-taxi-quote-checkout-session.",
+        },
+        400,
+      );
+    }
 
     await validateRouteClaimsServer({
       pickup: {

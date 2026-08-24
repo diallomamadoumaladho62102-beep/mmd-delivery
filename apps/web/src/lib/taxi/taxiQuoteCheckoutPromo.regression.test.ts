@@ -301,6 +301,8 @@ test("legacy create path uses same splitTaxiNetCommissionCents SoT", () => {
   assert.match(src, /splitTaxiNetCommissionCents/);
   assert.match(src, /discountCents: initialDiscountCents/);
   assert.match(src, /driver_payout_cents: nextCommission\.driver_payout_cents/);
+  assert.match(src, /usesLocalMobileMoney/);
+  assert.match(src, /use_quote_checkout/);
 });
 
 test("Connect credit from driver_payout; transfer idempotent", () => {
