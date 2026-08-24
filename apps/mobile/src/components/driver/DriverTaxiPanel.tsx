@@ -476,6 +476,7 @@ export function DriverTaxiPanel({
       { code: "unsafe_pickup", label: "Unsafe pickup" },
       { code: "customer_unreachable", label: "Customer unreachable" },
       { code: "traffic_or_route_blocked", label: "Traffic / route blocked" },
+      { code: "wrong_trip_details", label: "Wrong trip details" },
       { code: "other", label: "Other" },
     ];
 
