@@ -38,6 +38,8 @@ import {
   cancelTaxiRide,
   confirmTaxiPaid,
   fetchTaxiRide,
+  previewTaxiAddStop,
+  previewTaxiDestinationChange,
   formatTaxiCents,
   startTaxiCheckout,
 } from "../../lib/taxiClientApi";
@@ -85,7 +87,20 @@ const CANCELABLE = new Set([
   "pending_payment",
   "paid",
   "dispatching",
+  "accepted",
+  "driver_arrived",
+  "in_progress",
 ]);
+
+const CLIENT_CANCEL_REASONS: Array<{ code: string; label: string }> = [
+  { code: "driver_taking_too_long", label: "Driver taking too long" },
+  { code: "driver_too_far", label: "Driver is too far away" },
+  { code: "changed_mind", label: "Changed my mind" },
+  { code: "wrong_pickup", label: "Wrong pickup location" },
+  { code: "wrong_destination", label: "Wrong destination" },
+  { code: "found_another_option", label: "Found another option" },
+  { code: "other", label: "Other" },
+];
 
 const PAYMENT_PENDING = new Set(["pending_payment", "processing"]);
 const PAID_PAYMENT = new Set(["paid", "refunded"]);
@@ -251,7 +266,7 @@ export default function TaxiRideTrackingScreen() {
 
   const status = String(ride?.status ?? "").toLowerCase();
   const paymentStatus = String(ride?.payment_status ?? "").toLowerCase();
-  const canCancel = CANCELABLE.has(status) && !ride?.driver_id;
+  const canCancel = CANCELABLE.has(status);
   const awaitingPayment = isTaxiAwaitingPayment({
     status,
     paymentStatus,
@@ -502,33 +517,75 @@ export default function TaxiRideTrackingScreen() {
   }
 
   async function handleCancel() {
-    Alert.alert(
-      t("taxi.ride.cancelTitle", "Cancel ride"),
-      t("taxi.ride.cancelConfirm", "Cancel this taxi ride?"),
-      [
+    try {
+      const preview = (await cancelTaxiRide(rideId, { preview: true })) as {
+        fee?: { warning?: string | null; cancel_fee_cents?: number };
+      };
+      const warning =
+        preview?.fee?.warning ||
+        t("taxi.ride.cancelConfirm", "Cancel this taxi ride?");
+
+      const pickReasonAndCancel = () => {
+        Alert.alert(
+          t("taxi.ride.cancelReasonTitle", "Why are you cancelling?"),
+          t(
+            "taxi.ride.cancelReasonBody",
+            "Select a reason. This helps improve the service.",
+          ),
+          [
+            ...CLIENT_CANCEL_REASONS.map((r) => ({
+              text: r.label,
+              onPress: () => {
+                void (async () => {
+                  setCancelling(true);
+                  try {
+                    let detail = "";
+                    if (r.code === "other") {
+                      // Prompt is limited on Alert; send a short default if empty.
+                      detail = "other";
+                    }
+                    await cancelTaxiRide(rideId, {
+                      reason_code: r.code,
+                      reason_detail: detail || undefined,
+                    });
+                    await load();
+                  } catch (e: unknown) {
+                    Alert.alert(
+                      t("taxi.ride.cancelTitle", "Cancel ride"),
+                      e instanceof Error
+                        ? e.message
+                        : t("taxi.ride.cancelFailed", "Unable to cancel"),
+                    );
+                  } finally {
+                    setCancelling(false);
+                  }
+                })();
+              },
+            })),
+            {
+              text: t("taxi.ride.cancelNo", "No"),
+              style: "cancel",
+            },
+          ],
+        );
+      };
+
+      Alert.alert(t("taxi.ride.cancelTitle", "Cancel ride"), warning, [
         { text: t("taxi.ride.cancelNo", "No"), style: "cancel" },
         {
           text: t("taxi.ride.cancelYes", "Yes, cancel"),
           style: "destructive",
-          onPress: async () => {
-            setCancelling(true);
-            try {
-              await cancelTaxiRide(rideId);
-              await load();
-            } catch (e: unknown) {
-              Alert.alert(
-                t("taxi.ride.cancelTitle", "Cancel ride"),
-                e instanceof Error
-                  ? e.message
-                  : t("taxi.ride.cancelFailed", "Unable to cancel"),
-              );
-            } finally {
-              setCancelling(false);
-            }
-          },
+          onPress: pickReasonAndCancel,
         },
-      ],
-    );
+      ]);
+    } catch (e: unknown) {
+      Alert.alert(
+        t("taxi.ride.cancelTitle", "Cancel ride"),
+        e instanceof Error
+          ? e.message
+          : t("taxi.ride.cancelFailed", "Unable to cancel"),
+      );
+    }
   }
 
   if (loading && !ride) {
@@ -827,6 +884,157 @@ export default function TaxiRideTrackingScreen() {
           distanceCaption={t("taxi.tracking.distance", "Distance")}
           etaCaption={t("taxi.tracking.eta", "ETA")}
         />
+
+        {["paid", "dispatching", "accepted", "driver_arrived", "in_progress"].includes(
+          status,
+        ) ? (
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+            <TouchableOpacity
+              style={[styles.paymentBtn, { flex: 1, backgroundColor: "#1E293B" }]}
+              accessibilityRole="button"
+              onPress={() => {
+                const runAddStop = async (address: string) => {
+                  const trimmed = String(address ?? "").trim();
+                  if (!trimmed) return;
+                  try {
+                    const preview = (await previewTaxiAddStop(rideId, {
+                      address: trimmed,
+                    })) as { change?: { price_delta_cents?: number } };
+                    const delta = Number(preview?.change?.price_delta_cents ?? 0);
+                    Alert.alert(
+                      t("taxi.ride.addStopConfirmTitle", "Confirm stop"),
+                      delta > 0
+                        ? t(
+                            "taxi.ride.addStopConfirmBodyUp",
+                            "Adding this stop increases the fare by {{amount}} cents (server quote). Confirm?",
+                            { amount: delta },
+                          )
+                        : t(
+                            "taxi.ride.addStopConfirmBody",
+                            "Confirm adding this stop? The route and price are recalculated on the server.",
+                          ),
+                      [
+                        { text: t("common.cancel", "Cancel"), style: "cancel" },
+                        {
+                          text: t("common.confirm", "Confirm"),
+                          onPress: () => {
+                            void previewTaxiAddStop(rideId, {
+                              address: trimmed,
+                              confirm: true,
+                            }).then(() => load());
+                          },
+                        },
+                      ],
+                    );
+                  } catch (e: unknown) {
+                    Alert.alert(
+                      t("taxi.ride.addStopTitle", "Add stop"),
+                      e instanceof Error ? e.message : "Unable to add stop",
+                    );
+                  }
+                };
+                if (typeof Alert.prompt === "function") {
+                  Alert.prompt(
+                    t("taxi.ride.addStopTitle", "Add stop"),
+                    t(
+                      "taxi.ride.addStopBody",
+                      "Enter the stop address. Price will be recalculated on the server.",
+                    ),
+                    (address) => {
+                      void runAddStop(String(address ?? ""));
+                    },
+                  );
+                } else {
+                  Alert.alert(
+                    t("taxi.ride.addStopTitle", "Add stop"),
+                    t(
+                      "taxi.ride.addStopAndroidHint",
+                      "Enter a stop address in the next step is not supported on this device UI yet. Use Multi-stop before booking, or retry from an updated build.",
+                    ),
+                  );
+                }
+              }}
+            >
+              <Text style={styles.paymentBtnLabel}>
+                {t("taxi.ride.addStop", "Add stop")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.paymentBtn, { flex: 1, backgroundColor: "#1E293B" }]}
+              accessibilityRole="button"
+              onPress={() => {
+                const runChangeDest = async (address: string) => {
+                  const trimmed = String(address ?? "").trim();
+                  if (!trimmed) return;
+                  try {
+                    const preview = (await previewTaxiDestinationChange(rideId, {
+                      dropoffAddress: trimmed,
+                    })) as {
+                      change?: { price_delta_cents?: number };
+                    };
+                    const delta = Number(preview?.change?.price_delta_cents ?? 0);
+                    Alert.alert(
+                      t("taxi.ride.changeDestConfirmTitle", "Confirm new destination"),
+                      delta > 0
+                        ? t(
+                            "taxi.ride.changeDestConfirmUp",
+                            "New fare is higher by {{amount}} cents. Additional payment may be required.",
+                            { amount: delta },
+                          )
+                        : t(
+                            "taxi.ride.changeDestConfirm",
+                            "Apply this destination? Server will recalculate distance and price.",
+                          ),
+                      [
+                        { text: t("common.cancel", "Cancel"), style: "cancel" },
+                        {
+                          text: t("common.confirm", "Confirm"),
+                          onPress: () => {
+                            void previewTaxiDestinationChange(rideId, {
+                              dropoffAddress: trimmed,
+                              confirm: true,
+                            }).then(() => load());
+                          },
+                        },
+                      ],
+                    );
+                  } catch (e: unknown) {
+                    Alert.alert(
+                      t("taxi.ride.changeDestTitle", "Change destination"),
+                      e instanceof Error
+                        ? e.message
+                        : "Unable to change destination",
+                    );
+                  }
+                };
+                if (typeof Alert.prompt === "function") {
+                  Alert.prompt(
+                    t("taxi.ride.changeDestTitle", "Change destination"),
+                    t(
+                      "taxi.ride.changeDestBody",
+                      "Enter the new destination. Price is recalculated on the server.",
+                    ),
+                    (address) => {
+                      void runChangeDest(String(address ?? ""));
+                    },
+                  );
+                } else {
+                  Alert.alert(
+                    t("taxi.ride.changeDestTitle", "Change destination"),
+                    t(
+                      "taxi.ride.changeDestAndroidHint",
+                      "Destination change prompt is not available on this device UI yet. Backend API is ready; update the client form in a follow-up build.",
+                    ),
+                  );
+                }
+              }}
+            >
+              <Text style={styles.paymentBtnLabel}>
+                {t("taxi.ride.changeDest", "Change destination")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {showDriverCard && identification ? (
           <DriverProfileCard

@@ -187,15 +187,67 @@ export function fetchTaxiRide(rideId: string) {
   return taxiGet(`/api/taxi/rides/${rideId}`);
 }
 
-export function cancelTaxiRide(rideId: string) {
-  return taxiPost("/api/taxi/rides/cancel", { taxi_ride_id: rideId });
+export function cancelTaxiRide(
+  rideId: string,
+  opts?: {
+    reason_code?: string;
+    reason_detail?: string;
+    preview?: boolean;
+  },
+) {
+  return taxiPost("/api/taxi/rides/cancel", {
+    taxi_ride_id: rideId,
+    reason_code: opts?.reason_code,
+    reason_detail: opts?.reason_detail,
+    preview: opts?.preview === true,
+  });
 }
 
-/** Driver-initiated cancel (accepted / driver_arrived). */
-export function cancelTaxiRideByDriver(rideId: string, reason?: string) {
+/** Driver-initiated release for reassignment (accepted / driver_arrived). */
+export function cancelTaxiRideByDriver(
+  rideId: string,
+  opts?: { reason_code?: string; reason_detail?: string; reason?: string },
+) {
   return taxiPost("/api/taxi/rides/driver-cancel", {
     taxi_ride_id: rideId,
-    reason: reason ?? "driver_cancelled",
+    reason_code: opts?.reason_code ?? opts?.reason ?? "other",
+    reason_detail: opts?.reason_detail,
+  });
+}
+
+export function previewTaxiDestinationChange(
+  rideId: string,
+  input: {
+    dropoffAddress?: string;
+    dropoffLat?: number;
+    dropoffLng?: number;
+    confirm?: boolean;
+  },
+) {
+  return taxiPost("/api/taxi/rides/change-destination", {
+    taxi_ride_id: rideId,
+    dropoff_address: input.dropoffAddress,
+    dropoff_lat: input.dropoffLat,
+    dropoff_lng: input.dropoffLng,
+    confirm: input.confirm === true,
+  });
+}
+
+export function previewTaxiAddStop(
+  rideId: string,
+  input: {
+    address?: string;
+    lat?: number;
+    lng?: number;
+    confirm?: boolean;
+  },
+) {
+  return taxiPost("/api/taxi/rides/add-stop", {
+    taxi_ride_id: rideId,
+    stop_address: input.address,
+    stop_lat: input.lat,
+    stop_lng: input.lng,
+    confirm: input.confirm === true,
   });
 }
 

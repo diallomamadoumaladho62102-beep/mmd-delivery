@@ -9,8 +9,8 @@
  * - Client must never present unpaid reservations as "Finding your driver".
  */
 
-/** Max intermediate stops between pickup and final dropoff. */
-export const MAX_TAXI_STOPS = 5;
+/** Max intermediate stops between pickup and final dropoff (DB stop_order 1–3). */
+export const MAX_TAXI_STOPS = 3;
 
 export type TaxiStopInput = {
   address: string;

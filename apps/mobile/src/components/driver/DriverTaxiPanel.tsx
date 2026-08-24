@@ -434,20 +434,54 @@ export function DriverTaxiPanel({
   async function handleDriverCancel() {
     const rideId = String(activeRide?.id ?? "");
     if (!rideId || actionLockRef.current) return;
-    actionLockRef.current = true;
-    setActionId(rideId);
-    try {
-      await cancelTaxiRideByDriver(rideId);
-      await refresh();
-    } catch (e: unknown) {
-      Alert.alert(
-        t("driver.taxiPanel.title", "Taxi"),
-        toUserFacingError(e, t("driver.taxiPanel.cancelFailed", "Cancel failed")),
-      );
-    } finally {
-      actionLockRef.current = false;
-      setActionId(null);
-    }
+
+    const reasons: Array<{ code: string; label: string }> = [
+      { code: "vehicle_issue", label: "Vehicle issue" },
+      { code: "personal_emergency", label: "Personal emergency" },
+      { code: "unsafe_pickup", label: "Unsafe pickup" },
+      { code: "customer_unreachable", label: "Customer unreachable" },
+      { code: "traffic_or_route_blocked", label: "Traffic / route blocked" },
+      { code: "other", label: "Other" },
+    ];
+
+    Alert.alert(
+      t("driver.taxiPanel.cancelTitle", "Release this ride?"),
+      t(
+        "driver.taxiPanel.cancelWarn",
+        "Cancelling after accept may affect your acceptance activity. The ride will be offered to another nearby driver — the customer is not refunded.",
+      ),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        ...reasons.map((r) => ({
+          text: r.label,
+          style: "destructive" as const,
+          onPress: () => {
+            void (async () => {
+              actionLockRef.current = true;
+              setActionId(rideId);
+              try {
+                await cancelTaxiRideByDriver(rideId, {
+                  reason_code: r.code,
+                  reason_detail: r.code === "other" ? "other" : undefined,
+                });
+                await refresh();
+              } catch (e: unknown) {
+                Alert.alert(
+                  t("driver.taxiPanel.title", "Taxi"),
+                  toUserFacingError(
+                    e,
+                    t("driver.taxiPanel.cancelFailed", "Cancel failed"),
+                  ),
+                );
+              } finally {
+                actionLockRef.current = false;
+                setActionId(null);
+              }
+            })();
+          },
+        })),
+      ],
+    );
   }
 
   const status = String(activeRide?.status ?? "").toLowerCase();

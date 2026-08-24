@@ -65,6 +65,14 @@ export const PRICING_BUSINESS_DEFAULTS = {
   // Taxi no-show compensation (% of ride price)
   taxi_no_show_compensation_pct: 0.05,
 
+  // Taxi client/driver cancellation policy
+  taxi_client_cancel_before_start_fee_pct: 30,
+  taxi_driver_cancel_comp_not_at_dest_pct: 50,
+  taxi_driver_cancel_comp_at_dest_pct: 100,
+  taxi_destination_arrival_meters: 150,
+  taxi_max_stops: 3,
+  taxi_min_remaining_miles_for_dest_change: 0.3,
+
   // Tips / credit / cashout thresholds
   taxi_tip_min_cents: 50,
   mmd_credit_min_residual_cents: 50,

@@ -99,6 +99,7 @@ export function initMobileSentry(): boolean {
       dsn,
       enableInExpoDevelopment: false,
       debug: false,
+      sendDefaultPii: false,
       environment:
         String(
           (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.APP_ENV ??
@@ -120,6 +121,19 @@ export function initMobileSentry(): boolean {
               ? `${original.name}: ${original.message}`
               : String(exceptionValue || event?.message || original || "");
           if (shouldDrop(message) || shouldDrop(exceptionValue)) return null;
+
+          // Scrub obvious PII / free-text fields from extras before upload.
+          if (event?.extra && typeof event.extra === "object") {
+            for (const key of Object.keys(event.extra)) {
+              if (
+                /free_text|comment|password|token|authorization|client_secret|card/i.test(
+                  key,
+                )
+              ) {
+                delete event.extra[key];
+              }
+            }
+          }
         } catch {
           // never throw from telemetry filter
         }

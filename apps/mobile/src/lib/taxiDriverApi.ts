@@ -90,10 +90,14 @@ export function completeTaxiRide(
   });
 }
 
-export function cancelTaxiRideByDriver(rideId: string, reason?: string) {
+export function cancelTaxiRideByDriver(
+  rideId: string,
+  opts?: { reason_code?: string; reason_detail?: string; reason?: string },
+) {
   return taxiPost("/api/taxi/rides/driver-cancel", {
     taxi_ride_id: rideId,
-    reason: reason ?? "driver_cancelled",
+    reason_code: opts?.reason_code ?? opts?.reason ?? "other",
+    reason_detail: opts?.reason_detail,
   });
 }
 
