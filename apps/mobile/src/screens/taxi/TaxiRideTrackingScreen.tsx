@@ -14,6 +14,9 @@ import {
   Platform,
   StyleSheet,
   Image,
+  Modal,
+  TextInput,
+  Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -137,6 +140,10 @@ export default function TaxiRideTrackingScreen() {
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [startingCheckout, setStartingCheckout] = useState(false);
   const [calling, setCalling] = useState(false);
+  const [addressPrompt, setAddressPrompt] = useState<null | {
+    mode: "add_stop" | "change_destination";
+    value: string;
+  }>(null);
   const mountedRef = useRef(true);
 
   const { location: liveDriver } = useLiveDriverLocation(
@@ -699,6 +706,96 @@ export default function TaxiRideTrackingScreen() {
 
   const fareLabel = formatTaxiCents(ride?.total_cents, currency);
 
+  const runAddStop = useCallback(
+    async (address: string) => {
+      const trimmed = String(address ?? "").trim();
+      if (!trimmed) return;
+      try {
+        const preview = (await previewTaxiAddStop(rideId, {
+          address: trimmed,
+        })) as { change?: { price_delta_cents?: number } };
+        const delta = Number(preview?.change?.price_delta_cents ?? 0);
+        Alert.alert(
+          t("taxi.ride.addStopConfirmTitle", "Confirm stop"),
+          delta > 0
+            ? t(
+                "taxi.ride.addStopConfirmBodyUp",
+                "Adding this stop increases the fare by {{amount}} cents (server quote). Confirm?",
+                { amount: delta },
+              )
+            : t(
+                "taxi.ride.addStopConfirmBody",
+                "Confirm adding this stop? The route and price are recalculated on the server.",
+              ),
+          [
+            { text: t("common.cancel", "Cancel"), style: "cancel" },
+            {
+              text: t("common.confirm", "Confirm"),
+              onPress: () => {
+                void previewTaxiAddStop(rideId, {
+                  address: trimmed,
+                  confirm: true,
+                }).then(() => load());
+              },
+            },
+          ],
+        );
+      } catch (e: unknown) {
+        Alert.alert(
+          t("taxi.ride.addStopTitle", "Add stop"),
+          e instanceof Error ? e.message : "Unable to add stop",
+        );
+      }
+    },
+    [load, rideId, t],
+  );
+
+  const runChangeDest = useCallback(
+    async (address: string) => {
+      const trimmed = String(address ?? "").trim();
+      if (!trimmed) return;
+      try {
+        const preview = (await previewTaxiDestinationChange(rideId, {
+          dropoffAddress: trimmed,
+        })) as {
+          change?: { price_delta_cents?: number };
+        };
+        const delta = Number(preview?.change?.price_delta_cents ?? 0);
+        Alert.alert(
+          t("taxi.ride.changeDestConfirmTitle", "Confirm new destination"),
+          delta > 0
+            ? t(
+                "taxi.ride.changeDestConfirmUp",
+                "New fare is higher by {{amount}} cents. Additional payment may be required.",
+                { amount: delta },
+              )
+            : t(
+                "taxi.ride.changeDestConfirm",
+                "Apply this destination? Server will recalculate distance and price.",
+              ),
+          [
+            { text: t("common.cancel", "Cancel"), style: "cancel" },
+            {
+              text: t("common.confirm", "Confirm"),
+              onPress: () => {
+                void previewTaxiDestinationChange(rideId, {
+                  dropoffAddress: trimmed,
+                  confirm: true,
+                }).then(() => load());
+              },
+            },
+          ],
+        );
+      } catch (e: unknown) {
+        Alert.alert(
+          t("taxi.ride.changeDestTitle", "Change destination"),
+          e instanceof Error ? e.message : "Unable to change destination",
+        );
+      }
+    },
+    [load, rideId, t],
+  );
+
   return (
     <View style={styles.root}>
       <StatusBar
@@ -893,46 +990,6 @@ export default function TaxiRideTrackingScreen() {
               style={[styles.paymentBtn, { flex: 1, backgroundColor: "#1E293B" }]}
               accessibilityRole="button"
               onPress={() => {
-                const runAddStop = async (address: string) => {
-                  const trimmed = String(address ?? "").trim();
-                  if (!trimmed) return;
-                  try {
-                    const preview = (await previewTaxiAddStop(rideId, {
-                      address: trimmed,
-                    })) as { change?: { price_delta_cents?: number } };
-                    const delta = Number(preview?.change?.price_delta_cents ?? 0);
-                    Alert.alert(
-                      t("taxi.ride.addStopConfirmTitle", "Confirm stop"),
-                      delta > 0
-                        ? t(
-                            "taxi.ride.addStopConfirmBodyUp",
-                            "Adding this stop increases the fare by {{amount}} cents (server quote). Confirm?",
-                            { amount: delta },
-                          )
-                        : t(
-                            "taxi.ride.addStopConfirmBody",
-                            "Confirm adding this stop? The route and price are recalculated on the server.",
-                          ),
-                      [
-                        { text: t("common.cancel", "Cancel"), style: "cancel" },
-                        {
-                          text: t("common.confirm", "Confirm"),
-                          onPress: () => {
-                            void previewTaxiAddStop(rideId, {
-                              address: trimmed,
-                              confirm: true,
-                            }).then(() => load());
-                          },
-                        },
-                      ],
-                    );
-                  } catch (e: unknown) {
-                    Alert.alert(
-                      t("taxi.ride.addStopTitle", "Add stop"),
-                      e instanceof Error ? e.message : "Unable to add stop",
-                    );
-                  }
-                };
                 if (typeof Alert.prompt === "function") {
                   Alert.prompt(
                     t("taxi.ride.addStopTitle", "Add stop"),
@@ -945,13 +1002,7 @@ export default function TaxiRideTrackingScreen() {
                     },
                   );
                 } else {
-                  Alert.alert(
-                    t("taxi.ride.addStopTitle", "Add stop"),
-                    t(
-                      "taxi.ride.addStopAndroidHint",
-                      "Enter a stop address in the next step is not supported on this device UI yet. Use Multi-stop before booking, or retry from an updated build.",
-                    ),
-                  );
+                  setAddressPrompt({ mode: "add_stop", value: "" });
                 }
               }}
             >
@@ -963,50 +1014,6 @@ export default function TaxiRideTrackingScreen() {
               style={[styles.paymentBtn, { flex: 1, backgroundColor: "#1E293B" }]}
               accessibilityRole="button"
               onPress={() => {
-                const runChangeDest = async (address: string) => {
-                  const trimmed = String(address ?? "").trim();
-                  if (!trimmed) return;
-                  try {
-                    const preview = (await previewTaxiDestinationChange(rideId, {
-                      dropoffAddress: trimmed,
-                    })) as {
-                      change?: { price_delta_cents?: number };
-                    };
-                    const delta = Number(preview?.change?.price_delta_cents ?? 0);
-                    Alert.alert(
-                      t("taxi.ride.changeDestConfirmTitle", "Confirm new destination"),
-                      delta > 0
-                        ? t(
-                            "taxi.ride.changeDestConfirmUp",
-                            "New fare is higher by {{amount}} cents. Additional payment may be required.",
-                            { amount: delta },
-                          )
-                        : t(
-                            "taxi.ride.changeDestConfirm",
-                            "Apply this destination? Server will recalculate distance and price.",
-                          ),
-                      [
-                        { text: t("common.cancel", "Cancel"), style: "cancel" },
-                        {
-                          text: t("common.confirm", "Confirm"),
-                          onPress: () => {
-                            void previewTaxiDestinationChange(rideId, {
-                              dropoffAddress: trimmed,
-                              confirm: true,
-                            }).then(() => load());
-                          },
-                        },
-                      ],
-                    );
-                  } catch (e: unknown) {
-                    Alert.alert(
-                      t("taxi.ride.changeDestTitle", "Change destination"),
-                      e instanceof Error
-                        ? e.message
-                        : "Unable to change destination",
-                    );
-                  }
-                };
                 if (typeof Alert.prompt === "function") {
                   Alert.prompt(
                     t("taxi.ride.changeDestTitle", "Change destination"),
@@ -1019,13 +1026,7 @@ export default function TaxiRideTrackingScreen() {
                     },
                   );
                 } else {
-                  Alert.alert(
-                    t("taxi.ride.changeDestTitle", "Change destination"),
-                    t(
-                      "taxi.ride.changeDestAndroidHint",
-                      "Destination change prompt is not available on this device UI yet. Backend API is ready; update the client form in a follow-up build.",
-                    ),
-                  );
+                  setAddressPrompt({ mode: "change_destination", value: "" });
                 }
               }}
             >
@@ -1143,6 +1144,81 @@ export default function TaxiRideTrackingScreen() {
           </>
         ) : null}
       </ScrollView>
+
+      <Modal
+        transparent
+        visible={addressPrompt != null}
+        animationType="fade"
+        onRequestClose={() => setAddressPrompt(null)}
+      >
+        <Pressable
+          style={styles.addressModalBackdrop}
+          onPress={() => setAddressPrompt(null)}
+        >
+          <View style={styles.addressModalCard}>
+            <Text style={styles.addressModalTitle}>
+              {addressPrompt?.mode === "change_destination"
+                ? t("taxi.ride.changeDestTitle", "Change destination")
+                : t("taxi.ride.addStopTitle", "Add stop")}
+            </Text>
+            <Text style={styles.addressModalBody}>
+              {addressPrompt?.mode === "change_destination"
+                ? t(
+                    "taxi.ride.changeDestBody",
+                    "Enter the new destination. Price is recalculated on the server.",
+                  )
+                : t(
+                    "taxi.ride.addStopBody",
+                    "Enter the stop address. Price will be recalculated on the server.",
+                  )}
+            </Text>
+            <TextInput
+              value={addressPrompt?.value ?? ""}
+              onChangeText={(value) =>
+                setAddressPrompt((prev) =>
+                  prev ? { ...prev, value } : prev,
+                )
+              }
+              placeholder={t("taxi.ride.addressPlaceholder", "Street address")}
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              autoFocus
+              style={styles.addressModalInput}
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                const mode = addressPrompt?.mode;
+                const value = String(addressPrompt?.value ?? "");
+                setAddressPrompt(null);
+                if (mode === "change_destination") void runChangeDest(value);
+                else void runAddStop(value);
+              }}
+            />
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+              <TouchableOpacity
+                style={[styles.paymentBtn, { flex: 1, backgroundColor: "#334155" }]}
+                onPress={() => setAddressPrompt(null)}
+              >
+                <Text style={[styles.paymentBtnLabel, { color: MMD_WHITE }]}>
+                  {t("common.cancel", "Cancel")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.paymentBtn, { flex: 1 }]}
+                onPress={() => {
+                  const mode = addressPrompt?.mode;
+                  const value = String(addressPrompt?.value ?? "");
+                  setAddressPrompt(null);
+                  if (mode === "change_destination") void runChangeDest(value);
+                  else void runAddStop(value);
+                }}
+              >
+                <Text style={styles.paymentBtnLabel}>
+                  {t("common.continue", "Continue")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -1344,5 +1420,39 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontFamily: MMD_FONT.bold,
     fontSize: 16,
+  },
+  addressModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(2,6,23,0.72)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  addressModalCard: {
+    backgroundColor: "#0F172A",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.35)",
+  },
+  addressModalTitle: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  addressModalBody: {
+    color: "#CBD5E1",
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  addressModalInput: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.45)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: MMD_WHITE,
+    fontSize: 15,
   },
 });

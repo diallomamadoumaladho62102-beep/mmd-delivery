@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   Modal,
@@ -409,27 +408,8 @@ export function DriverTaxiActiveRideCard({
             style={styles.cancelBtn}
             disabled={busy}
             onPress={() => {
-              Alert.alert(
-                t("taxi.driver.activeRide.cancelTitle", "Cancel ride"),
-                t(
-                  "taxi.driver.activeRide.cancelBody",
-                  "Cancel this taxi ride? Payment refund (if any) is handled by admin.",
-                ),
-                [
-                  {
-                    text: t("taxi.driver.activeRide.keepRide", "Keep ride"),
-                    style: "cancel",
-                  },
-                  {
-                    text: t(
-                      "taxi.driver.activeRide.cancelTitle",
-                      "Cancel ride",
-                    ),
-                    style: "destructive",
-                    onPress: onCancel,
-                  },
-                ],
-              );
+              // Parent shows reason picker + activity impact + reassignment.
+              onCancel();
             }}
           >
             <View style={styles.cancelIcon}>
