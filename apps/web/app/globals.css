@@ -76,10 +76,40 @@ html:has(.admin-figma) body {
   background-color: rgba(255, 255, 255, 0.06) !important;
 }
 
+.admin-figma .bg-white\/60,
 .admin-figma .bg-white\/70,
 .admin-figma .bg-white\/50,
+.admin-figma .bg-white\/80,
 .admin-figma .bg-white\/90 {
   background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Solid white CTA on dark hero panels (e.g. Payouts quick actions) */
+.admin-figma a.bg-white.text-slate-950,
+.admin-figma button.bg-white.text-slate-950 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.admin-figma a.bg-white.text-slate-950:hover,
+.admin-figma button.bg-white.text-slate-950:hover,
+.admin-figma .hover\:bg-slate-100:hover.bg-white.text-slate-950 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Secondary ghost buttons on dark hero (bg-white + slate text) */
+.admin-figma button.bg-white.text-slate-700 {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  --tw-ring-color: rgba(255, 255, 255, 0.2);
+}
+
+.admin-figma button.bg-white.text-slate-700:hover,
+.admin-figma button.hover\:bg-slate-50:hover.bg-white.text-slate-700 {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
 }
 
 .admin-figma .from-slate-50,
@@ -94,6 +124,7 @@ html:has(.admin-figma) body {
 
 .admin-figma .text-slate-900,
 .admin-figma .text-gray-900,
+.admin-figma .text-slate-950,
 .admin-figma .text-slate-800,
 .admin-figma .text-slate-700,
 .admin-figma .text-gray-800,
@@ -246,7 +277,9 @@ html:has(.admin-figma) body {
 }
 
 .admin-figma .bg-emerald-50,
-.admin-figma .bg-emerald-100 {
+.admin-figma .bg-emerald-100,
+.admin-figma .bg-green-50,
+.admin-figma .bg-green-100 {
   background-color: rgba(34, 197, 94, 0.16) !important;
 }
 
@@ -255,7 +288,8 @@ html:has(.admin-figma) body {
   color: #86efac !important;
 }
 
-.admin-figma .border-emerald-200 {
+.admin-figma .border-emerald-200,
+.admin-figma .border-green-200 {
   border-color: rgba(34, 197, 94, 0.35) !important;
 }
 
