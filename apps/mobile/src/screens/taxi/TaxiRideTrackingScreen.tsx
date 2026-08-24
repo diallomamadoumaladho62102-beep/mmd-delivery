@@ -102,6 +102,10 @@ const CLIENT_CANCEL_REASONS: Array<{ code: string; label: string }> = [
   { code: "wrong_pickup", label: "Wrong pickup location" },
   { code: "wrong_destination", label: "Wrong destination" },
   { code: "found_another_option", label: "Found another option" },
+  { code: "problem_with_driver", label: "Problem with the driver" },
+  { code: "problem_with_vehicle", label: "Problem with the vehicle" },
+  { code: "pickup_problem", label: "Pickup problem" },
+  { code: "emergency", label: "Emergency" },
   { code: "other", label: "Other" },
 ];
 
