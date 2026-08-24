@@ -26,7 +26,19 @@ function isTaxiStripeModule(
 function isDriverTipPaymentIntent(
   metadata: Record<string, unknown> | null | undefined
 ): boolean {
-  return String(metadata?.kind ?? "").trim().toLowerCase() === "driver_tip";
+  const kind = String(metadata?.kind ?? "").trim().toLowerCase();
+  return kind === "driver_tip" || kind === "taxi_driver_tip";
+}
+
+function pickTaxiRideIdFromTipMetadata(
+  metadata: Record<string, unknown> | null | undefined
+): string | null {
+  if (!metadata) return null;
+  for (const key of ["taxi_ride_id", "taxiRideId", "ride_id"]) {
+    const value = String(metadata[key] ?? "").trim();
+    if (value) return value;
+  }
+  return null;
 }
 
 function pickOrderIdFromMetadata(
@@ -122,6 +134,21 @@ async function isOrderTipUntransferred(
     .from("orders")
     .select("tip_paid_out")
     .eq("id", orderId)
+    .maybeSingle<{ tip_paid_out: boolean | null }>();
+
+  if (error || !data) return false;
+  return data.tip_paid_out !== true;
+}
+
+/** Taxi tip SCT not yet completed (see executeTaxiDriverTipTransfer). */
+async function isTaxiRideTipUntransferred(
+  supabaseAdmin: SupabaseClient,
+  taxiRideId: string
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("taxi_rides")
+    .select("tip_paid_out")
+    .eq("id", taxiRideId)
     .maybeSingle<{ tip_paid_out: boolean | null }>();
 
   if (error || !data) return false;
@@ -286,8 +313,14 @@ export async function stripeEventNeedsReprocessing(
 
     if (isDriverTipPaymentIntent(metadata)) {
       const tipOrderId = pickOrderIdFromMetadata(metadata);
-      if (!tipOrderId) return false;
-      return isOrderTipUntransferred(supabaseAdmin, tipOrderId);
+      if (tipOrderId) {
+        return isOrderTipUntransferred(supabaseAdmin, tipOrderId);
+      }
+      const tipRideId = pickTaxiRideIdFromTipMetadata(metadata);
+      if (tipRideId) {
+        return isTaxiRideTipUntransferred(supabaseAdmin, tipRideId);
+      }
+      return false;
     }
 
     const orderId = await resolveOrderIdForPaymentIntent(

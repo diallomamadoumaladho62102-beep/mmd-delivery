@@ -110,7 +110,7 @@ export default function TaxiTipScreen() {
 
   async function onPayTip() {
     if (paying) return;
-    if (tipPaidOut || alreadyTippedCents > 0) {
+    if (tipPaidOut) {
       Alert.alert(
         t("taxi.tip.alreadyTitle", "Tip already sent"),
         t("taxi.tip.alreadyBody", "This ride already has a tip.")
@@ -198,16 +198,14 @@ export default function TaxiTipScreen() {
           </View>
         ) : null}
 
-        {tipPaidOut || alreadyTippedCents > 0 ? (
+        {tipPaidOut ? (
           <View style={styles.successBox}>
             <Text style={styles.successTitle}>
               {t("taxi.tip.alreadyTitle", "Tip already sent")}
             </Text>
             <Text style={styles.successBody}>
               {formatTaxiCents(alreadyTippedCents, currency)}
-              {tipPaidOut
-                ? ` · ${t("taxi.tip.transferred", "Transferred to driver")}`
-                : ""}
+              {` · ${t("taxi.tip.transferred", "Transferred to driver")}`}
             </Text>
           </View>
         ) : (

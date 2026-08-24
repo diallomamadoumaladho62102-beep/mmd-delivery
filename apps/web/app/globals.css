@@ -77,7 +77,8 @@ html:has(.admin-figma) body {
 }
 
 .admin-figma .bg-white\/70,
-.admin-figma .bg-white\/50 {
+.admin-figma .bg-white\/50,
+.admin-figma .bg-white\/90 {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 

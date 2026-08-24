@@ -325,7 +325,7 @@ export default function AdminTaxiPricingPage() {
 
             {preview ? (
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl bg-white/90 p-4 text-sm shadow-sm">
+                <div className="rounded-xl bg-white p-4 text-sm shadow-sm">
                   <div className="font-semibold text-slate-900">Client</div>
                   <dl className="mt-2 space-y-1 text-slate-700">
                     <div className="flex justify-between gap-3">
@@ -363,7 +363,7 @@ export default function AdminTaxiPricingPage() {
                     </div>
                   </dl>
                 </div>
-                <div className="rounded-xl bg-white/90 p-4 text-sm shadow-sm">
+                <div className="rounded-xl bg-white p-4 text-sm shadow-sm">
                   <div className="font-semibold text-slate-900">
                     Chauffeur &amp; MMD
                   </div>

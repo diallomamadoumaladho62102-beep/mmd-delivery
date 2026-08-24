@@ -77,15 +77,18 @@ export async function POST(req: NextRequest) {
             reused: true,
           });
         }
+        // Abandoned / different amount: cancel open PI so only one tip charge can succeed.
+        if (
+          st === "requires_payment_method" ||
+          st === "requires_action" ||
+          st === "requires_confirmation"
+        ) {
+          await stripe.paymentIntents.cancel(existingPiId).catch(() => null);
+        }
       } catch {
         /* create new */
       }
     }
-
-    await auth.supabaseAdmin
-      .from("taxi_rides")
-      .update({ tip_cents: tipCents, updated_at: new Date().toISOString() })
-      .eq("id", taxiRideId);
 
     const pi = await stripe.paymentIntents.create(
       {
@@ -104,6 +107,7 @@ export async function POST(req: NextRequest) {
       { idempotencyKey: `taxi_tip_pi_${taxiRideId}_${tipCents}` }
     );
 
+    // Persist tip_cents only with a real PI — never before Stripe create (blocks false "already tipped").
     await auth.supabaseAdmin
       .from("taxi_rides")
       .update({
