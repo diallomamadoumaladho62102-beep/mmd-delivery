@@ -1,5 +1,9 @@
 import { AFRICA_PLATFORM_COUNTRIES } from "@/lib/platformCountryInference";
 import { getServerMapboxToken } from "@/lib/mapboxToken";
+import {
+  evaluateRouteDistanceLimit,
+  type RouteDistanceService,
+} from "@/lib/routeDistanceLimits";
 
 export type GeoPoint = { lat: number; lng: number };
 
@@ -29,7 +33,6 @@ export type LocationClaimResult =
     }
   | { ok: false; code: string; message: string };
 
-const MAX_PAID_ROUTE_MILES = 50;
 const METERS_PER_MILE = 1609.344;
 const cache = new Map<string, { expiresAt: number; value: GeoEvidence | null }>();
 
@@ -173,6 +176,7 @@ export function evaluateServerRoute(input: {
   serverDistanceMiles: number;
   clientDistanceMiles?: number | null;
   maxMiles?: number;
+  service?: RouteDistanceService;
 }): { ok: true; warnings: string[] } | { ok: false; code: string } {
   if (!isValidGeoPoint(input.pickup) || !isValidGeoPoint(input.dropoff)) {
     return { ok: false, code: "invalid_coordinates" };
@@ -181,8 +185,17 @@ export function evaluateServerRoute(input: {
   if (!Number.isFinite(distance) || distance <= 0) {
     return { ok: false, code: "route_unavailable" };
   }
-  if (distance > (input.maxMiles ?? MAX_PAID_ROUTE_MILES)) {
-    return { ok: false, code: "distance_too_far" };
+
+  if (input.service) {
+    const limit = evaluateRouteDistanceLimit(distance, input.service);
+    if (limit.ok === false) return { ok: false, code: limit.code };
+  } else if (input.maxMiles != null) {
+    if (distance > input.maxMiles) {
+      return { ok: false, code: "distance_too_far" };
+    }
+  } else {
+    const limit = evaluateRouteDistanceLimit(distance, "delivery");
+    if (limit.ok === false) return { ok: false, code: limit.code };
   }
 
   const straightMiles = haversineMeters(input.pickup, input.dropoff) / METERS_PER_MILE;
@@ -295,6 +308,7 @@ export async function validateRouteClaimsServer(input: {
   serverDistanceMiles: number;
   clientDistanceMiles?: number | null;
   maxMiles?: number;
+  service: RouteDistanceService;
 }): Promise<{
   pickup: Extract<LocationClaimResult, { ok: true }>;
   dropoff: Extract<LocationClaimResult, { ok: true }>;
@@ -319,6 +333,7 @@ export async function validateRouteClaimsServer(input: {
     serverDistanceMiles: input.serverDistanceMiles,
     clientDistanceMiles: input.clientDistanceMiles,
     maxMiles: input.maxMiles,
+    service: input.service,
   });
   if (route.ok === false) throw new Error(route.code);
 

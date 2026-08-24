@@ -15,6 +15,7 @@ import {
 } from "@/lib/deliveryShareApiError";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 import { usesLocalMobileMoney } from "@/lib/paymentProviderRouting";
+import { routeDistanceLimitUserMessage } from "@/lib/routeDistanceLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,6 +95,16 @@ export async function POST(req: NextRequest) {
       );
     }
     const message = error instanceof Error ? error.message : "Server error";
+    if (message === "delivery_distance_too_far") {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: message,
+          message: routeDistanceLimitUserMessage(message, "en"),
+        },
+        400,
+      );
+    }
     return mmdLocationJson({ ok: false, error: message }, 400);
   }
 }

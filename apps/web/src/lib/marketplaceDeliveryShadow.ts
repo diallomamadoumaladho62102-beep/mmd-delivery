@@ -281,6 +281,7 @@ export async function buildMarketplaceDeliveryShadowForOrder(
     pickup,
     dropoff,
     serverDistanceMiles: route.distanceMiles,
+    service: "delivery",
   });
   if (routeTrust.ok === false) throw new Error(routeTrust.code);
 

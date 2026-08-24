@@ -1,4 +1,5 @@
 import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
+import { assertRouteDistanceWithinLimit } from "@/lib/routeDistanceLimits";
 
 export const ROUTE_UNAVAILABLE = "route_unavailable";
 
@@ -200,10 +201,7 @@ export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRoute
     dropoffLng!,
   );
 
-  const BLOCK_MILES = 50;
-  if (distanceMiles > BLOCK_MILES) {
-    throw new Error("distance_too_far");
-  }
+  assertRouteDistanceWithinLimit(distanceMiles, "taxi");
 
   return {
     pickupLat: pickupLat!,
@@ -261,10 +259,7 @@ export async function resolveTaxiMultiStopRoute(
   const { distanceMiles, durationMinutes } =
     await getMultiLegDistanceAndDuration(coordinates);
 
-  const BLOCK_MILES = 50;
-  if (distanceMiles > BLOCK_MILES) {
-    throw new Error("distance_too_far");
-  }
+  assertRouteDistanceWithinLimit(distanceMiles, "taxi");
 
   return {
     ...baseRoute,

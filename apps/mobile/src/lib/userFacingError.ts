@@ -1,6 +1,7 @@
 // Imported from "i18next" (not "../i18n") so this module stays free of the
 // react-native / react-i18next bootstrap and can be used from any layer.
 import i18n from "i18next";
+import { routeDistanceLimitUserMessage } from "../../../../shared/routeDistanceLimits";
 
 /** Resolves an i18n key, falling back to the English source when i18n is not ready yet. */
 function tr(key: string, defaultValue: string): string {
@@ -319,6 +320,16 @@ function mapKnownErrorCode(errorCode: string, message: string): string | null {
       "networkFailed",
       "Unstable connection. Check your network and try again.",
     );
+  }
+
+  if (message === "taxi_distance_too_far" || message === "delivery_distance_too_far") {
+    const text = routeDistanceLimitUserMessage(message, undefined, "en");
+    if (text) {
+      return pattern(
+        message === "taxi_distance_too_far" ? "taxiDistanceTooFar" : "deliveryDistanceTooFar",
+        text,
+      );
+    }
   }
 
   if (message === "distance_too_far") {

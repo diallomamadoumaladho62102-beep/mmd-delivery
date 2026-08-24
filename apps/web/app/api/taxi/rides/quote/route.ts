@@ -132,12 +132,15 @@ export async function POST(req: NextRequest) {
       );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : ROUTE_UNAVAILABLE;
-      if (message === "distance_too_far") {
+      if (message === "distance_too_far" || message === "taxi_distance_too_far") {
         return taxiJson(
           {
             ok: false,
-            error: "distance_too_far",
-            message: toUserFacingError({ error: "distance_too_far" }, "La distance est trop importante pour cette course."),
+            error: "taxi_distance_too_far",
+            message: toUserFacingError(
+              { error: "taxi_distance_too_far" },
+              "Cette course dépasse la distance maximale autorisée.",
+            ),
           },
           400,
         );
@@ -188,6 +191,7 @@ export async function POST(req: NextRequest) {
         claimedCountryCode: countryCode,
       })),
       serverDistanceMiles: route.distanceMiles,
+      service: "taxi",
     });
 
     const platformCheck = await assertPlatformFeature(

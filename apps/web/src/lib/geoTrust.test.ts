@@ -162,12 +162,13 @@ const lowAccuracy = evaluateLocationClaim(
 assert.equal(lowAccuracy.ok, true);
 if (lowAccuracy.ok) assert.ok(lowAccuracy.warnings.includes("low_gps_accuracy"));
 
-// Paid route distance always comes from server and is bounded.
+// Paid route distance always comes from server and is bounded (delivery default).
 assert.equal(
   evaluateServerRoute({
     pickup: { lat: 40.7484, lng: -73.9857 },
     dropoff: { lat: 40.758, lng: -73.9855 },
     serverDistanceMiles: 1.1,
+    service: "delivery",
   }).ok,
   true,
 );
@@ -175,9 +176,10 @@ assert.deepEqual(
   evaluateServerRoute({
     pickup: { lat: 40.7484, lng: -73.9857 },
     dropoff: { lat: 40.758, lng: -73.9855 },
-    serverDistanceMiles: 51,
+    serverDistanceMiles: 60.01,
+    service: "delivery",
   }),
-  { ok: false, code: "distance_too_far" },
+  { ok: false, code: "delivery_distance_too_far" },
 );
 
 // Manipulated client distance / quote input is refused against server route.

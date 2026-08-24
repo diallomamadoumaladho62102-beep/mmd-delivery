@@ -1,4 +1,5 @@
 import { captureProductionException } from "@/lib/sentryCapture";
+import { routeDistanceLimitUserMessage } from "@/lib/routeDistanceLimits";
 
 const TECHNICAL_PATTERNS: RegExp[] = [
   /unrecognized format\(\)/i,
@@ -170,6 +171,9 @@ function mapKnownErrorCode(code: string, message: string): string | null {
   if (/network request failed/i.test(message)) {
     return "Connexion instable. Vérifiez votre réseau et réessayez.";
   }
+
+  const distanceMessage = routeDistanceLimitUserMessage(message, "fr");
+  if (distanceMessage) return distanceMessage;
 
   if (message === "distance_too_far") {
     return "La distance est trop importante pour cette course.";

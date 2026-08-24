@@ -14,9 +14,22 @@ import {
   isDeliverySharePctError,
 } from "@/lib/deliveryShareApiError";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
+import { routeDistanceLimitUserMessage } from "@/lib/routeDistanceLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function deliveryRouteDistanceJson(message: string) {
+  if (message !== "delivery_distance_too_far") return null;
+  return mmdLocationJson(
+    {
+      ok: false,
+      error: message,
+      message: routeDistanceLimitUserMessage(message, "en"),
+    },
+    400,
+  );
+}
 
 export async function POST(req: NextRequest) {
   const auth = await requireDeliveryClientAuth(req);
@@ -72,6 +85,8 @@ export async function POST(req: NextRequest) {
       );
     }
     const message = error instanceof Error ? error.message : "Server error";
+    const distanceResponse = deliveryRouteDistanceJson(message);
+    if (distanceResponse) return distanceResponse;
     return mmdLocationJson({ ok: false, error: message }, 400);
   }
 }

@@ -238,8 +238,8 @@ export async function POST(req: NextRequest) {
       );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Route resolution failed";
-      if (message === "distance_too_far") {
-        return taxiJson({ ok: false, error: "distance_too_far" }, 400);
+      if (message === "distance_too_far" || message === "taxi_distance_too_far") {
+        return taxiJson({ ok: false, error: "taxi_distance_too_far" }, 400);
       }
       return taxiJson({ ok: false, error: message }, 400);
     }
@@ -289,6 +289,7 @@ export async function POST(req: NextRequest) {
         claimedCountryCode: countryCode,
       })),
       serverDistanceMiles: route.distanceMiles,
+      service: "taxi",
     });
 
     const platformCheck = await assertPlatformFeature(

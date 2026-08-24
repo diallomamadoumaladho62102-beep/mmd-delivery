@@ -188,6 +188,7 @@ export async function quoteFoodWithPricingEngine(
     pickup: { lat: resolvedPickupLat, lng: resolvedPickupLng },
     dropoff: { lat: dropoffLat, lng: dropoffLng },
     serverDistanceMiles: distanceMiles,
+    service: "delivery",
   });
   if (routeTrust.ok === false) throw new Error(routeTrust.code);
 

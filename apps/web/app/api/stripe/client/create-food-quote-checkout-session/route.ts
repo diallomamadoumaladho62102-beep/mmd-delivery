@@ -18,6 +18,7 @@ import {
   type FoodCheckoutIntentSnapshot,
 } from "@/lib/food/foodCheckoutFromQuote";
 import { quoteFoodSot } from "@/lib/pricingEngine";
+import { routeDistanceLimitUserMessage } from "@/lib/routeDistanceLimits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -166,6 +167,16 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";
+    if (message === "delivery_distance_too_far") {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: message,
+          message: routeDistanceLimitUserMessage(message, "en"),
+        },
+        400,
+      );
+    }
     console.error("[create-food-quote-checkout-session]", message);
     return mmdLocationJson({ ok: false, error: message }, 500);
   }

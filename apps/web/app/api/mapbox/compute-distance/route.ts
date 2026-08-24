@@ -3,6 +3,10 @@ import { METERS_PER_MILE } from "@/lib/deliveryPricing";
 import { computeDeliveryFeeV1 } from "@/lib/pricingEngine/engine/compute/deliveryFeeV1";
 import { logDeliveryPricingV2Shadow } from "@/lib/deliveryPricingEngine";
 import { assertMapboxComputeDistanceAccess } from "@/lib/mapboxRouteSecurity";
+import {
+  evaluateRouteDistanceLimit,
+  routeDistanceLimitUserMessage,
+} from "@/lib/routeDistanceLimits";
 import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
 
 function requireMapboxToken(): string {
@@ -177,15 +181,15 @@ export async function POST(req: NextRequest) {
       dropoffLng
     );
 
-    // 🔴 Niveau 3 — blocage backend absolu
-    const BLOCK_MILES = 50;
-
-    if (distanceMiles > BLOCK_MILES) {
+    const distanceLimit = evaluateRouteDistanceLimit(distanceMiles, "delivery");
+    if (distanceLimit.ok === false) {
       return NextResponse.json(
         {
           ok: false,
-          error: "distance_too_far",
-          message: `Distance too far: ${distanceMiles.toFixed(2)} mi`,
+          error: distanceLimit.code,
+          message:
+            routeDistanceLimitUserMessage(distanceLimit.code, "en") ??
+            `Distance too far: ${distanceMiles.toFixed(2)} mi`,
           distanceMiles,
           etaMinutes,
         },

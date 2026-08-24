@@ -160,6 +160,7 @@ export async function quotePackageWithPricingEngine(
     pickup: { lat: pickupLat, lng: pickupLng },
     dropoff: { lat: dropoffLat, lng: dropoffLng },
     serverDistanceMiles: distanceMiles,
+    service: "delivery",
   });
   if (routeTrust.ok === false) throw new Error(routeTrust.code);
 

@@ -40,6 +40,10 @@ export const PRICING_BUSINESS_DEFAULTS = {
   // Food tax legacy fallback (US) when taxi_country_taxes has no food row
   food_legacy_tax_rate: 0.0888,
 
+  // Route distance policy (fail-closed backend limits)
+  taxi_max_distance_miles: 300,
+  delivery_max_distance_miles: 60,
+
   // Taxi shared ride
   taxi_shared_ride_discount_percent: 15,
   taxi_shared_ride_match_window_minutes: 15,
