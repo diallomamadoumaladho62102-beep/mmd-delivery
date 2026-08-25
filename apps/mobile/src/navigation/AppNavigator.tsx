@@ -81,7 +81,7 @@ export type RootStackParamList = {
   ClientSecurity: undefined;
   ClientNotificationCenter: undefined;
   DriverNotificationCenter: undefined;
-  DeleteAccount: { role: "client" | "driver" | "restaurant" };
+  DeleteAccount: { role: "client" | "driver" | "restaurant" | "seller" };
   MMDLocationPicker: {
     countryCode?: string;
     title?: string;
@@ -631,7 +631,8 @@ export function AppNavigator({
       r === "SellerDashboard" ||
       r === "SellerWallet" ||
       r === "SellerProducts" ||
-      r === "SellerOrders"
+      r === "SellerOrders" ||
+      r === "DeleteAccount"
     );
   }, []);
 

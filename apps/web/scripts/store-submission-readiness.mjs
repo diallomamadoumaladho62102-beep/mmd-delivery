@@ -133,7 +133,15 @@ async function checkPublicWeb() {
     }
   }
 
-  const { text: aasaText } = await fetchProbe(`${apiBase}/.well-known/apple-app-site-association`);
+  const { text: aasaText, res: aasaRes } = await fetchProbe(`${apiBase}/.well-known/apple-app-site-association`);
+  const aasaType = String(aasaRes.headers.get("content-type") ?? "").toLowerCase();
+  if (aasaType.includes("application/json")) {
+    record("universal_links", "aasa_content_type_json", "PASS");
+  } else {
+    record("universal_links", "aasa_content_type_json", "WARN", {
+      note: `Apple expects application/json; production currently reports ${aasaType || "missing"}. next.config.js sets Content-Type after web deploy.`,
+    });
+  }
   const requiredAasa = ["/signup/*", "/auth/*", "/r/*", "/reset-password"];
   for (const fragment of requiredAasa) {
     if (aasaText.includes(fragment)) {

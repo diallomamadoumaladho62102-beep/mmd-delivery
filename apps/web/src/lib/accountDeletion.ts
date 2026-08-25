@@ -3,7 +3,12 @@ import { createHash, randomBytes } from "crypto";
 import { normalizeUserRole, type UserRole } from "@/lib/roles";
 import { isStaffRole, normalizeProfileRole } from "@mmd/platform-roles";
 
-export const DELETABLE_ROLES = ["client", "driver", "restaurant"] as const;
+export const DELETABLE_ROLES = [
+  "client",
+  "driver",
+  "restaurant",
+  "seller",
+] as const;
 export type DeletableRole = (typeof DELETABLE_ROLES)[number];
 
 export function isDeletableRole(role: UserRole): role is DeletableRole {
@@ -110,7 +115,7 @@ export async function executeAccountDeletion(params: {
   if (updProfileErr) return { ok: false, error: updProfileErr.message };
 
   // 2) Role-specific PII scrub (best-effort)
-  if (role === "client") {
+  if (role === "client" || role === "seller") {
     await safeUpdate(
       supabaseAdmin,
       "client_profiles",
@@ -133,6 +138,25 @@ export async function executeAccountDeletion(params: {
       value: userId,
     });
   }
+
+  // Marketplace seller is a profile overlay (often profiles.role=client).
+  // Scrub PII for every deletion so a shop created in-app cannot outlive the account.
+  await safeUpdate(
+    supabaseAdmin,
+    "sellers",
+    {
+      business_name: `Deleted Seller ${userId.slice(0, 8)}`,
+      phone: "deleted",
+      address: "deleted",
+      city: "deleted",
+      logo_url: null,
+      cover_image_url: null,
+      document_urls: [],
+      status: "suspended",
+      is_accepting_orders: false,
+    },
+    { column: "user_id", value: userId }
+  );
 
   if (role === "driver") {
     await safeUpdate(

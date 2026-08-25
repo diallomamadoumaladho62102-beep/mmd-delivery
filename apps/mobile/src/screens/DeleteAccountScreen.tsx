@@ -29,7 +29,7 @@ import {
   MMD_WHITE,
 } from "../theme/mmdUi";
 
-type Role = "client" | "driver" | "restaurant";
+type Role = "client" | "driver" | "restaurant" | "seller";
 
 type Props = {
   role?: Role;
@@ -51,6 +51,9 @@ export function DeleteAccountScreen(props: Props) {
   const roleLabel = useMemo(() => {
     if (role === "driver") return t("common.driver", "Driver");
     if (role === "restaurant") return t("common.restaurant", "Restaurant");
+    if (role === "seller") {
+      return t("roleSelect.roles.seller", "Marketplace Seller");
+    }
     return t("common.client", "Client");
   }, [role, t]);
 

@@ -15,6 +15,7 @@ assert.match(privacy, /How we use information/);
 assert.match(privacy, /How we protect information/);
 assert.match(privacy, /SMS and phone communications/);
 assert.match(privacy, /Information sharing/);
+assert.match(privacy, /delete your account in the MMD Delivery app/);
 assert.match(privacy, /Twilio/);
 assert.match(privacy, /Supabase/);
 assert.match(privacy, /Stripe/);

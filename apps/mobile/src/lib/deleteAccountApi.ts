@@ -5,9 +5,50 @@ export type DeleteAccountResult =
   | { ok: true }
   | { ok: false; error: string; status?: number };
 
+export type DeletableAccountRole = "client" | "driver" | "restaurant" | "seller";
+
+export async function resolveDeletableAccountRole(): Promise<
+  DeletableAccountRole | null
+> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const uid = sessionData.session?.user?.id;
+  if (!uid) return null;
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", uid)
+    .maybeSingle();
+
+  const role = String(
+    (data as { role?: string } | null)?.role ?? "client",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (
+    role === "client" ||
+    role === "driver" ||
+    role === "restaurant" ||
+    role === "seller"
+  ) {
+    return role;
+  }
+  if (role === "merchant" || role === "merchant_owner") return "seller";
+  return null;
+}
+
+export async function openDeleteAccountScreen(navigation: {
+  navigate: (name: "DeleteAccount", params: { role: DeletableAccountRole }) => void;
+}): Promise<"ok" | "blocked"> {
+  const role = (await resolveDeletableAccountRole()) ?? "client";
+  navigation.navigate("DeleteAccount", { role });
+  return "ok";
+}
+
 export async function deleteMyAccount(params: {
   password: string;
-  expectedRole: "client" | "driver" | "restaurant";
+  expectedRole: DeletableAccountRole;
 }): Promise<DeleteAccountResult> {
   const { data: sessionData, error: sessionErr } =
     await supabase.auth.getSession();

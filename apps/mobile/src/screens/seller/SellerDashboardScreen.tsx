@@ -43,6 +43,7 @@ import {
   confirmSignOutToRoleSelect,
   sellerSignOutLabels,
 } from "../../lib/confirmSignOutToRoleSelect";
+import { openDeleteAccountScreen } from "../../lib/deleteAccountApi";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -404,6 +405,30 @@ export default function SellerDashboardScreen({ navigation }: Props) {
               hideTitle
             />
           </SellerGlassCard>
+
+          <SellerGlassCard style={{ gap: 8 }}>
+            <Text style={styles.sectionTitle}>
+              {t("client.settings.danger", "Danger")}
+            </Text>
+            <Text style={styles.muted}>
+              {t(
+                "seller.dashboard.deleteHint",
+                "Permanently delete your MMD account and marketplace shop. This cannot be undone.",
+              )}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                void openDeleteAccountScreen(navigation);
+              }}
+              style={styles.deleteBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t("account.delete.title", "Delete account")}
+            >
+              <Text style={styles.deleteBtnText}>
+                {t("account.delete.title", "Delete account")}
+              </Text>
+            </TouchableOpacity>
+          </SellerGlassCard>
           </SellerContentWrap>
         </ScrollView>
       )}
@@ -564,5 +589,20 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     fontSize: 12,
     fontFamily: MMD_FONT.regular,
+  },
+  deleteBtn: {
+    marginTop: 8,
+    borderRadius: 12,
+    paddingVertical: 14,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#B91C1C",
+  },
+  deleteBtnText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "700",
+    fontSize: 14,
   },
 });

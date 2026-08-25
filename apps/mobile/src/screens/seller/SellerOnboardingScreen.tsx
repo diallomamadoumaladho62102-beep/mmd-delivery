@@ -33,6 +33,7 @@ import {
   sellerSignOutLabels,
 } from "../../lib/confirmSignOutToRoleSelect";
 import { toUserFacingError } from "../../lib/userFacingError";
+import { openDeleteAccountScreen } from "../../lib/deleteAccountApi";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -303,6 +304,19 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={() => {
+              void openDeleteAccountScreen(navigation);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("account.delete.title", "Delete account")}
+          >
+            <Text style={styles.deleteBtnText}>
+              {t("account.delete.title", "Delete account")}
+            </Text>
+          </TouchableOpacity>
+
           {editMode ? (
             <TouchableOpacity
               style={styles.logoutBtn}
@@ -394,5 +408,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: MMD_FONT.semibold,
     fontWeight: "600",
+  },
+  deleteBtn: {
+    marginTop: 8,
+    borderRadius: 16,
+    paddingVertical: 16,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#B91C1C",
+  },
+  deleteBtnText: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
   },
 });

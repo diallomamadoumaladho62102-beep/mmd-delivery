@@ -214,6 +214,18 @@ test("RoleSelect exposes Browse Marketplace entry", () => {
   assert.match(src, /MarketplaceHome/);
 });
 
+test("seller area includes in-app account deletion for App Review 5.1.1(v)", () => {
+  const dashboard = read("apps/mobile/src/screens/seller/SellerDashboardScreen.tsx");
+  const onboarding = read("apps/mobile/src/screens/seller/SellerOnboardingScreen.tsx");
+  const nav = read("apps/mobile/src/navigation/AppNavigator.tsx");
+  const deletion = read("apps/web/src/lib/accountDeletion.ts");
+  assert.match(dashboard, /openDeleteAccountScreen/);
+  assert.match(onboarding, /openDeleteAccountScreen/);
+  assert.match(nav, /isInSellerArea[\s\S]*DeleteAccount/);
+  assert.match(deletion, /"seller"/);
+  assert.match(deletion, /business_name: `Deleted Seller/);
+});
+
 test("RoleSelect exposes explicit Log in entry for App Review", () => {
   const src = read("apps/mobile/src/screens/RoleSelectScreen.tsx");
   assert.match(src, /role-select-login-button/);

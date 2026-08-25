@@ -57,7 +57,7 @@ We may also send service emails and, where you have opted in, SMS about your acc
     title: "How we protect information",
     body_md: `We host application data with **Supabase** under access controls, encryption in transit, and role-based permissions. Payments are processed by **Stripe**. SMS, phone verification, and masked calling are delivered through **Twilio** as a service provider.
 
-Access to production systems is limited to authorized staff. You can request access to or deletion of your account data by emailing [${LEGAL_SUPPORT_EMAIL}](mailto:${LEGAL_SUPPORT_EMAIL}) or using the [contact form](/contact). Some records (for example payment, tax, or fraud logs) may be retained as required by law.`,
+Access to production systems is limited to authorized staff. You can **delete your account in the MMD Delivery app** (Settings / Security → Delete account) for customer, driver, restaurant, and marketplace seller accounts created in the app. You may also request access or deletion by emailing [${LEGAL_SUPPORT_EMAIL}](mailto:${LEGAL_SUPPORT_EMAIL}) or using the [contact form](/contact). Some records (for example payment, tax, or fraud logs) may be retained as required by law.`,
   },
   {
     id: "privacy-sms",
@@ -90,7 +90,7 @@ We do not sell personal information or share mobile numbers with third parties f
   {
     id: "privacy-rights",
     title: "Your choices and requests",
-    body_md: `You may update profile information in the app, control notification settings where offered, and request access or deletion as described above. Cookie practices are described on our [Cookies](/cookies) page.
+    body_md: `You may update profile information in the app, control notification settings where offered, and **delete your account from inside the app** without contacting support. Cookie practices are described on our [Cookies](/cookies) page.
 
 MMD Delivery is not directed at children under 13, and we do not knowingly collect their personal information.
 

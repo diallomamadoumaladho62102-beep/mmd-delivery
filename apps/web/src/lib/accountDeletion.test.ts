@@ -110,11 +110,17 @@ function makeAdminMock(opts: {
 }
 
 async function main() {
-  await test("deletable roles are client/driver/restaurant only", () => {
-    assert.deepEqual([...DELETABLE_ROLES], ["client", "driver", "restaurant"]);
+  await test("deletable roles are client/driver/restaurant/seller", () => {
+    assert.deepEqual([...DELETABLE_ROLES], [
+      "client",
+      "driver",
+      "restaurant",
+      "seller",
+    ]);
     assert.equal(isDeletableRole("client"), true);
     assert.equal(isDeletableRole("driver"), true);
     assert.equal(isDeletableRole("restaurant"), true);
+    assert.equal(isDeletableRole("seller"), true);
     assert.equal(isDeletableRole("admin"), false);
     assert.equal(isDeletableRole("ops"), false);
     assert.equal(isDeletableRole(null), false);
@@ -248,6 +254,7 @@ async function main() {
     assert.ok(ops.includes("admin_audit_logs:insert"));
     assert.ok(ops.includes("user_push_tokens:delete"));
     assert.ok(ops.includes("push_tokens:delete") || ops.includes("client_addresses:delete"));
+    assert.ok(ops.includes("sellers:update"));
 
     const authUpdate = mock.calls.find(
       (c) => c.table === "auth.users" && c.op === "updateUserById"
@@ -286,6 +293,40 @@ async function main() {
     assert.ok(!deletedTables.includes("taxi_rides"));
     assert.ok(!deletedTables.includes("payments"));
     assert.ok(!deletedTables.includes("payouts"));
+  });
+
+  await test("seller-role deletion anonymizes marketplace shop PII", async () => {
+    const mock = makeAdminMock({
+      profile: {
+        id: "seller-1",
+        role: "seller",
+        account_status: "active",
+        is_founder: false,
+        email: "s@example.com",
+        full_name: "Shop Owner",
+        phone: "1",
+      },
+    });
+    const result = await executeAccountDeletion({
+      supabaseAdmin: mock.supabaseAdmin,
+      userId: "seller-1",
+      role: "seller",
+      requestedBy: "seller-1",
+    });
+    assert.equal(result.ok, true);
+    const sellerUpdate = mock.calls.find(
+      (c) => c.table === "sellers" && c.op === "update"
+    );
+    const payload = sellerUpdate?.payload as {
+      business_name?: string;
+      phone?: string;
+      status?: string;
+      is_accepting_orders?: boolean;
+    };
+    assert.match(String(payload?.business_name), /^Deleted Seller/);
+    assert.equal(payload?.phone, "deleted");
+    assert.equal(payload?.status, "suspended");
+    assert.equal(payload?.is_accepting_orders, false);
   });
 
   console.log("accountDeletion tests passed");

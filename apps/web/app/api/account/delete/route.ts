@@ -26,7 +26,7 @@ function clientIp(req: NextRequest): string | null {
 /**
  * Self-service account deletion.
  * Body: { password: string, confirm_phrase: "DELETE", expected_role?: string }
- * Requires Bearer session of the account owner (client|driver|restaurant).
+ * Requires Bearer session of the account owner (client|driver|restaurant|seller).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -91,7 +91,10 @@ export async function POST(request: NextRequest) {
     const role = normalizeUserRole(profile.role);
     if (!isDeletableRole(role)) {
       return taxiJson(
-        { ok: false, error: "Staff accounts cannot use self-service deletion" },
+        {
+          ok: false,
+          error: "This account type cannot use self-service deletion",
+        },
         403
       );
     }

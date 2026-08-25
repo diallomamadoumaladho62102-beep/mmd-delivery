@@ -33,6 +33,14 @@ MMD does **not** play persistent background audio.
 
 ---
 
+## Marketplace seller account deletion (Guideline 5.1.1(v))
+
+Marketplace Seller is created in-app (Role Select → sign up/login → Seller setup).  
+**Delete account** is on **Seller Dashboard** and **Seller Setup**.  
+Deletion requires the account password and typing DELETE. It anonymizes personal and shop data; financial records required by law are retained.
+
+---
+
 ## Marketplace guest path
 
 1. Launch app → **Browse Marketplace** (no account).

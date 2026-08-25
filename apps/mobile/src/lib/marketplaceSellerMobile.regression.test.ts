@@ -25,11 +25,14 @@ const onboarding = read("screens/seller/SellerOnboardingScreen.tsx");
 assert(onboarding.includes("sellerSignOutLabels"), "seller profile has logout");
 assert(onboarding.includes("confirmSignOutToRoleSelect"), "seller logout uses shared sign-out");
 assert(onboarding.includes('navigation.navigate("SellerDashboard")'), "profile save navigates to dashboard");
+assert(onboarding.includes("openDeleteAccountScreen"), "onboarding exposes account deletion");
 
 const dashboard = read("screens/seller/SellerDashboardScreen.tsx");
 assert(dashboard.includes("sellerSignOutLabels"), "dashboard has logout");
 assert(dashboard.includes("LanguagePicker"), "seller dashboard has language picker");
 assert(dashboard.includes('setLocaleForRoleAndApply("seller"'), "seller language uses global setter");
+assert(dashboard.includes("openDeleteAccountScreen"), "dashboard exposes account deletion");
+assert(dashboard.includes("account.delete.title"), "dashboard delete uses account.delete title");
 
 const authRole = read("lib/authRole.ts");
 assert(authRole.includes("resolvePostAuthRoute"), "post-auth route helper exists");
@@ -55,5 +58,9 @@ assert(signOut.includes("sellerSignOutLabels"), "seller sign-out labels exported
 
 const nav = read("navigation/AppNavigator.tsx");
 assert(nav.includes("highlightOrderId"), "SellerOrders route accepts highlight param");
+assert(
+  /isInSellerArea[\s\S]*DeleteAccount/.test(nav),
+  "seller area allows DeleteAccount so App Review 5.1.1(v) is not bounced",
+);
 
 console.log("marketplaceSellerMobile.regression.test.ts — PASS");
