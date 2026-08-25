@@ -99,6 +99,7 @@ async function checkPublicWeb() {
     { name: "ping_protected", url: `${apiBase}/api/ping`, expect: 401 },
     { name: "download_public", url: `${apiBase}/download`, expect: 200 },
     { name: "legal_privacy_public", url: `${apiBase}/legal/privacy`, expect: 200 },
+    { name: "legal_terms_public", url: `${apiBase}/legal/terms`, expect: 200 },
     { name: "home_public", url: `${apiBase}/`, expect: 200 },
     { name: "assetlinks_200", url: `${apiBase}/.well-known/assetlinks.json`, expect: 200 },
     { name: "aasa_200", url: `${apiBase}/.well-known/apple-app-site-association`, expect: 200 },
