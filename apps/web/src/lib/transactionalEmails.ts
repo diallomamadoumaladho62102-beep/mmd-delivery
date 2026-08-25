@@ -19,6 +19,7 @@ import {
   notifyUserTransactional,
   sendTransactionalEmail,
 } from "./transactionalOutbound";
+import { loadPreferredLocale } from "./userLocale";
 
 export { isTransactionalEmailEnabled };
 
@@ -48,7 +49,8 @@ export async function notifyAccountCreatedEmail(params: {
   userId: string;
   name?: string | null;
 }): Promise<void> {
-  const template = accountCreatedEmail({ name: params.name });
+  const locale = await loadPreferredLocale(params.supabaseAdmin, params.userId);
+  const template = accountCreatedEmail({ name: params.name, locale });
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
     recipient: { userId: params.userId },
@@ -65,9 +67,11 @@ export async function notifyOrderConfirmationEmail(params: {
   restaurantName?: string | null;
 }): Promise<void> {
   if (!params.clientUserId) return;
+  const locale = await loadPreferredLocale(params.supabaseAdmin, params.clientUserId);
   const template = orderConfirmationEmail({
     orderId: params.orderId,
     restaurantName: params.restaurantName,
+    locale,
   });
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
@@ -85,9 +89,11 @@ export async function notifyOrderAcceptedEmail(params: {
   prepMinutes?: number | null;
 }): Promise<void> {
   if (!params.clientUserId) return;
+  const locale = await loadPreferredLocale(params.supabaseAdmin, params.clientUserId);
   const template = orderAcceptedEmail({
     orderId: params.orderId,
     prepMinutes: params.prepMinutes,
+    locale,
   });
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
@@ -105,9 +111,11 @@ export async function notifyOrderCancelledEmail(params: {
   refund?: string | null;
 }): Promise<void> {
   if (!params.clientUserId) return;
+  const locale = await loadPreferredLocale(params.supabaseAdmin, params.clientUserId);
   const template = orderCancelledEmail({
     orderId: params.orderId,
     refund: params.refund,
+    locale,
   });
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
@@ -122,7 +130,8 @@ export async function notifyDriverApprovedEmail(params: {
   supabaseAdmin: SupabaseClient;
   userId: string;
 }): Promise<void> {
-  const template = driverApprovedEmail();
+  const locale = await loadPreferredLocale(params.supabaseAdmin, params.userId);
+  const template = driverApprovedEmail({ locale });
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
     recipient: { userId: params.userId },
@@ -137,8 +146,10 @@ export async function notifyRestaurantApprovedEmail(params: {
   userId: string;
   restaurantName?: string | null;
 }): Promise<void> {
+  const locale = await loadPreferredLocale(params.supabaseAdmin, params.userId);
   const template = restaurantApprovedEmail({
     restaurantName: params.restaurantName,
+    locale,
   });
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
@@ -154,8 +165,10 @@ export async function notifySellerApprovedEmail(params: {
   userId: string;
   businessName?: string | null;
 }): Promise<void> {
+  const locale = await loadPreferredLocale(params.supabaseAdmin, params.userId);
   const template = sellerApprovedEmail({
     businessName: params.businessName,
+    locale,
   });
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
@@ -169,8 +182,12 @@ export async function notifySellerApprovedEmail(params: {
 export async function notifyPasswordResetEmail(params: {
   to: string;
   resetUrl: string;
+  locale?: string | null;
 }): Promise<{ ok: boolean; skipped?: boolean }> {
-  const template = passwordResetEmail({ resetUrl: params.resetUrl });
+  const template = passwordResetEmail({
+    resetUrl: params.resetUrl,
+    locale: params.locale,
+  });
   return sendTransactionalTemplateEmail({ to: params.to, template });
 }
 
@@ -181,9 +198,11 @@ export async function notifyTeamInvitationEmail(params: {
   inviteeName?: string | null;
   invitedBy?: string | null;
 }): Promise<void> {
+  const locale = await loadPreferredLocale(params.supabaseAdmin, params.userId);
   const template = teamInvitationEmail({
     inviteeName: params.inviteeName,
     invitedBy: params.invitedBy,
+    locale,
   });
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,

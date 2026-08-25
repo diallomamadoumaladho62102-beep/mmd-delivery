@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prove image-size patch on clean install
+        run: node scripts/image-size-clean-install.regression.test.mjs
+
       - name: Typecheck web
         run: pnpm --dir apps/web exec tsc --noEmit
 
@@ -64,6 +67,9 @@ jobs:
 
       - name: Web critical tests
         run: pnpm --dir apps/web test:ci
+
+      - name: Mobile i18n coverage
+        run: pnpm --dir apps/mobile test:i18n-coverage && pnpm --dir apps/mobile test:i18n-hardcoded
 
       - name: Mobile maps tests
         run: pnpm --dir apps/mobile test:maps

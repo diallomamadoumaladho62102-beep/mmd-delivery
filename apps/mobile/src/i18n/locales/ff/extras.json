@@ -92,7 +92,15 @@
       "shopOpenTitle": "Duka udditii e client",
       "shopOpenOn": "Client ɗe waawi yiyde produit maa.",
       "shopOpenOff": "Duka maa udditaama e order ɗe kesii.",
-      "toggleFailed": "Horiima hesɗitinde staatus butik."
+      "toggleFailed": "Horiima hesɗitinde ngonka duka.",
+      "language": "Ɗemngal"
+    },
+    "nav": {
+      "home": "Galle",
+      "orders": "Odaare",
+      "earnings": "Njoɓdi",
+      "products": "Njeeygu",
+      "profile": "Profil"
     },
     "stats": {
       "products": "Produits",
@@ -452,6 +460,10 @@
     },
     "driver": {
       "activeRide": {
+        "title": "Yahdu taxi huɓɓiinde",
+        "estimatedFare": "Njoɓdi ƴeewtunda",
+        "pickup": "Fuɗɗorde",
+        "dropoff": "Jaɓorde",
         "navigate": "Laawol",
         "chat": "Ɓataama",
         "call": "Noddu",
@@ -502,7 +514,19 @@
     },
     "profile": {
       "loading": "Nana loowa profil…",
-      "avatarUploadError": "Horiima neldude foto. Yeeɓ permissions stockage."
+      "avatarUploadError": "Horiima neldude foto. Yeeɓ permissions stockage.",
+      "phoneVerify": {
+        "title": "Nenndin cinndel maa",
+        "hint": "Min neldat kod SMS ngam jaɓɓude ndee limre.",
+        "sendCode": "Neldu kod SMS",
+        "codePlaceholder": "Kod",
+        "confirm": "Jaɓ",
+        "verified": "Cinndel nenndinaama",
+        "codeSent": "Kod nenndital neldaama e SMS.",
+        "verifiedNotice": "Cinndel nenndinaama.",
+        "sendFailed": "Horiima neldude kod",
+        "invalidCode": "Kod moƴƴaani"
+      }
     },
     "deliveryRequest": {
       "total": "Total",
@@ -854,6 +878,20 @@
     },
     "taxiPanel": {
       "title": "Taxi",
+      "incomingOffer": "Offre taxi hesere",
+      "premium": "Premium",
+      "offers": "Offres taxi",
+      "favoriteClient": "Yahdu jeyaaɗo cuɓaaɗo",
+      "scheduledRide": "Yahdu teeltaaɗo",
+      "sharedRide": "Yahdu ndenndaandu",
+      "premiumRide": "Yahdu premium",
+      "businessRide": "Yahdu golle",
+      "pickup": "Fuɗɗorde",
+      "dropoff": "Jaɓorde",
+      "clientPreferences": "Cuɓaaɗe jeyaaɗo",
+      "reject": "Aɗa",
+      "accept": "Jaɓ",
+      "emptyOffers": "Alaa offre taxi jooni.",
       "callTitle": "Noddu",
       "offerTakenOrExpired": "Offre oo ƴettaama walla timmii. Offres hesɗitinaama.",
       "acceptFailed": "Horiima jaɓ",
@@ -970,6 +1008,7 @@
       "handOverOrder": "Okka commande",
       "viewOnMap": "Yiy e karte",
       "newOrder": "Commande keso",
+      "paidOrderArrived": "Odaare yoɓaande hesiri jooni.",
       "newOrderMeta": "{{seconds}} sec • {{count}} items • {{amount}}",
       "accept": "Jaɓu",
       "reject": "Haɗu",

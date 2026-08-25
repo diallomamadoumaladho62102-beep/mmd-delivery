@@ -1,7 +1,7 @@
 // apps/mobile/src/i18n/storage.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type Role = "driver" | "client" | "restaurant";
+export type Role = "driver" | "client" | "restaurant" | "seller";
 export type Locale = string;
 
 /**
@@ -17,6 +17,7 @@ const KEY_BY_ROLE: Record<Role, string> = {
   driver: "mmd_locale_driver",
   client: "mmd_locale_client",
   restaurant: "mmd_locale_restaurant",
+  seller: "mmd_locale_seller",
 };
 
 /**

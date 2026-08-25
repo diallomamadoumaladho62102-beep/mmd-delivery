@@ -92,7 +92,15 @@
       "shopOpenTitle": "Boutique ouverte aux clients",
       "shopOpenOn": "Les clients peuvent parcourir vos produits actifs.",
       "shopOpenOff": "Votre boutique est fermée aux nouvelles commandes.",
-      "toggleFailed": "Impossible de mettre à jour le statut boutique."
+      "toggleFailed": "Impossible de mettre à jour le statut boutique.",
+      "language": "Langue"
+    },
+    "nav": {
+      "home": "Accueil",
+      "orders": "Commandes",
+      "earnings": "Gains",
+      "products": "Produits",
+      "profile": "Profil"
     },
     "stats": {
       "products": "Produits",
@@ -452,6 +460,10 @@
     },
     "driver": {
       "activeRide": {
+        "title": "Course taxi en cours",
+        "estimatedFare": "Tarif estimé",
+        "pickup": "Prise en charge",
+        "dropoff": "Destination",
         "navigate": "Naviguer",
         "chat": "Discussion",
         "call": "Appeler",
@@ -514,7 +526,19 @@
     },
     "profile": {
       "loading": "Chargement du profil…",
-      "avatarUploadError": "Impossible d'envoyer la photo. Vérifiez les permissions."
+      "avatarUploadError": "Impossible d'envoyer la photo. Vérifiez les permissions.",
+      "phoneVerify": {
+        "title": "Vérifier votre téléphone",
+        "hint": "Nous enverrons un code SMS pour confirmer ce numéro.",
+        "sendCode": "Envoyer le code SMS",
+        "codePlaceholder": "Code",
+        "confirm": "Confirmer",
+        "verified": "Téléphone vérifié",
+        "codeSent": "Code de vérification envoyé par SMS.",
+        "verifiedNotice": "Téléphone vérifié.",
+        "sendFailed": "Impossible d'envoyer le code",
+        "invalidCode": "Code invalide"
+      }
     },
     "deliveryRequest": {
       "total": "Total",
@@ -813,6 +837,20 @@
     },
     "taxiPanel": {
       "title": "Taxi",
+      "incomingOffer": "Offre taxi entrante",
+      "premium": "Premium",
+      "offers": "Offres taxi",
+      "favoriteClient": "Course client favori",
+      "scheduledRide": "Course programmée",
+      "sharedRide": "Course partagée",
+      "premiumRide": "Course premium",
+      "businessRide": "Course professionnelle",
+      "pickup": "Prise en charge",
+      "dropoff": "Destination",
+      "clientPreferences": "Préférences client",
+      "reject": "Refuser",
+      "accept": "Accepter",
+      "emptyOffers": "Aucune offre taxi pour le moment.",
       "callTitle": "Appeler",
       "offerTakenOrExpired": "Cette offre a été prise ou a expiré. Offres actualisées.",
       "acceptFailed": "Échec de l'acceptation",
@@ -1030,6 +1068,7 @@
       "handOverOrder": "Remettre la commande",
       "viewOnMap": "Voir sur la carte",
       "newOrder": "Nouvelle commande",
+      "paidOrderArrived": "Une commande payée vient d'arriver.",
       "newOrderMeta": "Il y a {{seconds}} sec • {{count}} articles • {{amount}}",
       "accept": "Accepter",
       "reject": "Refuser",

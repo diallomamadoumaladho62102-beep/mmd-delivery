@@ -15,6 +15,8 @@ import {
   resolvePushSoundForPlatform,
 } from "@/lib/mmdPushSounds";
 import { filterDeliveryCandidatesByCapacityAndRoute } from "@/lib/driverMissionCapacity";
+import { pushText } from "@/lib/pushCopy";
+import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
 
 const DISPATCH_WAVES = DELIVERY_REQUEST_DISPATCH_WAVES;
 
@@ -426,11 +428,10 @@ export async function runDeliveryRequestDispatch(params: {
 
   const selectedDriverIds = candidates.map((c) => c.driverId);
 
-  const { data: tokens, error: tokensError } = await supabase
-    .from("user_push_tokens")
-    .select("user_id,expo_push_token,role,platform")
-    .in("user_id", selectedDriverIds)
-    .eq("role", "driver");
+  const { data: tokens, error: tokensError } = await loadDriverPushTokenRows(
+    supabase,
+    selectedDriverIds,
+  );
 
   if (tokensError) {
     await insertDispatchLog(supabase, {
@@ -471,7 +472,7 @@ export async function runDeliveryRequestDispatch(params: {
             token.startsWith("ExpoPushToken[")
           );
         })
-        .map((t: { expo_push_token: string; user_id: string }) => [
+        .map((t: { expo_push_token: string; user_id: string; locale?: string | null }) => [
           String(t.expo_push_token),
           t,
         ]),
@@ -480,6 +481,7 @@ export async function runDeliveryRequestDispatch(params: {
     expo_push_token: string;
     user_id: string;
     platform?: string | null;
+    locale?: string | null;
   }>;
 
   const payout =
@@ -487,27 +489,31 @@ export async function runDeliveryRequestDispatch(params: {
     toNumber(request.delivery_fee) ??
     toNumber(request.total);
 
-  const messages = uniqueTokens.map((tokenRow) => ({
-    to: tokenRow.expo_push_token,
-    sound: resolvePushSoundForPlatform(
-      "delivery_request_dispatch",
-      tokenRow.platform,
-    ),
-    channelId: DRIVER_MISSION_PUSH_CHANNEL,
-    title: "Nouvelle livraison disponible 🚗",
-    body: payout
-      ? `Demande proche • Gain estimé ${payout.toFixed(2)} USD`
-      : "Une demande de livraison proche est disponible.",
-    data: {
-      type: "delivery_request_dispatch",
-      deliveryRequestId: request.id,
-      delivery_request_id: request.id,
-      wave,
-      screen: "DriverTabs",
-    },
-    priority: "high" as const,
-    _contentAvailable: true,
-  }));
+  const messages = uniqueTokens.map((tokenRow) => {
+    const locale = normalizeAppLocale(tokenRow.locale);
+    const copy = payout
+      ? pushText("delivery_offer_payout", locale, { payout: payout.toFixed(2) })
+      : pushText("delivery_offer", locale);
+    return {
+      to: tokenRow.expo_push_token,
+      sound: resolvePushSoundForPlatform(
+        "delivery_request_dispatch",
+        tokenRow.platform,
+      ),
+      channelId: DRIVER_MISSION_PUSH_CHANNEL,
+      title: copy.title,
+      body: copy.body,
+      data: {
+        type: "delivery_request_dispatch",
+        deliveryRequestId: request.id,
+        delivery_request_id: request.id,
+        wave,
+        screen: "DriverTabs",
+      },
+      priority: "high" as const,
+      _contentAvailable: true,
+    };
+  });
 
   const dedupBase = `delivery_request_dispatch:${deliveryRequestId}:wave:${wave}`;
   const nowIso = new Date().toISOString();
@@ -516,8 +522,8 @@ export async function runDeliveryRequestDispatch(params: {
     await insertDispatchLog(supabase, {
       user_id: selectedDriverIds[0] ?? request.client_user_id ?? null,
       role: "driver",
-      title: "Nouvelle livraison disponible",
-      body: "Dispatch sans token push chauffeur.",
+      title: messages[0]?.title ?? pushText("delivery_offer", "en").title,
+      body: "Dispatch without driver push token.",
       data: {
         type: "delivery_request_dispatch",
         delivery_request_id: deliveryRequestId,
@@ -560,13 +566,17 @@ export async function runDeliveryRequestDispatch(params: {
     const status =
       !pushAudit.ok || ticketFailed || receiptFailed ? "failed" : "sent";
 
+    const copy = messages[i]
+      ? { title: String(messages[i].title), body: String(messages[i].body) }
+      : payout
+        ? pushText("delivery_offer_payout", "en", { payout: Number(payout).toFixed(2) })
+        : pushText("delivery_offer", "en");
+
     await insertDispatchLog(supabase, {
       user_id: tokenRow.user_id,
       role: "driver",
-      title: "Nouvelle livraison disponible",
-      body: payout
-        ? `Demande proche • Gain estimé ${Number(payout).toFixed(2)} USD`
-        : "Une demande de livraison proche est disponible.",
+      title: copy.title,
+      body: copy.body,
       data: {
         type: "delivery_request_dispatch",
         delivery_request_id: deliveryRequestId,

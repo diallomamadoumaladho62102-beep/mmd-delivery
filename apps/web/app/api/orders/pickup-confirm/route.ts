@@ -4,6 +4,12 @@ import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
 import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
+import {
+  fallbackDropoffAddress,
+  fallbackPickupAddress,
+  pushText,
+} from "@/lib/pushCopy";
+import { normalizeAppLocale } from "@/lib/userLocale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +49,7 @@ type PushTokenRow = {
   expo_push_token?: string | null;
   push_token?: string | null;
   token?: string | null;
+  locale?: string | null;
   is_active?: boolean | null;
   disabled?: boolean | null;
 };
@@ -321,35 +328,41 @@ async function notifyClientPickup(params: {
     throw new Error(tokenErr.message || "Failed to load user push tokens");
   }
 
-  const tokens = dedupeStrings(
-    ((tokenRows ?? []) as PushTokenRow[])
-      .filter((row) => row.disabled !== true && row.is_active !== false)
-      .map((row) => {
-        const candidate =
-          row.expo_push_token ?? row.push_token ?? row.token ?? null;
-        return isExpoPushToken(candidate) ? candidate : null;
-      })
-  );
+  const seen = new Set<string>();
+  const targets: Array<{ to: string; locale: ReturnType<typeof normalizeAppLocale> }> = [];
+  for (const row of (tokenRows ?? []) as PushTokenRow[]) {
+    if (row.disabled === true || row.is_active === false) continue;
+    const candidate = row.expo_push_token ?? row.push_token ?? row.token ?? null;
+    if (!isExpoPushToken(candidate) || seen.has(candidate)) continue;
+    seen.add(candidate);
+    targets.push({ to: candidate, locale: normalizeAppLocale(row.locale) });
+  }
 
-  if (tokens.length === 0) {
+  if (targets.length === 0) {
     return;
   }
 
-  const pickupText = orderRow.pickup_address?.trim() || "your pickup location";
-  const dropoffText =
-    orderRow.dropoff_address?.trim() || "the destination";
-
-  const messages = tokens.map((to) => ({
-    to,
-    sound: MMD_PUSH_SOUNDS.client,
-    title: "Pickup confirmed",
-    body: `Your driver picked up the package from ${pickupText} and is heading to ${dropoffText}.`,
-    data: {
-      type: "pickup_confirmed",
-      order_id: orderRow.id,
-      kind: orderRow.kind ?? "pickup_dropoff",
-    },
-  }));
+  const messages = targets.map((target) => {
+    const pickupText =
+      orderRow.pickup_address?.trim() || fallbackPickupAddress(target.locale);
+    const dropoffText =
+      orderRow.dropoff_address?.trim() || fallbackDropoffAddress(target.locale);
+    const copy = pushText("pickup_confirmed", target.locale, {
+      pickup: pickupText,
+      dropoff: dropoffText,
+    });
+    return {
+      to: target.to,
+      sound: MMD_PUSH_SOUNDS.client,
+      title: copy.title,
+      body: copy.body,
+      data: {
+        type: "pickup_confirmed",
+        order_id: orderRow.id,
+        kind: orderRow.kind ?? "pickup_dropoff",
+      },
+    };
+  });
 
   const response = await fetch(EXPO_PUSH_URL, {
     method: "POST",

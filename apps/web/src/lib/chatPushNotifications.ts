@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolvePushSound } from "./mmdPushSounds";
 import { getUserPushBadgeCount } from "./pushBadgeService";
+import { pushText } from "./pushCopy";
+import { normalizeAppLocale, type AppLocale } from "./userLocale";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const DEDUP_WINDOW_MS = 120_000;
@@ -54,23 +56,25 @@ async function loadTargetTokens(
   admin: SupabaseClient,
   userId: string,
   role: ChatPushRole,
-): Promise<string[]> {
+): Promise<Array<{ token: string; locale: AppLocale }>> {
   const { data, error } = await admin
     .from("user_push_tokens")
-    .select("expo_push_token,disabled,is_active")
+    .select("expo_push_token,disabled,is_active,locale")
     .eq("user_id", userId)
     .eq("role", role);
 
   if (error) return [];
 
-  return Array.from(
-    new Set(
-      (data ?? [])
-        .filter((row) => row.disabled !== true && row.is_active !== false)
-        .map((row) => String(row.expo_push_token ?? "").trim())
-        .filter(isExpoPushToken),
-    ),
-  );
+  const seen = new Set<string>();
+  const out: Array<{ token: string; locale: AppLocale }> = [];
+  for (const row of data ?? []) {
+    if (row.disabled === true || row.is_active === false) continue;
+    const token = String(row.expo_push_token ?? "").trim();
+    if (!isExpoPushToken(token) || seen.has(token)) continue;
+    seen.add(token);
+    out.push({ token, locale: normalizeAppLocale((row as { locale?: unknown }).locale) });
+  }
+  return out;
 }
 
 export async function notifyOrderChatMessage(
@@ -97,7 +101,7 @@ export async function notifyOrderChatMessage(
     params.targetUserId,
   );
 
-  const preview = String(params.preview ?? "Nouveau message").trim() || "Nouveau message";
+  const previewRaw = String(params.preview ?? "").trim();
   const data = {
     type: "order_message",
     order_id: params.orderId,
@@ -106,15 +110,20 @@ export async function notifyOrderChatMessage(
     target_role: params.targetRole,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound("order_message"),
-    title: "Nouveau message",
-    body: preview.slice(0, 180),
-    data,
-    priority: "high",
-    badge: badgeCount > 0 ? badgeCount : 1,
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText("new_message", target.locale, {
+      preview: previewRaw,
+    });
+    return {
+      to: target.token,
+      sound: resolvePushSound("order_message"),
+      title: copy.title,
+      body: (previewRaw || copy.title).slice(0, 180),
+      data,
+      priority: "high",
+      badge: badgeCount > 0 ? badgeCount : 1,
+    };
+  });
 
   let status = "sent";
   let errorMessage: string | null = null;
@@ -142,8 +151,8 @@ export async function notifyOrderChatMessage(
   await params.supabaseAdmin.from("notification_logs").insert({
     user_id: params.targetUserId,
     role: params.targetRole,
-    title: "Nouveau message",
-    body: preview.slice(0, 500),
+    title: messages[0]?.title ?? pushText("new_message", "en").title,
+    body: (previewRaw || messages[0]?.title || "").slice(0, 500),
     data,
     status,
     error_message: errorMessage,

@@ -171,7 +171,9 @@ export function DriverTaxiActiveRideCard({
               <Ionicons name="car" size={18} color="#111827" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>Active taxi ride</Text>
+              <Text style={styles.title}>
+                {t("taxi.driver.activeRide.title", "Active taxi ride")}
+              </Text>
               <View style={styles.badgeRow}>
                 <View style={styles.statusPill}>
                   <Text style={styles.statusPillText}>{formatStatus(status)}</Text>
@@ -224,7 +226,9 @@ export function DriverTaxiActiveRideCard({
         <Text style={styles.price}>{payoutLabel}</Text>
         <View style={styles.fareMeta}>
           <Ionicons name="cash-outline" size={13} color="#94A3B8" />
-          <Text style={styles.fareMetaText}>Estimated fare</Text>
+          <Text style={styles.fareMetaText}>
+            {t("taxi.driver.activeRide.estimatedFare", "Estimated fare")}
+          </Text>
         </View>
 
         <View style={styles.routeCard}>
@@ -237,7 +241,9 @@ export function DriverTaxiActiveRideCard({
             <View style={styles.routeBody}>
               <View style={styles.addrRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.addrLabel}>Pickup</Text>
+                  <Text style={styles.addrLabel}>
+                    {t("taxi.driver.activeRide.pickup", "Pickup")}
+                  </Text>
                   <Text style={styles.addrText} numberOfLines={2}>
                     {pickupAddress || "—"}
                   </Text>
@@ -251,7 +257,9 @@ export function DriverTaxiActiveRideCard({
               </View>
               <View style={[styles.addrRow, { marginTop: 14 }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.addrLabel}>Drop-off</Text>
+                  <Text style={styles.addrLabel}>
+                    {t("taxi.driver.activeRide.dropoff", "Drop-off")}
+                  </Text>
                   <Text style={styles.addrText} numberOfLines={2}>
                     {dropoffAddress || "—"}
                   </Text>

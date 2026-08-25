@@ -76,6 +76,12 @@ const requiredKeys = [
   "driver.taxiPanel.cancelWarn",
   "driver.taxiPanel.cancelReasons.vehicle_issue",
   "driver.taxiPanel.cancelReasons.wrong_trip_details",
+  "driver.taxiPanel.incomingOffer",
+  "driver.taxiPanel.favoriteClient",
+  "driver.taxiPanel.emptyOffers",
+  "taxi.driver.activeRide.title",
+  "seller.nav.home",
+  "seller.dashboard.language",
 ];
 
 const en = loadBundle("en");

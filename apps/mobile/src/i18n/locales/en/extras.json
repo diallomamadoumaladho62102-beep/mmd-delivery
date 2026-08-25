@@ -123,7 +123,15 @@
       "shopOpenTitle": "Shop open to clients",
       "shopOpenOn": "Clients can browse your active products.",
       "shopOpenOff": "Your shop is closed to new client orders.",
-      "toggleFailed": "Unable to update shop status."
+      "toggleFailed": "Unable to update shop status.",
+      "language": "Language"
+    },
+    "nav": {
+      "home": "Home",
+      "orders": "Orders",
+      "earnings": "Earnings",
+      "products": "Products",
+      "profile": "Profile"
     },
     "stats": {
       "products": "Products",
@@ -483,6 +491,10 @@
     },
     "driver": {
       "activeRide": {
+        "title": "Active taxi ride",
+        "estimatedFare": "Estimated fare",
+        "pickup": "Pickup",
+        "dropoff": "Drop-off",
         "navigate": "Navigate",
         "chat": "Chat",
         "call": "Call",
@@ -567,7 +579,19 @@
     },
     "profile": {
       "loading": "Loading profile…",
-      "avatarUploadError": "Unable to upload photo. Check storage permissions."
+      "avatarUploadError": "Unable to upload photo. Check storage permissions.",
+      "phoneVerify": {
+        "title": "Verify your phone",
+        "hint": "We will send an SMS code to confirm this number.",
+        "sendCode": "Send SMS code",
+        "codePlaceholder": "Code",
+        "confirm": "Confirm",
+        "verified": "Phone verified",
+        "codeSent": "Verification code sent by SMS.",
+        "verifiedNotice": "Phone verified.",
+        "sendFailed": "Unable to send code",
+        "invalidCode": "Invalid code"
+      }
     },
     "deliveryRequest": {
       "total": "Total",
@@ -821,6 +845,20 @@
     },
     "taxiPanel": {
       "title": "Taxi",
+      "incomingOffer": "Incoming taxi offer",
+      "premium": "Premium",
+      "offers": "Taxi offers",
+      "favoriteClient": "Favorite client ride",
+      "scheduledRide": "Scheduled ride",
+      "sharedRide": "Shared ride",
+      "premiumRide": "Premium ride",
+      "businessRide": "Business ride",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "clientPreferences": "Client Preferences",
+      "reject": "Reject",
+      "accept": "Accept",
+      "emptyOffers": "No taxi offers right now.",
       "callTitle": "Call",
       "offerTakenOrExpired": "This offer was taken or expired. Offers refreshed.",
       "acceptFailed": "Accept failed",
@@ -986,6 +1024,7 @@
       "handOverOrder": "Hand over order",
       "viewOnMap": "View on map",
       "newOrder": "New order",
+      "paidOrderArrived": "A paid order just arrived.",
       "newOrderMeta": "{{seconds}} sec ago • {{count}} items • {{amount}}",
       "accept": "Accept",
       "reject": "Reject",

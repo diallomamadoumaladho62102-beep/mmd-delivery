@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePushSound } from "./mmdPushSounds";
+import {
+  pushText,
+  safetyRecordingKindLabel,
+  type PushCopyKey,
+} from "./pushCopy";
+import { normalizeAppLocale, type AppLocale } from "./userLocale";
 
 export const SAFETY_RECORDING_CONSENT_MESSAGE =
   "A safety recording is in progress on your device to protect this ride. The other party is notified but does not control your microphone.";
@@ -34,37 +40,32 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 const ACTIVE_RIDE_STATUSES = new Set(["accepted", "driver_arrived", "in_progress"]);
 
-function recordingTypeLabel(type: SafetyRecordingType): string {
-  if (type === "client_audio") return "client safety audio";
-  if (type === "driver_audio") return "driver safety audio";
-  return "driver safety video";
-}
+type PushTarget = { token: string; locale: AppLocale };
 
 async function loadUserExpoTokens(
   supabaseAdmin: SupabaseClient,
   userId: string,
-): Promise<string[]> {
+): Promise<PushTarget[]> {
   const { data: tokenRows } = await supabaseAdmin
     .from("user_push_tokens")
     .select("*")
     .eq("user_id", userId);
 
-  return Array.from(
-    new Set(
-      (tokenRows ?? [])
-        .filter(
-          (row: Record<string, unknown>) =>
-            row.disabled !== true && row.is_active !== false,
-        )
-        .map((row: Record<string, unknown>) =>
-          String(row.expo_push_token ?? row.push_token ?? row.token ?? "").trim(),
-        )
-        .filter(
-          (token) =>
-            token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken["),
-        ),
-    ),
-  );
+  const seen = new Set<string>();
+  const out: PushTarget[] = [];
+  for (const row of (tokenRows ?? []) as Array<Record<string, unknown>>) {
+    if (row.disabled === true || row.is_active === false) continue;
+    const token = String(row.expo_push_token ?? row.push_token ?? row.token ?? "").trim();
+    if (
+      !(token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken[")) ||
+      seen.has(token)
+    ) {
+      continue;
+    }
+    seen.add(token);
+    out.push({ token, locale: normalizeAppLocale(row.locale) });
+  }
+  return out;
 }
 
 async function sendExpoPush(messages: Array<Record<string, unknown>>): Promise<void> {
@@ -96,26 +97,29 @@ export async function notifySafetyRecordingStarted(params: {
   const tokens = await loadUserExpoTokens(params.supabaseAdmin, params.otherPartyUserId);
   if (tokens.length === 0) return;
 
-  const who =
+  const startedKey: PushCopyKey =
     params.recordingType === "client_audio"
-      ? "The client started a safety audio recording on their device."
+      ? "safety_recording_started_client"
       : params.recordingType === "driver_audio"
-        ? "The driver started a safety audio recording on their device."
-        : "The driver started a safety video recording on their device.";
+        ? "safety_recording_started_driver_audio"
+        : "safety_recording_started_driver_video";
 
   await sendExpoPush(
-    tokens.map((token) => ({
-      to: token,
-      sound: resolvePushSound("client_update"),
-      title: "Safety recording",
-      body: `${who} This does not turn on your microphone.`,
-      data: {
-        type: "taxi_safety_recording_started",
-        taxi_ride_id: params.rideId,
-        recording_type: params.recordingType,
-        initiator_role: params.initiatorRole,
-      },
-    })),
+    tokens.map((target) => {
+      const copy = pushText(startedKey, target.locale);
+      return {
+        to: target.token,
+        sound: resolvePushSound("client_update"),
+        title: copy.title,
+        body: copy.body,
+        data: {
+          type: "taxi_safety_recording_started",
+          taxi_ride_id: params.rideId,
+          recording_type: params.recordingType,
+          initiator_role: params.initiatorRole,
+        },
+      };
+    }),
   );
 }
 
@@ -130,24 +134,27 @@ export async function notifySafetyRecordingExpiry(params: {
   );
   if (tokens.length === 0) return;
 
-  const label =
-    params.warning === "3d"
-      ? "3 jours avant suppression automatique"
-      : "24 heures avant suppression automatique";
+  const expiryKey: PushCopyKey =
+    params.warning === "3d" ? "safety_recording_expiry_3d" : "safety_recording_expiry_24h";
 
   await sendExpoPush(
-    tokens.map((token) => ({
-      to: token,
-      sound: resolvePushSound("warning"),
-      title: "Enregistrement de sécurité",
-      body: `Téléchargez votre ${recordingTypeLabel(params.recording.recording_type)} : ${label}.`,
-      data: {
-        type: "taxi_safety_recording_expiry",
-        recording_id: params.recording.id,
-        taxi_ride_id: params.recording.taxi_ride_id,
-        warning: params.warning,
-      },
-    })),
+    tokens.map((target) => {
+      const copy = pushText(expiryKey, target.locale, {
+        kind: safetyRecordingKindLabel(target.locale, params.recording.recording_type),
+      });
+      return {
+        to: target.token,
+        sound: resolvePushSound("warning"),
+        title: copy.title,
+        body: copy.body,
+        data: {
+          type: "taxi_safety_recording_expiry",
+          recording_id: params.recording.id,
+          taxi_ride_id: params.recording.taxi_ride_id,
+          warning: params.warning,
+        },
+      };
+    }),
   );
 }
 

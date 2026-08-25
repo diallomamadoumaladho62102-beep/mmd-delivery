@@ -4,6 +4,8 @@ import {
   normalizePushPlatform,
   resolvePushSoundForPlatform,
 } from "./mmdPushSounds";
+import { pushText } from "./pushCopy";
+import { normalizeAppLocale, type AppLocale } from "./userLocale";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const DEDUP_WINDOW_MS = 10 * 60 * 1000;
@@ -43,6 +45,7 @@ async function wasRecentlySent(
 type TokenRow = {
   expo_push_token: string;
   platform?: string | null;
+  locale: AppLocale;
 };
 
 async function loadRestaurantTokens(
@@ -53,7 +56,7 @@ async function loadRestaurantTokens(
   // only select fields known to exist in production.
   const { data, error } = await supabaseAdmin
     .from("user_push_tokens")
-    .select("expo_push_token,platform")
+    .select("expo_push_token,platform,locale")
     .eq("user_id", restaurantUserId)
     .eq("role", "restaurant");
 
@@ -70,6 +73,7 @@ async function loadRestaurantTokens(
     byToken.set(expo_push_token, {
       expo_push_token,
       platform: row.platform ?? null,
+      locale: normalizeAppLocale((row as { locale?: unknown }).locale),
     });
   }
   return [...byToken.values()];
@@ -125,8 +129,8 @@ export async function notifyRestaurantNewPaidOrder(params: {
     await params.supabaseAdmin.from("notification_logs").insert({
       user_id: restaurantUserId,
       role: "restaurant",
-      title: "Nouvelle commande",
-      body: "Une commande payée vient d'arriver.",
+      title: pushText("new_order", "en").title,
+      body: pushText("new_order", "en").body,
       data: { type: "restaurant_new_order", order_id: orderId },
       status: "failed",
       error_message: "no_tokens",
@@ -144,11 +148,12 @@ export async function notifyRestaurantNewPaidOrder(params: {
 
   const messages = tokens.map((row) => {
     const platform = normalizePushPlatform(row.platform);
+    const copy = pushText("new_order", row.locale);
     return {
       to: row.expo_push_token,
       sound: resolvePushSoundForPlatform("restaurant_new_order", row.platform),
-      title: "Nouvelle commande",
-      body: "Une commande payée vient d'arriver.",
+      title: copy.title,
+      body: copy.body,
       data,
       priority: "high" as const,
       channelId:
@@ -165,8 +170,8 @@ export async function notifyRestaurantNewPaidOrder(params: {
   await params.supabaseAdmin.from("notification_logs").insert({
     user_id: restaurantUserId,
     role: "restaurant",
-    title: "Nouvelle commande",
-    body: "Une commande payée vient d'arriver.",
+    title: messages[0]?.title ?? pushText("new_order", "en").title,
+    body: messages[0]?.body ?? pushText("new_order", "en").body,
     data,
     status,
     error_message: sendResult.ok ? null : sendResult.error ?? "push_failed",

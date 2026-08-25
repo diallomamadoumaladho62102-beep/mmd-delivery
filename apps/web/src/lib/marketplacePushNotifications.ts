@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePushSound } from "./mmdPushSounds";
+import { marketplaceOrderStatusKey, pushText } from "./pushCopy";
+import { normalizeAppLocale, type AppLocale } from "./userLocale";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -7,15 +9,17 @@ function dedupe(ids: Array<string | null | undefined>): string[] {
   return [...new Set(ids.map((id) => String(id ?? "").trim()).filter(Boolean))];
 }
 
+type PushTarget = { token: string; locale: AppLocale };
+
 async function loadTokens(
   supabaseAdmin: SupabaseClient,
   userIds: string[],
   role?: string
-): Promise<string[]> {
+): Promise<PushTarget[]> {
   if (userIds.length === 0) return [];
   let query = supabaseAdmin
     .from("user_push_tokens")
-    .select("expo_push_token,disabled,is_active,user_id,role")
+    .select("expo_push_token,disabled,is_active,user_id,role,locale")
     .in("user_id", userIds);
 
   if (role) query = query.eq("role", role);
@@ -23,13 +27,24 @@ async function loadTokens(
   const { data, error } = await query;
   if (error) return [];
 
-  return (data ?? [])
-    .filter((row) => row.disabled !== true && row.is_active !== false)
-    .map((row) => String(row.expo_push_token ?? "").trim())
-    .filter(
-      (token) =>
-        token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken[")
-    );
+  const seen = new Set<string>();
+  const out: PushTarget[] = [];
+  for (const row of data ?? []) {
+    if (row.disabled === true || row.is_active === false) continue;
+    const token = String(row.expo_push_token ?? "").trim();
+    if (
+      !(token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken[")) ||
+      seen.has(token)
+    ) {
+      continue;
+    }
+    seen.add(token);
+    out.push({
+      token,
+      locale: normalizeAppLocale((row as { locale?: unknown }).locale),
+    });
+  }
+  return out;
 }
 
 async function sendExpo(messages: Array<Record<string, unknown>>) {
@@ -64,14 +79,17 @@ export async function notifyMarketplaceSellerNewPaidOrder(params: {
   };
 
   await sendExpo(
-    tokens.map((to) => ({
-      to,
-      sound: resolvePushSound("restaurant_new_order"),
-      title: "Nouvelle commande Marketplace",
-      body: "Une commande payée vient d'arriver.",
-      data,
-      priority: "high",
-    }))
+    tokens.map((target) => {
+      const copy = pushText("new_marketplace_order", target.locale);
+      return {
+        to: target.token,
+        sound: resolvePushSound("restaurant_new_order"),
+        title: copy.title,
+        body: copy.body,
+        data,
+        priority: "high",
+      };
+    }),
   );
 }
 
@@ -87,30 +105,6 @@ export async function notifyMarketplaceClientOrderStatus(params: {
   if (tokens.length === 0) return;
 
   const status = String(params.status);
-  const title =
-    status === "accepted"
-      ? "Commande acceptée"
-      : status === "refused"
-        ? "Commande refusée"
-        : status === "preparing"
-          ? "Commande en préparation"
-          : status === "ready"
-            ? "Commande prête"
-            : status === "out_for_delivery"
-              ? "Commande en livraison"
-              : status === "delivered"
-                ? "Commande livrée"
-                : status === "canceled" || status === "cancelled"
-                ? "Commande annulée"
-                : "Mise à jour commande";
-
-  const body =
-    status === "refused"
-      ? "Le vendeur a refusé votre commande. Un remboursement différé est enregistré."
-      : status === "delivered"
-        ? "Votre commande Marketplace a été livrée."
-        : `Statut Marketplace : ${status}.`;
-
   const data = {
     type: "marketplace_order_update",
     seller_order_id: params.orderId,
@@ -118,19 +112,24 @@ export async function notifyMarketplaceClientOrderStatus(params: {
   };
 
   await sendExpo(
-    tokens.map((to) => ({
-      to,
-      sound: resolvePushSound(
-        status === "accepted"
-          ? "order_accepted"
-          : status === "refused" || status === "canceled" || status === "cancelled"
-            ? "order_cancelled"
-            : "client_update"
-      ),
-      title,
-      body,
-      data,
-      priority: "high",
-    }))
+    tokens.map((target) => {
+      const copy = pushText(marketplaceOrderStatusKey(status), target.locale, {
+        status,
+      });
+      return {
+        to: target.token,
+        sound: resolvePushSound(
+          status === "accepted"
+            ? "order_accepted"
+            : status === "refused" || status === "canceled" || status === "cancelled"
+              ? "order_cancelled"
+              : "client_update",
+        ),
+        title: copy.title,
+        body: copy.body,
+        data,
+        priority: "high",
+      };
+    }),
   );
 }

@@ -92,7 +92,15 @@
       "shopOpenTitle": "المتجر مفتوح للعملاء",
       "shopOpenOn": "يمكن للعملاء تصفح منتجاتك النشطة.",
       "shopOpenOff": "متجرك مغلق للطلبات الجديدة.",
-      "toggleFailed": "تعذر تحديث حالة المتجر."
+      "toggleFailed": "تعذر تحديث حالة المتجر.",
+      "language": "اللغة"
+    },
+    "nav": {
+      "home": "الرئيسية",
+      "orders": "الطلبات",
+      "earnings": "الأرباح",
+      "products": "المنتجات",
+      "profile": "الملف"
     },
     "stats": {
       "products": "المنتجات",
@@ -452,6 +460,10 @@
     },
     "driver": {
       "activeRide": {
+        "title": "رحلة تاكسي جارية",
+        "estimatedFare": "الأجرة التقديرية",
+        "pickup": "الاستلام",
+        "dropoff": "التوصيل",
         "navigate": "التنقل",
         "chat": "محادثة",
         "call": "اتصال",
@@ -502,7 +514,19 @@
     },
     "profile": {
       "loading": "جارٍ تحميل الملف الشخصي…",
-      "avatarUploadError": "تعذّر تحميل الصورة. تحقق من أذونات التخزين."
+      "avatarUploadError": "تعذّر تحميل الصورة. تحقق من أذونات التخزين.",
+      "phoneVerify": {
+        "title": "تحقق من هاتفك",
+        "hint": "سنرسل رمزًا عبر الرسائل القصيرة لتأكيد هذا الرقم.",
+        "sendCode": "إرسال رمز SMS",
+        "codePlaceholder": "الرمز",
+        "confirm": "تأكيد",
+        "verified": "تم التحقق من الهاتف",
+        "codeSent": "تم إرسال رمز التحقق عبر الرسائل القصيرة.",
+        "verifiedNotice": "تم التحقق من الهاتف.",
+        "sendFailed": "تعذّر إرسال الرمز",
+        "invalidCode": "رمز غير صالح"
+      }
     },
     "deliveryRequest": {
       "total": "الإجمالي",
@@ -803,6 +827,20 @@
     },
     "taxiPanel": {
       "title": "تاكسي",
+      "incomingOffer": "عرض تاكسي وارد",
+      "premium": "مميز",
+      "offers": "عروض التاكسي",
+      "favoriteClient": "رحلة عميل مفضل",
+      "scheduledRide": "رحلة مجدولة",
+      "sharedRide": "رحلة مشتركة",
+      "premiumRide": "رحلة مميزة",
+      "businessRide": "رحلة عمل",
+      "pickup": "الاستلام",
+      "dropoff": "الوجهة",
+      "clientPreferences": "تفضيلات العميل",
+      "reject": "رفض",
+      "accept": "قبول",
+      "emptyOffers": "لا توجد عروض تاكسي الآن.",
       "callTitle": "اتصال",
       "offerTakenOrExpired": "تم أخذ هذا العرض أو انتهت صلاحيته. تم تحديث العروض.",
       "acceptFailed": "فشل القبول",
@@ -919,6 +957,7 @@
       "handOverOrder": "تسليم الطلب",
       "viewOnMap": "عرض على الخريطة",
       "newOrder": "طلب جديد",
+      "paidOrderArrived": "وصل طلب مدفوع للتو.",
       "newOrderMeta": "منذ {{seconds}} ث • {{count}} عناصر • {{amount}}",
       "accept": "قبول",
       "reject": "رفض",

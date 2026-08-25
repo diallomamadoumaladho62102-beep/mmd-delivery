@@ -7,7 +7,7 @@
     "dev": "cd apps/web && pnpm dev",
     "build": "cd apps/web && pnpm build",
     "start": "cd apps/web && pnpm start",
-    "test:ci": "node scripts/verify-migration-files.mjs && node scripts/verify-profiles-signup-role-guard.mjs && node scripts/evaluateCronHttpResult.test.mjs && node scripts/secret-scan.mjs && pnpm exec tsx shared/socialLinks.test.ts && pnpm exec tsx shared/profileCompleteness.test.ts && pnpm exec tsx shared/phoneVerifyApi.test.ts && pnpm --dir apps/web test:ci && pnpm --dir apps/mobile test:navigation",
+    "test:ci": "node scripts/verify-migration-files.mjs && node scripts/verify-profiles-signup-role-guard.mjs && node scripts/evaluateCronHttpResult.test.mjs && node scripts/secret-scan.mjs && node scripts/image-size-clean-install.regression.test.mjs && pnpm exec tsx shared/socialLinks.test.ts && pnpm exec tsx shared/profileCompleteness.test.ts && pnpm exec tsx shared/phoneVerifyApi.test.ts && pnpm --dir apps/web test:ci && pnpm --dir apps/mobile test:navigation",
     "test:security": "node scripts/secret-scan.mjs && pnpm --dir apps/web test:security",
     "test:performance": "pnpm --dir apps/web test:performance && node scripts/bundle-size-report.mjs",
     "test:ui": "pnpm --dir apps/mobile test:ui && pnpm --dir apps/web test:ui",

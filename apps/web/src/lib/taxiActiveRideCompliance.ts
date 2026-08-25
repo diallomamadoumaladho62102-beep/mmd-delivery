@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePushSound } from "./mmdPushSounds";
+import { taxiComplianceCopy } from "./pushCopy";
+import { normalizeAppLocale, type AppLocale } from "./userLocale";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+
+type PushTarget = { token: string; locale: AppLocale };
 
 type ComplianceEventRow = {
   id: string;
@@ -24,7 +28,7 @@ function isExpoPushToken(value: unknown): value is string {
 async function loadUserExpoTokens(
   supabaseAdmin: SupabaseClient,
   userId: string,
-): Promise<string[]> {
+): Promise<PushTarget[]> {
   const { data: tokenRows, error } = await supabaseAdmin
     .from("user_push_tokens")
     .select("*")
@@ -32,20 +36,16 @@ async function loadUserExpoTokens(
 
   if (error) return [];
 
-  return Array.from(
-    new Set(
-      (tokenRows ?? [])
-        .filter(
-          (row: Record<string, unknown>) =>
-            row.disabled !== true && row.is_active !== false,
-        )
-        .map(
-          (row: Record<string, unknown>) =>
-            row.expo_push_token ?? row.push_token ?? row.token ?? null,
-        )
-        .filter(isExpoPushToken),
-    ),
-  );
+  const seen = new Set<string>();
+  const out: PushTarget[] = [];
+  for (const row of (tokenRows ?? []) as Array<Record<string, unknown>>) {
+    if (row.disabled === true || row.is_active === false) continue;
+    const token = row.expo_push_token ?? row.push_token ?? row.token ?? null;
+    if (!isExpoPushToken(token) || seen.has(token)) continue;
+    seen.add(token);
+    out.push({ token, locale: normalizeAppLocale(row.locale) });
+  }
+  return out;
 }
 
 async function sendExpoPush(messages: Array<Record<string, unknown>>): Promise<void> {
@@ -114,17 +114,20 @@ export async function runActiveTaxiRideComplianceScan(
       const tokens = await loadUserExpoTokens(supabaseAdmin, event.driver_user_id);
       if (tokens.length > 0) {
         await sendExpoPush(
-          tokens.map((token) => ({
-            to: token,
-            sound: resolvePushSound("order_cancelled"),
-            title: "Action requise — Taxi MMD",
-            body: event.message_driver,
-            data: {
-              type: "taxi_compliance_driver",
-              taxi_ride_id: event.taxi_ride_id,
-              event_type: event.event_type,
-            },
-          })),
+          tokens.map((target) => {
+            const copy = taxiComplianceCopy(event.event_type, "driver", target.locale);
+            return {
+              to: target.token,
+              sound: resolvePushSound("order_cancelled"),
+              title: copy.title,
+              body: copy.body,
+              data: {
+                type: "taxi_compliance_driver",
+                taxi_ride_id: event.taxi_ride_id,
+                event_type: event.event_type,
+              },
+            };
+          }),
         );
         driverNotifications += 1;
       }
@@ -147,17 +150,20 @@ export async function runActiveTaxiRideComplianceScan(
         const tokens = await loadUserExpoTokens(supabaseAdmin, clientUserId);
         if (tokens.length > 0) {
           await sendExpoPush(
-            tokens.map((token) => ({
-              to: token,
-              sound: resolvePushSound("client_update"),
-              title: "Information course MMD",
-              body: event.message_client,
-              data: {
-                type: "taxi_compliance_client",
-                taxi_ride_id: event.taxi_ride_id,
-                event_type: event.event_type,
-              },
-            })),
+            tokens.map((target) => {
+              const copy = taxiComplianceCopy(event.event_type, "client", target.locale);
+              return {
+                to: target.token,
+                sound: resolvePushSound("client_update"),
+                title: copy.title,
+                body: copy.body,
+                data: {
+                  type: "taxi_compliance_client",
+                  taxi_ride_id: event.taxi_ride_id,
+                  event_type: event.event_type,
+                },
+              };
+            }),
           );
           clientNotifications += 1;
         }

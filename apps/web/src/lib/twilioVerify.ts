@@ -35,7 +35,7 @@ async function twilioVerifyFetch(
     return {
       ok: false,
       status: 503,
-      data: { error: "Twilio Verify is not configured" },
+      data: { error: "Phone verification is temporarily unavailable." },
     };
   }
 
@@ -59,7 +59,7 @@ export async function startPhoneVerification(params: {
   channel?: "sms" | "call";
 }): Promise<{ ok: boolean; error?: string; phoneE164?: string }> {
   if (!isPhoneOtpEnabled()) {
-    return { ok: false, error: "PHONE_OTP_ENABLED is false" };
+    return { ok: false, error: "Phone verification is temporarily unavailable." };
   }
   const phoneE164 = normalizePhoneE164(params.phone);
   if (!phoneE164) {
@@ -72,11 +72,7 @@ export async function startPhoneVerification(params: {
 
   const result = await twilioVerifyFetch("Verifications", body);
   if (!result.ok) {
-    const message =
-      typeof result.data.message === "string"
-        ? result.data.message
-        : "Failed to start phone verification";
-    return { ok: false, error: message };
+    return { ok: false, error: "Unable to send the verification code." };
   }
   return { ok: true, phoneE164 };
 }
@@ -86,7 +82,7 @@ export async function checkPhoneVerification(params: {
   code: string;
 }): Promise<{ ok: boolean; error?: string; phoneE164?: string }> {
   if (!isPhoneOtpEnabled()) {
-    return { ok: false, error: "PHONE_OTP_ENABLED is false" };
+    return { ok: false, error: "Phone verification is temporarily unavailable." };
   }
   const phoneE164 = normalizePhoneE164(params.phone);
   const code = String(params.code ?? "").trim();
@@ -102,11 +98,7 @@ export async function checkPhoneVerification(params: {
   const result = await twilioVerifyFetch("VerificationCheck", body);
   const status = String(result.data.status ?? "").toLowerCase();
   if (!result.ok || status !== "approved") {
-    const message =
-      typeof result.data.message === "string"
-        ? result.data.message
-        : "Invalid or expired verification code";
-    return { ok: false, error: message };
+    return { ok: false, error: "Invalid or expired verification code." };
   }
   return { ok: true, phoneE164 };
 }

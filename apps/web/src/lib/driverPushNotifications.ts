@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePushSound } from "./mmdPushSounds";
+import { pushText, type PushCopy } from "./pushCopy";
+import { normalizeAppLocale, type AppLocale } from "./userLocale";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -17,9 +19,12 @@ type PushTokenRow = {
   expo_push_token?: string | null;
   push_token?: string | null;
   token?: string | null;
+  locale?: string | null;
   disabled?: boolean | null;
   is_active?: boolean | null;
 };
+
+type PushTarget = { token: string; locale: AppLocale };
 
 function isExpoPushToken(value: unknown): value is string {
   const s = String(value ?? "").trim();
@@ -29,7 +34,7 @@ function isExpoPushToken(value: unknown): value is string {
 async function loadDriverExpoTokens(
   supabaseAdmin: SupabaseClient,
   userId: string,
-): Promise<string[]> {
+): Promise<PushTarget[]> {
   const { data: tokenRows, error } = await supabaseAdmin
     .from("user_push_tokens")
     .select("*")
@@ -40,14 +45,16 @@ async function loadDriverExpoTokens(
     return [];
   }
 
-  return Array.from(
-    new Set(
-      ((tokenRows ?? []) as PushTokenRow[])
-        .filter((row) => row.disabled !== true && row.is_active !== false)
-        .map((row) => row.expo_push_token ?? row.push_token ?? row.token ?? null)
-        .filter(isExpoPushToken),
-    ),
-  );
+  const seen = new Set<string>();
+  const out: PushTarget[] = [];
+  for (const row of (tokenRows ?? []) as PushTokenRow[]) {
+    if (row.disabled === true || row.is_active === false) continue;
+    const token = row.expo_push_token ?? row.push_token ?? row.token ?? null;
+    if (!isExpoPushToken(token) || seen.has(token)) continue;
+    seen.add(token);
+    out.push({ token, locale: normalizeAppLocale(row.locale) });
+  }
+  return out;
 }
 
 async function sendExpoPushMessages(messages: Array<Record<string, unknown>>): Promise<void> {
@@ -86,61 +93,44 @@ function categoryLabel(category: string): string {
   return map[category] ?? category;
 }
 
-function buildMessage(input: {
-  kind: DriverVehicleNotificationKind;
-  category?: string | null;
-  documentType?: string | null;
-  reason?: string | null;
-}): { title: string; body: string } {
+function buildMessage(
+  input: {
+    kind: DriverVehicleNotificationKind;
+    category?: string | null;
+    documentType?: string | null;
+    reason?: string | null;
+  },
+  locale: AppLocale,
+): PushCopy {
   const cat = categoryLabel(String(input.category ?? ""));
+  const document = String(input.documentType ?? "vehicle");
+  const reason = String(input.reason ?? "").trim();
 
   switch (input.kind) {
     case "category_approved":
-      return {
-        title: "Catégorie approuvée",
-        body: `Votre véhicule est maintenant admissible en ${cat}.`,
-      };
+      return pushText("category_approved", locale, { category: cat });
     case "category_rejected":
-      return {
-        title: "Catégorie refusée",
-        body: input.reason
-          ? `Catégorie ${cat} refusée : ${input.reason}`
-          : `Votre demande pour la catégorie ${cat} a été refusée.`,
-      };
+      return reason
+        ? pushText("category_rejected_reason", locale, { category: cat, reason })
+        : pushText("category_rejected", locale, { category: cat });
     case "category_suspended":
-      return {
-        title: "Catégorie suspendue",
-        body: `La catégorie ${cat} a été suspendue pour votre véhicule.`,
-      };
+      return pushText("category_suspended", locale, { category: cat });
     case "category_reactivated":
-      return {
-        title: "Catégorie réactivée",
-        body: `La catégorie ${cat} est de nouveau active pour votre véhicule.`,
-      };
+      return pushText("category_reactivated", locale, { category: cat });
     case "vehicle_expired_age":
-      return {
-        title: "Véhicule trop ancien",
-        body: input.reason
-          ? input.reason
-          : `Votre véhicule n'est plus admissible en ${cat} (limite d'âge dépassée).`,
-      };
+      return reason
+        ? { title: pushText("vehicle_expired_age", locale, { category: cat }).title, body: reason }
+        : pushText("vehicle_expired_age", locale, { category: cat });
     case "document_expired":
-      return {
-        title: "Document expiré",
-        body: `Votre document ${input.documentType ?? "véhicule"} a expiré. Mettez-le à jour pour conserver vos catégories taxi.`,
-      };
+      return pushText("document_expired", locale, { document });
     case "document_validated":
-      return {
-        title: "Document validé",
-        body: `Votre document ${input.documentType ?? "véhicule"} a été validé par MMD.`,
-      };
+      return pushText("document_validated", locale, { document });
     case "taxi_accept_rejected":
-      return {
-        title: "Acceptation refusée",
-        body: input.reason ?? "Vous ne pouvez plus accepter cette course.",
-      };
+      return reason
+        ? pushText("taxi_accept_rejected_reason", locale, { reason })
+        : pushText("taxi_accept_rejected", locale);
     default:
-      return { title: "MMD Delivery", body: "Mise à jour véhicule chauffeur." };
+      return pushText("vehicle_update_generic", locale);
   }
 }
 
@@ -156,22 +146,24 @@ export async function notifyDriverVehicleEvent(params: {
   const tokens = await loadDriverExpoTokens(params.supabaseAdmin, params.driverUserId);
   if (tokens.length === 0) return { sent: 0 };
 
-  const { title, body } = buildMessage(params);
   const sound = resolvePushSound("driver_offer");
 
-  const messages = tokens.map((token) => ({
-    to: token,
-    sound,
-    title,
-    body,
-    priority: "high",
-    channelId: "driver-alerts",
-    data: {
-      type: `driver_vehicle_${params.kind}`,
-      category: params.category ?? null,
-      ...(params.metadata ?? {}),
-    },
-  }));
+  const messages = tokens.map((target) => {
+    const { title, body } = buildMessage(params, target.locale);
+    return {
+      to: target.token,
+      sound,
+      title,
+      body,
+      priority: "high",
+      channelId: "driver-alerts",
+      data: {
+        type: `driver_vehicle_${params.kind}`,
+        category: params.category ?? null,
+        ...(params.metadata ?? {}),
+      },
+    };
+  });
 
   await sendExpoPushMessages(messages);
 

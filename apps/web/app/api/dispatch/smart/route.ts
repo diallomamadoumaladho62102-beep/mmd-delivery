@@ -11,6 +11,8 @@ import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { resolvePushSoundForPlatform, DRIVER_MISSION_PUSH_CHANNEL } from "@/lib/mmdPushSounds";
 import { filterDriverIdsByServicePreference } from "@/lib/driverServiceDispatchFilter";
 import { filterDeliveryCandidatesByCapacityAndRoute } from "@/lib/driverMissionCapacity";
+import { pushText } from "@/lib/pushCopy";
+import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -492,11 +494,10 @@ export async function POST(req: NextRequest) {
 
     const selectedDriverIds = candidates.map((c: any) => c.driverId);
 
-    const { data: tokens, error: tokensError } = await supabase
-      .from("user_push_tokens")
-      .select("user_id,expo_push_token,role,platform")
-      .in("user_id", selectedDriverIds)
-      .eq("role", "driver");
+    const { data: tokens, error: tokensError } = await loadDriverPushTokenRows(
+      supabase,
+      selectedDriverIds,
+    );
 
     if (tokensError) return json({ error: tokensError.message }, 500);
 
@@ -519,24 +520,28 @@ export async function POST(req: NextRequest) {
       toNumber(order.delivery_fee) ??
       toNumber(order.total);
 
-    const messages = uniqueTokens.map((tokenRow: any) => ({
-      to: tokenRow.expo_push_token,
-      sound: resolvePushSoundForPlatform("driver_offer", tokenRow.platform),
-      channelId: DRIVER_MISSION_PUSH_CHANNEL,
-      title: "Nouvelle course disponible 🚗",
-      body: payout
-        ? `Course proche • Gain estimé ${payout.toFixed(2)} USD`
-        : "Une course proche est disponible.",
-      data: {
-        type: "driver_offer",
-        orderId: order.id,
-        wave: requestedWave,
-        screen: "DriverTabs",
-      },
-      priority: "high",
-      // Wake suspended iOS apps so the Driver mission alert service can ring.
-      _contentAvailable: true,
-    }));
+    const messages = uniqueTokens.map((tokenRow: any) => {
+      const locale = normalizeAppLocale(tokenRow.locale);
+      const copy = payout
+        ? pushText("driver_offer_payout", locale, { payout: payout.toFixed(2) })
+        : pushText("driver_offer", locale);
+      return {
+        to: tokenRow.expo_push_token,
+        sound: resolvePushSoundForPlatform("driver_offer", tokenRow.platform),
+        channelId: DRIVER_MISSION_PUSH_CHANNEL,
+        title: copy.title,
+        body: copy.body,
+        data: {
+          type: "driver_offer",
+          orderId: order.id,
+          wave: requestedWave,
+          screen: "DriverTabs",
+        },
+        priority: "high",
+        // Wake suspended iOS apps so the Driver mission alert service can ring.
+        _contentAvailable: true,
+      };
+    });
 
     const pushResult = await sendExpoPush(messages);
 

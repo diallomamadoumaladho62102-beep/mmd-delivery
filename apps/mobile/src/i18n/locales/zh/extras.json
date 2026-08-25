@@ -92,7 +92,15 @@
       "shopOpenTitle": "向客户开放店铺",
       "shopOpenOn": "客户可浏览您的在售商品。",
       "shopOpenOff": "店铺已关闭，不接受新订单。",
-      "toggleFailed": "无法更新店铺状态。"
+      "toggleFailed": "无法更新店铺状态。",
+      "language": "语言"
+    },
+    "nav": {
+      "home": "首页",
+      "orders": "订单",
+      "earnings": "收入",
+      "products": "商品",
+      "profile": "资料"
     },
     "stats": {
       "products": "商品",
@@ -452,6 +460,10 @@
     },
     "driver": {
       "activeRide": {
+        "title": "进行中的出租车行程",
+        "estimatedFare": "预估车费",
+        "pickup": "上车点",
+        "dropoff": "下车点",
         "navigate": "导航",
         "chat": "聊天",
         "call": "呼叫",
@@ -502,7 +514,19 @@
     },
     "profile": {
       "loading": "正在加载资料…",
-      "avatarUploadError": "无法上传照片。请检查存储权限。"
+      "avatarUploadError": "无法上传照片。请检查存储权限。",
+      "phoneVerify": {
+        "title": "验证手机号",
+        "hint": "我们将发送短信验证码以确认此号码。",
+        "sendCode": "发送短信验证码",
+        "codePlaceholder": "验证码",
+        "confirm": "确认",
+        "verified": "手机已验证",
+        "codeSent": "验证码已通过短信发送。",
+        "verifiedNotice": "手机已验证。",
+        "sendFailed": "无法发送验证码",
+        "invalidCode": "验证码无效"
+      }
     },
     "deliveryRequest": {
       "total": "合计",
@@ -803,6 +827,20 @@
     },
     "taxiPanel": {
       "title": "出租车",
+      "incomingOffer": "新的出租车订单",
+      "premium": "高级",
+      "offers": "出租车订单",
+      "favoriteClient": "收藏客户行程",
+      "scheduledRide": "预约行程",
+      "sharedRide": "拼车",
+      "premiumRide": "高级行程",
+      "businessRide": "商务行程",
+      "pickup": "上车",
+      "dropoff": "下车",
+      "clientPreferences": "客户偏好",
+      "reject": "拒绝",
+      "accept": "接受",
+      "emptyOffers": "暂无出租车订单。",
       "callTitle": "呼叫",
       "offerTakenOrExpired": "该订单已被接单或已过期。可接订单已刷新。",
       "acceptFailed": "接受失败",
@@ -1104,6 +1142,7 @@
       "handOverOrder": "交付订单",
       "viewOnMap": "在地图上查看",
       "newOrder": "新订单",
+      "paidOrderArrived": "一笔已付款订单刚刚到达。",
       "newOrderMeta": "{{seconds}} 秒前 • {{count}} 件商品 • {{amount}}",
       "accept": "接受",
       "reject": "拒绝",

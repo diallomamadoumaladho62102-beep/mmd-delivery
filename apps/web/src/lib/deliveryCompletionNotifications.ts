@@ -9,6 +9,8 @@ import {
   DRIVER_MISSION_PUSH_CHANNEL,
   resolvePushSoundForPlatform,
 } from "@/lib/mmdPushSounds";
+import { pushText, type PushCopyKey } from "@/lib/pushCopy";
+import { normalizeAppLocale, type AppLocale } from "@/lib/userLocale";
 
 export const DELIVERY_COMPLETED_CLIENT_EVENT = "delivery_request_delivered_client";
 export const DELIVERY_COMPLETED_DRIVER_EVENT = "delivery_request_delivered_driver";
@@ -55,6 +57,7 @@ type TokenRow = {
   user_id: string;
   expo_push_token: string;
   platform?: string | null;
+  locale: AppLocale;
 };
 
 async function loadRoleTokens(
@@ -69,7 +72,7 @@ async function loadRoleTokens(
 
   const { data, error } = await supabaseAdmin
     .from("user_push_tokens")
-    .select("user_id,expo_push_token,platform,role")
+    .select("user_id,expo_push_token,platform,role,locale")
     .in("user_id", ids)
     .eq("role", role);
 
@@ -90,6 +93,7 @@ async function loadRoleTokens(
       user_id,
       expo_push_token,
       platform: row.platform ?? null,
+      locale: normalizeAppLocale((row as { locale?: unknown }).locale),
     });
   }
   return [...byToken.values()];
@@ -115,8 +119,7 @@ async function sendRoleCompletionPush(params: {
   eventType: string;
   role: "client" | "driver";
   userIds: string[];
-  title: string;
-  body: string;
+  copyKey: PushCopyKey;
   dataType: string;
 }): Promise<{ sent: number; skipped?: string; logs: number }> {
   const dedupKey = deliveryCompletionDedupKey(
@@ -140,8 +143,8 @@ async function sendRoleCompletionPush(params: {
       {
         user_id: params.userIds[0] ?? null,
         role: params.role,
-        title: params.title,
-        body: params.body,
+        title: pushText(params.copyKey, "en").title,
+        body: pushText(params.copyKey, "en").body,
         data: {
           type: params.dataType,
           event_type: params.eventType,
@@ -166,18 +169,21 @@ async function sendRoleCompletionPush(params: {
     event_type: params.eventType,
   };
 
-  const messages = tokens.map((tokenRow) => ({
-    to: tokenRow.expo_push_token,
-    sound: resolvePushSoundForPlatform(params.dataType, tokenRow.platform),
-    title: params.title,
-    body: params.body,
-    data,
-    priority: "high" as const,
-    ...(params.role === "driver"
-      ? { channelId: DRIVER_MISSION_PUSH_CHANNEL }
-      : {}),
-    _contentAvailable: true,
-  }));
+  const messages = tokens.map((tokenRow) => {
+    const copy = pushText(params.copyKey, tokenRow.locale);
+    return {
+      to: tokenRow.expo_push_token,
+      sound: resolvePushSoundForPlatform(params.dataType, tokenRow.platform),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high" as const,
+      ...(params.role === "driver"
+        ? { channelId: DRIVER_MISSION_PUSH_CHANNEL }
+        : {}),
+      _contentAvailable: true,
+    };
+  });
 
   const audit = await sendExpoPushWithAudit(messages, { receiptWaitMs: 1500 });
   const nowIso = new Date().toISOString();
@@ -196,8 +202,8 @@ async function sendRoleCompletionPush(params: {
     return {
       user_id: tokenRow.user_id,
       role: params.role,
-      title: params.title,
-      body: params.body,
+      title: String(messages[i]?.title ?? ""),
+      body: String(messages[i]?.body ?? ""),
       data: {
         ...data,
         provider: "expo",
@@ -256,8 +262,7 @@ export async function notifyDeliveryRequestCompleted(params: {
     eventType: DELIVERY_COMPLETED_CLIENT_EVENT,
     role: "client",
     userIds: clientIds,
-    title: "Livraison terminée",
-    body: "Votre colis a été livré. Merci d’avoir choisi MMD Delivery.",
+    copyKey: "delivery_completed_client",
     dataType: "delivery_completed",
   });
 
@@ -268,8 +273,7 @@ export async function notifyDeliveryRequestCompleted(params: {
         eventType: DELIVERY_COMPLETED_DRIVER_EVENT,
         role: "driver",
         userIds: [driverId],
-        title: "Mission terminée",
-        body: "Livraison confirmée. Merci pour votre course.",
+        copyKey: "delivery_completed_driver",
         dataType: "delivery_completed",
       })
     : { sent: 0, skipped: "no_driver", logs: 0 };

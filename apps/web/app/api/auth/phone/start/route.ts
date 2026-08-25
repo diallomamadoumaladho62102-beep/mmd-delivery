@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return json(
         {
           ok: false,
-          error: "Phone OTP is not enabled",
+          error: "Phone verification is temporarily unavailable.",
           code: "phone_otp_disabled",
         },
         403,
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return json(
         {
           ok: false,
-          error: "Twilio Verify is not configured",
+          error: "Phone verification is temporarily unavailable.",
           code: "verify_not_configured",
         },
         503,

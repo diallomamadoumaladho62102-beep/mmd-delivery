@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { rowDirection } from "../../i18n/rtl";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
@@ -682,13 +683,17 @@ export function DriverTaxiPanel({
       ]}
     >
       <View style={[styles.card, elevated ? styles.cardElevated : null]}>
-        <View style={styles.headerRow}>
-          <Text style={styles.title}>Incoming taxi offer</Text>
+        <View style={[styles.headerRow, { flexDirection: rowDirection() }]}>
+          <Text style={styles.title}>
+            {t("driver.taxiPanel.incomingOffer", "Incoming taxi offer")}
+          </Text>
           {features?.vehicle_class ? (
             <Text style={styles.badge}>{features.vehicle_class}</Text>
           ) : null}
           {features?.premium_eligible ? (
-            <Text style={styles.badge}>Premium</Text>
+            <Text style={styles.badge}>
+              {t("driver.taxiPanel.premium", "Premium")}
+            </Text>
           ) : null}
         </View>
 
@@ -696,26 +701,38 @@ export function DriverTaxiPanel({
 
         {activeOffers.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Taxi offers</Text>
+            <Text style={styles.sectionTitle}>
+              {t("driver.taxiPanel.offers", "Taxi offers")}
+            </Text>
             {activeOffers.slice(0, 3).map((offer) => {
               const ride = offer.taxi_rides;
               const busy = actionId != null;
               return (
                 <View key={offer.id} style={styles.offerCard}>
                   {offer.is_favorite_dispatch || offer.wave === 0 ? (
-                    <Text style={styles.favoriteBadge}>⭐ Favorite client ride</Text>
+                    <Text style={styles.favoriteBadge}>
+                      ⭐ {t("driver.taxiPanel.favoriteClient", "Favorite client ride")}
+                    </Text>
                   ) : null}
                   {ride?.is_scheduled ? (
-                    <Text style={styles.favoriteBadge}>📅 Scheduled ride</Text>
+                    <Text style={styles.favoriteBadge}>
+                      📅 {t("driver.taxiPanel.scheduledRide", "Scheduled ride")}
+                    </Text>
                   ) : null}
                   {ride?.is_shared_ride ? (
-                    <Text style={styles.favoriteBadge}>👥 Shared ride</Text>
+                    <Text style={styles.favoriteBadge}>
+                      👥 {t("driver.taxiPanel.sharedRide", "Shared ride")}
+                    </Text>
                   ) : null}
                   {ride?.premium_driver_only ? (
-                    <Text style={styles.favoriteBadge}>✨ Premium ride</Text>
+                    <Text style={styles.favoriteBadge}>
+                      ✨ {t("driver.taxiPanel.premiumRide", "Premium ride")}
+                    </Text>
                   ) : null}
                   {ride?.business_trip_type === "business" ? (
-                    <Text style={styles.favoriteBadge}>🏢 Business ride</Text>
+                    <Text style={styles.favoriteBadge}>
+                      🏢 {t("driver.taxiPanel.businessRide", "Business ride")}
+                    </Text>
                   ) : null}
                   {(ride?.shared_passengers ?? [])
                     .sort((a, b) => a.segment_order - b.segment_order)
@@ -726,10 +743,10 @@ export function DriverTaxiPanel({
                       </Text>
                     ))}
                   <Text style={styles.meta} numberOfLines={elevated ? 3 : 2}>
-                    {ride?.pickup_address ?? "Pickup"}
+                    {ride?.pickup_address ?? t("driver.taxiPanel.pickup", "Pickup")}
                   </Text>
                   <Text style={styles.meta} numberOfLines={elevated ? 3 : 2}>
-                    → {ride?.dropoff_address ?? "Dropoff"}
+                    → {ride?.dropoff_address ?? t("driver.taxiPanel.dropoff", "Dropoff")}
                   </Text>
                   {offer.expires_at ? (
                     <Text style={styles.expiry}>
@@ -745,7 +762,9 @@ export function DriverTaxiPanel({
                   {(offer.client_preference_lines ?? ride?.client_preference_lines ?? []).length >
                   0 ? (
                     <View style={styles.prefsBox}>
-                      <Text style={styles.prefsTitle}>Client Preferences</Text>
+                      <Text style={styles.prefsTitle}>
+                        {t("driver.taxiPanel.clientPreferences", "Client Preferences")}
+                      </Text>
                       {(offer.client_preference_lines ?? ride?.client_preference_lines ?? []).map(
                         (line: { emoji: string; label: string }) => (
                           <Text key={line.label} style={styles.prefLine}>
@@ -755,13 +774,15 @@ export function DriverTaxiPanel({
                       )}
                     </View>
                   ) : null}
-                  <View style={styles.row}>
+                  <View style={[styles.row, { flexDirection: rowDirection() }]}>
                     <TouchableOpacity
                       style={styles.rejectBtn}
                       disabled={busy}
                       onPress={() => handleReject(offer)}
                     >
-                      <Text style={styles.rejectText}>Reject</Text>
+                      <Text style={styles.rejectText}>
+                        {t("driver.taxiPanel.reject", "Reject")}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.acceptBtn}
@@ -769,7 +790,7 @@ export function DriverTaxiPanel({
                       onPress={() => handleAccept(offer)}
                     >
                       <Text style={styles.acceptText}>
-                        {busy ? "…" : "Accept"}
+                        {busy ? "…" : t("driver.taxiPanel.accept", "Accept")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -780,7 +801,9 @@ export function DriverTaxiPanel({
         ) : null}
 
         {activeOffers.length === 0 && !loading ? (
-          <Text style={styles.empty}>No taxi offers right now.</Text>
+          <Text style={styles.empty}>
+            {t("driver.taxiPanel.emptyOffers", "No taxi offers right now.")}
+          </Text>
         ) : null}
       </View>
     </View>

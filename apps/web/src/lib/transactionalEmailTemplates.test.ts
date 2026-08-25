@@ -28,9 +28,33 @@ test("transactional email templates render responsive html", () => {
 });
 
 test("account created template includes welcome headline", () => {
-  const template = accountCreatedEmail({ name: "Maladho" });
+  const template = accountCreatedEmail({ name: "Maladho", locale: "fr" });
   assert.equal(template.headline, "Compte créé");
   assert.ok(renderTransactionalEmailHtml(template).includes("Maladho"));
+  assert.match(renderTransactionalEmailHtml(template), /lang="fr"/);
+});
+
+test("account created template localizes English", () => {
+  const template = accountCreatedEmail({ name: "Maladho", locale: "en" });
+  assert.equal(template.headline, "Account created");
+  assert.notEqual(template.headline, "Compte créé");
+});
+
+test("order confirmation localizes all six locales", () => {
+  const fr = orderConfirmationEmail({
+    orderId: "11111111-1111-4111-8111-111111111111",
+    restaurantName: "Pizza House",
+    locale: "fr",
+  });
+  const ar = orderConfirmationEmail({
+    orderId: "11111111-1111-4111-8111-111111111111",
+    restaurantName: "Pizza House",
+    locale: "ar",
+  });
+  assert.equal(fr.headline, "Commande confirmée");
+  assert.notEqual(ar.headline, fr.headline);
+  assert.match(renderTransactionalEmailHtml(ar), /lang="ar"/);
+  assert.match(renderTransactionalEmailHtml(ar), /dir="rtl"/);
 });
 
 test("transactional email stays disabled without env flag", () => {

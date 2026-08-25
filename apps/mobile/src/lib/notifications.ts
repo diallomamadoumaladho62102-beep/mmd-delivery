@@ -185,22 +185,48 @@ export async function registerUserPushToken(
       (Constants as any)?.nativeAppVersion ??
       null;
 
-    const { error } = await supabase.from("user_push_tokens").upsert(
-      {
-        user_id: user.id,
-        device_id: String(deviceId),
-        role: dbRole,
-        expo_push_token: expoPushToken,
-        platform: Platform.OS,
-        app_version: appVersion,
-        is_active: true,
-        disabled: false,
-        updated_at: new Date().toISOString(),
-      },
-      {
+    const rawLocale = String(
+      (await import("i18next")).default.language || "en",
+    )
+      .trim()
+      .toLowerCase()
+      .split("-")[0];
+    const locale = ["en", "fr", "es", "ar", "zh", "ff"].includes(rawLocale)
+      ? rawLocale
+      : "en";
+
+    const payload = {
+      user_id: user.id,
+      device_id: String(deviceId),
+      role: dbRole,
+      expo_push_token: expoPushToken,
+      platform: Platform.OS,
+      app_version: appVersion,
+      locale,
+      is_active: true,
+      disabled: false,
+      updated_at: new Date().toISOString(),
+    };
+
+    let { error } = await supabase.from("user_push_tokens").upsert(payload, {
+      onConflict: "user_id,device_id,role",
+    });
+    if (error && /locale|schema cache|column/i.test(String(error.message ?? ""))) {
+      const withoutLocale = {
+        user_id: payload.user_id,
+        device_id: payload.device_id,
+        role: payload.role,
+        expo_push_token: payload.expo_push_token,
+        platform: payload.platform,
+        app_version: payload.app_version,
+        is_active: payload.is_active,
+        disabled: payload.disabled,
+        updated_at: payload.updated_at,
+      };
+      ({ error } = await supabase.from("user_push_tokens").upsert(withoutLocale, {
         onConflict: "user_id,device_id,role",
-      },
-    );
+      }));
+    }
 
     if (error) {
       console.log("❌ registerUserPushToken Supabase error:", error);

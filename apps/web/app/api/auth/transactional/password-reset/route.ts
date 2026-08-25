@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit, getRequestClientIp } from "@/lib/apiRateLimit";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { isTransactionalEmailEnabled, notifyPasswordResetEmail } from "@/lib/transactionalEmails";
+import { loadPreferredLocale } from "@/lib/userLocale";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,9 +58,14 @@ export async function POST(req: NextRequest) {
 
     const finalResetUrl = String(data.properties.action_link);
 
+    const locale = data.user?.id
+      ? await loadPreferredLocale(admin, data.user.id)
+      : "en";
+
     const result = await notifyPasswordResetEmail({
       to: email,
       resetUrl: finalResetUrl,
+      locale,
     });
 
     return NextResponse.json({ ok: result.ok, skipped: result.skipped ?? false });

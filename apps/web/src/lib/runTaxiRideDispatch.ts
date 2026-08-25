@@ -10,6 +10,8 @@ import {
   type ExpoTicketRow,
 } from "@/lib/expoPushAudit";
 import { filterTaxiCandidatesByCapacity } from "@/lib/driverMissionCapacity";
+import { pushText } from "@/lib/pushCopy";
+import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
 
 const MAX_DISPATCH_MILES = 15;
 
@@ -92,10 +94,8 @@ async function sendTaxiOfferPushes(params: {
     await insertTaxiDispatchLog(params.supabase, {
       user_id: tokenRow.user_id,
       role: "driver",
-      title: "Nouvelle course taxi disponible 🚕",
-      body: params.payoutDollars
-        ? `Course proche • Gain estimé ${params.payoutDollars} USD`
-        : "Une course taxi proche est disponible.",
+      title: String(params.messages[i]?.title ?? ""),
+      body: String(params.messages[i]?.body ?? ""),
       data: {
         type: "taxi_offer_dispatch",
         taxi_ride_id: params.taxiRideId,
@@ -376,11 +376,10 @@ export async function runTaxiRideDispatch(params: {
       premiumDriverOnly,
     });
 
-    const { data: tokens, error: tokensError } = await supabase
-      .from("user_push_tokens")
-      .select("user_id,expo_push_token,role,platform")
-      .eq("user_id", preferredDriverId)
-      .eq("role", "driver");
+    const { data: tokens, error: tokensError } = await loadDriverPushTokenRows(
+      supabase,
+      [preferredDriverId],
+    );
 
     if (tokensError) {
       return {
@@ -406,26 +405,31 @@ export async function runTaxiRideDispatch(params: {
       user_id: string;
       expo_push_token: string;
       platform?: string | null;
+      locale?: string | null;
     }>;
 
-    const messages = tokenRows.map((tokenRow) => ({
-      to: tokenRow.expo_push_token,
-      sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
-      channelId: DRIVER_MISSION_PUSH_CHANNEL,
-      title: "Course favori client ⭐",
-      body: payoutDollars
-        ? `Un client vous a choisi • Gain estimé ${payoutDollars} USD`
-        : "Un client vous a choisi pour sa course taxi.",
-      data: {
-        type: "taxi_offer_dispatch",
-        taxiRideId: ride.id,
-        wave: 0,
-        isFavoriteDispatch: true,
-        screen: "DriverTabs",
-      },
-      priority: "high" as const,
-      _contentAvailable: true,
-    }));
+    const messages = tokenRows.map((tokenRow) => {
+      const locale = normalizeAppLocale(tokenRow.locale);
+      const copy = payoutDollars
+        ? pushText("taxi_favorite_payout", locale, { payout: payoutDollars })
+        : pushText("taxi_favorite", locale);
+      return {
+        to: tokenRow.expo_push_token,
+        sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
+        channelId: DRIVER_MISSION_PUSH_CHANNEL,
+        title: copy.title,
+        body: copy.body,
+        data: {
+          type: "taxi_offer_dispatch",
+          taxiRideId: ride.id,
+          wave: 0,
+          isFavoriteDispatch: true,
+          screen: "DriverTabs",
+        },
+        priority: "high" as const,
+        _contentAvailable: true,
+      };
+    });
 
     const pushResult = await sendTaxiOfferPushes({
       supabase,
@@ -746,11 +750,10 @@ export async function runTaxiRideDispatch(params: {
 
   const selectedDriverIds = candidates.map((c) => c.driverId);
 
-  const { data: tokens, error: tokensError } = await supabase
-    .from("user_push_tokens")
-    .select("user_id,expo_push_token,role,platform")
-    .in("user_id", selectedDriverIds)
-    .eq("role", "driver");
+  const { data: tokens, error: tokensError } = await loadDriverPushTokenRows(
+    supabase,
+    selectedDriverIds,
+  );
 
   if (tokensError) {
     return {
@@ -778,6 +781,7 @@ export async function runTaxiRideDispatch(params: {
             expo_push_token: string;
             user_id: string;
             platform?: string | null;
+            locale?: string | null;
           }) => [String(t.expo_push_token), t],
         ),
     ).values(),
@@ -785,29 +789,34 @@ export async function runTaxiRideDispatch(params: {
     user_id: string;
     expo_push_token: string;
     platform?: string | null;
+    locale?: string | null;
   }>;
 
   const payoutCents = toNumber(ride.driver_payout_cents);
   const payoutDollars =
     payoutCents != null ? (payoutCents / 100).toFixed(2) : null;
 
-  const messages = uniqueTokens.map((tokenRow) => ({
-    to: tokenRow.expo_push_token,
-    sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
-    channelId: DRIVER_MISSION_PUSH_CHANNEL,
-    title: "Nouvelle course taxi disponible 🚕",
-    body: payoutDollars
-      ? `Course proche • Gain estimé ${payoutDollars} USD`
-      : "Une course taxi proche est disponible.",
-    data: {
-      type: "taxi_offer_dispatch",
-      taxiRideId: ride.id,
-      wave,
-      screen: "DriverTabs",
-    },
-    priority: "high" as const,
-    _contentAvailable: true,
-  }));
+  const messages = uniqueTokens.map((tokenRow) => {
+    const locale = normalizeAppLocale(tokenRow.locale);
+    const copy = payoutDollars
+      ? pushText("taxi_offer_payout", locale, { payout: payoutDollars })
+      : pushText("taxi_offer", locale);
+    return {
+      to: tokenRow.expo_push_token,
+      sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
+      channelId: DRIVER_MISSION_PUSH_CHANNEL,
+      title: copy.title,
+      body: copy.body,
+      data: {
+        type: "taxi_offer_dispatch",
+        taxiRideId: ride.id,
+        wave,
+        screen: "DriverTabs",
+      },
+      priority: "high" as const,
+      _contentAvailable: true,
+    };
+  });
 
   const distanceByDriver = new Map(
     candidates.map((c) => [c.driverId, c.distanceMiles] as const),

@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolvePushSound } from "./mmdPushSounds";
+import { prepMinutesSuffix, pushText } from "./pushCopy";
+import { normalizeAppLocale, type AppLocale } from "./userLocale";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -8,9 +10,12 @@ type PushTokenRow = {
   expo_push_token?: string | null;
   push_token?: string | null;
   token?: string | null;
+  locale?: string | null;
   disabled?: boolean | null;
   is_active?: boolean | null;
 };
+
+type PushTarget = { token: string; locale: AppLocale };
 
 function isExpoPushToken(value: unknown): value is string {
   const s = String(value ?? "").trim();
@@ -28,7 +33,7 @@ function dedupeStrings(values: Array<string | null | undefined>): string[] {
 async function loadClientExpoTokens(
   supabaseAdmin: SupabaseClient,
   userIds: string[]
-): Promise<string[]> {
+): Promise<PushTarget[]> {
   if (userIds.length === 0) return [];
 
   const { data: tokenRows, error } = await supabaseAdmin
@@ -41,12 +46,16 @@ async function loadClientExpoTokens(
     return [];
   }
 
-  return dedupeStrings(
-    ((tokenRows ?? []) as PushTokenRow[])
-      .filter((row) => row.disabled !== true && row.is_active !== false)
-      .map((row) => row.expo_push_token ?? row.push_token ?? row.token ?? null)
-      .filter(isExpoPushToken)
-  );
+  const seen = new Set<string>();
+  const out: PushTarget[] = [];
+  for (const row of (tokenRows ?? []) as PushTokenRow[]) {
+    if (row.disabled === true || row.is_active === false) continue;
+    const token = row.expo_push_token ?? row.push_token ?? row.token ?? null;
+    if (!isExpoPushToken(token) || seen.has(token)) continue;
+    seen.add(token);
+    out.push({ token, locale: normalizeAppLocale(row.locale) });
+  }
+  return out;
 }
 
 async function sendExpoPushMessages(
@@ -156,14 +165,17 @@ export async function notifyClientOrderCreated(params: {
     kind: params.kind ?? "food",
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title: "Commande confirmée",
-    body: "Votre paiement a été reçu. Nous préparons votre commande.",
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText("order_confirmed", target.locale);
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }
@@ -178,25 +190,25 @@ export async function notifyClientOrderAccepted(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
 
-  const prepText =
-    params.prepMinutes && params.prepMinutes > 0
-      ? ` Temps de préparation estimé : ${params.prepMinutes} min.`
-      : "";
-
   const data = {
     type: "order_accepted",
     order_id: params.orderId,
     prep_minutes: params.prepMinutes ?? null,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title: "Commande acceptée",
-    body: `Le restaurant a accepté votre commande.${prepText}`,
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText("order_accepted", target.locale, {
+      prep: prepMinutesSuffix(target.locale, params.prepMinutes ?? 0),
+    });
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }
@@ -216,14 +228,17 @@ export async function notifyClientDeliveryRequestPaid(params: {
     delivery_request_id: params.deliveryRequestId,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title: "Livraison confirmée",
-    body: "Votre demande de livraison est payée. Recherche d'un chauffeur en cours.",
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText("delivery_confirmed", target.locale);
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }
@@ -239,25 +254,28 @@ export async function notifyClientOrderCancelled(params: {
 
   if (tokens.length === 0) return;
 
-  const body =
-    params.refund === "FULL" || params.refund === "REQUIRED"
-      ? "Votre commande a été annulée. Un remboursement est en cours."
-      : "Votre commande a été annulée.";
-
   const data = {
     type: "order_cancelled",
     order_id: params.orderId,
     refund: params.refund,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title: "Commande annulée",
-    body,
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText(
+      params.refund === "FULL" || params.refund === "REQUIRED"
+        ? "order_cancelled_refund"
+        : "order_cancelled",
+      target.locale,
+    );
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }
@@ -273,25 +291,26 @@ export async function notifyClientDeliveryRequestCancelled(params: {
 
   if (tokens.length === 0) return;
 
-  const body =
-    params.refund === "FULL"
-      ? "Votre livraison a été annulée. Un remboursement est en cours."
-      : "Votre livraison a été annulée.";
-
   const data = {
     type: "delivery_request_cancelled",
     delivery_request_id: params.deliveryRequestId,
     refund: params.refund,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title: "Livraison annulée",
-    body,
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText(
+      params.refund === "FULL" ? "delivery_cancelled_refund" : "delivery_cancelled",
+      target.locale,
+    );
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }
@@ -327,27 +346,27 @@ export async function notifyClientDriverArrived(params: {
       : {}),
   };
 
-  const title = "Your driver has arrived";
-  const body =
-    params.entityKind === "taxi"
-      ? "Your driver is at the pickup point. Join your driver when ready."
-      : "Your driver has arrived. You have 5 minutes of free wait time.";
-
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title,
-    body,
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText(
+      params.entityKind === "taxi" ? "driver_arrived_taxi" : "driver_arrived_delivery",
+      target.locale,
+    );
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
   await logTaxiClientPush({
     supabaseAdmin: params.supabaseAdmin,
     userId: userIds[0] ?? null,
-    title,
-    body,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
     data,
     dedupKey,
     sent: true,
@@ -370,14 +389,17 @@ export async function notifyClientWaitFeeStarted(params: {
     entity_id: params.entityId,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title: "Frais de retard",
-    body: "Les frais de retard commencent maintenant.",
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText("wait_fee_started", target.locale);
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }
@@ -393,25 +415,28 @@ export async function notifyClientWaitFinalWarning(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
 
-  const body =
-    params.entityKind === "taxi"
-      ? "Votre temps d'attente gratuit est terminé. Veuillez rejoindre votre chauffeur."
-      : "Votre temps d'attente gratuit est terminé. Veuillez récupérer votre commande ou rejoindre votre livreur.";
-
   const data = {
     type: "wait_final_warning",
     entity_type: params.entityType,
     entity_id: params.entityId,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title: "Temps d'attente écoulé",
-    body,
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText(
+      params.entityKind === "taxi"
+        ? "wait_final_warning_taxi"
+        : "wait_final_warning_delivery",
+      target.locale,
+    );
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }
@@ -436,24 +461,24 @@ export async function notifyClientTaxiRideAccepted(params: {
     taxiRideId: params.taxiRideId,
   };
 
-  const title = "Driver assigned";
-  const body = "Your driver has been assigned and is on the way.";
-
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title,
-    body,
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText("taxi_accepted", target.locale);
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
   await logTaxiClientPush({
     supabaseAdmin: params.supabaseAdmin,
     userId: userIds[0] ?? null,
-    title,
-    body,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
     data,
     dedupKey,
     sent: true,
@@ -486,24 +511,24 @@ export async function notifyClientTaxiDriverEnRoute(params: {
     eta_minutes: roundedEta,
   };
 
-  const title = "Driver on the way";
-  const body = `Your driver is arriving in approximately ${roundedEta} minutes.`;
-
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound(data.type),
-    title,
-    body,
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText("taxi_en_route", target.locale, { minutes: roundedEta });
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
   await logTaxiClientPush({
     supabaseAdmin: params.supabaseAdmin,
     userId: userIds[0] ?? null,
-    title,
-    body,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
     data,
     dedupKey,
     sent: true,
@@ -525,14 +550,17 @@ export async function notifyClientTaxiRideCompleted(params: {
     taxiRideId: params.taxiRideId,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound("delivery_completed"),
-    title: "Course terminée",
-    body: "Votre course est terminée. Merci d’avoir voyagé avec MMD.",
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText("taxi_completed", target.locale);
+    return {
+      to: target.token,
+      sound: resolvePushSound("delivery_completed"),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }
@@ -554,17 +582,20 @@ export async function notifyClientTaxiRideCancelled(params: {
     refund: params.refund,
   };
 
-  const messages = tokens.map((to) => ({
-    to,
-    sound: resolvePushSound("order_cancelled"),
-    title: "Course annulée",
-    body:
-      params.refund === "REQUIRED"
-        ? "Votre course a été annulée. Un remboursement est en cours de traitement."
-        : "Votre course a été annulée.",
-    data,
-    priority: "high",
-  }));
+  const messages = tokens.map((target) => {
+    const copy = pushText(
+      params.refund === "REQUIRED" ? "taxi_cancelled_refund" : "taxi_cancelled",
+      target.locale,
+    );
+    return {
+      to: target.token,
+      sound: resolvePushSound("order_cancelled"),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
 
   await sendExpoPushMessages(messages);
 }

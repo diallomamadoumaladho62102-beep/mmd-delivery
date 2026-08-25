@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, CommonActions } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { useSafeBackNavigation } from "../../navigation/navigationBack";
 import {
   MMD_BLUE,
@@ -49,6 +50,7 @@ export function SellerBrandHeader({
 }: BrandHeaderProps) {
   const insets = useSafeAreaInsets();
   const safeBack = useSafeBackNavigation(fallbackRoute);
+  const { t } = useTranslation();
 
   return (
     <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }, style]}>
@@ -58,7 +60,7 @@ export function SellerBrandHeader({
           onPress={safeBack}
           style={styles.backBtn}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back", "Back")}
         >
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
@@ -171,34 +173,29 @@ type BottomNavProps = {
   active: SellerNavKey;
 };
 
-const NAV_ITEMS: Array<{
-  key: SellerNavKey;
-  icon: string;
-  label: string;
-  route: string;
-  params?: Record<string, unknown>;
-}> = [
-  { key: "home", icon: "🏠", label: "Home", route: "SellerDashboard" },
-  { key: "orders", icon: "📦", label: "Orders", route: "SellerOrders" },
-  { key: "earnings", icon: "💰", label: "Earnings", route: "SellerWallet" },
-  { key: "products", icon: "🛍️", label: "Products", route: "SellerProducts" },
-  {
-    key: "profile",
-    icon: "👤",
-    label: "Profile",
-    route: "SellerOnboarding",
-    params: { mode: "edit" },
-  },
-];
-
 /** Seller stack bottom nav — Figma chrome wired to real seller routes. */
 export function SellerBottomNav({ active }: BottomNavProps) {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+
+  const items = [
+    { key: "home" as const, icon: "🏠", label: t("seller.nav.home", "Home"), route: "SellerDashboard" },
+    { key: "orders" as const, icon: "📦", label: t("seller.nav.orders", "Orders"), route: "SellerOrders" },
+    { key: "earnings" as const, icon: "💰", label: t("seller.nav.earnings", "Earnings"), route: "SellerWallet" },
+    { key: "products" as const, icon: "🛍️", label: t("seller.nav.products", "Products"), route: "SellerProducts" },
+    {
+      key: "profile" as const,
+      icon: "👤",
+      label: t("seller.nav.profile", "Profile"),
+      route: "SellerOnboarding",
+      params: { mode: "edit" as const },
+    },
+  ];
 
   return (
     <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const selected = item.key === active;
         return (
           <TouchableOpacity

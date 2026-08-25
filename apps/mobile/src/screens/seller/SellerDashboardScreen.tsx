@@ -27,6 +27,9 @@ import {
 import { sellerStatusLabel, type SellerRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
+import { setLocaleForRoleAndApply } from "../../i18n";
+import LanguagePicker from "../../components/LanguagePicker";
+import type { AppLanguageCode } from "../../i18n/languageOptions";
 import { startStripeOnboarding } from "../../utils/stripe";
 import { supabase } from "../../lib/supabase";
 import {
@@ -76,7 +79,7 @@ function statusMessage(status: string, t: (k: string, f: string) => string): str
 }
 
 export default function SellerDashboardScreen({ navigation }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [seller, setSeller] = useState<SellerRow | null>(null);
   const [productCount, setProductCount] = useState(0);
@@ -387,6 +390,20 @@ export default function SellerDashboardScreen({ navigation }: Props) {
               }
             />
           </View>
+
+          <SellerGlassCard style={{ gap: 12 }}>
+            <Text style={styles.sectionTitle}>
+              {t("seller.dashboard.language", "Language")}
+            </Text>
+            <LanguagePicker
+              currentCode={String(i18n.resolvedLanguage || i18n.language || "en")}
+              onSelect={async (code: AppLanguageCode) => {
+                await setLocaleForRoleAndApply("seller", code);
+              }}
+              variant="mmdHome"
+              hideTitle
+            />
+          </SellerGlassCard>
           </SellerContentWrap>
         </ScrollView>
       )}

@@ -1,31 +1,35 @@
-# Dependabot: `image-size` (HIGH) — risk assessment
+# Dependabot: `image-size` (HIGH) — CVE-2025-71329 / CVE-2025-71330
 
-**Alerts:** #170 (GHSA-5p2g-fcmc-qvqq), #171 (GHSA-w3rx-r6r6-pgpr)  
-**Package:** `image-size` (transitive)  
-**Vulnerable range:** `<= 2.0.2`  
-**Patched version:** **none published** (as of 2026-08-22)
+**Alerts:** #170 (GHSA-5p2g-fcmc-qvqq / CVE-2025-71329 JXL/HEIF), #171 (GHSA-w3rx-r6r6-pgpr / CVE-2025-71330 ICNS)  
+**Package:** `image-size` (transitive via Metro / Expo)  
+**Vulnerable published range:** `<= 2.0.2`  
+**Official patched npm version:** **none** (latest remains `2.0.2`, still in the advisory range)
 
-## CVE summary
+## Fix in this repo (keep until upstream publishes a patched release)
 
-Denial-of-service via infinite loop when parsing crafted ICNS, JXL, or HEIF image buffers. Requires feeding malicious image bytes to the parser.
+1. pnpm override pins `image-size@1.2.1` (do **not** bump to 2.0.2).
+2. pnpm patch `patches/image-size@1.2.1.patch` is declared in `package.json` → `pnpm.patchedDependencies`.
+3. The lockfile records `image-size@1.2.1(patch_hash=…)`.
+4. Patch contents:
+   - **CVE-2025-71330** — ICNS: abort the loop if an entry length is missing or `< 8`.
+   - **CVE-2025-71329** — JXL/HEIF: always advance at least 8 bytes on zero-sized boxes.
 
-## MMD exposure
+## Reproducibility
 
-| Factor | Assessment |
-|--------|------------|
-| **Direct dependency** | No — transitive only |
-| **pnpm override** | Root `package.json` pins `image-size@1.2.1` (below vulnerable 2.x range in advisory) |
-| **Runtime path** | Typically pulled through build/tooling (e.g. Metro/Expo asset pipeline), not user-upload parsing in production API handlers |
-| **Exploitability in prod** | **Low** — no production code path identified that parses untrusted ICNS/JXL/HEIF via `image-size` 2.x; override keeps 1.2.1 |
-| **Upload hardening** | `uploadSecurity` + MIME allowlists block exotic formats on avatars/docs |
+A clean install **without** the workspace `node_modules` is proven by:
 
-## Action
+```bash
+node scripts/image-size-clean-install.regression.test.mjs
+```
 
-1. **Keep** pnpm override `image-size@1.2.1` until upstream publishes 2.0.3+ with fix.
-2. **Do not** bump to 2.0.2 without verified patch.
-3. **Re-scan** after Dependabot reports `first_patched_version`.
-4. Optional: dismiss alerts with reason *"transitive override to 1.2.1; 2.x not used in runtime upload paths"* once GitHub reflects override.
+That test copies only `package.json` patch config + the patch file into a temp directory, runs `pnpm install --ignore-workspace`, and asserts the installed `icns.js` / `jxl.js` contain the CVE guards.
+
+CI runs the same script after `pnpm install --frozen-lockfile`.
+
+## Dependabot UI
+
+GitHub Dependabot keys on the **published version** (`1.2.1`), not on a local pnpm patch. Alerts #170/#171 may remain open in the GitHub UI even though the installed code is patched. **Do not drop the patch** just to silence Dependabot — that would reintroduce the infinite-loop DoS.
 
 ## Status
 
-**OPEN (documented)** — not fixable without upstream patch; risk mitigated by version override and upload guards.
+**Mitigated in-repo** via override + pnpm patch. Re-check `npm view image-size` before replacing the patch with an official version. Only switch if a **compatible** release exists whose advisory `first_patched_version` is published and Metro/Expo still resolve to it.

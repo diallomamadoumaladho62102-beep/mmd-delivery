@@ -1,6 +1,7 @@
 import { AppState, Platform, type AppStateStatus } from "react-native";
 import * as Notifications from "expo-notifications";
 import { supabase } from "./supabase";
+import i18n from "../i18n";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -92,8 +93,11 @@ async function setRinging(shouldRing: boolean) {
 async function showLocalBanner(orderId: string) {
   const banner: BannerPayload = {
     orderId,
-    title: "Nouvelle commande",
-    body: "Une commande payée vient d'arriver.",
+    title: i18n.t("restaurant.commandCenter.newOrder", "New order"),
+    body: i18n.t(
+      "restaurant.commandCenter.paidOrderArrived",
+      "A paid order just arrived.",
+    ),
   };
   emitBanner(banner);
 

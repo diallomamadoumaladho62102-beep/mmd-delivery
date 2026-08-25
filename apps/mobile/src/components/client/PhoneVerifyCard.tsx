@@ -7,12 +7,14 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   checkPhoneVerificationRequest,
   startPhoneVerificationRequest,
 } from "@mmd/phone-verify-api";
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { supabase } from "../../lib/supabase";
+import { toUserFacingError } from "../../lib/userFacingError";
 
 type Props = {
   phone: string;
@@ -26,6 +28,7 @@ async function getAccessToken(): Promise<string> {
 }
 
 export function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
+  const { t } = useTranslation();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -34,7 +37,9 @@ export function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
   if (verified) {
     return (
       <View style={styles.verifiedBox}>
-        <Text style={styles.verifiedText}>Phone verified</Text>
+        <Text style={styles.verifiedText}>
+          {t("client.profile.phoneVerify.verified", "Phone verified")}
+        </Text>
       </View>
     );
   }
@@ -51,10 +56,17 @@ export function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
     });
     setBusy(false);
     if (started.ok === false) {
-      setError(started.error || "Unable to send code");
+      setError(
+        toUserFacingError(
+          started.error,
+          t("client.profile.phoneVerify.sendFailed", "Unable to send code"),
+        ),
+      );
       return;
     }
-    setNotice("Verification code sent by SMS.");
+    setNotice(
+      t("client.profile.phoneVerify.codeSent", "Verification code sent by SMS."),
+    );
   }
 
   async function check() {
@@ -69,18 +81,30 @@ export function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
     });
     setBusy(false);
     if (checked.ok === false) {
-      setError(checked.error || "Invalid code");
+      setError(
+        toUserFacingError(
+          checked.error,
+          t("client.profile.phoneVerify.invalidCode", "Invalid code"),
+        ),
+      );
       return;
     }
-    setNotice("Phone verified.");
+    setNotice(
+      t("client.profile.phoneVerify.verifiedNotice", "Phone verified."),
+    );
     onVerified?.(String(checked.phone_e164 ?? phone));
   }
 
   return (
     <View style={styles.box}>
-      <Text style={styles.title}>Verify phone (Twilio Verify)</Text>
+      <Text style={styles.title}>
+        {t("client.profile.phoneVerify.title", "Verify your phone")}
+      </Text>
       <Text style={styles.hint}>
-        Required for full access when PHONE_OTP_ENABLED is on.
+        {t(
+          "client.profile.phoneVerify.hint",
+          "We will send an SMS code to confirm this number.",
+        )}
       </Text>
       <View style={styles.row}>
         <TouchableOpacity
@@ -91,13 +115,15 @@ export function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
           {busy ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.btnPrimaryText}>Send SMS code</Text>
+            <Text style={styles.btnPrimaryText}>
+              {t("client.profile.phoneVerify.sendCode", "Send SMS code")}
+            </Text>
           )}
         </TouchableOpacity>
         <TextInput
           value={code}
           onChangeText={setCode}
-          placeholder="Code"
+          placeholder={t("client.profile.phoneVerify.codePlaceholder", "Code")}
           placeholderTextColor="#94A3B8"
           keyboardType="number-pad"
           style={styles.codeInput}
@@ -107,7 +133,9 @@ export function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
           disabled={busy || !code.trim()}
           onPress={() => void check()}
         >
-          <Text style={styles.btnSecondaryText}>Confirm</Text>
+          <Text style={styles.btnSecondaryText}>
+            {t("client.profile.phoneVerify.confirm", "Confirm")}
+          </Text>
         </TouchableOpacity>
       </View>
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}

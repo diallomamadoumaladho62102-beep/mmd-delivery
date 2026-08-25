@@ -28,6 +28,8 @@ assert(onboarding.includes('navigation.navigate("SellerDashboard")'), "profile s
 
 const dashboard = read("screens/seller/SellerDashboardScreen.tsx");
 assert(dashboard.includes("sellerSignOutLabels"), "dashboard has logout");
+assert(dashboard.includes("LanguagePicker"), "seller dashboard has language picker");
+assert(dashboard.includes('setLocaleForRoleAndApply("seller"'), "seller language uses global setter");
 
 const authRole = read("lib/authRole.ts");
 assert(authRole.includes("resolvePostAuthRoute"), "post-auth route helper exists");

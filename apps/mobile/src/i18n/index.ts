@@ -262,6 +262,23 @@ export async function setLocaleForRoleAndApply(role: Role, locale: string) {
 
   await setAppLocale(next);
   await applyRTLIfNeeded(next);
+
+  try {
+    const { supabase } = await import("../lib/supabase");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.id) {
+      await supabase
+        .from("profiles")
+        .update({ preferred_locale: next })
+        .eq("id", user.id);
+    }
+    const { registerUserPushToken } = await import("../lib/notifications");
+    await registerUserPushToken();
+  } catch {
+    // Locale still applied locally if server persist is unavailable.
+  }
 }
 
 /**

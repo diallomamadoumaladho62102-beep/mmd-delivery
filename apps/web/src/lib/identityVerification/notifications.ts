@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IdentitySubjectType, IdentityVerificationStatus } from "./types";
+import { pushText } from "../pushCopy";
+import { normalizeAppLocale, type AppLocale } from "../userLocale";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -23,18 +25,21 @@ async function wasAlreadyLogged(
 async function loadTokens(
   supabase: SupabaseClient,
   userId: string
-): Promise<string[]> {
+): Promise<Array<{ token: string; locale: AppLocale }>> {
   const { data } = await supabase
     .from("user_push_tokens")
-    .select("expo_push_token")
+    .select("expo_push_token,locale")
     .eq("user_id", userId);
 
-  const tokens = new Set<string>();
+  const seen = new Set<string>();
+  const out: Array<{ token: string; locale: AppLocale }> = [];
   for (const row of data ?? []) {
     const token = String(row.expo_push_token ?? "").trim();
-    if (isExpoPushToken(token)) tokens.add(token);
+    if (!isExpoPushToken(token) || seen.has(token)) continue;
+    seen.add(token);
+    out.push({ token, locale: normalizeAppLocale((row as { locale?: unknown }).locale) });
   }
-  return [...tokens];
+  return out;
 }
 
 async function sendExpo(messages: Array<Record<string, unknown>>) {
@@ -63,42 +68,19 @@ async function sendExpo(messages: Array<Record<string, unknown>>) {
 
 function copyFor(
   status: IdentityVerificationStatus | "pending",
+  locale: AppLocale,
   reason?: string | null
 ): { title: string; body: string } {
-  if (status === "verified") {
-    return {
-      title: "Identity verified",
-      body: "Your identity verification was successful.",
-    };
-  }
-  if (status === "requires_input") {
-    return {
-      title: "Identity verification needs attention",
-      body: "Additional information is required to complete verification.",
-    };
-  }
+  if (status === "verified") return pushText("identity_verified", locale);
+  if (status === "requires_input") return pushText("identity_needs_attention", locale);
   if (status === "failed" || status === "canceled") {
-    return {
-      title: "Identity verification failed",
-      body: String(reason ?? "Please try again or contact support."),
-    };
+    const copy = pushText("identity_failed", locale);
+    const extra = String(reason ?? "").trim();
+    return extra ? { title: copy.title, body: extra } : copy;
   }
-  if (status === "processing") {
-    return {
-      title: "Identity verification in progress",
-      body: "Stripe is reviewing your identity documents.",
-    };
-  }
-  if (status === "pending") {
-    return {
-      title: "Identity verification started",
-      body: "Complete the Stripe Identity flow to continue.",
-    };
-  }
-  return {
-    title: "Identity verification update",
-    body: `Status: ${status}`,
-  };
+  if (status === "processing") return pushText("identity_in_progress", locale);
+  if (status === "pending") return pushText("identity_started", locale);
+  return pushText("identity_update", locale);
 }
 
 /**
@@ -127,7 +109,10 @@ export async function notifyIdentityStatusChange(
       return;
     }
 
-    const { title, body } = copyFor(input.status, input.reason);
+    const tokens = await loadTokens(supabase, input.subjectUserId);
+    const logCopy = copyFor(input.status, tokens[0]?.locale ?? "en", input.reason);
+    const title = logCopy.title;
+    const body = logCopy.body;
     const data = {
       channel: "identity",
       type: "identity_status",
@@ -135,8 +120,6 @@ export async function notifyIdentityStatusChange(
       status: input.status,
       reason: input.reason ?? null,
     };
-
-    const tokens = await loadTokens(supabase, input.subjectUserId);
     let status = "queued";
     let errorMessage: string | null = null;
     let sentAt: string | null = null;
@@ -146,14 +129,17 @@ export async function notifyIdentityStatusChange(
       errorMessage = "no_tokens";
     } else {
       const sendResult = await sendExpo(
-        tokens.map((to) => ({
-          to,
-          title,
-          body,
-          data,
-          sound: "default",
-          priority: "high",
-        }))
+        tokens.map((target) => {
+          const copy = copyFor(input.status, target.locale, input.reason);
+          return {
+            to: target.token,
+            title: copy.title,
+            body: copy.body,
+            data,
+            sound: "default",
+            priority: "high",
+          };
+        })
       );
       status = sendResult.ok ? "sent" : "failed";
       errorMessage = sendResult.ok ? null : sendResult.error ?? "push_failed";
