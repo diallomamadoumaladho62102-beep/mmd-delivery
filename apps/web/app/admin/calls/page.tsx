@@ -40,6 +40,22 @@ type AdminRoleRow = {
   role: string | null;
 };
 
+type AdminVoiceCallView = {
+  id: string;
+  status: string;
+  createdAt: string | null;
+  fromPhone: string | null;
+  currentAdminUserId: string | null;
+  parentCallSid: string;
+};
+
+type AdminVoiceDestinationView = {
+  userId: string;
+  fullName: string;
+  role: string | null;
+  phoneLast4: string;
+};
+
 const PAGE_LIMIT = 200;
 
 function canAccessCalls(role: string | null): boolean {
@@ -145,6 +161,17 @@ export default function AdminCallsPage() {
   const [err, setErr] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<CallFilter>("all");
+  const [voiceCalls, setVoiceCalls] = useState<AdminVoiceCallView[]>([]);
+  const [voiceDestinations, setVoiceDestinations] = useState<
+    AdminVoiceDestinationView[]
+  >([]);
+  const [transferTargetByCall, setTransferTargetByCall] = useState<
+    Record<string, string>
+  >({});
+  const [transferringCallId, setTransferringCallId] = useState<string | null>(
+    null,
+  );
+  const [voiceErr, setVoiceErr] = useState<string | null>(null);
 
   const loadPage = useCallback(async () => {
     try {
@@ -183,6 +210,34 @@ export default function AdminCallsPage() {
 
       setAuthChecked(true);
       setIsAdmin(true);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      if (accessToken) {
+        const voiceRes = await fetch("/api/admin/voice/calls", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        });
+        const voiceJson = (await voiceRes.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          activeCalls?: AdminVoiceCallView[];
+          destinations?: AdminVoiceDestinationView[];
+        } | null;
+
+        if (voiceRes.ok && voiceJson?.ok) {
+          setVoiceCalls(voiceJson.activeCalls ?? []);
+          setVoiceDestinations(voiceJson.destinations ?? []);
+          setVoiceErr(null);
+        } else if (voiceRes.status !== 401 && voiceRes.status !== 403) {
+          setVoiceErr(
+            voiceJson?.error || "Impossible de charger les appels support.",
+          );
+        }
+      }
 
       const { data: callsRaw, error: callsError } = await supabase
         .from("call_sessions")
@@ -246,6 +301,54 @@ export default function AdminCallsPage() {
     }
   }, [router]);
 
+  const transferCall = useCallback(async (callId: string) => {
+    const destinationUserId = transferTargetByCall[callId];
+    if (!destinationUserId) {
+      setVoiceErr("Choisis un administrateur autorisé.");
+      return;
+    }
+
+    try {
+      setTransferringCallId(callId);
+      setVoiceErr(null);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        setVoiceErr("Session admin expirée. Reconnecte-toi.");
+        return;
+      }
+
+      const response = await fetch("/api/admin/voice/transfer", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ callId, destinationUserId }),
+      });
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !json?.ok) {
+        setVoiceErr(json?.error || "Le transfert a échoué.");
+        return;
+      }
+
+      await loadPage();
+    } catch (error) {
+      setVoiceErr(
+        error instanceof Error ? error.message : "Le transfert a échoué.",
+      );
+    } finally {
+      setTransferringCallId(null);
+    }
+  }, [loadPage, transferTargetByCall]);
+
   useEffect(() => {
     void loadPage();
 
@@ -257,6 +360,17 @@ export default function AdminCallsPage() {
           event: "*",
           schema: "public",
           table: "call_sessions",
+        },
+        () => {
+          void loadPage();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "admin_voice_calls",
         },
         () => {
           void loadPage();
@@ -341,15 +455,95 @@ export default function AdminCallsPage() {
           </h1>
 
           <p className="text-sm text-slate-600">
-            Suis les appels masqués Twilio, les participants, les statuts et les commandes liées.
+            Suis les appels masqués Twilio, transfère un appel support vers un
+            autre admin autorisé, et consulte les commandes liées.
           </p>
         </header>
 
-        {err && (
+        {(err || voiceErr) && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
-            {err}
+            {voiceErr || err}
           </div>
         )}
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Appels support en cours
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Numéro public MMD Delivery : +1 929-492-4563. Transfert direct
+                vers un admin autorisé.
+              </p>
+            </div>
+            <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+              {voiceCalls.length} actif{voiceCalls.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          {voiceCalls.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-600">
+              Aucun appel support en cours.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {voiceCalls.map((call) => (
+                <div
+                  key={call.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="space-y-1 text-sm text-slate-700">
+                      <p className="font-semibold text-slate-900">
+                        Appel #{call.id.slice(0, 8)} · {call.status}
+                      </p>
+                      <p>Appelant : {call.fromPhone || "—"}</p>
+                      <p>Début : {formatDate(call.createdAt)}</p>
+                    </div>
+
+                    <div className="flex min-w-full flex-col gap-2 sm:flex-row lg:min-w-[420px]">
+                      <select
+                        value={transferTargetByCall[call.id] ?? ""}
+                        onChange={(event) =>
+                          setTransferTargetByCall((current) => ({
+                            ...current,
+                            [call.id]: event.target.value,
+                          }))
+                        }
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                      >
+                        <option value="">Choisir un admin…</option>
+                        {voiceDestinations.map((destination) => (
+                          <option
+                            key={destination.userId}
+                            value={destination.userId}
+                          >
+                            {destination.fullName} · {destination.role || "admin"}{" "}
+                            · {destination.phoneLast4}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => void transferCall(call.id)}
+                        disabled={
+                          transferringCallId === call.id ||
+                          !transferTargetByCall[call.id]
+                        }
+                        className="rounded-xl border border-slate-300 bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {transferringCallId === call.id
+                          ? "Transfert…"
+                          : "Transfer"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">

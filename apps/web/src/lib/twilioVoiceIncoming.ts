@@ -1,5 +1,11 @@
 import type { NextRequest } from "next/server";
 
+import {
+  buildAdminDialTwiml,
+  buildInboundAdminVoiceCallRow,
+  getAdminSupportPhone,
+  resolveIncomingVoiceRoute,
+} from "@/lib/adminVoiceTransfer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getTwilioPhoneNumber } from "@/lib/twilioPhone";
 import {
@@ -10,8 +16,6 @@ import { getTwilioVoiceStatusCallbackUrl } from "@/lib/twilioProductionUrls";
 import { normalizePhoneE164, phonesEquivalent } from "@/lib/phoneE164";
 
 const MMD_TWILIO_NUMBER = getTwilioPhoneNumber();
-const ADMIN_SUPPORT_PHONE =
-  process.env.MMD_ADMIN_SUPPORT_PHONE || "+19297408722";
 
 const ROUTABLE_SESSION_STATUSES = ["active", "ringing", "connected"] as const;
 
@@ -40,44 +44,51 @@ export function twilioVoiceSay(message: string) {
   `);
 }
 
-function publicSupportDialAdmin() {
-  return twilioVoiceTwiml(`
-<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice" language="en-US">
-    Welcome to MMD Delivery and Ride support.
-    Thank you for calling us.
-    For safety and quality purposes, this call may be recorded.
-    Please wait while we connect you to our support team.
-  </Say>
+async function persistInboundSupportCall(params: {
+  supabaseAdmin: ReturnType<typeof buildSupabaseAdminClient>;
+  callSid: string;
+  fromPhone: string | null;
+}) {
+  const row = buildInboundAdminVoiceCallRow({
+    callSid: params.callSid,
+    fromPhone: params.fromPhone,
+    supportPhone: getAdminSupportPhone(),
+    nowIso: new Date().toISOString(),
+  });
+  if (!row) return;
 
-  <Dial
-    callerId="${escapeXml(MMD_TWILIO_NUMBER)}"
-    answerOnBridge="true"
-    timeout="25"
-    record="record-from-answer-dual"
-  >
-    <Number>${escapeXml(ADMIN_SUPPORT_PHONE)}</Number>
-  </Dial>
+  const { error } = await params.supabaseAdmin
+    .from("admin_voice_calls")
+    .upsert(row, { onConflict: "parent_call_sid" });
 
-  <Say voice="alice" language="en-US">
-    Our support team is not available right now.
-    Please leave your name, phone number, order or trip details, and a short message after the beep.
-  </Say>
+  if (error) {
+    console.error("[twilio/voice/incoming] admin_voice_calls persist failed", {
+      path: "/api/twilio/voice/incoming",
+      code: error.code,
+    });
+  }
+}
 
-  <Record
-    maxLength="180"
-    playBeep="true"
-    transcribe="false"
-    trim="trim-silence"
-  />
+async function publicSupportDialAdmin(params: {
+  supabaseAdmin: ReturnType<typeof buildSupabaseAdminClient>;
+  callSid: string;
+  fromPhone: string | null;
+}) {
+  try {
+    await persistInboundSupportCall(params);
+  } catch {
+    console.error("[twilio/voice/incoming] admin_voice_calls persist failed", {
+      path: "/api/twilio/voice/incoming",
+    });
+  }
 
-  <Say voice="alice" language="en-US">
-    Thank you for calling MMD Delivery and Ride.
-    We appreciate your trust. Goodbye.
-  </Say>
-</Response>
-  `);
+  return twilioVoiceTwiml(
+    buildAdminDialTwiml({
+      destPhone: getAdminSupportPhone(),
+      callerId: MMD_TWILIO_NUMBER,
+      includeWelcome: true,
+    }),
+  );
 }
 
 export async function handleTwilioVoiceIncoming(req: NextRequest) {
@@ -94,7 +105,11 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
   const callSid = String(formData.get("CallSid") || "").trim();
 
   if (!from) {
-    return publicSupportDialAdmin();
+    return publicSupportDialAdmin({
+      supabaseAdmin,
+      callSid,
+      fromPhone: null,
+    });
   }
 
   const now = new Date().toISOString();
@@ -120,13 +135,25 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
       path: req.nextUrl.pathname,
       code: sessionError.code,
     });
-    return publicSupportDialAdmin();
+    return publicSupportDialAdmin({
+      supabaseAdmin,
+      callSid,
+      fromPhone: from,
+    });
   }
 
-  if (!session) {
-    return twilioVoiceSay(
-      "No active MMD Delivery call session was found for this number. Please start your call from the MMD Delivery app, or contact support.",
-    );
+  if (
+    !session ||
+    resolveIncomingVoiceRoute({
+      hasFrom: true,
+      matchedSession: Boolean(session),
+    }) === "support"
+  ) {
+    return publicSupportDialAdmin({
+      supabaseAdmin,
+      callSid,
+      fromPhone: from,
+    });
   }
 
   const targetPhone = normalizePhoneE164(String(session.target_phone || "")) || "";

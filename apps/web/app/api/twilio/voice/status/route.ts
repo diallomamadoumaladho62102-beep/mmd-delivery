@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { applyTwilioStatusCallback } from "@/lib/twilioCallStatusService";
+import { applyAdminVoiceStatusCallback } from "@/lib/adminVoiceTransfer";
 import {
   assertTwilioWebhookRequest,
   formDataToParamRecord,
@@ -75,6 +76,19 @@ export async function POST(req: NextRequest) {
         payload,
       },
     });
+
+    try {
+      await applyAdminVoiceStatusCallback({
+        supabaseAdmin,
+        callSid,
+        dialCallSid,
+        callStatus,
+      });
+    } catch {
+      console.error("[twilio/voice/status] admin_voice update failed", {
+        path: "/api/twilio/voice/status",
+      });
+    }
 
     return emptyTwilioResponse();
   } catch (error) {

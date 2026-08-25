@@ -61,10 +61,16 @@ test("finance cannot manage users or dispatch", () => {
 test("support can view but not manage payouts or pricing", () => {
   assert.equal(hasPermission("support_admin", "orders.read"), true);
   assert.equal(hasPermission("support", "communication.chats"), true);
+  assert.equal(hasPermission("support_admin", "communication.calls"), true);
+  assert.equal(hasPermission("operations_admin", "communication.calls"), true);
+  assert.equal(hasPermission("super_admin", "communication.calls"), true);
   assert.equal(hasPermission("support_admin", "users.drivers.read"), true);
   assert.equal(hasPermission("support", "users.drivers.manage"), false);
   assert.equal(hasPermission("support_admin", "payouts.read"), false);
   assert.equal(hasPermission("support", "pricing.read"), false);
+  assert.equal(hasPermission("finance_admin", "communication.calls"), false);
+  assert.equal(hasPermission("review_admin", "communication.calls"), false);
+  assert.equal(hasPermission("client", "communication.calls"), false);
 });
 
 test("support finance is lookup-only (no global P&L)", () => {
