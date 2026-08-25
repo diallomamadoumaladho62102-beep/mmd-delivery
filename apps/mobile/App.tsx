@@ -101,7 +101,7 @@ function App(): React.JSX.Element {
 
   const registerInFlightRef = useRef(false);
   const lastRoleRef = useRef<Role | null>(null);
-  const syncingLocaleRef = useRef(false);
+  const syncingLocaleRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     logStartupProbe("app-mounted");
@@ -140,23 +140,34 @@ function App(): React.JSX.Element {
     }
 
     const syncLocale = async (): Promise<void> => {
-      if (!isMounted || syncingLocaleRef.current) return;
+      if (!isMounted) return;
+      if (syncingLocaleRef.current) {
+        await syncingLocaleRef.current;
+        return;
+      }
 
-      syncingLocaleRef.current = true;
-
-      try {
-        const role = toRole((await getSelectedRole()) ?? "client");
-        await syncLocaleForRole(role as never);
-        lastRoleRef.current = role;
-      } catch (error) {
-        reportBootError("sync-locale", error);
-
+      const run = (async () => {
         try {
-          await syncLocaleForRole("client" as never);
-          lastRoleRef.current = "client";
-        } catch {}
+          const role = toRole((await getSelectedRole()) ?? "client");
+          await syncLocaleForRole(role as never);
+          lastRoleRef.current = role;
+        } catch (error) {
+          reportBootError("sync-locale", error);
+
+          try {
+            await syncLocaleForRole("client" as never);
+            lastRoleRef.current = "client";
+          } catch {}
+        }
+      })();
+
+      syncingLocaleRef.current = run;
+      try {
+        await run;
       } finally {
-        syncingLocaleRef.current = false;
+        if (syncingLocaleRef.current === run) {
+          syncingLocaleRef.current = null;
+        }
       }
     };
 
@@ -172,9 +183,6 @@ function App(): React.JSX.Element {
     };
 
     void (async () => {
-      // Locale sync must not block auth fail-open (AsyncStorage hang → Splash forever).
-      void syncLocale();
-
       try {
         const { data } = await withTimeout(
           supabase.auth.getSession(),
@@ -189,7 +197,11 @@ function App(): React.JSX.Element {
         logStartupProbe("auth-ready");
 
         const userId = currentSession?.user?.id;
-        if (userId) void registerToken(userId);
+        // Locale first, then token — so production push copy uses the saved language,
+        // not the migration default 'en'. Do not await locale before auth UI.
+        void syncLocale().then(() => {
+          if (userId && isMounted) void registerToken(userId);
+        });
       } catch (error) {
         reportBootError("get-session", error);
 
@@ -197,6 +209,7 @@ function App(): React.JSX.Element {
 
         setSession(null);
         logStartupProbe("auth-ready-with-error");
+        void syncLocale();
       } finally {
         if (isMounted) setAuthLoading(false);
       }
@@ -210,10 +223,10 @@ function App(): React.JSX.Element {
         setSession(currentSession);
         setAuthLoading(false);
 
-        void syncLocale();
-
         const userId = currentSession?.user?.id;
-        if (userId) void registerToken(userId);
+        void syncLocale().then(() => {
+          if (userId && isMounted) void registerToken(userId);
+        });
       },
     );
 

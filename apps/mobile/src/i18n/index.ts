@@ -294,6 +294,22 @@ export async function syncLocaleForRole(role: Role) {
   }
 
   await applyRTLIfNeeded(next);
+
+  try {
+    const { supabase } = await import("../lib/supabase");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.id) {
+      await supabase
+        .from("profiles")
+        .update({ preferred_locale: next })
+        .eq("id", user.id);
+    }
+  } catch {
+    // Local locale still applies if the server copy cannot be written.
+  }
+
   return next;
 }
 

@@ -185,9 +185,14 @@ export async function registerUserPushToken(
       (Constants as any)?.nativeAppVersion ??
       null;
 
-    const rawLocale = String(
-      (await import("i18next")).default.language || "en",
-    )
+    let rawLocale = "en";
+    try {
+      const { getGlobalLocale } = await import("../i18n/storage");
+      rawLocale = await getGlobalLocale();
+    } catch {
+      rawLocale = String((await import("i18next")).default.language || "en");
+    }
+    rawLocale = String(rawLocale || "en")
       .trim()
       .toLowerCase()
       .split("-")[0];

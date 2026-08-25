@@ -35,7 +35,14 @@ test("global locale is source of truth", () => {
 test("language change persists to profile + push token", () => {
   assert.match(i18n, /preferred_locale: next/);
   assert.match(i18n, /registerUserPushToken/);
+  assert.match(notifications, /getGlobalLocale/);
   assert.match(notifications, /locale,/);
+});
+
+test("boot locale sync writes preferred_locale so email/SMS are not stuck on en", () => {
+  assert.match(i18n, /export async function syncLocaleForRole/);
+  const syncFn = i18n.slice(i18n.indexOf("export async function syncLocaleForRole"));
+  assert.match(syncFn, /preferred_locale: next/);
 });
 
 test("RTL only for Arabic", () => {
