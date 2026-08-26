@@ -17,6 +17,8 @@ assert.ok((limitsForTier("money")?.limit ?? 0) > 0);
 // Proxy must still classify the same money/webhook paths used by apps/web/proxy.ts
 assert.equal(classifyApiPath("/api/stripe/client/create-taxi-checkout-session"), "money");
 assert.equal(classifyApiPath("/api/payments/webhook/cinetpay"), "webhook");
+assert.equal(classifyApiPath("/api/sms/opt-in"), "auth_sensitive");
+assert.equal(classifyApiPath("/api/auth/phone/start"), "auth_sensitive");
 
 const key = `test-${Date.now()}`;
 for (let i = 0; i < 3; i += 1) {

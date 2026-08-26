@@ -330,7 +330,20 @@ export default function SiteShell({
             <p>
               © {year} {brand}. All rights reserved.
             </p>
-            <p className="text-slate-600">Taxi · Food · Package · Marketplace · Business</p>
+            <p className="flex flex-wrap gap-x-3 gap-y-1 text-slate-400">
+              <Link href="/legal/privacy" className="hover:text-orange-300">
+                Privacy
+              </Link>
+              <Link href="/legal/terms" className="hover:text-orange-300">
+                Terms
+              </Link>
+              <Link href="/legal/sms" className="hover:text-orange-300">
+                SMS
+              </Link>
+              <Link href="/legal/support" className="hover:text-orange-300">
+                Support
+              </Link>
+            </p>
           </div>
         </div>
       </footer>

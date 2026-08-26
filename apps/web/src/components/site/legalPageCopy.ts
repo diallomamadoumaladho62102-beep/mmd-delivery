@@ -1,6 +1,6 @@
 export const LEGAL_SUPPORT_EMAIL = "support@mmddelivery.com";
 export const LEGAL_SUPPORT_PHONE = "+1 (929) 492-4563";
-export const LEGAL_UPDATED = "August 25, 2026";
+export const LEGAL_UPDATED = "August 26, 2026";
 
 export const PRIVACY_SEO = {
   title: "Privacy Policy — MMD Delivery",
@@ -50,7 +50,7 @@ Last updated: ${LEGAL_UPDATED}.`,
 
 create and secure accounts; verify phone numbers; match customers with drivers, restaurants, and sellers; calculate quotes; process payments and payouts; send order, ride, and delivery updates; provide in-app chat and masked calling during active jobs; prevent fraud and abuse; comply with law; and improve reliability and safety.
 
-We may also send service emails and, where you have opted in, SMS about your account or an active transaction. We do not sell your personal information.`,
+We may also send service emails and, **only if you have explicitly opted in**, SMS about your account or an active transaction. Providing a phone number or creating an account is not SMS consent. We do not sell your personal information.`,
   },
   {
     id: "privacy-protect",
@@ -62,13 +62,15 @@ Access to production systems is limited to authorized staff. You can **delete yo
   {
     id: "privacy-sms",
     title: "SMS and phone communications",
-    body_md: `If you provide a mobile number, we may use it to:
+    body_md: `The **MMD Delivery** messaging program sends informational and transactional SMS only after you give **explicit opt-in** on the public [SMS program page](/legal/sms) or the matching checkbox in the website or app. Creating an account, providing a mobile number, or accepting our Terms is **not** SMS consent.
 
-send one-time **phone verification** codes; send **transactional SMS** about account security, orders, deliveries, taxi rides, driver or restaurant alerts, and customer support; and connect you with the other party on an active job through **masked calling** so your raw number is not always shared.
+When you have opted in, we may send: one-time **phone verification** codes when you request them; **transactional SMS** about account security, orders, deliveries, package deliveries, taxi rides, and customer support. Masked calling during an active job is a voice feature, not this SMS program.
 
-These messages are part of the **MMD Delivery** messaging program. Message frequency varies with your activity. **Message and data rates may apply.**
+Message frequency varies with your activity. **Message and data rates may apply.**
 
-**Opt out of SMS:** reply **STOP** to any MMD Delivery text. You will receive a confirmation, and we will stop SMS to that number unless you opt in again (for example by requesting a new verification code).
+**Opt in:** [https://www.mmddelivery.com/legal/sms](/legal/sms). The SMS checkbox is unchecked by default and is optional.
+
+**Opt out of SMS:** reply **STOP** (also STOPALL, UNSUBSCRIBE, CANCEL, END, or QUIT). You will receive a confirmation, and we will stop SMS to that number unless you opt in again on the SMS page or, if you previously opted in, by replying START.
 
 **Help:** reply **HELP**, email [${LEGAL_SUPPORT_EMAIL}](mailto:${LEGAL_SUPPORT_EMAIL}), or call [${LEGAL_SUPPORT_PHONE}](tel:+19294924563).
 
@@ -85,7 +87,7 @@ Carriers are not liable for delayed or undelivered messages. Our [Terms of Servi
 
 **Legal and safety.** We may disclose information to comply with law, enforce our terms, or protect users, the public, or MMD Delivery.
 
-We do not sell personal information or share mobile numbers with third parties for their own marketing.`,
+We do not sell personal information. **Mobile numbers are not shared with third parties.** Twilio processes SMS, Verify, and voice on our instructions as a service provider and does not receive numbers for its own marketing.`,
   },
   {
     id: "privacy-rights",
@@ -113,13 +115,15 @@ Last updated: ${LEGAL_UPDATED}.`,
     title: "MMD Delivery messaging program",
     body_md: `**Program / brand name:** MMD Delivery
 
-**Program description.** MMD Delivery sends informational and transactional text messages about your account and platform activity. This includes phone-number verification codes, order and delivery updates, taxi ride alerts, driver and restaurant operational notices, and customer-support follow-up. Messages are sent because you provided a mobile number while using MMD Delivery (for example when verifying a phone number or enabling SMS notifications for a trip or order).
+**Program description.** MMD Delivery sends informational and transactional text messages about your account and platform activity. This includes phone-number verification codes when you request them, order and delivery updates, package-delivery updates, taxi ride alerts, and customer-support follow-up. We do not send marketing SMS through this program.
+
+**Call to Action.** The public opt-in is [https://www.mmddelivery.com/legal/sms](/legal/sms). You may also use the same optional checkbox on website or app signup and profile screens. The checkbox is never pre-checked.
 
 **Message frequency.** Frequency varies. You may receive a verification message when you request one, and additional messages when an order, delivery, or ride is created, assigned, updated, or completed. Typical volume is a few messages per transaction, not a fixed daily number.
 
 **Rates.** Message and data rates may apply.
 
-**Consent.** By providing your mobile number and completing phone verification or otherwise requesting SMS from MMD Delivery, you consent to receive automated text messages from MMD Delivery at that number. Consent is not a condition of purchasing any good or service.
+**Consent.** You consent only by checking the SMS opt-in box (or restoring a prior opt-in with START after STOP). Providing a mobile number, creating an account, or accepting these Terms is not consent. Consent is not a condition of purchasing any good or service. You may use MMD Delivery without SMS.
 
 **HELP.** Reply **HELP** to any MMD Delivery SMS, email [${LEGAL_SUPPORT_EMAIL}](mailto:${LEGAL_SUPPORT_EMAIL}), call [${LEGAL_SUPPORT_PHONE}](tel:+19294924563), or use [https://www.mmddelivery.com/contact](https://www.mmddelivery.com/contact) and [https://www.mmddelivery.com/legal/support](https://www.mmddelivery.com/legal/support).
 

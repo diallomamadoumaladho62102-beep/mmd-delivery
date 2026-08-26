@@ -5,6 +5,7 @@ export const TWILIO_VOICE_INCOMING_PATH = "/api/twilio/voice/incoming";
 export const TWILIO_VOICE_STATUS_PATH = "/api/twilio/voice/status";
 export const TWILIO_VOICE_IVR_PATH = "/api/twilio/voice/ivr";
 export const TWILIO_SMS_INCOMING_PATH = "/api/twilio/sms";
+export const TWILIO_SMS_STATUS_PATH = "/api/twilio/sms/status";
 
 export function getTwilioProductionBaseUrl(): string {
   const override = String(process.env.TWILIO_WEBHOOK_BASE_URL ?? "").trim();
@@ -30,6 +31,12 @@ export function getTwilioSmsIncomingUrl(): string {
   const override = String(process.env.TWILIO_SMS_INCOMING_URL ?? "").trim();
   if (override) return override;
   return `${getTwilioProductionBaseUrl()}${TWILIO_SMS_INCOMING_PATH}`;
+}
+
+export function getTwilioSmsStatusCallbackUrl(): string {
+  const override = String(process.env.TWILIO_SMS_STATUS_CALLBACK_URL ?? "").trim();
+  if (override) return override;
+  return `${getTwilioProductionBaseUrl()}${TWILIO_SMS_STATUS_PATH}`;
 }
 
 export function getTwilioVoiceIvrBaseUrl(): string {

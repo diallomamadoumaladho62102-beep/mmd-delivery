@@ -40,7 +40,10 @@ export function buildPrivacyFallbackBlocks(): SiteBlockRow[] {
         image_url: "/brand/og-transparent-v2.png",
         benefits: ["No login required", "SMS and phone notices", "Access and deletion requests"],
         primary_ctas: [{ label: "Contact privacy", href: "/contact", event: "cta_privacy" }],
-        secondary_ctas: [{ label: "Terms of Service", href: "/legal/terms", event: "cta_terms" }],
+        secondary_ctas: [
+          { label: "Terms of Service", href: "/legal/terms", event: "cta_terms" },
+          { label: "SMS program", href: "/legal/sms", event: "cta_sms" },
+        ],
       },
     },
     ...sections,

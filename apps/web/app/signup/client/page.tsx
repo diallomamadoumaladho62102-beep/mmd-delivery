@@ -99,6 +99,7 @@ export default function SignupClientPage() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
   const [city, setCity] = useState("");
@@ -409,6 +410,18 @@ export default function SignupClientPage() {
       await saveClientProfile({ userId, email: e, avatarUrl });
       await applyReferralIfAny();
 
+      if (smsConsent) {
+        await fetch("/api/sms/opt-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone: cleanedPhone,
+            consent: true,
+            source: "web_signup",
+          }),
+        }).catch(() => undefined);
+      }
+
       if (!data.session) {
         setMessage("Compte créé ✅ Vérifie ton email, puis connecte-toi.");
         setMode("login");
@@ -534,6 +547,26 @@ export default function SignupClientPage() {
                   inputMode="tel"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
+                <label className="mt-3 flex items-start gap-3 text-xs leading-relaxed text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    checked={smsConsent}
+                    onChange={(event) => setSmsConsent(event.target.checked)}
+                  />
+                  <span>
+                    I agree to receive automated informational and transactional
+                    text messages from MMD Delivery about my account,
+                    verification, orders, deliveries, package deliveries, taxi
+                    rides, and customer support. Message frequency varies.
+                    Message and data rates may apply. Consent is not a condition
+                    of purchase. Reply STOP to cancel and HELP for help. Optional
+                    — not required to create an account.{" "}
+                    <a className="text-blue-300 underline" href="/legal/sms">
+                      SMS program
+                    </a>
+                  </span>
+                </label>
               </div>
 
               <div>

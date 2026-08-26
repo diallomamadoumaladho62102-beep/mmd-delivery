@@ -32,6 +32,10 @@ export function getSupportUrl(): string {
   );
 }
 
+export function getLegalSmsUrl(): string {
+  return "https://www.mmddelivery.com/legal/sms";
+}
+
 export async function openLegalUrl(url: string): Promise<void> {
   await WebBrowser.openBrowserAsync(url);
 }

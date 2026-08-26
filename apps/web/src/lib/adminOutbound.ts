@@ -24,16 +24,6 @@ export type SendEmailInput = {
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
-function getTwilioCreds(): { sid: string; token: string; from: string } | null {
-  const sid = String(process.env.TWILIO_ACCOUNT_SID ?? "").trim();
-  const token = String(process.env.TWILIO_AUTH_TOKEN ?? "").trim();
-  const from =
-    String(process.env.TWILIO_SMS_FROM ?? process.env.TWILIO_PHONE_NUMBER ?? "").trim();
-
-  if (!sid || !token || !from) return null;
-  return { sid, token, from };
-}
-
 function getSupabaseAdminClient() {
   const supabaseUrl =
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -127,32 +117,19 @@ export async function sendAdminPush(
 export async function sendAdminSms(
   input: SendSmsInput,
 ): Promise<{ ok: boolean; response: Record<string, unknown> }> {
-  const creds = getTwilioCreds();
-  if (!creds) {
-    return { ok: false, response: { error: "Twilio SMS not configured" } };
-  }
-
-  const auth = Buffer.from(`${creds.sid}:${creds.token}`).toString("base64");
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${creds.sid}/Messages.json`;
-
-  const body = new URLSearchParams({
-    To: input.to,
-    From: creds.from,
-    Body: input.body,
+  const { sendTwilioMessagingSms } = await import("@/lib/twilioMessagingSend");
+  const sent = await sendTwilioMessagingSms({
+    to: input.to,
+    body: input.body,
   });
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
+  return {
+    ok: sent.ok,
+    response: {
+      ...sent.response,
+      messagingServiceSid: sent.messagingServiceSid,
+      error: sent.error,
     },
-    body: body.toString(),
-    cache: "no-store",
-  });
-
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  return { ok: res.ok, response: data };
+  };
 }
 
 export async function sendAdminEmail(

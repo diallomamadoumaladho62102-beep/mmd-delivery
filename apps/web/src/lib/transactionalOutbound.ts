@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sendAdminEmail, sendAdminSms } from "./adminOutbound";
+import { sendAdminEmail } from "./adminOutbound";
+import { canSendUsA2pSms, isTransactionalSmsEnabled as a2pTransactionalEnabled } from "./smsA2p";
+import { sendProgramSms, type SmsMessageType } from "./smsOutbound";
+import { renderSmsTemplate } from "./smsTemplates";
 
 export type TransactionalRecipient = {
   userId?: string | null;
@@ -14,7 +17,7 @@ function truthyEnv(name: string): boolean {
 }
 
 export function isTransactionalSmsEnabled(): boolean {
-  return truthyEnv("TRANSACTIONAL_SMS_ENABLED");
+  return a2pTransactionalEnabled();
 }
 
 export function isTransactionalEmailEnabled(): boolean {
@@ -46,17 +49,36 @@ async function loadProfileContact(
 export async function sendTransactionalSms(params: {
   to: string;
   body: string;
-}): Promise<{ ok: boolean; skipped?: boolean }> {
+  supabaseAdmin?: SupabaseClient;
+  userId?: string | null;
+  messageType?: SmsMessageType;
+  idempotencyKey?: string;
+}): Promise<{ ok: boolean; skipped?: boolean; reason?: string }> {
   if (!isTransactionalSmsEnabled()) {
-    return { ok: false, skipped: true };
+    return { ok: false, skipped: true, reason: "transactional_sms_disabled" };
+  }
+  const a2p = canSendUsA2pSms();
+  if (a2p.ok === false) {
+    return { ok: false, skipped: true, reason: a2p.reason };
   }
 
   const to = String(params.to ?? "").trim();
   const body = String(params.body ?? "").trim();
-  if (!to || !body) return { ok: false, skipped: true };
+  if (!to || !body) return { ok: false, skipped: true, reason: "invalid_destination_or_body" };
 
-  const result = await sendAdminSms({ to, body });
-  return { ok: result.ok, skipped: false };
+  if (!params.supabaseAdmin) {
+    return { ok: false, skipped: true, reason: "missing_supabase" };
+  }
+
+  const result = await sendProgramSms({
+    supabase: params.supabaseAdmin,
+    to,
+    body,
+    messageType: params.messageType ?? "admin",
+    userId: params.userId,
+    idempotencyKey: params.idempotencyKey,
+  });
+  return { ok: result.ok, skipped: result.skipped, reason: result.reason };
 }
 
 export async function sendTransactionalEmail(params: {
@@ -90,6 +112,8 @@ export async function notifyUserTransactional(params: {
   subject: string;
   body: string;
   html?: string | null;
+  messageType?: SmsMessageType;
+  idempotencyKey?: string;
 }): Promise<void> {
   let email = String(params.recipient.email ?? "").trim() || null;
   let phone = String(params.recipient.phone ?? "").trim() || null;
@@ -113,7 +137,14 @@ export async function notifyUserTransactional(params: {
   }
 
   if (phone) {
-    await sendTransactionalSms({ to: phone, body: params.body });
+    await sendTransactionalSms({
+      to: phone,
+      body: params.body,
+      supabaseAdmin: params.supabaseAdmin,
+      userId: params.recipient.userId,
+      messageType: params.messageType ?? "admin",
+      idempotencyKey: params.idempotencyKey,
+    });
   }
 }
 
@@ -125,17 +156,15 @@ export async function notifyOrderDeliveredTransactional(params: {
 }): Promise<void> {
   if (!params.clientUserId) return;
 
-  const shortId = params.orderId.slice(0, 8).toUpperCase();
-  const address = String(params.dropoffAddress ?? "").trim();
-  const body = address
-    ? `MMD Delivery: your order #${shortId} was delivered to ${address}.`
-    : `MMD Delivery: your order #${shortId} was delivered. Thank you!`;
+  const body = renderSmsTemplate("order_delivered", { ref: params.orderId });
 
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
     recipient: { userId: params.clientUserId },
-    subject: `MMD Delivery — order #${shortId} delivered`,
+    subject: `MMD Delivery — order delivered`,
     body,
+    messageType: "order_delivered",
+    idempotencyKey: `order_delivered:${params.orderId}`,
   });
 }
 
@@ -146,14 +175,15 @@ export async function notifyOrderDispatchedTransactional(params: {
 }): Promise<void> {
   if (!params.clientUserId) return;
 
-  const shortId = params.orderId.slice(0, 8).toUpperCase();
-  const body = `MMD Delivery: a driver is on the way for order #${shortId}. Track your order in the app.`;
+  const body = renderSmsTemplate("order_dispatched", { ref: params.orderId });
 
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
     recipient: { userId: params.clientUserId },
-    subject: `MMD Delivery — driver assigned (#${shortId})`,
+    subject: `MMD Delivery — driver assigned`,
     body,
+    messageType: "order_dispatched",
+    idempotencyKey: `order_dispatched:${params.orderId}`,
   });
 }
 
@@ -164,14 +194,17 @@ export async function notifyDeliveryRequestDispatchedTransactional(params: {
 }): Promise<void> {
   if (!params.clientUserId) return;
 
-  const shortId = params.deliveryRequestId.slice(0, 8).toUpperCase();
-  const body = `MMD Delivery: a driver is on the way for your delivery #${shortId}. Track it in the app.`;
+  const body = renderSmsTemplate("package_dispatched", {
+    ref: params.deliveryRequestId,
+  });
 
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
     recipient: { userId: params.clientUserId },
-    subject: `MMD Delivery — driver assigned (#${shortId})`,
+    subject: `MMD Delivery — driver assigned`,
     body,
+    messageType: "package_dispatched",
+    idempotencyKey: `package_dispatched:${params.deliveryRequestId}`,
   });
 }
 
@@ -182,13 +215,14 @@ export async function notifyTaxiRideDispatchedTransactional(params: {
 }): Promise<void> {
   if (!params.clientUserId) return;
 
-  const shortId = params.taxiRideId.slice(0, 8).toUpperCase();
-  const body = `MMD Taxi: your driver is on the way for ride #${shortId}. Track your ride in the app.`;
+  const body = renderSmsTemplate("taxi_dispatched", { ref: params.taxiRideId });
 
   await notifyUserTransactional({
     supabaseAdmin: params.supabaseAdmin,
     recipient: { userId: params.clientUserId },
-    subject: `MMD Taxi — driver assigned (#${shortId})`,
+    subject: `MMD Delivery — driver assigned`,
     body,
+    messageType: "taxi_dispatched",
+    idempotencyKey: `taxi_dispatched:${params.taxiRideId}`,
   });
 }

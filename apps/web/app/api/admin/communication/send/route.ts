@@ -10,9 +10,9 @@ import {
 import {
   sendAdminEmail,
   sendAdminPush,
-  sendAdminSms,
   type OutboundChannel,
 } from "@/lib/adminOutbound";
+import { sendProgramSms } from "@/lib/smsOutbound";
 import { notifyTeamInvitationEmail } from "@/lib/transactionalEmails";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
@@ -122,7 +122,21 @@ export async function POST(request: NextRequest) {
       if (!process.env.TWILIO_ACCOUNT_SID?.trim()) {
         return fail("missing_push_config", 503, { provider: "twilio" });
       }
-      result = await sendAdminSms({ to: recipientAddress, body: message });
+      const sms = await sendProgramSms({
+        supabase,
+        to: recipientAddress,
+        body: message,
+        messageType: "admin",
+        userId: recipientUserId,
+      });
+      result = {
+        ok: sms.ok,
+        response: {
+          skipped: sms.skipped,
+          reason: sms.reason ?? null,
+          sid: sms.twilioSid ?? null,
+        },
+      };
     } else {
       if (
         !process.env.RESEND_API_KEY?.trim() ||

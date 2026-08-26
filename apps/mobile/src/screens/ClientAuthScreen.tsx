@@ -26,6 +26,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
+import { getApiBaseUrl } from "../lib/apiBase";
+import { getLegalSmsUrl, openLegalUrl } from "../lib/legalUrls";
 import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
 import { resolvePostAuthRoute } from "../lib/authRole";
@@ -225,6 +227,7 @@ export function ClientAuthScreen() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
 
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
@@ -621,6 +624,22 @@ export function ClientAuthScreen() {
         }
       }
 
+      if (smsConsent) {
+        try {
+          await fetch(`${getApiBaseUrl()}/api/sms/opt-in`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              phone: p,
+              consent: true,
+              source: "mobile_signup",
+            }),
+          });
+        } catch {
+          // Consent can be completed later from profile or /legal/sms
+        }
+      }
+
       await saveClientProfile({ userId, email: e, avatarUrl, signupCountry });
       await applyReferralIfAny();
 
@@ -908,6 +927,38 @@ export function ClientAuthScreen() {
                 style={styles.forgotBtn}
               >
                 <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {mode === "signup" ? (
+              <TouchableOpacity
+                onPress={() => setSmsConsent((prev) => !prev)}
+                disabled={loading}
+                style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 14 }}
+              >
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 4,
+                    borderWidth: 1.5,
+                    borderColor: "rgba(255,255,255,0.7)",
+                    backgroundColor: smsConsent ? "#37D451" : "transparent",
+                    marginTop: 2,
+                  }}
+                />
+                <Text style={{ flex: 1, color: "rgba(255,255,255,0.85)", fontSize: 12, lineHeight: 17 }}>
+                  {t(
+                    "client.auth.smsConsent",
+                    "I agree to receive automated informational and transactional text messages from MMD Delivery about my account, verification, orders, deliveries, package deliveries, taxi rides, and customer support. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to cancel and HELP for help. Optional — not required to create an account.",
+                  )}{" "}
+                  <Text
+                    style={{ textDecorationLine: "underline", color: "#93C5FD" }}
+                    onPress={() => void openLegalUrl(getLegalSmsUrl())}
+                  >
+                    SMS
+                  </Text>
+                </Text>
               </TouchableOpacity>
             ) : null}
 

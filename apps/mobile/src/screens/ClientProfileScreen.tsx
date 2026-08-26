@@ -28,6 +28,8 @@ import type { TFunction } from "i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { AddressAutocomplete } from "../components/location/AddressAutocomplete";
 import { PhoneVerifyCard } from "../components/client/PhoneVerifyCard";
+import { getApiBaseUrl } from "../lib/apiBase";
+import { getLegalSmsUrl, openLegalUrl } from "../lib/legalUrls";
 import {
   isClientProfileComplete,
   scoreClientProfileCompleteness,
@@ -114,6 +116,7 @@ export function ClientProfileScreen() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [smsConsent, setSmsConsent] = useState(false);
   const [email, setEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(false);
 
@@ -283,6 +286,19 @@ export function ClientProfileScreen() {
             const lng = Number(addrRow?.longitude ?? addrRow?.lng);
             setLatitude(Number.isFinite(lat) ? lat : null);
             setLongitude(Number.isFinite(lng) ? lng : null);
+
+            try {
+              const token = session.access_token;
+              const consentRes = await fetch(`${getApiBaseUrl()}/api/sms/consent`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              const consentJson = (await consentRes.json().catch(() => ({}))) as {
+                sms_consent?: boolean;
+              };
+              if (alive) setSmsConsent(consentJson.sms_consent === true);
+            } catch {
+              // optional
+            }
           })(),
           BOOT_AUTH_TIMEOUT_MS,
           "client_profile_load",
@@ -639,6 +655,23 @@ export function ClientProfileScreen() {
       setAvatarUrl(finalAvatar ?? null);
       setAvatarLocalUri(null);
 
+      try {
+        await fetch(`${getApiBaseUrl()}/api/sms/consent`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phone: trimOrEmpty(phone),
+            consent: smsConsent,
+            source: "mobile_profile",
+          }),
+        });
+      } catch {
+        // Profile save still succeeded
+      }
+
       Alert.alert(
         t("common.ok", "OK"),
         t("client.profile.saved", "Profil enregistré."),
@@ -810,6 +843,35 @@ export function ClientProfileScreen() {
               setPhone(e164);
             }}
           />
+
+          <TouchableOpacity
+            onPress={() => setSmsConsent((prev) => !prev)}
+            style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginTop: 12, marginBottom: 8 }}
+          >
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 4,
+                borderWidth: 1.5,
+                borderColor: "rgba(255,255,255,0.7)",
+                backgroundColor: smsConsent ? "#37D451" : "transparent",
+                marginTop: 2,
+              }}
+            />
+            <Text style={{ flex: 1, color: "rgba(255,255,255,0.85)", fontSize: 12, lineHeight: 17 }}>
+              {t(
+                "client.profile.smsConsent",
+                "I agree to receive automated informational and transactional text messages from MMD Delivery about my account, verification, orders, deliveries, package deliveries, taxi rides, and customer support. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to cancel and HELP for help. Optional.",
+              )}{" "}
+              <Text
+                style={{ textDecorationLine: "underline", color: "#93C5FD" }}
+                onPress={() => void openLegalUrl(getLegalSmsUrl())}
+              >
+                SMS
+              </Text>
+            </Text>
+          </TouchableOpacity>
 
           <Label t={tt} labelKey="client.profile.fields.address" fallback="Adresse" />
           <AddressAutocomplete

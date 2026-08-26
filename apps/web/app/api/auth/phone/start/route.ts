@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkRateLimit } from "@/lib/apiRateLimit";
+import { checkRateLimit, getRequestClientIp } from "@/lib/apiRateLimit";
 import { resolveRequestUser } from "@/lib/requestUser";
+import { isPhoneOptedOut } from "@/lib/smsConsent";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   isPhoneOtpEnabled,
   isTwilioVerifyConfigured,
   startPhoneVerification,
 } from "@/lib/twilioVerify";
+import { normalizePhoneE164 } from "@/lib/phoneE164";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +57,37 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json().catch(() => ({}))) as { phone?: string };
     const phone = String(body.phone ?? "").trim();
+    const phoneE164 = normalizePhoneE164(phone);
+    if (phoneE164) {
+      const phoneRate = checkRateLimit({
+        namespace: "phone-otp-start-phone",
+        key: phoneE164,
+        limit: 3,
+        windowMs: 10 * 60_000,
+      });
+      const ipRate = checkRateLimit({
+        namespace: "phone-otp-start-ip",
+        key: getRequestClientIp(request.headers),
+        limit: 8,
+        windowMs: 60 * 60_000,
+      });
+      if (phoneRate.limited || ipRate.limited) {
+        return json(
+          { ok: false, error: "Too many attempts. Try again later." },
+          429,
+        );
+      }
+      if (await isPhoneOptedOut(buildSupabaseAdminClient(), phoneE164)) {
+        return json(
+          {
+            ok: false,
+            error: "This number is opted out of SMS. Reply START or opt in at /legal/sms.",
+            code: "sms_opted_out",
+          },
+          403,
+        );
+      }
+    }
     const started = await startPhoneVerification({ phone });
     if (!started.ok) {
       return json(

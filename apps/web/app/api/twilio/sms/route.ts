@@ -1,19 +1,12 @@
 import type { NextRequest } from "next/server";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   assertTwilioWebhookRequest,
   formDataToParamRecord,
 } from "@/lib/twilioRequestValidation";
+import { buildSmsTwiml, handleInboundSmsBody } from "@/lib/twilioSmsInbound";
 
 export const runtime = "nodejs";
-
-function buildSmsTwiml() {
-  return `
-<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Message>Welcome to MMD Delivery support. We received your message.</Message>
-</Response>
-  `.trim();
-}
 
 export async function GET() {
   if (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production") {
@@ -23,7 +16,7 @@ export async function GET() {
     });
   }
 
-  return new Response(buildSmsTwiml(), {
+  return new Response(buildSmsTwiml(null), {
     status: 200,
     headers: { "Content-Type": "text/xml" },
   });
@@ -38,7 +31,12 @@ export async function POST(req: NextRequest) {
     return new Response(twilioAuth.message, { status: twilioAuth.status });
   }
 
-  return new Response(buildSmsTwiml(), {
+  const from = String(twilioParams.From ?? twilioParams.from ?? "").trim();
+  const body = String(twilioParams.Body ?? twilioParams.body ?? "");
+  const supabase = buildSupabaseAdminClient();
+  const handled = await handleInboundSmsBody({ supabase, from, body });
+
+  return new Response(handled.twiml, {
     status: 200,
     headers: { "Content-Type": "text/xml" },
   });

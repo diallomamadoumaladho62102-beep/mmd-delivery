@@ -40,7 +40,10 @@ export function buildTermsFallbackBlocks(): SiteBlockRow[] {
         image_url: "/brand/og-transparent-v2.png",
         benefits: ["SMS HELP and STOP", "Message and data rates may apply", "Public, no login"],
         primary_ctas: [{ label: "Contact support", href: "/contact", event: "cta_contact" }],
-        secondary_ctas: [{ label: "Privacy Policy", href: "/legal/privacy", event: "cta_privacy" }],
+        secondary_ctas: [
+          { label: "Privacy Policy", href: "/legal/privacy", event: "cta_privacy" },
+          { label: "SMS program", href: "/legal/sms", event: "cta_sms" },
+        ],
       },
     },
     ...sections,

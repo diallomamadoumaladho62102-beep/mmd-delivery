@@ -22,6 +22,10 @@ assert.match(privacy, /Stripe/);
 assert.match(privacy, /STOP/);
 assert.match(privacy, /HELP/);
 assert.match(privacy, /support@mmddelivery\.com/);
+assert.match(privacy, /legal\/sms/);
+assert.match(privacy, /explicit opt-in/);
+assert.match(privacy, /Mobile numbers are not shared with third parties/);
+assert.doesNotMatch(privacy, /for their own marketing/);
 
 assert.match(terms, /MMD Delivery messaging program/);
 assert.match(terms, /Program \/ brand name:\*\* MMD Delivery/);
@@ -30,6 +34,8 @@ assert.match(terms, /Frequency varies/);
 assert.match(terms, /Reply \*\*STOP\*\*/);
 assert.match(terms, /Reply \*\*HELP\*\*/);
 assert.match(terms, /Consent is not a condition of purchasing/);
+assert.match(terms, /legal\/sms/);
+assert.match(terms, /Providing a mobile number, creating an account, or accepting these Terms is not consent/);
 assert.match(terms, /support@mmddelivery\.com/);
 assert.match(terms, /\+1 \(929\) 492-4563/);
 

@@ -35,6 +35,7 @@ export default function ClientProfilePage() {
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [phoneVerified, setPhoneVerified] = useState(false);
+  const [smsConsent, setSmsConsent] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
   const [coords, setCoords] = useState<{
     latitude: number | null;
@@ -130,6 +131,17 @@ export default function ClientProfilePage() {
 
       if (!cancelled) {
         setProfile(cp);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (token) {
+          const consentRes = await fetch("/api/sms/consent", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const consentJson = (await consentRes.json().catch(() => ({}))) as {
+            sms_consent?: boolean;
+          };
+          setSmsConsent(consentJson.sms_consent === true);
+        }
         setLoading(false);
       }
     }
@@ -227,6 +239,23 @@ export default function ClientProfilePage() {
       setErr(error.message);
       setSaving(false);
       return;
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (token && normalizedPhone) {
+      await fetch("/api/sms/consent", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phone: normalizedPhone,
+          consent: smsConsent,
+          source: "web_profile",
+        }),
+      }).catch(() => undefined);
     }
 
     if (
@@ -417,6 +446,26 @@ export default function ClientProfilePage() {
         <div className="space-y-3 border-t pt-4">
           <h2 className="text-lg font-semibold">Préférences</h2>
 
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4"
+              checked={smsConsent}
+              onChange={(e) => setSmsConsent(e.target.checked)}
+            />
+            <span>
+              I agree to receive automated informational and transactional text
+              messages from MMD Delivery about my account, verification, orders,
+              deliveries, package deliveries, taxi rides, and customer support.
+              Message frequency varies. Message and data rates may apply. Consent
+              is not a condition of purchase. Reply STOP to cancel and HELP for
+              help. Optional — not required to use the app.{" "}
+              <a className="underline" href="/legal/sms">
+                SMS program
+              </a>
+            </span>
+          </label>
+
           <label className="inline-flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -427,7 +476,8 @@ export default function ClientProfilePage() {
               }
             />
             <span>
-              Je souhaite recevoir des offres et promotions MMD Delivery.
+              Je souhaite recevoir des offres et promotions MMD Delivery
+              (email / in-app — pas de SMS marketing).
             </span>
           </label>
         </div>

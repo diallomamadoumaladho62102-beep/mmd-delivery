@@ -29,7 +29,7 @@ export function buildSupportFallbackBlocks(): SiteBlockRow[] {
         subheadline: "Find answers fast in the FAQ, or contact the team for account, order, and payout support.",
         showcase: "image",
         image_url: "/brand/services/taxi.webp",
-        benefits: ["FAQ self-serve","Email support","Partner onboarding help"],
+        benefits: ["FAQ self-serve","Email and SMS help","STOP / HELP keywords"],
         primary_ctas: [{"label":"Contact support","href":"/contact","event":"cta_contact"}],
         secondary_ctas: [{"label":"Browse FAQ","href":"/faq","event":"cta_faq"}],
       },
@@ -41,7 +41,7 @@ export function buildSupportFallbackBlocks(): SiteBlockRow[] {
       sort_order: 20,
       payload: {
         title: "Support channels",
-        body_md: "Start with the FAQ for common questions about payments, delivery timing, drivers, and business accounts.\n\nEmail support@mmddelivery.com or use the [contact form](/contact). Include your order or ride reference when possible.\n\nWebsite: https://www.mmddelivery.com",
+        body_md: "Start with the FAQ for common questions about payments, delivery timing, drivers, and business accounts.\n\nEmail support@mmddelivery.com or use the [contact form](/contact). Include your order or ride reference when possible.\n\n**SMS help.** Reply **HELP** to any MMD Delivery text, call +1 (929) 492-4563, or review the public program and opt-in at [https://www.mmddelivery.com/legal/sms](/legal/sms). Reply **STOP** to cancel SMS. Message frequency varies. Message and data rates may apply.\n\nWebsite: https://www.mmddelivery.com",
       },
     },
     {
@@ -52,7 +52,7 @@ export function buildSupportFallbackBlocks(): SiteBlockRow[] {
       payload: {
         title: "Talk to a human",
         body: "Send a message and our team will help you resolve the issue.",
-        buttons: [{"label":"Contact support","href":"/contact","event":"cta_contact"},{"label":"Download the app","href":"/download","event":"cta_download"}],
+        buttons: [{"label":"Contact support","href":"/contact","event":"cta_contact"},{"label":"SMS program","href":"/legal/sms","event":"cta_sms"}],
       },
     },
     {
