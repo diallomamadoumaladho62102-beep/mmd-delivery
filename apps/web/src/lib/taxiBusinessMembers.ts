@@ -2,6 +2,12 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { taxiJson } from "@/lib/taxiApi";
 import type { NextResponse } from "next/server";
 
+export type BusinessMemberAuth = {
+  businessAccountId: string;
+  role: string;
+  memberId: string;
+};
+
 export type BusinessManagerAuth = {
   businessAccountId: string;
   role: "manager" | "admin";
@@ -9,6 +15,49 @@ export type BusinessManagerAuth = {
 };
 
 const MANAGER_ROLES = new Set(["manager", "admin"]);
+
+export function isBusinessManagerRole(role: string): boolean {
+  return MANAGER_ROLES.has(String(role ?? "").toLowerCase());
+}
+
+export async function requireBusinessActiveMember(
+  supabaseAdmin: SupabaseClient,
+  user: User,
+  businessAccountId: string | null
+): Promise<
+  | { ok: true; membership: BusinessMemberAuth }
+  | { ok: false; response: NextResponse }
+> {
+  let query = supabaseAdmin
+    .from("taxi_business_members")
+    .select("id, role, business_account_id")
+    .eq("user_id", user.id)
+    .eq("active", true);
+
+  if (businessAccountId) {
+    query = query.eq("business_account_id", businessAccountId);
+  }
+
+  const { data, error } = await query.limit(1).maybeSingle();
+  if (error) {
+    return { ok: false, response: taxiJson({ ok: false, error: error.message }, 500) };
+  }
+  if (!data?.business_account_id) {
+    return {
+      ok: false,
+      response: taxiJson({ ok: false, error: "business_membership_required" }, 403),
+    };
+  }
+
+  return {
+    ok: true,
+    membership: {
+      businessAccountId: String(data.business_account_id),
+      role: String(data.role ?? "employee"),
+      memberId: String(data.id),
+    },
+  };
+}
 
 export async function requireBusinessManager(
   supabaseAdmin: SupabaseClient,

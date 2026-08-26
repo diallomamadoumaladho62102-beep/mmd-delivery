@@ -67,6 +67,8 @@ export async function GET(req: NextRequest) {
       currency,
       balance_cents: balanceCents,
       available_cents: balanceCents,
+      can_manage: ["manager", "admin"].includes(resolved.role),
+      can_topup: ["manager", "admin"].includes(resolved.role),
       can_cashout:
         ["manager", "admin"].includes(resolved.role) &&
         Boolean(account?.stripe_account_id) &&

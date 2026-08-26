@@ -21,8 +21,6 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { validatePassword } from "../lib/authValidation";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
@@ -148,6 +146,7 @@ function base64ToUint8Array(base64: string) {
 async function pickImage(
   t: (k: string) => string
 ): Promise<{ uri: string; mime?: string } | null> {
+  const ImagePicker = await import("expo-image-picker");
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!perm.granted) {
@@ -188,6 +187,7 @@ async function uploadAvatarToSupabase(params: {
   const ext = getExtFromMimeOrUri(uri, mime);
   const path = `clients/${userId}/avatar.${ext}`;
 
+  const FileSystem = await import("expo-file-system/legacy");
   const base64 = await FileSystem.readAsStringAsync(uri, {
     encoding: FileSystem.EncodingType.Base64,
   });

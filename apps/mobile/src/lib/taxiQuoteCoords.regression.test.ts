@@ -19,4 +19,48 @@ assert.doesNotMatch(
   "quote must not use naive isFinite for coords",
 );
 
+assert.match(src, /formatDistance\(/);
+assert.match(src, /formatDurationMinutes\(/);
+assert.match(src, /ClientServiceBottomNav/);
+assert.match(src, /quoteTaxiRide/);
+assert.match(src, /startTaxiCheckoutFromQuote/);
+assert.match(src, /confirmTaxiQuoteCheckoutPaid/);
+assert.match(src, /t\("taxi\.quote\.title"/);
+assert.match(src, /i18n\.language/);
+assert.doesNotMatch(src, /JFK Airport/);
+assert.doesNotMatch(src, /123 Main St/);
+assert.doesNotMatch(src, /\$26\.70/);
+assert.doesNotMatch(src, /Alex M/);
+assert.doesNotMatch(src, /8\.4 mi/);
+assert.doesNotMatch(src, /Sarah Johnson/);
+
+const localesDir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../i18n/locales",
+);
+const requiredQuoteKeys = [
+  "title",
+  "subtitle",
+  "serviceFee",
+  "sharedRideHint",
+  "loginRequired",
+  "missingRoute",
+  "paymentNotCompleted",
+  "rideNotReady",
+  "quoteUnavailable",
+  "loyaltyPoints",
+  "createFailed",
+  "checkoutMissing",
+];
+for (const lang of ["en", "fr", "es", "ar", "zh", "ff"]) {
+  const extras = JSON.parse(
+    fs.readFileSync(path.join(localesDir, lang, "extras.json"), "utf8"),
+  );
+  const quote = extras?.taxi?.quote ?? {};
+  for (const key of requiredQuoteKeys) {
+    assert.equal(typeof quote[key], "string", `${lang} taxi.quote.${key}`);
+    assert.ok(String(quote[key]).trim().length > 0, `${lang} taxi.quote.${key} empty`);
+  }
+}
+
 console.log("taxiQuoteCoords.regression.test.ts OK");

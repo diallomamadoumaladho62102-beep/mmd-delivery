@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
-import { requireBusinessManager } from "@/lib/taxiBusinessMembers";
+import {
+  isBusinessManagerRole,
+  requireBusinessActiveMember,
+} from "@/lib/taxiBusinessMembers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +16,7 @@ export async function GET(req: NextRequest) {
     const businessAccountId =
       req.nextUrl.searchParams.get("business_account_id")?.trim() || null;
 
-    const gated = await requireBusinessManager(
+    const gated = await requireBusinessActiveMember(
       auth.supabaseAdmin,
       auth.user,
       businessAccountId
@@ -21,6 +24,7 @@ export async function GET(req: NextRequest) {
     if (gated.ok === false) return gated.response;
 
     const accountId = gated.membership.businessAccountId;
+    const canManage = isBusinessManagerRole(gated.membership.role);
 
     const { data: members, error } = await auth.supabaseAdmin
       .from("taxi_business_members")
@@ -54,17 +58,27 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const { data: invites } = await auth.supabaseAdmin
-      .from("taxi_business_member_invites")
-      .select("id, email, role, status, expires_at, created_at")
-      .eq("business_account_id", accountId)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
+    const { data: invites } = canManage
+      ? await auth.supabaseAdmin
+          .from("taxi_business_member_invites")
+          .select("id, email, role, status, expires_at, created_at")
+          .eq("business_account_id", accountId)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+      : { data: [] as Array<{
+          id: string;
+          email: string;
+          role: string;
+          status: string;
+          expires_at: string | null;
+          created_at: string;
+        }> };
 
     return taxiJson({
       ok: true,
       business_account_id: accountId,
       role: gated.membership.role,
+      can_invite: canManage,
       members: (members ?? []).map((m) => {
         const profile = profileById.get(String(m.user_id));
         return {
@@ -74,7 +88,7 @@ export async function GET(req: NextRequest) {
           active: m.active,
           created_at: m.created_at,
           full_name: profile?.full_name ?? null,
-          email: profile?.email ?? null,
+          email: canManage ? profile?.email ?? null : null,
         };
       }),
       invites: invites ?? [],

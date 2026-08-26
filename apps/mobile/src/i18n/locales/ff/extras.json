@@ -210,6 +210,8 @@
       "currencyLabel": "Kaalis"
     },
     "quote": {
+      "title": "Hiisa",
+      "subtitle": "Ƴeewto njuɓɓudi yahdu maa hade tabitinde",
       "vehicle": "Mootor",
       "distance": "Njuuɗe",
       "duration": "Dumunna",
@@ -237,7 +239,17 @@
       "any": "Kala",
       "preferredDriver": "Dooɓoowo cuɓaaɗo (suɓaande)",
       "payment": "Njoɓdi",
-      "paymentFailed": "Horiima fuɗɗude yoɓgol"
+      "paymentFailed": "Horiima fuɗɗude yoɓgol",
+      "serviceFee": "Njoɓdi sarwisa",
+      "sharedRideHint": "Ustaango suɓaande so woɗɗo yahoowo nandaray laawol nanndungol. Alaa nandito tawo — so alaa nandito hade fuɗɗorde, a heɓat njoɓdi ustaandi e hoore maa.",
+      "loginRequired": "A foti naatde ngam yoɓde.",
+      "missingRoute": "Fuɗɗorde e jaɓorde ngalaa timma",
+      "paymentNotCompleted": "Yoɓgol timmaani. Alaa yahdu sosaa. A waawi ɗaɓɓude njoɓdi hesere so a hebiima.",
+      "rideNotReady": "Yoɓgol tabitinaama, kono yahdu hebaaki tawo. Hesɗitin doggol yahduuji maa.",
+      "quoteUnavailable": "Njoɓdi heɓaaka — ƴeewto ñiiɓirɗe",
+      "loyaltyPoints": "{{title}} ({{count}} pts)",
+      "createFailed": "Horiima sosde yahdu",
+      "checkoutMissing": "Yoɓgol heɓaaka"
     },
     "history": {
       "title": "Historique taxi",
@@ -309,6 +321,10 @@
       "cancelYes": "Eey, haɗtu",
       "cancelNo": "Alaa",
       "cancelFailed": "Horiima haɗtude",
+      "addStopFailed": "Horiima ɓeydude dartorde",
+      "changeDestFailed": "Horiima waylude jokkere",
+      "unavailableTitle": "Yahdu alaa",
+      "unavailableBody": "Horiima loowde yahdu ndee. Ƴeewto ceŋol maa kadi fuɗɗito.",
       "loadFailed": "Horiima loowde yahdu",
       "mapUnavailable": "Carte alaa",
       "pickupLabel": "Fuɗɗorde: {{address}}",
@@ -397,7 +413,62 @@
         "cameraStarting": "Kamera kisal ina fuɗɗoo. Ñoƴƴu Nattal kadi so ƴeewii.",
         "downloadBeforeExpiry": "Awlugo hade nde joofa ({{date}})",
         "stopRecording": "Dartin nattal"
-      }
+      },
+      "title": "Rewindo yahdu",
+      "loading": "Nana loowa yahdu maa…",
+      "lookingForDriver": "Nana yiyloo dooɓoowo…",
+      "searchingNearby": "Nana yiyloo dooɓooɓe ɓadiiɓe…",
+      "paymentConfirmedMatching": "Njoɓdi jaɓaama — nana hawra e dooɓooɓe ɓadiiɓe",
+      "estimatedFare": "Njoɓdi ƴeewtunda",
+      "fare": "Njoɓdi",
+      "totalFare": "Njoɓdi fof",
+      "pickup": "Fuɗɗorde",
+      "dropoff": "Jaɓorde",
+      "distance": "Woɗɗude",
+      "duration": "Sahaa",
+      "eta": "ETA",
+      "etaMinutes": "{{n}} hojomaaji ETA",
+      "liveTitle": "Rewindo e sahaa",
+      "awaitingPayment": "Njoɓdi ena waɗɗii",
+      "bannerAwaitingPayment": "Timmin njoɓdi ngam yiyloo dooɓoowo",
+      "bannerSearching": "Nana yiyloo dooɓoowo maa",
+      "driverAssigned": "Dooɓoowo tawtaa",
+      "bannerAssigned": "{{name}} tawtaa",
+      "driverOnTheWay": "Dooɓoowo e laawol",
+      "bannerAway": "{{name}} woni {{distance}}",
+      "bannerOnTheWay": "{{name}} woni e laawol",
+      "driverArrivingSoon": "Dooɓoowo ɓadii arotde",
+      "bannerArrivingSoon": "{{name}} ɓadii arotde",
+      "driverArrived": "Dooɓoowo arii",
+      "bannerArrived": "{{name}} arii",
+      "tripInProgress": "Yahdu ina yahra",
+      "bannerInProgress": "Yahdu ina yahra",
+      "shareMaskedCall": "Lollin yahdu · noddaango suuɗaangol ena woodi",
+      "completed": "Yahdu timmii",
+      "bannerCompleted": "Yahdu timmii",
+      "rideCompleted": "Yahdu timmii",
+      "thanksRiding": "A jaaraama e yahdu MMD Taxi",
+      "done": "Timmii",
+      "cancelled": "Yahdu haɗtaama",
+      "bannerCancelled": "Yahdu haɗtaama",
+      "updating": "Nana hesɗitina…",
+      "driverFallback": "Dooɓoowo",
+      "safetyPriority": "Kisal maa ko gadanol amen.",
+      "isDriving": "{{name}} ina doga",
+      "newDriver": "Dooɓoowo keso",
+      "tripsCount": "{{count}} yahduuji",
+      "plate": "Plaque",
+      "vehiclePhotoUnavailable": "Natal oto alaa",
+      "driverPhotoA11y": "Natal dooɓoowo",
+      "vehiclePhotoA11y": "Natal oto",
+      "vehicleA11y": "Oto: {{label}}, hitaande {{year}}, plaque {{plate}}.",
+      "joinDriver": "Yah to dooɓoowo maa",
+      "joinDriverBody": "Dooɓoowo maa ena sabbii e fuɗɗorde. Rewndo ɗum e karte.",
+      "callHint": "Noddu dooɓoowo",
+      "chatHint": "Yeewtid e dooɓoowo",
+      "shareHint": "Lollin humpito yahdu",
+      "stopN": "Dartorde {{n}}",
+      "offlineBanner": "Ceŋol alaa — rewindo ina waawi wonde ɓooyɗo"
     },
     "receipt": {
       "title": "Receipt yahdu",
@@ -478,8 +549,32 @@
       }
     },
     "tip": {
+      "title": "Yetton dooɓoowo maa",
+      "subtitle": "100% dokkal maa yahata to dooɓoowo rewrude e Stripe.",
+      "madeTripSpecial": "{{name}} waɗi yahdu maa keeriiɗo",
+      "choose": "Suɓo dokkal maa",
+      "suggested": "Njoɓɗi ƴeewtaaɗi",
+      "custom": "Walla naatnu njoɓdi maa",
+      "customPlaceholder": "0.00",
+      "youPay": "A yoɓata:",
+      "payCta": "Yoɓ dokkal e karte",
+      "skip": "Alaa dokkal tuma oo",
+      "missingRide": "Yahdu alaa",
+      "ok": "OK",
+      "rideNotCompleted": "Dokke ena keɓoo caggal nde yahdu timmi.",
+      "alreadyTitle": "Dokkal neldaama",
+      "alreadyBody": "Yahdu ndee ena jogii dokkal.",
+      "transferred": "Nelaa to dooɓoowo",
+      "minTitle": "Dokkal ɓurii famɗude",
+      "minBody": "Dokkal ɓurɗo famɗude ko 0,50 $.",
+      "successTitle": "A jaaraama!",
+      "successBody": "Dokkal maa yoɓaama. Dooɓoowo heɓat ngol e portefeuille mum.",
+      "cancelledTitle": "Dokkal haɗtaama",
+      "cancelledBody": "Alaa njoɓdi ƴettaama.",
       "loadFailed": "Horiima loowde yahdu ndun.",
-      "payFailed": "Horiima yoɓde dokkal ngal."
+      "payFailed": "Horiima yoɓde dokkal ngal.",
+      "view": "Yiy dokkal",
+      "cta": "Dokkal dooɓoowo"
     }
   },
   "client": {
@@ -567,7 +662,15 @@
         "paid": "Yoɓaama",
         "processing": "Nana gollee",
         "unpaid": "Yoɓaaka"
-      }
+      },
+      "subtitleTracking": "Rewindagol huɓɓangol geɗe maa",
+      "etaMinutes": "{{n}} min",
+      "nextStep": "Caggal: {{step}}",
+      "callDriver": "Noddu driver",
+      "callFailed": "Waawaa fuɗɗude noddaango suuɗungol.",
+      "chatDriver": "Chat",
+      "loadingTitle": "Loowgol delivery…",
+      "summaryTitle": "Ciifol delivery"
     },
     "orderHistory": {
       "title": "Tariku odaaje",
@@ -972,6 +1075,22 @@
         "moderate": "Caggal",
         "quiet": "Suudu"
       }
+    },
+    "wallet": {
+      "openEarnings": "Njoɓdi",
+      "filterAll": "Fof",
+      "filterEarnings": "Njoɓdi",
+      "filterPayouts": "Neldugol",
+      "confirm": {
+        "kicker": "TABITIN NJOƁDI",
+        "balance": "Heɓotooɗo jooni: {{amount}}",
+        "hint": "Cash out instant nelaata balance moƴƴo fof.",
+        "destination": "GARTIRDE",
+        "cta": "Tabitin cash out"
+      },
+      "success": {
+        "title": "Cash out moƴƴii!"
+      }
     }
   },
   "restaurant": {
@@ -1348,7 +1467,69 @@
       "loadFailed": "Horiima loowde bursa jaajol.",
       "topupFailed": "Ɓeydugol kaalis firlitii.",
       "cashoutFailed": "Yaltingol kaalis firlitii.",
-      "stripeFailed": "Horiima udditde Stripe Connect."
+      "stripeFailed": "Horiima udditde Stripe Connect.",
+      "title": "Wallet njulaagu",
+      "subtitle": "Balance njulaagu",
+      "available": "Balance heɓotooɗo",
+      "topup": "Ɓeydu",
+      "cashout": "Aftu",
+      "history": "Tariya",
+      "emptyTitle": "Alaa konte njulaagu",
+      "emptyBody": "Naamno admin ɓeydaade ma e terɗe ngam huutoraade wallet.",
+      "topupCta": "Ɓeydu",
+      "cashoutCta": "Aftu",
+      "cashoutBlocked": "Aftugol heɓaaki",
+      "amountCents": "Njoɓdi e cents",
+      "amount": "Njoɓdi",
+      "topupMin": "Ɓeydagol les",
+      "topupMinBody": "Naatnu ko famɗi 500 cents.",
+      "cashoutInvalid": "Njoɓdi moƴƴaani",
+      "cashoutInvalidBody": "Naatnu njoɓdi moƴƴundi e cents.",
+      "cashoutOk": "Aftugol neldaama",
+      "cashoutOkBody": "Transfer Connect sosaama.",
+      "noTx": "Alaa jalis. Ɓeydu ngam yoɓde yahduuji.",
+      "manageTeam": "Terɗe fedde",
+      "teamTitle": "Terɗe fedde",
+      "filterAll": "Fof",
+      "filterCredits": "Naatnude",
+      "filterDebits": "Yaltinde",
+      "topupSuccess": "Ɓeydagol moƴƴii!",
+      "addedTo": "Ɓeydaama e {{name}}",
+      "newBalance": "Balance hesere: {{amount}}",
+      "members": "Terɗe",
+      "membersActive": "{{n}} cuɓaaɗe",
+      "member": "Terɗe",
+      "admin": "Admin",
+      "noMembers": "Alaa terɗe hollirteeɗe.",
+      "invite": "Noddu terɗe",
+      "inviteEmail": "Iimeel noddaango",
+      "inviteSent": "Noddaango neldaama",
+      "inviteSentBody": "Terɗe yiyete caggal jaɓgol.",
+      "inviteInvalid": "Iimeel moƴƴaani",
+      "inviteInvalidBody": "Naatnu iimeel moƴƴo.",
+      "inviteFailed": "Waawaa noddude ndee terɗe.",
+      "readOnly": "Tarol tan. Naamno admin ɓeydude walla aftude.",
+      "tx": {
+        "topup": "Ɓeydagol konte",
+        "cashout": "Aftugol",
+        "ride": "Njoɓdi yahdu"
+      }
+    }
+  },
+  "deliveryRequest": {
+    "fields": {
+      "pinPickup": "Pin pickup",
+      "pickupPinned": "Pickup pinnaama",
+      "pickupExactLocation": "Nokku pickup goonga",
+      "usePickupLocation": "Huutoro ndee pickup"
+    },
+    "pricing": {
+      "distance": "Beetol",
+      "eta": "Wakkati",
+      "deliveryFee": "Njoɓdi delivery",
+      "tax": "Tax",
+      "serviceFee": "Njoɓdi sarwiis",
+      "total": "Kuuɓal"
     }
   }
 }

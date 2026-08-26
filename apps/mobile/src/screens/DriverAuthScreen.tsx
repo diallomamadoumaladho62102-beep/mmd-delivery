@@ -19,8 +19,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import * as Linking from "expo-linking";
-import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
 import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
@@ -617,6 +615,7 @@ export function DriverAuthScreen() {
 
   const pickAvatarFromCamera = useCallback(async () => {
     try {
+      const ImagePicker = await import("expo-image-picker");
       const perm = await ImagePicker.requestCameraPermissionsAsync();
 
       if (!perm.granted) {
@@ -650,6 +649,7 @@ export function DriverAuthScreen() {
 
   const pickAvatarFromFiles = useCallback(async () => {
     try {
+      const ImagePicker = await import("expo-image-picker");
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!perm.granted) {
@@ -731,6 +731,7 @@ export function DriverAuthScreen() {
         const ext = getAvatarExtFromUri(avatarLocalUri);
         const storagePath = `drivers/${uid}/avatar.${ext}`;
 
+        const FileSystem = await import("expo-file-system/legacy");
         const base64 = await FileSystem.readAsStringAsync(avatarLocalUri, {
           encoding: FileSystem.EncodingType.Base64,
         });

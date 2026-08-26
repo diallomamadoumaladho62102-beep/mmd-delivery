@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Constants from "expo-constants";
-import { StripeProvider } from "@stripe/stripe-react-native";
 import { AppNavigator } from "../navigation/AppNavigator";
+import { supabase } from "./supabase";
 
 type StripeGateProps = {
   initialRouteName?: string;
@@ -54,17 +54,88 @@ function getStripeConfigurationError(publishableKey: string): string | null {
   return null;
 }
 
+type StripeProviderComponent = React.ComponentType<{
+  publishableKey: string;
+  merchantIdentifier?: string;
+  children?: React.ReactNode;
+}>;
+
+/**
+ * Loads Stripe native views only after a session exists.
+ * A static import of @stripe/stripe-react-native registers Fabric
+ * ViewManagers on Login and surfaces "Unimplemented component: ViewManagerAdapter".
+ */
+function LazyStripeTree({
+  publishableKey,
+  children,
+}: {
+  publishableKey: string;
+  children: React.ReactNode;
+}) {
+  const [Provider, setProvider] = useState<StripeProviderComponent | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void import("@stripe/stripe-react-native")
+      .then((mod) => {
+        if (alive && mod.StripeProvider) {
+          setProvider(() => mod.StripeProvider as StripeProviderComponent);
+        }
+      })
+      .catch((e) => {
+        if (__DEV__) {
+          console.log("[StripeGate] Stripe native module unavailable:", e);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (!Provider) {
+    return <>{children}</>;
+  }
+
+  return (
+    <Provider
+      publishableKey={publishableKey}
+      merchantIdentifier="merchant.com.maladho2025.mmddelivery"
+    >
+      {children}
+    </Provider>
+  );
+}
+
 export default function StripeGate({ initialRouteName }: StripeGateProps) {
+  // Hooks always run — never after the config early-outs below.
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (alive) setHasSession(Boolean(data.session));
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setHasSession(Boolean(session));
+    });
+    return () => {
+      alive = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
   const publishableKey = getPublishableKey();
   const configurationError = getStripeConfigurationError(publishableKey);
+  const navigator = (
+    <AppNavigator initialRouteName={initialRouteName as never} />
+  );
 
-  // Never block RoleSelect / Login for Stripe config issues (Apple 2.1 App Completeness).
-  // Payments still fail clearly at checkout; auth entry must always render.
+  // Never mount Stripe native views on RoleSelect / Login.
   if (configurationError) {
     if (__DEV__) {
       console.log("[StripeGate] configuration error (non-blocking):", configurationError);
     }
-    return <AppNavigator initialRouteName={initialRouteName as any} />;
+    return navigator;
   }
 
   if (!publishableKey) {
@@ -73,15 +144,14 @@ export default function StripeGate({ initialRouteName }: StripeGateProps) {
         "[StripeGate] Missing EXPO_PUBLIC_STRIPE_PK — StripeProvider disabled in development."
       );
     }
-    return <AppNavigator initialRouteName={initialRouteName as any} />;
+    return navigator;
+  }
+
+  if (!hasSession) {
+    return navigator;
   }
 
   return (
-    <StripeProvider
-      publishableKey={publishableKey}
-      merchantIdentifier="merchant.com.maladho2025.mmddelivery"
-    >
-      <AppNavigator initialRouteName={initialRouteName as any} />
-    </StripeProvider>
+    <LazyStripeTree publishableKey={publishableKey}>{navigator}</LazyStripeTree>
   );
 }

@@ -34,17 +34,21 @@ import { toUserFacingError } from "../lib/userFacingError";
 import {
   MMD_BLUE,
   MMD_FONT,
+  MMD_GLASS,
   MMD_GOLD_BRIGHT,
-  MMD_NAVY,
+  MMD_GOLD_CLASSIC_BORDER,
+  MMD_TAXI_GREEN,
   MMD_WHITE,
   mmdLogoSizeCompact,
 } from "../theme/mmdUi";
+import { ClientServiceBottomNav } from "../components/navigation/ClientServiceBottomNav";
 
 type Props = {
   entityId: string;
   fetchReceipt: (id: string) => Promise<EntityReceipt>;
   entityLabelKey: string;
   entityLabelFallback: string;
+  hideCustomerNav?: boolean;
 };
 
 export function EntityReceiptScreenBody({
@@ -52,6 +56,7 @@ export function EntityReceiptScreenBody({
   fetchReceipt,
   entityLabelKey,
   entityLabelFallback,
+  hideCustomerNav,
 }: Props) {
   const { t, i18n } = useTranslation();
   const { width, height } = useWindowDimensions();
@@ -454,6 +459,9 @@ export function EntityReceiptScreenBody({
           />
         </View>
       </ScrollView>
+      {hideCustomerNav ? null : (
+        <ClientServiceBottomNav active="orders" appearance="glass" accent="gold" layout="edge" />
+      )}
     </SafeAreaView>
   );
 }
@@ -493,12 +501,12 @@ const styles = StyleSheet.create({
     fontFamily: MMD_FONT.extrabold,
     marginBottom: 8,
   },
-  content: { padding: 20, paddingBottom: 40 },
+  content: { padding: 20, paddingBottom: 120 },
   headerCard: {
-    backgroundColor: "rgba(15,23,42,0.9)",
-    borderRadius: 16,
+    backgroundColor: MMD_GLASS,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
     padding: 16,
     marginBottom: 16,
     alignItems: "flex-start",
@@ -543,20 +551,20 @@ const styles = StyleSheet.create({
     fontFamily: MMD_FONT.extrabold,
   },
   card: {
-    backgroundColor: "rgba(15,23,42,0.9)",
+    backgroundColor: MMD_GLASS,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
     padding: 16,
     marginBottom: 14,
   },
   cardRow: {
     flexDirection: "row",
     gap: 12,
-    backgroundColor: "rgba(15,23,42,0.9)",
+    backgroundColor: MMD_GLASS,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
     padding: 16,
     marginBottom: 14,
     alignItems: "center",
@@ -566,16 +574,18 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 14,
     marginBottom: 12,
-    backgroundColor: MMD_NAVY,
+    backgroundColor: MMD_BLUE,
+    borderWidth: 1,
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
   },
   mapFallback: {
     width: "100%",
     minHeight: 72,
     borderRadius: 14,
     marginBottom: 12,
-    backgroundColor: "rgba(15,23,42,0.86)",
+    backgroundColor: MMD_GLASS,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.14)",
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
@@ -621,14 +631,13 @@ const styles = StyleSheet.create({
   link: { color: "#93C5FD", fontWeight: "700", marginTop: 8, fontFamily: MMD_FONT.bold },
   actions: { gap: 10, marginBottom: 24 },
   actionBtn: {
-    backgroundColor: "rgba(15,23,42,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.2)",
-    borderRadius: 14,
+    backgroundColor: MMD_TAXI_GREEN,
+    borderWidth: 0,
+    borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
     alignItems: "center",
-    minHeight: 46,
+    minHeight: 48,
     justifyContent: "center",
   },
   actionText: {

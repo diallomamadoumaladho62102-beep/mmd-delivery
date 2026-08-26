@@ -234,7 +234,62 @@
         "cameraStarting": "Safety camera is starting. Tap Record again in a moment.",
         "downloadBeforeExpiry": "Download before expiry ({{date}})",
         "stopRecording": "Stop recording"
-      }
+      },
+      "title": "Ride tracking",
+      "loading": "Loading your ride…",
+      "lookingForDriver": "Looking for a driver…",
+      "searchingNearby": "Searching nearby drivers…",
+      "paymentConfirmedMatching": "Payment confirmed — matching nearby drivers",
+      "estimatedFare": "Estimated fare",
+      "fare": "Fare",
+      "totalFare": "Total fare",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "distance": "Distance",
+      "duration": "Duration",
+      "eta": "ETA",
+      "etaMinutes": "{{n}} min ETA",
+      "liveTitle": "Live tracking",
+      "awaitingPayment": "Payment required",
+      "bannerAwaitingPayment": "Complete payment to find a driver",
+      "bannerSearching": "Finding your driver",
+      "driverAssigned": "Driver assigned",
+      "bannerAssigned": "{{name}} is assigned",
+      "driverOnTheWay": "Driver on the way",
+      "bannerAway": "{{name}} is {{distance}} away",
+      "bannerOnTheWay": "{{name}} is on the way",
+      "driverArrivingSoon": "Driver arriving soon",
+      "bannerArrivingSoon": "{{name}} is arriving soon",
+      "driverArrived": "Driver arrived",
+      "bannerArrived": "{{name}} has arrived",
+      "tripInProgress": "Trip in progress",
+      "bannerInProgress": "Trip in progress",
+      "shareMaskedCall": "Share trip · masked call available",
+      "completed": "Trip completed",
+      "bannerCompleted": "Trip completed",
+      "rideCompleted": "Ride completed",
+      "thanksRiding": "Thanks for riding with MMD Taxi",
+      "done": "Done",
+      "cancelled": "Trip cancelled",
+      "bannerCancelled": "Trip cancelled",
+      "updating": "Updating…",
+      "driverFallback": "Driver",
+      "safetyPriority": "Your safety is our priority.",
+      "isDriving": "{{name}} is driving",
+      "newDriver": "New driver",
+      "tripsCount": "{{count}} trips",
+      "plate": "Plate",
+      "vehiclePhotoUnavailable": "Vehicle photo unavailable",
+      "driverPhotoA11y": "Driver profile photo",
+      "vehiclePhotoA11y": "Vehicle photo",
+      "vehicleA11y": "Driver vehicle: {{label}}, year {{year}}, license plate {{plate}}.",
+      "joinDriver": "Join your driver",
+      "joinDriverBody": "Your driver is waiting at the pickup point. Follow them on the map above.",
+      "callHint": "Call driver",
+      "chatHint": "Chat with driver",
+      "shareHint": "Share trip details",
+      "stopN": "Stop {{n}}",
+      "offlineBanner": "Offline — tracking may be stale"
     },
     "ui": {
       "country": "Country",
@@ -291,6 +346,8 @@
       "currencyLabel": "Currency"
     },
     "quote": {
+      "title": "Estimate",
+      "subtitle": "Review your ride details before confirming",
       "vehicle": "Vehicle",
       "distance": "Distance",
       "duration": "Duration",
@@ -318,7 +375,17 @@
       "any": "Any",
       "preferredDriver": "Preferred driver (optional)",
       "payment": "Payment",
-      "paymentFailed": "Unable to start payment"
+      "paymentFailed": "Unable to start payment",
+      "serviceFee": "Service fee",
+      "sharedRideHint": "Optional discount when another passenger shares a similar route. No passenger is matched yet — if no match is found before pickup, you keep the discounted solo fare.",
+      "loginRequired": "You must be logged in to pay.",
+      "missingRoute": "Pickup and dropoff are incomplete",
+      "paymentNotCompleted": "Payment was not completed. No ride was created. You can request a new quote when ready.",
+      "rideNotReady": "Payment confirmed but the ride is not ready yet. Please refresh your rides list.",
+      "quoteUnavailable": "Estimate unavailable — check addresses",
+      "loyaltyPoints": "{{title}} ({{count}} pts)",
+      "createFailed": "Unable to create ride",
+      "checkoutMissing": "Checkout is unavailable"
     },
     "history": {
       "title": "Taxi history",
@@ -390,6 +457,10 @@
       "cancelYes": "Yes, cancel",
       "cancelNo": "No",
       "cancelFailed": "Unable to cancel",
+      "addStopFailed": "Unable to add stop",
+      "changeDestFailed": "Unable to change destination",
+      "unavailableTitle": "Ride unavailable",
+      "unavailableBody": "We could not load this ride. Check your connection and try again.",
       "loadFailed": "Unable to load ride",
       "mapUnavailable": "Map unavailable",
       "pickupLabel": "Pickup: {{address}}",
@@ -509,8 +580,32 @@
       }
     },
     "tip": {
+      "title": "Thank your driver",
+      "subtitle": "100% of your tip goes to the driver via Stripe.",
+      "madeTripSpecial": "{{name}} made your trip special",
+      "choose": "Choose your tip",
+      "suggested": "Suggested amounts",
+      "custom": "Or enter a custom amount",
+      "customPlaceholder": "0.00",
+      "youPay": "You pay:",
+      "payCta": "Pay tip with card",
+      "skip": "No tip this time",
+      "missingRide": "Missing ride",
+      "ok": "OK",
+      "rideNotCompleted": "Tips are available after the ride is completed.",
+      "alreadyTitle": "Tip already sent",
+      "alreadyBody": "This ride already has a tip.",
+      "transferred": "Transferred to driver",
+      "minTitle": "Tip too small",
+      "minBody": "Minimum tip is $0.50.",
+      "successTitle": "Thank you!",
+      "successBody": "Your tip was paid. The driver will receive it on their wallet.",
+      "cancelledTitle": "Tip cancelled",
+      "cancelledBody": "No charge was made.",
       "loadFailed": "Unable to load the ride.",
-      "payFailed": "Unable to pay the tip."
+      "payFailed": "Unable to pay the tip.",
+      "view": "View tip",
+      "cta": "Tip your driver"
     }
   },
   "payment": {
@@ -632,7 +727,15 @@
         "paid": "Paid",
         "processing": "Processing",
         "unpaid": "Unpaid"
-      }
+      },
+      "subtitleTracking": "Active tracking of your items",
+      "etaMinutes": "{{n}} min",
+      "nextStep": "Next: {{step}}",
+      "callDriver": "Call driver",
+      "callFailed": "Unable to start a masked call right now.",
+      "chatDriver": "Chat",
+      "loadingTitle": "Loading delivery…",
+      "summaryTitle": "Delivery summary"
     },
     "orderHistory": {
       "title": "Order history",
@@ -978,6 +1081,22 @@
         "moderate": "Moderate",
         "quiet": "Quiet"
       }
+    },
+    "wallet": {
+      "openEarnings": "Earnings",
+      "filterAll": "All",
+      "filterEarnings": "Earnings",
+      "filterPayouts": "Payouts",
+      "confirm": {
+        "kicker": "CONFIRM CASHOUT AMOUNT",
+        "balance": "Current available: {{amount}}",
+        "hint": "Instant cash out sends the full eligible available balance.",
+        "destination": "DESTINATION",
+        "cta": "Confirm cash out"
+      },
+      "success": {
+        "title": "Cash out successful!"
+      }
     }
   },
   "restaurant": {
@@ -1295,7 +1414,69 @@
       "loadFailed": "Unable to load the business wallet.",
       "topupFailed": "Top-up failed.",
       "cashoutFailed": "Cash-out failed.",
-      "stripeFailed": "Unable to open Stripe Connect."
+      "stripeFailed": "Unable to open Stripe Connect.",
+      "title": "Business Wallet",
+      "subtitle": "Corporate prepaid balance",
+      "available": "Available balance",
+      "topup": "Top up",
+      "cashout": "Cash out",
+      "history": "History",
+      "emptyTitle": "No business account",
+      "emptyBody": "Ask an admin to add you as a business member to use the corporate wallet.",
+      "topupCta": "Top up",
+      "cashoutCta": "Cash out",
+      "cashoutBlocked": "Cash-out unavailable",
+      "amountCents": "Amount in cents",
+      "amount": "Amount",
+      "topupMin": "Minimum top-up",
+      "topupMinBody": "Enter at least 500 cents.",
+      "cashoutInvalid": "Invalid amount",
+      "cashoutInvalidBody": "Enter a positive cash-out amount in cents.",
+      "cashoutOk": "Cash-out submitted",
+      "cashoutOkBody": "Transfer to Connect was created.",
+      "noTx": "No transactions yet. Top up to fund corporate rides.",
+      "manageTeam": "Team members",
+      "teamTitle": "Team members",
+      "filterAll": "All",
+      "filterCredits": "Credits",
+      "filterDebits": "Debits",
+      "topupSuccess": "Top up successful!",
+      "addedTo": "Added to {{name}}",
+      "newBalance": "New balance: {{amount}}",
+      "members": "Members",
+      "membersActive": "{{n}} active",
+      "member": "Member",
+      "admin": "Admin",
+      "noMembers": "No team members to show.",
+      "invite": "Invite member",
+      "inviteEmail": "Invite email",
+      "inviteSent": "Invite sent",
+      "inviteSentBody": "The teammate will appear once they accept.",
+      "inviteInvalid": "Invalid email",
+      "inviteInvalidBody": "Enter a valid email to invite.",
+      "inviteFailed": "Unable to invite this member.",
+      "readOnly": "Read-only access. Ask an admin to top up or cash out.",
+      "tx": {
+        "topup": "Account top up",
+        "cashout": "Cash out",
+        "ride": "Trip payment"
+      }
+    }
+  },
+  "deliveryRequest": {
+    "fields": {
+      "pinPickup": "Pin pickup",
+      "pickupPinned": "Pickup pinned",
+      "pickupExactLocation": "Pickup exact location",
+      "usePickupLocation": "Use pickup location"
+    },
+    "pricing": {
+      "distance": "Distance",
+      "eta": "ETA",
+      "deliveryFee": "Delivery fee",
+      "tax": "Tax",
+      "serviceFee": "Service fee",
+      "total": "Total"
     }
   }
 }

@@ -90,6 +90,8 @@ test("Driver/Restaurant auth do not full-screen replace Login while loading", ()
 test("ClientAuth does not use expo-linear-gradient native views", () => {
   const src = read("apps/mobile/src/screens/ClientAuthScreen.tsx");
   assert.doesNotMatch(src, /from ["']expo-linear-gradient["']/);
+  assert.doesNotMatch(src, /from ["']expo-image-picker["']/);
+  assert.doesNotMatch(src, /from ["']expo-file-system/);
   assert.match(src, /SafeLinearGradient/);
   assert.match(src, /AUTH_ACTION_TIMEOUT_MS/);
   assert.match(src, /client_signIn/);
@@ -252,6 +254,21 @@ test("RestaurantSetup submit CTA honors iPad home-indicator insets", () => {
   assert.match(src, /useSafeAreaInsets/);
   assert.match(src, /insets\.bottom/);
   assert.match(src, /ctaBottom/);
+});
+
+test("StripeGate does not load Stripe native views on Login", () => {
+  const src = read("apps/mobile/src/lib/StripeGate.tsx");
+  assert.doesNotMatch(src, /from ["']@stripe\/stripe-react-native["']/);
+  assert.match(src, /import\(["']@stripe\/stripe-react-native["']\)/);
+  assert.match(src, /if \(!hasSession\)/);
+  assert.match(src, /LazyStripeTree/);
+});
+
+test("DriverAuth does not statically import native image picker", () => {
+  const src = read("apps/mobile/src/screens/DriverAuthScreen.tsx");
+  assert.doesNotMatch(src, /from ["']expo-image-picker["']/);
+  assert.doesNotMatch(src, /from ["']expo-file-system/);
+  assert.match(src, /import\(["']expo-image-picker["']\)/);
 });
 
 test("RoleSelect exposes explicit Log in entry for App Review", () => {

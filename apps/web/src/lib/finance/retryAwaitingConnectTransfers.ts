@@ -159,6 +159,52 @@ export async function retryAwaitingConnectTransfers(params: {
     }
   }
 
+  if (driverIds.length > 0) {
+    const { data: taxiRows, error: taxiErr } = await params.supabaseAdmin
+      .from("taxi_commissions")
+      .select(
+        "taxi_ride_id, taxi_rides!inner(driver_id, status, payment_status)",
+      )
+      .is("driver_transfer_id", null)
+      .is("sct_closure_status", null)
+      .eq("taxi_rides.status", "completed")
+      .eq("taxi_rides.payment_status", "paid")
+      .in("taxi_rides.driver_id", driverIds)
+      .limit(limit);
+
+    if (taxiErr) {
+      errors.push(`taxi_commissions:${taxiErr.message}`);
+    } else {
+      const { ensureWorkerConnectCredit } = await import(
+        "@/lib/finance/ensureWorkerConnectCredit"
+      );
+      for (const row of taxiRows ?? []) {
+        const taxiRideId = String(
+          (row as { taxi_ride_id?: unknown }).taxi_ride_id ?? "",
+        ).trim();
+        if (!taxiRideId) continue;
+        driverAttempted += 1;
+        try {
+          const out = await ensureWorkerConnectCredit(
+            params.supabaseAdmin,
+            { vertical: "taxi", taxiRideId },
+            { actor: "retry_awaiting_connect:taxi", dryRun: false },
+          );
+          if (out.ok) {
+            driverOk += 1;
+          } else {
+            const fail = (out as { error?: string }).error || "sct_failed";
+            errors.push(`taxi:${taxiRideId}:${fail}`);
+          }
+        } catch (e) {
+          errors.push(
+            `taxi:${taxiRideId}:${e instanceof Error ? e.message : "sct_exception"}`,
+          );
+        }
+      }
+    }
+  }
+
   let sellerAttempted = false;
   let sellerOk: boolean | null = null;
   if (params.sellerReady === true || params.marketplaceReady === true) {

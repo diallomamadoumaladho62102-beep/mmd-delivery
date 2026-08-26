@@ -92,6 +92,7 @@ export type RootStackParamList = {
       | "taxi_dropoff"
       | "taxi_quote_pickup"
       | "taxi_quote_dropoff"
+      | "delivery_pickup"
       | "delivery_dropoff"
       | "marketplace_dropoff";
   };
@@ -140,6 +141,7 @@ export type RootStackParamList = {
   ClientChat: {
     orderId: string;
     targetRole?: "restaurant" | "driver" | "admin" | "";
+    sourceTable?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
   };
 
   LoyaltyHub: { role?: "client" | "driver" } | undefined;
@@ -183,10 +185,10 @@ export type RootStackParamList = {
   };
   TaxiRideTracking: { rideId: string };
   TaxiTip: { rideId: string };
-  TaxiReceipt: { rideId: string };
-  FoodOrderReceipt: { orderId: string };
-  DeliveryRequestReceipt: { deliveryRequestId: string };
-  BusinessWallet: { businessAccountId?: string } | undefined;
+  TaxiReceipt: { rideId: string; viewer?: "client" | "driver" };
+  FoodOrderReceipt: { orderId: string; viewer?: "client" | "driver" };
+  DeliveryRequestReceipt: { deliveryRequestId: string; viewer?: "client" | "driver" };
+  BusinessWallet: { businessAccountId?: string; view?: "wallet" | "transactions" | "members" } | undefined;
   RestaurantWallet: undefined;
   TaxiHistory: undefined;
   TaxiFavorites: undefined;
@@ -197,7 +199,15 @@ export type RootStackParamList = {
   TaxiLoyaltyRewards: undefined;
   TaxiChat: { rideId: string };
 
-  DriverTabs: undefined;
+  DriverTabs:
+    | undefined
+    | {
+        screen?:
+          | "DriverHomeTab"
+          | "DriverRevenueTab"
+          | "DriverInboxTab"
+          | "DriverMenuTab";
+      };
   DriverOrderDetails: {
     orderId: string;
     sourceTable?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";

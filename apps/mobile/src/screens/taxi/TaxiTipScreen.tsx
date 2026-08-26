@@ -17,6 +17,8 @@ import ScreenHeader from "../../components/navigation/ScreenHeader";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { payTaxiTipWithPaymentSheet } from "../../utils/stripe";
 import { formatTaxiCents, fetchTaxiRide } from "../../lib/taxiClientApi";
+import { readCustomerTrackingIdentification, driverInitials } from "../../lib/customerTrackingIdentification";
+import { ClientServiceBottomNav } from "../../components/navigation/ClientServiceBottomNav";
 import {
   BOOT_AUTH_TIMEOUT_MS,
   withTimeout,
@@ -61,6 +63,7 @@ export default function TaxiTipScreen() {
   const [preset, setPreset] = useState<number | null>(3);
   const [custom, setCustom] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [ride, setRide] = useState<Record<string, unknown> | null>(null);
 
   const tipDollars = useMemo(() => {
     if (custom.trim()) return parseMoneyToDollars(custom);
@@ -71,7 +74,7 @@ export default function TaxiTipScreen() {
 
   const refresh = useCallback(async () => {
     if (!rideId) {
-      setError("Missing ride");
+      setError(t("taxi.tip.missingRide", "Missing ride"));
       setLoading(false);
       return;
     }
@@ -84,6 +87,7 @@ export default function TaxiTipScreen() {
         "taxi_tip_load",
       );
       const ride = (out?.ride ?? out) as Record<string, unknown>;
+      setRide(ride);
       setCurrency(String(ride?.currency ?? "USD"));
       const tip = Math.max(0, Math.round(Number(ride?.tip_cents ?? 0)));
       setAlreadyTippedCents(tip);
@@ -137,7 +141,7 @@ export default function TaxiTipScreen() {
         ),
         [
           {
-            text: "OK",
+            text: t("taxi.tip.ok", "OK"),
             onPress: () => {
               if (navigation.canGoBack()) navigation.goBack();
               else navigation.navigate("ClientHome");
@@ -164,6 +168,14 @@ export default function TaxiTipScreen() {
     }
   }
 
+  const identification = useMemo(
+    () => (ride ? readCustomerTrackingIdentification(ride) : null),
+    [ride],
+  );
+  const driverFirst = identification?.driverName
+    ? identification.driverName.trim().split(/\s+/)[0]
+    : "";
+
   if (loading) {
     return (
       <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
@@ -182,16 +194,50 @@ export default function TaxiTipScreen() {
   return (
     <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title={t("taxi.tip.title", "⭐ Thank your driver")}
-        subtitle={t(
-          "taxi.tip.subtitle",
-          "100% of your tip goes to the driver via Stripe."
-        )}
+        title={t("taxi.tip.title", "Thank your driver")}
+        subtitle={
+          driverFirst
+            ? t("taxi.tip.madeTripSpecial", "{{name}} made your trip special", {
+                name: driverFirst,
+              })
+            : t(
+                "taxi.tip.subtitle",
+                "100% of your tip goes to the driver via Stripe.",
+              )
+        }
         fallbackRoute="ClientHome"
         variant="dark"
       />
 
       <ScrollView contentContainerStyle={styles.content}>
+        {identification?.driverName ? (
+          <View style={styles.driverCard}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {driverInitials(identification.driverName)}
+              </Text>
+            </View>
+            <Text style={styles.driverName}>{identification.driverName}</Text>
+            {identification.driverRating != null ? (
+              <Text style={styles.driverMeta}>
+                {`★ ${identification.driverRating.toFixed(1)}`}
+                {identification.driverTrips != null
+                  ? ` · ${t("taxi.tracking.tripsCount", "{{count}} trips", {
+                      count: identification.driverTrips,
+                    })}`
+                  : ""}
+              </Text>
+            ) : null}
+            {identification.vehicleLabel || identification.vehiclePlate ? (
+              <Text style={styles.vehicleMeta}>
+                {[identification.vehicleLabel, identification.vehiclePlate]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
         {error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
@@ -211,7 +257,7 @@ export default function TaxiTipScreen() {
         ) : (
           <>
             <Text style={styles.label}>
-              {t("taxi.tip.suggested", "Suggested amounts")}
+              {t("taxi.tip.choose", "Choose your tip")}
             </Text>
             <View style={styles.rowWrap}>
               {TIP_PRESETS_DOLLARS.map((v) => {
@@ -226,7 +272,7 @@ export default function TaxiTipScreen() {
                     style={[styles.chip, selected && styles.chipSelected]}
                   >
                     <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                      ${v}
+                      {formatTaxiCents(v * 100, currency)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -234,7 +280,7 @@ export default function TaxiTipScreen() {
             </View>
 
             <Text style={[styles.label, { marginTop: 16 }]}>
-              {t("taxi.tip.custom", "Custom amount")}
+              {t("taxi.tip.custom", "Or enter a custom amount")}
             </Text>
             <View style={styles.inputRow}>
               <Text style={styles.dollar}>$</Text>
@@ -245,7 +291,7 @@ export default function TaxiTipScreen() {
                   setPreset(null);
                 }}
                 keyboardType="decimal-pad"
-                placeholder="0.00"
+                placeholder={t("taxi.tip.customPlaceholder", "0.00")}
                 placeholderTextColor="#64748B"
                 style={styles.input}
               />
@@ -286,6 +332,12 @@ export default function TaxiTipScreen() {
           </>
         )}
       </ScrollView>
+      <ClientServiceBottomNav
+        active="track"
+        appearance="glass"
+        accent="green"
+        layout="edge"
+      />
     </SafeAreaView>
   );
 }
@@ -293,7 +345,50 @@ export default function TaxiTipScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: MMD_BLUE },
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-  content: { padding: 24, paddingBottom: 40, gap: 4 },
+  content: { padding: 24, paddingBottom: 120, gap: 4 },
+  driverCard: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_GOLD_CLASSIC,
+    borderRadius: 28,
+    padding: 20,
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: MMD_GOLD_CLASSIC,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    color: MMD_WHITE,
+    fontSize: 28,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  driverName: {
+    color: MMD_WHITE,
+    fontSize: 24,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    textAlign: "center",
+  },
+  driverMeta: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 16,
+    fontFamily: MMD_FONT.regular,
+  },
+  vehicleMeta: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+    textAlign: "center",
+  },
   label: {
     color: MMD_GOLD_CLASSIC,
     fontWeight: "700",

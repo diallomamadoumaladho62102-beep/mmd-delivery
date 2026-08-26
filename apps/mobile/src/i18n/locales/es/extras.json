@@ -210,6 +210,8 @@
       "currencyLabel": "Moneda"
     },
     "quote": {
+      "title": "Estimación",
+      "subtitle": "Revisa los detalles de tu viaje antes de confirmar",
       "vehicle": "Vehículo",
       "distance": "Distancia",
       "duration": "Duración",
@@ -237,7 +239,17 @@
       "any": "Cualquiera",
       "preferredDriver": "Conductor preferido (opcional)",
       "payment": "Pago",
-      "paymentFailed": "No se pudo iniciar el pago"
+      "paymentFailed": "No se pudo iniciar el pago",
+      "serviceFee": "Tarifa de servicio",
+      "sharedRideHint": "Descuento opcional si otro pasajero comparte una ruta similar. Todavía no hay coincidencia — si no se encuentra ninguna antes de la recogida, conservas la tarifa reducida en solo.",
+      "loginRequired": "Debes iniciar sesión para pagar.",
+      "missingRoute": "La recogida y el destino están incompletos",
+      "paymentNotCompleted": "El pago no se completó. No se creó ningún viaje. Puedes solicitar una nueva estimación cuando quieras.",
+      "rideNotReady": "Pago confirmado, pero el viaje aún no está listo. Actualiza tu lista de viajes.",
+      "quoteUnavailable": "Estimación no disponible — revisa las direcciones",
+      "loyaltyPoints": "{{title}} ({{count}} pts)",
+      "createFailed": "No se pudo crear el viaje",
+      "checkoutMissing": "El pago no está disponible"
     },
     "history": {
       "title": "Historial de taxi",
@@ -309,6 +321,10 @@
       "cancelYes": "Sí, cancelar",
       "cancelNo": "No",
       "cancelFailed": "No se pudo cancelar",
+      "addStopFailed": "No se pudo añadir una parada",
+      "changeDestFailed": "No se pudo cambiar el destino",
+      "unavailableTitle": "Viaje no disponible",
+      "unavailableBody": "No se pudo cargar este viaje. Comprueba tu conexión e inténtalo de nuevo.",
       "loadFailed": "No se pudo cargar el viaje",
       "mapUnavailable": "Mapa no disponible",
       "pickupLabel": "Recogida: {{address}}",
@@ -397,7 +413,62 @@
         "cameraStarting": "La cámara de seguridad está iniciando. Vuelve a tocar Grabar.",
         "downloadBeforeExpiry": "Descargar antes de caducar ({{date}})",
         "stopRecording": "Detener grabación"
-      }
+      },
+      "title": "Seguimiento del viaje",
+      "loading": "Cargando tu viaje…",
+      "lookingForDriver": "Buscando un conductor…",
+      "searchingNearby": "Buscando conductores cercanos…",
+      "paymentConfirmedMatching": "Pago confirmado — buscando conductores cercanos",
+      "estimatedFare": "Tarifa estimada",
+      "fare": "Tarifa",
+      "totalFare": "Tarifa total",
+      "pickup": "Recogida",
+      "dropoff": "Destino",
+      "distance": "Distancia",
+      "duration": "Duración",
+      "eta": "ETA",
+      "etaMinutes": "{{n}} min ETA",
+      "liveTitle": "Seguimiento en vivo",
+      "awaitingPayment": "Pago requerido",
+      "bannerAwaitingPayment": "Completa el pago para encontrar un conductor",
+      "bannerSearching": "Buscando tu conductor",
+      "driverAssigned": "Conductor asignado",
+      "bannerAssigned": "{{name}} está asignado",
+      "driverOnTheWay": "Conductor en camino",
+      "bannerAway": "{{name}} está a {{distance}}",
+      "bannerOnTheWay": "{{name}} está en camino",
+      "driverArrivingSoon": "El conductor llega pronto",
+      "bannerArrivingSoon": "{{name}} llega pronto",
+      "driverArrived": "Conductor llegado",
+      "bannerArrived": "{{name}} ha llegado",
+      "tripInProgress": "Viaje en curso",
+      "bannerInProgress": "Viaje en curso",
+      "shareMaskedCall": "Compartir viaje · llamada enmascarada disponible",
+      "completed": "Viaje completado",
+      "bannerCompleted": "Viaje completado",
+      "rideCompleted": "Viaje completado",
+      "thanksRiding": "Gracias por viajar con MMD Taxi",
+      "done": "Listo",
+      "cancelled": "Viaje cancelado",
+      "bannerCancelled": "Viaje cancelado",
+      "updating": "Actualizando…",
+      "driverFallback": "Conductor",
+      "safetyPriority": "Tu seguridad es nuestra prioridad.",
+      "isDriving": "{{name}} está conduciendo",
+      "newDriver": "Conductor nuevo",
+      "tripsCount": "{{count}} viajes",
+      "plate": "Matrícula",
+      "vehiclePhotoUnavailable": "Foto del vehículo no disponible",
+      "driverPhotoA11y": "Foto del conductor",
+      "vehiclePhotoA11y": "Foto del vehículo",
+      "vehicleA11y": "Vehículo: {{label}}, año {{year}}, matrícula {{plate}}.",
+      "joinDriver": "Únete a tu conductor",
+      "joinDriverBody": "Tu conductor te espera en el punto de recogida. Síguelo en el mapa.",
+      "callHint": "Llamar al conductor",
+      "chatHint": "Chatear con el conductor",
+      "shareHint": "Compartir detalles del viaje",
+      "stopN": "Parada {{n}}",
+      "offlineBanner": "Sin conexión — el seguimiento puede estar desactualizado"
     },
     "receipt": {
       "title": "Recibo",
@@ -478,8 +549,32 @@
       }
     },
     "tip": {
+      "title": "Agradece a tu conductor",
+      "subtitle": "El 100 % de tu propina va al conductor a través de Stripe.",
+      "madeTripSpecial": "{{name}} hizo especial tu viaje",
+      "choose": "Elige tu propina",
+      "suggested": "Importes sugeridos",
+      "custom": "O introduce un importe personalizado",
+      "customPlaceholder": "0,00",
+      "youPay": "Pagas:",
+      "payCta": "Pagar propina con tarjeta",
+      "skip": "Sin propina esta vez",
+      "missingRide": "Viaje no encontrado",
+      "ok": "OK",
+      "rideNotCompleted": "Las propinas están disponibles cuando el viaje termina.",
+      "alreadyTitle": "Propina ya enviada",
+      "alreadyBody": "Este viaje ya tiene una propina.",
+      "transferred": "Transferida al conductor",
+      "minTitle": "Propina demasiado baja",
+      "minBody": "La propina mínima es 0,50 $.",
+      "successTitle": "¡Gracias!",
+      "successBody": "Tu propina se pagó. El conductor la recibirá en su billetera.",
+      "cancelledTitle": "Propina cancelada",
+      "cancelledBody": "No se realizó ningún cargo.",
       "loadFailed": "No se pudo cargar el viaje.",
-      "payFailed": "No se pudo pagar la propina."
+      "payFailed": "No se pudo pagar la propina.",
+      "view": "Ver propina",
+      "cta": "Dar propina"
     }
   },
   "client": {
@@ -567,7 +662,15 @@
         "paid": "Pagado",
         "processing": "Procesando",
         "unpaid": "No pagado"
-      }
+      },
+      "subtitleTracking": "Seguimiento activo de tus artículos",
+      "etaMinutes": "{{n}} min",
+      "nextStep": "Siguiente: {{step}}",
+      "callDriver": "Llamar al conductor",
+      "callFailed": "No se pudo iniciar la llamada enmascarada.",
+      "chatDriver": "Chat",
+      "loadingTitle": "Cargando entrega…",
+      "summaryTitle": "Resumen de entrega"
     },
     "orderHistory": {
       "title": "Historial de pedidos",
@@ -920,6 +1023,22 @@
         "busy": "Ocupado",
         "moderate": "Moderado",
         "quiet": "Tranquilo"
+      }
+    },
+    "wallet": {
+      "openEarnings": "Ganancias",
+      "filterAll": "Todo",
+      "filterEarnings": "Ganancias",
+      "filterPayouts": "Pagos",
+      "confirm": {
+        "kicker": "CONFIRMAR IMPORTE",
+        "balance": "Disponible actual: {{amount}}",
+        "hint": "El cash out instantáneo envía el saldo elegible completo.",
+        "destination": "DESTINO",
+        "cta": "Confirmar cash out"
+      },
+      "success": {
+        "title": "¡Cash out correcto!"
       }
     }
   },
@@ -1297,7 +1416,69 @@
       "loadFailed": "No se pudo cargar la cartera de empresa.",
       "topupFailed": "La recarga falló.",
       "cashoutFailed": "El retiro falló.",
-      "stripeFailed": "No se pudo abrir Stripe Connect."
+      "stripeFailed": "No se pudo abrir Stripe Connect.",
+      "title": "Billetera empresarial",
+      "subtitle": "Saldo prepago corporativo",
+      "available": "Saldo disponible",
+      "topup": "Recargar",
+      "cashout": "Retirar",
+      "history": "Historial",
+      "emptyTitle": "Sin cuenta empresarial",
+      "emptyBody": "Pide a un admin que te añada como miembro para usar la billetera.",
+      "topupCta": "Recargar",
+      "cashoutCta": "Retirar",
+      "cashoutBlocked": "Retiro no disponible",
+      "amountCents": "Importe en céntimos",
+      "amount": "Importe",
+      "topupMin": "Recarga mínima",
+      "topupMinBody": "Introduce al menos 500 céntimos.",
+      "cashoutInvalid": "Importe no válido",
+      "cashoutInvalidBody": "Introduce un importe positivo en céntimos.",
+      "cashoutOk": "Retiro enviado",
+      "cashoutOkBody": "Se creó la transferencia a Connect.",
+      "noTx": "Aún no hay transacciones. Recarga para financiar viajes.",
+      "manageTeam": "Miembros del equipo",
+      "teamTitle": "Miembros del equipo",
+      "filterAll": "Todo",
+      "filterCredits": "Créditos",
+      "filterDebits": "Débitos",
+      "topupSuccess": "¡Recarga correcta!",
+      "addedTo": "Añadido a {{name}}",
+      "newBalance": "Nuevo saldo: {{amount}}",
+      "members": "Miembros",
+      "membersActive": "{{n}} activos",
+      "member": "Miembro",
+      "admin": "Admin",
+      "noMembers": "No hay miembros para mostrar.",
+      "invite": "Invitar miembro",
+      "inviteEmail": "Correo de invitación",
+      "inviteSent": "Invitación enviada",
+      "inviteSentBody": "El compañero aparecerá cuando acepte.",
+      "inviteInvalid": "Correo no válido",
+      "inviteInvalidBody": "Introduce un correo válido.",
+      "inviteFailed": "No se pudo invitar a este miembro.",
+      "readOnly": "Solo lectura. Pide a un admin recargar o retirar.",
+      "tx": {
+        "topup": "Recarga",
+        "cashout": "Retiro",
+        "ride": "Pago de viaje"
+      }
+    }
+  },
+  "deliveryRequest": {
+    "fields": {
+      "pinPickup": "Fijar recogida",
+      "pickupPinned": "Recogida fijada",
+      "pickupExactLocation": "Ubicación exacta de recogida",
+      "usePickupLocation": "Usar esta recogida"
+    },
+    "pricing": {
+      "distance": "Distancia",
+      "eta": "ETA",
+      "deliveryFee": "Tarifa de entrega",
+      "tax": "Impuesto",
+      "serviceFee": "Tarifa de servicio",
+      "total": "Total"
     }
   }
 }

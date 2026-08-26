@@ -210,6 +210,8 @@
       "currencyLabel": "العملة"
     },
     "quote": {
+      "title": "التقدير",
+      "subtitle": "راجع تفاصيل رحلتك قبل التأكيد",
       "vehicle": "المركبة",
       "distance": "المسافة",
       "duration": "المدة",
@@ -237,7 +239,17 @@
       "any": "أي سائق",
       "preferredDriver": "السائق المفضّل (اختياري)",
       "payment": "الدفع",
-      "paymentFailed": "تعذّر بدء الدفع"
+      "paymentFailed": "تعذّر بدء الدفع",
+      "serviceFee": "رسوم الخدمة",
+      "sharedRideHint": "خصم اختياري عند مشاركة راكب آخر لمسار مشابه. لا يوجد تطابق بعد — إذا لم يُعثر على راكب قبل الانطلاق، تحتفظ بالسعر المخفّض بمفردك.",
+      "loginRequired": "يجب تسجيل الدخول للدفع.",
+      "missingRoute": "نقطة الانطلاق والوصول غير مكتملتين",
+      "paymentNotCompleted": "لم يكتمل الدفع. لم تُنشأ أي رحلة. يمكنك طلب تقدير جديد لاحقًا.",
+      "rideNotReady": "تم تأكيد الدفع لكن الرحلة ليست جاهزة بعد. حدّث قائمة رحلاتك.",
+      "quoteUnavailable": "التقدير غير متاح — تحقق من العناوين",
+      "loyaltyPoints": "{{title}} ({{count}} نقطة)",
+      "createFailed": "تعذّر إنشاء الرحلة",
+      "checkoutMissing": "الدفع غير متاح"
     },
     "history": {
       "title": "سجل رحلات التاكسي",
@@ -309,6 +321,10 @@
       "cancelYes": "نعم، ألغِ",
       "cancelNo": "لا",
       "cancelFailed": "تعذّر الإلغاء",
+      "addStopFailed": "تعذّر إضافة محطة",
+      "changeDestFailed": "تعذّر تغيير الوجهة",
+      "unavailableTitle": "الرحلة غير متاحة",
+      "unavailableBody": "تعذّر تحميل هذه الرحلة. تحقق من الاتصال وحاول مرة أخرى.",
       "loadFailed": "تعذّر تحميل الرحلة",
       "mapUnavailable": "الخريطة غير متاحة",
       "pickupLabel": "الاستلام: {{address}}",
@@ -397,7 +413,62 @@
         "cameraStarting": "كاميرا الأمان تبدأ. اضغط تسجيل مرة أخرى بعد لحظة.",
         "downloadBeforeExpiry": "نزّل قبل انتهاء الصلاحية ({{date}})",
         "stopRecording": "إيقاف التسجيل"
-      }
+      },
+      "title": "تتبع الرحلة",
+      "loading": "جارٍ تحميل رحلتك…",
+      "lookingForDriver": "جارٍ البحث عن سائق…",
+      "searchingNearby": "البحث عن سائقين قريبين…",
+      "paymentConfirmedMatching": "تم تأكيد الدفع — جارٍ مطابقة السائقين القريبين",
+      "estimatedFare": "الأجرة التقديرية",
+      "fare": "الأجرة",
+      "totalFare": "الأجرة الإجمالية",
+      "pickup": "الاستلام",
+      "dropoff": "التوصيل",
+      "distance": "المسافة",
+      "duration": "المدة",
+      "eta": "الوصول",
+      "etaMinutes": "{{n}} د الوصول",
+      "liveTitle": "تتبع مباشر",
+      "awaitingPayment": "الدفع مطلوب",
+      "bannerAwaitingPayment": "أكمل الدفع للعثور على سائق",
+      "bannerSearching": "جارٍ البحث عن سائقك",
+      "driverAssigned": "تم تعيين السائق",
+      "bannerAssigned": "{{name}} معيَّن",
+      "driverOnTheWay": "السائق في الطريق",
+      "bannerAway": "{{name}} على بعد {{distance}}",
+      "bannerOnTheWay": "{{name}} في الطريق",
+      "driverArrivingSoon": "السائق يصل قريبًا",
+      "bannerArrivingSoon": "{{name}} يصل قريبًا",
+      "driverArrived": "وصل السائق",
+      "bannerArrived": "وصل {{name}}",
+      "tripInProgress": "الرحلة جارية",
+      "bannerInProgress": "الرحلة جارية",
+      "shareMaskedCall": "مشاركة الرحلة · اتصال محجوب متاح",
+      "completed": "اكتملت الرحلة",
+      "bannerCompleted": "اكتملت الرحلة",
+      "rideCompleted": "اكتملت الرحلة",
+      "thanksRiding": "شكرًا لركوبك مع MMD Taxi",
+      "done": "تم",
+      "cancelled": "أُلغيت الرحلة",
+      "bannerCancelled": "أُلغيت الرحلة",
+      "updating": "جارٍ التحديث…",
+      "driverFallback": "السائق",
+      "safetyPriority": "سلامتك أولويتنا.",
+      "isDriving": "{{name}} يقود",
+      "newDriver": "سائق جديد",
+      "tripsCount": "{{count}} رحلات",
+      "plate": "لوحة",
+      "vehiclePhotoUnavailable": "صورة المركبة غير متاحة",
+      "driverPhotoA11y": "صورة السائق",
+      "vehiclePhotoA11y": "صورة المركبة",
+      "vehicleA11y": "المركبة: {{label}}، السنة {{year}}، اللوحة {{plate}}.",
+      "joinDriver": "انضم إلى سائقك",
+      "joinDriverBody": "سائقك بانتظارك عند نقطة الاستلام. تابعه على الخريطة.",
+      "callHint": "الاتصال بالسائق",
+      "chatHint": "محادثة السائق",
+      "shareHint": "مشاركة تفاصيل الرحلة",
+      "stopN": "محطة {{n}}",
+      "offlineBanner": "غير متصل — قد يكون التتبع قديمًا"
     },
     "receipt": {
       "title": "إيصال",
@@ -478,8 +549,32 @@
       }
     },
     "tip": {
+      "title": "اشكر سائقك",
+      "subtitle": "100٪ من إكراميتك تذهب إلى السائق عبر Stripe.",
+      "madeTripSpecial": "{{name}} جعل رحلتك مميزة",
+      "choose": "اختر إكراميتك",
+      "suggested": "مبالغ مقترحة",
+      "custom": "أو أدخل مبلغًا مخصصًا",
+      "customPlaceholder": "0.00",
+      "youPay": "ستدفع:",
+      "payCta": "ادفع الإكرامية بالبطاقة",
+      "skip": "بدون إكرامية هذه المرة",
+      "missingRide": "الرحلة غير موجودة",
+      "ok": "حسنًا",
+      "rideNotCompleted": "الإكراميات متاحة بعد انتهاء الرحلة.",
+      "alreadyTitle": "تم إرسال الإكرامية",
+      "alreadyBody": "هذه الرحلة لديها إكرامية بالفعل.",
+      "transferred": "حُوّلت إلى السائق",
+      "minTitle": "الإكرامية صغيرة جدًا",
+      "minBody": "الحد الأدنى للإكرامية 0.50 $.",
+      "successTitle": "شكرًا لك!",
+      "successBody": "تم دفع إكراميتك. سيستلمها السائق في محفظته.",
+      "cancelledTitle": "أُلغيت الإكرامية",
+      "cancelledBody": "لم يتم أي خصم.",
       "loadFailed": "تعذر تحميل الرحلة.",
-      "payFailed": "تعذر دفع الإكرامية."
+      "payFailed": "تعذر دفع الإكرامية.",
+      "view": "عرض الإكرامية",
+      "cta": "إكرامية للسائق"
     }
   },
   "client": {
@@ -567,7 +662,15 @@
         "paid": "مدفوع",
         "processing": "قيد المعالجة",
         "unpaid": "غير مدفوع"
-      }
+      },
+      "subtitleTracking": "تتبع نشط لشحناتك",
+      "etaMinutes": "{{n}} د",
+      "nextStep": "التالي: {{step}}",
+      "callDriver": "اتصال بالسائق",
+      "callFailed": "تعذر بدء المكالمة المحمية.",
+      "chatDriver": "دردشة",
+      "loadingTitle": "جارٍ تحميل التوصيل…",
+      "summaryTitle": "ملخص التوصيل"
     },
     "orderHistory": {
       "title": "سجل الطلبات",
@@ -920,6 +1023,22 @@
         "busy": "مزدحم",
         "moderate": "متوسط",
         "quiet": "هادئ"
+      }
+    },
+    "wallet": {
+      "openEarnings": "الأرباح",
+      "filterAll": "الكل",
+      "filterEarnings": "الأرباح",
+      "filterPayouts": "التحويلات",
+      "confirm": {
+        "kicker": "تأكيد مبلغ السحب",
+        "balance": "المتاح حالياً: {{amount}}",
+        "hint": "السحب الفوري يرسل الرصيد المؤهل بالكامل.",
+        "destination": "الوجهة",
+        "cta": "تأكيد السحب"
+      },
+      "success": {
+        "title": "تم السحب بنجاح!"
       }
     }
   },
@@ -1297,7 +1416,69 @@
       "loadFailed": "تعذر تحميل محفظة الشركة.",
       "topupFailed": "فشل شحن الرصيد.",
       "cashoutFailed": "فشل السحب.",
-      "stripeFailed": "تعذر فتح Stripe Connect."
+      "stripeFailed": "تعذر فتح Stripe Connect.",
+      "title": "محفظة الأعمال",
+      "subtitle": "رصيد الشركة المدفوع مسبقاً",
+      "available": "الرصيد المتاح",
+      "topup": "شحن",
+      "cashout": "سحب",
+      "history": "السجل",
+      "emptyTitle": "لا يوجد حساب أعمال",
+      "emptyBody": "اطلب من مسؤول إضافتك كعضو لاستخدام المحفظة.",
+      "topupCta": "شحن",
+      "cashoutCta": "سحب",
+      "cashoutBlocked": "السحب غير متاح",
+      "amountCents": "المبلغ بالسنت",
+      "amount": "المبلغ",
+      "topupMin": "حد أدنى للشحن",
+      "topupMinBody": "أدخل 500 سنت على الأقل.",
+      "cashoutInvalid": "مبلغ غير صالح",
+      "cashoutInvalidBody": "أدخل مبلغ سحب موجباً بالسنت.",
+      "cashoutOk": "تم إرسال السحب",
+      "cashoutOkBody": "تم إنشاء التحويل إلى Connect.",
+      "noTx": "لا معاملات بعد. اشحن لتمويل الرحلات.",
+      "manageTeam": "أعضاء الفريق",
+      "teamTitle": "أعضاء الفريق",
+      "filterAll": "الكل",
+      "filterCredits": "إيداعات",
+      "filterDebits": "سحوبات",
+      "topupSuccess": "تم الشحن بنجاح!",
+      "addedTo": "أُضيف إلى {{name}}",
+      "newBalance": "الرصيد الجديد: {{amount}}",
+      "members": "الأعضاء",
+      "membersActive": "{{n}} نشط",
+      "member": "عضو",
+      "admin": "مسؤول",
+      "noMembers": "لا أعضاء للعرض.",
+      "invite": "دعوة عضو",
+      "inviteEmail": "بريد الدعوة",
+      "inviteSent": "تم إرسال الدعوة",
+      "inviteSentBody": "سيظهر الزميل بعد القبول.",
+      "inviteInvalid": "بريد غير صالح",
+      "inviteInvalidBody": "أدخل بريداً صالحاً.",
+      "inviteFailed": "تعذر دعوة هذا العضو.",
+      "readOnly": "وصول للقراءة فقط. اطلب من مسؤول الشحن أو السحب.",
+      "tx": {
+        "topup": "شحن الحساب",
+        "cashout": "سحب",
+        "ride": "دفع رحلة"
+      }
+    }
+  },
+  "deliveryRequest": {
+    "fields": {
+      "pinPickup": "تثبيت الاستلام",
+      "pickupPinned": "تم تثبيت الاستلام",
+      "pickupExactLocation": "موقع الاستلام الدقيق",
+      "usePickupLocation": "استخدام هذا الاستلام"
+    },
+    "pricing": {
+      "distance": "المسافة",
+      "eta": "الوقت المتوقع",
+      "deliveryFee": "رسوم التوصيل",
+      "tax": "الضريبة",
+      "serviceFee": "رسوم الخدمة",
+      "total": "الإجمالي"
     }
   }
 }

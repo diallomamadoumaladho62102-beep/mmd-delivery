@@ -5,6 +5,7 @@ export type MmdLocationPickerContext =
   | "taxi_dropoff"
   | "taxi_quote_pickup"
   | "taxi_quote_dropoff"
+  | "delivery_pickup"
   | "delivery_dropoff"
   | "marketplace_dropoff";
 

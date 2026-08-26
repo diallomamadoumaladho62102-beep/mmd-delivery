@@ -5,7 +5,14 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
-import { MMD_FONT, MMD_NAVY, MMD_WHITE } from "../../theme/mmdUi";
+import {
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC,
+  MMD_NAVY,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -14,13 +21,24 @@ export type ClientServiceBottomNavActive = "home" | "orders" | "track" | "profil
 type Props = {
   /** Highlights the active tab (Figma Delivery Request bottom nav). */
   active?: ClientServiceBottomNavActive;
+  /** `glass` matches taxi Figma (translucent bar). */
+  appearance?: "navy" | "glass";
+  /** Active tab color — gold on Quote, green on Tracking. */
+  accent?: "gold" | "green";
+  /** Full-width edge bar (Tracking) vs floating pill (Quote). */
+  layout?: "floating" | "edge";
 };
 
 /**
  * Compact 4-tab bar matching Customer App / Delivery Request Figma
  * (Home · Orders · Track · Profile). Navigates to existing stack routes only.
  */
-export function ClientServiceBottomNav({ active }: Props) {
+export function ClientServiceBottomNav({
+  active,
+  appearance = "navy",
+  accent = "gold",
+  layout = "floating",
+}: Props) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
@@ -36,33 +54,48 @@ export function ClientServiceBottomNav({ active }: Props) {
     navigation.navigate(route as never);
   };
 
+  const glass = appearance === "glass";
+
   return (
     <View
-      style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 10) }]}
+      style={[
+        styles.bar,
+        glass ? styles.barGlass : null,
+        glass && layout === "edge" ? styles.barGlassEdge : null,
+        { paddingBottom: Math.max(insets.bottom, 10) },
+      ]}
       accessibilityRole="tablist"
     >
       <Tab
         emoji="🏠"
         label={t("client.home.tabs.home", "Home")}
         active={active === "home"}
+        goldActive={glass && accent !== "green"}
+        greenActive={glass && accent === "green"}
         onPress={() => go("ClientHome")}
       />
       <Tab
         emoji="📦"
         label={t("client.home.tabs.orders", "Orders")}
         active={active === "orders"}
+        goldActive={glass && accent !== "green"}
+        greenActive={glass && accent === "green"}
         onPress={() => go("ClientOrderHistory")}
       />
       <Tab
-        emoji="🧭"
+        emoji="📍"
         label={t("client.delivery.tabs.track", "Track")}
         active={active === "track"}
+        goldActive={glass && accent !== "green"}
+        greenActive={glass && accent === "green"}
         onPress={() => go("ClientOrderHistory", { focusActive: true })}
       />
       <Tab
         emoji="👤"
         label={t("client.profile.titleShort", "Profile")}
         active={active === "profile"}
+        goldActive={glass && accent !== "green"}
+        greenActive={glass && accent === "green"}
         onPress={() => go("ClientProfile")}
       />
     </View>
@@ -73,13 +106,22 @@ function Tab({
   emoji,
   label,
   active,
+  goldActive,
+  greenActive,
   onPress,
 }: {
   emoji: string;
   label: string;
   active?: boolean;
+  goldActive?: boolean;
+  greenActive?: boolean;
   onPress: () => void;
 }) {
+  const activeStyle = greenActive
+    ? styles.labelActiveGreen
+    : goldActive
+      ? styles.labelActiveGold
+      : styles.labelActive;
   return (
     <Pressable
       onPress={onPress}
@@ -89,7 +131,7 @@ function Tab({
       accessibilityLabel={label}
     >
       <Text style={styles.emoji}>{emoji}</Text>
-      <Text style={[styles.label, active ? styles.labelActive : null]}>{label}</Text>
+      <Text style={[styles.label, active ? activeStyle : null]}>{label}</Text>
     </Pressable>
   );
 }
@@ -105,6 +147,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingTop: 16,
     minHeight: 84,
+  },
+  barGlass: {
+    backgroundColor: MMD_GLASS,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(212,175,55,0.3)",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.3)",
+    paddingHorizontal: 24,
+  },
+  barGlassEdge: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderTopWidth: 1,
+    borderColor: "transparent",
+    borderTopColor: "rgba(212,175,55,0.45)",
+    paddingHorizontal: 24,
   },
   tab: {
     alignItems: "center",
@@ -126,6 +189,16 @@ const styles = StyleSheet.create({
     color: MMD_WHITE,
     fontFamily: MMD_FONT.bold,
     fontWeight: "700",
+  },
+  labelActiveGold: {
+    color: MMD_GOLD_CLASSIC,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  labelActiveGreen: {
+    color: MMD_TAXI_GREEN,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
   },
 });
 

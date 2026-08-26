@@ -9,8 +9,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
+  StyleSheet,
+  type ImageSourcePropType,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -32,15 +35,15 @@ import { isValidCoordinate } from "../../lib/coordinates";
 import {
   formatTaxiLocalizedCurrency,
   getTaxiCountryLabel,
-  getTaxiUiString,
-  resolveTaxiLanguageForCountry,
 } from "../../lib/taxiLocalization";
+import { formatDistance, formatDurationMinutes } from "../../i18n/formatters";
 import {
   applyMmdLocationSelection,
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
-import { rowDirection, textAlignStart } from "../../i18n/rtl";
-import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { rowDirection, textAlignEnd, textAlignStart } from "../../i18n/rtl";
+import { useSafeBackNavigation } from "../../navigation/navigationBack";
+import { ClientServiceBottomNav } from "../../components/navigation/ClientServiceBottomNav";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import { supabase } from "../../lib/supabase";
@@ -54,6 +57,7 @@ import {
   MMD_TAXI_GREEN,
   MMD_WHITE,
 } from "../../theme/mmdUi";
+import { APP_HIT } from "../../theme/appTheme";
 import {
   loadLocalPaymentMethods,
   shouldOfferLocalMobileMoney,
@@ -63,14 +67,36 @@ import {
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiQuote">;
 type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
 
+const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
+const ICON = {
+  arrowLeft: require("../../../assets/brand/icons/taxi-quote/arrow-left.png"),
+  sparkles: require("../../../assets/brand/icons/taxi-quote/sparkles.png"),
+  car: require("../../../assets/brand/icons/taxi-quote/car.png"),
+  globe: require("../../../assets/brand/icons/taxi-quote/globe.png"),
+  ruler: require("../../../assets/brand/icons/taxi-quote/ruler.png"),
+  clock: require("../../../assets/brand/icons/taxi-quote/clock.png"),
+  pinPickup: require("../../../assets/brand/icons/taxi-quote/pin-pickup.png"),
+  pinDropoff: require("../../../assets/brand/icons/taxi-quote/pin-dropoff.png"),
+  pinButton: require("../../../assets/brand/icons/taxi-quote/pin-button.png"),
+  receipt: require("../../../assets/brand/icons/taxi-quote/receipt.png"),
+  refresh: require("../../../assets/brand/icons/taxi-quote/refresh.png"),
+  star: require("../../../assets/brand/icons/taxi-quote/star.png"),
+  briefcase: require("../../../assets/brand/icons/taxi-quote/briefcase.png"),
+  ticket: require("../../../assets/brand/icons/taxi-quote/ticket.png"),
+  check: require("../../../assets/brand/icons/taxi-quote/check.png"),
+} as const;
+
+const GOLD_STROKE = "rgba(212,175,55,0.7)";
+
 export default function TaxiQuoteScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<QuoteRoute>();
   const params = route.params ?? ({} as QuoteRoute["params"]);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [paying, setPaying] = useState(false);
   const payingRef = useRef(false);
   const quoteRequestIdRef = useRef(0);
+  const [quoting, setQuoting] = useState(!params.quote);
   const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
@@ -112,9 +138,6 @@ export default function TaxiQuoteScreen() {
     [platformFeatures]
   );
   const countryCode = params.countryCode ?? market.countryCode ?? "";
-  const lang = countryCode
-    ? resolveTaxiLanguageForCountry(countryCode)
-    : resolveTaxiLanguageForCountry("US");
   const countryResolution = params.countryResolution as
     | { source?: string; detectedCountryCode?: string | null }
     | undefined;
@@ -188,6 +211,7 @@ export default function TaxiQuoteScreen() {
   useEffect(() => {
     let cancelled = false;
     const requestId = ++quoteRequestIdRef.current;
+    setQuoting(true);
     void quoteTaxiRide({
       pickupAddress,
       dropoffAddress,
@@ -220,6 +244,10 @@ export default function TaxiQuoteScreen() {
         if (cancelled || requestId !== quoteRequestIdRef.current) return;
         setQuoteState(null);
         setSharedDiscountCents(0);
+      })
+      .finally(() => {
+        if (cancelled || requestId !== quoteRequestIdRef.current) return;
+        setQuoting(false);
       });
     return () => {
       cancelled = true;
@@ -252,9 +280,25 @@ export default function TaxiQuoteScreen() {
     grossTotalCents - promoDiscountCents - rewardDiscountCents - sharedDiscountCents
   );
   const total = fmt(netTotalCents);
-  const serviceFee = fmt(quoteState?.service_fee_cents);
-  const subtotal = fmt(quoteState?.subtotal_cents);
-  const taxCents = Number(quoteState?.tax_cents ?? 0);
+  const serviceFeeCents = Math.max(0, Math.round(Number(quoteState?.service_fee_cents ?? 0)));
+  const platformFeeCents = Math.max(0, Math.round(Number(quoteState?.platform_fee_cents ?? 0)));
+  const taxCents = Math.max(0, Math.round(Number(quoteState?.tax_cents ?? 0)));
+  const subtotalCents = Math.max(0, Math.round(Number(quoteState?.subtotal_cents ?? 0)));
+
+  const vehicleLabel = useMemo(() => {
+    const key = String(vehicleClass ?? "").toLowerCase();
+    if (key === "standard" || key === "xl" || key === "premium") {
+      return t(`taxi.home.${key}`);
+    }
+    return String(vehicleClass ?? "").trim();
+  }, [t, vehicleClass]);
+
+  const distanceMiles = Number(routeInfo?.distanceMiles);
+  const durationMinutes = Number(routeInfo?.durationMinutes);
+  const hasDistance = Number.isFinite(distanceMiles) && distanceMiles > 0;
+  const hasDuration = Number.isFinite(durationMinutes) && durationMinutes > 0;
+  const pickupLabel = pickupAddress.trim();
+  const dropoffLabel = dropoffAddress.trim();
 
   async function handleApplyPromo() {
     const code = promoCode.trim();
@@ -265,7 +309,7 @@ export default function TaxiQuoteScreen() {
         totalCents: grossTotalCents,
       });
       if (!result?.ok) {
-        throw new Error(String(result?.message ?? result?.error ?? "Invalid code"));
+        throw new Error(String(result?.message ?? result?.error ?? t("taxi.quote.invalidPromo", "Invalid promo code")));
       }
       setPromoDiscountCents(Number(result.discount_cents ?? 0));
     } catch (e: unknown) {
@@ -366,7 +410,7 @@ export default function TaxiQuoteScreen() {
         });
 
         if (!created?.ok || !created?.ride?.id) {
-          throw new Error(created?.error ?? "Failed to create ride");
+          throw new Error(created?.error ?? t("taxi.quote.createFailed", "Unable to create ride"));
         }
 
         const rideId = String(created.ride.id);
@@ -420,7 +464,7 @@ export default function TaxiQuoteScreen() {
       });
 
       if (!checkout?.ok || !checkout?.url || !checkout?.quote_checkout_id) {
-        throw new Error(checkout?.error ?? "Checkout URL missing");
+        throw new Error(checkout?.error ?? t("taxi.quote.checkoutMissing", "Checkout is unavailable"));
       }
 
       const quoteCheckoutId = String(checkout.quote_checkout_id);
@@ -475,45 +519,86 @@ export default function TaxiQuoteScreen() {
     }
   }
 
+  const detailRows: { icon: ImageSourcePropType; label: string; value: string }[] = [];
+  if (vehicleLabel) {
+    detailRows.push({
+      icon: ICON.car,
+      label: t("taxi.quote.vehicle", "Vehicle"),
+      value: vehicleLabel,
+    });
+  }
+  if (countryCode) {
+    detailRows.push({
+      icon: ICON.globe,
+      label: t("taxi.ui.country", "Country"),
+      value: `${countryCode} · ${getTaxiCountryLabel(countryCode)}`,
+    });
+  }
+  if (hasDistance) {
+    detailRows.push({
+      icon: ICON.ruler,
+      label: t("taxi.quote.distance", "Distance"),
+      value: formatDistance(distanceMiles, i18n.language),
+    });
+  }
+  if (hasDuration) {
+    detailRows.push({
+      icon: ICON.clock,
+      label: t("taxi.quote.duration", "Duration"),
+      value: formatDurationMinutes(durationMinutes, i18n.language),
+    });
+  }
+  if (pickupLabel) {
+    detailRows.push({
+      icon: ICON.pinPickup,
+      label: t("taxi.quote.pickup", "Pickup"),
+      value: pickupLabel,
+    });
+  }
+  if (dropoffLabel) {
+    detailRows.push({
+      icon: ICON.pinDropoff,
+      label: t("taxi.quote.dropoff", "Dropoff"),
+      value: dropoffLabel,
+    });
+  }
+
   return (
     <>
-    <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.safe} edges={["left", "right"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
-      <ScreenHeader
-        title={getTaxiUiString("estimate", countryCode)}
+      <TaxiQuoteHeader
+        title={t("taxi.quote.title", "Estimate")}
         subtitle={t(
           "taxi.quote.subtitle",
           "Review your ride details before confirming",
         )}
-        fallbackRoute="ClientHome"
-        variant="dark"
       />
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-        <Card label={t("taxi.quote.vehicle", "Vehicle")} value={String(vehicleClass).toUpperCase()} />
-        <Card
-          label={getTaxiUiString("country", countryCode)}
-          value={`${countryCode} · ${getTaxiCountryLabel(countryCode, lang)}`}
-        />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
+        {detailRows.length > 0 ? (
+          <View style={styles.card}>
+            {detailRows.map((row, index) => (
+              <React.Fragment key={`${row.label}-${index}`}>
+                {index > 0 ? <View style={styles.rowDivider} /> : null}
+                <DetailRow icon={row.icon} label={row.label} value={row.value} />
+              </React.Fragment>
+            ))}
+          </View>
+        ) : null}
+
         {countryResolution?.source === "coords" ? (
-          <Text style={{ color: "#64748B", fontSize: 12 }}>
-            {getTaxiUiString("detectedCountry", countryCode)}
+          <Text style={[styles.detected, { textAlign: textAlignStart() }]}>
+            {t("taxi.ui.detectedCountry", "Detected from pickup")}
             {countryResolution.detectedCountryCode
               ? `: ${countryResolution.detectedCountryCode}`
               : ""}
           </Text>
         ) : null}
-        <Card
-          label={t("taxi.quote.distance", "Distance")}
-          value={`${Number(routeInfo?.distanceMiles ?? 0).toFixed(1)} mi`}
-        />
-        <Card
-          label={t("taxi.quote.duration", "Duration")}
-          value={`${Math.ceil(Number(routeInfo?.durationMinutes ?? 0))} min`}
-        />
-        <Card label={t("taxi.quote.pickup", "Pickup")} value={pickupAddress} />
-        <Card label={t("taxi.quote.dropoff", "Dropoff")} value={dropoffAddress} />
 
-        <View style={{ flexDirection: rowDirection(), gap: 8 }}>
+        <View style={[styles.pinRow, { flexDirection: rowDirection() }]}>
           <TouchableOpacity
             onPress={() =>
               navigation.navigate("MMDLocationPicker", {
@@ -524,24 +609,16 @@ export default function TaxiQuoteScreen() {
                 pickerContext: "taxi_quote_pickup",
               })
             }
-            style={{
-              flex: 1,
-              paddingVertical: 14,
-              borderRadius: 14,
-              backgroundColor: MMD_TAXI_GREEN,
-              alignItems: "center",
-            }}
+            style={[styles.pinButton, { flexDirection: rowDirection() }]}
+            accessibilityRole="button"
+            accessibilityLabel={
+              pickupLocationId
+                ? t("taxi.quote.pickupPinned", "Pickup pinned")
+                : t("taxi.quote.pinPickup", "Pin pickup")
+            }
           >
-            <Text
-              style={{
-                color: MMD_WHITE,
-                fontWeight: "800",
-                fontSize: 15,
-                fontFamily: MMD_FONT.extrabold,
-                textAlign: "center",
-                flexShrink: 1,
-              }}
-            >
+            <QuoteIcon source={ICON.pinButton} size={18} />
+            <Text style={styles.pinButtonLabel}>
               {pickupLocationId
                 ? t("taxi.quote.pickupPinned", "Pickup pinned")
                 : t("taxi.quote.pinPickup", "Pin pickup")}
@@ -557,24 +634,16 @@ export default function TaxiQuoteScreen() {
                 pickerContext: "taxi_quote_dropoff",
               })
             }
-            style={{
-              flex: 1,
-              paddingVertical: 14,
-              borderRadius: 14,
-              backgroundColor: MMD_TAXI_GREEN,
-              alignItems: "center",
-            }}
+            style={[styles.pinButton, { flexDirection: rowDirection() }]}
+            accessibilityRole="button"
+            accessibilityLabel={
+              dropoffLocationId
+                ? t("taxi.quote.dropoffPinned", "Dropoff pinned")
+                : t("taxi.quote.pinDropoff", "Pin dropoff")
+            }
           >
-            <Text
-              style={{
-                color: MMD_WHITE,
-                fontWeight: "800",
-                fontSize: 15,
-                fontFamily: MMD_FONT.extrabold,
-                textAlign: "center",
-                flexShrink: 1,
-              }}
-            >
+            <QuoteIcon source={ICON.pinButton} size={18} />
+            <Text style={styles.pinButtonLabel}>
               {dropoffLocationId
                 ? t("taxi.quote.dropoffPinned", "Dropoff pinned")
                 : t("taxi.quote.pinDropoff", "Pin dropoff")}
@@ -582,168 +651,152 @@ export default function TaxiQuoteScreen() {
           </TouchableOpacity>
         </View>
 
-        <View
-          style={{
-            marginTop: 8,
-            padding: 20,
-            borderRadius: 24,
-            backgroundColor: MMD_GLASS,
-            borderWidth: 1,
-            borderColor: "rgba(212,175,55,0.7)",
-            gap: 12,
-          }}
-        >
-          <Text
-            style={{
-              color: MMD_GOLD_CLASSIC,
-              fontWeight: "800",
-              fontFamily: MMD_FONT.extrabold,
-              fontSize: 18,
-              textAlign: textAlignStart(),
-            }}
-          >
-            💰 {t("taxi.quote.priceBreakdown", "Price breakdown")}
-          </Text>
-          <Row label={getTaxiUiString("subtotal", countryCode)} value={subtotal} />
-          {taxCents > 0 ? (
-            <Row label={getTaxiUiString("tax", countryCode)} value={fmt(taxCents)} />
-          ) : null}
-          <Row
-            label={t("taxi.quote.serviceFee", "Service fee")}
-            value={serviceFee}
-          />
-          {promoDiscountCents > 0 ? (
-            <Row
-              label={t("taxi.quote.promoDiscount", "Promo discount")}
-              value={`-${fmt(promoDiscountCents)}`}
-            />
-          ) : null}
-          {rewardDiscountCents > 0 ? (
-            <Row
-              label={t("taxi.quote.rewardCredit", "Reward credit")}
-              value={`-${fmt(rewardDiscountCents)}`}
-            />
-          ) : null}
-          {sharedDiscountCents > 0 ? (
-            <Row
-              label={t("taxi.quote.sharedRideDiscount", "Shared ride discount")}
-              value={`-${fmt(sharedDiscountCents)}`}
-            />
-          ) : null}
-          <Row label={getTaxiUiString("total", countryCode)} value={total} bold />
+        <View style={styles.priceCard}>
+          <View style={[styles.priceTitleRow, { flexDirection: rowDirection() }]}>
+            <QuoteIcon source={ICON.receipt} size={20} />
+            <Text style={styles.priceTitle}>
+              {t("taxi.quote.priceBreakdown", "Price breakdown")}
+            </Text>
+          </View>
+          {quoteState ? (
+            <>
+              {subtotalCents > 0 ? (
+                <PriceRow
+                  label={t("taxi.ui.subtotal", "Subtotal")}
+                  value={fmt(subtotalCents)}
+                />
+              ) : null}
+              {taxCents > 0 ? (
+                <PriceRow
+                  label={t("taxi.ui.tax", "Tax")}
+                  value={fmt(taxCents)}
+                />
+              ) : null}
+              {serviceFeeCents > 0 ? (
+                <PriceRow
+                  label={t("taxi.quote.serviceFee", "Service fee")}
+                  value={fmt(serviceFeeCents)}
+                />
+              ) : null}
+              {platformFeeCents > 0 ? (
+                <PriceRow
+                  label={t("taxi.ui.platformFee", "Platform fee")}
+                  value={fmt(platformFeeCents)}
+                />
+              ) : null}
+              {promoDiscountCents > 0 ? (
+                <PriceRow
+                  label={t("taxi.quote.promoDiscount", "Promo discount")}
+                  value={`-${fmt(promoDiscountCents)}`}
+                />
+              ) : null}
+              {rewardDiscountCents > 0 ? (
+                <PriceRow
+                  label={t("taxi.quote.rewardCredit", "Reward credit")}
+                  value={`-${fmt(rewardDiscountCents)}`}
+                />
+              ) : null}
+              {sharedDiscountCents > 0 ? (
+                <PriceRow
+                  label={t("taxi.quote.sharedRideDiscount", "Shared ride discount")}
+                  value={`-${fmt(sharedDiscountCents)}`}
+                />
+              ) : null}
+              <View style={styles.totalDivider} />
+              <PriceRow
+                label={t("taxi.ui.total", "Total")}
+                value={total}
+                bold
+              />
+            </>
+          ) : quoting ? (
+            <ActivityIndicator color={MMD_TAXI_GREEN} style={{ marginTop: 8 }} />
+          ) : (
+            <Text style={[styles.quoteEmpty, { textAlign: textAlignStart() }]}>
+              {t("taxi.quote.quoteUnavailable", "Estimate unavailable — check addresses")}
+            </Text>
+          )}
         </View>
 
-        <View style={{ gap: 10 }}>
+        <View style={styles.card}>
           <OptionToggle
+            icon={ICON.refresh}
             label={t("taxi.quote.sharedRide", "Shared ride (-15%)")}
             active={sharedRide}
             onPress={() => setSharedRide((v) => !v)}
           />
-          <Text
-            style={{
-              color: "#94A3B8",
-              fontSize: 12,
-              lineHeight: 17,
-              textAlign: textAlignStart(),
-            }}
-          >
-            {t(
-              "taxi.quote.sharedRideHint",
-              "Optional discount when another passenger shares a similar route. No passenger is matched yet — if no match is found before pickup, you keep the discounted solo fare."
-            )}
-          </Text>
+          <View style={styles.rowDivider} />
           <OptionToggle
+            icon={ICON.star}
             label={t("taxi.quote.premiumDriver", "Premium driver only")}
             active={premiumDriverOnly}
             onPress={() => setPremiumDriverOnly((v) => !v)}
           />
           {businessAccounts.length > 0 ? (
             <>
+              <View style={styles.rowDivider} />
               <OptionToggle
+                icon={ICON.briefcase}
                 label={t("taxi.quote.businessRide", "Business ride")}
                 active={businessRide}
                 onPress={() => setBusinessRide((v) => !v)}
               />
-              {businessRide ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: rowDirection(), gap: 8 }}>
-                    {businessAccounts.map((entry) => {
-                      const id = entry.account?.id;
-                      if (!id) return null;
-                      const selected = businessAccountId === id;
-                      return (
-                        <TouchableOpacity
-                          key={entry.member_id}
-                          onPress={() => setBusinessAccountId(id)}
-                          style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 10,
-                            borderRadius: 12,
-                            borderWidth: 1,
-                            borderColor: selected ? "#38BDF8" : "#334155",
-                          }}
-                        >
-                          <Text style={{ color: "#E2E8F0" }}>
-                            {entry.account?.name ?? id.slice(0, 8)}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
-              ) : null}
             </>
           ) : null}
         </View>
+        <Text style={[styles.hint, { textAlign: textAlignStart() }]}>
+          {t(
+            "taxi.quote.sharedRideHint",
+            "Optional discount when another passenger shares a similar route. No passenger is matched yet — if no match is found before pickup, you keep the discounted solo fare."
+          )}
+        </Text>
+        {businessRide && businessAccounts.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: rowDirection(), gap: 8 }}>
+              {businessAccounts.map((entry) => {
+                const id = entry.account?.id;
+                if (!id) return null;
+                const selected = businessAccountId === id;
+                const name = entry.account?.name?.trim();
+                return (
+                  <TouchableOpacity
+                    key={entry.member_id}
+                    onPress={() => setBusinessAccountId(id)}
+                    style={[styles.chip, selected ? styles.chipSelected : null]}
+                  >
+                    <Text style={styles.chipLabel}>{name || id.slice(0, 8)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+        ) : null}
 
-        <View style={{ gap: 8 }}>
-          <Text style={{ color: "#CBD5E1", fontWeight: "600", textAlign: textAlignStart() }}>
-            {t("taxi.quote.promoCode", "Promo code")}
-          </Text>
-          <View style={{ flexDirection: rowDirection(), gap: 8 }}>
+        <View style={styles.priceCard}>
+          <View style={[styles.priceTitleRow, { flexDirection: rowDirection() }]}>
+            <QuoteIcon source={ICON.ticket} size={20} />
+            <Text style={styles.priceTitle}>
+              {t("taxi.quote.promoCode", "Promo code")}
+            </Text>
+          </View>
+          <View style={[styles.promoRow, { flexDirection: rowDirection() }]}>
             <TextInput
               value={promoCode}
               onChangeText={setPromoCode}
               placeholder={t("taxi.quote.enterCode", "Enter code")}
-              placeholderTextColor="#64748B"
+              placeholderTextColor="rgba(255,255,255,0.7)"
               autoCapitalize="characters"
-              style={{
-                flex: 1,
-                backgroundColor: MMD_GLASS,
-                borderWidth: 1,
-                borderColor: "rgba(212,175,55,0.7)",
-                borderRadius: 14,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                color: MMD_WHITE,
-                fontFamily: MMD_FONT.regular,
-              }}
+              style={styles.promoInput}
             />
-            <TouchableOpacity
-              onPress={handleApplyPromo}
-              style={{
-                backgroundColor: MMD_TAXI_GREEN,
-                paddingHorizontal: 18,
-                borderRadius: 14,
-                justifyContent: "center",
-              }}
-            >
-              <Text
-                style={{
-                  color: MMD_WHITE,
-                  fontWeight: "800",
-                  fontFamily: MMD_FONT.extrabold,
-                }}
-              >
-                {t("taxi.quote.apply", "Apply")}
-              </Text>
+            <TouchableOpacity onPress={handleApplyPromo} style={styles.applyButton}>
+              <Text style={styles.applyLabel}>{t("taxi.quote.apply", "Apply")}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {rewards.length > 0 ? (
           <View style={{ gap: 8 }}>
-            <Text style={{ color: "#CBD5E1", fontWeight: "600", textAlign: textAlignStart() }}>
+            <Text style={[styles.sectionLabel, { textAlign: textAlignStart() }]}>
               {t("taxi.quote.loyaltyReward", "Loyalty reward")}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -753,15 +806,9 @@ export default function TaxiQuoteScreen() {
                     setRewardId(null);
                     setRewardDiscountCents(0);
                   }}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: rewardId ? "#334155" : "#38BDF8",
-                  }}
+                  style={[styles.chip, !rewardId ? styles.chipSelected : null]}
                 >
-                  <Text style={{ color: "#E2E8F0" }}>{t("taxi.quote.none", "None")}</Text>
+                  <Text style={styles.chipLabel}>{t("taxi.quote.none", "None")}</Text>
                 </TouchableOpacity>
                 {rewards.map((reward) => {
                   const selected = rewardId === reward.id;
@@ -772,16 +819,13 @@ export default function TaxiQuoteScreen() {
                         setRewardId(reward.id);
                         setRewardDiscountCents(reward.discount_cents);
                       }}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: selected ? "#38BDF8" : "#334155",
-                      }}
+                      style={[styles.chip, selected ? styles.chipSelected : null]}
                     >
-                      <Text style={{ color: "#E2E8F0" }}>
-                        {reward.title} ({reward.points_cost} pts)
+                      <Text style={styles.chipLabel}>
+                        {t("taxi.quote.loyaltyPoints", "{{title}} ({{count}} pts)", {
+                          title: reward.title,
+                          count: reward.points_cost,
+                        })}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -793,22 +837,16 @@ export default function TaxiQuoteScreen() {
 
         {favoriteDrivers.length > 0 ? (
           <View style={{ gap: 8 }}>
-            <Text style={{ color: "#CBD5E1", fontWeight: "600", textAlign: textAlignStart() }}>
+            <Text style={[styles.sectionLabel, { textAlign: textAlignStart() }]}>
               {t("taxi.quote.preferredDriver", "Preferred driver (optional)")}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: rowDirection(), gap: 8 }}>
                 <TouchableOpacity
                   onPress={() => setPreferredDriverId(null)}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: preferredDriverId ? "#334155" : "#38BDF8",
-                  }}
+                  style={[styles.chip, !preferredDriverId ? styles.chipSelected : null]}
                 >
-                  <Text style={{ color: "#E2E8F0" }}>{t("taxi.quote.any", "Any")}</Text>
+                  <Text style={styles.chipLabel}>{t("taxi.quote.any", "Any")}</Text>
                 </TouchableOpacity>
                 {favoriteDrivers.map((fav) => {
                   const selected = preferredDriverId === fav.driver_user_id;
@@ -816,15 +854,9 @@ export default function TaxiQuoteScreen() {
                     <TouchableOpacity
                       key={fav.driver_user_id}
                       onPress={() => setPreferredDriverId(fav.driver_user_id)}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: selected ? "#38BDF8" : "#334155",
-                      }}
+                      style={[styles.chip, selected ? styles.chipSelected : null]}
                     >
-                      <Text style={{ color: "#E2E8F0" }}>
+                      <Text style={styles.chipLabel}>
                         {fav.driver_user_id.slice(0, 8)}…
                       </Text>
                     </TouchableOpacity>
@@ -838,33 +870,31 @@ export default function TaxiQuoteScreen() {
         <TouchableOpacity
           onPress={handleConfirmAndPay}
           disabled={paying || !quoteState}
-          style={{
-            marginTop: 12,
-            backgroundColor: quoteState ? MMD_TAXI_GREEN : "#475569",
-            paddingVertical: 16,
-            borderRadius: 18,
-            alignItems: "center",
-            opacity: quoteState ? 1 : 0.6,
-          }}
+          style={[
+            styles.cta,
+            {
+              backgroundColor: quoteState ? MMD_TAXI_GREEN : "#475569",
+              opacity: quoteState ? 1 : 0.6,
+              flexDirection: rowDirection(),
+            },
+          ]}
+          accessibilityRole="button"
         >
-          {paying ? (
+          {paying || (quoting && !quoteState) ? (
             <ActivityIndicator color={MMD_WHITE} />
           ) : (
-            <Text
-              style={{
-                color: MMD_WHITE,
-                fontWeight: "800",
-                fontSize: 19,
-                fontFamily: MMD_FONT.extrabold,
-              }}
-            >
-              {quoteState
-                ? `✅ ${t("taxi.quote.confirmPayTotal", "Confirm & pay {{total}}", { total })}`
-                : t("taxi.quote.quoteUnavailable", "Estimate unavailable — check addresses")}
-            </Text>
+            <>
+              {quoteState ? <QuoteIcon source={ICON.check} size={22} /> : null}
+              <Text style={styles.ctaLabel}>
+                {quoteState
+                  ? t("taxi.quote.confirmPayTotal", "Confirm & pay {{total}}", { total })
+                  : t("taxi.quote.quoteUnavailable", "Estimate unavailable — check addresses")}
+              </Text>
+            </>
           )}
         </TouchableOpacity>
       </ScrollView>
+      <ClientServiceBottomNav active="home" appearance="glass" />
     </SafeAreaView>
     <PaymentMethodPicker
       visible={paymentPickerVisible}
@@ -881,56 +911,91 @@ export default function TaxiQuoteScreen() {
   );
 }
 
-function Card({ label, value }: { label: string; value: string }) {
+function TaxiQuoteHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
+  const insets = useSafeAreaInsets();
+  const goBack = useSafeBackNavigation("ClientHome");
+  const { t } = useTranslation();
+
   return (
-    <View
-      style={{
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        borderRadius: 24,
-        backgroundColor: MMD_GLASS,
-        borderWidth: 1,
-        borderColor: "rgba(212,175,55,0.7)",
-        flexDirection: rowDirection(),
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        gap: 12,
-        width: "100%",
-        overflow: "hidden",
-      }}
-    >
-      <Text
-        style={{
-          color: MMD_GOLD_CLASSIC,
-          fontSize: 15,
-          fontWeight: "700",
-          fontFamily: MMD_FONT.bold,
-          textAlign: textAlignStart(),
-          flexShrink: 0,
-          maxWidth: "38%",
-        }}
-      >
-        {label}
-      </Text>
-      <Text
-        style={{
-          color: MMD_WHITE,
-          fontSize: 16,
-          fontWeight: "700",
-          fontFamily: MMD_FONT.bold,
-          flex: 1,
-          flexShrink: 1,
-          minWidth: 0,
-          textAlign: "right",
-        }}
-      >
+    <View style={[styles.header, { paddingTop: Math.max(insets.top, 8) }]}>
+      <View style={[styles.headerRow, { flexDirection: rowDirection() }]}>
+        <TouchableOpacity
+          onPress={goBack}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.back", "Back")}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <QuoteIcon source={ICON.arrowLeft} size={22} />
+        </TouchableOpacity>
+        <Image
+          source={MMD_LOGO}
+          style={styles.brand}
+          resizeMode="contain"
+          accessibilityLabel="MMD"
+        />
+        <View style={styles.titleBlock}>
+          <View style={[styles.titleRow, { flexDirection: rowDirection() }]}>
+            <Text style={styles.title} numberOfLines={2} accessibilityRole="header">
+              {title}
+            </Text>
+            <QuoteIcon source={ICON.sparkles} size={24} />
+          </View>
+          <Text style={[styles.subtitle, { textAlign: textAlignStart() }]} numberOfLines={3}>
+            {subtitle}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function QuoteIcon({
+  source,
+  size,
+}: {
+  source: ImageSourcePropType;
+  size: number;
+}) {
+  return (
+    <Image
+      source={source}
+      style={{ width: size, height: size }}
+      resizeMode="contain"
+      accessible={false}
+    />
+  );
+}
+
+function DetailRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: ImageSourcePropType;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={[styles.detailRow, { flexDirection: rowDirection() }]}>
+      <View style={[styles.detailLabelWrap, { flexDirection: rowDirection() }]}>
+        <QuoteIcon source={icon} size={20} />
+        <Text style={styles.detailLabel}>{label}</Text>
+      </View>
+      <Text style={[styles.detailValue, { textAlign: textAlignEnd() }]} numberOfLines={2}>
         {value}
       </Text>
     </View>
   );
 }
 
-function Row({
+function PriceRow({
   label,
   value,
   bold,
@@ -940,37 +1005,22 @@ function Row({
   bold?: boolean;
 }) {
   return (
-    <View
-      style={{
-        flexDirection: rowDirection(),
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        gap: 12,
-        width: "100%",
-      }}
-    >
+    <View style={[styles.priceRow, { flexDirection: rowDirection() }]}>
       <Text
-        style={{
-          color: MMD_GOLD_CLASSIC,
-          fontFamily: bold ? MMD_FONT.extrabold : MMD_FONT.regular,
-          fontWeight: bold ? "800" : "400",
-          flexShrink: 0,
-          maxWidth: "42%",
-        }}
+        style={[
+          styles.priceLabel,
+          bold ? styles.priceLabelBold : null,
+          { textAlign: textAlignStart() },
+        ]}
       >
         {label}
       </Text>
       <Text
-        style={{
-          color: bold ? MMD_TAXI_GREEN : MMD_WHITE,
-          fontWeight: bold ? "800" : "700",
-          fontFamily: bold ? MMD_FONT.extrabold : MMD_FONT.bold,
-          fontSize: bold ? 24 : 15,
-          flex: 1,
-          flexShrink: 1,
-          minWidth: 0,
-          textAlign: "right",
-        }}
+        style={[
+          styles.priceValue,
+          bold ? styles.priceValueBold : null,
+          { textAlign: textAlignEnd() },
+        ]}
       >
         {value}
       </Text>
@@ -979,10 +1029,12 @@ function Row({
 }
 
 function OptionToggle({
+  icon,
   label,
   active,
   onPress,
 }: {
+  icon: ImageSourcePropType;
   label: string;
   active: boolean;
   onPress: () => void;
@@ -990,57 +1042,343 @@ function OptionToggle({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={{
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        borderRadius: 24,
-        borderWidth: 1,
-        borderColor: "rgba(212,175,55,0.7)",
-        backgroundColor: MMD_GLASS,
-        flexDirection: rowDirection(),
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 12,
-        width: "100%",
-        overflow: "hidden",
-      }}
+      style={[styles.optionRow, { flexDirection: rowDirection() }]}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: active }}
+      accessibilityLabel={label}
     >
-      <Text
-        style={{
-          color: MMD_WHITE,
-          fontWeight: "700",
-          fontFamily: MMD_FONT.bold,
-          fontSize: 16,
-          flex: 1,
-          flexShrink: 1,
-          minWidth: 0,
-        }}
-      >
-        {label}
-      </Text>
+      <View style={[styles.optionLabelWrap, { flexDirection: rowDirection() }]}>
+        <QuoteIcon source={icon} size={20} />
+        <Text style={styles.optionLabel}>{label}</Text>
+      </View>
       <View
-        style={{
-          width: 44,
-          height: 24,
-          borderRadius: 12,
-          padding: 2,
-          flexShrink: 0,
-          backgroundColor: active ? MMD_TAXI_GREEN : MMD_GLASS,
-          borderWidth: active ? 0 : 1,
-          borderColor: "rgba(212,175,55,0.7)",
-          justifyContent: "center",
-          alignItems: active ? "flex-end" : "flex-start",
-        }}
+        style={[
+          styles.switchTrack,
+          active ? styles.switchTrackOn : styles.switchTrackOff,
+          { alignItems: active ? "flex-end" : "flex-start" },
+        ]}
       >
         <View
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 10,
-            backgroundColor: active ? "#94A3B8" : MMD_WHITE,
-          }}
+          style={[
+            styles.switchThumb,
+            { backgroundColor: active ? "#94A3B8" : MMD_WHITE },
+          ]}
         />
       </View>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: MMD_BLUE,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  headerRow: {
+    gap: 12,
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  backButton: {
+    width: APP_HIT.min,
+    height: APP_HIT.min,
+    borderRadius: 14,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: GOLD_STROKE,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  brand: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: GOLD_STROKE,
+    flexShrink: 0,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  titleRow: {
+    gap: 10,
+    alignItems: "center",
+  },
+  title: {
+    color: MMD_WHITE,
+    fontSize: 32,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  subtitle: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
+  scroll: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+    gap: 16,
+  },
+  card: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: GOLD_STROKE,
+    borderRadius: 24,
+    overflow: "hidden",
+    width: "100%",
+  },
+  priceCard: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: GOLD_STROKE,
+    borderRadius: 24,
+    padding: 20,
+    gap: 12,
+    width: "100%",
+  },
+  rowDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    width: "100%",
+  },
+  detailRow: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 12,
+    width: "100%",
+  },
+  detailLabelWrap: {
+    gap: 10,
+    alignItems: "center",
+    flexShrink: 0,
+    maxWidth: "46%",
+  },
+  detailLabel: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 15,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  detailValue: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    flex: 1,
+    minWidth: 0,
+  },
+  detected: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    fontFamily: MMD_FONT.regular,
+  },
+  pinRow: {
+    gap: 12,
+    width: "100%",
+  },
+  pinButton: {
+    flex: 1,
+    minWidth: 0,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: MMD_TAXI_GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 8,
+  },
+  pinButtonLabel: {
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    textAlign: "center",
+    flexShrink: 1,
+  },
+  priceTitleRow: {
+    gap: 10,
+    alignItems: "center",
+  },
+  priceTitle: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 18,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    flexShrink: 1,
+  },
+  priceRow: {
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    width: "100%",
+  },
+  priceLabel: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+    flexShrink: 0,
+    maxWidth: "48%",
+  },
+  priceLabelBold: {
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  priceValue: {
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    flex: 1,
+    minWidth: 0,
+  },
+  priceValueBold: {
+    color: MMD_TAXI_GREEN,
+    fontSize: 24,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  totalDivider: {
+    height: 1,
+    backgroundColor: MMD_GOLD_CLASSIC,
+    opacity: 0.35,
+    width: "100%",
+  },
+  quoteEmpty: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    fontFamily: MMD_FONT.regular,
+  },
+  optionRow: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 12,
+    width: "100%",
+  },
+  optionLabelWrap: {
+    gap: 12,
+    alignItems: "center",
+    flex: 1,
+    minWidth: 0,
+  },
+  optionLabel: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+    flex: 1,
+    flexShrink: 1,
+  },
+  switchTrack: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
+    flexShrink: 0,
+    justifyContent: "center",
+  },
+  switchTrackOn: {
+    backgroundColor: MMD_TAXI_GREEN,
+  },
+  switchTrackOff: {
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: GOLD_STROKE,
+  },
+  switchThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  hint: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: MMD_FONT.regular,
+  },
+  promoRow: {
+    gap: 12,
+    alignItems: "center",
+    width: "100%",
+  },
+  promoInput: {
+    flex: 1,
+    minWidth: 0,
+    height: 52,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: GOLD_STROKE,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.regular,
+  },
+  applyButton: {
+    backgroundColor: MMD_TAXI_GREEN,
+    height: 52,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  applyLabel: {
+    color: MMD_WHITE,
+    fontSize: 15,
+    fontFamily: MMD_FONT.extrabold,
+    fontWeight: "800",
+  },
+  sectionLabel: {
+    color: MMD_GOLD_CLASSIC,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: GOLD_STROKE,
+    backgroundColor: MMD_GLASS,
+  },
+  chipSelected: {
+    borderColor: MMD_TAXI_GREEN,
+  },
+  chipLabel: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.regular,
+  },
+  cta: {
+    height: 58,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    width: "100%",
+    paddingHorizontal: 12,
+  },
+  ctaLabel: {
+    color: MMD_WHITE,
+    fontWeight: "800",
+    fontSize: 19,
+    fontFamily: MMD_FONT.extrabold,
+    textAlign: "center",
+    flexShrink: 1,
+  },
+});

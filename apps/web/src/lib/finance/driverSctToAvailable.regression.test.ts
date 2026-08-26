@@ -53,9 +53,14 @@ test("Food completed → earning → SCT → Available (delivered-confirm + proc
 test("Taxi completed → earning → SCT → Available", () => {
   const taxiCron = read("app/api/cron/taxi-payouts/route.ts");
   const wallet = read("src/lib/driverWalletService.ts");
+  const retry = read("src/lib/finance/retryAwaitingConnectTransfers.ts");
   assert.match(taxiCron, /taxi/);
   assert.match(wallet, /taxi_commissions/);
   assert.match(wallet, /driver_transfer_id/);
+  assert.match(wallet, /retryAwaitingConnectTransfers/);
+  assert.match(wallet, /awaitingBeforeRetry/);
+  assert.match(retry, /vertical:\s*"taxi"/);
+  assert.match(retry, /ensureWorkerConnectCredit/);
 });
 
 test("Package completed → earning → SCT → Available (orphan bridge)", () => {

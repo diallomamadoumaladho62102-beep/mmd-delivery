@@ -21,7 +21,7 @@ import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
-import { formatMoney, formatDateTime as formatLocalizedDateTime } from "../i18n/formatters";
+import { formatMoney, formatDateTime as formatLocalizedDateTime, formatDistance as formatLocalizedDistance } from "../i18n/formatters";
 import { rowDirection, textAlignStart } from "../i18n/rtl";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
@@ -35,18 +35,24 @@ import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { toCoordinatePoint } from "../lib/coordinates";
 import { getApiBaseUrl } from "../lib/apiBase";
 import { VerificationCodeCard } from "../components/shared/VerificationCodeCard";
+import { Ionicons } from "@expo/vector-icons";
+import { startMaskedCall } from "../lib/maskedCall";
+import { ClientServiceBottomNav } from "../components/navigation/ClientServiceBottomNav";
 import {
   MMD_BLUE,
   MMD_FONT,
+  MMD_GLASS,
   MMD_GOLD_BRIGHT,
+  MMD_GOLD_CLASSIC_BORDER,
   MMD_NAVY,
+  MMD_TAXI_GREEN,
   MMD_WHITE,
 } from "../theme/mmdUi";
 
 const API_URL = getApiBaseUrl();
-const MMD_GREEN = "#22C55E";
-const MMD_CARD_BG = "rgba(15,23,42,0.92)";
-const MMD_CARD_BORDER = "rgba(255,255,255,0.08)";
+const MMD_GREEN = MMD_TAXI_GREEN;
+const MMD_CARD_BG = MMD_GLASS;
+const MMD_CARD_BORDER = MMD_GOLD_CLASSIC_BORDER;
 
 const AVATARS_BUCKET = "avatars";
 
@@ -178,9 +184,9 @@ function toSafeNumber(value: unknown): number | null {
     : null;
 }
 
-function formatDistance(distance: number | null | undefined, dash: string) {
-  if (typeof distance !== "number" || Number.isNaN(distance)) return dash;
-  return `${distance.toFixed(1)} mi`;
+function shortRef(value: string | null | undefined) {
+  if (!value) return "—";
+  return value.slice(0, 8);
 }
 
 function normalizeKind(value: unknown): string {
@@ -195,27 +201,6 @@ function normalizeStatus(value: unknown): string {
     .trim()
     .toLowerCase();
 }
-
-function shortRef(value: string | null | undefined) {
-  if (!value) return "—";
-  return value.slice(0, 8);
-}
-
-function statusColor(status: string | null) {
-  if (status === "delivered") return "#86EFAC";
-  if (status === "canceled") return "#FCA5A5";
-  if (status === "dispatched") return "#93C5FD";
-  if (status === "accepted") return "#BFDBFE";
-  return "#CBD5E1";
-}
-
-function paymentColor(status: string | null) {
-  if (status === "paid") return "#86EFAC";
-  if (status === "processing") return "#FDE68A";
-  if (status === "unpaid") return "#FCA5A5";
-  return "#CBD5E1";
-}
-
 
 function InfoCard({
   label,
@@ -428,20 +413,6 @@ export function ClientDeliveryRequestDetailsScreen() {
     [dash, i18n.language]
   );
 
-  const prettyStatus = useCallback(
-    (status: string | null) => {
-      if (status === "pending") return t("client.deliveryRequest.status.pending", "Pending");
-      if (status === "accepted") return t("client.deliveryRequest.status.accepted", "Driver assigned");
-      if (status === "prepared") return t("client.deliveryRequest.status.prepared", "Preparing pickup");
-      if (status === "ready") return t("client.deliveryRequest.status.ready", "Ready for pickup");
-      if (status === "dispatched") return t("client.deliveryRequest.status.dispatched", "On the way");
-      if (status === "delivered") return t("client.deliveryRequest.status.delivered", "Delivered");
-      if (status === "canceled") return t("client.deliveryRequest.status.canceled", "Canceled");
-      return status ?? t("client.deliveryRequest.status.pending", "Pending");
-    },
-    [t]
-  );
-
   const prettyPaymentStatus = useCallback(
     (status: string | null) => {
       if (status === "paid") return t("client.deliveryRequest.payment.paid", "Paid");
@@ -459,6 +430,7 @@ export function ClientDeliveryRequestDetailsScreen() {
   const [ratingComment, setRatingComment] = useState("");
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [alreadyRatedDriver, setAlreadyRatedDriver] = useState(false);
+  const [calling, setCalling] = useState(false);
   const [data, setData] = useState<ScreenData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
@@ -919,6 +891,56 @@ export function ClientDeliveryRequestDetailsScreen() {
     String(driverProfile?.full_name ?? "").trim() ||
     t("client.deliveryRequest.assignedDriver", "Assigned driver");
 
+  const statusNorm = normalizeStatus(data?.status);
+  const paymentNorm = String(data?.payment_status ?? "").toLowerCase();
+  const isLive =
+    !!data?.driver_id &&
+    !["delivered", "completed", "canceled", "cancelled"].includes(statusNorm);
+  const badgeLabel =
+    statusNorm === "delivered"
+      ? t("client.deliveryRequest.status.delivered", "Delivered")
+      : statusNorm === "dispatched" || statusNorm === "ready"
+        ? t("client.deliveryRequest.status.dispatched", "On the way")
+        : statusNorm === "accepted" || statusNorm === "prepared"
+          ? t("client.deliveryRequest.status.accepted", "Driver assigned")
+          : t("client.deliveryRequest.status.pending", "Pending");
+
+  async function handleCallDriver() {
+    if (!data?.driver_id || calling) return;
+    const callId = data.orderId || data.requestId;
+    if (!callId) return;
+    setCalling(true);
+    try {
+      await startMaskedCall({
+        orderId: callId,
+        callerRole: "client",
+        targetRole: "driver",
+        sourceTable: data.orderId ? "orders" : "delivery_requests",
+      });
+    } catch (e) {
+      Alert.alert(
+        t("client.deliveryRequest.callDriver", "Call driver"),
+        toUserFacingError(
+          e,
+          t("client.deliveryRequest.callFailed", "Unable to start a masked call right now."),
+        ),
+      );
+    } finally {
+      setCalling(false);
+    }
+  }
+
+  function handleChatDriver() {
+    if (!data) return;
+    const chatId = data.orderId || data.requestId;
+    if (!chatId) return;
+    navigation.navigate("ClientChat", {
+      orderId: chatId,
+      targetRole: "driver",
+      sourceTable: data.orderId ? "orders" : "delivery_requests",
+    });
+  }
+
   async function handleCancelDeliveryRequest() {
     if (!data) return;
 
@@ -1041,8 +1063,8 @@ export function ClientDeliveryRequestDetailsScreen() {
       <ScreenHeader
         title={title}
         subtitle={t(
-          "client.deliveryRequest.subtitle",
-          "Delivery request details, codes and tracking status"
+          "client.deliveryRequest.subtitleTracking",
+          "Active tracking of your items"
         )}
         fallbackRoute="ClientHome"
         variant="brand"
@@ -1054,25 +1076,35 @@ export function ClientDeliveryRequestDetailsScreen() {
             flex: 1,
             justifyContent: "center",
             alignItems: "center",
-            paddingHorizontal: 24,
-            gap: 12,
+            paddingHorizontal: 20,
           }}
         >
-          <ActivityIndicator size="large" color={MMD_GOLD_BRIGHT} />
-          <Text
+          <View
             style={{
-              color: MMD_WHITE,
-              fontSize: 20,
-              fontWeight: "700",
-              fontFamily: MMD_FONT.bold,
-              textAlign: "center",
+              width: "100%",
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: MMD_GOLD_CLASSIC_BORDER,
+              backgroundColor: MMD_GLASS,
+              paddingVertical: 32,
+              paddingHorizontal: 24,
+              alignItems: "center",
+              gap: 12,
             }}
           >
-            {t("client.deliveryRequest.loadingTitle", "Loading delivery…")}
-          </Text>
-          <Text style={{ color: MMD_WHITE, fontSize: 14, fontFamily: MMD_FONT.regular }}>
-            {t("client.deliveryRequest.loading", "Loading request...")}
-          </Text>
+            <ActivityIndicator size="large" color={MMD_GOLD_BRIGHT} />
+            <Text
+              style={{
+                color: MMD_WHITE,
+                fontSize: 16,
+                fontWeight: "700",
+                fontFamily: MMD_FONT.bold,
+                textAlign: "center",
+              }}
+            >
+              {t("client.deliveryRequest.loadingTitle", "Loading delivery…")}
+            </Text>
+          </View>
         </View>
       ) : error ? (
         <View
@@ -1123,7 +1155,7 @@ export function ClientDeliveryRequestDetailsScreen() {
         <ScrollView
           contentContainerStyle={{
             padding: 18,
-            paddingBottom: 36,
+            paddingBottom: 120,
           }}
           showsVerticalScrollIndicator={false}
         >
@@ -1146,7 +1178,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                 driverHeadingDeg={smoothedDriver?.headingDeg ?? null}
                 driverMoving={smoothedDriver?.moving ?? false}
                 routeGeometry={liveEta.eta?.geometry ?? null}
-                height={240}
+                height={160}
                 showRezoom
                 customerChrome
                 hideInternalBadge
@@ -1162,7 +1194,51 @@ export function ClientDeliveryRequestDetailsScreen() {
                       : null
                 }
               />
-              <LiveEtaBanner
+              {liveEta.eta?.etaMinutes != null || liveEta.eta?.distanceMiles != null ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 100,
+                    backgroundColor: MMD_GLASS,
+                    borderWidth: 1,
+                    borderColor: MMD_GOLD_CLASSIC_BORDER,
+                  }}
+                >
+                  <Text style={{ fontSize: 14 }}>⚡</Text>
+                  <Text
+                    style={{
+                      flex: 1,
+                      color: MMD_WHITE,
+                      fontSize: 13,
+                      fontFamily: MMD_FONT.semibold,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {[
+                      liveEta.eta?.etaMinutes != null
+                        ? t("client.deliveryRequest.etaMinutes", "{{n}} min", {
+                            n: Math.round(liveEta.eta.etaMinutes),
+                          })
+                        : null,
+                      liveEta.eta?.distanceMiles != null
+                        ? formatLocalizedDistance(liveEta.eta.distanceMiles, i18n.language)
+                        : null,
+                      liveEta.eta?.nextStep
+                        ? t("client.deliveryRequest.nextStep", "Next: {{step}}", {
+                            step: liveEta.eta.nextStep,
+                          })
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                </View>
+              ) : (
+                <LiveEtaBanner
                 distanceMiles={liveEta.eta?.distanceMiles}
                 etaMinutes={liveEta.eta?.etaMinutes}
                 nextStep={liveEta.eta?.nextStep}
@@ -1177,6 +1253,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                   "Live ETA unavailable"
                 )}
               />
+              )}
               {data.driver_id && !driverCoord ? (
                 <Text style={{ color: "#FBBF24", fontSize: 12, fontWeight: "700" }}>
                   {t(
@@ -1204,49 +1281,50 @@ export function ClientDeliveryRequestDetailsScreen() {
               marginBottom: 14,
             }}
           >
-            <Text
+            <View
               style={{
-                color: MMD_WHITE,
-                fontSize: 12,
-                marginBottom: 6,
-                fontFamily: MMD_FONT.regular,
-              }}
-            >
-              {t("client.deliveryRequest.currentStatus", "Current status")}
-            </Text>
-            <Text
-              style={{
-                color: statusColor(data.status),
-                fontSize: 18,
-                fontWeight: "800",
-                fontFamily: MMD_FONT.extrabold,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
                 marginBottom: 14,
               }}
             >
-              {prettyStatus(data.status)}
-            </Text>
-
-            <Text
-              style={{
-                color: MMD_WHITE,
-                fontSize: 12,
-                marginBottom: 6,
-                fontFamily: MMD_FONT.regular,
-              }}
-            >
-              {t("client.deliveryRequest.paymentStatus", "Payment status")}
-            </Text>
-            <Text
-              style={{
-                color: paymentColor(data.payment_status),
-                fontSize: 16,
-                fontWeight: "800",
-                fontFamily: MMD_FONT.extrabold,
-                marginBottom: 14,
-              }}
-            >
-              {prettyPaymentStatus(data.payment_status)}
-            </Text>
+              <Text
+                style={{
+                  color: MMD_WHITE,
+                  fontSize: 15,
+                  fontFamily: MMD_FONT.semibold,
+                  fontWeight: "600",
+                }}
+              >
+                {t("client.deliveryRequest.currentStatus", "Status")}
+              </Text>
+              <View
+                style={{
+                  backgroundColor: MMD_TAXI_GREEN,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 100,
+                }}
+              >
+                <Text
+                  style={{
+                    color: MMD_WHITE,
+                    fontSize: 11,
+                    fontFamily: MMD_FONT.bold,
+                    fontWeight: "700",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {badgeLabel}
+                </Text>
+              </View>
+            </View>
+            {paymentNorm === "unpaid" ? (
+              <Text style={{ color: "#FCA5A5", fontSize: 13, marginBottom: 12, fontFamily: MMD_FONT.semibold }}>
+                {prettyPaymentStatus(data.payment_status)}
+              </Text>
+            ) : null}
 
             <Text
               style={{
@@ -1351,7 +1429,49 @@ export function ClientDeliveryRequestDetailsScreen() {
                   >
                     {driverDisplayName}
                   </Text>
+                  <Text style={{ color: "#BFDBFE", fontSize: 12, fontFamily: MMD_FONT.regular, marginTop: 2 }}>
+                    {driverState}
+                  </Text>
                 </View>
+                {isLive ? (
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => void handleCallDriver()}
+                      disabled={calling}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("client.deliveryRequest.callDriver", "Call driver")}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 12,
+                        backgroundColor: MMD_GLASS,
+                        borderWidth: 1,
+                        borderColor: MMD_GOLD_CLASSIC_BORDER,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons name="call-outline" size={16} color={MMD_WHITE} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleChatDriver}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("client.deliveryRequest.chatDriver", "Chat")}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 12,
+                        backgroundColor: MMD_GLASS,
+                        borderWidth: 1,
+                        borderColor: MMD_GOLD_CLASSIC_BORDER,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons name="chatbubble-outline" size={16} color={MMD_WHITE} />
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
@@ -1589,6 +1709,7 @@ export function ClientDeliveryRequestDetailsScreen() {
             </View>
           )}
 
+          {!["delivered", "completed", "canceled", "cancelled"].includes(statusNorm) ? (
           <VerificationCodeCard
             title={t(
               "client.deliveryRequest.pickupCodeTitle",
@@ -1604,7 +1725,11 @@ export function ClientDeliveryRequestDetailsScreen() {
               "The pickup code will appear here as soon as the linked delivery order is available.",
             )}
           />
+          ) : null}
 
+          {!["pending", "paid_pending", "processing_pending", "delivered", "completed", "canceled", "cancelled"].includes(
+            statusNorm,
+          ) ? (
           <VerificationCodeCard
             title={t(
               "client.deliveryRequest.dropoffCodeTitle",
@@ -1620,15 +1745,60 @@ export function ClientDeliveryRequestDetailsScreen() {
               "The dropoff code will appear here as soon as the linked delivery order is available.",
             )}
           />
+          ) : null}
+
+          {["delivered", "completed"].includes(statusNorm) ? (
+            <View
+              style={{
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: "rgba(245,158,11,0.35)",
+                backgroundColor: MMD_BLUE,
+                padding: 14,
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: MMD_WHITE,
+                  fontSize: 13,
+                  fontFamily: MMD_FONT.bold,
+                  fontWeight: "700",
+                  marginBottom: 10,
+                }}
+              >
+                {t("client.deliveryRequest.summaryTitle", "Delivery summary")}
+              </Text>
+              {data.distance_miles != null ? (
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+                  <Text style={{ color: "#94A3B8", fontFamily: MMD_FONT.regular }}>
+                    {t("client.deliveryRequest.distance", "Distance")}
+                  </Text>
+                  <Text style={{ color: MMD_WHITE, fontFamily: MMD_FONT.semibold }}>
+                    {formatLocalizedDistance(data.distance_miles, i18n.language)}
+                  </Text>
+                </View>
+              ) : null}
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ color: MMD_WHITE, fontFamily: MMD_FONT.bold }}>
+                  {t("client.deliveryRequest.total", "Total")}
+                </Text>
+                <Text style={{ color: MMD_WHITE, fontFamily: MMD_FONT.extrabold, fontWeight: "800" }}>
+                  {formatCurrency(data.total)}
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
           <InfoCard label={t("client.deliveryRequest.pickupAddress", "Pickup address")} value={data.pickup_address ?? dash} />
           <InfoCard label={t("client.deliveryRequest.dropoffAddress", "Dropoff address")} value={data.dropoff_address ?? dash} />
 
+          {!["delivered", "completed"].includes(statusNorm) ? (
           <View style={{ flexDirection: rowDirection(), gap: 10, marginBottom: 2 }}>
             <View style={{ flex: 1 }}>
               <InfoCard
                 label={t("client.deliveryRequest.distance", "Distance")}
-                value={formatDistance(data.distance_miles, dash)}
+                value={formatLocalizedDistance(data.distance_miles, i18n.language)}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -1638,27 +1808,34 @@ export function ClientDeliveryRequestDetailsScreen() {
               />
             </View>
           </View>
+          ) : null}
 
+          {!["delivered", "completed"].includes(statusNorm) ? (
           <InfoCard label={t("client.deliveryRequest.total", "Total")} value={formatCurrency(data.total)} />
+          ) : null}
+          {data.created_at ? (
           <InfoCard label={t("client.deliveryRequest.createdAt", "Created at")} value={formatDateTime(data.created_at)} />
-          <InfoCard label={t("client.deliveryRequest.updatedAt", "Updated at")} value={formatDateTime(data.updated_at)} />
+          ) : null}
+          {data.paid_at ? (
           <InfoCard label={t("client.deliveryRequest.paidAt", "Paid at")} value={formatDateTime(data.paid_at)} />
+          ) : null}
+          {data.picked_up_at ? (
           <InfoCard label={t("client.deliveryRequest.pickedUpAt", "Picked up at")} value={formatDateTime(data.picked_up_at)} />
+          ) : null}
+          {data.delivered_confirmed_at ? (
           <InfoCard
             label={t("client.deliveryRequest.deliveredAt", "Delivered confirmed at")}
             value={formatDateTime(data.delivered_confirmed_at)}
           />
+          ) : null}
 
+          {data.pickup_photo_url ? (
+            <>
           <InfoCard
             label={t("client.deliveryRequest.pickupPhoto", "Pickup proof photo")}
-            value={
-              data.pickup_photo_url
-                ? t("client.deliveryRequest.saved", "Saved")
-                : t("client.deliveryRequest.notUploaded", "Not uploaded yet")
-            }
-            valueColor={data.pickup_photo_url ? "#86EFAC" : "#A78BFA"}
+            value={t("client.deliveryRequest.saved", "Saved")}
+            valueColor="#86EFAC"
           />
-          {data.pickup_photo_url ? (
             <Image
               source={{ uri: data.pickup_photo_url }}
               style={{
@@ -1674,17 +1851,15 @@ export function ClientDeliveryRequestDetailsScreen() {
                 "Pickup proof photo"
               )}
             />
+            </>
           ) : null}
+          {data.dropoff_photo_url ? (
+            <>
           <InfoCard
             label={t("client.deliveryRequest.dropoffPhoto", "Dropoff proof photo")}
-            value={
-              data.dropoff_photo_url
-                ? t("client.deliveryRequest.saved", "Saved")
-                : t("client.deliveryRequest.notUploaded", "Not uploaded yet")
-            }
-            valueColor={data.dropoff_photo_url ? "#86EFAC" : "#A78BFA"}
+            value={t("client.deliveryRequest.saved", "Saved")}
+            valueColor="#86EFAC"
           />
-          {data.dropoff_photo_url ? (
             <Image
               source={{ uri: data.dropoff_photo_url }}
               style={{
@@ -1700,18 +1875,11 @@ export function ClientDeliveryRequestDetailsScreen() {
                 "Dropoff proof photo"
               )}
             />
+            </>
           ) : null}
-
-          <InfoCard
-            label={t("client.deliveryRequest.stripeSession", "Stripe session ID")}
-            value={data.stripe_session_id ?? dash}
-          />
-          <InfoCard
-            label={t("client.deliveryRequest.stripePaymentIntent", "Stripe payment intent ID")}
-            value={data.stripe_payment_intent_id ?? dash}
-          />
         </ScrollView>
       )}
+      <ClientServiceBottomNav active="track" appearance="glass" accent="green" layout="edge" />
     </SafeAreaView>
   );
 }

@@ -210,6 +210,8 @@
       "currencyLabel": "货币"
     },
     "quote": {
+      "title": "估价",
+      "subtitle": "确认前请核对行程详情",
       "vehicle": "车辆",
       "distance": "距离",
       "duration": "时长",
@@ -237,7 +239,17 @@
       "any": "任意",
       "preferredDriver": "首选司机（可选）",
       "payment": "支付",
-      "paymentFailed": "无法开始支付"
+      "paymentFailed": "无法开始支付",
+      "serviceFee": "服务费",
+      "sharedRideHint": "若有其他乘客分享相近路线，可享可选折扣。目前尚未匹配乘客 — 若上车前未匹配成功，你仍可保留折扣后的独乘价格。",
+      "loginRequired": "支付前必须先登录。",
+      "missingRoute": "上车点和下车点不完整",
+      "paymentNotCompleted": "支付未完成，未创建行程。准备好后可重新获取估价。",
+      "rideNotReady": "支付已确认，但行程尚未就绪。请刷新行程列表。",
+      "quoteUnavailable": "无法估价 — 请检查地址",
+      "loyaltyPoints": "{{title}}（{{count}} 分）",
+      "createFailed": "无法创建行程",
+      "checkoutMissing": "无法开始结账"
     },
     "history": {
       "title": "出租车行程记录",
@@ -309,6 +321,10 @@
       "cancelYes": "是，取消",
       "cancelNo": "否",
       "cancelFailed": "无法取消",
+      "addStopFailed": "无法添加途经点",
+      "changeDestFailed": "无法更改目的地",
+      "unavailableTitle": "行程不可用",
+      "unavailableBody": "无法加载此行程。请检查网络后重试。",
       "loadFailed": "无法加载行程",
       "mapUnavailable": "地图不可用",
       "pickupLabel": "上车：{{address}}",
@@ -397,7 +413,62 @@
         "cameraStarting": "安全摄像头正在启动。请稍后再点录制。",
         "downloadBeforeExpiry": "在到期前下载（{{date}}）",
         "stopRecording": "停止录制"
-      }
+      },
+      "title": "行程跟踪",
+      "loading": "正在加载行程…",
+      "lookingForDriver": "正在寻找司机…",
+      "searchingNearby": "正在搜索附近司机…",
+      "paymentConfirmedMatching": "付款已确认 — 正在匹配附近司机",
+      "estimatedFare": "预估车费",
+      "fare": "车费",
+      "totalFare": "总车费",
+      "pickup": "上车",
+      "dropoff": "下车",
+      "distance": "距离",
+      "duration": "时长",
+      "eta": "预计到达",
+      "etaMinutes": "{{n}} 分钟到达",
+      "liveTitle": "实时跟踪",
+      "awaitingPayment": "需要付款",
+      "bannerAwaitingPayment": "完成付款以寻找司机",
+      "bannerSearching": "正在寻找司机",
+      "driverAssigned": "已分配司机",
+      "bannerAssigned": "{{name}} 已接单",
+      "driverOnTheWay": "司机正在赶来",
+      "bannerAway": "{{name}} 距你 {{distance}}",
+      "bannerOnTheWay": "{{name}} 正在赶来",
+      "driverArrivingSoon": "司机即将到达",
+      "bannerArrivingSoon": "{{name}} 即将到达",
+      "driverArrived": "司机已到达",
+      "bannerArrived": "{{name}} 已到达",
+      "tripInProgress": "行程进行中",
+      "bannerInProgress": "行程进行中",
+      "shareMaskedCall": "分享行程 · 可使用隐号通话",
+      "completed": "行程已完成",
+      "bannerCompleted": "行程已完成",
+      "rideCompleted": "行程已完成",
+      "thanksRiding": "感谢乘坐 MMD Taxi",
+      "done": "完成",
+      "cancelled": "行程已取消",
+      "bannerCancelled": "行程已取消",
+      "updating": "更新中…",
+      "driverFallback": "司机",
+      "safetyPriority": "您的安全是我们的首要任务。",
+      "isDriving": "{{name}} 正在驾驶",
+      "newDriver": "新司机",
+      "tripsCount": "{{count}} 次行程",
+      "plate": "车牌",
+      "vehiclePhotoUnavailable": "车辆照片不可用",
+      "driverPhotoA11y": "司机头像",
+      "vehiclePhotoA11y": "车辆照片",
+      "vehicleA11y": "车辆：{{label}}，年份 {{year}}，车牌 {{plate}}。",
+      "joinDriver": "前往司机处",
+      "joinDriverBody": "司机正在上车点等候。请在地图上跟随。",
+      "callHint": "呼叫司机",
+      "chatHint": "与司机聊天",
+      "shareHint": "分享行程详情",
+      "stopN": "途经点 {{n}}",
+      "offlineBanner": "离线 — 跟踪可能不是最新"
     },
     "receipt": {
       "title": "收据",
@@ -478,8 +549,32 @@
       }
     },
     "tip": {
+      "title": "感谢司机",
+      "subtitle": "小费的 100% 通过 Stripe 直接给司机。",
+      "madeTripSpecial": "{{name}} 让这次行程更特别",
+      "choose": "选择小费金额",
+      "suggested": "建议金额",
+      "custom": "或输入自定义金额",
+      "customPlaceholder": "0.00",
+      "youPay": "您将支付：",
+      "payCta": "用卡支付小费",
+      "skip": "这次不给小费",
+      "missingRide": "缺少行程",
+      "ok": "确定",
+      "rideNotCompleted": "行程完成后才可给小费。",
+      "alreadyTitle": "小费已发送",
+      "alreadyBody": "此行程已有小费。",
+      "transferred": "已转给司机",
+      "minTitle": "小费过低",
+      "minBody": "最低小费为 0.50 $。",
+      "successTitle": "谢谢！",
+      "successBody": "小费已支付。司机会在钱包中收到。",
+      "cancelledTitle": "已取消小费",
+      "cancelledBody": "未产生任何扣款。",
       "loadFailed": "无法加载行程。",
-      "payFailed": "无法支付小费。"
+      "payFailed": "无法支付小费。",
+      "view": "查看小费",
+      "cta": "给司机小费"
     }
   },
   "client": {
@@ -567,7 +662,15 @@
         "paid": "已支付",
         "processing": "处理中",
         "unpaid": "未支付"
-      }
+      },
+      "subtitleTracking": "正在跟踪您的物品",
+      "etaMinutes": "{{n}} 分钟",
+      "nextStep": "下一步：{{step}}",
+      "callDriver": "呼叫司机",
+      "callFailed": "暂时无法发起加密通话。",
+      "chatDriver": "聊天",
+      "loadingTitle": "正在加载配送…",
+      "summaryTitle": "配送摘要"
     },
     "orderHistory": {
       "title": "订单历史",
@@ -1106,6 +1209,22 @@
         "moderate": "中等",
         "quiet": "较空闲"
       }
+    },
+    "wallet": {
+      "openEarnings": "收入",
+      "filterAll": "全部",
+      "filterEarnings": "收入",
+      "filterPayouts": "付款",
+      "confirm": {
+        "kicker": "确认提现金额",
+        "balance": "当前可用：{{amount}}",
+        "hint": "即时提现将转出全部符合条件的可用余额。",
+        "destination": "目的地",
+        "cta": "确认提现"
+      },
+      "success": {
+        "title": "提现成功！"
+      }
     }
   },
   "restaurant": {
@@ -1482,7 +1601,69 @@
       "loadFailed": "无法加载企业钱包。",
       "topupFailed": "充值失败。",
       "cashoutFailed": "提现失败。",
-      "stripeFailed": "无法打开 Stripe Connect。"
+      "stripeFailed": "无法打开 Stripe Connect。",
+      "title": "企业钱包",
+      "subtitle": "企业预付余额",
+      "available": "可用余额",
+      "topup": "充值",
+      "cashout": "提现",
+      "history": "记录",
+      "emptyTitle": "没有企业账户",
+      "emptyBody": "请让管理员将您添加为企业成员以使用钱包。",
+      "topupCta": "充值",
+      "cashoutCta": "提现",
+      "cashoutBlocked": "暂不可提现",
+      "amountCents": "金额（分）",
+      "amount": "金额",
+      "topupMin": "最低充值",
+      "topupMinBody": "至少输入 500 分。",
+      "cashoutInvalid": "金额无效",
+      "cashoutInvalidBody": "请输入正数提现金额（分）。",
+      "cashoutOk": "提现已提交",
+      "cashoutOkBody": "已创建 Connect 转账。",
+      "noTx": "暂无交易。充值后可为行程付款。",
+      "manageTeam": "团队成员",
+      "teamTitle": "团队成员",
+      "filterAll": "全部",
+      "filterCredits": "收入",
+      "filterDebits": "支出",
+      "topupSuccess": "充值成功！",
+      "addedTo": "已加入 {{name}}",
+      "newBalance": "新余额：{{amount}}",
+      "members": "成员",
+      "membersActive": "{{n}} 位在职",
+      "member": "成员",
+      "admin": "管理员",
+      "noMembers": "暂无成员。",
+      "invite": "邀请成员",
+      "inviteEmail": "邀请邮箱",
+      "inviteSent": "邀请已发送",
+      "inviteSentBody": "对方接受后将显示在列表中。",
+      "inviteInvalid": "邮箱无效",
+      "inviteInvalidBody": "请输入有效邮箱。",
+      "inviteFailed": "无法邀请该成员。",
+      "readOnly": "只读权限。请让管理员充值或提现。",
+      "tx": {
+        "topup": "账户充值",
+        "cashout": "提现",
+        "ride": "行程付款"
+      }
+    }
+  },
+  "deliveryRequest": {
+    "fields": {
+      "pinPickup": "固定取货点",
+      "pickupPinned": "已固定取货点",
+      "pickupExactLocation": "精确取货位置",
+      "usePickupLocation": "使用此取货点"
+    },
+    "pricing": {
+      "distance": "距离",
+      "eta": "预计时间",
+      "deliveryFee": "配送费",
+      "tax": "税费",
+      "serviceFee": "服务费",
+      "total": "总计"
     }
   }
 }

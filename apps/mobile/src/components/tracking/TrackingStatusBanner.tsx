@@ -2,23 +2,35 @@ import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useReduceMotion } from "../../hooks/useReduceMotion";
+import {
+  MMD_FONT,
+  MMD_GLASS,
+  MMD_GOLD_CLASSIC_BORDER,
+  MMD_TAXI_GREEN,
+  MMD_WHITE,
+} from "../../theme/mmdUi";
+import { textAlignStart } from "../../i18n/rtl";
 
 type Props = {
-  statusLine: string;
-  etaLabel: string | null;
-  safetyLine: string;
+  title: string;
+  subtitle?: string | null;
+  detail?: string | null;
+  doneBadge?: string | null;
+  searching?: boolean;
 };
 
 export const TrackingStatusBanner = React.memo(function TrackingStatusBanner({
-  statusLine,
-  etaLabel,
-  safetyLine,
+  title,
+  subtitle,
+  detail,
+  doneBadge,
+  searching,
 }: Props) {
   const reduceMotion = useReduceMotion();
   const pulse = useRef(new Animated.Value(0.55)).current;
 
   useEffect(() => {
-    if (reduceMotion) {
+    if (reduceMotion || !searching) {
       pulse.setValue(1);
       return;
     }
@@ -38,76 +50,87 @@ export const TrackingStatusBanner = React.memo(function TrackingStatusBanner({
     );
     loop.start();
     return () => loop.stop();
-  }, [pulse, reduceMotion]);
+  }, [pulse, reduceMotion, searching]);
 
   return (
     <View style={styles.card} accessibilityRole="summary">
-      <View style={styles.cell}>
-        <Animated.View style={{ opacity: pulse }}>
-          <Ionicons name="radio-outline" size={16} color="#4ADE80" />
-        </Animated.View>
-        <Text style={styles.primary} numberOfLines={2}>
-          {statusLine}
+      <View style={styles.header}>
+        {searching ? (
+          <Animated.View style={{ opacity: pulse }}>
+            <Ionicons name="search" size={22} color={MMD_WHITE} />
+          </Animated.View>
+        ) : null}
+        <Text style={styles.title} numberOfLines={3}>
+          {title}
         </Text>
       </View>
-      <View style={styles.divider} />
-      <View style={styles.cell}>
-        <Ionicons name="time-outline" size={16} color="#A78BFA" />
-        <Text style={styles.primary} numberOfLines={2}>
-          {etaLabel ?? "—"}
+      {subtitle ? (
+        <Text style={styles.subtitle} numberOfLines={3}>
+          {subtitle}
         </Text>
-      </View>
-      <View style={styles.divider} />
-      <View style={styles.cell}>
-        <Ionicons name="shield-checkmark-outline" size={16} color="#E2E8F0" />
-        <Text style={styles.secondary} numberOfLines={2}>
-          {safetyLine}
+      ) : null}
+      {detail ? (
+        <Text style={styles.detail} numberOfLines={4}>
+          {detail}
         </Text>
-      </View>
+      ) : null}
+      {doneBadge ? (
+        <View style={styles.doneBadge}>
+          <Text style={styles.doneLabel}>{doneBadge}</Text>
+        </View>
+      ) : null}
     </View>
   );
 });
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    backgroundColor: "#0F172A",
-    borderRadius: 18,
+    backgroundColor: MMD_GLASS,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.16)",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
+    padding: 16,
+    gap: 10,
   },
-  cell: {
-    flex: 1,
-    minWidth: 0,
+  header: {
+    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 4,
+    gap: 10,
   },
-  divider: {
-    width: 1,
-    backgroundColor: "rgba(148,163,184,0.18)",
-    marginVertical: 2,
+  title: {
+    flex: 1,
+    color: MMD_WHITE,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+    textAlign: textAlignStart(),
   },
-  primary: {
-    color: "#F8FAFC",
-    fontSize: 11,
-    fontWeight: "700",
-    textAlign: "center",
-    lineHeight: 14,
-  },
-  secondary: {
-    color: "#CBD5E1",
-    fontSize: 10,
+  subtitle: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 16,
     fontWeight: "600",
-    textAlign: "center",
-    lineHeight: 13,
+    fontFamily: MMD_FONT.semibold,
+    textAlign: textAlignStart(),
+  },
+  detail: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: MMD_FONT.semibold,
+    textAlign: textAlignStart(),
+  },
+  doneBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: MMD_TAXI_GREEN,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  doneLabel: {
+    color: MMD_WHITE,
+    fontSize: 14,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
   },
 });

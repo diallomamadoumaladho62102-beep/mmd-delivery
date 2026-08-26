@@ -12,6 +12,7 @@ import {
   Platform,
   ScrollView,
   Switch,
+  Image,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -51,15 +52,19 @@ import { useSafeBackNavigation } from "../navigation/navigationBack";
 import {
   MMD_BLUE,
   MMD_FONT,
+  MMD_GLASS,
   MMD_GOLD_BRIGHT,
+  MMD_GOLD_CLASSIC_BORDER,
+  MMD_TAXI_GREEN,
   MMD_WHITE,
 } from "../theme/mmdUi";
+import { formatDistance, formatDurationMinutes } from "../i18n/formatters";
 
-const MMD_GREEN = "#22C55E";
-const MMD_GLASS = "rgba(255,255,255,0.08)";
-const MMD_GLASS_BORDER = "rgba(255,255,255,0.2)";
+const MMD_GREEN = MMD_TAXI_GREEN;
+const MMD_GLASS_BORDER = MMD_GOLD_CLASSIC_BORDER;
 const MMD_FIELD_BG = "rgba(255,255,255,0.06)";
 const MMD_MUTED_70 = "rgba(255,255,255,0.7)";
+const PIN_BUTTON_ICON = require("../../assets/brand/icons/taxi-quote/pin-button.png");
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type DeliveryRequestRoute = RouteProp<RootStackParamList, "DeliveryRequest">;
@@ -237,7 +242,7 @@ export function DeliveryRequestScreen() {
   const route = useRoute<DeliveryRequestRoute>();
   const insets = useSafeAreaInsets();
   const safeBack = useSafeBackNavigation("ClientHome");
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const tr = useCallback(
     (key: string, fallback: string) => String(t(key, { defaultValue: fallback })),
@@ -266,6 +271,7 @@ export function DeliveryRequestScreen() {
   const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
   const [pickupCoords, setPickupCoords] = useState<LatLng | null>(null);
   const [dropoffCoords, setDropoffCoords] = useState<LatLng | null>(null);
+  const [pickupLocationId, setPickupLocationId] = useState<string | null>(null);
   const [dropoffLocationId, setDropoffLocationId] = useState<string | null>(
     route.params?.dropoffLocationId ?? null
   );
@@ -401,6 +407,20 @@ export function DeliveryRequestScreen() {
       });
   }, [dropoffLocationId]);
 
+  const handlePickupLocation = useCallback(
+    (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
+      applyMmdLocationSelection(location, {
+        setLocationId: (id) => setPickupLocationId(id),
+        setAddress: (value) => {
+          setPickupAddress(value);
+          lastEstimateKeyRef.current = "";
+        },
+        setCoords: setPickupCoords,
+      });
+    },
+    []
+  );
+
   const handleDropoffLocation = useCallback(
     (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
       applyMmdLocationSelection(location, {
@@ -416,8 +436,30 @@ export function DeliveryRequestScreen() {
   );
 
   useMmdLocationPickerResult(route, navigation, {
+    delivery_pickup: handlePickupLocation,
     delivery_dropoff: handleDropoffLocation,
   });
+
+  function openPickupLocationPicker() {
+    if (!market.countryCode) {
+      Alert.alert(
+        tr("deliveryRequest.alerts.scopeTitle", "Market unavailable"),
+        tr(
+          "deliveryRequest.alerts.scopeBody",
+          "Enable location to pick a delivery address in your market."
+        )
+      );
+      return;
+    }
+
+    navigation.navigate("MMDLocationPicker", {
+      countryCode: market.countryCode,
+      title: tr("deliveryRequest.fields.pickupExactLocation", "Pickup exact location"),
+      submitLabel: tr("deliveryRequest.fields.usePickupLocation", "Use pickup location"),
+      returnTo: "DeliveryRequest",
+      pickerContext: "delivery_pickup",
+    });
+  }
 
   function openDropoffLocationPicker() {
     if (!market.countryCode) {
@@ -1298,13 +1340,41 @@ export function DeliveryRequestScreen() {
               style={inputStyle}
             />
             </View>
+            <View style={{ flexDirection: "row", gap: 12 }}>
             <TouchableOpacity
-              onPress={openDropoffLocationPicker}
+              onPress={openPickupLocationPicker}
               style={{
-                borderRadius: 16,
+                flex: 1,
+                borderRadius: 14,
                 height: 52,
                 alignItems: "center",
                 justifyContent: "center",
+                flexDirection: "row",
+                gap: 8,
+                borderWidth: pickupLocationId ? 1 : 0,
+                borderColor: MMD_GREEN,
+                backgroundColor: pickupLocationId
+                  ? "rgba(34,197,94,0.12)"
+                  : MMD_GREEN,
+              }}
+            >
+              <Image source={PIN_BUTTON_ICON} style={{ width: 18, height: 18 }} resizeMode="contain" />
+              <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold, fontSize: 14, textAlign: "center" }}>
+                {pickupLocationId
+                  ? tr("deliveryRequest.fields.pickupPinned", "Pickup pinned")
+                  : tr("deliveryRequest.fields.pinPickup", "Pin pickup")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={openDropoffLocationPicker}
+              style={{
+                flex: 1,
+                borderRadius: 14,
+                height: 52,
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: 8,
                 borderWidth: dropoffLocationId ? 1 : 0,
                 borderColor: MMD_GREEN,
                 backgroundColor: dropoffLocationId
@@ -1312,12 +1382,14 @@ export function DeliveryRequestScreen() {
                   : MMD_GREEN,
               }}
             >
-              <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold, fontSize: 18 }}>
+              <Image source={PIN_BUTTON_ICON} style={{ width: 18, height: 18 }} resizeMode="contain" />
+              <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold, fontSize: 14, textAlign: "center" }}>
                 {dropoffLocationId
                   ? tr("deliveryRequest.fields.dropoffPinned", "Dropoff pinned on map")
                   : tr("deliveryRequest.fields.pinDropoff", "Pin exact dropoff on map")}
               </Text>
             </TouchableOpacity>
+            </View>
 
             {requestType === "package" ? (
               <View
@@ -1478,42 +1550,48 @@ export function DeliveryRequestScreen() {
                 </View>
 
                 <Text style={{ color: MMD_MUTED_70, fontSize: 14, fontFamily: MMD_FONT.regular }}>
-                  Distance:{" "}
+                  {tr("deliveryRequest.pricing.distance", "Distance")}
+                  {": "}
                   <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-                    {distanceMiles != null ? `${distanceMiles.toFixed(2)} mi` : "—"}
+                    {distanceMiles != null ? formatDistance(distanceMiles, i18n.language) : "—"}
                   </Text>
                 </Text>
 
                 <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
-                  ETA:{" "}
+                  {tr("deliveryRequest.pricing.eta", "ETA")}
+                  {": "}
                   <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-                    {etaMinutes != null ? `${Math.round(etaMinutes)} min` : "—"}
+                    {etaMinutes != null ? formatDurationMinutes(Math.round(etaMinutes), i18n.language) : "—"}
                   </Text>
                 </Text>
 
                 <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
-                  Delivery fee:{" "}
+                  {tr("deliveryRequest.pricing.deliveryFee", "Delivery fee")}
+                  {": "}
                   <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {money(deliveryFee, currency)}
                   </Text>
                 </Text>
 
                 <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
-                  Tax:{" "}
+                  {tr("deliveryRequest.pricing.tax", "Tax")}
+                  {": "}
                   <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {money(tax, currency)}
                   </Text>
                 </Text>
 
                 <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
-                  Service fee:{" "}
+                  {tr("deliveryRequest.pricing.serviceFee", "Service fee")}
+                  {": "}
                   <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {money(serviceFee, currency)}
                   </Text>
                 </Text>
 
                 <Text style={{ color: MMD_MUTED_70, fontSize: 14, marginTop: 12, fontFamily: MMD_FONT.regular }}>
-                  Total:{" "}
+                  {tr("deliveryRequest.pricing.total", "Total")}
+                  {": "}
                   <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                     {money(total, currency)}
                   </Text>
@@ -1710,7 +1788,7 @@ export function DeliveryRequestScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      <ClientServiceBottomNav active="orders" />
+      <ClientServiceBottomNav active="orders" appearance="glass" accent="gold" layout="floating" />
     </SafeAreaView>
     <PaymentMethodPicker
       visible={paymentPickerVisible}

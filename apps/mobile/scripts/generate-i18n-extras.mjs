@@ -181,6 +181,8 @@ const en = {
       quoteFailed: "Unable to get estimate",
     },
     quote: {
+      title: "Estimate",
+      subtitle: "Review your ride details before confirming",
       vehicle: "Vehicle",
       distance: "Distance",
       duration: "Duration",
@@ -209,6 +211,19 @@ const en = {
       preferredDriver: "Preferred driver (optional)",
       payment: "Payment",
       paymentFailed: "Unable to start payment",
+      serviceFee: "Service fee",
+      sharedRideHint:
+        "Optional discount when another passenger shares a similar route. No passenger is matched yet — if no match is found before pickup, you keep the discounted solo fare.",
+      loginRequired: "You must be logged in to pay.",
+      missingRoute: "Pickup and dropoff are incomplete",
+      paymentNotCompleted:
+        "Payment was not completed. No ride was created. You can request a new quote when ready.",
+      rideNotReady:
+        "Payment confirmed but the ride is not ready yet. Please refresh your rides list.",
+      quoteUnavailable: "Estimate unavailable — check addresses",
+      loyaltyPoints: "{{title}} ({{count}} pts)",
+      createFailed: "Unable to create ride",
+      checkoutMissing: "Checkout is unavailable",
     },
     history: {
       title: "Taxi history",
@@ -281,6 +296,11 @@ const en = {
       cancelYes: "Yes, cancel",
       cancelNo: "No",
       cancelFailed: "Unable to cancel",
+      addStopFailed: "Unable to add stop",
+      changeDestFailed: "Unable to change destination",
+      unavailableTitle: "Ride unavailable",
+      unavailableBody:
+        "We could not load this ride. Check your connection and try again.",
       loadFailed: "Unable to load ride",
       mapUnavailable: "Map unavailable",
       pickupLabel: "Pickup: {{address}}",

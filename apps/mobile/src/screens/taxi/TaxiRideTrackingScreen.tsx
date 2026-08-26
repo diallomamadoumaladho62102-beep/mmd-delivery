@@ -66,6 +66,7 @@ import { TripRouteCard } from "../../components/tracking/TripRouteCard";
 import { DriverProfileCard } from "../../components/tracking/DriverProfileCard";
 import { SafetyAudioCard } from "../../components/tracking/SafetyAudioCard";
 import { TrackingBottomActions } from "../../components/tracking/TrackingBottomActions";
+import { ClientServiceBottomNav } from "../../components/navigation/ClientServiceBottomNav";
 import { VerificationCodeCard } from "../../components/shared/VerificationCodeCard";
 import { toCoordinatePoint } from "../../lib/coordinates";
 import { resolveEtaEndpoints } from "../../lib/liveTripTracking";
@@ -119,13 +120,10 @@ const SHOW_DRIVER_ID_STATUSES = new Set([
   "completed",
 ]);
 
-/** Responsive map band: ~28–35% of available height. */
+/** Figma tracking map band is 260px; keep a tight responsive range around it. */
 function resolveMapHeight(windowHeight: number, insetTop: number): number {
   const available = Math.max(480, windowHeight - insetTop);
-  const ratio = windowHeight < 700 ? 0.3 : windowHeight > 900 ? 0.33 : 0.32;
-  return Math.round(
-    Math.min(Math.max(available * ratio, 190), available * 0.38),
-  );
+  return Math.round(Math.min(Math.max(260, available * 0.28), 320));
 }
 
 export default function TaxiRideTrackingScreen() {
@@ -433,6 +431,98 @@ export default function TaxiRideTrackingScreen() {
 
   const mapHeight = resolveMapHeight(windowHeight, insets.top);
 
+  const runAddStop = useCallback(
+    async (address: string) => {
+      const trimmed = String(address ?? "").trim();
+      if (!trimmed) return;
+      try {
+        const preview = (await previewTaxiAddStop(rideId, {
+          address: trimmed,
+        })) as { change?: { price_delta_cents?: number } };
+        const delta = Number(preview?.change?.price_delta_cents ?? 0);
+        Alert.alert(
+          t("taxi.ride.addStopConfirmTitle", "Confirm stop"),
+          delta > 0
+            ? t(
+                "taxi.ride.addStopConfirmBodyUp",
+                "Adding this stop increases the fare by {{amount}} cents (server quote). Confirm?",
+                { amount: delta },
+              )
+            : t(
+                "taxi.ride.addStopConfirmBody",
+                "Confirm adding this stop? The route and price are recalculated on the server.",
+              ),
+          [
+            { text: t("common.cancel", "Cancel"), style: "cancel" },
+            {
+              text: t("common.confirm", "Confirm"),
+              onPress: () => {
+                void previewTaxiAddStop(rideId, {
+                  address: trimmed,
+                  confirm: true,
+                }).then(() => load());
+              },
+            },
+          ],
+        );
+      } catch (e: unknown) {
+        Alert.alert(
+          t("taxi.ride.addStopTitle", "Add stop"),
+          e instanceof Error ? e.message : t("taxi.ride.addStopFailed", "Unable to add stop"),
+        );
+      }
+    },
+    [load, rideId, t],
+  );
+
+  const runChangeDest = useCallback(
+    async (address: string) => {
+      const trimmed = String(address ?? "").trim();
+      if (!trimmed) return;
+      try {
+        const preview = (await previewTaxiDestinationChange(rideId, {
+          dropoffAddress: trimmed,
+        })) as {
+          change?: { price_delta_cents?: number };
+        };
+        const delta = Number(preview?.change?.price_delta_cents ?? 0);
+        Alert.alert(
+          t("taxi.ride.changeDestConfirmTitle", "Confirm new destination"),
+          delta > 0
+            ? t(
+                "taxi.ride.changeDestConfirmUp",
+                "New fare is higher by {{amount}} cents. Additional payment may be required.",
+                { amount: delta },
+              )
+            : t(
+                "taxi.ride.changeDestConfirm",
+                "Apply this destination? Server will recalculate distance and price.",
+              ),
+          [
+            { text: t("common.cancel", "Cancel"), style: "cancel" },
+            {
+              text: t("common.confirm", "Confirm"),
+              onPress: () => {
+                void previewTaxiDestinationChange(rideId, {
+                  dropoffAddress: trimmed,
+                  confirm: true,
+                }).then(() => load());
+              },
+            },
+          ],
+        );
+      } catch (e: unknown) {
+        Alert.alert(
+          t("taxi.ride.changeDestTitle", "Change destination"),
+          e instanceof Error
+            ? e.message
+            : t("taxi.ride.changeDestFailed", "Unable to change destination"),
+        );
+      }
+    },
+    [load, rideId, t],
+  );
+
   async function handlePayNow() {
     if (startingCheckout || confirmingPayment) return;
     setStartingCheckout(true);
@@ -708,96 +798,6 @@ export default function TaxiRideTrackingScreen() {
 
   const fareLabel = formatTaxiCents(ride?.total_cents, currency);
 
-  const runAddStop = useCallback(
-    async (address: string) => {
-      const trimmed = String(address ?? "").trim();
-      if (!trimmed) return;
-      try {
-        const preview = (await previewTaxiAddStop(rideId, {
-          address: trimmed,
-        })) as { change?: { price_delta_cents?: number } };
-        const delta = Number(preview?.change?.price_delta_cents ?? 0);
-        Alert.alert(
-          t("taxi.ride.addStopConfirmTitle", "Confirm stop"),
-          delta > 0
-            ? t(
-                "taxi.ride.addStopConfirmBodyUp",
-                "Adding this stop increases the fare by {{amount}} cents (server quote). Confirm?",
-                { amount: delta },
-              )
-            : t(
-                "taxi.ride.addStopConfirmBody",
-                "Confirm adding this stop? The route and price are recalculated on the server.",
-              ),
-          [
-            { text: t("common.cancel", "Cancel"), style: "cancel" },
-            {
-              text: t("common.confirm", "Confirm"),
-              onPress: () => {
-                void previewTaxiAddStop(rideId, {
-                  address: trimmed,
-                  confirm: true,
-                }).then(() => load());
-              },
-            },
-          ],
-        );
-      } catch (e: unknown) {
-        Alert.alert(
-          t("taxi.ride.addStopTitle", "Add stop"),
-          e instanceof Error ? e.message : "Unable to add stop",
-        );
-      }
-    },
-    [load, rideId, t],
-  );
-
-  const runChangeDest = useCallback(
-    async (address: string) => {
-      const trimmed = String(address ?? "").trim();
-      if (!trimmed) return;
-      try {
-        const preview = (await previewTaxiDestinationChange(rideId, {
-          dropoffAddress: trimmed,
-        })) as {
-          change?: { price_delta_cents?: number };
-        };
-        const delta = Number(preview?.change?.price_delta_cents ?? 0);
-        Alert.alert(
-          t("taxi.ride.changeDestConfirmTitle", "Confirm new destination"),
-          delta > 0
-            ? t(
-                "taxi.ride.changeDestConfirmUp",
-                "New fare is higher by {{amount}} cents. Additional payment may be required.",
-                { amount: delta },
-              )
-            : t(
-                "taxi.ride.changeDestConfirm",
-                "Apply this destination? Server will recalculate distance and price.",
-              ),
-          [
-            { text: t("common.cancel", "Cancel"), style: "cancel" },
-            {
-              text: t("common.confirm", "Confirm"),
-              onPress: () => {
-                void previewTaxiDestinationChange(rideId, {
-                  dropoffAddress: trimmed,
-                  confirm: true,
-                }).then(() => load());
-              },
-            },
-          ],
-        );
-      } catch (e: unknown) {
-        Alert.alert(
-          t("taxi.ride.changeDestTitle", "Change destination"),
-          e instanceof Error ? e.message : "Unable to change destination",
-        );
-      }
-    },
-    [load, rideId, t],
-  );
-
   return (
     <View style={styles.root}>
       <StatusBar
@@ -845,18 +845,37 @@ export default function TaxiRideTrackingScreen() {
       <ScrollView
         style={styles.sheet}
         contentContainerStyle={{
-          paddingHorizontal: 14,
-          paddingTop: 14,
-          paddingBottom: Math.max(18, insets.bottom + 10),
-          gap: 12,
+          paddingHorizontal: 16,
+          paddingTop: 16,
+          paddingBottom: Math.max(112, insets.bottom + 96),
+          gap: 16,
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {network.quality === "offline" ? (
+          <View style={styles.offlineBanner} accessibilityRole="alert">
+            <Ionicons name="warning-outline" size={16} color="#FCA5A5" />
+            <Text style={styles.offlineBannerText}>
+              {t("taxi.tracking.offlineBanner", "Offline — tracking may be stale")}
+            </Text>
+          </View>
+        ) : null}
+
         <TrackingStatusBanner
-          statusLine={trackingLabels.bannerStatus}
-          etaLabel={etaLabel}
-          safetyLine={trackingLabels.safetyLine}
+          title={trackingLabels.liveSubtitle}
+          subtitle={
+            trackingLabels.phase === "searching"
+              ? trackingLabels.bannerStatus
+              : etaLabel
+          }
+          detail={trackingLabels.detailLine}
+          searching={trackingLabels.phase === "searching"}
+          doneBadge={
+            trackingLabels.phase === "completed"
+              ? t("taxi.tracking.done", "Done")
+              : null
+          }
         />
 
         {status === "driver_arrived" ? (
@@ -910,7 +929,14 @@ export default function TaxiRideTrackingScreen() {
 
         {fareLabel ? (
           <View style={styles.fareChip} accessibilityRole="text">
-            <Ionicons name="pricetag-outline" size={14} color="#FBBF24" />
+            <Text style={styles.fareCaption}>
+              {trackingLabels.phase === "completed"
+                ? t("taxi.tracking.totalFare", "Total fare")
+                : trackingLabels.phase === "searching" ||
+                    trackingLabels.phase === "awaiting_payment"
+                  ? t("taxi.tracking.estimatedFare", "Estimated fare")
+                  : t("taxi.tracking.fare", "Fare")}
+            </Text>
             <Text style={styles.fareLabel}>{fareLabel}</Text>
           </View>
         ) : null}
@@ -982,6 +1008,7 @@ export default function TaxiRideTrackingScreen() {
           dropoffCaption={t("taxi.tracking.dropoff", "DROPOFF")}
           distanceCaption={t("taxi.tracking.distance", "Distance")}
           etaCaption={t("taxi.tracking.eta", "ETA")}
+          stopCaption={(n) => t("taxi.tracking.stopN", "Stop {{n}}", { n })}
         />
 
         {["paid", "dispatching", "accepted", "driver_arrived", "in_progress"].includes(
@@ -1042,6 +1069,16 @@ export default function TaxiRideTrackingScreen() {
         {showDriverCard && identification ? (
           <DriverProfileCard
             identification={identification}
+            headline={
+              trackingLabels.phase === "in_progress" &&
+              identification.driverName
+                ? t("taxi.tracking.isDriving", "{{name}} is driving", {
+                    name:
+                      String(identification.driverName).trim().split(/\s+/)[0] ||
+                      identification.driverName,
+                  })
+                : null
+            }
             vehicleType={String(
               (ride as Record<string, unknown> | null)?.vehicle_type_snapshot ??
                 (ride as Record<string, unknown> | null)?.vehicle_type ??
@@ -1089,45 +1126,49 @@ export default function TaxiRideTrackingScreen() {
           <SafetyAudioCard rideId={rideId} rideActive />
         ) : null}
 
-        {canCancel ? (
-          <TouchableOpacity
-            onPress={() => void handleCancel()}
-            disabled={cancelling}
-            style={styles.cancelBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t("taxi.ride.cancel", "Cancel")}
-          >
-            <Text style={styles.cancelLabel}>
-              {cancelling ? "…" : t("taxi.ride.cancel", "Cancel")}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-
-        <TrackingBottomActions
-          showCall={showDriverCard}
-          calling={calling}
-          onCall={() => void handleCallDriver()}
-          onChat={() => navigation.navigate("TaxiChat", { rideId })}
-          showShare={showDriverCard}
-          onShare={() => void handleShareRide()}
-          callLabel={t("taxi.ride.call", "Call")}
-          callingLabel={t("taxi.ride.calling", "Calling…")}
-          chatLabel={t("taxi.ride.chat", "Chat")}
-          shareLabel={t("taxi.ride.share", "Share Trip")}
-          callHint={t("taxi.tracking.callHint", "Call Driver")}
-          chatHint={t("taxi.tracking.chatHint", "Chat Driver")}
-          shareHint={t("taxi.tracking.shareHint", "Share Trip details")}
-        />
-
-        {status === "completed" ? (
+        {trackingLabels.phase === "searching" && canCancel ? (
+          <View style={styles.searchActions}>
+            <TouchableOpacity
+              onPress={() => void handleCancel()}
+              disabled={cancelling}
+              style={[styles.searchActionBtn, styles.searchCancelBtn]}
+              accessibilityRole="button"
+              accessibilityLabel={t("taxi.ride.cancel", "Cancel")}
+            >
+              <Text style={styles.searchActionLabel}>
+                {cancelling ? "…" : t("taxi.ride.cancel", "Cancel")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("TaxiChat", { rideId })}
+              style={[styles.searchActionBtn, styles.searchChatBtn]}
+              accessibilityRole="button"
+              accessibilityLabel={t("taxi.ride.chat", "Chat")}
+            >
+              <Text style={styles.searchActionLabel}>
+                {t("taxi.ride.chat", "Chat")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : trackingLabels.phase === "completed" ? (
           <>
             <TouchableOpacity
-              style={styles.tipBtn}
+              style={styles.ghostBtn}
+              onPress={() => navigation.navigate("TaxiChat", { rideId })}
+              accessibilityRole="button"
+              accessibilityLabel={t("taxi.ride.chat", "Chat")}
+            >
+              <Text style={styles.ghostBtnLabel}>
+                {t("taxi.ride.chat", "Chat")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.ghostBtnGold}
               onPress={() => navigation.navigate("TaxiReceipt", { rideId })}
               accessibilityRole="button"
               accessibilityLabel={t("taxi.receipt.title", "Receipt")}
             >
-              <Text style={styles.tipLabel}>
+              <Text style={styles.ghostBtnLabel}>
                 {t("taxi.receipt.view", "View receipt")}
               </Text>
             </TouchableOpacity>
@@ -1144,7 +1185,38 @@ export default function TaxiRideTrackingScreen() {
               </Text>
             </TouchableOpacity>
           </>
-        ) : null}
+        ) : (
+          <>
+            {canCancel ? (
+              <TouchableOpacity
+                onPress={() => void handleCancel()}
+                disabled={cancelling}
+                style={styles.cancelBtn}
+                accessibilityRole="button"
+                accessibilityLabel={t("taxi.ride.cancel", "Cancel")}
+              >
+                <Text style={styles.cancelLabel}>
+                  {cancelling ? "…" : t("taxi.ride.cancel", "Cancel")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            <TrackingBottomActions
+              showCall={showDriverCard}
+              calling={calling}
+              onCall={() => void handleCallDriver()}
+              onChat={() => navigation.navigate("TaxiChat", { rideId })}
+              showShare={showDriverCard}
+              onShare={() => void handleShareRide()}
+              callLabel={t("taxi.ride.call", "Call")}
+              callingLabel={t("taxi.ride.calling", "Calling…")}
+              chatLabel={t("taxi.ride.chat", "Chat")}
+              shareLabel={t("taxi.ride.share", "Share Trip")}
+              callHint={t("taxi.tracking.callHint", "Call Driver")}
+              chatHint={t("taxi.tracking.chatHint", "Chat Driver")}
+              shareHint={t("taxi.tracking.shareHint", "Share Trip details")}
+            />
+          </>
+        )}
       </ScrollView>
 
       <Modal
@@ -1294,6 +1366,12 @@ export default function TaxiRideTrackingScreen() {
           </View>
         </Pressable>
       </Modal>
+      <ClientServiceBottomNav
+        active="track"
+        appearance="glass"
+        accent="green"
+        layout="edge"
+      />
     </View>
   );
 }
@@ -1377,8 +1455,6 @@ const styles = StyleSheet.create({
   },
   fareChip: {
     alignSelf: "stretch",
-    flexDirection: "row",
-    alignItems: "center",
     gap: 6,
     paddingVertical: 16,
     paddingHorizontal: 16,
@@ -1387,9 +1463,82 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: MMD_GOLD_CLASSIC_BORDER,
   },
+  fareCaption: {
+    color: MMD_GOLD_CLASSIC,
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    textTransform: "uppercase",
+  },
   fareLabel: {
     color: MMD_WHITE,
-    fontSize: 28,
+    fontSize: 36,
+    fontWeight: "800",
+    fontFamily: MMD_FONT.extrabold,
+  },
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.35)",
+  },
+  offlineBannerText: {
+    flex: 1,
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+    textAlign: textAlignStart(),
+  },
+  searchActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  searchActionBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchCancelBtn: {
+    backgroundColor: "#DC2626",
+  },
+  searchChatBtn: {
+    backgroundColor: "#0044DD",
+  },
+  searchActionLabel: {
+    color: MMD_WHITE,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: MMD_FONT.bold,
+  },
+  ghostBtn: {
+    height: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  ghostBtnGold: {
+    height: 52,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
+  },
+  ghostBtnLabel: {
+    color: MMD_WHITE,
+    fontSize: 16,
     fontWeight: "800",
     fontFamily: MMD_FONT.extrabold,
   },

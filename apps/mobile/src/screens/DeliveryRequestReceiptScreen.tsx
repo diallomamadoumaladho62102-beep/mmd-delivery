@@ -10,6 +10,7 @@ export default function DeliveryRequestReceiptScreen() {
   const deliveryRequestId = String(
     route.params?.deliveryRequestId ?? ""
   ).trim();
+  const hideCustomerNav = route.params?.viewer === "driver";
   const fetchReceipt = useCallback(
     (id: string) => fetchDeliveryRequestReceipt(id),
     []
@@ -21,6 +22,7 @@ export default function DeliveryRequestReceiptScreen() {
       fetchReceipt={fetchReceipt}
       entityLabelKey="order.receipt.package"
       entityLabelFallback={t("order.receipt.package", "Package")}
+      hideCustomerNav={hideCustomerNav}
     />
   );
 }

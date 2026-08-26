@@ -23,6 +23,7 @@ export type CustomerTrackingLabels = {
   liveTitle: string;
   liveSubtitle: string;
   bannerStatus: string;
+  detailLine: string;
   safetyLine: string;
 };
 
@@ -144,6 +145,7 @@ export function buildCustomerTrackingLabels(input: {
           "taxi.tracking.bannerAwaitingPayment",
           "Complete payment to find a driver",
         ),
+        detailLine: safetyLine,
         safetyLine,
       };
     case "searching":
@@ -155,8 +157,12 @@ export function buildCustomerTrackingLabels(input: {
           "Looking for a driver…",
         ),
         bannerStatus: input.t(
-          "taxi.tracking.bannerSearching",
-          "Finding your driver",
+          "taxi.tracking.searchingNearby",
+          "Searching nearby drivers…",
+        ),
+        detailLine: input.t(
+          "taxi.tracking.paymentConfirmedMatching",
+          "Payment confirmed — matching nearby drivers",
         ),
         safetyLine,
       };
@@ -173,6 +179,7 @@ export function buildCustomerTrackingLabels(input: {
           "{{name}} is assigned",
           { name: who },
         ),
+        detailLine: safetyLine,
         safetyLine,
       };
     case "on_the_way":
@@ -192,6 +199,7 @@ export function buildCustomerTrackingLabels(input: {
           : input.t("taxi.tracking.bannerOnTheWay", "{{name}} is on the way", {
               name: who,
             }),
+        detailLine: safetyLine,
         safetyLine,
       };
     case "arriving_soon":
@@ -213,6 +221,7 @@ export function buildCustomerTrackingLabels(input: {
               "{{name}} is arriving soon",
               { name: who },
             ),
+        detailLine: safetyLine,
         safetyLine,
       };
     case "arrived":
@@ -225,6 +234,7 @@ export function buildCustomerTrackingLabels(input: {
           "{{name}} has arrived",
           { name: who },
         ),
+        detailLine: safetyLine,
         safetyLine,
       };
     case "in_progress":
@@ -239,14 +249,22 @@ export function buildCustomerTrackingLabels(input: {
           "taxi.tracking.bannerInProgress",
           "Trip in progress",
         ),
+        detailLine: input.t(
+          "taxi.tracking.shareMaskedCall",
+          "Share trip · masked call available",
+        ),
         safetyLine,
       };
     case "completed":
       return {
         phase,
         liveTitle: input.t("taxi.tracking.liveTitle", "Live tracking"),
-        liveSubtitle: input.t("taxi.tracking.completed", "Trip completed"),
+        liveSubtitle: input.t("taxi.tracking.rideCompleted", "Ride completed"),
         bannerStatus: input.t("taxi.tracking.bannerCompleted", "Trip completed"),
+        detailLine: input.t(
+          "taxi.tracking.thanksRiding",
+          "Thanks for riding with MMD Taxi",
+        ),
         safetyLine,
       };
     case "cancelled":
@@ -255,6 +273,7 @@ export function buildCustomerTrackingLabels(input: {
         liveTitle: input.t("taxi.tracking.liveTitle", "Live tracking"),
         liveSubtitle: input.t("taxi.tracking.cancelled", "Trip cancelled"),
         bannerStatus: input.t("taxi.tracking.bannerCancelled", "Trip cancelled"),
+        detailLine: safetyLine,
         safetyLine,
       };
     default:
@@ -263,6 +282,7 @@ export function buildCustomerTrackingLabels(input: {
         liveTitle: input.t("taxi.tracking.liveTitle", "Live tracking"),
         liveSubtitle: input.t("taxi.tracking.updating", "Updating…"),
         bannerStatus: input.t("taxi.tracking.updating", "Updating…"),
+        detailLine: safetyLine,
         safetyLine,
       };
   }

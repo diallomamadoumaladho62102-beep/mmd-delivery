@@ -343,7 +343,7 @@ export async function buildDriverWalletSummary(
 
   const [
     balanceCents,
-    awaitingTransferCents,
+    awaitingBeforeRetry,
     pendingPayoutTxCents,
     payoutMethods,
     dayLimit,
@@ -354,6 +354,34 @@ export async function buildDriverWalletSummary(
     loadPayoutMethodsForRecipient(supabaseAdmin, countryCode, "driver"),
     isManualCashoutBlockedToday(supabaseAdmin, "driver", driverUserId),
   ]);
+
+  if (awaitingBeforeRetry > 0) {
+    try {
+      const { retryAwaitingConnectTransfers } = await import(
+        "@/lib/finance/retryAwaitingConnectTransfers"
+      );
+      await Promise.race([
+        retryAwaitingConnectTransfers({
+          supabaseAdmin,
+          driverUserIds: [driverUserId],
+          limit: 6,
+        }),
+        new Promise((resolve) => {
+          setTimeout(resolve, 8_000);
+        }),
+      ]);
+    } catch (e) {
+      console.warn(
+        "[driverWallet] awaiting SCT retry fail-open",
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+
+  const awaitingTransferCents =
+    awaitingBeforeRetry > 0
+      ? await computeDriverAvailableCents(supabaseAdmin, driverUserId)
+      : awaitingBeforeRetry;
 
   const lastCashoutAt = dayLimit.lastCashoutAt;
   const rateLimit = { limited: dayLimit.blocked, lastCashoutAt: dayLimit.lastCashoutAt };

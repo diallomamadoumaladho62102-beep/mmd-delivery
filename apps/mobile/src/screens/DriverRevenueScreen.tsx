@@ -30,11 +30,16 @@ import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingStat
 import {
   MMD_BLUE,
   MMD_GOLD_CLASSIC,
+  MMD_GOLD_CLASSIC_BORDER,
+  MMD_GLASS,
   MMD_STROKE,
   MMD_TEXT,
   MMD_TEXT_MUTED_BLUE,
   MMD_WHITE,
+  MMD_TAXI_GREEN,
+  MMD_FONT,
 } from "../theme/mmdUi";
+import { formatMoney } from "../i18n/formatters";
 
 type RangeKey = EarningsPeriodKey;
 
@@ -66,16 +71,13 @@ const CARD_SOFT = "rgba(0,51,153,0.72)";
 const BORDER = "rgba(170,190,230,0.14)";
 const PURPLE = "#A78BFA";
 const PURPLE_DARK = "#8B5CF6";
-const BLUE = "#60A5FA";
-const GREEN = "#16A34A";
 const TEXT = MMD_TEXT;
 const MUTED = MMD_TEXT_MUTED_BLUE;
 const DANGER = "#FCA5A5";
-const HERO_NAVY = "#001E64";
 
-function fmtMoney(n: number) {
+function fmtMoney(n: number, language?: string | null) {
   const x = Number(n);
-  return `${(Number.isFinite(x) ? x : 0).toFixed(2)} $`;
+  return formatMoney(Number.isFinite(x) ? x : 0, "USD", language);
 }
 
 function getGain(o: OrderRow) {
@@ -390,8 +392,8 @@ export function DriverRevenueScreen() {
 
           <View style={styles.tabsRow}>
             {[
-              { k: "week" as const, label: t("driver.revenue.tabs.week", "Week") },
               { k: "today" as const, label: t("driver.revenue.tabs.today", "Today") },
+              { k: "week" as const, label: t("driver.revenue.tabs.week", "Week") },
               { k: "month" as const, label: t("driver.revenue.tabs.month", "Month") },
             ].map((tab) => {
               const active = range === tab.k;
@@ -415,10 +417,10 @@ export function DriverRevenueScreen() {
               <View style={styles.heroLeft}>
                 <Text style={styles.mutedLabel}>{t("driver.revenue.total", "Total")}</Text>
                 <Text style={styles.totalAmount} numberOfLines={1} adjustsFontSizeToFit>
-                  {fmtMoney(totals.totalEarnings)}
+                  {fmtMoney(totals.totalEarnings, i18n.language)}
                 </Text>
                 <Text style={styles.netLine} numberOfLines={2}>
-                  {t("driver.revenue.net_price", "Net")}: {fmtMoney(totals.baseEarnings)} · {t("driver.revenue.tips", "Tips")}: {fmtMoney(totals.tips)}
+                  {t("driver.revenue.net_price", "Net")}: {fmtMoney(totals.baseEarnings, i18n.language)} · {t("driver.revenue.tips", "Tips")}: {fmtMoney(totals.tips, i18n.language)}
                 </Text>
               </View>
 
@@ -437,7 +439,7 @@ export function DriverRevenueScreen() {
             <View style={styles.metricsGrid}>
               <Metric label={t("driver.revenue.trips", "Trips")} value={String(totals.trips)} />
               <Metric label={t("driver.revenue.points", "Points")} value={String(totals.points)} />
-              <Metric label={t("driver.revenue.average", "Avg / trip")} value={fmtMoney(totals.averageTrip)} />
+              <Metric label={t("driver.revenue.average", "Avg / trip")} value={fmtMoney(totals.averageTrip, i18n.language)} />
             </View>
 
             <TouchableOpacity onPress={openDetails} style={styles.primaryButton} activeOpacity={0.86}>
@@ -571,17 +573,17 @@ export function DriverRevenueScreen() {
                   <TouchableOpacity
                     key={`${o.source_table}:${o.id}`}
                     onPress={() =>
-                      Alert.alert(
-                        t("driver.revenue.trip_title", "Trip"),
-                        `${t("driver.revenue.trip_id", "ID")}: ${o.id}\nSource: ${o.source_table === "delivery_requests" ? "Delivery request" : "Order"}\n${t("driver.revenue.net_price", "Net")}: ${fmtMoney(base)}\n${t("driver.revenue.tip", "Tip")}: ${fmtMoney(tip)}\n${t("driver.revenue.total", "Total")}: ${fmtMoney(total)}`,
-                      )
+                      navigation.navigate("DriverOrderDetails", {
+                        orderId: o.id,
+                        sourceTable: o.source_table,
+                      })
                     }
                     style={styles.sessionCard}
                     activeOpacity={0.86}
                   >
                     <View style={styles.sessionTopRow}>
                       <View style={{ flex: 1, paddingRight: 10 }}>
-                        <Text style={styles.sessionAmount}>{fmtMoney(total)}</Text>
+                        <Text style={styles.sessionAmount}>{fmtMoney(total, i18n.language)}</Text>
                         <Text style={styles.sessionMeta} numberOfLines={1}>
                           {fmtTimeRange(o.completed_stamp ?? o.created_at)} · #{o.id.slice(0, 8)}{o.source_table === "delivery_requests" ? " · Delivery" : ""}{o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
                         </Text>
@@ -592,8 +594,8 @@ export function DriverRevenueScreen() {
                     </View>
 
                     <View style={styles.sessionBreakdown}>
-                      <Text style={styles.breakdownText}>{t("driver.revenue.net_price", "Net")}: {fmtMoney(base)}</Text>
-                      <Text style={styles.breakdownText}>{t("driver.revenue.tip", "Tip")}: {fmtMoney(tip)}</Text>
+                      <Text style={styles.breakdownText}>{t("driver.revenue.net_price", "Net")}: {fmtMoney(base, i18n.language)}</Text>
+                      <Text style={styles.breakdownText}>{t("driver.revenue.tip", "Tip")}: {fmtMoney(tip, i18n.language)}</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -682,27 +684,29 @@ const styles = StyleSheet.create({
   tabTextActive: { color: MMD_WHITE },
   content: { padding: 18, paddingBottom: 34 },
   heroCard: {
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 20,
-    backgroundColor: MMD_WHITE,
+    backgroundColor: MMD_GLASS,
+    borderWidth: 1,
+    borderColor: MMD_GOLD_CLASSIC_BORDER,
     overflow: "hidden",
     gap: 16,
   },
   heroTopRow: { flexDirection: "column", alignItems: "stretch", gap: 16 },
   heroLeft: { width: "100%" },
-  mutedLabel: { color: "#646E82", fontSize: 13, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
-  totalAmount: { color: HERO_NAVY, fontSize: 44, fontWeight: "800", marginTop: 4, letterSpacing: -1.2 },
-  netLine: { color: "#64748B", marginTop: 7, fontWeight: "700", lineHeight: 18 },
+  mutedLabel: { color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: "800", fontFamily: MMD_FONT.extrabold, textTransform: "uppercase", letterSpacing: 0.5 },
+  totalAmount: { color: MMD_WHITE, fontSize: 40, fontWeight: "800", fontFamily: MMD_FONT.extrabold, marginTop: 4, letterSpacing: -1.2 },
+  netLine: { color: "rgba(255,255,255,0.65)", marginTop: 7, fontWeight: "700", fontFamily: MMD_FONT.bold, lineHeight: 18 },
   graphWrap: { width: "100%", flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 2 },
   barWrap: { alignItems: "center", flex: 1 },
-  bar: { width: 12, borderRadius: 4, backgroundColor: GREEN },
-  barLabel: { color: "#505A6E", fontSize: 10, marginTop: 6, fontWeight: "700" },
-  divider: { height: 1, backgroundColor: "#DCE1EB", marginVertical: 0 },
+  bar: { width: 12, borderRadius: 4, backgroundColor: MMD_TAXI_GREEN },
+  barLabel: { color: "rgba(255,255,255,0.55)", fontSize: 10, marginTop: 6, fontWeight: "700" },
+  divider: { height: 1, backgroundColor: "rgba(255,255,255,0.12)", marginVertical: 0 },
   metricsGrid: { flexDirection: "row", gap: 10 },
-  metricCard: { flex: 1, minHeight: 70, borderRadius: 12, padding: 12, backgroundColor: "#F0F4FF", justifyContent: "center" },
-  metricValue: { color: HERO_NAVY, fontSize: 24, fontWeight: "800" },
-  metricLabel: { color: "#64748B", fontSize: 12, fontWeight: "700", marginTop: 4 },
-  primaryButton: { marginTop: 0, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: GREEN },
+  metricCard: { flex: 1, minHeight: 70, borderRadius: 12, padding: 12, backgroundColor: "rgba(255,255,255,0.06)", justifyContent: "center" },
+  metricValue: { color: MMD_WHITE, fontSize: 24, fontWeight: "800", fontFamily: MMD_FONT.extrabold },
+  metricLabel: { color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: "700", marginTop: 4 },
+  primaryButton: { marginTop: 0, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: MMD_TAXI_GREEN },
   primaryButtonText: { color: MMD_WHITE, fontWeight: "800", fontSize: 15 },
   quickGrid: {
     flexDirection: "row",

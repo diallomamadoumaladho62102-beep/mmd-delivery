@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { ClientServiceBottomNav } from "../../components/navigation/ClientServiceBottomNav";
 import {
   WalletEmptyState,
   WalletErrorState,
@@ -55,6 +56,7 @@ export default function TaxiReceiptScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const rideId = String(route.params?.rideId ?? "").trim();
+  const hideCustomerNav = route.params?.viewer === "driver";
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -327,6 +329,7 @@ export default function TaxiReceiptScreen() {
                 ) : null}
               </View>
             </View>
+            {hideCustomerNav ? null : (
             <View style={styles.card}>
               <Text style={styles.label}>
                 {myRating
@@ -356,6 +359,7 @@ export default function TaxiReceiptScreen() {
                 ) : null}
               </View>
             </View>
+            )}
           </>
         ) : null}
 
@@ -478,13 +482,13 @@ export default function TaxiReceiptScreen() {
               })
             }
           />
-          {receipt.actions.can_tip ? (
+          {receipt.actions.can_tip && !hideCustomerNav ? (
             <ActionBtn
               label={t("taxi.receipt.addTip", "Add a tip")}
               onPress={() => navigation.navigate("TaxiTip", { rideId })}
             />
           ) : null}
-          {receipt.actions.can_rebook ? (
+          {receipt.actions.can_rebook && !hideCustomerNav ? (
             <ActionBtn
               label={t("taxi.receipt.rebook", "Book again")}
               onPress={() => navigation.navigate("TaxiHome")}
@@ -496,6 +500,14 @@ export default function TaxiReceiptScreen() {
           />
         </View>
       </ScrollView>
+      {hideCustomerNav ? null : (
+        <ClientServiceBottomNav
+          active="track"
+          appearance="glass"
+          accent="green"
+          layout="edge"
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -521,7 +533,7 @@ function ActionBtn({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: MMD_BLUE },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingBottom: 120 },
   headerCard: {
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 28,

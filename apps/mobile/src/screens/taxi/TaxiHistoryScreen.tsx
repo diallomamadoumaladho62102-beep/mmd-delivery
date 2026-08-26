@@ -17,6 +17,7 @@ import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { fetchMyTaxiRides, formatTaxiCents } from "../../lib/taxiClientApi";
 import { textAlignStart } from "../../i18n/rtl";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { ClientServiceBottomNav } from "../../components/navigation/ClientServiceBottomNav";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -93,7 +94,7 @@ export default function TaxiHistoryScreen() {
           <FlatList
             data={rides}
             keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={{ paddingTop: 8, gap: 12, paddingBottom: 24 }}
+            contentContainerStyle={{ paddingTop: 8, gap: 12, paddingBottom: 120 }}
             ListEmptyComponent={
               <View style={{ alignItems: "center", marginTop: 80, gap: 16, paddingHorizontal: 24 }}>
                 <Image
@@ -334,6 +335,12 @@ export default function TaxiHistoryScreen() {
           />
         )}
       </View>
+      <ClientServiceBottomNav
+        active="track"
+        appearance="glass"
+        accent="green"
+        layout="edge"
+      />
     </SafeAreaView>
   );
 }

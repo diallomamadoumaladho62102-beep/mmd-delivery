@@ -70,15 +70,10 @@ function ActionButton({
           { backgroundColor: color, opacity: disabled ? 0.6 : 1 },
         ]}
       >
-        <Ionicons name={icon} size={20} color="#FFFFFF" />
+        <Ionicons name={icon} size={18} color="#FFFFFF" />
         <Text style={styles.label} numberOfLines={1}>
           {label}
         </Text>
-        {hint ? (
-          <Text style={styles.hint} numberOfLines={1}>
-            {hint}
-          </Text>
-        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -104,8 +99,8 @@ export const TrackingBottomActions = React.memo(function TrackingBottomActions({
     <View style={styles.row}>
       {showCall ? (
         <ActionButton
-          color="#059669"
-          icon="call"
+        color="#0044DD"
+        icon="call"
           label={calling ? callingLabel : callLabel}
           hint={callHint}
           onPress={onCall}
@@ -114,7 +109,7 @@ export const TrackingBottomActions = React.memo(function TrackingBottomActions({
         />
       ) : null}
       <ActionButton
-        color="#2563EB"
+        color="#0044DD"
         icon="chatbubble-ellipses"
         label={chatLabel}
         hint={chatHint}
@@ -123,8 +118,8 @@ export const TrackingBottomActions = React.memo(function TrackingBottomActions({
       />
       {showShare ? (
         <ActionButton
-          color="#7C3AED"
-          icon="share-social"
+        color="#0044DD"
+        icon="share-social"
           label={shareLabel}
           hint={shareHint}
           onPress={onShare}
@@ -142,27 +137,17 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   btn: {
-    minHeight: 60,
-    borderRadius: 18,
+    minHeight: 52,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 8,
-    gap: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
+    gap: 4,
   },
   label: {
     color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  hint: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 10,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

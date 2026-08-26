@@ -20,6 +20,7 @@ import type { RouteProp } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import { formatMoney } from "../i18n/formatters";
 import { API_BASE_URL } from "../lib/apiBase";
 import { startMaskedCall } from "../lib/maskedCall";
 import * as ImagePicker from "expo-image-picker";
@@ -511,9 +512,9 @@ function getRegionForTrip(
   };
 }
 
-function formatMoneyUSD(v: number | null) {
+function formatMoneyUSD(v: number | null, language?: string | null) {
   if (v == null) return "—";
-  return `${v.toFixed(2)} USD`;
+  return formatMoney(v, "USD", language);
 }
 
 
@@ -773,7 +774,7 @@ export function DriverOrderDetailsScreen() {
   const { orderId } = routeParams;
   const sourceTable = normalizeSourceTable(routeParams?.sourceTable ?? routeParams?.source_table);
 
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const safeBack = useSafeBackNavigation("DriverTabs");
   const insets = useSafeAreaInsets();
   const stackActionBottom = useMemo(
@@ -3248,10 +3249,56 @@ export function DriverOrderDetailsScreen() {
                 fontWeight: "800",
               }}
             >
-              {formatMoneyUSD(driverPart)}
+              {formatMoneyUSD(driverPart, i18n.language)}
             </Text>
           </View>
         </View>
+
+        {["delivered", "completed"].includes(String(order.status ?? "").toLowerCase()) &&
+        !isMarketplaceJob ? (
+          <TouchableOpacity
+            onPress={() => {
+              if (isTaxiRide) {
+                navigation.navigate("TaxiReceipt", {
+                  rideId: order.id,
+                  viewer: "driver",
+                });
+                return;
+              }
+              if (isDeliveryRequest) {
+                navigation.navigate("DeliveryRequestReceipt", {
+                  deliveryRequestId: order.id,
+                  viewer: "driver",
+                });
+                return;
+              }
+              navigation.navigate("FoodOrderReceipt", {
+                orderId: order.id,
+                viewer: "driver",
+              });
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("order.receipt.view", "View receipt")}
+            activeOpacity={0.85}
+            style={{
+              borderRadius: 16,
+              paddingVertical: 14,
+              alignItems: "center",
+              backgroundColor: MMD_GOLD_CLASSIC,
+            }}
+          >
+            <Text
+              style={{
+                color: MMD_BLUE,
+                fontSize: 15,
+                fontFamily: MMD_FONT.extrabold,
+                fontWeight: "800",
+              }}
+            >
+              {t("order.receipt.view", "View receipt")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
 
         {canCancelAsDriver && (
           <View

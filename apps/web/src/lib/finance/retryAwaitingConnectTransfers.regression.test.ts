@@ -25,6 +25,9 @@ assert.match(retrySrc, /restaurant_transfer_id/);
 assert.match(retrySrc, /driver_transfer_id/);
 assert.match(retrySrc, /driver_attempted/);
 assert.match(retrySrc, /executeMarketplacePayouts/);
+assert.match(retrySrc, /vertical:\s*"taxi"/);
+assert.match(retrySrc, /ensureWorkerConnectCredit/);
+assert.match(retrySrc, /from\("taxi_commissions"\)/);
 assert.doesNotMatch(retrySrc, /accounts\.create/);
 
 assert.match(webhookSrc, /retryAwaitingConnectTransfers/);

@@ -8,6 +8,7 @@ export default function FoodOrderReceiptScreen() {
   const { t } = useTranslation();
   const route = useRoute<any>();
   const orderId = String(route.params?.orderId ?? "").trim();
+  const hideCustomerNav = route.params?.viewer === "driver";
   const fetchReceipt = useCallback(
     (id: string) => fetchFoodOrderReceipt(id),
     []
@@ -19,6 +20,7 @@ export default function FoodOrderReceiptScreen() {
       fetchReceipt={fetchReceipt}
       entityLabelKey="order.receipt.order"
       entityLabelFallback={t("order.receipt.order", "Order")}
+      hideCustomerNav={hideCustomerNav}
     />
   );
 }

@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { textAlignStart } from "../../i18n/rtl";
 import {
   driverInitials,
@@ -10,6 +9,7 @@ import {
 type Props = {
   identification: CustomerTrackingIdentification;
   vehicleType?: string | null;
+  headline?: string | null;
   newDriverLabel: string;
   tripsLabel: (count: number) => string;
   yearLabel: (year: number) => string;
@@ -21,31 +21,19 @@ type Props = {
   vehicleA11ySummary: string;
 };
 
-function vehicleTypeIcon(
-  vehicleType: string | null | undefined,
-): keyof typeof Ionicons.glyphMap {
-  const t = String(vehicleType ?? "").toLowerCase();
-  if (t.includes("moto") || t.includes("scooter") || t.includes("bike")) {
-    return "bicycle-outline";
-  }
-  if (t.includes("van") || t.includes("truck")) return "bus-outline";
-  return "car-sport-outline";
-}
-
 /**
  * Premium driver + vehicle card.
  * Vehicle photo uses the real assigned-ride snapshot URL only.
- * Missing/invalid photo → neutral type icon (never a branded stock car).
+ * Missing photo is omitted (never a branded stock car).
  */
 export const DriverProfileCard = React.memo(function DriverProfileCard({
   identification,
-  vehicleType = null,
+  headline = null,
   newDriverLabel,
   tripsLabel,
   yearLabel,
   plateCaption,
   vehicleFallback,
-  photoUnavailableLabel,
   photoAccessibilityLabel,
   vehiclePhotoAccessibilityLabel,
   vehicleA11ySummary,
@@ -57,10 +45,6 @@ export const DriverProfileCard = React.memo(function DriverProfileCard({
     Boolean(identification.vehiclePhoto) && !vehicleFailed;
   const rating = identification.driverRating;
   const trips = identification.driverTrips;
-  const fallbackIcon = useMemo(
-    () => vehicleTypeIcon(vehicleType),
-    [vehicleType],
-  );
 
   return (
     <View
@@ -91,7 +75,7 @@ export const DriverProfileCard = React.memo(function DriverProfileCard({
 
         <View style={styles.meta}>
           <Text style={styles.name} numberOfLines={2}>
-            {identification.driverName || "—"}
+            {headline || identification.driverName || "—"}
           </Text>
           {rating != null ? (
             <Text style={styles.rating} numberOfLines={1}>
@@ -104,26 +88,19 @@ export const DriverProfileCard = React.memo(function DriverProfileCard({
         </View>
       </View>
 
+      {showVehiclePhoto ? (
       <View
         style={styles.vehiclePhotoWrap}
         accessibilityLabel={vehiclePhotoAccessibilityLabel}
       >
-        {showVehiclePhoto ? (
-          <Image
-            source={{ uri: identification.vehiclePhoto }}
-            style={styles.vehiclePhoto}
-            resizeMode="cover"
-            onError={() => setVehicleFailed(true)}
-          />
-        ) : (
-          <View style={styles.vehicleFallback}>
-            <Ionicons name={fallbackIcon} size={44} color="#94A3B8" />
-            <Text style={styles.vehicleFallbackText}>
-              {photoUnavailableLabel}
-            </Text>
-          </View>
-        )}
+        <Image
+          source={{ uri: identification.vehiclePhoto }}
+          style={styles.vehiclePhoto}
+          resizeMode="cover"
+          onError={() => setVehicleFailed(true)}
+        />
       </View>
+      ) : null}
 
       <View style={styles.vehicleTextCol}>
         <Text style={styles.vehicleLabel} numberOfLines={2}>
@@ -149,12 +126,12 @@ export const DriverProfileCard = React.memo(function DriverProfileCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#0F172A",
-    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(245,158,11,0.4)",
+    borderColor: "rgba(212,175,55,0.45)",
     padding: 16,
-    gap: 14,
+    gap: 12,
   },
   header: {
     flexDirection: "row",

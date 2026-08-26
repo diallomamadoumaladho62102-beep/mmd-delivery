@@ -210,6 +210,8 @@
       "currencyLabel": "Devise"
     },
     "quote": {
+      "title": "Estimation",
+      "subtitle": "Vérifiez les détails de votre course avant de confirmer",
       "vehicle": "Véhicule",
       "distance": "Distance parcourue",
       "duration": "Durée",
@@ -237,7 +239,17 @@
       "any": "N'importe",
       "preferredDriver": "Chauffeur préféré (optionnel)",
       "payment": "Paiement",
-      "paymentFailed": "Impossible de démarrer le paiement"
+      "paymentFailed": "Impossible de démarrer le paiement",
+      "serviceFee": "Frais de service",
+      "sharedRideHint": "Réduction optionnelle si un autre passager partage un trajet similaire. Aucun passager n’est encore associé — si aucune correspondance n’est trouvée avant la prise en charge, vous conservez le tarif réduit en solo.",
+      "loginRequired": "Vous devez être connecté pour payer.",
+      "missingRoute": "Le départ et la destination sont incomplets",
+      "paymentNotCompleted": "Le paiement n’a pas été finalisé. Aucune course n’a été créée. Vous pouvez demander une nouvelle estimation.",
+      "rideNotReady": "Paiement confirmé, mais la course n’est pas encore prête. Actualisez la liste de vos courses.",
+      "quoteUnavailable": "Estimation indisponible — vérifiez les adresses",
+      "loyaltyPoints": "{{title}} ({{count}} pts)",
+      "createFailed": "Impossible de créer la course",
+      "checkoutMissing": "Le paiement n’est pas disponible"
     },
     "history": {
       "title": "Historique des courses",
@@ -309,6 +321,10 @@
       "cancelYes": "Oui, annuler",
       "cancelNo": "Non",
       "cancelFailed": "Impossible d'annuler",
+      "addStopFailed": "Impossible d'ajouter un arrêt",
+      "changeDestFailed": "Impossible de changer la destination",
+      "unavailableTitle": "Course indisponible",
+      "unavailableBody": "Impossible de charger cette course. Vérifiez votre connexion et réessayez.",
       "loadFailed": "Impossible de charger la course",
       "mapUnavailable": "Carte indisponible",
       "pickupLabel": "Prise en charge: {{address}}",
@@ -456,7 +472,62 @@
         "cameraStarting": "Caméra de sécurité en démarrage. Réessayez dans un instant.",
         "downloadBeforeExpiry": "Télécharger avant expiration ({{date}})",
         "stopRecording": "Arrêter l’enregistrement"
-      }
+      },
+      "title": "Suivi de course",
+      "loading": "Chargement de votre course…",
+      "lookingForDriver": "Recherche d’un chauffeur…",
+      "searchingNearby": "Recherche de chauffeurs à proximité…",
+      "paymentConfirmedMatching": "Paiement confirmé — mise en relation avec des chauffeurs proches",
+      "estimatedFare": "Tarif estimé",
+      "fare": "Tarif",
+      "totalFare": "Tarif total",
+      "pickup": "Prise en charge",
+      "dropoff": "Destination",
+      "distance": "Distance",
+      "duration": "Durée",
+      "eta": "ETA",
+      "etaMinutes": "{{n}} min ETA",
+      "liveTitle": "Suivi en direct",
+      "awaitingPayment": "Paiement requis",
+      "bannerAwaitingPayment": "Finalisez le paiement pour trouver un chauffeur",
+      "bannerSearching": "Recherche de votre chauffeur",
+      "driverAssigned": "Chauffeur assigné",
+      "bannerAssigned": "{{name}} est assigné",
+      "driverOnTheWay": "Chauffeur en route",
+      "bannerAway": "{{name}} est à {{distance}}",
+      "bannerOnTheWay": "{{name}} est en route",
+      "driverArrivingSoon": "Chauffeur arrive bientôt",
+      "bannerArrivingSoon": "{{name}} arrive bientôt",
+      "driverArrived": "Chauffeur arrivé",
+      "bannerArrived": "{{name}} est arrivé",
+      "tripInProgress": "Course en cours",
+      "bannerInProgress": "Course en cours",
+      "shareMaskedCall": "Partage de course · appel masqué disponible",
+      "completed": "Course terminée",
+      "bannerCompleted": "Course terminée",
+      "rideCompleted": "Course terminée",
+      "thanksRiding": "Merci d’avoir voyagé avec MMD Taxi",
+      "done": "Terminé",
+      "cancelled": "Course annulée",
+      "bannerCancelled": "Course annulée",
+      "updating": "Mise à jour…",
+      "driverFallback": "Chauffeur",
+      "safetyPriority": "Votre sécurité est notre priorité.",
+      "isDriving": "{{name}} conduit",
+      "newDriver": "Nouveau chauffeur",
+      "tripsCount": "{{count}} courses",
+      "plate": "Plaque",
+      "vehiclePhotoUnavailable": "Photo du véhicule indisponible",
+      "driverPhotoA11y": "Photo du chauffeur",
+      "vehiclePhotoA11y": "Photo du véhicule",
+      "vehicleA11y": "Véhicule: {{label}}, année {{year}}, plaque {{plate}}.",
+      "joinDriver": "Rejoindre votre chauffeur",
+      "joinDriverBody": "Votre chauffeur vous attend au point de prise en charge. Suivez-le sur la carte.",
+      "callHint": "Appeler le chauffeur",
+      "chatHint": "Discuter avec le chauffeur",
+      "shareHint": "Partager les détails de la course",
+      "stopN": "Arrêt {{n}}",
+      "offlineBanner": "Hors ligne — le suivi peut être obsolète"
     },
     "driver": {
       "activeRide": {
@@ -478,8 +549,32 @@
       }
     },
     "tip": {
+      "title": "Remerciez votre chauffeur",
+      "subtitle": "100 % de votre pourboire va au chauffeur via Stripe.",
+      "madeTripSpecial": "{{name}} a rendu votre course spéciale",
+      "choose": "Choisissez votre pourboire",
+      "suggested": "Montants suggérés",
+      "custom": "Ou saisissez un montant personnalisé",
+      "customPlaceholder": "0,00",
+      "youPay": "Vous payez :",
+      "payCta": "Payer le pourboire par carte",
+      "skip": "Pas de pourboire cette fois",
+      "missingRide": "Course manquante",
+      "ok": "OK",
+      "rideNotCompleted": "Les pourboires sont disponibles une fois la course terminée.",
+      "alreadyTitle": "Pourboire déjà envoyé",
+      "alreadyBody": "Cette course a déjà un pourboire.",
+      "transferred": "Transféré au chauffeur",
+      "minTitle": "Pourboire trop faible",
+      "minBody": "Le pourboire minimum est de 0,50 $.",
+      "successTitle": "Merci !",
+      "successBody": "Votre pourboire a été payé. Le chauffeur le recevra sur son portefeuille.",
+      "cancelledTitle": "Pourboire annulé",
+      "cancelledBody": "Aucun prélèvement n’a été effectué.",
       "loadFailed": "Impossible de charger la course.",
-      "payFailed": "Impossible de payer le pourboire."
+      "payFailed": "Impossible de payer le pourboire.",
+      "view": "Voir le pourboire",
+      "cta": "Donner un pourboire"
     }
   },
   "finance": {
@@ -579,7 +674,15 @@
         "paid": "Payé",
         "processing": "Traitement",
         "unpaid": "Non payé"
-      }
+      },
+      "subtitleTracking": "Suivi actif de vos articles",
+      "etaMinutes": "{{n}} min",
+      "nextStep": "Suivant : {{step}}",
+      "callDriver": "Appeler le chauffeur",
+      "callFailed": "Impossible de démarrer l’appel masqué.",
+      "chatDriver": "Chat",
+      "loadingTitle": "Chargement de la livraison…",
+      "summaryTitle": "Récapitulatif de livraison"
     },
     "orderHistory": {
       "title": "Historique des commandes",
@@ -1032,6 +1135,22 @@
         "moderate": "Modéré",
         "quiet": "Calme"
       }
+    },
+    "wallet": {
+      "openEarnings": "Gains",
+      "filterAll": "Tout",
+      "filterEarnings": "Gains",
+      "filterPayouts": "Virements",
+      "confirm": {
+        "kicker": "CONFIRMER LE MONTANT",
+        "balance": "Disponible actuel : {{amount}}",
+        "hint": "Le cash out instantané envoie le solde éligible complet.",
+        "destination": "DESTINATION",
+        "cta": "Confirmer le cash out"
+      },
+      "success": {
+        "title": "Cash out réussi !"
+      }
     }
   },
   "restaurant": {
@@ -1451,7 +1570,69 @@
       "loadFailed": "Impossible de charger le portefeuille entreprise.",
       "topupFailed": "Le rechargement a échoué.",
       "cashoutFailed": "Le retrait a échoué.",
-      "stripeFailed": "Impossible d'ouvrir Stripe Connect."
+      "stripeFailed": "Impossible d'ouvrir Stripe Connect.",
+      "title": "Portefeuille entreprise",
+      "subtitle": "Solde prépayé professionnel",
+      "available": "Solde disponible",
+      "topup": "Recharger",
+      "cashout": "Retirer",
+      "history": "Historique",
+      "emptyTitle": "Aucun compte entreprise",
+      "emptyBody": "Demandez à un admin de vous ajouter comme membre pour utiliser le portefeuille.",
+      "topupCta": "Recharger",
+      "cashoutCta": "Retirer",
+      "cashoutBlocked": "Retrait indisponible",
+      "amountCents": "Montant en cents",
+      "amount": "Montant",
+      "topupMin": "Recharge minimale",
+      "topupMinBody": "Saisissez au moins 500 cents.",
+      "cashoutInvalid": "Montant invalide",
+      "cashoutInvalidBody": "Saisissez un montant positif en cents.",
+      "cashoutOk": "Retrait envoyé",
+      "cashoutOkBody": "Le virement Connect a été créé.",
+      "noTx": "Aucune transaction. Rechargez pour financer les courses.",
+      "manageTeam": "Membres de l’équipe",
+      "teamTitle": "Membres de l’équipe",
+      "filterAll": "Tout",
+      "filterCredits": "Crédits",
+      "filterDebits": "Débits",
+      "topupSuccess": "Recharge réussie !",
+      "addedTo": "Ajouté à {{name}}",
+      "newBalance": "Nouveau solde : {{amount}}",
+      "members": "Membres",
+      "membersActive": "{{n}} actifs",
+      "member": "Membre",
+      "admin": "Admin",
+      "noMembers": "Aucun membre à afficher.",
+      "invite": "Inviter un membre",
+      "inviteEmail": "E-mail d’invitation",
+      "inviteSent": "Invitation envoyée",
+      "inviteSentBody": "Le membre apparaîtra après acceptation.",
+      "inviteInvalid": "E-mail invalide",
+      "inviteInvalidBody": "Saisissez un e-mail valide.",
+      "inviteFailed": "Impossible d’inviter ce membre.",
+      "readOnly": "Accès lecture seule. Demandez à un admin de recharger ou retirer.",
+      "tx": {
+        "topup": "Recharge",
+        "cashout": "Retrait",
+        "ride": "Paiement de course"
+      }
+    }
+  },
+  "deliveryRequest": {
+    "fields": {
+      "pinPickup": "Épingler le départ",
+      "pickupPinned": "Départ épinglé",
+      "pickupExactLocation": "Lieu de départ exact",
+      "usePickupLocation": "Utiliser ce départ"
+    },
+    "pricing": {
+      "distance": "Distance",
+      "eta": "ETA",
+      "deliveryFee": "Frais de livraison",
+      "tax": "Taxe",
+      "serviceFee": "Frais de service",
+      "total": "Total"
     }
   }
 }
