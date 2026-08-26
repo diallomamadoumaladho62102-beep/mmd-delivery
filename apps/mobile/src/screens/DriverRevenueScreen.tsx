@@ -459,6 +459,15 @@ export function DriverRevenueScreen() {
               onPress={openWallet}
             />
             <QuickAction
+              icon="wallet"
+              title={t("driver.revenue.bank", "Bank & payouts")}
+              subtitle={t(
+                "driver.revenue.bank_hint",
+                "Connect your bank account",
+              )}
+              onPress={openWallet}
+            />
+            <QuickAction
               icon="benefits"
               title={t("driver.revenue.benefits", "Benefits")}
               subtitle={t("driver.revenue.benefits_hint", "Bonuses & boosts")}

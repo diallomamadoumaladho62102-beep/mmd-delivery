@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { reconcileBankPayouts } from "@/lib/finance/reconcileBankPayouts";
 import type {
   PayoutMode,
   PayoutTransactionRow,
@@ -113,11 +114,46 @@ export async function getPayoutTransactionById(
  * Worker-facing payout history: Connect → bank/card (po_*) only.
  * Internal SCT rows (tr_*) are never shown as Cash Out / bank payouts.
  */
+async function resolveConnectAccountIdForUser(
+  supabaseAdmin: SupabaseClient,
+  userId: string,
+): Promise<string | null> {
+  for (const table of ["driver_profiles", "restaurant_profiles", "sellers"] as const) {
+    const { data } = await supabaseAdmin
+      .from(table)
+      .select("stripe_account_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const id = String(
+      (data as { stripe_account_id?: unknown } | null)?.stripe_account_id ?? "",
+    ).trim();
+    if (id.startsWith("acct_")) return id;
+  }
+  return null;
+}
+
 export async function listPayoutTransactionsForUser(
   supabaseAdmin: SupabaseClient,
   userId: string,
   limit = 50
 ): Promise<PayoutTransactionRow[]> {
+  const stripeAccountId = await resolveConnectAccountIdForUser(supabaseAdmin, userId);
+  if (stripeAccountId) {
+    try {
+      await reconcileBankPayouts({
+        supabaseAdmin,
+        stripeAccountId,
+        recipientUserId: userId,
+        limit,
+      });
+    } catch (err) {
+      console.error(
+        "[payout_transactions] Stripe reconcile skipped",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from("payout_transactions")
     .select("*")

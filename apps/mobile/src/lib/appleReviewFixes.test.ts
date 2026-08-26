@@ -87,8 +87,10 @@ test("Driver/Restaurant auth do not full-screen replace Login while loading", ()
   assert.match(restaurant, /AUTH_ACTION_TIMEOUT_MS/);
 });
 
-test("ClientAuth auth actions use timeouts", () => {
+test("ClientAuth does not use expo-linear-gradient native views", () => {
   const src = read("apps/mobile/src/screens/ClientAuthScreen.tsx");
+  assert.doesNotMatch(src, /from ["']expo-linear-gradient["']/);
+  assert.match(src, /SafeLinearGradient/);
   assert.match(src, /AUTH_ACTION_TIMEOUT_MS/);
   assert.match(src, /client_signIn/);
   assert.match(src, /client_signUp/);
@@ -100,6 +102,14 @@ test("ClientAuth auth actions use timeouts", () => {
     src,
     /signUp[\s\S]*routes:\s*\[\s*\{\s*name:\s*"Home"\s*\}\s*\]/,
   );
+});
+
+test("completed food orders do not mount Mapbox MapView", () => {
+  const src = read("apps/mobile/src/screens/ClientOrderDetailsScreen.tsx");
+  assert.doesNotMatch(src, /from ["']@rnmapbox\/maps["']/);
+  assert.match(src, /isFinalStatus\(order\.status\)/);
+  assert.match(src, /LiveTripMap/);
+  assert.match(src, /Delivery completed/);
 });
 
 test("Restaurant/Seller gates fail-open with timeout", () => {

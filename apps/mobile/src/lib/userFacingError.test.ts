@@ -7,6 +7,11 @@ function testTechnicalPatterns() {
   assert.equal(isTechnicalErrorMessage("unrecognized format() type specifier"), true);
   assert.equal(isTechnicalErrorMessage("Mapbox directions failed (422)"), true);
   assert.equal(isTechnicalErrorMessage("Request failed (500)"), true);
+  assert.equal(
+    isTechnicalErrorMessage("column restaurant_profiles.state does not exist"),
+    true,
+  );
+  assert.equal(isTechnicalErrorMessage("[object Object]"), true);
 }
 
 function testKnownCodesFrench() {

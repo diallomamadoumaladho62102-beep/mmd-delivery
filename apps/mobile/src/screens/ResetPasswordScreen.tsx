@@ -13,7 +13,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeLinearGradient as LinearGradient } from "../components/SafeLinearGradient";
 import * as Linking from "expo-linking";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";

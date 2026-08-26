@@ -5,7 +5,11 @@ import Constants from "expo-constants";
 import i18n from "../i18n";
 import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
-import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
+import {
+  isTechnicalErrorMessage,
+  logTechnicalError,
+  toUserFacingError,
+} from "../lib/userFacingError";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -519,6 +523,11 @@ export async function startStripeOnboarding(
         error,
       });
       const detail = String(parsed.message ?? error.message ?? "").trim();
+      logTechnicalError("stripe-onboarding.create_connect_account", {
+        parsed,
+        error,
+        detail,
+      });
       const mapped = toUserFacingError(
         { code: parsed.code, message: detail },
         i18n.t(
@@ -526,21 +535,16 @@ export async function startStripeOnboarding(
           "Unable to open Stripe setup. Try again or contact support.",
         ),
       );
-      Alert.alert(
-        i18n.t("payment.stripe.title", "Stripe"),
-        detail &&
-          detail !== mapped &&
-          !mapped.includes("questionnaire Connect") &&
-          detail.length < 320
-          ? `${mapped}\n\n(${detail})`
-          : mapped,
-      );
+      Alert.alert(i18n.t("payment.stripe.title", "Stripe"), mapped);
       return false;
     }
 
     const payload = (data ?? {}) as Record<string, unknown>;
     if (payload?.error) {
       const detail = String(payload.message ?? payload.details ?? payload.error).trim();
+      if (isTechnicalErrorMessage(detail)) {
+        logTechnicalError("stripe-onboarding.create_connect_account.payload", payload);
+      }
       const mapped = toUserFacingError(
         { code: String(payload.error), message: detail },
         i18n.t(
@@ -548,15 +552,7 @@ export async function startStripeOnboarding(
           "Unable to open Stripe setup. Try again or contact support.",
         ),
       );
-      Alert.alert(
-        i18n.t("payment.stripe.title", "Stripe"),
-        detail &&
-          detail !== mapped &&
-          !mapped.includes("questionnaire Connect") &&
-          detail.length < 320
-          ? `${mapped}\n\n(${detail})`
-          : mapped,
-      );
+      Alert.alert(i18n.t("payment.stripe.title", "Stripe"), mapped);
       return false;
     }
 

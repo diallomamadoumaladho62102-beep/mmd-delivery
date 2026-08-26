@@ -25,4 +25,13 @@ for (const file of [
   assert.doesNotMatch(src, /routing_number|account_number|iban/i);
 }
 
+const wallet = read("screens/DriverWalletScreen.tsx");
+assert.match(wallet, /driver-bank-payout-card/);
+assert.match(wallet, /Connect your bank account/);
+assert.match(wallet, /payoutStatusLabel/);
+
+const revenue = read("screens/DriverRevenueScreen.tsx");
+assert.match(revenue, /driver.revenue.bank/);
+assert.match(revenue, /openWallet/);
+
 console.log("driverConnectEntry.test.ts OK");

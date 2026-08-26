@@ -26,19 +26,28 @@ export async function reconcileBankPayouts(params: {
   supabaseAdmin: SupabaseClient;
   /** Connect account id (acct_…) — required for Stripe Connect retrieve. */
   stripeAccountId: string;
+  /** When set, match rows by worker user id (destination_account may be ba_ or acct_). */
+  recipientUserId?: string;
   limit?: number;
 }): Promise<BankPayoutReconcileResult> {
   const limit = Math.min(Math.max(Number(params.limit ?? 25), 1), 100);
   // Include local "paid" so premature create⇒paid rows can be corrected
   // when Stripe is still pending/in_transit (e.g. po_* Sunday bank payouts).
-  const { data, error } = await params.supabaseAdmin
+  let query = params.supabaseAdmin
     .from("payout_transactions")
     .select("id, status, external_reference, destination_account")
-    .eq("destination_account", params.stripeAccountId)
-    .in("status", ["pending", "processing", "approved", "paid"])
+    .in("status", ["pending", "processing", "approved", "in_transit", "paid"])
     .like("external_reference", "po_%")
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (params.recipientUserId) {
+    query = query.eq("recipient_user_id", params.recipientUserId);
+  } else {
+    query = query.eq("destination_account", params.stripeAccountId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return {

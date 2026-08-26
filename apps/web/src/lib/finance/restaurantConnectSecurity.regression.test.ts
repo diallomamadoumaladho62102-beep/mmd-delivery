@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import {
+  connectProfileSelectAttempts,
+  isMissingRelationColumnError,
+} from "../../../../../supabase/functions/_shared/connectProfileSelect";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../..");
@@ -30,7 +34,19 @@ const createConnect = readRepo("supabase/functions/create_connect_account/index.
 assert.match(createConnect, /type: "express"/);
 assert.match(createConnect, /accountLinks\.create/);
 assert.match(createConnect, /roleRaw === "restaurant"/);
-assert.doesNotMatch(createConnect, /routing_number|account_number|iban/i);
+assert.match(createConnect, /connectProfileSelectAttempts/);
+assert.match(createConnect, /isMissingRelationColumnError/);
+assert.match(createConnect, /profile_read_failed/);
+assert.doesNotMatch(
+  createConnect,
+  /selectCols =\s*[\s\S]*stripe_account_id, city, state";/,
+);
+
+const connectSelect = readRepo(
+  "supabase/functions/_shared/connectProfileSelect.ts",
+);
+assert.match(connectSelect, /restaurant_profiles has never had a `state` column/);
+assert.match(connectSelect, /city, state, country_code/);
 
 const transfers = readRepo("apps/web/app/api/stripe/transfers/run/route.ts");
 assert.match(transfers, /restaurant_connect_account_missing/);
@@ -45,5 +61,11 @@ const card = readRepo(
 );
 assert.match(card, /startStripeOnboarding\("restaurant"\)/);
 assert.doesNotMatch(card, /TextInput/);
+
+assert.equal(
+  isMissingRelationColumnError("column restaurant_profiles.state does not exist"),
+  true,
+);
+assert.ok(connectProfileSelectAttempts("restaurant").at(-1) === "stripe_account_id");
 
 console.log("restaurantConnectSecurity regression passed");

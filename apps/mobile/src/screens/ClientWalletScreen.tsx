@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeLinearGradient as LinearGradient } from "../components/SafeLinearGradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";

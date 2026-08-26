@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeLinearGradient as LinearGradient } from "../SafeLinearGradient";
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";

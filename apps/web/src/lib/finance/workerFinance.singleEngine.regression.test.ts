@@ -140,7 +140,8 @@ test("wallet history lists only po_* bank/card payouts", () => {
   );
   const fnStart = src.indexOf("export async function listPayoutTransactionsForUser");
   assert.ok(fnStart >= 0);
-  const slice = src.slice(fnStart, fnStart + 600);
+  const slice = src.slice(fnStart, fnStart + 1800);
+  assert.match(slice, /reconcileBankPayouts/);
   assert.match(slice, /\.like\("external_reference", "po_%"\)/);
 });
 

@@ -5,6 +5,11 @@ function testTechnicalPatterns() {
   assert.equal(isTechnicalErrorMessage("unrecognized format() type specifier"), true);
   assert.equal(isTechnicalErrorMessage("Mapbox directions failed (422)"), true);
   assert.equal(isTechnicalErrorMessage("Impossible de sauvegarder (driver_profiles)"), true);
+  assert.equal(
+    isTechnicalErrorMessage("column restaurant_profiles.state does not exist"),
+    true,
+  );
+  assert.equal(isTechnicalErrorMessage("[object Object]"), true);
   assert.equal(isTechnicalErrorMessage("Votre carte a été refusée."), false);
 }
 

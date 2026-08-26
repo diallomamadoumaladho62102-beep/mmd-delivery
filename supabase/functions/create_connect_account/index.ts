@@ -7,6 +7,11 @@ import {
   getEdgeSecretKeyOptional,
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
+import {
+  connectProfileSelectAttempts,
+  isMissingRelationColumnError,
+  type ConnectProfileRole,
+} from "../_shared/connectProfileSelect.ts";
 
 type Json = Record<string, unknown>;
 
@@ -358,19 +363,37 @@ serve(async (req) => {
           ? "restaurant_profiles"
           : "sellers";
 
-    // Lire profil
-    const selectCols =
-      role === "seller"
-        ? "stripe_account_id, city, country_code"
-        : "stripe_account_id, city, state";
-    let { data: prof, error: pErr } = await supabase
-      .from(table)
-      .select(selectCols)
-      .eq("user_id", userId)
-      .maybeSingle();
+    // Lire profil — restaurant_profiles has no `state` column; fall back.
+    const attempts = connectProfileSelectAttempts(role as ConnectProfileRole);
+    let prof: Record<string, unknown> | null = null;
+    let pErr: { message?: string } | null = null;
+    for (const selectCols of attempts) {
+      const result = await supabase
+        .from(table)
+        .select(selectCols)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!result.error) {
+        prof = (result.data as Record<string, unknown> | null) ?? null;
+        pErr = null;
+        break;
+      }
+      pErr = result.error;
+      if (!isMissingRelationColumnError(result.error.message)) {
+        break;
+      }
+    }
 
     if (pErr) {
-      return json(req, { error: "Profile read failed", details: pErr.message }, 400);
+      console.error("create_connect_account profile read failed:", pErr.message);
+      return json(
+        req,
+        {
+          error: "profile_read_failed",
+          message: "Unable to load your payout profile. Try again.",
+        },
+        400,
+      );
     }
 
     if (!prof) {
@@ -401,7 +424,7 @@ serve(async (req) => {
             404,
           );
         }
-        prof = created;
+        prof = created as Record<string, unknown>;
       } else {
         return json(
           req,

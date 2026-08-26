@@ -44,13 +44,12 @@ import { getApiBaseUrl } from "../../lib/apiBase";
 import { useTranslation } from "react-i18next";
 import {
   ensureMapboxTokenApplied,
-  getMapStyleStreets,
 } from "../lib/mapboxConfig";
-import Mapbox from "@rnmapbox/maps";
 
 // ✅ Live driver hook
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
 import { useLiveTripEta } from "../hooks/useLiveTripEta";
+import { LiveTripMap } from "../components/tracking/LiveTripMap";
 import { LiveEtaBanner } from "../components/tracking/LiveEtaBanner";
 import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { startMaskedCall } from "../lib/maskedCall";
@@ -417,7 +416,9 @@ export function ClientOrderDetailsScreen() {
   const prevOrderStatusRef = useRef<string | null>(null);
   const backgroundPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const cameraRef = useRef<Mapbox.Camera | null>(null);
+  const cameraRef = useRef<{ setCamera: (config: Record<string, unknown>) => void } | null>(
+    null,
+  );
   const didFitRef = useRef(false);
 
   useEffect(() => {
@@ -1345,7 +1346,9 @@ export function ClientOrderDetailsScreen() {
   const liveEta = useLiveTripEta({
     from: etaEndpoints.from,
     to: etaEndpoints.to,
-    enabled: Boolean(etaEndpoints.from && etaEndpoints.to),
+    enabled:
+      Boolean(etaEndpoints.from && etaEndpoints.to) &&
+      !isFinalStatus(order?.status ?? "pending"),
   });
 
   const polylineCoords = useMemo(() => {
@@ -1667,7 +1670,37 @@ export function ClientOrderDetailsScreen() {
 
         {!loading && !errorMsg && order && (pickupCoord || dropoffCoord) && (
           <>
-            <View
+            {isFinalStatus(order.status) ? (
+              <View
+                style={{
+                  marginTop: 12,
+                  marginHorizontal: 20,
+                  borderRadius: 18,
+                  padding: 16,
+                  backgroundColor: MMD_NAVY,
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.14)",
+                  gap: 8,
+                }}
+              >
+                <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 13 }}>
+                  {order.status === "canceled"
+                    ? ts("client.orderDetails.map.canceled", "This order is canceled")
+                    : ts("client.orderDetails.map.completed", "Delivery completed")}
+                </Text>
+                {order.pickup_address ? (
+                  <Text style={{ color: "#93C5FD", fontSize: 13 }}>
+                    {ts("client.orderDetails.pickup", "Pickup")}: {String(order.pickup_address)}
+                  </Text>
+                ) : null}
+                {order.dropoff_address ? (
+                  <Text style={{ color: "#86EFAC", fontSize: 13 }}>
+                    {ts("client.orderDetails.dropoff", "Dropoff")}: {String(order.dropoff_address)}
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <View
                 style={{
                   height: 250,
                   marginTop: 12,
@@ -1679,158 +1712,28 @@ export function ClientOrderDetailsScreen() {
                   backgroundColor: MMD_NAVY,
                 }}
               >
-                <Mapbox.MapView
-                  style={{ flex: 1 }}
-                  styleURL={getMapStyleStreets()}
-                  logoEnabled={false}
-                  attributionEnabled={false}
-                  compassEnabled
-                  surfaceView={false}
-                >
-                  <Mapbox.Camera
-                    ref={cameraRef}
-                    allowUpdates
-                    centerCoordinate={initialCamera.centerCoordinate}
-                    zoomLevel={initialCamera.zoomLevel}
-                    animationMode="flyTo"
-                    animationDuration={650}
-                  />
-
-                  {pickupCoord && (
-                    <Mapbox.PointAnnotation id="client-pickup" coordinate={toMapboxCoord(pickupCoord)}>
-                      <View
-                        style={{
-                          paddingHorizontal: 9,
-                          paddingVertical: 6,
-                          borderRadius: 999,
-                          backgroundColor: "#2563EB",
-                          borderWidth: 2,
-                          borderColor: "#FFFFFF",
-                        }}
-                      >
-                        <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "900" }}>PICKUP</Text>
-                      </View>
-                    </Mapbox.PointAnnotation>
-                  )}
-
-                  {dropoffCoord && (
-                    <Mapbox.PointAnnotation id="client-dropoff" coordinate={toMapboxCoord(dropoffCoord)}>
-                      <View
-                        style={{
-                          paddingHorizontal: 9,
-                          paddingVertical: 6,
-                          borderRadius: 999,
-                          backgroundColor: "#16A34A",
-                          borderWidth: 2,
-                          borderColor: "#FFFFFF",
-                        }}
-                      >
-                        <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "900" }}>DROPOFF</Text>
-                      </View>
-                    </Mapbox.PointAnnotation>
-                  )}
-
-                  {driverCoord && (
-                    <Mapbox.PointAnnotation id="client-live-driver" coordinate={toMapboxCoord(driverCoord)}>
-                      <View
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 17,
-                          backgroundColor: "#F97316",
-                          borderWidth: 3,
-                          borderColor: "#FFFFFF",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "900" }}>D</Text>
-                      </View>
-                    </Mapbox.PointAnnotation>
-                  )}
-
-                  {polylineCoords.length === 2 && (
-                    <Mapbox.ShapeSource id="client-route-source" shape={routeLineFeature}>
-                      <Mapbox.LineLayer
-                        id="client-route-shadow"
-                        style={{
-                          lineColor: "rgba(59,130,246,0.18)",
-                          lineWidth: 8,
-                          lineCap: "round",
-                          lineJoin: "round",
-                        }}
-                      />
-                      <Mapbox.LineLayer
-                        id="client-route-line"
-                        style={{
-                          lineColor: "rgba(147,197,253,0.95)",
-                          lineWidth: 3,
-                          lineCap: "round",
-                          lineJoin: "round",
-                        }}
-                      />
-                    </Mapbox.ShapeSource>
-                  )}
-                </Mapbox.MapView>
-
-                <View style={{ position: "absolute", top: 12, right: 12 }}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      didFitRef.current = false;
-                      fitMapToTrip();
-                      didFitRef.current = true;
-                    }}
-                    style={{
-                      paddingVertical: 9,
-                      paddingHorizontal: 12,
-                      borderRadius: 999,
-                      backgroundColor: MMD_NAVY,
-                      borderWidth: 1,
-                      borderColor: "rgba(148,163,184,0.18)",
-                    }}
-                  >
-                    <Text style={{ color: "#93C5FD", fontWeight: "900", fontSize: 12 }}>
-                      ⤾ {ts("client.orderDetails.rezoom", "Re-zoom")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View
-                  style={{
-                    position: "absolute",
-                    left: 12,
-                    bottom: Math.max(12, insets.bottom + 8),
-                    right: 12,
-                  }}
-                >
-                  <View
-                    style={{
-                      borderRadius: 14,
-                      paddingVertical: 10,
-                      paddingHorizontal: 12,
-                      backgroundColor: "#002673",
-                      borderWidth: 1,
-                      borderColor: "rgba(148,163,184,0.14)",
-                    }}
-                  >
-                    <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 12 }}>
-                      {ts("client.orderDetails.map.live", "Live trip view")}
-                      {!!order.driver_id ? " • " + ts("client.orderDetails.driverAssigned", "Driver assigned ✅") : ""}
-                    </Text>
-                    {!!order.driver_id && !driverCoord && (
-                      <Text style={{ color: "#FBBF24", marginTop: 4, fontSize: 11, fontWeight: "800" }}>
-                        ⏳ {ts("client.orderDetails.waitingDriverLocation", "Waiting for driver location…")}
-                      </Text>
-                    )}
-                    {!!driverCoord && liveDriver?.updated_at && (
-                      <Text style={{ color: "#93C5FD", marginTop: 4, fontSize: 11, fontWeight: "800" }}>
-                        {ts("client.orderDetails.map.lastUpdate", "Last update:")} {new Date(liveDriver.updated_at).toLocaleTimeString()}
-                      </Text>
-                    )}
-                  </View>
-                </View>
+                <LiveTripMap
+                  pickup={pickupCoord}
+                  dropoff={dropoffCoord}
+                  driver={driverCoord}
+                  height={250}
+                  showRezoom
+                  customerChrome
+                  hideInternalBadge
+                  stale={liveEta.stale || liveEta.offline || network.quality === "offline"}
+                  badgeText={
+                    order.driver_id && !driverCoord
+                      ? ts(
+                          "client.orderDetails.waitingDriverLocation",
+                          "Waiting for driver location...",
+                        )
+                      : ts("client.orderDetails.map.live", "Live trip view")
+                  }
+                />
               </View>
+            )}
 
+            {!isFinalStatus(order.status) ? (
               <View style={{ marginTop: 10, marginHorizontal: 20 }}>
                 <LiveEtaBanner
                   distanceMiles={liveEta.eta?.distanceMiles}
@@ -1852,6 +1755,7 @@ export function ClientOrderDetailsScreen() {
                   )}
                 />
               </View>
+            ) : null}
           </>
         )}
 
@@ -1886,7 +1790,7 @@ export function ClientOrderDetailsScreen() {
         )}
 
         {!loading && !errorMsg && order && (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 44 }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: Math.max(44, insets.bottom + 24) }}>
             <View style={{ marginBottom: 14 }}>
               <VerificationCodeCard
                 title={ts(

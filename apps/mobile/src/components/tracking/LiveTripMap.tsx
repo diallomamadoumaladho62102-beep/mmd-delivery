@@ -15,6 +15,7 @@ import {
 } from "../../lib/liveTripTracking";
 import { MmdDriverLocationMarker } from "../driver/home/MmdDriverLocationMarker";
 import { MapFloatingButton } from "../driver/map/MapFloatingButton";
+import { ScreenErrorBoundary } from "../ScreenErrorBoundary";
 
 export type LiveTripStop = CoordinatePoint & {
   id?: string;
@@ -153,6 +154,7 @@ export function LiveTripMap({
   ];
 
   return (
+    <ScreenErrorBoundary fallbackTitle="Map unavailable">
     <View style={wrapStyle}>
       <Mapbox.MapView
         style={StyleSheet.absoluteFill}
@@ -294,6 +296,7 @@ export function LiveTripMap({
         </View>
       ) : null}
     </View>
+    </ScreenErrorBoundary>
   );
 }
 

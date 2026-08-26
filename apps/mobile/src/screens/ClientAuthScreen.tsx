@@ -15,7 +15,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeLinearGradient as LinearGradient } from "../components/SafeLinearGradient";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";

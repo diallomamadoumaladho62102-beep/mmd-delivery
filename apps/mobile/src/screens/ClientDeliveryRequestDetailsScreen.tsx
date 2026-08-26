@@ -1127,7 +1127,10 @@ export function ClientDeliveryRequestDetailsScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {(pickupCoord || dropoffCoord) ? (
+          {(pickupCoord || dropoffCoord) &&
+          !["delivered", "completed", "canceled", "cancelled"].includes(
+            normalizeStatus(data.status),
+          ) ? (
             <View style={{ marginBottom: 14, gap: 10 }}>
               <LiveTripMap
                 pickup={pickupCoord}

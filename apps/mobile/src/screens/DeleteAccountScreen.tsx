@@ -12,7 +12,7 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeLinearGradient as LinearGradient } from "../components/SafeLinearGradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";

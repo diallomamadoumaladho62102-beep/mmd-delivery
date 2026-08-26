@@ -195,4 +195,18 @@ test("transfers/run gates Connect before restaurant SCT", () => {
   assert.match(src, /idempotency/i);
 });
 
-console.log("walletEarningsCashOut.regression.test.ts OK");
+test("wallet list reconciles po_* payouts against Stripe before display", () => {
+  const list = fs.readFileSync(
+    path.join(webRoot, "src/lib/payoutTransactionService.ts"),
+    "utf8",
+  );
+  assert.match(list, /reconcileBankPayouts/);
+  assert.match(list, /recipientUserId/);
+  const rec = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/reconcileBankPayouts.ts"),
+    "utf8",
+  );
+  assert.match(rec, /payouts\.retrieve/);
+  assert.match(rec, /resolveStripePayoutNextStatus/);
+  assert.doesNotMatch(rec, /amount == 19\.08/);
+});

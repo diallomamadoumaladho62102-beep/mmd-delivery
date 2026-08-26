@@ -27,6 +27,13 @@ import {
   type PayoutTransactionItem,
   type WalletLedgerEntry,
 } from "../lib/walletApi";
+import {
+  formatWalletField,
+  isFailedPayoutStatus,
+  isPaidPayoutStatus,
+  isProcessingPayoutStatus,
+  payoutStatusLabel,
+} from "../lib/walletDisplay";
 import { startStripeOnboarding } from "../utils/stripe";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 import {
@@ -152,6 +159,7 @@ export function DriverWalletScreen() {
   const [awaitingTransferCents, setAwaitingTransferCents] = useState(0);
   const [settlingCents, setSettlingCents] = useState(0);
   const [confirmedEarningsCents, setConfirmedEarningsCents] = useState(0);
+  const [connectAvailableCents, setConnectAvailableCents] = useState(0);
   const [pendingCents, setPendingCents] = useState(0);
   const [ledgerBalanceCents, setLedgerBalanceCents] = useState(0);
   const [instantEligible, setInstantEligible] = useState(false);
@@ -181,15 +189,13 @@ export function DriverWalletScreen() {
 
   const payoutBuckets = useMemo(() => {
     const processing = payoutTransactions.filter((item) =>
-      ["pending", "processing", "in_transit", "queued"].includes(
-        String(item.status ?? "").toLowerCase(),
-      ),
+      isProcessingPayoutStatus(item.status),
     );
     const completed = payoutTransactions.filter((item) =>
-      ["paid", "completed", "success"].includes(String(item.status ?? "").toLowerCase()),
+      isPaidPayoutStatus(item.status),
     );
     const failed = payoutTransactions.filter((item) =>
-      ["failed", "canceled", "cancelled"].includes(String(item.status ?? "").toLowerCase()),
+      isFailedPayoutStatus(item.status),
     );
     return {
       processingCents: processing.reduce((sum, item) => sum + (item.amount_cents || 0), 0),
@@ -263,6 +269,7 @@ export function DriverWalletScreen() {
           setAwaitingTransferCents(0);
           setSettlingCents(0);
           setConfirmedEarningsCents(0);
+          setConnectAvailableCents(0);
           setPendingCents(0);
           setLedgerBalanceCents(0);
           setInstantEligible(false);
@@ -318,6 +325,7 @@ export function DriverWalletScreen() {
               (summary.connect_available_cents ?? summary.available_cents ?? 0) +
               (summary.settling_cents ?? summary.pending_cents ?? 0),
         );
+        setConnectAvailableCents(summary.connect_available_cents ?? 0);
         setPendingCents(summary.pending_cents ?? summary.settling_cents ?? 0);
         setLedgerBalanceCents(summary.balance_cents ?? 0);
         setInstantEligible(Boolean(summary.instant_payout_eligible));
@@ -608,13 +616,23 @@ export function DriverWalletScreen() {
                     )}
                   </Text>
                 ) : null}
+                {connectAvailableCents > 0 ? (
+                  <Text style={styles.reasonTextMuted}>
+                    {t(
+                      "driver.wallet.bankAvailable.hint",
+                      "Stripe bank-available: {{amount}} (Sunday automatic payout)",
+                      { amount: fmtMoney(connectAvailableCents) },
+                    )}
+                  </Text>
+                ) : null}
                 {settlingCents > 0 || awaitingTransferCents > 0 ? (
                   <Text style={styles.reasonTextMuted}>
                     {t(
-                      "driver.wallet.processingHint",
-                      "{{amount}} still processing — available when Stripe allows payout.",
+                      "driver.wallet.breakdown.pending",
+                      "Pending Stripe settlement: {{settling}} · Awaiting platform transfer: {{awaiting}}",
                       {
-                        amount: fmtMoney(settlingCents + awaitingTransferCents),
+                        settling: fmtMoney(settlingCents),
+                        awaiting: fmtMoney(awaitingTransferCents),
                       },
                     )}
                   </Text>
@@ -665,75 +683,69 @@ export function DriverWalletScreen() {
           </View>
 
           {!loading ? (
-            !statusReady ? (
-              <View style={styles.setupCard}>
-                <View style={styles.cardIconBox}>
-                  <Text style={styles.cardEmoji}>💳</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.setupTitle}>
-                    {stripeAccountId
-                      ? t("driver.wallet.stripe.continueTitle", "Continue Stripe setup")
-                      : t("driver.wallet.stripe.activateTitle", "Enable payouts")}
-                  </Text>
-                  <Text style={styles.setupSub}>
-                    {stripeAccountId
-                      ? t(
-                          "driver.wallet.stripe.continueDesc",
-                          "Finish verification to unlock cash out.",
-                        )
-                      : t(
-                          "driver.wallet.stripe.activateDesc",
-                          "Complete Stripe Connect onboarding to receive payouts.",
-                        )}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={onPressActivateStripe}
-                  disabled={loading}
-                  style={[
-                    stripeAccountId ? styles.continueBtn : styles.enableBtn,
-                    loading && { opacity: 0.6 },
-                  ]}
-                  activeOpacity={0.86}
-                >
-                  <Text
-                    style={stripeAccountId ? styles.continueBtnText : styles.enableBtnText}
-                  >
-                    {stripeAccountId
-                      ? t("driver.wallet.stripe.continueButton", "Continue")
-                      : t("driver.wallet.stripe.activateButton", "Enable")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.setupCard}>
-                <View style={[styles.cardIconBox, styles.cardIconLilac]}>
-                  <Text style={styles.cardEmoji}>🏦</Text>
+              <View style={styles.setupCard} testID="driver-bank-payout-card">
+                <View style={[styles.cardIconBox, statusReady ? styles.cardIconLilac : undefined]}>
+                  <Text style={styles.cardEmoji}>{statusReady ? "🏦" : "💳"}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.setupTitle}>
                     {t("driver.wallet.stripe.manageTitle", "Bank & payout method")}
                   </Text>
                   <Text style={styles.setupSub}>
-                    {t(
-                      "driver.wallet.stripe.manageDesc",
-                      "Add, update or replace your bank account in Stripe Express.",
-                    )}
+                    {statusReady
+                      ? t(
+                          "driver.wallet.stripe.manageDesc",
+                          "Add, update or replace your bank account in Stripe Express.",
+                        )
+                      : stripeAccountId
+                        ? t(
+                            "driver.wallet.stripe.continueDesc",
+                            "Finish Stripe verification to unlock bank payouts.",
+                          )
+                        : t(
+                            "driver.wallet.stripe.connectBankDesc",
+                            "Connect your bank account in Stripe Express. MMD never collects routing or account numbers.",
+                          )}
                   </Text>
                 </View>
                 <TouchableOpacity
                   onPress={onPressActivateStripe}
                   disabled={loading}
-                  style={[styles.manageBtn, loading && { opacity: 0.6 }]}
+                  style={[
+                    statusReady
+                      ? styles.manageBtn
+                      : stripeAccountId
+                        ? styles.continueBtn
+                        : styles.enableBtn,
+                    loading && { opacity: 0.6 },
+                  ]}
                   activeOpacity={0.86}
+                  accessibilityLabel={
+                    statusReady
+                      ? t("driver.wallet.stripe.manageButton", "Manage")
+                      : t("driver.wallet.stripe.connectBankButton", "Connect your bank account")
+                  }
                 >
-                  <Text style={styles.manageBtnText}>
-                    {t("driver.wallet.stripe.manageButton", "Manage")}
+                  <Text
+                    style={
+                      statusReady
+                        ? styles.manageBtnText
+                        : stripeAccountId
+                          ? styles.continueBtnText
+                          : styles.enableBtnText
+                    }
+                  >
+                    {statusReady
+                      ? t("driver.wallet.stripe.manageButton", "Manage")
+                      : stripeAccountId
+                        ? t("driver.wallet.stripe.continueButton", "Continue")
+                        : t(
+                            "driver.wallet.stripe.connectBankButton",
+                            "Connect your bank account",
+                          )}
                   </Text>
                 </TouchableOpacity>
               </View>
-            )
           ) : null}
 
           {!loading ? (
@@ -780,7 +792,7 @@ export function DriverWalletScreen() {
                 <Text style={styles.infoSub}>
                   {t(
                     "driver.wallet.nextAuto.desc",
-                    "Sunday — 04:00 AM (America/New_York) to your bank account",
+                    "MMD sends remaining Stripe Connect available funds to your bank every Sunday at 04:00 AM (America/New_York). This is MMD’s schedule, not Stripe’s default daily payout.",
                   )}
                 </Text>
               </View>
@@ -859,8 +871,11 @@ export function DriverWalletScreen() {
                       <View key={item.id} style={styles.payoutRow}>
                         <Text style={styles.payoutAmount}>{fmtMoney(item.amount_cents)}</Text>
                         <Text style={styles.payoutMeta} numberOfLines={2}>
-                          {item.provider} • {formatDateTime(item.created_at, localeForDates)}
-                          {item.failure_reason ? ` • ${item.failure_reason}` : ""}
+                          {formatWalletField(item.provider, "Stripe")} •{" "}
+                          {formatDateTime(item.created_at, localeForDates)}
+                          {formatWalletField(item.failure_reason, "")
+                            ? ` • ${formatWalletField(item.failure_reason)}`
+                            : ""}
                         </Text>
                         <View
                           style={[
@@ -872,10 +887,10 @@ export function DriverWalletScreen() {
                           <Text
                             style={[
                               styles.payoutBadgeText,
-                              { color: payoutStatusColor(item.status) },
+                              { color: payoutStatusColor(formatWalletField(item.status, "processing")) },
                             ]}
                           >
-                            {String(item.status)}
+                            {payoutStatusLabel(item.status)}
                           </Text>
                         </View>
                       </View>

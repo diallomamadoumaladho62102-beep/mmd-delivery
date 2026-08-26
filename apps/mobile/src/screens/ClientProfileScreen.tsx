@@ -14,7 +14,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeLinearGradient as LinearGradient } from "../components/SafeLinearGradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../lib/supabase";
