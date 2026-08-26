@@ -121,7 +121,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Space out requests to respect Overpass fair-use limits.
-    await sleep(1500);
+    await sleep(3000);
   }
 
   const failed = results.filter((r) => r.error).length;

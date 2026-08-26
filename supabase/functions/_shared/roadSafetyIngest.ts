@@ -6,11 +6,14 @@
 // OSM data is ODbL — attribution "© OpenStreetMap contributors" is required by
 // any client displaying it.
 import { buildOverpassQuery, mapOsmElements, type OsmElement } from "./osmSafetyMapping.ts";
-
-const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-];
+import {
+  OVERPASS_MAX_ATTEMPTS,
+  OVERPASS_TIMEOUT_MS,
+  isRetryableOverpassStatus,
+  overpassBackoffMs,
+  overpassEndpointForAttempt,
+  parseOverpassResponse,
+} from "./overpassClient.ts";
 
 export type IngestBbox = { south: number; west: number; north: number; east: number };
 
@@ -26,12 +29,15 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * Fetch Overpass for a bbox with retry + exponential backoff across mirror
  * endpoints. Respects provider limits by backing off on 429/504.
  */
-async function fetchOverpass(bbox: IngestBbox, maxAttempts = 3): Promise<OsmElement[]> {
+async function fetchOverpass(
+  bbox: IngestBbox,
+  maxAttempts = OVERPASS_MAX_ATTEMPTS,
+): Promise<OsmElement[]> {
   const query = buildOverpassQuery(bbox);
   let lastError = "unknown";
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const endpoint = OVERPASS_ENDPOINTS[attempt % OVERPASS_ENDPOINTS.length];
+    const endpoint = overpassEndpointForAttempt(attempt);
     try {
       // Per-request timeout so a single slow/hung mirror cannot consume the
       // whole Edge Function wall-clock budget (150s).
@@ -39,23 +45,33 @@ async function fetchOverpass(bbox: IngestBbox, maxAttempts = 3): Promise<OsmElem
         method: "POST",
         headers: { "Content-Type": "text/plain", "User-Agent": "MMD-Delivery/road-safety" },
         body: query,
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS),
       });
-      if (res.status === 429 || res.status === 504 || res.status === 502) {
-        lastError = `rate_limited_${res.status}`;
-        await sleep(1500 * Math.pow(2, attempt));
+      const host = new URL(endpoint).host;
+      const tag = `${host}:attempt${attempt + 1}/${maxAttempts}`;
+      console.error(`[overpass] ${tag} HTTP ${res.status}`);
+      if (isRetryableOverpassStatus(res.status)) {
+        lastError = `rate_limited_${res.status}:${tag}`;
+        if (attempt < maxAttempts - 1) await sleep(overpassBackoffMs(attempt));
         continue;
       }
       if (!res.ok) {
-        lastError = `overpass_${res.status}`;
-        await sleep(800 * Math.pow(2, attempt));
-        continue;
+        lastError = `overpass_${res.status}:${tag}`;
+        throw new Error(`overpass_failed:${lastError}`);
       }
-      const jsonBody = (await res.json()) as { elements?: OsmElement[] };
-      return jsonBody.elements ?? [];
+      const jsonBody = await res.json().catch(() => null);
+      const parsed = parseOverpassResponse(jsonBody);
+      if (parsed.ok) return parsed.elements;
+      lastError = `${parsed.error}:${tag}`;
+      if (!parsed.retryable) {
+        throw new Error(`overpass_failed:${lastError}`);
+      }
+      if (attempt < maxAttempts - 1) await sleep(overpassBackoffMs(attempt));
     } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-      await sleep(800 * Math.pow(2, attempt));
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.startsWith("overpass_failed:")) throw error;
+      lastError = `${message}:${new URL(endpoint).host}:attempt${attempt + 1}/${maxAttempts}`;
+      if (attempt < maxAttempts - 1) await sleep(overpassBackoffMs(attempt));
     }
   }
   throw new Error(`overpass_failed:${lastError}`);

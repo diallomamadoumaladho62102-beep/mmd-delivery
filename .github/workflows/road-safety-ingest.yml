@@ -33,7 +33,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "Calling ${FUNCTIONS_URL}/road-safety-ingest-scheduled (maxZones=${MAX_ZONES})"
-          response=$(curl -sS -w "\n%{http_code}" -X POST \
+          response=$(curl -sS --max-time 140 --retry 2 --retry-delay 5 --retry-connrefused \
+            -w "\n%{http_code}" -X POST \
             "${FUNCTIONS_URL}/road-safety-ingest-scheduled" \
             -H "Content-Type: application/json" \
             -H "x-ingest-secret: ${INGEST_SECRET}" \
@@ -46,7 +47,11 @@ jobs:
             echo "::error::Ingestion HTTP ${code}"
             exit 1
           fi
+          if ! echo "$body" | grep -q '"ok":'; then
+            echo "::error::Ingestion response was empty or not JSON"
+            exit 1
+          fi
           if echo "$body" | grep -q '"ok":false'; then
-            echo "::error::One or more zones failed to ingest"
+            echo "::error::One or more zones failed to ingest after Overpass retries"
             exit 1
           fi

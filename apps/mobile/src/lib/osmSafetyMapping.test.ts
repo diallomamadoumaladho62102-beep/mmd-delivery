@@ -8,6 +8,15 @@ import {
   parseMaxSpeedKmh,
   type OsmElement,
 } from "../../../../supabase/functions/_shared/osmSafetyMapping";
+import {
+  OVERPASS_ENDPOINTS,
+  OVERPASS_MAX_ATTEMPTS,
+  OVERPASS_TIMEOUT_MS,
+  isRetryableOverpassStatus,
+  overpassBackoffMs,
+  overpassEndpointForAttempt,
+  parseOverpassResponse,
+} from "../../../../supabase/functions/_shared/overpassClient";
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message);
@@ -72,5 +81,38 @@ assert(query.includes('node["highway"="speed_camera"]'), "query fetches cameras"
 assert(query.includes('node["highway"="stop"]'), "query fetches stops");
 assert(query.includes('["amenity"="school"]'), "query fetches schools");
 assert(query.includes("1,2,3,4"), "bbox embedded");
+
+assert(OVERPASS_ENDPOINTS.length >= 3, "multiple Overpass mirrors");
+assert(OVERPASS_MAX_ATTEMPTS >= 5, "enough retries for 504");
+assert(OVERPASS_TIMEOUT_MS <= 20_000, "timeout fits edge wall-clock");
+assert(isRetryableOverpassStatus(504) === true, "504 retryable");
+assert(isRetryableOverpassStatus(429) === true, "429 retryable");
+assert(isRetryableOverpassStatus(403) === true, "403 retry other mirrors");
+assert(isRetryableOverpassStatus(404) === false, "404 definitive");
+assert(overpassBackoffMs(0) >= 2000, "backoff starts at 2s");
+assert(overpassBackoffMs(3) <= 16000, "backoff capped");
+assert(
+  overpassEndpointForAttempt(0) !== overpassEndpointForAttempt(1),
+  "mirrors rotate",
+);
+
+const emptyOk = parseOverpassResponse({ elements: [] });
+if (!emptyOk.ok) throw new Error("empty elements should be valid");
+assert(emptyOk.elements.length === 0, "empty elements valid");
+
+const missing = parseOverpassResponse({ remark: "ok" });
+if (missing.ok) throw new Error("missing elements should fail");
+assert(missing.retryable === false, "missing elements is definitive");
+
+const rateRemark = parseOverpassResponse({
+  remark: "runtime error: Query timed out",
+  elements: [],
+});
+if (rateRemark.ok) throw new Error("timeout remark should fail");
+assert(rateRemark.retryable === true, "timeout remark retryable");
+
+const invalid = parseOverpassResponse("not-json");
+if (invalid.ok) throw new Error("invalid json should fail");
+assert(invalid.retryable === true, "invalid json retryable");
 
 console.log("osmSafetyMapping tests passed");

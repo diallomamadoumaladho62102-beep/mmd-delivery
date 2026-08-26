@@ -5,11 +5,11 @@ import SiteShell from "@/components/site/SiteShell";
 import {
   SUPPORT_SEO,
   buildSupportFallbackBlocks,
+  withSupportSmsHelpBlocks,
 } from "@/components/site/supportContent";
 import {
   cmsPageMetadata,
   loadSiteChrome,
-  renderCmsPage,
 } from "@/components/site/renderCmsPage";
 import { getPublishedPageBySlug, listPublishedFaq } from "@/lib/siteCms";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
@@ -46,25 +46,21 @@ export default async function SupportMarketingPage() {
     ),
   );
 
-  const jsonLd = null;
-
-  if (hasStructuredCms) {
-    return (
-      <>
-        <div data-site-content-source="cms" hidden aria-hidden="true" />
-        {jsonLd}
-        {await renderCmsPage("support")}
-      </>
-    );
-  }
-
   const { settings, headerItems, footerItems, overlays } = await loadSiteChrome();
   const faqItems = await listPublishedFaq(supabase);
+  const blocks = withSupportSmsHelpBlocks(
+    hasStructuredCms && pageData
+      ? pageData.blocks
+      : buildSupportFallbackBlocks(),
+  );
 
   return (
     <>
-      <div data-site-content-source="fallback" hidden aria-hidden="true" />
-      {jsonLd}
+      <div
+        data-site-content-source={hasStructuredCms ? "cms" : "fallback"}
+        hidden
+        aria-hidden="true"
+      />
       <SiteShell
         settings={settings}
         headerItems={headerItems}
@@ -72,7 +68,7 @@ export default async function SupportMarketingPage() {
         overlays={overlays as Parameters<typeof SiteShell>[0]["overlays"]}
       >
         <BlockRenderer
-          blocks={buildSupportFallbackBlocks()}
+          blocks={blocks}
           faqItems={faqItems.map((f) => ({
             id: String(f.id),
             question: String(f.question),
