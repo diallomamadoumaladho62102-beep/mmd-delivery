@@ -4,11 +4,13 @@ import {
   ADMIN_VOICE_ACTIVE_STATUSES,
   ADMIN_VOICE_CALL_PERMISSION,
   assertEligibleAdminVoiceDestination,
+  fetchAdminVoiceStaffProfiles,
+  isStaleAdminVoiceCall,
   publicAdminVoiceCallView,
   publicAdminVoiceDestinationView,
   type AdminVoiceCallRow,
-  type AdminVoiceDestinationProfile,
 } from "@/lib/adminVoiceTransfer";
+import { computeAdminVoiceDashboardStats } from "@/lib/adminVoiceIvr";
 import {
   AdminAccessError,
   assertStaffPermission,
@@ -18,6 +20,9 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const CALL_SELECT =
+  "id, parent_call_sid, from_phone, current_admin_user_id, current_admin_phone, assigned_admin_user_id, ivr_digit, ivr_attempts, service, transfer_count, status, created_at, updated_at";
+
 export async function GET(request: NextRequest) {
   try {
     const session = await assertStaffPermission(
@@ -26,14 +31,21 @@ export async function GET(request: NextRequest) {
     );
     const supabase = buildSupabaseAdminClient();
 
-    const { data: callsRaw, error: callsError } = await supabase
-      .from("admin_voice_calls")
-      .select(
-        "id, parent_call_sid, from_phone, current_admin_user_id, current_admin_phone, status, created_at",
-      )
-      .in("status", [...ADMIN_VOICE_ACTIVE_STATUSES])
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: recentRaw, error: callsError }, { data: eventsRaw }] =
+      await Promise.all([
+        supabase
+          .from("admin_voice_calls")
+          .select(CALL_SELECT)
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(200),
+        supabase
+          .from("admin_voice_transfer_events")
+          .select("id, call_id, from_admin_user_id, to_admin_user_id, service, created_at")
+          .order("created_at", { ascending: true })
+          .limit(400),
+      ]);
 
     if (callsError) {
       return NextResponse.json(
@@ -42,59 +54,71 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const staffSelect =
-      "id, full_name, email, role, is_founder, phone, account_status";
-    const [{ data: founderRaw, error: founderError }, { data: staffRaw, error: staffError }] =
-      await Promise.all([
-        supabase
-          .from("profiles")
-          .select(staffSelect)
-          .eq("is_founder", true)
-          .limit(20),
-        supabase
-          .from("profiles")
-          .select(staffSelect)
-          .in("role", [
-            "super_admin",
-            "admin",
-            "operations_admin",
-            "ops",
-            "support_admin",
-            "support",
-          ])
-          .limit(100),
-      ]);
+    const recentCalls = ((recentRaw ?? []) as AdminVoiceCallRow[]).map((row) =>
+      isStaleAdminVoiceCall(row) ? { ...row, status: "expired" } : row,
+    );
 
-    if (founderError || staffError) {
-      return NextResponse.json(
-        { ok: false, error: "Unable to load transfer destinations" },
-        { status: 500 },
-      );
+    const eventsByCall = new Map<
+      string,
+      Array<{
+        id: string;
+        fromAdminUserId: string | null;
+        toAdminUserId: string | null;
+        service: string | null;
+        createdAt: string | null;
+      }>
+    >();
+    for (const event of eventsRaw ?? []) {
+      const row = event as {
+        id: string;
+        call_id: string;
+        from_admin_user_id: string | null;
+        to_admin_user_id: string | null;
+        service: string | null;
+        created_at: string | null;
+      };
+      const list = eventsByCall.get(row.call_id) ?? [];
+      list.push({
+        id: row.id,
+        fromAdminUserId: row.from_admin_user_id,
+        toAdminUserId: row.to_admin_user_id,
+        service: row.service,
+        createdAt: row.created_at,
+      });
+      eventsByCall.set(row.call_id, list);
     }
 
-    const staffById = new Map<string, AdminVoiceDestinationProfile>();
-    for (const profile of [
-      ...((founderRaw ?? []) as AdminVoiceDestinationProfile[]),
-      ...((staffRaw ?? []) as AdminVoiceDestinationProfile[]),
-    ]) {
-      staffById.set(profile.id, profile);
-    }
+    const activeCalls = recentCalls
+      .filter((row) =>
+        (ADMIN_VOICE_ACTIVE_STATUSES as readonly string[]).includes(row.status),
+      )
+      .map((row) => ({
+        ...publicAdminVoiceCallView(row),
+        transferHistory: eventsByCall.get(row.id) ?? [],
+      }));
 
-    const destinations = Array.from(staffById.values())
+    const staffProfiles = await fetchAdminVoiceStaffProfiles(supabase);
+
+    const eligibleAdmins = staffProfiles.filter(
+      (profile) => assertEligibleAdminVoiceDestination(profile).ok,
+    );
+
+    const destinations = eligibleAdmins
+      .filter((profile) => profile.id !== session.userId)
       .map((profile) => {
         const eligible = assertEligibleAdminVoiceDestination(profile);
         if (eligible.ok === false) return null;
-        if (profile.id === session.userId) return null;
         return publicAdminVoiceDestinationView(profile, eligible.phone);
       })
       .filter((row): row is NonNullable<typeof row> => Boolean(row));
 
     return NextResponse.json({
       ok: true,
-      activeCalls: ((callsRaw ?? []) as AdminVoiceCallRow[]).map(
-        publicAdminVoiceCallView,
-      ),
+      activeCalls,
+      recentCalls: recentCalls.map(publicAdminVoiceCallView),
       destinations,
+      authorizedAdminCount: eligibleAdmins.length,
+      stats: computeAdminVoiceDashboardStats(recentCalls),
     });
   } catch (error) {
     const status = error instanceof AdminAccessError ? error.status : 500;

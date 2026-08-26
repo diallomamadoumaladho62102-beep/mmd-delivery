@@ -282,6 +282,53 @@ test("raw destination phone from the browser is rejected", () => {
     destinationPhone: ADMIN_B_PHONE,
   });
   assert.equal(parsed.ok, false);
+
+  const both = parseTransferRequest({
+    callId: CALL_ID,
+    destinationUserId: ADMIN_B_ID,
+    destinationPhone: ADMIN_B_PHONE,
+  });
+  assert.equal(both.ok, false);
+});
+
+test("inactive admin, client, driver, and missing destination cannot receive calls", () => {
+  assert.equal(
+    assertEligibleAdminVoiceDestination(
+      adminProfile({ account_status: "disabled" }),
+    ).ok,
+    false,
+  );
+  assert.equal(
+    assertEligibleAdminVoiceDestination(adminProfile({ role: "client" })).ok,
+    false,
+  );
+  assert.equal(
+    assertEligibleAdminVoiceDestination(adminProfile({ role: "driver" })).ok,
+    false,
+  );
+  assert.equal(assertEligibleAdminVoiceDestination(null).ok, false);
+});
+
+test("arbitrary destination user IDs never call Twilio", async () => {
+  const result = await executeAdminVoiceTransfer({
+    actor: { userId: ADMIN_A_ID, role: "support_admin", isFounder: false },
+    callId: CALL_ID,
+    destinationUserId: "99999999-9999-4999-8999-999999999999",
+    deps: {
+      loadCall: async () => activeCall(),
+      loadDestination: async () => null,
+      updateCall: async () => {
+        throw new Error("unknown user must not update");
+      },
+      redirectCall: async () => {
+        throw new Error("unknown user must not call Twilio");
+      },
+    },
+  });
+  assert.equal(result.ok, false);
+  if (result.ok === false) {
+    assert.equal(result.status, 404);
+  }
 });
 
 test("sensitive Twilio credentials are redacted from logs", () => {
@@ -348,12 +395,14 @@ test("inbound support row is stored against the Twilio parent CallSid", () => {
   assert.equal(row?.parent_call_sid, "CAcccccccccccccccccccccccccccccccc");
   assert.equal(row?.from_phone, "+15559876543");
   assert.equal(row?.current_admin_phone, ADMIN_A_PHONE);
-  assert.equal(row?.status, "ringing");
+  assert.equal(row?.status, "in_ivr");
 });
 
 test("transferred calls keep transferred status until the parent call ends", () => {
   assert.equal(mapTwilioStatusToAdminVoice("ringing", "transferred"), "transferred");
   assert.equal(mapTwilioStatusToAdminVoice("in-progress", "transferred"), "transferred");
+  assert.equal(mapTwilioStatusToAdminVoice("ringing", "in_ivr"), "in_ivr");
+  assert.equal(mapTwilioStatusToAdminVoice("in-progress", "in_ivr"), "in_ivr");
   assert.equal(mapTwilioStatusToAdminVoice("completed", "transferred"), "completed");
   assert.equal(mapTwilioStatusToAdminVoice("completed", "completed"), "completed");
   assert.equal(mapTwilioStatusToAdminVoice("ringing", "completed"), null);

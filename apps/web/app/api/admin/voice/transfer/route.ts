@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
           const { data } = await supabase
             .from("admin_voice_calls")
             .select(
-              "id, parent_call_sid, child_call_sid, from_phone, current_admin_user_id, current_admin_phone, transferred_from_user_id, transferred_to_user_id, status, created_at",
+              "id, parent_call_sid, child_call_sid, from_phone, current_admin_user_id, current_admin_phone, assigned_admin_user_id, transferred_from_user_id, transferred_to_user_id, service, transfer_count, status, created_at, updated_at",
             )
             .eq("id", callId)
             .maybeSingle();
@@ -76,6 +76,14 @@ export async function POST(request: NextRequest) {
           if (error) {
             throw new Error("Unable to update admin call");
           }
+        },
+        insertTransferEvent: async (event) => {
+          await supabase.from("admin_voice_transfer_events").insert({
+            call_id: event.call_id,
+            from_admin_user_id: event.from_admin_user_id,
+            to_admin_user_id: event.to_admin_user_id,
+            service: event.service ?? null,
+          });
         },
         redirectCall: async ({ callSid, twiml }) =>
           redirectTwilioParentCall({

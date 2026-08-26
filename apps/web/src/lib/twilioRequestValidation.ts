@@ -23,9 +23,10 @@ export function getTwilioWebhookUrl(
   req: NextRequest,
   pathname: string
 ): string {
+  const search = req.nextUrl.search || "";
   const override = process.env.TWILIO_WEBHOOK_BASE_URL?.trim();
   if (override) {
-    return `${override.replace(/\/$/, "")}${pathname}`;
+    return `${override.replace(/\/$/, "")}${pathname}${search}`;
   }
 
   const proto = req.headers.get("x-forwarded-proto")?.trim() || "https";
@@ -34,7 +35,6 @@ export function getTwilioWebhookUrl(
     req.headers.get("host")?.trim() ||
     "";
 
-  const search = req.nextUrl.search || "";
   return `${proto}://${host}${pathname}${search}`;
 }
 

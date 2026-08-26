@@ -9,6 +9,7 @@ import {
 } from "./twilioRequestValidation";
 import {
   getTwilioVoiceIncomingUrl,
+  getTwilioVoiceIvrBaseUrl,
   getTwilioVoiceStatusCallbackUrl,
   TWILIO_PRODUCTION_BASE_URL,
 } from "./twilioProductionUrls";
@@ -112,10 +113,12 @@ test("canonical production webhook URLs use mmddelivery.com", () => {
   const previousBase = process.env.TWILIO_WEBHOOK_BASE_URL;
   const previousIncoming = process.env.TWILIO_VOICE_INCOMING_URL;
   const previousStatus = process.env.TWILIO_VOICE_STATUS_CALLBACK_URL;
+  const previousIvr = process.env.TWILIO_VOICE_IVR_URL;
 
   delete process.env.TWILIO_WEBHOOK_BASE_URL;
   delete process.env.TWILIO_VOICE_INCOMING_URL;
   delete process.env.TWILIO_VOICE_STATUS_CALLBACK_URL;
+  delete process.env.TWILIO_VOICE_IVR_URL;
 
   try {
     assert.equal(
@@ -126,6 +129,10 @@ test("canonical production webhook URLs use mmddelivery.com", () => {
       getTwilioVoiceStatusCallbackUrl(),
       "https://www.mmddelivery.com/api/twilio/voice/status",
     );
+    assert.equal(
+      getTwilioVoiceIvrBaseUrl(),
+      "https://www.mmddelivery.com/api/twilio/voice/ivr",
+    );
   } finally {
     if (previousBase === undefined) delete process.env.TWILIO_WEBHOOK_BASE_URL;
     else process.env.TWILIO_WEBHOOK_BASE_URL = previousBase;
@@ -133,5 +140,7 @@ test("canonical production webhook URLs use mmddelivery.com", () => {
     else process.env.TWILIO_VOICE_INCOMING_URL = previousIncoming;
     if (previousStatus === undefined) delete process.env.TWILIO_VOICE_STATUS_CALLBACK_URL;
     else process.env.TWILIO_VOICE_STATUS_CALLBACK_URL = previousStatus;
+    if (previousIvr === undefined) delete process.env.TWILIO_VOICE_IVR_URL;
+    else process.env.TWILIO_VOICE_IVR_URL = previousIvr;
   }
 });

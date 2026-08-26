@@ -3,6 +3,7 @@ export const TWILIO_PRODUCTION_BASE_URL = "https://www.mmddelivery.com";
 
 export const TWILIO_VOICE_INCOMING_PATH = "/api/twilio/voice/incoming";
 export const TWILIO_VOICE_STATUS_PATH = "/api/twilio/voice/status";
+export const TWILIO_VOICE_IVR_PATH = "/api/twilio/voice/ivr";
 export const TWILIO_SMS_INCOMING_PATH = "/api/twilio/sms";
 
 export function getTwilioProductionBaseUrl(): string {
@@ -29,4 +30,10 @@ export function getTwilioSmsIncomingUrl(): string {
   const override = String(process.env.TWILIO_SMS_INCOMING_URL ?? "").trim();
   if (override) return override;
   return `${getTwilioProductionBaseUrl()}${TWILIO_SMS_INCOMING_PATH}`;
+}
+
+export function getTwilioVoiceIvrBaseUrl(): string {
+  const override = String(process.env.TWILIO_VOICE_IVR_URL ?? "").trim();
+  if (override) return override;
+  return `${getTwilioProductionBaseUrl()}${TWILIO_VOICE_IVR_PATH}`;
 }

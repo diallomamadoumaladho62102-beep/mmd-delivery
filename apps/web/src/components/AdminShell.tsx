@@ -23,6 +23,7 @@ import {
 import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import { supabase } from "@/lib/supabaseBrowser";
 import { ADMIN_LOGO, CC_BTN_SECONDARY, CC_INPUT, CC_ROLE_BADGE, CC_SIDEBAR_LINK, CC_SIDEBAR_LINK_ACTIVE, navIcon } from "@/components/admin/adminUi";
+import AdminIncomingVoiceAlerts from "@/components/admin/AdminIncomingVoiceAlerts";
 
 type ShellProps = {
   title?: string;
@@ -356,6 +357,7 @@ export default function AdminShell({
         </button>
       </nav>
       <div className="h-16 md:hidden" />
+      <AdminIncomingVoiceAlerts session={session} />
     </div>
   );
 }

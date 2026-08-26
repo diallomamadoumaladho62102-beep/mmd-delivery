@@ -14,7 +14,11 @@ import { getTwilioVoiceStatusCallbackUrl } from "@/lib/twilioProductionUrls";
 export const ADMIN_VOICE_CALL_PERMISSION = "communication.calls" as const;
 
 export const ADMIN_VOICE_ACTIVE_STATUSES = [
+  "incoming",
+  "in_ivr",
+  "queued",
   "ringing",
+  "answered",
   "in_progress",
   "transferred",
 ] as const;
@@ -24,7 +28,10 @@ export const ADMIN_VOICE_TERMINAL_STATUSES = [
   "failed",
   "canceled",
   "missed",
+  "expired",
 ] as const;
+
+export const ADMIN_VOICE_STALE_MS = 15 * 60 * 1000;
 
 const SENSITIVE_LOG_KEY = /token|secret|authorization|password|auth/i;
 
@@ -43,7 +50,22 @@ export type AdminVoiceCallRow = {
   current_admin_phone: string;
   transferred_from_user_id?: string | null;
   transferred_to_user_id?: string | null;
+  assigned_admin_user_id?: string | null;
+  ivr_digit?: string | null;
+  ivr_attempts?: number | null;
+  service?: string | null;
+  transfer_count?: number | null;
   status: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type AdminVoiceTransferEventRow = {
+  id?: string;
+  call_id: string;
+  from_admin_user_id: string | null;
+  to_admin_user_id: string | null;
+  service?: string | null;
   created_at?: string | null;
 };
 
@@ -70,6 +92,9 @@ export type AdminVoiceTransferDeps = {
     callId: string,
     patch: Record<string, unknown>,
   ) => Promise<void>;
+  insertTransferEvent?: (
+    event: AdminVoiceTransferEventRow,
+  ) => Promise<void>;
   redirectCall: (params: {
     callSid: string;
     twiml: string;
@@ -87,6 +112,55 @@ export function escapeTwiml(value: string): string {
 
 export function getAdminSupportPhone(): string {
   return String(process.env.MMD_ADMIN_SUPPORT_PHONE || "+19297408722").trim();
+}
+
+/** Admin PSTN destinations stay on the NANP (+1) footprint used by the public MMD number. */
+export function isAllowedAdminVoiceDestinationPhone(
+  phone: string | null | undefined,
+): boolean {
+  const normalized = normalizePhoneE164(phone);
+  return Boolean(normalized && /^\+1\d{10}$/.test(normalized));
+}
+
+export const ADMIN_VOICE_STAFF_ROLES = [
+  "super_admin",
+  "admin",
+  "operations_admin",
+  "ops",
+  "support_admin",
+  "support",
+] as const;
+
+export async function fetchAdminVoiceStaffProfiles(
+  supabase: SupabaseClient,
+): Promise<AdminVoiceDestinationProfile[]> {
+  const staffSelect =
+    "id, full_name, email, role, is_founder, phone, account_status";
+  const [founderResult, staffResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(staffSelect)
+      .eq("is_founder", true)
+      .limit(20),
+    supabase
+      .from("profiles")
+      .select(staffSelect)
+      .in("role", [...ADMIN_VOICE_STAFF_ROLES])
+      .limit(100),
+  ]);
+
+  if (founderResult.error || staffResult.error) {
+    throw new Error("Unable to load transfer destinations");
+  }
+
+  const staffById = new Map<string, AdminVoiceDestinationProfile>();
+  for (const profile of [
+    ...((founderResult.data ?? []) as AdminVoiceDestinationProfile[]),
+    ...((staffResult.data ?? []) as AdminVoiceDestinationProfile[]),
+  ]) {
+    staffById.set(profile.id, profile);
+  }
+  return Array.from(staffById.values());
 }
 
 export function getPublicVoiceCallerId(): string {
@@ -143,7 +217,7 @@ export function parseTransferRequest(body: unknown): {
     record.destinationPhone ?? record.destination_phone ?? "",
   ).trim();
 
-  if (destinationPhone && !destinationUserId) {
+  if (destinationPhone) {
     return {
       ok: false,
       status: 400,
@@ -183,6 +257,14 @@ export function assertEligibleAdminVoiceDestination(
     return { ok: false, status: 409, error: "Destination admin has no valid phone number" };
   }
 
+  if (!isAllowedAdminVoiceDestinationPhone(phone)) {
+    return {
+      ok: false,
+      status: 409,
+      error: "International destinations are not authorized",
+    };
+  }
+
   return { ok: true, phone, role };
 }
 
@@ -190,10 +272,12 @@ export function buildAdminDialTwiml(params: {
   destPhone: string;
   callerId?: string;
   includeWelcome?: boolean;
+  prefixSay?: string;
 }): string {
   const destPhone = normalizePhoneE164(params.destPhone) || "";
   const callerId = normalizePhoneE164(params.callerId) || getPublicVoiceCallerId();
   const statusCallbackUrl = getTwilioVoiceStatusCallbackUrl();
+  const prefix = String(params.prefixSay || "").trim();
   const welcome = params.includeWelcome
     ? `
   <Say voice="alice" language="en-US">
@@ -203,7 +287,11 @@ export function buildAdminDialTwiml(params: {
     Please wait while we connect you to our support team.
   </Say>
 `
-    : `
+    : prefix
+      ? `
+  <Say voice="alice" language="en-US">${escapeTwiml(prefix)}</Say>
+`
+      : `
   <Say voice="alice" language="en-US">
     Please wait while we transfer your call.
   </Say>
@@ -226,8 +314,7 @@ ${welcome}
   </Dial>
 
   <Say voice="alice" language="en-US">
-    Our support team is not available right now.
-    Please leave your name, phone number, order or trip details, and a short message after the beep.
+    All of our support representatives are currently unavailable. Please leave a message or try again later.
   </Say>
 
   <Record
@@ -258,7 +345,9 @@ export function buildInboundAdminVoiceCallRow(params: {
     parent_call_sid: parentCallSid,
     from_phone: normalizePhoneE164(params.fromPhone),
     current_admin_phone: normalizePhoneE164(params.supportPhone) || getAdminSupportPhone(),
-    status: "ringing",
+    status: "in_ivr",
+    ivr_attempts: 0,
+    service: null,
     updated_at: params.nowIso,
   };
 }
@@ -272,7 +361,7 @@ export function mapTwilioStatusToAdminVoice(
 
   let next: string | null = null;
   if (["queued", "initiated", "ringing"].includes(incoming)) next = "ringing";
-  else if (["in-progress", "answered"].includes(incoming)) next = "in_progress";
+  else if (["in-progress", "answered"].includes(incoming)) next = "answered";
   else if (incoming === "completed") next = "completed";
   else if (incoming === "busy" || incoming === "no-answer") next = "missed";
   else if (incoming === "failed") next = "failed";
@@ -284,11 +373,59 @@ export function mapTwilioStatusToAdminVoice(
     return current === next ? next : null;
   }
 
-  if (current === "transferred" && (next === "ringing" || next === "in_progress")) {
+  if (current === "in_ivr" && (next === "ringing" || next === "answered")) {
+    return "in_ivr";
+  }
+
+  if (current === "transferred" && (next === "ringing" || next === "answered")) {
     return "transferred";
   }
 
   return next;
+}
+
+export function displayAdminVoiceStatus(status: string | null | undefined): string {
+  switch (String(status ?? "").trim().toLowerCase()) {
+    case "incoming":
+      return "Incoming";
+    case "in_ivr":
+      return "In IVR";
+    case "queued":
+      return "Queued";
+    case "ringing":
+      return "Ringing";
+    case "answered":
+    case "in_progress":
+      return "Answered";
+    case "transferred":
+      return "Transferred";
+    case "completed":
+      return "Completed";
+    case "missed":
+      return "Missed";
+    case "failed":
+      return "Failed";
+    case "expired":
+      return "Expired";
+    case "canceled":
+      return "Missed";
+    default:
+      return "Incoming";
+  }
+}
+
+export function isStaleAdminVoiceCall(
+  row: Pick<AdminVoiceCallRow, "status" | "created_at" | "updated_at">,
+  nowMs = Date.now(),
+): boolean {
+  if (!isAdminVoiceCallActive(row.status)) return false;
+  if (row.status === "answered" || row.status === "in_progress" || row.status === "transferred") {
+    return false;
+  }
+  const raw = row.updated_at || row.created_at;
+  if (!raw) return false;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) && nowMs - ts > ADMIN_VOICE_STALE_MS;
 }
 
 export function redactAdminVoiceLog(value: unknown): unknown {
@@ -316,13 +453,21 @@ export function redactAdminVoiceLog(value: unknown): unknown {
 }
 
 export function publicAdminVoiceCallView(row: AdminVoiceCallRow) {
+  const stale = isStaleAdminVoiceCall(row);
+  const status = stale ? "expired" : row.status;
   return {
     id: row.id,
-    status: row.status,
+    status,
+    displayStatus: displayAdminVoiceStatus(status),
     createdAt: row.created_at ?? null,
-    fromPhone: row.from_phone,
+    updatedAt: row.updated_at ?? null,
+    fromPhone: row.from_phone ? maskPhone(row.from_phone) : null,
     currentAdminUserId: row.current_admin_user_id,
+    assignedAdminUserId: row.assigned_admin_user_id ?? row.current_admin_user_id,
     parentCallSid: row.parent_call_sid,
+    service: row.service ?? null,
+    ivrDigit: row.ivr_digit ?? null,
+    transferCount: row.transfer_count ?? 0,
   };
 }
 
@@ -439,16 +584,20 @@ export async function executeAdminVoiceTransfer(params: {
   const previous = {
     current_admin_user_id: call.current_admin_user_id,
     current_admin_phone: call.current_admin_phone,
+    assigned_admin_user_id: call.assigned_admin_user_id ?? null,
     status: call.status,
     transferred_from_user_id: call.transferred_from_user_id ?? null,
     transferred_to_user_id: call.transferred_to_user_id ?? null,
+    transfer_count: call.transfer_count ?? 0,
   };
 
   await params.deps.updateCall(call.id, {
     current_admin_user_id: destinationUserId,
+    assigned_admin_user_id: destinationUserId,
     current_admin_phone: eligible.phone,
     transferred_from_user_id: params.actor.userId,
     transferred_to_user_id: destinationUserId,
+    transfer_count: (call.transfer_count ?? 0) + 1,
     status: "transferred",
     updated_at: new Date().toISOString(),
   });
@@ -468,6 +617,15 @@ export async function executeAdminVoiceTransfer(params: {
       status: redirected.status || 502,
       error: redirected.error || "Unable to transfer this call",
     };
+  }
+
+  if (params.deps.insertTransferEvent) {
+    await params.deps.insertTransferEvent({
+      call_id: call.id,
+      from_admin_user_id: params.actor.userId,
+      to_admin_user_id: destinationUserId,
+      service: call.service ?? null,
+    });
   }
 
   return { ok: true, callId: call.id, destinationUserId };

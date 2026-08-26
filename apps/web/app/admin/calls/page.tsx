@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { canAccessCommunication } from "@/lib/adminAccess";
+import { adminVoiceServiceLabel } from "@/lib/adminVoiceIvr";
 import { normalizeUserRole } from "@/lib/roles";
 
 type CallRole = "client" | "driver" | "restaurant" | "admin";
@@ -43,10 +44,31 @@ type AdminRoleRow = {
 type AdminVoiceCallView = {
   id: string;
   status: string;
+  displayStatus?: string;
   createdAt: string | null;
   fromPhone: string | null;
   currentAdminUserId: string | null;
+  assignedAdminUserId?: string | null;
   parentCallSid: string;
+  service?: string | null;
+  ivrDigit?: string | null;
+  transferCount?: number;
+  transferHistory?: Array<{
+    id: string;
+    fromAdminUserId: string | null;
+    toAdminUserId: string | null;
+    createdAt: string | null;
+  }>;
+};
+
+type AdminVoiceStats = {
+  active: number;
+  incoming: number;
+  answered: number;
+  missed: number;
+  transferred: number;
+  completed: number;
+  byService: Record<string, number>;
 };
 
 type AdminVoiceDestinationView = {
@@ -100,7 +122,7 @@ function normalizeStatus(status: string | null | undefined): string {
 function statusClass(status: string | null | undefined): string {
   const normalized = normalizeStatus(status);
 
-  if (["active", "in_progress", "ringing", "queued", "initiated"].includes(normalized)) {
+  if (["active", "in_progress", "ringing", "queued", "initiated", "incoming", "in_ivr"].includes(normalized)) {
     return "border-green-200 bg-green-50 text-green-700";
   }
 
@@ -172,10 +194,15 @@ export default function AdminCallsPage() {
     null,
   );
   const [voiceErr, setVoiceErr] = useState<string | null>(null);
+  const [voiceStats, setVoiceStats] = useState<AdminVoiceStats | null>(null);
+  const [recentVoiceCalls, setRecentVoiceCalls] = useState<AdminVoiceCallView[]>([]);
+  const [authorizedAdminCount, setAuthorizedAdminCount] = useState(0);
+  const [realtimeDegraded, setRealtimeDegraded] = useState(false);
+  const firstLoadRef = useRef(true);
 
   const loadPage = useCallback(async () => {
     try {
-      setLoading(true);
+      if (firstLoadRef.current) setLoading(true);
       setErr(null);
 
       const {
@@ -225,12 +252,18 @@ export default function AdminCallsPage() {
           ok?: boolean;
           error?: string;
           activeCalls?: AdminVoiceCallView[];
+          recentCalls?: AdminVoiceCallView[];
           destinations?: AdminVoiceDestinationView[];
+          authorizedAdminCount?: number;
+          stats?: AdminVoiceStats;
         } | null;
 
         if (voiceRes.ok && voiceJson?.ok) {
           setVoiceCalls(voiceJson.activeCalls ?? []);
+          setRecentVoiceCalls(voiceJson.recentCalls ?? []);
           setVoiceDestinations(voiceJson.destinations ?? []);
+          setAuthorizedAdminCount(voiceJson.authorizedAdminCount ?? 0);
+          setVoiceStats(voiceJson.stats ?? null);
           setVoiceErr(null);
         } else if (voiceRes.status !== 401 && voiceRes.status !== 403) {
           setVoiceErr(
@@ -297,6 +330,7 @@ export default function AdminCallsPage() {
         error instanceof Error ? error.message : "Erreur lors du chargement des appels.";
       setErr(message);
     } finally {
+      firstLoadRef.current = false;
       setLoading(false);
     }
   }, [router]);
@@ -376,9 +410,20 @@ export default function AdminCallsPage() {
           void loadPage();
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setRealtimeDegraded(false);
+          return;
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRealtimeDegraded(true);
+        }
+      });
+
+    const poll = window.setInterval(() => void loadPage(), 4000);
 
     return () => {
+      window.clearInterval(poll);
       void supabase.removeChannel(channel);
     };
   }, [loadPage]);
@@ -455,16 +500,62 @@ export default function AdminCallsPage() {
           </h1>
 
           <p className="text-sm text-slate-600">
-            Suis les appels masqués Twilio, transfère un appel support vers un
-            autre admin autorisé, et consulte les commandes liées.
+            Suis les appels support IVR en temps réel, transfère vers un admin
+            autorisé, et consulte les appels masqués liés aux commandes.
           </p>
         </header>
 
-        {(err || voiceErr) && (
+        {(err || voiceErr || realtimeDegraded) && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
             {voiceErr || err}
+            {realtimeDegraded ? (
+              <p className="mt-1 text-amber-800">
+                Realtime indisponible — rafraîchissement automatique toutes les 4 secondes.
+              </p>
+            ) : null}
           </div>
         )}
+
+        {voiceStats ? (
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            {[
+              ["Active", voiceStats.active],
+              ["Incoming", voiceStats.incoming],
+              ["Answered", voiceStats.answered],
+              ["Missed", voiceStats.missed],
+              ["Transferred", voiceStats.transferred],
+              ["Completed", voiceStats.completed],
+            ].map(([label, value]) => (
+              <div
+                key={String(label)}
+                className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm"
+              >
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  {label}
+                </div>
+                <div className="mt-2 text-3xl font-extrabold text-slate-900">
+                  {value}
+                </div>
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        {voiceStats?.byService ? (
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {Object.entries(voiceStats.byService).map(([service, count]) => (
+              <div
+                key={service}
+                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+              >
+                <span className="font-semibold capitalize">
+                  {adminVoiceServiceLabel(service)}
+                </span>
+                <span className="ml-2 font-bold">{count}</span>
+              </div>
+            ))}
+          </section>
+        ) : null}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -496,51 +587,117 @@ export default function AdminCallsPage() {
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                     <div className="space-y-1 text-sm text-slate-700">
                       <p className="font-semibold text-slate-900">
-                        Appel #{call.id.slice(0, 8)} · {call.status}
+                        {call.status === "in_ivr" ||
+                        call.status === "ringing" ||
+                        call.status === "incoming"
+                          ? "🔴 INCOMING MMD SUPPORT CALL"
+                          : "MMD Delivery Support"}{" "}
+                        · {call.displayStatus || call.status}
                       </p>
-                      <p>Appelant : {call.fromPhone || "—"}</p>
+                      <p>Caller: {call.fromPhone || "—"}</p>
+                      <p>Service: {adminVoiceServiceLabel(call.service)}</p>
+                      <p>IVR: {call.ivrDigit ?? "—"}</p>
                       <p>Début : {formatDate(call.createdAt)}</p>
+                      {(call.transferHistory?.length ?? 0) > 0 ? (
+                        <p>
+                          Transfers: {call.transferCount ?? call.transferHistory?.length}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="flex min-w-full flex-col gap-2 sm:flex-row lg:min-w-[420px]">
-                      <select
-                        value={transferTargetByCall[call.id] ?? ""}
-                        onChange={(event) =>
-                          setTransferTargetByCall((current) => ({
-                            ...current,
-                            [call.id]: event.target.value,
-                          }))
-                        }
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                      >
-                        <option value="">Choisir un admin…</option>
-                        {voiceDestinations.map((destination) => (
-                          <option
-                            key={destination.userId}
-                            value={destination.userId}
+                      {voiceDestinations.length > 0 ? (
+                        <>
+                          <select
+                            value={transferTargetByCall[call.id] ?? ""}
+                            onChange={(event) =>
+                              setTransferTargetByCall((current) => ({
+                                ...current,
+                                [call.id]: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                           >
-                            {destination.fullName} · {destination.role || "admin"}{" "}
-                            · {destination.phoneLast4}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => void transferCall(call.id)}
-                        disabled={
-                          transferringCallId === call.id ||
-                          !transferTargetByCall[call.id]
-                        }
-                        className="rounded-xl border border-slate-300 bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {transferringCallId === call.id
-                          ? "Transfert…"
-                          : "Transfer"}
-                      </button>
+                            <option value="">Choisir un admin…</option>
+                            {voiceDestinations.map((destination) => (
+                              <option
+                                key={destination.userId}
+                                value={destination.userId}
+                              >
+                                {destination.fullName} · {destination.role || "admin"}{" "}
+                                · {destination.phoneLast4}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => void transferCall(call.id)}
+                            disabled={
+                              transferringCallId === call.id ||
+                              !transferTargetByCall[call.id]
+                            }
+                            className="rounded-xl border border-slate-300 bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {transferringCallId === call.id
+                              ? "Transfert…"
+                              : "Transfer"}
+                          </button>
+                        </>
+                      ) : (
+                        <p className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                          {authorizedAdminCount <= 1
+                            ? "Seul administrateur autorisé. Décrochez le téléphone pour répondre. Le transfert vers un second admin n’est pas encore configuré."
+                            : "Aucun autre administrateur éligible n’est disponible pour un transfert."}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900">
+            Historique des appels support
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            24 dernières heures, y compris les appels terminés, transférés ou
+            manqués.
+          </p>
+          {recentVoiceCalls.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-600">
+              Aucun appel support sur les dernières 24 heures.
+            </p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-left text-sm text-slate-700">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                    <th className="px-2 py-2">Heure</th>
+                    <th className="px-2 py-2">Service</th>
+                    <th className="px-2 py-2">Statut</th>
+                    <th className="px-2 py-2">Appelant</th>
+                    <th className="px-2 py-2">IVR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentVoiceCalls.map((call) => (
+                    <tr key={call.id} className="border-b border-slate-100">
+                      <td className="px-2 py-2">{formatDate(call.createdAt)}</td>
+                      <td className="px-2 py-2">
+                        {adminVoiceServiceLabel(call.service)}
+                      </td>
+                      <td className="px-2 py-2">
+                        {call.displayStatus || call.status}
+                      </td>
+                      <td className="px-2 py-2">{call.fromPhone || "—"}</td>
+                      <td className="px-2 py-2">{call.ivrDigit ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>

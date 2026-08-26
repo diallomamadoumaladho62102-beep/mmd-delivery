@@ -1,11 +1,11 @@
 import type { NextRequest } from "next/server";
 
 import {
-  buildAdminDialTwiml,
   buildInboundAdminVoiceCallRow,
   getAdminSupportPhone,
   resolveIncomingVoiceRoute,
 } from "@/lib/adminVoiceTransfer";
+import { buildIvrGatherTwiml } from "@/lib/adminVoiceIvr";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getTwilioPhoneNumber } from "@/lib/twilioPhone";
 import {
@@ -69,7 +69,7 @@ async function persistInboundSupportCall(params: {
   }
 }
 
-async function publicSupportDialAdmin(params: {
+async function publicSupportStartIvr(params: {
   supabaseAdmin: ReturnType<typeof buildSupabaseAdminClient>;
   callSid: string;
   fromPhone: string | null;
@@ -82,13 +82,7 @@ async function publicSupportDialAdmin(params: {
     });
   }
 
-  return twilioVoiceTwiml(
-    buildAdminDialTwiml({
-      destPhone: getAdminSupportPhone(),
-      callerId: MMD_TWILIO_NUMBER,
-      includeWelcome: true,
-    }),
-  );
+  return twilioVoiceTwiml(buildIvrGatherTwiml({ attempt: 0 }));
 }
 
 export async function handleTwilioVoiceIncoming(req: NextRequest) {
@@ -105,7 +99,7 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
   const callSid = String(formData.get("CallSid") || "").trim();
 
   if (!from) {
-    return publicSupportDialAdmin({
+    return publicSupportStartIvr({
       supabaseAdmin,
       callSid,
       fromPhone: null,
@@ -135,7 +129,7 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
       path: req.nextUrl.pathname,
       code: sessionError.code,
     });
-    return publicSupportDialAdmin({
+    return publicSupportStartIvr({
       supabaseAdmin,
       callSid,
       fromPhone: from,
@@ -149,7 +143,7 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
       matchedSession: Boolean(session),
     }) === "support"
   ) {
-    return publicSupportDialAdmin({
+    return publicSupportStartIvr({
       supabaseAdmin,
       callSid,
       fromPhone: from,
