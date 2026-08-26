@@ -101,7 +101,22 @@ Files: private bucket, ~14-day retention, **initiator-only** download; staff loc
 
 ## Demo accounts
 
-Provide current App Review demo Client + Driver credentials in App Store Connect.
+Provide current App Review demo credentials in App Store Connect (founder-supplied — do not invent):
+
+- **Client** — email + password (SMS OTP is **not** required)
+- **Driver** — approved driver, email + password
+- **Restaurant** — order-eligible restaurant, email + password
+- Optional: **Marketplace Seller** to exercise in-app Delete account
+
+## Marketplace checkout (launch / geo gate)
+
+Guest **browse** works without an account. Cart/checkout require login.  
+If checkout is not live in the reviewer’s county, the app shows that marketplace is not available in that area — it must not crash. Food, taxi, and package delivery are the primary paid demo flows.
+
+## Universal Links
+
+Canonical host is **https://www.mmddelivery.com**.  
+Password reset and signup emails use that host. Apex `mmddelivery.com` redirects to www.
 
 ## iPad
 

@@ -244,10 +244,8 @@ export default ({ config }) => {
           existingIos.buildNumber ||
           "72",
       ),
-      associatedDomains: [
-        "applinks:www.mmddelivery.com",
-        "applinks:mmddelivery.com",
-      ],
+      // Only www: apex mmddelivery.com 307s to www, and Apple forbids AASA host redirects.
+      associatedDomains: ["applinks:www.mmddelivery.com"],
       infoPlist: {
         ...existingInfoPlist,
         ITSAppUsesNonExemptEncryption: false,

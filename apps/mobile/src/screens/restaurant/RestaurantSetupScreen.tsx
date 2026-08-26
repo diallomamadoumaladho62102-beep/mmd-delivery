@@ -14,7 +14,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
 import * as DocumentPicker from "expo-document-picker";
@@ -639,7 +639,9 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
   };
 
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const contentMax = width >= 768 ? 560 : undefined;
+  const ctaBottom = Math.max(insets.bottom, 12) + 12;
 
   const docButton = (docType: DocType, label: string) => (
     <TouchableOpacity
@@ -713,7 +715,10 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingBottom: 88 + ctaBottom },
+          ]}
         >
           <View style={styles.card}>
             <View style={styles.mediaRow}>
@@ -894,7 +899,11 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         <TouchableOpacity
           disabled={loading}
           onPress={() => void onSave()}
-          style={[styles.cta, loading && { opacity: 0.85 }]}
+          style={[
+            styles.cta,
+            { bottom: ctaBottom },
+            loading && { opacity: 0.85 },
+          ]}
           activeOpacity={0.9}
         >
           {loading ? (

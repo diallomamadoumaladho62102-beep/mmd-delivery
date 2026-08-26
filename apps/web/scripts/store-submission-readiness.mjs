@@ -138,8 +138,8 @@ async function checkPublicWeb() {
   if (aasaType.includes("application/json")) {
     record("universal_links", "aasa_content_type_json", "PASS");
   } else {
-    record("universal_links", "aasa_content_type_json", "WARN", {
-      note: `Apple expects application/json; production currently reports ${aasaType || "missing"}. next.config.js sets Content-Type after web deploy.`,
+    record("universal_links", "aasa_content_type_json", "FAIL", {
+      error: `expected application/json, got ${aasaType || "missing"}`,
     });
   }
   const requiredAasa = ["/signup/*", "/auth/*", "/r/*", "/reset-password"];

@@ -226,6 +226,24 @@ test("seller area includes in-app account deletion for App Review 5.1.1(v)", () 
   assert.match(deletion, /business_name: `Deleted Seller/);
 });
 
+test("iOS associated domains use www only (apex AASA 307s and is invalid)", () => {
+  const appConfig = read("app.config.ts");
+  const appJson = read("apps/mobile/app.json");
+  assert.match(appConfig, /applinks:www\.mmddelivery\.com/);
+  assert.match(appJson, /applinks:www\.mmddelivery\.com/);
+  assert.doesNotMatch(appConfig, /applinks:mmddelivery\.com"/);
+  assert.doesNotMatch(appJson, /applinks:mmddelivery\.com"/);
+});
+
+test("RestaurantSetup submit CTA honors iPad home-indicator insets", () => {
+  const src = read(
+    "apps/mobile/src/screens/restaurant/RestaurantSetupScreen.tsx",
+  );
+  assert.match(src, /useSafeAreaInsets/);
+  assert.match(src, /insets\.bottom/);
+  assert.match(src, /ctaBottom/);
+});
+
 test("RoleSelect exposes explicit Log in entry for App Review", () => {
   const src = read("apps/mobile/src/screens/RoleSelectScreen.tsx");
   assert.match(src, /role-select-login-button/);

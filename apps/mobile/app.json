@@ -140,8 +140,7 @@
       "icon": "./assets/ios-marketing-icon.png",
       "supportsTablet": true,
       "associatedDomains": [
-        "applinks:www.mmddelivery.com",
-        "applinks:mmddelivery.com"
+        "applinks:www.mmddelivery.com"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
