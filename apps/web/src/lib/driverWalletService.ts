@@ -293,8 +293,8 @@ export type DriverWalletSummary = {
   currency: string;
   balance_cents: number;
   /**
-   * Cashable now for manual Cash Out: Instant-eligible amount when Instant
-   * Payouts is ready, otherwise Connect standard available. Never pending alone.
+   * Cashable now for manual Cash Out: Stripe instant_available when an Instant
+   * destination exists (card or Instant-eligible bank); otherwise 0.
    */
   available_cents: number;
   /** Unpaid earnings (food + delivery + taxi + marketplace) awaiting platform→Connect SCT. */

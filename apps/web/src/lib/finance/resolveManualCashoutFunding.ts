@@ -2,12 +2,14 @@
  * Resolve Instant Cash Out eligibility for a Connect Express account.
  *
  * Manual Cash Out rules:
- * - Instant Payout ONLY to an Instant-eligible debit card
- * - cashableCents = instant_available when eligible, else 0
- * - Never treat pending as cashable
+ * - Instant Payout to an Instant-eligible debit card (`card_`) OR
+ *   Instant-eligible bank account (`ba_`) — Stripe `available_payout_methods`
+ * - cashableCents = instant_available when an Instant destination exists, else 0
+ * - Never treat pending or standard `available` as cashable
  * - No standard fallback (Sunday bank payout is separate)
  */
 import { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
+import { selectInstantPayoutDestination } from "@/lib/finance/selectInstantPayoutDestination";
 import { stripe } from "@/lib/stripe";
 
 export type ManualCashoutFunding = {
@@ -19,7 +21,7 @@ export type ManualCashoutFunding = {
   method: "instant";
   /** 100% of Instant-eligible balance, or 0. */
   cashableCents: number;
-  /** card_… Instant destination */
+  /** Instant destination: `card_…` or Instant-eligible `ba_…` */
   instantDestinationId: string | null;
 };
 
@@ -30,13 +32,34 @@ function capabilityStatus(
   return String(account.capabilities?.[key] ?? "").toLowerCase();
 }
 
-function supportsInstant(row: {
-  available_payout_methods?: string[] | null;
-}): boolean {
-  // Stripe ExternalAccount field: available_payout_methods (instant|standard)
-  return (row.available_payout_methods ?? [])
-    .map((m) => String(m).toLowerCase())
-    .includes("instant");
+async function listConnectExternalAccounts(stripeAccountId: string) {
+  const settled = await Promise.allSettled([
+    stripe.accounts.listExternalAccounts(stripeAccountId, {
+      object: "card",
+      limit: 10,
+    }),
+    stripe.accounts.listExternalAccounts(stripeAccountId, {
+      object: "bank_account",
+      limit: 10,
+    }),
+  ]);
+  const rows: Array<{
+    id?: string | null;
+    object?: string | null;
+    currency?: string | null;
+    default_for_currency?: boolean | null;
+    available_payout_methods?: Array<string | null> | null;
+  }> = [];
+  let listed = false;
+  for (const item of settled) {
+    if (item.status !== "fulfilled") continue;
+    listed = true;
+    rows.push(...(item.value.data ?? []));
+  }
+  if (!listed) {
+    throw new Error("external_accounts_lookup_failed");
+  }
+  return rows;
 }
 
 export async function resolveManualCashoutFunding(
@@ -73,27 +96,22 @@ export async function resolveManualCashoutFunding(
     return { ...base, instantBlockReason: "account_retrieve_failed" };
   }
 
-  let instantCardId: string | null = null;
+  let externalAccounts: Array<{
+    id?: string | null;
+    object?: string | null;
+    currency?: string | null;
+    default_for_currency?: boolean | null;
+    available_payout_methods?: Array<string | null> | null;
+  }> = [];
   try {
-    const cards = await stripe.accounts.listExternalAccounts(stripeAccountId, {
-      object: "card",
-      limit: 10,
-    });
-    for (const row of cards.data ?? []) {
-      if (supportsInstant(row as { available_payout_methods?: string[] | null })) {
-        const id = String((row as { id?: string }).id ?? "");
-        if (id.startsWith("card_")) {
-          instantCardId = id;
-          break;
-        }
-      }
-    }
+    externalAccounts = await listConnectExternalAccounts(stripeAccountId);
   } catch {
     return { ...base, instantBlockReason: "external_accounts_lookup_failed" };
   }
 
-  if (!instantCardId) {
-    return { ...base, instantBlockReason: "no_instant_debit_card" };
+  const instantDestinationId = selectInstantPayoutDestination(externalAccounts);
+  if (!instantDestinationId) {
+    return { ...base, instantBlockReason: "no_instant_payout_destination" };
   }
 
   return {
@@ -102,6 +120,6 @@ export async function resolveManualCashoutFunding(
     instantBlockReason: null,
     method: "instant",
     cashableCents: bal.instantAvailableCents,
-    instantDestinationId: instantCardId,
+    instantDestinationId,
   };
 }

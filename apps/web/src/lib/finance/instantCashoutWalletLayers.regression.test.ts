@@ -53,6 +53,8 @@ test("restaurant/seller pending no longer merges awaiting SCT", () => {
   assert.match(src, /settling_cents:\s*connect\.pendingCents/);
   assert.match(src, /confirmed_earnings_cents/);
   assert.match(src, /cashableCents/);
+  assert.match(src, /available_cents:\s*connect\.cashableCents/);
+  assert.match(src, /resolveManualCashoutFunding/);
 });
 
 test("$28.71 settlement reference stays settling not fake-available", () => {
@@ -60,6 +62,14 @@ test("$28.71 settlement reference stays settling not fake-available", () => {
   const driver = read("src/lib/driverWalletService.ts");
   assert.match(driver, /settlingCents = connectPendingCents/);
   assert.match(driver, /availableCents = stripeAccountId \? cashableCents : 0/);
+});
+
+test("resolveManualCashoutFunding lists Instant banks not only debit cards", () => {
+  const src = read("src/lib/finance/resolveManualCashoutFunding.ts");
+  assert.match(src, /object:\s*"bank_account"/);
+  assert.match(src, /Promise\.allSettled/);
+  assert.match(src, /selectInstantPayoutDestination/);
+  assert.match(src, /cashableCents:\s*bal\.instantAvailableCents/);
 });
 
 test("Sunday bank payout remains standard available-only to bank (not Instant debit)", () => {

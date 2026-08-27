@@ -4,7 +4,7 @@
  * Product rule:
  * - SCT (platform → Connect): immediate after delivered/completed + paid
  * - Connect → bank: Sunday 04:00 America/New_York, full available → bank account
- * - Manual Instant Cash Out: debit card Instant only, no $ minimum, 1/day ET
+ * - Manual Instant Cash Out: Instant card or Instant-eligible bank, no $ minimum, 1/day ET
  * - Restaurants + sellers: same Cash Out + Sunday bank rules as drivers
  */
 

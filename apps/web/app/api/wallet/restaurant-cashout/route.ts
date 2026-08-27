@@ -20,7 +20,7 @@ function isRestaurantRole(role: string | null | undefined): boolean {
 }
 
 /**
- * Restaurant manual Cash Out — Instant debit card, no $ min, 1/day ET.
+ * Restaurant manual Cash Out — Instant card or Instant bank, no $ min, 1/day ET.
  * Destination acct_ is always restaurant_profiles.stripe_account_id (server-side).
  */
 export async function POST(req: NextRequest) {

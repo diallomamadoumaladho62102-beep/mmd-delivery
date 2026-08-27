@@ -3,7 +3,8 @@
  *
  * Platform → Connect: Stripe Connect Transfers (SCT) — internal only.
  * Connect → worker:
- * - Manual Cash Out: Instant Payout ONLY → debit card. 100% Instant-eligible.
+ * - Manual Cash Out: Instant Payout ONLY → Instant-eligible debit card or
+ *   Instant-eligible bank (Stripe available_payout_methods). 100% Instant-eligible.
  *   No $ minimum. Max 1/day America/New_York. No standard fallback.
  * - Sunday 04:00 America/New_York: standard payout of remaining available → bank.
  *

@@ -1160,7 +1160,11 @@
         "cashoutButton": "Retirar",
         "lastCashout": "Último retiro",
         "title": "Disponible",
-        "rules": "Retiro mínimo: {{min}} • 1 retiro / día"
+        "rules": "Retiro mínimo: {{min}} • 1 retiro / día",
+        "instant": "Elegible Instant a tu banco o tarjeta de débito",
+        "waitSunday": "Añade un banco o tarjeta de débito elegible para Instant, o espera el pago del domingo",
+        "instantHint": "Retirable por Instant Payout cuando sea elegible (Stripe Connect)",
+        "connectHint": "Disponible para retirar desde tu saldo de Stripe Connect"
       },
       "cashout": {
         "requestError": "No se pudo solicitar el retiro.",
@@ -1182,7 +1186,8 @@
       "cashoutReason": {
         "needStripe": "Activa pagos Stripe para poder retirar.",
         "alreadyToday": "Ya retiraste hoy. Intenta mañana.",
-        "min": "Retiro mínimo: {{min}}."
+        "min": "Retiro mínimo: {{min}}.",
+        "instant": "Instant Cash Out no disponible. Añade un banco o tarjeta de débito elegible para Instant, o espera el pago del domingo."
       },
       "debug": {
         "driver": "Conductor"

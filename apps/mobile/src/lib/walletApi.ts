@@ -8,7 +8,7 @@ export type WalletSummaryResponse = {
   country_code?: string;
   currency?: string;
   balance_cents?: number;
-  /** Cashable now (Instant-eligible or Connect standard available). */
+  /** Cashable now (Stripe Instant-eligible amount when Instant dest exists). */
   available_cents?: number;
   /** Unpaid earnings awaiting platform→Connect SCT. */
   awaiting_transfer_cents?: number;

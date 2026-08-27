@@ -67,6 +67,7 @@ test("executeManualConnectCashout claims daily slot BEFORE Stripe payout", () =>
   assert.ok(claimIdx > 0 && stripeIdx > claimIdx, "claim before Stripe payout");
   assert.match(src, /idempotencyKey:\s*`manual-cashout:\$\{claim\.claimId\}`/);
   assert.match(src, /resolveManualCashoutFunding/);
+  assert.match(src, /no_instant_payout_destination/);
   assert.match(src, /method:\s*"instant"/);
   assert.doesNotMatch(src, /body\.amount/, "client amount never trusted");
 });
@@ -82,15 +83,17 @@ test("Cash Out is Instant-only — no standard fallback", () => {
   assert.match(src, /status:\s*"processing"/);
 });
 
-test("resolveManualCashoutFunding requires Instant debit card + instant_available", () => {
+test("resolveManualCashoutFunding requires Instant dest (card or Instant bank) + instant_available", () => {
   const src = fs.readFileSync(
     path.join(webRoot, "src/lib/finance/resolveManualCashoutFunding.ts"),
     "utf8",
   );
   assert.match(src, /instant_available/);
   assert.match(src, /listExternalAccounts/);
-  assert.match(src, /no_instant_debit_card/);
+  assert.match(src, /selectInstantPayoutDestination/);
+  assert.match(src, /no_instant_payout_destination/);
   assert.match(src, /object:\s*"card"/);
+  assert.match(src, /object:\s*"bank_account"/);
   assert.match(src, /instant_payouts/);
   assert.match(src, /available_payout_methods/);
   assert.doesNotMatch(src, /cashableCents:\s*bal\.availableCents/);

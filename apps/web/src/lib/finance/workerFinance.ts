@@ -2,7 +2,7 @@
  * MMD Worker Finance — SINGLE money-out engine.
  *
  * Confirmed earning → Connect (SCT) → Worker Wallet
- *   ├── Cash Out: Instant po_* → debit card (executeWorkerCashOut)
+ *   ├── Cash Out: Instant po_* → Instant card or Instant bank (executeWorkerCashOut)
  *   └── Sunday 04:00 ET: standard po_* → bank (executeWorkerSundayBankPayout)
  *
  * Only two modules may call stripe.payouts.create (enforced by regression test):

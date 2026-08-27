@@ -18,8 +18,8 @@ export type SharedWalletSummary = {
   /** Legacy ledger balance (kept for backward compatibility). */
   balance_cents: number;
   /**
-   * Cashable now for manual Cash Out (Instant-eligible amount or standard
-   * Connect available — never pending alone).
+   * Cashable now for manual Cash Out: Stripe instant_available when an Instant
+   * destination exists (card or Instant-eligible bank); otherwise 0.
    */
   available_cents: number;
   /** Earnings not yet SCT'd to Connect (awaiting platform→Connect Transfer). */
@@ -165,7 +165,7 @@ function resolveCashoutGate(input: {
 }
 
 /**
- * Restaurant wallets: SCT → Connect available → manual Cash Out ($20 / 1/day)
+ * Restaurant wallets: SCT → Connect Instant cashable → manual Cash Out (no $ min / 1/day)
  * and/or Sunday 04:00 America/New_York bank cron for remaining balance.
  */
 export async function buildRestaurantWalletSummary(
@@ -233,7 +233,7 @@ export async function buildRestaurantWalletSummary(
     cashout_block_reason: gate.reason,
     note:
       awaitingTransferCents > 0
-        ? "Confirmed restaurant earnings await platform→Connect SCT. Instant Cash Out when debit card Instant-eligible (no minimum, 1/day ET). Sunday 04:00 ET pays remaining available to bank."
+        ? "Confirmed restaurant earnings await platform→Connect SCT. Instant Cash Out when Stripe Instant destination is eligible (no minimum, 1/day ET). Sunday 04:00 ET pays remaining available to bank."
         : "Instant Cash Out when Instant-eligible (no minimum, 1/day ET). Sunday 04:00 America/New_York pays remaining available to bank.",
     money_out_model: MONEY_OUT_MODEL,
   };
@@ -241,7 +241,7 @@ export async function buildRestaurantWalletSummary(
 
 /**
  * Seller wallets: unpaid marketplace_seller_payouts as awaiting_transfer;
- * Connect available is cashable via manual Cash Out ($20 / 1/day).
+ * Connect Instant-eligible amount is cashable via manual Cash Out (no $ min / 1/day ET).
  */
 export async function buildSellerWalletSummary(
   supabaseAdmin: SupabaseClient,
@@ -365,7 +365,7 @@ export async function buildSellerWalletSummary(
     cashout_block_reason: gate.reason,
     note:
       awaitingTransferCents > 0
-        ? "Confirmed seller earnings await SCT to Connect. Instant Cash Out when debit card Instant-eligible (no minimum, 1/day ET)."
+        ? "Confirmed seller earnings await SCT to Connect. Instant Cash Out when Stripe Instant destination is eligible (no minimum, 1/day ET)."
         : "Instant Cash Out when Instant-eligible (no minimum, 1/day ET). Sunday 04:00 ET pays remaining available to bank.",
     money_out_model: MONEY_OUT_MODEL,
   };

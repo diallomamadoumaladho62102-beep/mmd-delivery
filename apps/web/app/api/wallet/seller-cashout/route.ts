@@ -24,7 +24,7 @@ function isSellerRole(role: string | null | undefined): boolean {
 }
 
 /**
- * Seller / Marketplace manual Cash Out — Instant debit card, no $ min, 1/day ET.
+ * Seller / Marketplace manual Cash Out — Instant card or Instant bank, no $ min, 1/day ET.
  * Destination acct_ is always sellers.stripe_account_id (server-side).
  */
 export async function POST(req: NextRequest) {

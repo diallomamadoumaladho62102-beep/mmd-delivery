@@ -1106,7 +1106,11 @@
         "cashoutButton": "Ƴettu xaalis",
         "lastCashout": "Cash out ɓooyii",
         "title": "Ena woodi",
-        "rules": "Ƴettugol ɓurɗo famɗude: {{min}} • 1 cash out / ñalawma"
+        "rules": "Ƴettugol ɓurɗo famɗude: {{min}} • 1 cash out / ñalawma",
+        "instant": "Instant ina waawi yahde to banke maa walla kartal debit",
+        "waitSunday": "Ɓeydu banke walla kartal debit jaɓaaɗo Instant, walla sabbo njalndu Alet",
+        "instantHint": "Ina waawi ƴetteede e Instant Payout so ina jaɓaa (Stripe Connect)",
+        "connectHint": "Ina waawi ƴetteede e njoɓdi Stripe Connect maa"
       },
       "cashout": {
         "requestError": "Horiima naatnude cash out request.",
@@ -1128,7 +1132,8 @@
       "cashoutReason": {
         "needStripe": "Huutoro Stripe payouts ngam cash out.",
         "alreadyToday": "A cash-outii hannde. Eto kadi janngo.",
-        "min": "Ƴettugol ɓurɗo famɗude: {{min}}."
+        "min": "Ƴettugol ɓurɗo famɗude: {{min}}.",
+        "instant": "Cash Out Instant alaa. Ɓeydu banke walla kartal debit jaɓaaɗo Instant, walla sabbo njalndu Alet."
       },
       "debug": {
         "driver": "Dooɓoowo"

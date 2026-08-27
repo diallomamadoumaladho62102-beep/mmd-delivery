@@ -1123,7 +1123,11 @@
         "cashoutButton": "Cash out",
         "lastCashout": "Last cash out",
         "title": "Available",
-        "rules": "Minimum cash out: {{min}} • 1 cash out / day"
+        "rules": "Minimum cash out: {{min}} • 1 cash out / day",
+        "instant": "Instant-eligible to your bank or debit card",
+        "waitSunday": "Add an Instant-eligible bank or debit card, or wait for Sunday bank payout",
+        "instantHint": "Retirable via Instant Payout when eligible (Stripe Connect)",
+        "connectHint": "Available to cash out from your Stripe Connect balance"
       },
       "cashout": {
         "requestError": "Unable to request cash out.",
@@ -1145,7 +1149,8 @@
       "cashoutReason": {
         "needStripe": "Enable Stripe payouts to cash out.",
         "alreadyToday": "You already cashed out today. Try again tomorrow.",
-        "min": "Minimum cash out: {{min}}."
+        "min": "Minimum cash out: {{min}}.",
+        "instant": "Instant Cash Out unavailable. Add an Instant-eligible bank or debit card, or wait for Sunday bank payout."
       },
       "debug": { "driver": "Driver" },
       "header": { "title": "Wallet" },

@@ -975,7 +975,11 @@
         "cashoutButton": "提现",
         "lastCashout": "上次提现",
         "title": "可用",
-        "rules": "最低提现：{{min}} • 每天 1 次"
+        "rules": "最低提现：{{min}} • 每天 1 次",
+        "instant": "可即时到账至银行或借记卡",
+        "waitSunday": "添加符合 Instant 条件的银行或借记卡，或等待周日银行打款",
+        "instantHint": "符合条件时可通过 Instant Payout 提取（Stripe Connect）",
+        "connectHint": "可从 Stripe Connect 余额提取"
       },
       "cashout": {
         "requestError": "无法请求提现。",
@@ -997,7 +1001,8 @@
       "cashoutReason": {
         "needStripe": "启用 Stripe 收款后才能提现。",
         "alreadyToday": "你今天已提现过。请明天再试。",
-        "min": "最低提现：{{min}}。"
+        "min": "最低提现：{{min}}。",
+        "instant": "即时提现不可用。请添加符合 Instant 条件的银行或借记卡，或等待周日银行打款。"
       },
       "debug": {
         "driver": "司机"

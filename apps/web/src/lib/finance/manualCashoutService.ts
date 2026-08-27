@@ -3,7 +3,7 @@
  *
  * Rules (founder-locked):
  * - Amount = 100% of Instant-eligible Connect balance (server only)
- * - Instant Payout ONLY → Instant-eligible debit card
+ * - Instant Payout ONLY → Instant-eligible debit card or Instant-eligible bank
  * - No dollar minimum (any Instant-eligible amount > 0)
  * - Max 1 manual Cash Out per America/New_York calendar day (DB atomic claim)
  * - No standard fallback (Sunday cron pays remaining available → bank)
@@ -286,7 +286,7 @@ async function finalizeClaim(
 }
 
 /**
- * Execute Instant Cash Out (100% Instant-eligible → debit card).
+ * Execute Instant Cash Out (100% Instant-eligible → Instant card or Instant bank).
  * Never trusts client amount / stripe account / foreign ids.
  */
 export async function executeManualConnectCashout(params: {
@@ -392,8 +392,9 @@ export async function executeManualConnectCashout(params: {
       ok: false,
       error: "instant_not_eligible",
       message:
+        funding.instantBlockReason === "no_instant_payout_destination" ||
         funding.instantBlockReason === "no_instant_debit_card"
-          ? "Ajoutez une carte de débit Instant dans votre profil de paiement pour Cash Out."
+          ? "Ajoutez une carte de débit Instant ou un compte bancaire admissible à Instant pour Cash Out."
           : funding.pendingCents > 0 || funding.instantAvailableCents > 0
             ? "Cash Out Instant indisponible pour le moment. Vos gains restent confirmés — paiement bancaire automatique dimanche 04:00 ET si un compte bancaire est configuré."
             : "Aucun montant Instant disponible. Attendez le paiement bancaire automatique (dimanche 04:00 ET) ou de nouveaux gains Instant-éligibles.",

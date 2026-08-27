@@ -239,7 +239,7 @@ export function DriverWalletScreen() {
               })
             : t(
                 "driver.wallet.cashoutReason.instant",
-                "Instant Cash Out unavailable. Add an Instant debit card or wait for Sunday bank payout.",
+                "Instant Cash Out unavailable. Add an Instant-eligible bank or debit card, or wait for Sunday bank payout.",
               )
         );
       default:
@@ -760,11 +760,11 @@ export function DriverWalletScreen() {
                     instantEligible
                       ? t(
                           "driver.wallet.available.instant",
-                          "Instant-eligible to your debit card",
+                          "Instant-eligible to your bank or debit card",
                         )
                       : t(
                           "driver.wallet.available.waitSunday",
-                          "Add Instant debit card, or wait for Sunday bank payout",
+                          "Add an Instant-eligible bank or debit card, or wait for Sunday bank payout",
                         )
                   }
                 />
