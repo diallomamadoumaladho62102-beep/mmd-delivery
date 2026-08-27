@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { SiteMenuItem, SiteSettingsPayload } from "@/lib/siteCms";
 import NewsletterForm from "./NewsletterForm";
 import SiteImage from "./SiteImage";
@@ -96,6 +97,9 @@ export default function SiteShell({
   );
 
   const year = new Date().getFullYear();
+  const pathname = usePathname() || "";
+  const hideComingSoonBanner =
+    pathname.startsWith("/legal") || pathname === "/contact";
 
   return (
     <div className={siteRootClass}>
@@ -107,7 +111,7 @@ export default function SiteShell({
         Skip to content
       </a>
 
-      <MobileAppComingSoonBanner />
+      {hideComingSoonBanner ? null : <MobileAppComingSoonBanner />}
 
       {topOverlays.map((o) => (
         <div

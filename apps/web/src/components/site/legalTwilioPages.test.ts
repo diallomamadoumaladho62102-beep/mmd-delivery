@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { PRIVACY_SECTIONS, TERMS_SECTIONS } from "./legalPageCopy";
 import { buildPrivacyFallbackBlocks } from "./privacyContent";
 import { buildTermsFallbackBlocks } from "./termsContent";
@@ -59,5 +60,12 @@ assert.ok(
     String(b.payload?.title ?? "").includes("Delete in the MMD Delivery app"),
   ),
 );
+
+const siteShell = fs.readFileSync(
+  new URL("./SiteShell.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(siteShell, /hideComingSoonBanner/);
+assert.match(siteShell, /pathname\.startsWith\("\/legal"\)/);
 
 console.log("legalTwilioPages.test.ts — PASS");

@@ -103,10 +103,45 @@ Files: private bucket, ~14-day retention, **initiator-only** download; staff loc
 
 Provide current App Review demo credentials in App Store Connect (founder-supplied — do not invent):
 
-- **Client** — email + password (SMS OTP is **not** required)
-- **Driver** — approved driver, email + password
-- **Restaurant** — order-eligible restaurant, email + password
-- Optional: **Marketplace Seller** to exercise in-app Delete account
+- **Client / Customer** — email + password (SMS OTP is **not** required). Use this account for Taxi, package Delivery, Food, Marketplace cart, receipts, and **Business wallet** (Taxi → Wallet).
+- **Driver** — approved driver, email + password. Use for offers, active ride, Safety Audio, **Wallet / Cash Out**, and Stripe Express (payouts).
+- **Restaurant** — order-eligible restaurant, email + password.
+- Optional: **Marketplace Seller** to exercise in-app Delete account.
+
+Business is **not** a separate signup role. It is a membership on a Customer account.
+
+## How to test paid flows (backend is production: https://www.mmddelivery.com)
+
+### Taxi (Customer)
+
+1. Login as **Client** → Taxi → pickup + destination → quote → pay with Stripe test/live card as configured on the demo account.
+2. Tracking, chat, receipt, and tip appear on the ride after payment / completion.
+3. History: Taxi history from the Taxi home.
+
+### Package Delivery (Customer)
+
+1. Login as **Client** → Delivery → pickup + dropoff → quote → pay.
+2. Open Delivery details / live tracking (driver ETA only after assignment).
+3. Receipt after delivery.
+
+### Driver Wallet / Cash Out
+
+1. Login as **approved Driver**.
+2. Open Wallet (Driver tabs — not customer Home).
+3. **Available** is the server cash-out amount (not a client-typed figure). Cash Out requires Stripe Express onboarded.
+4. Completed jobs credit earnings, then Stripe Connect transfer (SCT) into available balance; Sunday bank payout remains the weekly Connect payout path.
+5. If Cash Out is blocked, the app shows the **server** reason (Stripe not ready, already cashed out today, below minimum) — do not expect a fake demo balance.
+
+### Business wallet
+
+1. Login as **Client** that is a taxi business member.
+2. Taxi home → Wallet.
+3. Summary, history, members (roster), top-up (Stripe). Cash-out only if the API returns `can_cashout`.
+
+### Account deletion
+
+- In-app: Settings / Security / Seller Dashboard → Delete account (password + type DELETE).
+- Web (no login): https://www.mmddelivery.com/legal/account-deletion
 
 ## Marketplace checkout (launch / geo gate)
 
