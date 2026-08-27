@@ -36,6 +36,11 @@ export function getLegalSmsUrl(): string {
   return "https://www.mmddelivery.com/legal/sms";
 }
 
+/** Google Play account-deletion web resource (also linked from Privacy). */
+export function getAccountDeletionUrl(): string {
+  return "https://www.mmddelivery.com/legal/account-deletion";
+}
+
 export async function openLegalUrl(url: string): Promise<void> {
   await WebBrowser.openBrowserAsync(url);
 }

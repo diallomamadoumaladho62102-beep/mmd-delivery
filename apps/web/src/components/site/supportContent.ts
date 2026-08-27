@@ -41,7 +41,7 @@ export function buildSupportFallbackBlocks(): SiteBlockRow[] {
       sort_order: 20,
       payload: {
         title: "Support channels",
-        body_md: "Start with the FAQ for common questions about payments, delivery timing, drivers, and business accounts.\n\nEmail support@mmddelivery.com or use the [contact form](/contact). Include your order or ride reference when possible.\n\n**SMS help.** Reply **HELP** to any MMD Delivery text, call +1 (929) 492-4563, or review the public program and opt-in at [https://www.mmddelivery.com/legal/sms](/legal/sms). Reply **STOP** to cancel SMS. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase.\n\n**Aide SMS.** Répondez **HELP** à n’importe quel SMS MMD Delivery, écrivez à support@mmddelivery.com, ou appelez le +1 (929) 492-4563. Répondez **STOP** pour vous désinscrire. La fréquence des messages varie. Des frais de messages et de données peuvent s’appliquer. Le consentement n’est pas une condition d’achat. Programme public : [https://www.mmddelivery.com/legal/sms](/legal/sms).\n\nWebsite: https://www.mmddelivery.com",
+        body_md: "Start with the FAQ for common questions about payments, delivery timing, drivers, and business accounts.\n\nEmail support@mmddelivery.com or use the [contact form](/contact). Include your order or ride reference when possible.\n\n**Delete your account.** Use Settings in the app, or request deletion on the web at [https://www.mmddelivery.com/legal/account-deletion](/legal/account-deletion) without logging into the app.\n\n**SMS help.** Reply **HELP** to any MMD Delivery text, call +1 (929) 492-4563, or review the public program and opt-in at [https://www.mmddelivery.com/legal/sms](/legal/sms). Reply **STOP** to cancel SMS. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase.\n\n**Aide SMS.** Répondez **HELP** à n’importe quel SMS MMD Delivery, écrivez à support@mmddelivery.com, ou appelez le +1 (929) 492-4563. Répondez **STOP** pour vous désinscrire. La fréquence des messages varie. Des frais de messages et de données peuvent s’appliquer. Le consentement n’est pas une condition d’achat. Programme public : [https://www.mmddelivery.com/legal/sms](/legal/sms).\n\nWebsite: https://www.mmddelivery.com",
       },
     },
     {
@@ -52,7 +52,7 @@ export function buildSupportFallbackBlocks(): SiteBlockRow[] {
       payload: {
         title: "Talk to a human",
         body: "Send a message and our team will help you resolve the issue.",
-        buttons: [{"label":"Contact support","href":"/contact","event":"cta_contact"},{"label":"SMS program","href":"/legal/sms","event":"cta_sms"}],
+        buttons: [{"label":"Contact support","href":"/contact","event":"cta_contact"},{"label":"Delete account","href":"/legal/account-deletion","event":"cta_account_deletion"}],
       },
     },
     {

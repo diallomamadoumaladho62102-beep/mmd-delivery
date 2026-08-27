@@ -89,7 +89,17 @@
           "project": "mmd-delivery-mobile"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
+          }
+        }
+      ]
     ],
     "android": {
       "package": "com.maladho2025.mmddelivery",
@@ -99,6 +109,9 @@
         "monochromeImage": "./assets/monochrome-icon.png",
         "backgroundColor": "#003399"
       },
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
       "permissions": [
         "INTERNET",
         "POST_NOTIFICATIONS",

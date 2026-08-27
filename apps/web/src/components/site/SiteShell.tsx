@@ -343,6 +343,9 @@ export default function SiteShell({
               <Link href="/legal/support" className="hover:text-orange-300">
                 Support
               </Link>
+              <Link href="/legal/account-deletion" className="hover:text-orange-300">
+                Delete account
+              </Link>
             </p>
           </div>
         </div>

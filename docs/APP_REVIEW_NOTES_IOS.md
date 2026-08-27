@@ -118,6 +118,19 @@ If checkout is not live in the reviewer’s county, the app shows that marketpla
 Canonical host is **https://www.mmddelivery.com**.  
 Password reset and signup emails use that host. Apex `mmddelivery.com` redirects to www.
 
+## Account deletion (Apple 5.1.1(v) + Google Play)
+
+In-app: Settings / Security / Seller Dashboard → Delete account (password + type DELETE).  
+Web (no app login required): **https://www.mmddelivery.com/legal/account-deletion**  
+Also: support@mmddelivery.com or https://www.mmddelivery.com/contact  
+
+Taxi Business wallet users delete via the **Customer** account that owns the membership.
+
+## Store build pins (do not change without checking store rules)
+
+- EAS production iOS image: `sdk-54` (Xcode 26 / iOS 26 SDK).
+- Android `targetSdkVersion` / `compileSdkVersion`: **36** (Google Play requirement as of 31 Aug 2026).
+
 ## iPad
 
 `supportsTablet: true`. Please also spot-check Role Select, Marketplace guest, Login, Taxi tracking, Driver active ride, Safety Audio on iPad.

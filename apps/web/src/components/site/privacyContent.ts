@@ -41,6 +41,7 @@ export function buildPrivacyFallbackBlocks(): SiteBlockRow[] {
         benefits: ["No login required", "SMS and phone notices", "Access and deletion requests"],
         primary_ctas: [{ label: "Contact privacy", href: "/contact", event: "cta_privacy" }],
         secondary_ctas: [
+          { label: "Delete account", href: "/legal/account-deletion", event: "cta_account_deletion" },
           { label: "Terms of Service", href: "/legal/terms", event: "cta_terms" },
           { label: "SMS program", href: "/legal/sms", event: "cta_sms" },
         ],
@@ -56,8 +57,8 @@ export function buildPrivacyFallbackBlocks(): SiteBlockRow[] {
         title: "Questions about privacy?",
         body: "Contact support for access, deletion, or SMS opt-out help.",
         buttons: [
+          { label: "Delete account", href: "/legal/account-deletion", event: "cta_account_deletion" },
           { label: "Contact support", href: "/contact", event: "cta_contact" },
-          { label: "Support page", href: "/legal/support", event: "cta_support" },
         ],
       },
     },

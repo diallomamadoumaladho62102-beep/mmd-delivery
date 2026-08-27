@@ -28,6 +28,7 @@ const STATIC_PATHS = [
   "/legal/terms",
   "/legal/support",
   "/legal/sms",
+  "/legal/account-deletion",
 ];
 
 /** App-portal routes that should not be listed as marketing CMS pages. */

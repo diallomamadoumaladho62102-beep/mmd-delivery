@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { PRIVACY_SECTIONS, TERMS_SECTIONS } from "./legalPageCopy";
 import { buildPrivacyFallbackBlocks } from "./privacyContent";
 import { buildTermsFallbackBlocks } from "./termsContent";
+import {
+  ACCOUNT_DELETION_URL,
+  buildAccountDeletionFallbackBlocks,
+} from "./accountDeletionContent";
 
 function sectionText(sections: { title: string; body_md: string }[]): string {
   return sections.map((s) => `${s.title}\n${s.body_md}`).join("\n");
@@ -16,6 +20,7 @@ assert.match(privacy, /How we protect information/);
 assert.match(privacy, /SMS and phone communications/);
 assert.match(privacy, /Information sharing/);
 assert.match(privacy, /delete your account in the MMD Delivery app/);
+assert.match(privacy, /legal\/account-deletion/);
 assert.match(privacy, /Twilio/);
 assert.match(privacy, /Supabase/);
 assert.match(privacy, /Stripe/);
@@ -45,5 +50,14 @@ assert.equal(privacyBlocks[0]?.block_type, "hero");
 assert.equal(termsBlocks[0]?.block_type, "hero");
 assert.ok(privacyBlocks.some((b) => b.block_type === "rich_text"));
 assert.ok(termsBlocks.some((b) => b.block_type === "rich_text"));
+
+const deletionBlocks = buildAccountDeletionFallbackBlocks();
+assert.equal(ACCOUNT_DELETION_URL, "https://www.mmddelivery.com/legal/account-deletion");
+assert.equal(deletionBlocks[0]?.block_type, "hero");
+assert.ok(
+  deletionBlocks.some((b) =>
+    String(b.payload?.title ?? "").includes("Delete in the MMD Delivery app"),
+  ),
+);
 
 console.log("legalTwilioPages.test.ts — PASS");

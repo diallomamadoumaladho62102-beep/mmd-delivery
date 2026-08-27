@@ -402,6 +402,32 @@ function checkEasAndPlay() {
     appConfig.includes("pk_live_") && appConfig.includes("Production EAS build requires") ? "PASS" : "FAIL",
     { type: "code" },
   );
+
+  record(
+    "store",
+    "eas_ios_sdk54_image",
+    eas?.build?.production?.ios?.image === "sdk-54" ? "PASS" : "FAIL",
+    {
+      type: "code",
+      note: "sdk-54 EAS image uses Xcode 26 / iOS 26 SDK required by App Store Connect",
+    },
+  );
+
+  record(
+    "store",
+    "android_target_sdk_36",
+    appConfig.includes("targetSdkVersion: 36") ? "PASS" : "FAIL",
+    { type: "code" },
+  );
+
+  record(
+    "store",
+    "account_deletion_web_page",
+    fs.existsSync(path.join(repoRoot, "apps/web/app/legal/account-deletion/page.tsx"))
+      ? "PASS"
+      : "FAIL",
+    { type: "legal" },
+  );
 }
 
 function checkCommercialLaunch() {

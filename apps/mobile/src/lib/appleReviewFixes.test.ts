@@ -236,6 +236,28 @@ test("seller area includes in-app account deletion for App Review 5.1.1(v)", () 
   assert.match(nav, /isInSellerArea[\s\S]*DeleteAccount/);
   assert.match(deletion, /"seller"/);
   assert.match(deletion, /business_name: `Deleted Seller/);
+  assert.match(deletion, /taxi_business_members/);
+});
+
+test("Play/Apple store config pins API 36, Xcode 26 image, and web account deletion", () => {
+  const appConfig = read("app.config.ts");
+  const appJson = read("apps/mobile/app.json");
+  const eas = JSON.parse(read("eas.json"));
+  const deletionPage = read("apps/web/app/legal/account-deletion/page.tsx");
+  const deletionCopy = read("apps/web/src/components/site/accountDeletionContent.ts");
+  const legalUrls = read("apps/mobile/src/lib/legalUrls.ts");
+
+  assert.match(appConfig, /targetSdkVersion:\s*36/);
+  assert.match(appConfig, /compileSdkVersion:\s*36/);
+  assert.match(appConfig, /SYSTEM_ALERT_WINDOW/);
+  assert.match(appJson, /"targetSdkVersion":\s*36/);
+  assert.match(appJson, /SYSTEM_ALERT_WINDOW/);
+  assert.doesNotMatch(appConfig, /READ_CONTACTS|READ_PHONE_STATE|CALL_PHONE/);
+  assert.doesNotMatch(appJson, /READ_CONTACTS|READ_PHONE_STATE|CALL_PHONE/);
+  assert.equal(eas?.build?.production?.ios?.image, "sdk-54");
+  assert.match(deletionPage, /ACCOUNT_DELETION_URL/);
+  assert.match(deletionCopy, /www\.mmddelivery\.com\/legal\/account-deletion/);
+  assert.match(legalUrls, /legal\/account-deletion/);
 });
 
 test("iOS associated domains use www only (apex AASA 307s and is invalid)", () => {

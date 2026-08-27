@@ -158,6 +158,14 @@ export async function executeAccountDeletion(params: {
     { column: "user_id", value: userId }
   );
 
+  // Taxi Business is a Customer membership overlay — revoke access on any self-delete.
+  await safeUpdate(
+    supabaseAdmin,
+    "taxi_business_members",
+    { active: false },
+    { column: "user_id", value: userId }
+  );
+
   if (role === "driver") {
     await safeUpdate(
       supabaseAdmin,

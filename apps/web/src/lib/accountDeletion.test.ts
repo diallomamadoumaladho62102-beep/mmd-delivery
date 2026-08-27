@@ -255,6 +255,7 @@ async function main() {
     assert.ok(ops.includes("user_push_tokens:delete"));
     assert.ok(ops.includes("push_tokens:delete") || ops.includes("client_addresses:delete"));
     assert.ok(ops.includes("sellers:update"));
+    assert.ok(ops.includes("taxi_business_members:update"));
 
     const authUpdate = mock.calls.find(
       (c) => c.table === "auth.users" && c.op === "updateUserById"

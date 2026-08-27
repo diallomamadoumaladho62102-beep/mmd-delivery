@@ -60,6 +60,9 @@
       "android": {
         "buildType": "app-bundle"
       },
+      "ios": {
+        "image": "sdk-54"
+      },
       "env": {
         "APP_ENV": "production",
         "EAS_BUILD_PROFILE": "production",

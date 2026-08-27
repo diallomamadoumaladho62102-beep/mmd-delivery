@@ -220,6 +220,16 @@ export default ({ config }) => {
           project: cleanEnv(env.SENTRY_PROJECT_MOBILE) || "mmd-delivery-mobile",
         },
       ],
+      [
+        "expo-build-properties",
+        {
+          android: {
+            compileSdkVersion: 36,
+            targetSdkVersion: 36,
+            buildToolsVersion: "36.0.0",
+          },
+        },
+      ],
     ],
 
     updates: {
@@ -312,6 +322,7 @@ export default ({ config }) => {
         monochromeImage: "./apps/mobile/assets/monochrome-icon.png",
         backgroundColor: "#003399",
       },
+      blockedPermissions: ["android.permission.SYSTEM_ALERT_WINDOW"],
     },
 
     extra: {

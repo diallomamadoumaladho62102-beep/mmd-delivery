@@ -1,6 +1,6 @@
 export const LEGAL_SUPPORT_EMAIL = "support@mmddelivery.com";
 export const LEGAL_SUPPORT_PHONE = "+1 (929) 492-4563";
-export const LEGAL_UPDATED = "August 26, 2026";
+export const LEGAL_UPDATED = "August 27, 2026";
 
 export const PRIVACY_SEO = {
   title: "Privacy Policy — MMD Delivery",
@@ -57,7 +57,7 @@ We may also send service emails and, **only if you have explicitly opted in**, S
     title: "How we protect information",
     body_md: `We host application data with **Supabase** under access controls, encryption in transit, and role-based permissions. Payments are processed by **Stripe**. SMS, phone verification, and masked calling are delivered through **Twilio** as a service provider.
 
-Access to production systems is limited to authorized staff. You can **delete your account in the MMD Delivery app** (Settings / Security → Delete account) for customer, driver, restaurant, and marketplace seller accounts created in the app. You may also request access or deletion by emailing [${LEGAL_SUPPORT_EMAIL}](mailto:${LEGAL_SUPPORT_EMAIL}) or using the [contact form](/contact). Some records (for example payment, tax, or fraud logs) may be retained as required by law.`,
+Access to production systems is limited to authorized staff. You can **delete your account in the MMD Delivery app** (Settings / Security → Delete account) for customer, driver, restaurant, and marketplace seller accounts created in the app. You can also request deletion on the web at [https://www.mmddelivery.com/legal/account-deletion](/legal/account-deletion), by emailing [${LEGAL_SUPPORT_EMAIL}](mailto:${LEGAL_SUPPORT_EMAIL}), or using the [contact form](/contact). Some records (for example payment, tax, or fraud logs) may be retained as required by law.`,
   },
   {
     id: "privacy-sms",
@@ -92,7 +92,7 @@ We do not sell personal information. **Mobile numbers are not shared with third 
   {
     id: "privacy-rights",
     title: "Your choices and requests",
-    body_md: `You may update profile information in the app, control notification settings where offered, and **delete your account from inside the app** without contacting support. Cookie practices are described on our [Cookies](/cookies) page.
+    body_md: `You may update profile information in the app, control notification settings where offered, and **delete your account from inside the app** without contacting support. A public web request path is also available at [https://www.mmddelivery.com/legal/account-deletion](/legal/account-deletion). Cookie practices are described on our [Cookies](/cookies) page.
 
 MMD Delivery is not directed at children under 13, and we do not knowingly collect their personal information.
 
