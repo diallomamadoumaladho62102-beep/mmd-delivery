@@ -4,14 +4,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PUBLIC_HELP_SLUGS } from "./searchMmdHelp";
 
-assert.ok(PUBLIC_HELP_SLUGS.includes("faq"));
-assert.ok(PUBLIC_HELP_SLUGS.includes("how-it-works"));
-assert.ok(PUBLIC_HELP_SLUGS.includes("drivers"));
-assert.ok(PUBLIC_HELP_SLUGS.includes("restaurants"));
-assert.ok(PUBLIC_HELP_SLUGS.includes("marketplace"));
-assert.ok(PUBLIC_HELP_SLUGS.includes("privacy"));
-assert.ok(PUBLIC_HELP_SLUGS.includes("terms"));
-assert.ok(!PUBLIC_HELP_SLUGS.includes("admin"));
+const publicSlugs: readonly string[] = PUBLIC_HELP_SLUGS;
+assert.ok(publicSlugs.includes("faq"));
+assert.ok(publicSlugs.includes("how-it-works"));
+assert.ok(publicSlugs.includes("drivers"));
+assert.ok(publicSlugs.includes("restaurants"));
+assert.ok(publicSlugs.includes("marketplace"));
+assert.ok(publicSlugs.includes("privacy"));
+assert.ok(publicSlugs.includes("terms"));
+assert.ok(!publicSlugs.includes("admin"));
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = fs.readFileSync(path.join(here, "searchMmdHelp.ts"), "utf8");
