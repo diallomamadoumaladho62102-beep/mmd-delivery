@@ -6,11 +6,17 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const location = fs.readFileSync(path.join(here, "location.ts"), "utf8");
 const screen = fs.readFileSync(path.join(here, "../screens/MmdAiScreen.tsx"), "utf8");
+const coords = fs.readFileSync(path.join(here, "mmdAiClientCoords.ts"), "utf8");
 
 assert.match(location, /promptAndroidBackgroundLocationDisclosure/);
 assert.match(location, /await Location.requestBackgroundPermissionsAsync/);
 assert.doesNotMatch(screen, /requestBackgroundPermissionsAsync/);
 assert.doesNotMatch(screen, /ACCESS_BACKGROUND_LOCATION/);
+assert.doesNotMatch(screen, /requestForegroundPermissionsAsync/);
+assert.match(coords, /getForegroundPermissionsAsync/);
+assert.match(coords, /getLastKnownPositionAsync/);
+assert.doesNotMatch(coords, /requestForegroundPermissionsAsync/);
+assert.doesNotMatch(coords, /requestBackgroundPermissionsAsync/);
 
 const wallet = fs.readFileSync(path.join(here, "walletApi.ts"), "utf8");
 assert.match(wallet, /requestWalletCashOut/);

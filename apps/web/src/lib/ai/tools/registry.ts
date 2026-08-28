@@ -24,6 +24,7 @@ export const CLIENT_TOOL_NAMES = [
   "quote_food_order",
   "prepare_food_order",
   "search_mmd_help",
+  "search_places",
 ] as const;
 
 export type ClientToolName = (typeof CLIENT_TOOL_NAMES)[number];
@@ -121,6 +122,28 @@ export function getOpenAiToolDefinitions(role: AiRole): OpenAI.Chat.Completions.
     toolDef("search_mmd_help", "Search official public MMD FAQ and published CMS pages. Never invent rules.", {
       query: { type: "string" },
     }),
+    toolDef(
+      "search_places",
+      "Search public places and addresses via Mapbox (hospital, school, mosque, church, gas station, police, hotel, parking, playground, supermarket, bank, transit, etc.). Never invent an address. If the client wants the nearest place but no coordinates or city/area is available, ask for a city, neighborhood, or address. Public store addresses (e.g. Walmart) are allowed. Do not use this to operate competing apps.",
+      {
+        query: { type: "string", description: "Place name or free-text search" },
+        category: {
+          type: "string",
+          description:
+            "hospital, clinic, pharmacy, school, university, daycare, mosque, church, synagogue, place_of_worship, gas_station, police, fire_station, hotel, motel, parking, park, playground, supermarket, grocery, mall, bank, atm, restaurant, cafe, transit_station, train_station, bus_stop, airport",
+        },
+        name: { type: "string", description: "Exact establishment name when the client gave one" },
+        area: { type: "string", description: "City, neighborhood, or address to search around" },
+        city: { type: "string" },
+        address: { type: "string" },
+        latitude: { type: "number" },
+        longitude: { type: "number" },
+        nearest: { type: "boolean" },
+        radius_meters: { type: "number" },
+        country_code: { type: "string" },
+        limit: { type: "number" },
+      }
+    ),
   ];
 }
 

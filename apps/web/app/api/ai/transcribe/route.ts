@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     });
 
     const text = String(transcription.text ?? "").trim();
+    // Transcription only. Content policy runs in runMmdAiChat via POST /api/ai/chat.
     return aiJson({
       ok: true,
       text,

@@ -16,6 +16,9 @@ export type AiChatContext = {
   stateCode?: string;
   regionCode?: string;
   currencyCode?: string;
+  /** Optional last-known coords already granted — never request GPS for this. */
+  latitude?: number;
+  longitude?: number;
 };
 
 export type AiChatRequest = {
@@ -96,6 +99,9 @@ export type AiToolContext = {
   supabaseAdmin: import("@supabase/supabase-js").SupabaseClient;
   supabaseUser: import("@supabase/supabase-js").SupabaseClient;
   orderId?: string;
+  referenceLatitude?: number;
+  referenceLongitude?: number;
+  countryCode?: string;
 };
 
 export type AiToolResult = {

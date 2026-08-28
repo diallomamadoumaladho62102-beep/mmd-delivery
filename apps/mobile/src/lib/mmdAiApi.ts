@@ -63,6 +63,8 @@ export type AiChatInput = {
     stateCode?: string;
     regionCode?: string;
     currencyCode?: string;
+    latitude?: number;
+    longitude?: number;
   };
   history?: AiChatHistoryTurn[];
 };

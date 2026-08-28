@@ -79,3 +79,6 @@ jobs:
 
       - name: Web Mapbox places parse tests
         run: pnpm --dir apps/web test:maps-places-parse
+
+      - name: MMD AI tests
+        run: pnpm --dir apps/web test:mmd-ai

@@ -10,6 +10,7 @@ import {
   getOpenAiApiKey,
   getOpenAiModel,
 } from "@/lib/ai/aiConfig";
+import { sanitizeAssistantOutput } from "@/lib/ai/aiActionSanitize";
 import { buildClientContext } from "@/lib/ai/contexts/buildClientContext";
 import { buildClientSystemPrompt } from "@/lib/ai/prompts/clientSystemPrompt";
 import type {
@@ -19,9 +20,16 @@ import type {
   AiRole,
   AiToolContext,
 } from "@/lib/ai/aiTypes";
-import { AI_DISCLAIMER, detectEscalationReason, isBlockedAutoAction } from "@/lib/ai/aiSafety";
+import {
+  AI_DISCLAIMER,
+  detectEscalationReason,
+  evaluateAiContentPolicy,
+  getAiRefusalMessage,
+  isBlockedAutoAction,
+} from "@/lib/ai/aiSafety";
 import { getOpenAiToolDefinitions, runToolForRole } from "@/lib/ai/tools/registry";
 import type { AiApiAuthSuccess } from "@/lib/ai/requireAiApiUser";
+import { isValidCoordinate } from "@/lib/taxiMapbox";
 
 function createConversationId(existing?: string): string {
   const trimmed = String(existing ?? "").trim();
@@ -43,20 +51,50 @@ function defaultClientSuggestions(): string[] {
   return ["Order food", "Book a taxi", "Send a package", "Track my order", "Contact support"];
 }
 
+function policyRefusalResponse(params: {
+  conversationId: string;
+  locale: string;
+  aiRole: AiRole;
+}): AiChatResponse {
+  return {
+    ok: true,
+    conversationId: params.conversationId,
+    message: {
+      role: "assistant",
+      content: getAiRefusalMessage(params.locale),
+      locale: params.locale,
+    },
+    actions: [],
+    suggestions: defaultClientSuggestions(),
+    meta: {
+      role: params.aiRole,
+      toolsUsed: [],
+      requiresConfirmation: false,
+      escalatedToHuman: false,
+      disclaimer: AI_DISCLAIMER,
+    },
+  };
+}
+
 export async function runMmdAiChat(params: {
   req: NextRequest;
   auth: AiApiAuthSuccess;
   body: AiChatRequest;
 }): Promise<AiChatResponse> {
-  const apiKey = getOpenAiApiKey();
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY not configured");
-  }
-
   const locale = String(params.body.locale ?? "en").split("-")[0].slice(0, 8) || "en";
   const conversationId = createConversationId(params.body.conversationId);
   const orderId = String(params.body.context?.orderId ?? "").trim() || undefined;
   const aiRole: AiRole = params.auth.aiRole === "client" ? "client" : params.auth.aiRole;
+
+  const policy = evaluateAiContentPolicy(params.body.message, params.body.history);
+  if (policy.action === "refuse") {
+    return policyRefusalResponse({ conversationId, locale, aiRole });
+  }
+
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY not configured");
+  }
 
   const escalationKeyword = detectEscalationReason(params.body.message);
   const clientContext =
@@ -77,6 +115,8 @@ export async function runMmdAiChat(params: {
 
   const openai = new OpenAI({ apiKey });
   const tools = getOpenAiToolDefinitions(aiRole);
+  const referenceLatitude = Number(params.body.context?.latitude);
+  const referenceLongitude = Number(params.body.context?.longitude);
   const toolCtx: AiToolContext = {
     userId: params.auth.user.id,
     role: params.auth.role,
@@ -85,6 +125,10 @@ export async function runMmdAiChat(params: {
     supabaseAdmin: params.auth.supabaseAdmin,
     supabaseUser: params.auth.supabaseUser,
     orderId,
+    countryCode: String(params.body.context?.countryCode ?? "").trim() || undefined,
+    ...(isValidCoordinate(referenceLatitude, referenceLongitude)
+      ? { referenceLatitude, referenceLongitude }
+      : {}),
   };
 
   const history = (params.body.history ?? [])
@@ -142,7 +186,7 @@ export async function runMmdAiChat(params: {
     const toolCalls = assistantMessage.tool_calls ?? [];
 
     if (!toolCalls.length) {
-      const content =
+      const rawContent =
         assistantMessage.content?.trim() ||
         (escalationKeyword
           ? "This needs a human MMD agent. I can connect you with support."
@@ -159,12 +203,13 @@ export async function runMmdAiChat(params: {
       }
 
       const usage = mergeOpenAiUsage(usageParts);
+      const sanitized = sanitizeAssistantOutput(rawContent, collectedActions);
 
       return {
         ok: true,
         conversationId,
-        message: { role: "assistant", content, locale },
-        actions: dedupeActions(collectedActions),
+        message: { role: "assistant", content: sanitized.content, locale },
+        actions: dedupeActions(sanitized.actions),
         suggestions: defaultClientSuggestions(),
         meta: {
           role: aiRole,
@@ -224,18 +269,22 @@ export async function runMmdAiChat(params: {
   }
 
   const usage = mergeOpenAiUsage(usageParts);
+  const fallbackSanitized = sanitizeAssistantOutput(
+    escalatedToHuman
+      ? "I've gathered what I can. A human support agent can help you next."
+      : "I'm here to help with your MMD services.",
+    collectedActions
+  );
 
   return {
     ok: true,
     conversationId,
     message: {
       role: "assistant",
-      content: escalatedToHuman
-        ? "I've gathered what I can. A human support agent can help you next."
-        : "I'm here to help with your MMD services.",
+      content: fallbackSanitized.content,
       locale,
     },
-    actions: dedupeActions(collectedActions),
+    actions: dedupeActions(fallbackSanitized.actions),
     suggestions: defaultClientSuggestions(),
     meta: {
       role: aiRole,

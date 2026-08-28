@@ -15,6 +15,7 @@ import {
   quoteFoodOrder,
 } from "@/lib/ai/tools/client/foodTools";
 import { searchMmdHelp } from "@/lib/ai/tools/client/helpTools";
+import { searchPlaces } from "@/lib/ai/tools/client/placeTools";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -108,6 +109,8 @@ export async function executeClientTool(
       return prepareFoodOrder(args);
     case "search_mmd_help":
       return searchMmdHelp(ctx, args);
+    case "search_places":
+      return searchPlaces(ctx, args);
     default:
       return { ok: false, summary: `Unknown tool: ${name}` };
   }

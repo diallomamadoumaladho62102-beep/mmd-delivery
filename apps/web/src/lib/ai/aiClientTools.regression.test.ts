@@ -15,6 +15,7 @@ assert.ok(CLIENT_TOOL_NAMES.includes("get_restaurant_menu"));
 assert.ok(CLIENT_TOOL_NAMES.includes("quote_food_order"));
 assert.ok(CLIENT_TOOL_NAMES.includes("prepare_food_order"));
 assert.ok(CLIENT_TOOL_NAMES.includes("search_mmd_help"));
+assert.ok(CLIENT_TOOL_NAMES.includes("search_places"));
 assert.ok(CLIENT_TOOL_NAMES.includes("get_recent_taxi_rides"));
 
 assert.equal(isBlockedAutoAction("confirm_paid"), true);
@@ -23,13 +24,15 @@ assert.equal(isBlockedAutoAction("place_order"), true);
 assert.equal(isBlockedAutoAction("cash_out"), true);
 assert.equal(isBlockedAutoAction("quote_taxi"), false);
 assert.equal(isBlockedAutoAction("search_mmd_help"), false);
+assert.equal(isBlockedAutoAction("search_places"), false);
 
 const blocked = guardSensitiveAiTool("confirm_paid");
 assert.equal(blocked?.blocked, true);
 assert.equal(guardSensitiveAiTool("quote_taxi"), null);
 
 const taxiSrc = fs.readFileSync(path.join(here, "tools/client/taxiTools.ts"), "utf8");
-assert.match(taxiSrc, /quote_taxi_ride/);
+assert.match(taxiSrc, /route: "TaxiHome"/);
+assert.doesNotMatch(taxiSrc, /route: "#"/);
 assert.match(taxiSrc, /requiresConfirmation: true/);
 assert.doesNotMatch(taxiSrc, /create-taxi-quote-checkout-session/);
 assert.doesNotMatch(taxiSrc, /confirm-taxi-paid/);
@@ -51,7 +54,9 @@ assert.ok(PUBLIC_HELP_SLUGS.includes("how-it-works"));
 
 const agentSrc = fs.readFileSync(path.join(here, "aiAgent.ts"), "utf8");
 assert.match(agentSrc, /isBlockedAutoAction/);
+assert.match(agentSrc, /evaluateAiContentPolicy/);
 assert.match(agentSrc, /result\.requiresConfirmation/);
+assert.match(agentSrc, /search_places|sanitizeAssistantOutput/);
 
 const ctxExists = fs.existsSync(path.join(here, "contexts/buildClientContext.ts"));
 const missionExists = fs.existsSync(path.join(here, "contexts/buildSharedMissionContext.ts"));

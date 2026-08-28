@@ -28,6 +28,8 @@ for (const file of [
   "src/lib/ai/aiContextBuilders.test.ts",
   "src/lib/ai/aiClientTools.regression.test.ts",
   "src/lib/ai/searchMmdHelp.test.ts",
+  "src/lib/ai/aiSafety.guard.test.ts",
+  "src/lib/ai/searchPlaces.test.ts",
 ]) {
   const extra = spawnSync("npx", ["tsx", file], {
     cwd: webRoot,

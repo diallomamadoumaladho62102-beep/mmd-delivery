@@ -33,6 +33,8 @@ import {
 } from "../lib/mmdAiSpeech";
 import { resolveAiVoiceLanguages } from "../lib/mmdAiVoiceLanguages";
 import { speakMmdAiReply, stopMmdAiSpeech } from "../lib/mmdAiVoice";
+import { canonicalizeClientAiRoute } from "../lib/aiClientRoutes";
+import { getAlreadyGrantedClientCoords } from "../lib/mmdAiClientCoords";
 import MarketScopeCard from "../components/market/MarketScopeCard";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
@@ -186,7 +188,8 @@ export default function MmdAiScreen() {
 
   const navigateForRoute = useCallback(
     (routeName: string, params?: Record<string, unknown>) => {
-      const known = routeName as keyof RootStackParamList;
+      const resolved = canonicalizeClientAiRoute(routeName);
+      const known = (resolved ?? routeName) as keyof RootStackParamList;
       if (known === "ClientOrderDetails" && params?.orderId) {
         navigation.navigate("ClientOrderDetails", { orderId: String(params.orderId) });
         return;
@@ -256,6 +259,7 @@ export default function MmdAiScreen() {
       scrollRef.current?.scrollToEnd({ animated: true });
 
       try {
+        const grantedCoords = await getAlreadyGrantedClientCoords();
         const response = await postAiChat({
           message: text,
           conversationId: conversationId ?? undefined,
@@ -269,6 +273,9 @@ export default function MmdAiScreen() {
             stateCode: market.stateCode ?? undefined,
             regionCode: market.regionCode ?? undefined,
             currencyCode: market.currencyCode || undefined,
+            ...(grantedCoords
+              ? { latitude: grantedCoords.latitude, longitude: grantedCoords.longitude }
+              : {}),
           },
           history: nextMessages.slice(-20).map((m) => ({
             role: m.role,
