@@ -58,7 +58,7 @@ import {
   MMD_TAXI_GREEN,
   MMD_WHITE,
 } from "../theme/mmdUi";
-import { formatDistance, formatDurationMinutes } from "../i18n/formatters";
+import { formatDistance, formatTripDurationFromSeconds, resolveRouteDurationSeconds } from "../i18n/formatters";
 
 const MMD_GREEN = MMD_TAXI_GREEN;
 const MMD_GLASS_BORDER = MMD_GOLD_CLASSIC_BORDER;
@@ -1561,7 +1561,11 @@ export function DeliveryRequestScreen() {
                   {tr("deliveryRequest.pricing.eta", "ETA")}
                   {": "}
                   <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-                    {etaMinutes != null ? formatDurationMinutes(Math.round(etaMinutes), i18n.language) : "—"}
+                    {etaMinutes != null
+                      ? formatTripDurationFromSeconds(
+                          resolveRouteDurationSeconds({ durationMinutes: etaMinutes }) ?? 0
+                        )
+                      : "—"}
                   </Text>
                 </Text>
 

@@ -28,6 +28,8 @@ export {
   formatDate,
   formatDistance,
   formatDurationMinutes,
+  formatTripDurationFromSeconds,
+  resolveRouteDurationSeconds,
   intlLocaleTag,
   localeForDate,
 } from "./formatters";

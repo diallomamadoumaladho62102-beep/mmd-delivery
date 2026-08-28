@@ -104,6 +104,9 @@ export type AiToolResult = {
   data?: Record<string, unknown>;
   actions?: AiAction[];
   escalationReason?: string;
+  /** True when the client must confirm before using an existing MMD checkout/screen. */
+  requiresConfirmation?: boolean;
+  blocked?: boolean;
 };
 
 export type SharedMissionContext = {

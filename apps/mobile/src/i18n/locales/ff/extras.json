@@ -219,6 +219,8 @@
       "dropoff": "Jaɓorde",
       "pinPickup": "Waɗ fuɗɗorde",
       "pinDropoff": "Waɗ jaɓorde",
+      "adjustPickup": "Waylu pin fuɗɗorde",
+      "adjustDropoff": "Waylu pin jaɓorde",
       "pickupPinned": "Fuɗɗorde waɗaama",
       "dropoffPinned": "Jaɓorde waɗaama",
       "priceBreakdown": "Détail njoɓdi",
@@ -244,6 +246,7 @@
       "sharedRideHint": "Ustaango suɓaande so woɗɗo yahoowo nandaray laawol nanndungol. Alaa nandito tawo — so alaa nandito hade fuɗɗorde, a heɓat njoɓdi ustaandi e hoore maa.",
       "loginRequired": "A foti naatde ngam yoɓde.",
       "missingRoute": "Fuɗɗorde e jaɓorde ngalaa timma",
+      "geocodeRequired": "Min koriima tabitinde fuɗɗorde e jaɓorde e karte. Ƴeewto ñiiɓirɗe walla pin nokkuuje goonga.",
       "paymentNotCompleted": "Yoɓgol timmaani. Alaa yahdu sosaa. A waawi ɗaɓɓude njoɓdi hesere so a hebiima.",
       "rideNotReady": "Yoɓgol tabitinaama, kono yahdu hebaaki tawo. Hesɗitin doggol yahduuji maa.",
       "quoteUnavailable": "Njoɓdi heɓaaka — ƴeewto ñiiɓirɗe",
@@ -1530,6 +1533,44 @@
       "tax": "Tax",
       "serviceFee": "Njoɓdi sarwiis",
       "total": "Kuuɓal"
+    }
+  },
+  "mmd": {
+    "ai": {
+      "title": "Naamndu MMD AI",
+      "subtitle": "Ballitoowo MMD maa",
+      "send": "Neldu mesaa",
+      "mode": {
+        "text": "Chat binndi",
+        "voice": "Daande",
+        "mixed": "Binndi e daande"
+      },
+      "voice": {
+        "micStart": "Haala e MMD AI",
+        "micStop": "Dartin heɗaade",
+        "micHint": "Tappu laabi ɗiɗi ngam fuɗɗude walla dartinde daande",
+        "permissionTitle": "Mikoro ngam MMD AI",
+        "permissionBody": "MMD AI huutortoo mikoro tan ngam heɗaade naamne maa. Chat binndi jokkata so a salii.",
+        "notNow": "Wonaa jooni",
+        "continue": "Jokku",
+        "permissionDeniedTitle": "Mikoro ko daaƴaa",
+        "permissionDeniedBody": "A waawi jokkude chat binndi. Hurmin mikoro e teelteeji ngam haalde e MMD AI.",
+        "handsFreeHint": "Mode daande: tappu mikoro ngam haalde. A soklaani clavier.",
+        "languageFallback": "Jaabawol daande huutortoo Engele sabu ɗemngal ngal alaa e telefon.",
+        "sttFallback": "Naatnal daande huutortoo yiytugol automatik ngam ɗemngal ngal.",
+        "state": {
+          "idle": "Daande wonaa e golle",
+          "listening": "Nana heɗa",
+          "processing": "Nana huutoroo daande maa",
+          "replyReady": "Jaabawol heɓii",
+          "speaking": "Nana jannga jaabawol",
+          "micError": "Juumre mikoro",
+          "micDenied": "YAMIROORE mikoro saliima"
+        }
+      },
+      "confirm": {
+        "banner": "Hojomaaji ina poti. MMD AI njoɓataa. Jokku e Taxi walla menu restoraa."
+      }
     }
   }
 }

@@ -517,7 +517,11 @@
         "title": "GPS",
         "permissionDenied": "GPS permission denied.",
         "enableToGoOnline": "Enable GPS permission to go online.",
-        "locating": "Locating driver…"
+        "locating": "Locating driver…",
+        "backgroundDisclosureTitle": "Location while you are online",
+        "backgroundDisclosureBody": "When you go online as a Driver, MMD Delivery collects your precise location even when the app is in the background or closed. This allows customers to track your active delivery or taxi ride in real time until it is completed. Going offline stops this location sharing.",
+        "backgroundDisclosureContinue": "Continue",
+        "backgroundDisclosureNotNow": "Not now"
       },
       "zone": {
         "title": "Activity in your area",

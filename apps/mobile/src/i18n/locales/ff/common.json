@@ -478,7 +478,11 @@
         "title": "GPS",
         "permissionDenied": "Permission GPS saliima.",
         "enableToGoOnline": "Naatnu permission GPS ngam wattude e ligne.",
-        "locating": "Nana yiytina nokku driver…"
+        "locating": "Nana yiytina nokku driver…",
+        "backgroundDisclosureTitle": "Nokku nde a woni e ligne",
+        "backgroundDisclosureBody": "So a naati e ligne no Driver, MMD Delivery moofta nokku maa laaɓɗo hay so app oo woni caggal walla uddaama. Ɗum wallita joom en ndaara delivery maa walla taxi maa e sahaa goonga haa timma. So a yalti e ligne, ndee lollinnde nokku dartinta.",
+        "backgroundDisclosureContinue": "Jokku",
+        "backgroundDisclosureNotNow": "Wonaa jooni"
       },
       "zone": {
         "title": "Activity e nokku maa",

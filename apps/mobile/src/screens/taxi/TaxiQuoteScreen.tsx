@@ -36,7 +36,8 @@ import {
   formatTaxiLocalizedCurrency,
   getTaxiCountryLabel,
 } from "../../lib/taxiLocalization";
-import { formatDistance, formatDurationMinutes } from "../../i18n/formatters";
+import { formatDistance, formatTripDurationFromSeconds, resolveRouteDurationSeconds } from "../../i18n/formatters";
+import { buildClientTaxiPriceBreakdown } from "../../lib/clientTaxiPriceBreakdown";
 import {
   applyMmdLocationSelection,
   useMmdLocationPickerResult,
@@ -177,6 +178,13 @@ export default function TaxiQuoteScreen() {
       applyMmdLocationSelection(location, {
         setLocationId: setPickupLocationId,
         setAddress: setPickupAddress,
+        setCoords: (coords) => {
+          setRouteInfo((current) => ({
+            ...(current ?? {}),
+            pickupLat: coords.lat,
+            pickupLng: coords.lng,
+          }));
+        },
       });
     },
     []
@@ -187,6 +195,13 @@ export default function TaxiQuoteScreen() {
       applyMmdLocationSelection(location, {
         setLocationId: setDropoffLocationId,
         setAddress: setDropoffAddress,
+        setCoords: (coords) => {
+          setRouteInfo((current) => ({
+            ...(current ?? {}),
+            dropoffLat: coords.lat,
+            dropoffLng: coords.lng,
+          }));
+        },
       });
     },
     []
@@ -275,15 +290,19 @@ export default function TaxiQuoteScreen() {
   const grossTotalCents = Number(
     quoteState?.gross_total_cents ?? quoteState?.total_cents ?? 0
   );
-  const netTotalCents = Math.max(
-    0,
-    grossTotalCents - promoDiscountCents - rewardDiscountCents - sharedDiscountCents
-  );
-  const total = fmt(netTotalCents);
-  const serviceFeeCents = Math.max(0, Math.round(Number(quoteState?.service_fee_cents ?? 0)));
-  const platformFeeCents = Math.max(0, Math.round(Number(quoteState?.platform_fee_cents ?? 0)));
-  const taxCents = Math.max(0, Math.round(Number(quoteState?.tax_cents ?? 0)));
-  const subtotalCents = Math.max(0, Math.round(Number(quoteState?.subtotal_cents ?? 0)));
+  const clientPrice = buildClientTaxiPriceBreakdown({
+    subtotalCents: quoteState?.subtotal_cents,
+    serviceFeeCents: quoteState?.service_fee_cents,
+    taxCents: quoteState?.tax_cents,
+    grossTotalCents: grossTotalCents,
+    platformFeeCents: quoteState?.platform_fee_cents,
+    discountCents: promoDiscountCents + rewardDiscountCents + sharedDiscountCents,
+  });
+  const netTotalCents = clientPrice.totalCents;
+  const total = fmt(clientPrice.totalCents);
+  const serviceFeeCents = clientPrice.serviceFeeCents;
+  const taxCents = clientPrice.taxCents;
+  const subtotalCents = clientPrice.subtotalCents;
 
   const vehicleLabel = useMemo(() => {
     const key = String(vehicleClass ?? "").toLowerCase();
@@ -294,9 +313,16 @@ export default function TaxiQuoteScreen() {
   }, [t, vehicleClass]);
 
   const distanceMiles = Number(routeInfo?.distanceMiles);
-  const durationMinutes = Number(routeInfo?.durationMinutes);
+  const durationSeconds = resolveRouteDurationSeconds(routeInfo);
   const hasDistance = Number.isFinite(distanceMiles) && distanceMiles > 0;
-  const hasDuration = Number.isFinite(durationMinutes) && durationMinutes > 0;
+  const hasDuration = durationSeconds != null && durationSeconds > 0;
+  const pickupLat = Number(routeInfo?.pickupLat);
+  const pickupLng = Number(routeInfo?.pickupLng);
+  const dropoffLat = Number(routeInfo?.dropoffLat);
+  const dropoffLng = Number(routeInfo?.dropoffLng);
+  const hasGeocodedCoords =
+    isValidCoordinate(pickupLat, pickupLng) &&
+    isValidCoordinate(dropoffLat, dropoffLng);
   const pickupLabel = pickupAddress.trim();
   const dropoffLabel = dropoffAddress.trim();
 
@@ -357,18 +383,15 @@ export default function TaxiQuoteScreen() {
 
   async function handleConfirmAndPay() {
     if (paying || payingRef.current || !quoteState) return;
-    const pickupLat = Number(routeInfo?.pickupLat);
-    const pickupLng = Number(routeInfo?.pickupLng);
-    const dropoffLat = Number(routeInfo?.dropoffLat);
-    const dropoffLng = Number(routeInfo?.dropoffLng);
-    const hasCoords =
-      isValidCoordinate(pickupLat, pickupLng) &&
-      isValidCoordinate(dropoffLat, dropoffLng);
-    const hasLocationIds = Boolean(pickupLocationId || dropoffLocationId);
-    if (!hasCoords && !hasLocationIds && !pickupAddress.trim()) {
+    const hasCoords = hasGeocodedCoords;
+    const hasLocationIds = Boolean(pickupLocationId && dropoffLocationId);
+    if (!hasCoords && !hasLocationIds) {
       Alert.alert(
         t("taxi.quote.payment", "Payment"),
-        t("taxi.quote.missingRoute", "Pickup and dropoff are incomplete")
+        t(
+          "taxi.quote.geocodeRequired",
+          "We could not confirm pickup and dropoff on the map. Check the addresses or pin the exact locations."
+        )
       );
       return;
     }
@@ -390,7 +413,7 @@ export default function TaxiQuoteScreen() {
           dropoffLng: hasCoords ? dropoffLng : undefined,
           vehicleClass: vehicleClass as TaxiVehicleClass,
           countryCode,
-          expectedQuoteTotalCents: netTotalCents,
+          expectedQuoteTotalCents: clientPrice.totalCents,
           preferredDriverId: preferredDriverId ?? undefined,
           promoCode: promoCode.trim() || undefined,
           rewardId: rewardId ?? undefined,
@@ -545,7 +568,7 @@ export default function TaxiQuoteScreen() {
     detailRows.push({
       icon: ICON.clock,
       label: t("taxi.quote.duration", "Duration"),
-      value: formatDurationMinutes(durationMinutes, i18n.language),
+      value: formatTripDurationFromSeconds(durationSeconds),
     });
   }
   if (pickupLabel) {
@@ -612,14 +635,18 @@ export default function TaxiQuoteScreen() {
             style={[styles.pinButton, { flexDirection: rowDirection() }]}
             accessibilityRole="button"
             accessibilityLabel={
-              pickupLocationId
+              hasGeocodedCoords
+                ? t("taxi.quote.adjustPickup", "Adjust pickup pin")
+                : pickupLocationId
                 ? t("taxi.quote.pickupPinned", "Pickup pinned")
                 : t("taxi.quote.pinPickup", "Pin pickup")
             }
           >
             <QuoteIcon source={ICON.pinButton} size={18} />
             <Text style={styles.pinButtonLabel}>
-              {pickupLocationId
+              {hasGeocodedCoords
+                ? t("taxi.quote.adjustPickup", "Adjust pickup pin")
+                : pickupLocationId
                 ? t("taxi.quote.pickupPinned", "Pickup pinned")
                 : t("taxi.quote.pinPickup", "Pin pickup")}
             </Text>
@@ -637,14 +664,18 @@ export default function TaxiQuoteScreen() {
             style={[styles.pinButton, { flexDirection: rowDirection() }]}
             accessibilityRole="button"
             accessibilityLabel={
-              dropoffLocationId
+              hasGeocodedCoords
+                ? t("taxi.quote.adjustDropoff", "Adjust dropoff pin")
+                : dropoffLocationId
                 ? t("taxi.quote.dropoffPinned", "Dropoff pinned")
                 : t("taxi.quote.pinDropoff", "Pin dropoff")
             }
           >
             <QuoteIcon source={ICON.pinButton} size={18} />
             <Text style={styles.pinButtonLabel}>
-              {dropoffLocationId
+              {hasGeocodedCoords
+                ? t("taxi.quote.adjustDropoff", "Adjust dropoff pin")
+                : dropoffLocationId
                 ? t("taxi.quote.dropoffPinned", "Dropoff pinned")
                 : t("taxi.quote.pinDropoff", "Pin dropoff")}
             </Text>
@@ -666,22 +697,16 @@ export default function TaxiQuoteScreen() {
                   value={fmt(subtotalCents)}
                 />
               ) : null}
-              {taxCents > 0 ? (
-                <PriceRow
-                  label={t("taxi.ui.tax", "Tax")}
-                  value={fmt(taxCents)}
-                />
-              ) : null}
               {serviceFeeCents > 0 ? (
                 <PriceRow
                   label={t("taxi.quote.serviceFee", "Service fee")}
                   value={fmt(serviceFeeCents)}
                 />
               ) : null}
-              {platformFeeCents > 0 ? (
+              {taxCents > 0 ? (
                 <PriceRow
-                  label={t("taxi.ui.platformFee", "Platform fee")}
-                  value={fmt(platformFeeCents)}
+                  label={t("taxi.ui.tax", "Tax")}
+                  value={fmt(taxCents)}
                 />
               ) : null}
               {promoDiscountCents > 0 ? (

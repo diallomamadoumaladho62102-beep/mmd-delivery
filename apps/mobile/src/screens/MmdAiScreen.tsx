@@ -10,6 +10,7 @@ import {
   Platform,
   StyleSheet,
   Alert,
+  AccessibilityInfo,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -22,6 +23,16 @@ import {
   MmdAiApiError,
   postAiChat,
 } from "../lib/mmdAiApi";
+import {
+  cancelMmdAiRecording,
+  getMicrophonePermission,
+  requestMicrophonePermission,
+  startMmdAiRecording,
+  stopMmdAiRecording,
+  transcribeMmdAiAudio,
+} from "../lib/mmdAiSpeech";
+import { resolveAiVoiceLanguages } from "../lib/mmdAiVoiceLanguages";
+import { speakMmdAiReply, stopMmdAiSpeech } from "../lib/mmdAiVoice";
 import MarketScopeCard from "../components/market/MarketScopeCard";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
@@ -48,6 +59,16 @@ import {
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "MmdAi">;
 type MmdAiRoute = RouteProp<RootStackParamList, "MmdAi">;
+
+type AiInputMode = "text" | "voice" | "mixed";
+type VoiceLiveState =
+  | "idle"
+  | "listening"
+  | "processing"
+  | "reply_ready"
+  | "speaking"
+  | "mic_error"
+  | "mic_denied";
 
 type QuickAction = {
   label: string;
@@ -88,6 +109,11 @@ export default function MmdAiScreen() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [disclaimer, setDisclaimer] = useState<string | null>(null);
   const [serviceUnavailable, setServiceUnavailable] = useState<string | null>(null);
+  const [inputMode, setInputMode] = useState<AiInputMode>("mixed");
+  const [voiceState, setVoiceState] = useState<VoiceLiveState>("idle");
+  const [voiceFallbackNote, setVoiceFallbackNote] = useState<string | null>(null);
+  const [requiresConfirmation, setRequiresConfirmation] = useState(false);
+  const recordingRef = useRef(false);
 
   const quickActions = useMemo<QuickAction[]>(
     () => [
@@ -116,6 +142,22 @@ export default function MmdAiScreen() {
         route: "ClientInbox",
       },
     ],
+    [ts]
+  );
+
+  const announceVoiceState = useCallback(
+    (state: VoiceLiveState) => {
+      const labels: Record<VoiceLiveState, string> = {
+        idle: tsFallback(ts, "mmd.ai.voice.state.idle", "Voice idle"),
+        listening: tsFallback(ts, "mmd.ai.voice.state.listening", "Listening"),
+        processing: tsFallback(ts, "mmd.ai.voice.state.processing", "Processing your voice"),
+        reply_ready: tsFallback(ts, "mmd.ai.voice.state.replyReady", "Reply available"),
+        speaking: tsFallback(ts, "mmd.ai.voice.state.speaking", "Reading the reply"),
+        mic_error: tsFallback(ts, "mmd.ai.voice.state.micError", "Microphone error"),
+        mic_denied: tsFallback(ts, "mmd.ai.voice.state.micDenied", "Microphone permission denied"),
+      };
+      AccessibilityInfo.announceForAccessibility(labels[state]);
+    },
     [ts]
   );
 
@@ -174,6 +216,17 @@ export default function MmdAiScreen() {
         navigation.navigate("TaxiHome");
         return;
       }
+      if (known === "TaxiRideTracking" && params?.rideId) {
+        navigation.navigate("TaxiRideTracking", { rideId: String(params.rideId) });
+        return;
+      }
+      if (known === "ClientRestaurantMenu" && params?.restaurantId) {
+        navigation.navigate("ClientRestaurantMenu", {
+          restaurantId: String(params.restaurantId),
+          restaurantName: String(params.restaurantName ?? "Restaurant"),
+        });
+        return;
+      }
       if (known === "DeliveryRequest") {
         navigation.navigate("DeliveryRequest");
         return;
@@ -229,7 +282,24 @@ export default function MmdAiScreen() {
         setActions(response.actions ?? []);
         setSuggestions(response.suggestions ?? []);
         setDisclaimer(response.meta?.disclaimer ?? null);
+        setRequiresConfirmation(response.meta?.requiresConfirmation === true);
         setServiceUnavailable(null);
+        if (inputMode !== "text" && response.message.content) {
+          setVoiceState("speaking");
+          announceVoiceState("speaking");
+          const spoken = await speakMmdAiReply(response.message.content, i18n.language);
+          if (spoken.usedFallback) {
+            setVoiceFallbackNote(
+              tsFallback(
+                ts,
+                "mmd.ai.voice.languageFallback",
+                "Voice reply is using English because this language is not available on the device."
+              )
+            );
+          }
+          setVoiceState("reply_ready");
+          announceVoiceState("reply_ready");
+        }
       } catch (err) {
         const apiErr = err instanceof MmdAiApiError ? err : null;
         const code = apiErr?.code;
@@ -276,7 +346,7 @@ export default function MmdAiScreen() {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
       }
     },
-    [conversationId, i18n.language, input, market, messages, persist, route.params, sending, ts]
+    [conversationId, i18n.language, input, inputMode, market, messages, persist, route.params, sending, ts, announceVoiceState]
   );
 
   const handleAiAction = useCallback(
@@ -307,11 +377,113 @@ export default function MmdAiScreen() {
             setSuggestions([]);
             setDisclaimer(null);
             setServiceUnavailable(null);
+            setRequiresConfirmation(false);
+            void stopMmdAiSpeech();
           },
         },
       ]
     );
   }, [ts]);
+
+  const ensureMicrophone = useCallback(async (): Promise<boolean> => {
+    const current = await getMicrophonePermission();
+    if (current.granted) return true;
+
+    const proceed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        tsFallback(ts, "mmd.ai.voice.permissionTitle", "Microphone for MMD AI"),
+        tsFallback(
+          ts,
+          "mmd.ai.voice.permissionBody",
+          "MMD AI uses the microphone only to hear your question. Chat by text still works if you decline."
+        ),
+        [
+          {
+            text: tsFallback(ts, "mmd.ai.voice.notNow", "Not now"),
+            style: "cancel",
+            onPress: () => resolve(false),
+          },
+          {
+            text: tsFallback(ts, "mmd.ai.voice.continue", "Continue"),
+            onPress: () => resolve(true),
+          },
+        ],
+        { cancelable: true }
+      );
+    });
+    if (!proceed) {
+      setVoiceState("mic_denied");
+      announceVoiceState("mic_denied");
+      return false;
+    }
+
+    const granted = await requestMicrophonePermission();
+    if (!granted) {
+      setVoiceState("mic_denied");
+      announceVoiceState("mic_denied");
+      Alert.alert(
+        tsFallback(ts, "mmd.ai.voice.permissionDeniedTitle", "Microphone off"),
+        tsFallback(
+          ts,
+          "mmd.ai.voice.permissionDeniedBody",
+          "You can keep using text chat. Enable the microphone in system settings to speak to MMD AI."
+        )
+      );
+      return false;
+    }
+    return true;
+  }, [announceVoiceState, ts]);
+
+  const handleMicPress = useCallback(async () => {
+    if (sending) return;
+    try {
+      if (recordingRef.current) {
+        recordingRef.current = false;
+        setVoiceState("processing");
+        announceVoiceState("processing");
+        const uri = await stopMmdAiRecording();
+        if (!uri) {
+          setVoiceState("mic_error");
+          announceVoiceState("mic_error");
+          return;
+        }
+        const locale = resolveAiVoiceLanguages(i18n.language);
+        const text = await transcribeMmdAiAudio({
+          uri,
+          locale: locale.sttLanguage ?? locale.appLocale,
+        });
+        if (locale.sttFallback) {
+          setVoiceFallbackNote(
+            tsFallback(
+              ts,
+              "mmd.ai.voice.sttFallback",
+              "Voice input is using automatic language detection for this app language."
+            )
+          );
+        }
+        if (!text) {
+          setVoiceState("mic_error");
+          announceVoiceState("mic_error");
+          return;
+        }
+        await sendMessage(text);
+        return;
+      }
+
+      const ok = await ensureMicrophone();
+      if (!ok) return;
+      await stopMmdAiSpeech();
+      await startMmdAiRecording();
+      recordingRef.current = true;
+      setVoiceState("listening");
+      announceVoiceState("listening");
+    } catch {
+      recordingRef.current = false;
+      await cancelMmdAiRecording();
+      setVoiceState("mic_error");
+      announceVoiceState("mic_error");
+    }
+  }, [announceVoiceState, ensureMicrophone, i18n.language, sendMessage, sending, ts]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]} testID="mmd-ai-screen">
@@ -321,7 +493,7 @@ export default function MmdAiScreen() {
         fallbackRoute="ClientHome"
         variant="dark"
         rightSlot={
-          <Pressable onPress={handleClear} style={styles.clearButton} hitSlop={8}>
+          <Pressable onPress={handleClear} style={styles.clearButton} hitSlop={8} accessibilityRole="button" accessibilityLabel={tsFallback(ts, "mmd.ai.clear.short", "Clear")}>
             <Text style={styles.clearText}>{tsFallback(ts, "mmd.ai.clear.short", "Clear")}</Text>
           </Pressable>
         }
@@ -339,6 +511,32 @@ export default function MmdAiScreen() {
         </View>
       ) : null}
 
+      <View style={styles.modeRow} accessibilityRole="tablist">
+        {(["text", "voice", "mixed"] as AiInputMode[]).map((mode) => {
+          const labels: Record<AiInputMode, string> = {
+            text: tsFallback(ts, "mmd.ai.mode.text", "Text chat"),
+            voice: tsFallback(ts, "mmd.ai.mode.voice", "Voice"),
+            mixed: tsFallback(ts, "mmd.ai.mode.mixed", "Text and voice"),
+          };
+          const selected = inputMode === mode;
+          return (
+            <Pressable
+              key={mode}
+              style={[styles.modeChip, selected && styles.modeChipActive]}
+              onPress={() => setInputMode(mode)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              accessibilityLabel={labels[mode]}
+              testID={`mmd-ai-mode-${mode}`}
+            >
+              <Text style={[styles.modeChipText, selected && styles.modeChipTextActive]}>
+                {labels[mode]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -349,6 +547,8 @@ export default function MmdAiScreen() {
           <Pressable
             key={action.label}
             style={styles.quickChip}
+            accessibilityRole="button"
+            accessibilityLabel={action.label}
             onPress={() => {
               if (action.route) {
                 navigation.navigate(action.route as never);
@@ -395,9 +595,55 @@ export default function MmdAiScreen() {
           ) : null}
 
           {serviceUnavailable ? (
-            <View style={styles.noticeCard}>
+            <View style={styles.noticeCard} accessibilityLiveRegion="polite">
               <Text style={styles.noticeText}>{serviceUnavailable}</Text>
             </View>
+          ) : null}
+
+          {requiresConfirmation ? (
+            <View
+              style={styles.confirmCard}
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={tsFallback(
+                ts,
+                "mmd.ai.confirm.banner",
+                "Confirmation required. MMD AI will not take payment. Continue in Taxi or restaurant checkout."
+              )}
+            >
+              <Text style={styles.confirmText}>
+                {tsFallback(
+                  ts,
+                  "mmd.ai.confirm.banner",
+                  "Confirmation required. MMD AI will not take payment. Continue in Taxi or restaurant checkout."
+                )}
+              </Text>
+            </View>
+          ) : null}
+
+          {voiceState !== "idle" ? (
+            <Text
+              style={styles.voiceStatus}
+              accessibilityLiveRegion="polite"
+              testID="mmd-ai-voice-status"
+            >
+              {voiceState === "listening"
+                ? tsFallback(ts, "mmd.ai.voice.state.listening", "Listening")
+                : voiceState === "processing"
+                  ? tsFallback(ts, "mmd.ai.voice.state.processing", "Processing your voice")
+                  : voiceState === "speaking"
+                    ? tsFallback(ts, "mmd.ai.voice.state.speaking", "Reading the reply")
+                    : voiceState === "reply_ready"
+                      ? tsFallback(ts, "mmd.ai.voice.state.replyReady", "Reply available")
+                      : voiceState === "mic_denied"
+                        ? tsFallback(ts, "mmd.ai.voice.state.micDenied", "Microphone permission denied")
+                        : voiceState === "mic_error"
+                          ? tsFallback(ts, "mmd.ai.voice.state.micError", "Microphone error")
+                          : ""}
+            </Text>
+          ) : null}
+
+          {voiceFallbackNote ? (
+            <Text style={styles.voiceFallback}>{voiceFallbackNote}</Text>
           ) : null}
 
           {messages.map((message) => (
@@ -436,6 +682,8 @@ export default function MmdAiScreen() {
                   key={`${action.type}-${action.label}`}
                   style={styles.actionCard}
                   onPress={() => handleAiAction(action)}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.label}
                 >
                   <Text style={styles.actionLabel}>{action.label}</Text>
                   <Text style={styles.actionChevron}>›</Text>
@@ -462,25 +710,68 @@ export default function MmdAiScreen() {
         </ScrollView>
 
         <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder={tsFallback(ts, "mmd.ai.input.placeholder", "Ask MMD anything…")}
-            placeholderTextColor={MMD_LINK_BLUE}
-            style={[styles.input, { textAlign: textAlignStart() }]}
-            multiline
-            maxLength={2000}
-            editable={!sending}
-            testID="mmd-ai-input"
-          />
-          <Pressable
-            style={[styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled]}
-            onPress={() => void sendMessage()}
-            disabled={!input.trim() || sending}
-            testID="mmd-ai-send"
-          >
-            <Text style={styles.sendGlyph}>↑</Text>
-          </Pressable>
+          {inputMode !== "voice" ? (
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              placeholder={tsFallback(ts, "mmd.ai.input.placeholder", "Ask MMD anything…")}
+              placeholderTextColor={MMD_LINK_BLUE}
+              style={[styles.input, { textAlign: textAlignStart() }]}
+              multiline
+              maxLength={2000}
+              editable={!sending}
+              testID="mmd-ai-input"
+              accessibilityLabel={tsFallback(ts, "mmd.ai.input.placeholder", "Ask MMD anything…")}
+            />
+          ) : (
+            <Text style={styles.voiceHint} accessibilityLiveRegion="polite">
+              {tsFallback(
+                ts,
+                "mmd.ai.voice.handsFreeHint",
+                "Voice mode: tap the microphone to speak. You do not need the keyboard."
+              )}
+            </Text>
+          )}
+          {inputMode !== "text" ? (
+            <Pressable
+              style={[
+                styles.micButton,
+                voiceState === "listening" && styles.micButtonActive,
+                sending && styles.sendButtonDisabled,
+              ]}
+              onPress={() => void handleMicPress()}
+              disabled={sending}
+              accessibilityRole="button"
+              accessibilityLabel={
+                voiceState === "listening"
+                  ? tsFallback(ts, "mmd.ai.voice.micStop", "Stop listening")
+                  : tsFallback(ts, "mmd.ai.voice.micStart", "Speak to MMD AI")
+              }
+              accessibilityHint={tsFallback(
+                ts,
+                "mmd.ai.voice.micHint",
+                "Double tap to start or stop voice input"
+              )}
+              accessibilityState={{ disabled: sending, selected: voiceState === "listening" }}
+              testID="mmd-ai-mic"
+            >
+              <Text style={styles.micGlyph}>
+                {voiceState === "listening" ? "■" : "○"}
+              </Text>
+            </Pressable>
+          ) : null}
+          {inputMode !== "voice" ? (
+            <Pressable
+              style={[styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled]}
+              onPress={() => void sendMessage()}
+              disabled={!input.trim() || sending}
+              testID="mmd-ai-send"
+              accessibilityRole="button"
+              accessibilityLabel={tsFallback(ts, "mmd.ai.send", "Send message")}
+            >
+              <Text style={styles.sendGlyph}>↑</Text>
+            </Pressable>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -501,6 +792,33 @@ const styles = StyleSheet.create({
     backgroundColor: MMD_WHITE,
     paddingHorizontal: 16,
     paddingBottom: 8,
+  },
+  modeRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    backgroundColor: MMD_WHITE,
+  },
+  modeChip: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    backgroundColor: MMD_WHITE,
+  },
+  modeChipActive: {
+    backgroundColor: "#DCFCE7",
+  },
+  modeChipText: {
+    color: MMD_BLUE,
+    fontWeight: "800",
+    fontSize: 12,
+    fontFamily: MMD_FONT.extrabold,
+  },
+  modeChipTextActive: {
+    color: MMD_GOLD_CLASSIC,
   },
   quickBand: { backgroundColor: MMD_WHITE, maxHeight: 55 },
   quickRow: { paddingHorizontal: 16, gap: 8, paddingBottom: 10 },
@@ -571,6 +889,57 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontFamily: MMD_FONT.bold,
+  },
+  confirmCard: {
+    backgroundColor: "#DCFCE7",
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    padding: 12,
+  },
+  confirmText: {
+    color: MMD_BLUE,
+    fontWeight: "700",
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: MMD_FONT.bold,
+  },
+  voiceStatus: {
+    color: MMD_GOLD_CLASSIC,
+    fontWeight: "800",
+    fontSize: 13,
+    fontFamily: MMD_FONT.extrabold,
+  },
+  voiceFallback: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: MMD_FONT.regular,
+  },
+  voiceHint: {
+    flex: 1,
+    color: MMD_LINK_BLUE,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: MMD_FONT.regular,
+    paddingVertical: 10,
+  },
+  micButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: MMD_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micButtonActive: {
+    backgroundColor: MMD_GOLD_CLASSIC,
+  },
+  micGlyph: {
+    color: MMD_WHITE,
+    fontSize: 18,
+    fontWeight: "900",
+    fontFamily: MMD_FONT.extrabold,
   },
   bubble: {
     maxWidth: "86%",

@@ -348,6 +348,7 @@ export async function POST(req: NextRequest) {
         dropoffAddress: route.dropoffAddress,
         distanceMiles: route.distanceMiles,
         durationMinutes: route.durationMinutes,
+        durationSeconds: route.durationSeconds,
         stops: route.stops,
       },
     });

@@ -4,7 +4,8 @@ import {
   activateKeepAwakeAsync,
   deactivateKeepAwake,
 } from "expo-keep-awake";
-import { AppState, Platform, type AppStateStatus } from "react-native";
+import { Alert, AppState, Platform, type AppStateStatus } from "react-native";
+import i18n from "../i18n";
 import { supabase } from "./supabase";
 import { isDriverOnlineEligible } from "./accountStatus";
 import { setDriverOnlineViaApi } from "./driverServicePreferencesApi";
@@ -53,6 +54,44 @@ function logSuccess(message: string, ...args: unknown[]) {
 
 function logError(message: string, ...args: unknown[]) {
   console.log(`❌ ${message}`, ...args);
+}
+
+/**
+ * Google Play prominent disclosure (Android only).
+ * Must be shown before Location.requestBackgroundPermissionsAsync().
+ * Continue → request background location. Not now → skip that request; keep foreground GPS.
+ */
+function promptAndroidBackgroundLocationDisclosure(): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      i18n.t(
+        "driver.home.gps.backgroundDisclosureTitle",
+        "Location while you are online",
+      ),
+      i18n.t(
+        "driver.home.gps.backgroundDisclosureBody",
+        "When you go online as a Driver, MMD Delivery collects your precise location even when the app is in the background or closed. This allows customers to track your active delivery or taxi ride in real time until it is completed. Going offline stops this location sharing.",
+      ),
+      [
+        {
+          text: i18n.t(
+            "driver.home.gps.backgroundDisclosureNotNow",
+            "Not now",
+          ),
+          style: "cancel",
+          onPress: () => resolve(false),
+        },
+        {
+          text: i18n.t(
+            "driver.home.gps.backgroundDisclosureContinue",
+            "Continue",
+          ),
+          onPress: () => resolve(true),
+        },
+      ],
+      { cancelable: false },
+    );
+  });
 }
 
 async function sendDriverLocationToSupabase(
@@ -126,6 +165,22 @@ async function requestLocationPermissions(): Promise<{
   let backgroundGranted = false;
 
   try {
+    if (Platform.OS === "android") {
+      const existingBackground = await Location.getBackgroundPermissionsAsync();
+      if (existingBackground.status !== "granted") {
+        const proceed = await promptAndroidBackgroundLocationDisclosure();
+        if (!proceed) {
+          logInfo(
+            "Permission GPS arrière-plan non demandée (disclosure declined). Le tracking foreground reste actif.",
+          );
+          return {
+            foregroundGranted: true,
+            backgroundGranted: false,
+          };
+        }
+      }
+    }
+
     const background = await Location.requestBackgroundPermissionsAsync();
     backgroundGranted = background.status === "granted";
 

@@ -532,7 +532,11 @@
         "title": "GPS",
         "permissionDenied": "GPS 权限被拒绝。",
         "enableToGoOnline": "启用 GPS 权限以切换为在线。",
-        "locating": "正在定位司机…"
+        "locating": "正在定位司机…",
+        "backgroundDisclosureTitle": "在线时的位置",
+        "backgroundDisclosureBody": "当您作为司机上线时，即使应用在后台运行或已关闭，MMD Delivery 也会收集您的精确位置。这使客户能够实时跟踪您正在进行的配送或出租车行程，直至完成。下线后将停止位置共享。",
+        "backgroundDisclosureContinue": "继续",
+        "backgroundDisclosureNotNow": "暂不"
       },
       "zone": {
         "title": "你所在区域的活跃度",

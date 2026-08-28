@@ -1,114 +1,165 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AiRole, SharedMissionContext } from "@/lib/ai/aiTypes";
+import { explainOrderStatus } from "@/lib/ai/tools/shared/explainOrderStatus";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
-type OrderRow = {
-  id: string;
-  kind?: string | null;
-  status?: string | null;
-  payment_status?: string | null;
-  pickup_address?: string | null;
-  dropoff_address?: string | null;
-  restaurant_name?: string | null;
-  driver_id?: string | null;
-  client_user_id?: string | null;
-  client_id?: string | null;
-  user_id?: string | null;
-  created_by?: string | null;
-  restaurant_user_id?: string | null;
-  restaurant_id?: string | null;
-};
-
-function clientOwnsOrder(order: OrderRow, userId: string): boolean {
-  const owners = [
-    order.client_user_id,
-    order.client_id,
-    order.user_id,
-    order.created_by,
-  ]
-    .filter(Boolean)
-    .map(String);
-  return owners.includes(userId);
-}
-
-function driverAssigned(order: OrderRow): boolean {
-  return Boolean(order.driver_id && String(order.driver_id).trim());
-}
-
-function buildSafeSummary(ctx: Omit<SharedMissionContext, "safeSummary">): string {
-  const parts = [
-    `Mission ${ctx.missionKind}`,
-    ctx.status ? `status ${ctx.status}` : null,
-    ctx.pickupAddress ? `from ${ctx.pickupAddress}` : null,
-    ctx.dropoffAddress ? `to ${ctx.dropoffAddress}` : null,
-    ctx.restaurantName ? `restaurant ${ctx.restaurantName}` : null,
-    ctx.driverAssigned ? "driver assigned" : "no driver yet",
-  ].filter(Boolean);
-  return parts.join(" · ");
-}
-
-export async function buildSharedMissionContext(params: {
+export type BuildSharedMissionContextInput = {
   supabaseAdmin: SupabaseClient;
   userId: string;
   viewerRole: AiRole;
-  orderId?: string;
-}): Promise<SharedMissionContext | null> {
-  const orderId = String(params.orderId ?? "").trim();
-  if (!orderId || !UUID_RE.test(orderId)) {
-    return null;
-  }
+  orderId: string;
+};
 
-  const { data, error } = await params.supabaseAdmin
+function clientOwnsRow(userId: string, row: Record<string, unknown>): boolean {
+  const ids = [
+    row.client_user_id,
+    row.client_id,
+    row.created_by,
+    row.user_id,
+  ].map((v) => String(v ?? "").trim());
+  return ids.includes(userId);
+}
+
+function summarize(params: {
+  kind: SharedMissionContext["missionKind"];
+  status: string;
+  pickup: string | null;
+  dropoff: string | null;
+  restaurantName: string | null;
+  driverAssigned: boolean;
+  paymentStatus: string | null;
+}): string {
+  const parts = [
+    params.kind.replace("_", " "),
+    `status ${params.status}`,
+  ];
+  if (params.restaurantName) parts.push(`restaurant ${params.restaurantName}`);
+  if (params.pickup) parts.push(`from ${params.pickup}`);
+  if (params.dropoff) parts.push(`to ${params.dropoff}`);
+  if (params.driverAssigned) parts.push("driver assigned");
+  if (params.paymentStatus) parts.push(`payment ${params.paymentStatus}`);
+  parts.push(explainOrderStatus(params.status));
+  return parts.join(" · ");
+}
+
+export async function buildSharedMissionContext(
+  input: BuildSharedMissionContextInput
+): Promise<SharedMissionContext | null> {
+  const orderId = String(input.orderId ?? "").trim();
+  if (!UUID_RE.test(orderId)) return null;
+
+  const { data: order } = await input.supabaseAdmin
     .from("orders")
     .select(
-      "id, kind, status, payment_status, pickup_address, dropoff_address, restaurant_name, driver_id, client_user_id, client_id, user_id, created_by, restaurant_user_id, restaurant_id"
+      "id, kind, status, payment_status, pickup_address, dropoff_address, restaurant_name, driver_id, client_user_id, client_id, created_by, user_id"
     )
     .eq("id", orderId)
     .maybeSingle();
 
-  if (error || !data) {
-    return null;
+  if (order && clientOwnsRow(input.userId, order as Record<string, unknown>)) {
+    const pickup = String(order.pickup_address ?? "").trim() || null;
+    const dropoff = String(order.dropoff_address ?? "").trim() || null;
+    const restaurantName = String(order.restaurant_name ?? "").trim() || null;
+    const driverAssigned = Boolean(order.driver_id);
+    const kind: SharedMissionContext["missionKind"] =
+      String(order.kind ?? "") === "food" || restaurantName
+        ? "restaurant_order"
+        : "unknown";
+    return {
+      missionId: String(order.id),
+      missionKind: kind,
+      status: String(order.status ?? "unknown"),
+      paymentStatus: order.payment_status != null ? String(order.payment_status) : null,
+      pickupAddress: pickup,
+      dropoffAddress: dropoff,
+      restaurantName,
+      driverAssigned,
+      viewerRole: input.viewerRole,
+      safeSummary: summarize({
+        kind,
+        status: String(order.status ?? "unknown"),
+        pickup,
+        dropoff,
+        restaurantName,
+        driverAssigned,
+        paymentStatus: order.payment_status != null ? String(order.payment_status) : null,
+      }),
+    };
   }
 
-  const order = data as OrderRow;
-
-  if (params.viewerRole === "client" && !clientOwnsOrder(order, params.userId)) {
-    return null;
-  }
-
-  if (params.viewerRole === "driver" && String(order.driver_id ?? "") !== params.userId) {
-    return null;
-  }
+  const { data: delivery } = await input.supabaseAdmin
+    .from("delivery_requests")
+    .select(
+      "id, status, payment_status, pickup_address, dropoff_address, driver_id, client_user_id"
+    )
+    .eq("id", orderId)
+    .maybeSingle();
 
   if (
-    params.viewerRole === "restaurant" &&
-    String(order.restaurant_user_id ?? order.restaurant_id ?? "") !== params.userId
+    delivery &&
+    clientOwnsRow(input.userId, delivery as Record<string, unknown>)
   ) {
-    return null;
+    const pickup = String(delivery.pickup_address ?? "").trim() || null;
+    const dropoff = String(delivery.dropoff_address ?? "").trim() || null;
+    const driverAssigned = Boolean(delivery.driver_id);
+    return {
+      missionId: String(delivery.id),
+      missionKind: "delivery_request",
+      status: String(delivery.status ?? "unknown"),
+      paymentStatus:
+        delivery.payment_status != null ? String(delivery.payment_status) : null,
+      pickupAddress: pickup,
+      dropoffAddress: dropoff,
+      restaurantName: null,
+      driverAssigned,
+      viewerRole: input.viewerRole,
+      safeSummary: summarize({
+        kind: "delivery_request",
+        status: String(delivery.status ?? "unknown"),
+        pickup,
+        dropoff,
+        restaurantName: null,
+        driverAssigned,
+        paymentStatus:
+          delivery.payment_status != null ? String(delivery.payment_status) : null,
+      }),
+    };
   }
 
-  const missionKind =
-    order.kind === "food" || order.kind === "restaurant_order"
-      ? "restaurant_order"
-      : order.kind === "delivery"
-        ? "delivery_request"
-        : "unknown";
+  const { data: ride } = await input.supabaseAdmin
+    .from("taxi_rides")
+    .select(
+      "id, status, payment_status, pickup_address, dropoff_address, driver_id, client_user_id"
+    )
+    .eq("id", orderId)
+    .maybeSingle();
 
-  const base: Omit<SharedMissionContext, "safeSummary"> = {
-    missionId: order.id,
-    missionKind,
-    status: String(order.status ?? "unknown"),
-    paymentStatus: order.payment_status ?? null,
-    pickupAddress: order.pickup_address ?? null,
-    dropoffAddress: order.dropoff_address ?? null,
-    restaurantName: order.restaurant_name ?? null,
-    driverAssigned: driverAssigned(order),
-    viewerRole: params.viewerRole,
-  };
+  if (ride && clientOwnsRow(input.userId, ride as Record<string, unknown>)) {
+    const pickup = String(ride.pickup_address ?? "").trim() || null;
+    const dropoff = String(ride.dropoff_address ?? "").trim() || null;
+    const driverAssigned = Boolean(ride.driver_id);
+    return {
+      missionId: String(ride.id),
+      missionKind: "taxi_ride",
+      status: String(ride.status ?? "unknown"),
+      paymentStatus: ride.payment_status != null ? String(ride.payment_status) : null,
+      pickupAddress: pickup,
+      dropoffAddress: dropoff,
+      restaurantName: null,
+      driverAssigned,
+      viewerRole: input.viewerRole,
+      safeSummary: summarize({
+        kind: "taxi_ride",
+        status: String(ride.status ?? "unknown"),
+        pickup,
+        dropoff,
+        restaurantName: null,
+        driverAssigned,
+        paymentStatus: ride.payment_status != null ? String(ride.payment_status) : null,
+      }),
+    };
+  }
 
-  return {
-    ...base,
-    safeSummary: buildSafeSummary(base),
-  };
+  return null;
 }

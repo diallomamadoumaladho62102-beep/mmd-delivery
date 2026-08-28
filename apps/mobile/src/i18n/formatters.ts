@@ -1,4 +1,9 @@
 import { ensureAppLocale } from "./deviceLocale";
+export {
+  formatDurationMinutes,
+  formatTripDurationFromSeconds,
+  resolveRouteDurationSeconds,
+} from "./formatTripDuration";
 
 const INTL_LOCALE: Record<string, string> = {
   en: "en-US",
@@ -99,35 +104,3 @@ export function formatDistance(
   }).format(miles);
 }
 
-export function formatDurationMinutes(
-  minutes: number | null | undefined,
-  language?: string | null
-): string {
-  const mins = Math.round(Number(minutes));
-  if (!Number.isFinite(mins) || mins < 0) return "—";
-  const locale = intlLocaleTag(language);
-  if (mins < 60) {
-    return new Intl.NumberFormat(locale, {
-      style: "unit",
-      unit: "minute",
-      unitDisplay: "short",
-      maximumFractionDigits: 0,
-    }).format(mins);
-  }
-  const hours = Math.floor(mins / 60);
-  const rem = mins % 60;
-  const hourPart = new Intl.NumberFormat(locale, {
-    style: "unit",
-    unit: "hour",
-    unitDisplay: "short",
-    maximumFractionDigits: 0,
-  }).format(hours);
-  if (rem <= 0) return hourPart;
-  const minPart = new Intl.NumberFormat(locale, {
-    style: "unit",
-    unit: "minute",
-    unitDisplay: "short",
-    maximumFractionDigits: 0,
-  }).format(rem);
-  return `${hourPart} ${minPart}`;
-}

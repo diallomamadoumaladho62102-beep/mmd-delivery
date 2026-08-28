@@ -219,6 +219,8 @@
       "dropoff": "Destination",
       "pinPickup": "Placer le départ",
       "pinDropoff": "Épingler destination",
+      "adjustPickup": "Ajuster le pin de départ",
+      "adjustDropoff": "Ajuster le pin d'arrivée",
       "pickupPinned": "Départ placé",
       "dropoffPinned": "Destination placée",
       "priceBreakdown": "Détail du prix",
@@ -244,6 +246,7 @@
       "sharedRideHint": "Réduction optionnelle si un autre passager partage un trajet similaire. Aucun passager n’est encore associé — si aucune correspondance n’est trouvée avant la prise en charge, vous conservez le tarif réduit en solo.",
       "loginRequired": "Vous devez être connecté pour payer.",
       "missingRoute": "Le départ et la destination sont incomplets",
+      "geocodeRequired": "Nous n'avons pas pu confirmer le départ et l'arrivée sur la carte. Vérifiez les adresses ou épinglez les positions exactes.",
       "paymentNotCompleted": "Le paiement n’a pas été finalisé. Aucune course n’a été créée. Vous pouvez demander une nouvelle estimation.",
       "rideNotReady": "Paiement confirmé, mais la course n’est pas encore prête. Actualisez la liste de vos courses.",
       "quoteUnavailable": "Estimation indisponible — vérifiez les adresses",
@@ -1633,6 +1636,44 @@
       "tax": "Taxe",
       "serviceFee": "Frais de service",
       "total": "Total"
+    }
+  },
+  "mmd": {
+    "ai": {
+      "title": "Demander à MMD AI",
+      "subtitle": "Votre assistant MMD",
+      "send": "Envoyer le message",
+      "mode": {
+        "text": "Chat texte",
+        "voice": "Vocal",
+        "mixed": "Texte et vocal"
+      },
+      "voice": {
+        "micStart": "Parler à MMD AI",
+        "micStop": "Arrêter l'écoute",
+        "micHint": "Appuyez deux fois pour démarrer ou arrêter la saisie vocale",
+        "permissionTitle": "Microphone pour MMD AI",
+        "permissionBody": "MMD AI utilise le microphone uniquement pour entendre votre question. Le chat texte reste disponible si vous refusez.",
+        "notNow": "Pas maintenant",
+        "continue": "Continuer",
+        "permissionDeniedTitle": "Microphone désactivé",
+        "permissionDeniedBody": "Vous pouvez continuer en chat texte. Activez le microphone dans les réglages pour parler à MMD AI.",
+        "handsFreeHint": "Mode vocal : appuyez sur le microphone pour parler. Le clavier n'est pas nécessaire.",
+        "languageFallback": "La réponse vocale utilise l'anglais car cette langue n'est pas disponible sur l'appareil.",
+        "sttFallback": "La reconnaissance vocale utilise la détection automatique pour cette langue.",
+        "state": {
+          "idle": "Vocal inactif",
+          "listening": "Écoute en cours",
+          "processing": "Traitement de votre voix",
+          "replyReady": "Réponse disponible",
+          "speaking": "Lecture de la réponse",
+          "micError": "Erreur microphone",
+          "micDenied": "Permission microphone refusée"
+        }
+      },
+      "confirm": {
+        "banner": "Confirmation requise. MMD AI ne prélève aucun paiement. Continuez dans Taxi ou le menu restaurant."
+      }
     }
   }
 }

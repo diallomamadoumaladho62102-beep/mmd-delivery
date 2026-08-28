@@ -1,6 +1,7 @@
 import type OpenAI from "openai";
 import type { AiRole } from "@/lib/ai/aiTypes";
 import { executeClientTool } from "@/lib/ai/tools/client/clientTools";
+import { guardSensitiveAiTool } from "@/lib/ai/tools/guardSensitiveAiTool";
 
 export const CLIENT_TOOL_NAMES = [
   "get_recent_orders",
@@ -15,6 +16,14 @@ export const CLIENT_TOOL_NAMES = [
   "message_driver",
   "call_restaurant",
   "message_restaurant",
+  "get_taxi_categories",
+  "quote_taxi",
+  "prepare_taxi_booking",
+  "get_recent_taxi_rides",
+  "get_restaurant_menu",
+  "quote_food_order",
+  "prepare_food_order",
+  "search_mmd_help",
 ] as const;
 
 export type ClientToolName = (typeof CLIENT_TOOL_NAMES)[number];
@@ -72,6 +81,46 @@ export function getOpenAiToolDefinitions(role: AiRole): OpenAI.Chat.Completions.
       "Navigate client to restaurant chat (Phase 1: navigation only).",
       { order_id: { type: "string" } }
     ),
+    toolDef("get_taxi_categories", "List available taxi vehicle categories.", {}),
+    toolDef("quote_taxi", "Estimate a taxi fare using the official taxi quote engine. Never charges the client.", {
+      pickup_address: { type: "string" },
+      dropoff_address: { type: "string" },
+      vehicle_class: { type: "string" },
+      country_code: { type: "string" },
+      pickup_lat: { type: "number" },
+      pickup_lng: { type: "number" },
+      dropoff_lat: { type: "number" },
+      dropoff_lng: { type: "number" },
+    }),
+    toolDef("prepare_taxi_booking", "Prepare a taxi recap and hand off to official Taxi checkout after client confirmation. Never pays.", {
+      pickup_address: { type: "string" },
+      dropoff_address: { type: "string" },
+      vehicle_class: { type: "string" },
+    }),
+    toolDef("get_recent_taxi_rides", "List the client's recent taxi rides.", {
+      limit: { type: "number" },
+    }),
+    toolDef("get_restaurant_menu", "Read an approved restaurant menu from restaurant_items.", {
+      restaurant_id: { type: "string" },
+    }),
+    toolDef("quote_food_order", "Estimate a food order using the official food quote engine. Never charges the client.", {
+      restaurant_id: { type: "string" },
+      restaurant_name: { type: "string" },
+      items: { type: "string", description: "JSON array of {item_id, quantity, options?}" },
+      pickup_address: { type: "string" },
+      dropoff_address: { type: "string" },
+      pickup_lat: { type: "number" },
+      pickup_lng: { type: "number" },
+      dropoff_lat: { type: "number" },
+      dropoff_lng: { type: "number" },
+    }),
+    toolDef("prepare_food_order", "Prepare a food-order recap and hand off to the official restaurant menu after confirmation. Never pays.", {
+      restaurant_id: { type: "string" },
+      restaurant_name: { type: "string" },
+    }),
+    toolDef("search_mmd_help", "Search official public MMD FAQ and published CMS pages. Never invent rules.", {
+      query: { type: "string" },
+    }),
   ];
 }
 
@@ -101,6 +150,9 @@ export async function runToolForRole(
   args: Record<string, unknown>,
   ctx: Parameters<typeof executeClientTool>[2]
 ) {
+  const blocked = guardSensitiveAiTool(name);
+  if (blocked) return blocked;
+
   if (role === "client") {
     return executeClientTool(name, args, ctx);
   }

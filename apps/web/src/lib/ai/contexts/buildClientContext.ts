@@ -1,53 +1,49 @@
+import type { NextRequest } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  buildClientFeaturesResponse,
-} from "@/lib/platformScopeApi";
-import { NextRequest } from "next/server";
-import { buildSharedMissionContext } from "@/lib/ai/contexts/buildSharedMissionContext";
 import type { ClientAiContextPayload } from "@/lib/ai/aiTypes";
-export async function buildClientContext(params: {
+import { buildSharedMissionContext } from "@/lib/ai/contexts/buildSharedMissionContext";
+import {
+  resolveClientPlatformScope,
+  resolvePlatformScopeFeatures,
+} from "@/lib/platformScopeResolver";
+
+export type BuildClientContextInput = {
   supabaseAdmin: SupabaseClient;
   userId: string;
   locale: string;
   orderId?: string;
-  req: NextRequest;
-}): Promise<ClientAiContextPayload> {
-  const featuresRes = await buildClientFeaturesResponse(
-    params.supabaseAdmin,
-    params.userId,
-    params.req
-  );
+  req?: NextRequest;
+};
 
-  let scopeLabel: string | null = null;
-  let services = {
-    taxi: false,
-    delivery: false,
-    restaurant: false,
-    marketplace: false,
+export async function buildClientContext(
+  input: BuildClientContextInput
+): Promise<ClientAiContextPayload> {
+  const locale = String(input.locale ?? "en").split("-")[0].slice(0, 8) || "en";
+
+  const scope = await resolveClientPlatformScope(input.supabaseAdmin, input.userId, {});
+  const features = await resolvePlatformScopeFeatures(input.supabaseAdmin, scope);
+
+  const payload: ClientAiContextPayload = {
+    locale,
+    scopeLabel: features?.scope_label ?? null,
+    services: {
+      taxi: features?.taxi_available === true,
+      delivery: features?.delivery_available === true,
+      restaurant: features?.restaurant_available === true,
+      marketplace: features?.marketplace_available === true,
+    },
   };
 
-  if (featuresRes.status === 200) {
-    const body = (await featuresRes.clone().json()) as Record<string, unknown>;
-    scopeLabel = typeof body.scope_label === "string" ? body.scope_label : null;
-    services = {
-      taxi: Boolean(body.taxi_available),
-      delivery: Boolean(body.delivery_available),
-      restaurant: Boolean(body.restaurant_available),
-      marketplace: Boolean(body.marketplace_available),
-    };
+  const orderId = String(input.orderId ?? "").trim();
+  if (orderId) {
+    const mission = await buildSharedMissionContext({
+      supabaseAdmin: input.supabaseAdmin,
+      userId: input.userId,
+      viewerRole: "client",
+      orderId,
+    });
+    if (mission) payload.mission = mission;
   }
 
-  const mission = await buildSharedMissionContext({
-    supabaseAdmin: params.supabaseAdmin,
-    userId: params.userId,
-    viewerRole: "client",
-    orderId: params.orderId,
-  });
-
-  return {
-    locale: params.locale,
-    scopeLabel,
-    services,
-    mission: mission ?? undefined,
-  };
+  return payload;
 }

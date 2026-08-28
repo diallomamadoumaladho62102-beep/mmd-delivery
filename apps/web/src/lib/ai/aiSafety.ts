@@ -30,6 +30,15 @@ const BLOCKED_AUTO_ACTIONS = new Set([
   "payout_change",
   "menu_delete",
   "restaurant_close",
+  "create_taxi_ride",
+  "book_taxi",
+  "place_order",
+  "create_food_order",
+  "start_checkout",
+  "confirm_paid",
+  "confirm_taxi_paid",
+  "initiate_payment",
+  "cash_out",
 ]);
 
 export function detectEscalationReason(message: string): string | null {

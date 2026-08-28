@@ -3,8 +3,48 @@ import { buildSharedMissionContext } from "@/lib/ai/contexts/buildSharedMissionC
 import { explainOrderStatus } from "@/lib/ai/tools/shared/explainOrderStatus";
 import { getSupportContactInfo } from "@/lib/ai/tools/shared/getSupportContactInfo";
 import { resolveClientPlatformScope, resolvePlatformScopeFeatures } from "@/lib/platformScopeResolver";
+import {
+  getRecentTaxiRides,
+  getTaxiCategories,
+  prepareTaxiBooking,
+  quoteTaxi,
+} from "@/lib/ai/tools/client/taxiTools";
+import {
+  getRestaurantMenu,
+  prepareFoodOrder,
+  quoteFoodOrder,
+} from "@/lib/ai/tools/client/foodTools";
+import { searchMmdHelp } from "@/lib/ai/tools/client/helpTools";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
+
+function latestTrackAction(item: { type?: string; id: string }) {
+  if (item.type === "taxi_ride") {
+    return {
+      type: "navigate" as const,
+      label: "Track latest taxi",
+      route: "TaxiRideTracking",
+      params: { rideId: String(item.id) },
+      icon: "track",
+    };
+  }
+  if (item.type === "delivery_request") {
+    return {
+      type: "navigate" as const,
+      label: "Track latest delivery",
+      route: "ClientDeliveryRequestDetails",
+      params: { requestId: String(item.id) },
+      icon: "track",
+    };
+  }
+  return {
+    type: "navigate" as const,
+    label: "Track latest",
+    route: "ClientOrderDetails",
+    params: { orderId: String(item.id) },
+    icon: "track",
+  };
+}
 
 async function assertClientOwnsOrder(
   ctx: AiToolContext,
@@ -52,6 +92,22 @@ export async function executeClientTool(
       return callRestaurant(ctx, args);
     case "message_restaurant":
       return messageRestaurant(ctx, args);
+    case "get_taxi_categories":
+      return getTaxiCategories(ctx);
+    case "quote_taxi":
+      return quoteTaxi(ctx, args);
+    case "prepare_taxi_booking":
+      return prepareTaxiBooking(args);
+    case "get_recent_taxi_rides":
+      return getRecentTaxiRides(ctx, args);
+    case "get_restaurant_menu":
+      return getRestaurantMenu(ctx, args);
+    case "quote_food_order":
+      return quoteFoodOrder(ctx, args);
+    case "prepare_food_order":
+      return prepareFoodOrder(args);
+    case "search_mmd_help":
+      return searchMmdHelp(ctx, args);
     default:
       return { ok: false, summary: `Unknown tool: ${name}` };
   }
@@ -85,9 +141,23 @@ async function getRecentOrders(ctx: AiToolContext, args: Record<string, unknown>
     return { ok: false, summary: drError.message };
   }
 
+  const { data: rides, error: rideError } = await ctx.supabaseAdmin
+    .from("taxi_rides")
+    .select(
+      "id, status, payment_status, created_at, pickup_address, dropoff_address, vehicle_class, total_cents"
+    )
+    .eq("client_user_id", ctx.userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (rideError) {
+    return { ok: false, summary: rideError.message };
+  }
+
   const items = [
     ...(orders ?? []).map((row) => ({ type: "order", ...row })),
     ...(deliveries ?? []).map((row) => ({ type: "delivery_request", ...row })),
+    ...(rides ?? []).map((row) => ({ type: "taxi_ride", ...row })),
   ]
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
     .slice(0, limit);
@@ -98,13 +168,7 @@ async function getRecentOrders(ctx: AiToolContext, args: Record<string, unknown>
     data: { items },
     actions: items[0]
       ? [
-          {
-            type: "navigate",
-            label: "Track latest",
-            route: "ClientOrderDetails",
-            params: { orderId: String((items[0] as { id: string }).id) },
-            icon: "track",
-          },
+          latestTrackAction(items[0] as { type?: string; id: string }),
         ]
       : undefined,
   };
@@ -132,13 +196,29 @@ async function trackOrder(ctx: AiToolContext, args: Record<string, unknown>): Pr
     summary: mission.safeSummary,
     data: { mission, statusExplanation: explainOrderStatus(mission.status) },
     actions: [
-      {
-        type: "navigate",
-        label: "View order",
-        route: "ClientOrderDetails",
-        params: { orderId: mission.missionId },
-        icon: "track",
-      },
+      mission.missionKind === "taxi_ride"
+        ? {
+            type: "navigate",
+            label: "View taxi ride",
+            route: "TaxiRideTracking",
+            params: { rideId: mission.missionId },
+            icon: "track",
+          }
+        : mission.missionKind === "delivery_request"
+          ? {
+              type: "navigate",
+              label: "View delivery",
+              route: "ClientDeliveryRequestDetails",
+              params: { requestId: mission.missionId },
+              icon: "track",
+            }
+          : {
+              type: "navigate",
+              label: "View order",
+              route: "ClientOrderDetails",
+              params: { orderId: mission.missionId },
+              icon: "track",
+            },
     ],
   };
 }

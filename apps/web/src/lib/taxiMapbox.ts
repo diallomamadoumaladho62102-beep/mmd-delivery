@@ -42,6 +42,7 @@ export type TaxiRouteResult = {
   dropoffAddress: string | null;
   distanceMiles: number;
   durationMinutes: number;
+  durationSeconds: number;
 };
 
 export function isValidCoordinate(lat: unknown, lng: unknown): boolean {
@@ -154,6 +155,7 @@ export async function getMultiLegDistanceAndDuration(
   return {
     distanceMiles: distanceMeters / 1609.34,
     durationMinutes: Math.max(1, durationSeconds / 60),
+    durationSeconds: Number.isFinite(durationSeconds) ? Math.max(0, durationSeconds) : 0,
     fallback: false as const,
   };
 }
@@ -194,7 +196,7 @@ export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRoute
     throw new Error(ROUTE_UNAVAILABLE);
   }
 
-  const { distanceMiles, durationMinutes } = await getDistanceAndDuration(
+  const { distanceMiles, durationMinutes, durationSeconds } = await getDistanceAndDuration(
     pickupLat!,
     pickupLng!,
     dropoffLat!,
@@ -212,6 +214,7 @@ export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRoute
     dropoffAddress,
     distanceMiles,
     durationMinutes,
+    durationSeconds,
   };
 }
 
@@ -256,7 +259,7 @@ export async function resolveTaxiMultiStopRoute(
     { lat: baseRoute.dropoffLat, lng: baseRoute.dropoffLng },
   ];
 
-  const { distanceMiles, durationMinutes } =
+  const { distanceMiles, durationMinutes, durationSeconds } =
     await getMultiLegDistanceAndDuration(coordinates);
 
   assertRouteDistanceWithinLimit(distanceMiles, "taxi");
@@ -265,6 +268,7 @@ export async function resolveTaxiMultiStopRoute(
     ...baseRoute,
     distanceMiles,
     durationMinutes,
+    durationSeconds,
     stops,
   };
 }

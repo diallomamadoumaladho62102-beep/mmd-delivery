@@ -355,6 +355,8 @@
       "dropoff": "Dropoff",
       "pinPickup": "Pin pickup",
       "pinDropoff": "Pin dropoff",
+      "adjustPickup": "Adjust pickup pin",
+      "adjustDropoff": "Adjust dropoff pin",
       "pickupPinned": "Pickup pinned",
       "dropoffPinned": "Dropoff pinned",
       "priceBreakdown": "Price breakdown",
@@ -380,6 +382,7 @@
       "sharedRideHint": "Optional discount when another passenger shares a similar route. No passenger is matched yet — if no match is found before pickup, you keep the discounted solo fare.",
       "loginRequired": "You must be logged in to pay.",
       "missingRoute": "Pickup and dropoff are incomplete",
+      "geocodeRequired": "We could not confirm pickup and dropoff on the map. Check the addresses or pin the exact locations.",
       "paymentNotCompleted": "Payment was not completed. No ride was created. You can request a new quote when ready.",
       "rideNotReady": "Payment confirmed but the ride is not ready yet. Please refresh your rides list.",
       "quoteUnavailable": "Estimate unavailable — check addresses",
@@ -1477,6 +1480,44 @@
       "tax": "Tax",
       "serviceFee": "Service fee",
       "total": "Total"
+    }
+  },
+  "mmd": {
+    "ai": {
+      "title": "Ask MMD AI",
+      "subtitle": "Your MMD assistant",
+      "send": "Send message",
+      "mode": {
+        "text": "Text chat",
+        "voice": "Voice",
+        "mixed": "Text and voice"
+      },
+      "voice": {
+        "micStart": "Speak to MMD AI",
+        "micStop": "Stop listening",
+        "micHint": "Double tap to start or stop voice input",
+        "permissionTitle": "Microphone for MMD AI",
+        "permissionBody": "MMD AI uses the microphone only to hear your question. Chat by text still works if you decline.",
+        "notNow": "Not now",
+        "continue": "Continue",
+        "permissionDeniedTitle": "Microphone off",
+        "permissionDeniedBody": "You can keep using text chat. Enable the microphone in system settings to speak to MMD AI.",
+        "handsFreeHint": "Voice mode: tap the microphone to speak. You do not need the keyboard.",
+        "languageFallback": "Voice reply is using English because this language is not available on the device.",
+        "sttFallback": "Voice input is using automatic language detection for this app language.",
+        "state": {
+          "idle": "Voice idle",
+          "listening": "Listening",
+          "processing": "Processing your voice",
+          "replyReady": "Reply available",
+          "speaking": "Reading the reply",
+          "micError": "Microphone error",
+          "micDenied": "Microphone permission denied"
+        }
+      },
+      "confirm": {
+        "banner": "Confirmation required. MMD AI will not take payment. Continue in Taxi or restaurant checkout."
+      }
     }
   }
 }

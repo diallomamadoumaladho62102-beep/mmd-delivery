@@ -532,7 +532,11 @@
         "title": "GPS",
         "permissionDenied": "Permiso de GPS denegado.",
         "enableToGoOnline": "Activa el permiso de GPS para ponerte en línea.",
-        "locating": "Localizando al conductor…"
+        "locating": "Localizando al conductor…",
+        "backgroundDisclosureTitle": "Ubicación mientras estás en línea",
+        "backgroundDisclosureBody": "Cuando te pones en línea como conductor, MMD Delivery recopila tu ubicación precisa incluso cuando la app está en segundo plano o cerrada. Esto permite a los clientes seguir en tiempo real tu entrega o viaje de taxi activo hasta que termine. Al ponerte fuera de línea se detiene este uso compartido de la ubicación.",
+        "backgroundDisclosureContinue": "Continuar",
+        "backgroundDisclosureNotNow": "Ahora no"
       },
       "zone": {
         "title": "Actividad en tu zona",

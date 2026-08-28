@@ -19,7 +19,7 @@ import type {
   AiRole,
   AiToolContext,
 } from "@/lib/ai/aiTypes";
-import { AI_DISCLAIMER, detectEscalationReason } from "@/lib/ai/aiSafety";
+import { AI_DISCLAIMER, detectEscalationReason, isBlockedAutoAction } from "@/lib/ai/aiSafety";
 import { getOpenAiToolDefinitions, runToolForRole } from "@/lib/ai/tools/registry";
 import type { AiApiAuthSuccess } from "@/lib/ai/requireAiApiUser";
 
@@ -110,6 +110,7 @@ export async function runMmdAiChat(params: {
   const toolsUsed: string[] = [];
   const collectedActions: AiAction[] = [];
   let escalatedToHuman = Boolean(escalationKeyword);
+  let requiresConfirmation = false;
   const usageParts = [];
 
   for (let i = 0; i < getAiMaxToolIterations(); i += 1) {
@@ -168,7 +169,7 @@ export async function runMmdAiChat(params: {
         meta: {
           role: aiRole,
           toolsUsed,
-          requiresConfirmation: false,
+          requiresConfirmation,
           escalatedToHuman,
           escalationReason: escalationKeyword ?? undefined,
           disclaimer: AI_DISCLAIMER,
@@ -195,9 +196,16 @@ export async function runMmdAiChat(params: {
       const toolArgs = parseToolArgs(call.function.arguments);
       toolsUsed.push(toolName);
 
+      if (isBlockedAutoAction(toolName)) {
+        requiresConfirmation = true;
+      }
+
       const result = await runToolForRole(aiRole, toolName, toolArgs, toolCtx);
       if (result.escalationReason) {
         escalatedToHuman = true;
+      }
+      if (result.requiresConfirmation || result.blocked) {
+        requiresConfirmation = true;
       }
       if (result.actions?.length) {
         collectedActions.push(...result.actions);
@@ -232,7 +240,7 @@ export async function runMmdAiChat(params: {
     meta: {
       role: aiRole,
       toolsUsed,
-      requiresConfirmation: false,
+      requiresConfirmation,
       escalatedToHuman,
       escalationReason: escalationKeyword ?? undefined,
       disclaimer: AI_DISCLAIMER,

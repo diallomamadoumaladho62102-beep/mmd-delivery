@@ -17,6 +17,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { toUserFacingError } from "../../lib/userFacingError";
+import { isValidCoordinate } from "../../lib/coordinates";
 import {
   quoteTaxiRide,
   type TaxiReturnMode,
@@ -135,6 +136,8 @@ export default function TaxiHomeScreen() {
   const [proximity, setProximity] = useState<{ lat: number; lng: number } | null>(
     null
   );
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const handleUseMyGps = useCallback(async () => {
     setGpsLoading(true);
@@ -160,6 +163,7 @@ export default function TaxiHomeScreen() {
       const geo = await reverseGeocode(latitude, longitude);
       setPickup(geo.fullAddress);
       setPickupLocationId("");
+      setPickupCoords({ lat: latitude, lng: longitude });
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.home.gpsErrorTitle", "GPS"),
@@ -186,7 +190,11 @@ export default function TaxiHomeScreen() {
             if (current.trim()) return current;
             void reverseGeocode(pos.latitude, pos.longitude).then((geo) => {
               if (cancelled) return;
-              setPickup((still) => (still.trim() ? still : geo.fullAddress));
+              setPickup((still) => {
+                if (still.trim()) return still;
+                setPickupCoords({ lat: pos.latitude, lng: pos.longitude });
+                return geo.fullAddress;
+              });
               setPickupLocationId((id) => (id.trim() ? id : ""));
             });
             return current;
@@ -206,6 +214,7 @@ export default function TaxiHomeScreen() {
       applyMmdLocationSelection(location, {
         setLocationId: setPickupLocationId,
         setAddress: setPickup,
+        setCoords: setPickupCoords,
         ...(showDevCountryPicker
           ? { setCountryCode: setCountryCode }
           : {}),
@@ -219,6 +228,7 @@ export default function TaxiHomeScreen() {
       applyMmdLocationSelection(location, {
         setLocationId: setDropoffLocationId,
         setAddress: setDropoff,
+        setCoords: setDropoffCoords,
       });
     },
     []
@@ -287,11 +297,17 @@ export default function TaxiHomeScreen() {
     setLoading(true);
     try {
       const waitMinutes = Math.round(Number(returnWaitMinutes));
+      const pickupHasCoords = isValidCoordinate(pickupCoords?.lat, pickupCoords?.lng);
+      const dropoffHasCoords = isValidCoordinate(dropoffCoords?.lat, dropoffCoords?.lng);
       const result = await quoteTaxiRide({
         pickupAddress: pickupAddress || undefined,
         dropoffAddress: dropoffAddress || undefined,
         pickupLocationId: pickupLocationId.trim() || undefined,
         dropoffLocationId: dropoffLocationId.trim() || undefined,
+        pickupLat: pickupHasCoords ? pickupCoords!.lat : undefined,
+        pickupLng: pickupHasCoords ? pickupCoords!.lng : undefined,
+        dropoffLat: dropoffHasCoords ? dropoffCoords!.lat : undefined,
+        dropoffLng: dropoffHasCoords ? dropoffCoords!.lng : undefined,
         vehicleClass,
         countryCode: activeCountryCode,
         tripMode,
@@ -427,11 +443,13 @@ export default function TaxiHomeScreen() {
             onChangeText={(text) => {
               setPickup(text);
               setPickupLocationId("");
+              setPickupCoords(null);
             }}
             onSelect={(place) => {
               setPickup(place.fullAddress);
               setPickupLocationId("");
               setProximity({ lat: place.latitude, lng: place.longitude });
+              setPickupCoords({ lat: place.latitude, lng: place.longitude });
             }}
             placeholder={t("taxi.home.pickupPlaceholder", "Pickup address")}
             proximity={proximity}
@@ -486,10 +504,12 @@ export default function TaxiHomeScreen() {
             onChangeText={(text) => {
               setDropoff(text);
               setDropoffLocationId("");
+              setDropoffCoords(null);
             }}
             onSelect={(place) => {
               setDropoff(place.fullAddress);
               setDropoffLocationId("");
+              setDropoffCoords({ lat: place.latitude, lng: place.longitude });
             }}
             placeholder={t("taxi.home.dropoffPlaceholder", "Dropoff address")}
             proximity={proximity}

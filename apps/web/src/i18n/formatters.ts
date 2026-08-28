@@ -97,35 +97,50 @@ export function formatDistance(
   }).format(miles);
 }
 
+function pad2(value: number): string {
+  return String(Math.max(0, Math.trunc(value))).padStart(2, "0");
+}
+
+/**
+ * Client-facing trip duration. Always human (never raw "3180s").
+ * 3180 → "53 min 00 sec"; 3600 → "1 h 00 min 00 sec"; 7380 → "2 h 03 min 00 sec".
+ */
+export function formatTripDurationFromSeconds(
+  totalSeconds: number | null | undefined
+): string {
+  if (totalSeconds == null) return "—";
+  const raw = Number(totalSeconds);
+  if (!Number.isFinite(raw) || raw < 0) return "—";
+  const sec = Math.round(raw);
+  const hours = Math.floor(sec / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  const seconds = sec % 60;
+  if (hours > 0) {
+    return `${hours} h ${pad2(minutes)} min ${pad2(seconds)} sec`;
+  }
+  return `${minutes} min ${pad2(seconds)} sec`;
+}
+
+export function resolveRouteDurationSeconds(route: {
+  durationSeconds?: unknown;
+  duration_seconds?: unknown;
+  durationMinutes?: unknown;
+  duration_minutes?: unknown;
+} | null | undefined): number | null {
+  if (!route) return null;
+  const seconds = Number(route.durationSeconds ?? route.duration_seconds);
+  if (Number.isFinite(seconds) && seconds > 0) return seconds;
+  const minutes = Number(route.durationMinutes ?? route.duration_minutes);
+  if (!Number.isFinite(minutes) || minutes <= 0) return null;
+  if (minutes >= 24 * 60) return minutes;
+  return minutes * 60;
+}
+
 export function formatDurationMinutes(
   minutes: number | null | undefined,
-  locale?: WebLocale | string | null
+  _locale?: WebLocale | string | null
 ): string {
-  const mins = Math.round(Number(minutes));
-  if (!Number.isFinite(mins) || mins < 0) return "—";
-  const tag = intlLocaleTag(locale);
-  if (mins < 60) {
-    return new Intl.NumberFormat(tag, {
-      style: "unit",
-      unit: "minute",
-      unitDisplay: "short",
-      maximumFractionDigits: 0,
-    }).format(mins);
-  }
-  const hours = Math.floor(mins / 60);
-  const rem = mins % 60;
-  const hourPart = new Intl.NumberFormat(tag, {
-    style: "unit",
-    unit: "hour",
-    unitDisplay: "short",
-    maximumFractionDigits: 0,
-  }).format(hours);
-  if (rem <= 0) return hourPart;
-  const minPart = new Intl.NumberFormat(tag, {
-    style: "unit",
-    unit: "minute",
-    unitDisplay: "short",
-    maximumFractionDigits: 0,
-  }).format(rem);
-  return `${hourPart} ${minPart}`;
+  const seconds = resolveRouteDurationSeconds({ durationMinutes: minutes });
+  if (seconds == null) return "—";
+  return formatTripDurationFromSeconds(seconds);
 }

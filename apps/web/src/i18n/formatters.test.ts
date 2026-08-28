@@ -4,6 +4,7 @@ import {
   formatDistance,
   formatDurationMinutes,
   formatMoneyFromCents,
+  formatTripDurationFromSeconds,
   intlLocaleTag,
 } from "@/i18n/formatters";
 
@@ -19,5 +20,8 @@ test("web formatters match mobile semantics for money and distance", () => {
   assert.match(km, /km/i);
 
   const mins = formatDurationMinutes(45, "en");
-  assert.match(mins, /45/);
+  assert.match(mins, /45 min 00 sec/);
+  assert.equal(formatTripDurationFromSeconds(3180), "53 min 00 sec");
+  assert.equal(formatTripDurationFromSeconds(3600), "1 h 00 min 00 sec");
+  assert.equal(formatTripDurationFromSeconds(7380), "2 h 03 min 00 sec");
 });

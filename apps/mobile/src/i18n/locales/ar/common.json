@@ -532,7 +532,11 @@
         "title": "GPS",
         "permissionDenied": "تم رفض إذن GPS.",
         "enableToGoOnline": "فعّل إذن GPS للانتقال إلى وضع متصل.",
-        "locating": "جارٍ تحديد موقع السائق…"
+        "locating": "جارٍ تحديد موقع السائق…",
+        "backgroundDisclosureTitle": "الموقع أثناء الاتصال",
+        "backgroundDisclosureBody": "عند الانتقال إلى وضع متصل كسائق، تجمع MMD Delivery موقعك الدقيق حتى عندما يكون التطبيق في الخلفية أو مغلقًا. يتيح ذلك للعملاء تتبع توصيلك أو رحلة التاكسي النشطة في الوقت الفعلي حتى اكتمالها. يؤدي الانتقال إلى وضع غير متصل إلى إيقاف مشاركة الموقع.",
+        "backgroundDisclosureContinue": "متابعة",
+        "backgroundDisclosureNotNow": "ليس الآن"
       },
       "zone": {
         "title": "النشاط في منطقتك",

@@ -20,12 +20,24 @@ assert.doesNotMatch(
 );
 
 assert.match(src, /formatDistance\(/);
-assert.match(src, /formatDurationMinutes\(/);
+assert.match(src, /formatTripDurationFromSeconds\(/);
+assert.match(src, /buildClientTaxiPriceBreakdown/);
+assert.doesNotMatch(src, /taxi\.ui\.platformFee/);
+assert.doesNotMatch(src, /formatDurationMinutes\(/);
 assert.match(src, /ClientServiceBottomNav/);
 assert.match(src, /quoteTaxiRide/);
 assert.match(src, /startTaxiCheckoutFromQuote/);
 assert.match(src, /confirmTaxiQuoteCheckoutPaid/);
-assert.match(src, /t\("taxi\.quote\.title"/);
+const homeSrc = fs.readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), "../screens/taxi/TaxiHomeScreen.tsx"),
+  "utf8",
+);
+assert.match(homeSrc, /pickupLat: pickupHasCoords/);
+assert.match(homeSrc, /dropoffLat: dropoffHasCoords/);
+assert.match(homeSrc, /setPickupCoords/);
+assert.match(homeSrc, /setDropoffCoords/);
+assert.match(src, /geocodeRequired/);
+assert.doesNotMatch(src, /\$\{[^}]*\}s["'`]/);
 assert.match(src, /i18n\.language/);
 assert.doesNotMatch(src, /JFK Airport/);
 assert.doesNotMatch(src, /123 Main St/);
@@ -44,7 +56,9 @@ const requiredQuoteKeys = [
   "serviceFee",
   "sharedRideHint",
   "loginRequired",
-  "missingRoute",
+  "geocodeRequired",
+  "adjustPickup",
+  "adjustDropoff",
   "paymentNotCompleted",
   "rideNotReady",
   "quoteUnavailable",

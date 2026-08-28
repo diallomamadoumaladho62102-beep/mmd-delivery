@@ -9,6 +9,15 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Canceled",
   on_the_way: "On the way",
   picked_up: "Picked up",
+  requested: "Taxi requested — looking for a driver",
+  searching: "Searching for a nearby driver",
+  assigned: "Driver assigned",
+  driver_assigned: "Driver assigned",
+  arriving: "Driver is arriving",
+  driver_arrived: "Driver has arrived",
+  in_progress: "Trip in progress",
+  completed: "Completed",
+  unpaid: "Waiting for payment",
 };
 
 export function explainOrderStatus(status: unknown): string {

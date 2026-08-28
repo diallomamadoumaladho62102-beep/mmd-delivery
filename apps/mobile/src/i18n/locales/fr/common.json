@@ -473,7 +473,11 @@
         "title": "GPS",
         "permissionDenied": "Permission GPS refusée.",
         "enableToGoOnline": "Active la permission GPS pour passer en ligne.",
-        "locating": "Localisation du chauffeur…"
+        "locating": "Localisation du chauffeur…",
+        "backgroundDisclosureTitle": "Localisation lorsque vous êtes en ligne",
+        "backgroundDisclosureBody": "Lorsque vous passez en ligne en tant que chauffeur, MMD Delivery collecte votre localisation précise même lorsque l'application est en arrière-plan ou fermée. Cela permet aux clients de suivre en temps réel votre livraison ou votre course Taxi active jusqu'à sa fin. Passer hors ligne arrête ce partage de localisation.",
+        "backgroundDisclosureContinue": "Continuer",
+        "backgroundDisclosureNotNow": "Pas maintenant"
       },
       "zone": {
         "title": "Activité dans ta zone",
