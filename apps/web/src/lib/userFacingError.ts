@@ -187,9 +187,12 @@ function mapKnownErrorCode(code: string, message: string): string | null {
 }
 
 function sanitizeLogText(value: unknown): string {
-  return String(value ?? "")
-    .replace(/[\r\n\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, " ")
-    .slice(0, 500);
+  let out = "";
+  for (const ch of String(value ?? "")) {
+    const code = ch.codePointAt(0) ?? 0;
+    out += code < 32 ? " " : ch;
+  }
+  return out.slice(0, 500);
 }
 
 export function logTechnicalError(scope: string, error: unknown, metadata?: Record<string, unknown>) {

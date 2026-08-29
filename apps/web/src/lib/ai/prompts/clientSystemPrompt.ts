@@ -3,8 +3,12 @@ import { AI_SYSTEM_SAFETY_RULES } from "@/lib/ai/aiSafety";
 
 /** Strip control chars / role-spoofing before interpolating into the system prompt. */
 export function sanitizePromptInterpolation(value: unknown, maxLen = 160): string {
-  return String(value ?? "")
-    .replace(/[\u0000-\u001f\u007f]/g, " ")
+  let out = "";
+  for (const ch of String(value ?? "")) {
+    const code = ch.codePointAt(0) ?? 0;
+    out += code < 32 || code === 127 ? " " : ch;
+  }
+  return out
     .replace(/\s+/g, " ")
     .replace(/ignore[\s\w]{0,40}(instructions|rules|prompts)/gi, "")
     .trim()
