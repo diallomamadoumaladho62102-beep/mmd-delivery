@@ -19,6 +19,7 @@ import {
 import { validateFoodOrderBeforeCheckout } from "@/lib/foodOrderService";
 import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -350,6 +351,11 @@ export async function POST(req: NextRequest) {
 
     if (userErr || !user?.id) {
       return json({ error: "Invalid token" }, 401);
+    }
+
+    const account = await assertProfileActive(supabaseAdmin, user.id);
+    if (account.ok === false) {
+      return json(inactiveAccountBody(account), account.status);
     }
 
     const body = await parseBody(req);

@@ -18,6 +18,7 @@ import { bridgeStripeWalletFromPaidDeliveryRequest } from "@/lib/stripeInboundWa
 import { toUserFacingError } from "@/lib/userFacingError";
 import { DELIVERY_REQUEST_CONFIRM_PAID_SELECT } from "@/lib/deliveryRequestPaymentSelect";
 import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import { resolveDeliveryRequestAmountCents } from "@/lib/deliveryRequestAmountCents";
 import { materializePaidDeliveryRequestFromQuoteCheckout } from "@/lib/delivery/deliveryCheckoutFromQuote";
 import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
@@ -503,6 +504,11 @@ export async function POST(req: NextRequest) {
 
     if (userErr || !user?.id) {
       return json({ error: "Invalid token" }, 401);
+    }
+
+    const account = await assertProfileActive(supabaseAdmin, user.id);
+    if (account.ok === false) {
+      return json(inactiveAccountBody(account), account.status);
     }
 
     const body = await parseBody(req);

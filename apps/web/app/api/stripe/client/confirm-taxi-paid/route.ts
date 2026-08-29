@@ -18,6 +18,7 @@ import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBri
 import { enqueueTaxiPaidFailOpen } from "@/lib/finance/financeEvents";
 import { materializePaidTaxiRideFromQuoteCheckout } from "@/lib/taxi/taxiCheckoutFromQuote";
 import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -276,6 +277,11 @@ export async function POST(req: NextRequest) {
 
     if (userErr || !user?.id) {
       return taxiJson({ error: "Invalid token" }, 401);
+    }
+
+    const account = await assertProfileActive(supabaseAdmin, user.id);
+    if (account.ok === false) {
+      return taxiJson(inactiveAccountBody(account), account.status);
     }
 
     const quoteCheckoutId = pickQuoteCheckoutId(body);

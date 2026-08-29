@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { executeMaskedCallAction } from "@/lib/maskedCallAction";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -26,6 +27,11 @@ export async function POST(req: NextRequest) {
     } = await supabaseAdmin.auth.getUser(token);
     if (userError || !user) {
       return NextResponse.json({ ok: false, error: "Invalid user token" }, { status: 401 });
+    }
+
+    const account = await assertProfileActive(supabaseAdmin, user.id);
+    if (account.ok === false) {
+      return NextResponse.json(inactiveAccountBody(account), { status: account.status });
     }
 
     const body = (await req.json().catch(() => null)) as {

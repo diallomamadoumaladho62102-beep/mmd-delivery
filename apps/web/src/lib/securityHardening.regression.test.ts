@@ -48,6 +48,23 @@ const cashout = readRepo("apps/web/app/api/wallet/driver-cashout/route.ts");
 assert.match(cashout, /assertProfileActive/);
 assert.match(cashout, /wallet-cashout/);
 
+const foodCheckout = readRepo(
+  "apps/web/app/api/stripe/client/create-checkout-session/route.ts"
+);
+assert.match(foodCheckout, /assertProfileActive/);
+
+const foodConfirm = readRepo("apps/web/app/api/stripe/client/confirm-paid/route.ts");
+assert.match(foodConfirm, /assertProfileActive/);
+
+const orderCancel = readRepo("apps/web/app/api/orders/cancel/route.ts");
+assert.match(orderCancel, /assertProfileActive/);
+
+const pushNotify = readRepo("apps/web/app/api/chat/push-notify/route.ts");
+assert.match(pushNotify, /assertProfileActive/);
+
+const callAction = readRepo("apps/web/app/api/twilio/calls/action/route.ts");
+assert.match(callAction, /assertProfileActive/);
+
 const selfie = readRepo("apps/web/app/api/driver/identity/checks/[checkId]/route.ts");
 assert.match(selfie, /resolveIdentitySelfieContent/);
 

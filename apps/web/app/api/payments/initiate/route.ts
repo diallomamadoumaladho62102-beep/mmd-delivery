@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getBearerToken, getSupabaseAdminClient, getSupabaseUserClient, mmdLocationJson } from "@/lib/mmdLocationCore";
 import { initiateLocalPayment } from "@/lib/paymentInitiateService";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import type { PaymentEntityType } from "@/lib/paymentTypes";
 
 export const runtime = "nodejs";
@@ -26,6 +27,12 @@ export async function POST(req: NextRequest) {
     return mmdLocationJson({ ok: false, error: "Invalid token" }, 401);
   }
 
+  const supabaseAdminEarly = getSupabaseAdminClient();
+  const account = await assertProfileActive(supabaseAdminEarly, data.user.id);
+  if (account.ok === false) {
+    return mmdLocationJson(inactiveAccountBody(account), account.status);
+  }
+
   let body: Body;
   try {
     body = (await req.json()) as Body;
@@ -42,8 +49,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const supabaseAdmin = getSupabaseAdminClient();
-    const result = await initiateLocalPayment(supabaseAdmin, {
+    const result = await initiateLocalPayment(supabaseAdminEarly, {
       entityType,
       entityId,
       methodCode,

@@ -11,6 +11,7 @@ import {
   orderVerticalForPlatformGate,
 } from "@/lib/platformRouteGuards";
 import { stripe } from "@/lib/stripe";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -357,6 +358,11 @@ export async function POST(req: NextRequest) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
     });
+
+    const account = await assertProfileActive(supabaseAdmin, user.id);
+    if (account.ok === false) {
+      return json(inactiveAccountBody(account), account.status);
+    }
 
     const { data: order, error: readError } = await supabaseAdmin
       .from("orders")

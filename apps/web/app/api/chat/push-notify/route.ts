@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { checkRateLimit, getRequestClientIp } from "@/lib/apiRateLimit";
 import { notifyOrderChatMessage, type ChatPushRole } from "@/lib/chatPushNotifications";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -62,6 +63,11 @@ export async function POST(req: NextRequest) {
     } = await admin.auth.getUser(token);
 
     if (userError || !user?.id) return jsonError("Invalid user token", 401);
+
+    const account = await assertProfileActive(admin, user.id);
+    if (account.ok === false) {
+      return NextResponse.json(inactiveAccountBody(account), { status: account.status });
+    }
 
     const body = (await req.json().catch(() => null)) as Record<
       string,

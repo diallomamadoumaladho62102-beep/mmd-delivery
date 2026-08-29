@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import {
   getSupabaseAdminClient,
   getSupabaseUserClient,
@@ -107,6 +108,11 @@ export async function POST(req: NextRequest) {
 
     if (userErr || !user?.id) {
       return taxiJson({ error: "Invalid token" }, 401);
+    }
+
+    const account = await assertProfileActive(supabaseAdmin, user.id);
+    if (account.ok === false) {
+      return taxiJson(inactiveAccountBody(account), account.status);
     }
 
     const { data: ride, error: rideError } = await supabaseAdmin
