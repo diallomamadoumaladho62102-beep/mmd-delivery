@@ -11,6 +11,9 @@ concurrency:
   group: production-dispatch-crons
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   dispatch-crons:
     runs-on: ubuntu-latest

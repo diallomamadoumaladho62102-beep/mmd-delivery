@@ -71,6 +71,15 @@ assert.match(selfie, /resolveIdentitySelfieContent/);
 const safety = readRepo("apps/web/app/api/taxi/rides/safety-recording/upload/route.ts");
 assert.match(safety, /resolveSafetyRecordingBytes/);
 
+const geoTrust = readRepo("apps/web/src/lib/geoTrust.ts");
+assert.match(geoTrust, /assertMapboxGeocodingUrl/);
+
+const resetPassword = readRepo("apps/web/app/auth/reset-password/page.tsx");
+assert.match(resetPassword, /assertSafeAppReturnUrl/);
+
+const restaurantProfile = readRepo("apps/web/app/restaurant/profile/page.tsx");
+assert.match(restaurantProfile, /isSafePublicImageUrl/);
+
 const mobileAuth = readRepo("apps/mobile/lib/supabase.ts");
 assert.match(mobileAuth, /createSecureAuthStorage/);
 assert.doesNotMatch(mobileAuth, /storage: AsyncStorage/);

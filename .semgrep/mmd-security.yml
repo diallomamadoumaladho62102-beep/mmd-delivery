@@ -1,0 +1,35 @@
+rules:
+  - id: mmd-eval-call
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: eval() is forbidden in MMD runtime code.
+    paths:
+      include:
+        - apps/web/src/**
+        - apps/web/app/**
+        - apps/mobile/src/**
+        - apps/mobile/lib/**
+    pattern: eval(...)
+
+  - id: mmd-new-function
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: new Function() is forbidden in MMD runtime code.
+    paths:
+      include:
+        - apps/web/src/**
+        - apps/web/app/**
+        - apps/mobile/src/**
+        - apps/mobile/lib/**
+    pattern: new Function(...)
+
+  - id: mmd-inner-html-assignment
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Direct innerHTML assignment is forbidden. Use textContent or a sanitizer.
+    paths:
+      include:
+        - apps/web/src/**
+        - apps/web/app/**
+        - apps/mobile/src/**
+    pattern: $EL.innerHTML = $X

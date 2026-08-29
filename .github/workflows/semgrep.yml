@@ -1,0 +1,47 @@
+name: Semgrep
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: semgrep-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan
+        run: |
+          semgrep scan \
+            --config .semgrep \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/react \
+            --config p/nextjs \
+            --severity ERROR \
+            --error \
+            --metrics=off \
+            --exclude node_modules \
+            --exclude .next \
+            --exclude dist \
+            --exclude coverage \
+            --exclude scripts \
+            --exclude apps/web/scripts \
+            --exclude apps/mobile/scripts \
+            --exclude Backups \
+            --exclude Backups_Terminal

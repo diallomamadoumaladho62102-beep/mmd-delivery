@@ -1,0 +1,58 @@
+name: OWASP ZAP
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: zap-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  zap-baseline:
+    name: zap-baseline-local
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install and build web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir apps/web build
+
+      - name: Start Next.js locally
+        run: |
+          pnpm --dir apps/web start --hostname 127.0.0.1 --port 3000 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              echo "Next.js is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Next.js did not become ready on 127.0.0.1:3000"
+          exit 1
+
+      - name: ZAP baseline (localhost only)
+        env:
+          ZAP_TARGET: http://127.0.0.1:3000
+        run: node scripts/owasp-zap-baseline.mjs

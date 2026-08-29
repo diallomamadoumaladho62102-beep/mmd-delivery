@@ -30,7 +30,12 @@ export function sanitizeTaskText(value: unknown, maxLen = 4000): string {
     if (code < 32 && code !== 9 && code !== 10 && code !== 13) continue;
     out += ch;
   }
-  return out.replace(/<[^>]*>/g, "").trim().slice(0, maxLen);
+  let previous = "";
+  while (previous !== out) {
+    previous = out;
+    out = out.replace(/<[^>]*>/g, "");
+  }
+  return out.trim().slice(0, maxLen);
 }
 
 export function canViewTask(

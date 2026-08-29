@@ -115,7 +115,7 @@ export default function StaffVideoRoom({
       roomRef.current = null;
     }
     stopLocalTracks();
-    if (remoteRootRef.current) remoteRootRef.current.innerHTML = "";
+    if (remoteRootRef.current) remoteRootRef.current.replaceChildren();
   }, [stopLocalTracks]);
 
   const scheduleTokenRefresh = useCallback(
@@ -351,7 +351,7 @@ export default function StaffVideoRoom({
             reconnectAttemptsRef.current += 1;
             stopLocalTracks();
             roomRef.current = null;
-            if (remoteRootRef.current) remoteRootRef.current.innerHTML = "";
+            if (remoteRootRef.current) remoteRootRef.current.replaceChildren();
             await connectOnce(true);
           })();
         });

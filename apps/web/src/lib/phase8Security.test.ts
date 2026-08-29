@@ -57,7 +57,7 @@ function readRepo(rel: string) {
   const cors = readRepo("supabase/functions/_shared/cors.ts");
   assert.match(cors, /buildCorsHeaders/);
   assert.match(cors, /mmddelivery\.com/);
-  assert.doesNotMatch(cors, /Access-Control-Allow-Origin": "\*"/);
+  assert.doesNotMatch(cors, /^[\s\S]*"Access-Control-Allow-Origin": "\*"/);
 }
 
 // Phase 8 migration present

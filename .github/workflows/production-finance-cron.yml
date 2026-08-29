@@ -10,6 +10,9 @@ concurrency:
   group: production-finance-cron
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   finance-cron:
     runs-on: ubuntu-latest

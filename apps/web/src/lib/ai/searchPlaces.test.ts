@@ -5,7 +5,7 @@ import { canonicalizeClientAiRoute, sanitizeAssistantOutput, stripFakeMarkdownLi
 function mockMapboxFetch(features: unknown[]) {
   return async (input: RequestInfo | URL) => {
     const url = String(input);
-    assert.match(url, /api\.mapbox\.com\/geocoding\/v5\/mapbox\.places\//);
+    assert.match(url, /^https:\/\/api\.mapbox\.com\/geocoding\/v5\/mapbox\.places\//);
     assert.doesNotMatch(url, /MAPBOX_ACCESS_TOKEN/);
     return {
       ok: true,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { validatePassword } from "@/lib/authValidation";
+import { assertSafeAppReturnUrl } from "@/lib/safeReturnUrl";
 
 function getUrlParams(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -122,8 +123,11 @@ export default function ResetPasswordPage() {
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("next")
         : null;
+    const checked = next ? assertSafeAppReturnUrl(next) : { ok: false as const };
     const safeNext =
-      next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+      checked.ok && checked.url.startsWith("/") && !checked.url.startsWith("//")
+        ? checked.url
+        : null;
 
     setMessage("Mot de passe mis à jour avec succès ✅");
     if (safeNext) {

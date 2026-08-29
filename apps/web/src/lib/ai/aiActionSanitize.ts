@@ -49,9 +49,19 @@ function foldRouteKey(route: string): string {
   return route.toLowerCase().replace(/[\s_\-/#]+/g, "");
 }
 
+export function isDangerousClientHref(href: string): boolean {
+  const normalized = String(href ?? "").trim().toLowerCase();
+  return (
+    normalized.startsWith("javascript:") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("vbscript:") ||
+    normalized.startsWith("file:")
+  );
+}
+
 export function canonicalizeClientAiRoute(route: string): ImplementedClientAiRoute | null {
   const trimmed = String(route ?? "").trim();
-  if (!trimmed || trimmed === "#" || trimmed === "javascript:void(0)") return null;
+  if (!trimmed || trimmed === "#" || isDangerousClientHref(trimmed)) return null;
   const implemented = IMPLEMENTED_CLIENT_AI_ROUTES as readonly string[];
   if (implemented.includes(trimmed)) return trimmed as ImplementedClientAiRoute;
   return ROUTE_ALIASES[foldRouteKey(trimmed)] ?? null;
@@ -77,7 +87,7 @@ export function stripFakeMarkdownLinks(content: string): { text: string; sawTaxi
     if (TAXI_CTA_RE.test(safeLabel) || TAXI_CTA_RE.test(safeHref)) {
       sawTaxiCta = true;
     }
-    if (!safeHref || safeHref === "#" || safeHref.startsWith("javascript:")) {
+    if (!safeHref || safeHref === "#" || isDangerousClientHref(safeHref)) {
       return safeLabel;
     }
     if (canonicalizeClientAiRoute(safeHref)) {

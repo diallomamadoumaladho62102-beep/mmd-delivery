@@ -97,6 +97,7 @@ test("only founder/super admin create confidential", () => {
 
 test("sanitize strips tags and control chars", () => {
   assert.equal(sanitizeTaskText("<script>alert(1)</script>Hi"), "alert(1)Hi");
+  assert.equal(sanitizeTaskText("<<script>alert(1)</script>"), "alert(1)");
   assert.equal(sanitizeTaskText("ab\u0000c"), "abc");
 });
 

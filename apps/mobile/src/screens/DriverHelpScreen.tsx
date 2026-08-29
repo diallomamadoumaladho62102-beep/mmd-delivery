@@ -127,7 +127,7 @@ export function DriverHelpScreen() {
         (link) =>
           link.id === "instagram" ||
           /instagram/i.test(link.label) ||
-          /instagram\.com/i.test(link.url)
+          /^https:\/\/([a-z0-9-]+\.)*instagram\.com(\/|$)/i.test(link.url)
       ),
     []
   );

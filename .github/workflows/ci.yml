@@ -11,6 +11,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -55,6 +58,12 @@ jobs:
 
       - name: Secret scan
         run: node scripts/secret-scan.mjs
+
+      - name: Dependency audit (high/critical, image-size pin documented)
+        run: node scripts/dependency-audit.mjs
+
+      - name: Security layer files
+        run: node scripts/security-layers.regression.test.mjs
 
       - name: Lint
         run: pnpm --dir apps/mobile lint && pnpm --dir apps/web lint

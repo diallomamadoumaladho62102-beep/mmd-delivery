@@ -186,7 +186,18 @@ function mapKnownErrorCode(code: string, message: string): string | null {
   return null;
 }
 
+function sanitizeLogText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/[\r\n\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, " ")
+    .slice(0, 500);
+}
+
 export function logTechnicalError(scope: string, error: unknown, metadata?: Record<string, unknown>) {
-  console.error(`[${scope}]`, error, metadata ?? {});
+  const safeScope = sanitizeLogText(scope).slice(0, 80);
+  const safeError =
+    error instanceof Error
+      ? `${error.name}: ${sanitizeLogText(error.message)}`
+      : sanitizeLogText(error);
+  console.error(`[${safeScope}]`, safeError);
   captureProductionException(scope, error, metadata);
 }

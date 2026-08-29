@@ -251,10 +251,30 @@ function featureEvidence(feature: MapboxFeature | undefined): GeoEvidence | null
   };
 }
 
+export function assertMapboxGeocodingUrl(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("geographic_validation_unavailable:invalid_url");
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error("geographic_validation_unavailable:invalid_url");
+  }
+  if (parsed.hostname.toLowerCase() !== "api.mapbox.com") {
+    throw new Error("geographic_validation_unavailable:invalid_url");
+  }
+  if (!parsed.pathname.startsWith("/geocoding/v5/mapbox.places/")) {
+    throw new Error("geographic_validation_unavailable:invalid_url");
+  }
+  return parsed.toString();
+}
+
 async function mapboxEvidence(url: string, cacheKey: string): Promise<GeoEvidence | null> {
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const response = await fetch(url, { cache: "no-store" });
+  const safeUrl = assertMapboxGeocodingUrl(url);
+  const response = await fetch(safeUrl, { cache: "no-store" });
   if (!response.ok) throw new Error(`geographic_validation_unavailable:${response.status}`);
   const body = (await response.json().catch(() => null)) as { features?: MapboxFeature[] } | null;
   const value = featureEvidence(body?.features?.[0]);

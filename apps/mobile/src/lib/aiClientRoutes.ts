@@ -44,9 +44,19 @@ function foldRouteKey(route: string): string {
   return route.toLowerCase().replace(/[\s_\-/#]+/g, "");
 }
 
+function isDangerousClientHref(href: string): boolean {
+  const normalized = String(href ?? "").trim().toLowerCase();
+  return (
+    normalized.startsWith("javascript:") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("vbscript:") ||
+    normalized.startsWith("file:")
+  );
+}
+
 export function canonicalizeClientAiRoute(route: string): string | null {
   const trimmed = String(route ?? "").trim();
-  if (!trimmed || trimmed === "#" || trimmed.startsWith("javascript:")) return null;
+  if (!trimmed || trimmed === "#" || isDangerousClientHref(trimmed)) return null;
   if (IMPLEMENTED.has(trimmed)) return trimmed;
   return ALIASES[foldRouteKey(trimmed)] ?? null;
 }

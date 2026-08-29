@@ -13,6 +13,9 @@ on:
         required: false
         default: "3"
 
+permissions:
+  contents: read
+
 jobs:
   ingest:
     runs-on: ubuntu-latest

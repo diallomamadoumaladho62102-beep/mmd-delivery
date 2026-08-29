@@ -1,10 +1,21 @@
 import type { ClientAiContextPayload } from "@/lib/ai/aiTypes";
 import { AI_SYSTEM_SAFETY_RULES } from "@/lib/ai/aiSafety";
 
+/** Strip control chars / role-spoofing before interpolating into the system prompt. */
+export function sanitizePromptInterpolation(value: unknown, maxLen = 160): string {
+  return String(value ?? "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/ignore[\s\w]{0,40}(instructions|rules|prompts)/gi, "")
+    .trim()
+    .slice(0, maxLen);
+}
+
 export function buildClientSystemPrompt(context: ClientAiContextPayload): string {
-  const missionBlock = context.mission
-    ? `\nActive mission context: ${context.mission.safeSummary}`
-    : "";
+  const locale = sanitizePromptInterpolation(context.locale, 8) || "en";
+  const scopeLabel = sanitizePromptInterpolation(context.scopeLabel, 80) || "unknown area";
+  const missionSummary = sanitizePromptInterpolation(context.mission?.safeSummary, 200);
+  const missionBlock = missionSummary ? `\nActive mission context: ${missionSummary}` : "";
 
   const servicesBlock = [
     context.services.taxi ? "taxi" : null,
@@ -17,10 +28,10 @@ export function buildClientSystemPrompt(context: ClientAiContextPayload): string
 
   return `
 You are MMD AI, the assistant for MMD Delivery clients. You are useful and practical — not limited to MMD-only small talk.
-Respond in the user's language when possible (locale: ${context.locale}).
+Respond in the user's language when possible (locale: ${locale}).
 Be concise, warm, and practical. Never over-promise.
 
-User area: ${context.scopeLabel ?? "unknown area"}
+User area: ${scopeLabel}
 Available services in area: ${servicesBlock || "limited"}${missionBlock}
 
 Allowed topics:

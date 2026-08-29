@@ -28,6 +28,9 @@ concurrency:
   group: production-driver-connect-bank-payouts
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   bank-payouts:
     runs-on: ubuntu-latest

@@ -9,6 +9,9 @@ concurrency:
   group: production-safety-retention-cron
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   safety-retention-cron:
     runs-on: ubuntu-latest

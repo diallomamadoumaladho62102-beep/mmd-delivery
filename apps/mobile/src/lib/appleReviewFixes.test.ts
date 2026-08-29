@@ -257,7 +257,7 @@ test("Play/Apple store config pins API 36, Xcode 26 image, and web account delet
   assert.equal(eas?.build?.production?.ios?.image, "sdk-54");
   assert.match(deletionPage, /ACCOUNT_DELETION_URL/);
   assert.match(deletionCopy, /www\.mmddelivery\.com\/legal\/account-deletion/);
-  assert.match(legalUrls, /legal\/account-deletion/);
+  assert.match(legalUrls, /\/legal\/account-deletion/);
 });
 
 test("iOS associated domains use www only (apex AASA 307s and is invalid)", () => {

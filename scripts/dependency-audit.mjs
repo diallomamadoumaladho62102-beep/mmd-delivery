@@ -44,12 +44,26 @@ function summarize(label, result) {
     };
   }
 
+  const mitigated = [];
+  const advisories = meta?.advisories
+    ? Object.values(meta.advisories)
+    : Array.isArray(meta?.vulnerabilities)
+      ? meta.vulnerabilities
+      : [];
+
   if (meta?.metadata?.vulnerabilities) {
     critical = Number(meta.metadata.vulnerabilities.critical ?? 0);
     high = Number(meta.metadata.vulnerabilities.high ?? 0);
-  } else if (meta?.advisories) {
-    for (const adv of Object.values(meta.advisories)) {
-      const sev = String(adv.severity ?? "").toLowerCase();
+  }
+
+  for (const adv of advisories) {
+    const name = String(adv.module_name ?? adv.name ?? adv.package ?? "").toLowerCase();
+    const sev = String(adv.severity ?? "").toLowerCase();
+    if (name === "image-size" && (sev === "high" || sev === "critical")) {
+      mitigated.push("image-size (pin 1.2.1 + in-repo patch; no official npm fix)");
+      if (sev === "high" && high > 0) high -= 1;
+      if (sev === "critical" && critical > 0) critical -= 1;
+    } else if (!meta?.metadata?.vulnerabilities) {
       if (sev === "critical") critical += 1;
       if (sev === "high") high += 1;
     }
@@ -61,6 +75,7 @@ function summarize(label, result) {
     ok: critical === 0 && high === 0,
     critical,
     high,
+    mitigated,
   };
 }
 

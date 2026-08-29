@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  assertMapboxGeocodingUrl,
   evaluateLocationClaim,
   evaluateServerRoute,
   type GeoEvidence,
@@ -201,6 +202,21 @@ assert.deepEqual(
     serverDistanceMiles: 1,
   }),
   { ok: false, code: "server_route_impossible" },
+);
+
+assert.equal(
+  assertMapboxGeocodingUrl(
+    "https://api.mapbox.com/geocoding/v5/mapbox.places/-73.9,40.7.json?access_token=x"
+  ).startsWith("https://api.mapbox.com/geocoding/v5/mapbox.places/"),
+  true
+);
+assert.throws(
+  () => assertMapboxGeocodingUrl("https://evil.example/geocoding/v5/mapbox.places/x"),
+  /invalid_url/
+);
+assert.throws(
+  () => assertMapboxGeocodingUrl("http://api.mapbox.com/geocoding/v5/mapbox.places/x"),
+  /invalid_url/
 );
 
 console.log("geoTrust tests passed");

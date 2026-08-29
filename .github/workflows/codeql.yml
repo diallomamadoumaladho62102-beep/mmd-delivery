@@ -54,6 +54,10 @@ jobs:
               - 'apps/mobile/android/**'
               - 'apps/mobile/ios/**'
               - 'Backups_Terminal/**'
+              # Operator/e2e helper scripts are not a production request path.
+              - 'scripts/**'
+              - 'apps/web/scripts/**'
+              - 'apps/mobile/scripts/**'
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
