@@ -118,6 +118,7 @@ export function getOpenAiToolDefinitions(role: AiRole): OpenAI.Chat.Completions.
     toolDef("prepare_food_order", "Prepare a food-order recap and hand off to the official restaurant menu after confirmation. Never pays.", {
       restaurant_id: { type: "string" },
       restaurant_name: { type: "string" },
+      items: { type: "string", description: "JSON array of {item_id, quantity, options?}" },
     }),
     toolDef("search_mmd_help", "Search official public MMD FAQ and published CMS pages. Never invent rules.", {
       query: { type: "string" },

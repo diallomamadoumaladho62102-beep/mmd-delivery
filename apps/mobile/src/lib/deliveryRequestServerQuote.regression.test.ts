@@ -12,6 +12,7 @@ assert.match(src, /quoteDeliveryRequest\(/);
 assert.match(src, /expectedQuoteTotalCents/);
 assert.match(src, /deliveryRequest\.errors\.quoteRequired/);
 assert.match(src, /setServerPricing\(quote\)/);
+assert.match(src, /money\(displayDeliveryFee/);
 assert.doesNotMatch(src, /computeDeliveryPricingFromConfig\(dMiles/);
 
 const navigator = fs.readFileSync(

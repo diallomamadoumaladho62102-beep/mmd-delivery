@@ -42,6 +42,8 @@ const foodSrc = fs.readFileSync(path.join(here, "tools/client/foodTools.ts"), "u
 assert.match(foodSrc, /quoteFoodOrderServerSide/);
 assert.match(foodSrc, /restaurant_items/);
 assert.match(foodSrc, /items,/);
+const registrySrc = fs.readFileSync(path.join(here, "tools/registry.ts"), "utf8");
+assert.match(registrySrc, /prepare_food_order[\s\S]*items:/);
 assert.doesNotMatch(foodSrc, /create-food-quote-checkout-session/);
 assert.doesNotMatch(foodSrc, /confirm-paid/);
 

@@ -1618,7 +1618,7 @@ export function DeliveryRequestScreen() {
                   {tr("deliveryRequest.pricing.deliveryFee", "Delivery fee")}
                   {": "}
                   <Text style={{ color: MMD_WHITE, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-                    {money(deliveryFee, currency)}
+                    {money(displayDeliveryFee, currency)}
                   </Text>
                 </Text>
 
