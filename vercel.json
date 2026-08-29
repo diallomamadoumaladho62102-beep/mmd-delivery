@@ -3,6 +3,13 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm build",
   "outputDirectory": ".next",
+  "git": {
+    "deploymentEnabled": {
+      "dependabot/npm_and_yarn/eslint-10.8.1": false,
+      "dependabot/npm_and_yarn/production-minor-patch-cc956ea0d9": false
+    }
+  },
+  "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in dependabot/*) echo \"Skipping Dependabot Preview: lockfile/overrides PRs must not deploy\"; exit 0;; *) exit 1;; esac",
   "crons": [
     {
       "path": "/api/cron/daily-money",

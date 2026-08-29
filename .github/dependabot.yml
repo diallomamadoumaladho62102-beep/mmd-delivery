@@ -38,6 +38,8 @@ updates:
       # Pinned by root pnpm.overrides / maps stability before store build
       - dependency-name: "next"
       - dependency-name: "mapbox-gl"
+      - dependency-name: "@rnmapbox/maps"
+      - dependency-name: "@react-navigation/*"
       # Stripe Connect / native SDK — upgrade only with wallet/transfer live tests
       - dependency-name: "@stripe/stripe-react-native"
       - dependency-name: "@sentry/react-native"
