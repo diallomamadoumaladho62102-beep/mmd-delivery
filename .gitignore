@@ -128,3 +128,6 @@ docs/branding-archive/
 android/app/debug.keystore
 apps/mobile/android/app/debug.keystore
 
+# OWASP ZAP local/CI artifacts
+zap-out/
+
