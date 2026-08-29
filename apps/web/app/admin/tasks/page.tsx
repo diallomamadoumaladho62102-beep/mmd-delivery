@@ -290,7 +290,8 @@ function AdminTasksInner() {
           ))}
         </select>
         <p className="text-xs text-[var(--cc-muted)] md:col-span-2">
-          Comments, notifications feed, and attachment uploads are coming soon.
+          Tasks support title, priority, due date, and assignee. Comments and
+          attachments are not part of this launch surface.
         </p>
         <button
           type="submit"

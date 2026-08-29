@@ -45,6 +45,7 @@ import {
 import { AddressAutocomplete } from "../../components/location/AddressAutocomplete";
 import { reverseGeocode } from "../../lib/reverseGeocode";
 import { getFreshPosition } from "../../lib/locationPermissionState";
+import { taxiHomePrefillFromParams } from "../../lib/taxiHomePrefill";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -103,15 +104,18 @@ export default function TaxiHomeScreen() {
     [t]
   );
   const [categoryAvailability, setCategoryAvailability] = useState<TaxiCategoryAvailability[]>([]);
-  const [pickup, setPickup] = useState("");
-  const [dropoff, setDropoff] = useState("");
+  const initialPrefill = taxiHomePrefillFromParams(route.params);
+  const [pickup, setPickup] = useState(initialPrefill.pickup);
+  const [dropoff, setDropoff] = useState(initialPrefill.dropoff);
   const [pickupLocationId, setPickupLocationId] = useState(
-    route.params?.pickupLocationId ?? ""
+    initialPrefill.pickupLocationId || (route.params?.pickupLocationId ?? "")
   );
   const [dropoffLocationId, setDropoffLocationId] = useState(
-    route.params?.dropoffLocationId ?? ""
+    initialPrefill.dropoffLocationId || (route.params?.dropoffLocationId ?? "")
   );
-  const [vehicleClass, setVehicleClass] = useState<TaxiVehicleClass>("standard");
+  const [vehicleClass, setVehicleClass] = useState<TaxiVehicleClass>(
+    initialPrefill.vehicleClass ?? "standard"
+  );
   const [preferElectricOrHybrid, setPreferElectricOrHybrid] = useState(false);
   const [clientPreferences, setClientPreferences] = useState({
     non_smoking_driver: false,
@@ -136,8 +140,24 @@ export default function TaxiHomeScreen() {
   const [proximity, setProximity] = useState<{ lat: number; lng: number } | null>(
     null
   );
-  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(
+    initialPrefill.pickupCoords
+  );
+  const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(
+    initialPrefill.dropoffCoords
+  );
+
+  useEffect(() => {
+    const next = taxiHomePrefillFromParams(route.params);
+    if (next.pickup) setPickup(next.pickup);
+    if (next.dropoff) setDropoff(next.dropoff);
+    if (next.pickupLocationId) setPickupLocationId(next.pickupLocationId);
+    if (next.dropoffLocationId) setDropoffLocationId(next.dropoffLocationId);
+    if (next.pickupCoords) setPickupCoords(next.pickupCoords);
+    if (next.dropoffCoords) setDropoffCoords(next.dropoffCoords);
+    if (next.vehicleClass) setVehicleClass(next.vehicleClass);
+    if (next.countryCode) setCountryCode(next.countryCode);
+  }, [route.params]);
 
   const handleUseMyGps = useCallback(async () => {
     setGpsLoading(true);

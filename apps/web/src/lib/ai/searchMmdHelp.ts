@@ -16,6 +16,13 @@ export const PUBLIC_HELP_SLUGS = [
   "privacy",
   "terms",
   "support",
+  "careers",
+  "partners",
+  "press",
+  "download",
+  "cookies",
+  "account-deletion",
+  "sms",
 ] as const;
 
 export type MmdHelpHit = {

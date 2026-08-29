@@ -133,7 +133,11 @@ export type RootStackParamList = {
   ClientHome: undefined;
   ClientNewOrder: undefined;
   ClientRestaurantList: undefined;
-  ClientRestaurantMenu: { restaurantId: string; restaurantName: string };
+  ClientRestaurantMenu: {
+    restaurantId: string;
+    restaurantName: string;
+    initialItems?: { item_id: string; quantity: number; options?: unknown }[];
+  };
   ClientOrderDetails: { orderId: string };
   ClientDeliveryRequestDetails: { requestId: string };
   ClientOrderHistory: { focusActive?: boolean } | undefined;
@@ -160,6 +164,14 @@ export type RootStackParamList = {
     | {
         pickupLocationId?: string;
         dropoffLocationId?: string;
+        pickupAddress?: string;
+        dropoffAddress?: string;
+        pickupLat?: number;
+        pickupLng?: number;
+        dropoffLat?: number;
+        dropoffLng?: number;
+        vehicleClass?: string;
+        countryCode?: string;
         locationPickerResult?: MmdLocationPickerResult;
       }
     | undefined;

@@ -221,6 +221,9 @@ function FilterChip({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
       activeOpacity={0.88}
       onPress={onPress}
       style={[
@@ -731,6 +734,13 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
     return (
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={t("restaurant.orders.openOrder", {
+          defaultValue: "Order {{id}}, {{status}}, {{meta}}",
+          id: shortId,
+          status: badgeStatus,
+          meta: metaLine,
+        })}
         activeOpacity={0.92}
         onPress={() =>
           navigation.navigate("RestaurantOrderDetails", { orderId: item.id })
@@ -801,6 +811,8 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           {showActions ? (
             <View style={styles.actionsRow}>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={t("order.actions.accept", "Accept")}
                 onPress={(e: any) => {
                   e?.stopPropagation?.();
                   confirmAccept(item.id);
@@ -814,6 +826,8 @@ export function RestaurantOrdersScreen({ navigation }: any) {
               </TouchableOpacity>
 
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={t("order.actions.refuse", "Refuse")}
                 onPress={(e: any) => {
                   e?.stopPropagation?.();
                   confirmReject(item.id);

@@ -6,6 +6,10 @@ import {
   mmdLocationJson,
 } from "@/lib/mmdLocationCore";
 import { buildEntityFinancialTimeline } from "@/lib/finance/buildEntityFinancialTimeline";
+import {
+  redactFinancialEventReferences,
+  resolveFinancialTimelineAccess,
+} from "@/lib/finance/financialTimelineAccess";
 import type {
   FinancialActorRole,
   FinancialEntityType,
@@ -82,68 +86,29 @@ export async function GET(req: NextRequest) {
       role = requestedRole;
     }
 
-    // Entity access checks for non-admin
-    if (role !== "admin") {
-      if (entityType === "taxi_ride") {
-        const { data: ride } = await supabaseAdmin
-          .from("taxi_rides")
-          .select("client_user_id, driver_id")
-          .eq("id", entityId)
-          .maybeSingle();
-        if (!ride) {
-          return mmdLocationJson({ ok: false, error: "Not found" }, 404);
-        }
-        const uid = data.user.id;
-        const isClient = String(ride.client_user_id) === uid;
-        const isDriver = String(ride.driver_id ?? "") === uid;
-        if (!isClient && !isDriver) {
-          return mmdLocationJson({ ok: false, error: "Forbidden" }, 403);
-        }
-        role = isDriver ? "driver" : "client";
-      } else if (entityType === "business_account") {
-        const { data: member } = await supabaseAdmin
-          .from("taxi_business_members")
-          .select("id")
-          .eq("business_account_id", entityId)
-          .eq("user_id", data.user.id)
-          .eq("active", true)
-          .maybeSingle();
-        if (!member) {
-          return mmdLocationJson({ ok: false, error: "Forbidden" }, 403);
-        }
-        role = "business";
-      } else if (entityType === "seller_order") {
-        const { data: order } = await supabaseAdmin
-          .from("seller_orders")
-          .select("client_user_id, seller_id")
-          .eq("id", entityId)
-          .maybeSingle();
-        if (!order) {
-          return mmdLocationJson({ ok: false, error: "Not found" }, 404);
-        }
-        const uid = data.user.id;
-        if (String(order.client_user_id) === uid) role = "client";
-        else {
-          const { data: seller } = await supabaseAdmin
-            .from("sellers")
-            .select("id")
-            .eq("id", order.seller_id)
-            .or(`user_id.eq.${uid},owner_user_id.eq.${uid}`)
-            .maybeSingle();
-          if (!seller) {
-            return mmdLocationJson({ ok: false, error: "Forbidden" }, 403);
-          }
-          role = "seller";
-        }
-      }
-    }
-
-    const events = await buildEntityFinancialTimeline(supabaseAdmin, {
+    const access = await resolveFinancialTimelineAccess({
+      supabaseAdmin,
+      userId: data.user.id,
       entityType,
       entityId,
-      role,
-      limit: Number.isFinite(limitRaw) ? limitRaw : 50,
+      isAdmin: role === "admin",
     });
+    if (access.ok === false) {
+      return mmdLocationJson({ ok: false, error: access.error }, access.status);
+    }
+    if (role !== "admin") {
+      role = access.role;
+    }
+
+    const events = redactFinancialEventReferences(
+      await buildEntityFinancialTimeline(supabaseAdmin, {
+        entityType,
+        entityId,
+        role,
+        limit: Number.isFinite(limitRaw) ? limitRaw : 50,
+      }),
+      role
+    );
 
     return mmdLocationJson({
       ok: true,

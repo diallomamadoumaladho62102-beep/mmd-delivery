@@ -216,7 +216,18 @@ export default function MmdAiScreen() {
         return;
       }
       if (known === "TaxiHome") {
-        navigation.navigate("TaxiHome");
+        navigation.navigate("TaxiHome", {
+          pickupAddress: params?.pickupAddress ? String(params.pickupAddress) : undefined,
+          dropoffAddress: params?.dropoffAddress ? String(params.dropoffAddress) : undefined,
+          pickupLat: Number.isFinite(Number(params?.pickupLat)) ? Number(params?.pickupLat) : undefined,
+          pickupLng: Number.isFinite(Number(params?.pickupLng)) ? Number(params?.pickupLng) : undefined,
+          dropoffLat: Number.isFinite(Number(params?.dropoffLat)) ? Number(params?.dropoffLat) : undefined,
+          dropoffLng: Number.isFinite(Number(params?.dropoffLng)) ? Number(params?.dropoffLng) : undefined,
+          vehicleClass: params?.vehicleClass ? String(params.vehicleClass) : undefined,
+          countryCode: params?.countryCode ? String(params.countryCode) : undefined,
+          pickupLocationId: params?.pickupLocationId ? String(params.pickupLocationId) : undefined,
+          dropoffLocationId: params?.dropoffLocationId ? String(params.dropoffLocationId) : undefined,
+        });
         return;
       }
       if (known === "TaxiRideTracking" && params?.rideId) {
@@ -224,9 +235,17 @@ export default function MmdAiScreen() {
         return;
       }
       if (known === "ClientRestaurantMenu" && params?.restaurantId) {
+        const rawItems = Array.isArray(params.items)
+          ? params.items
+          : Array.isArray(params.initialItems)
+            ? params.initialItems
+            : undefined;
         navigation.navigate("ClientRestaurantMenu", {
           restaurantId: String(params.restaurantId),
           restaurantName: String(params.restaurantName ?? "Restaurant"),
+          initialItems: rawItems as
+            | { item_id: string; quantity: number; options?: unknown }[]
+            | undefined,
         });
         return;
       }

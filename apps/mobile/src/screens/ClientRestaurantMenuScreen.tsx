@@ -33,6 +33,12 @@ import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { shouldOfferLocalMobileMoney } from "../lib/localPayments";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 import {
+  extrasCentsFromOptions,
+  foodCartLineKey,
+  parseFoodMenuOptionsCatalog,
+  type FoodMenuOption,
+} from "../lib/foodMenuOptions";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_GOLD_BRIGHT,
@@ -60,6 +66,7 @@ type RestaurantItem = {
   image_url: string | null;
   is_available?: boolean | null;
   position?: number | null;
+  options_json?: unknown;
 };
 
 type RestaurantProfile = {
@@ -89,11 +96,13 @@ function resolveRestaurantImageUrl(value: string | null | undefined): string | n
 
 type CartItem = {
   id: string;
+  lineKey: string;
   name: string;
   category: string | null;
   unit_price: number;
   quantity: number;
   image_url: string | null;
+  options: FoodMenuOption[];
 };
 
 type ApiDeliveryPrice = {
@@ -217,6 +226,7 @@ function normalizeRestaurantItem(row: any): RestaurantItem | null {
     image_url: String(row?.image_url || "").trim() || null,
     is_available: row?.is_available ?? true,
     position: row?.position ?? null,
+    options_json: row?.options_json ?? [],
   };
 }
 
@@ -285,6 +295,8 @@ export function ClientRestaurantMenuScreen() {
   const [loading, setLoading] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [optionPickerItem, setOptionPickerItem] = useState<RestaurantItem | null>(null);
+  const [optionPickerSelected, setOptionPickerSelected] = useState<FoodMenuOption[]>([]);
 
   const [pickup, setPickup] = useState(restaurantAddressFromRoute);
   const [dropoff, setDropoff] = useState("");
@@ -335,10 +347,10 @@ export function ClientRestaurantMenuScreen() {
     }
   }, [restaurantId, tr]);
 
-  function getItemPrice(item: RestaurantItem): number {
+  function getItemPrice(item: RestaurantItem, options?: FoodMenuOption[]): number {
     const cents = Number(item.price_cents ?? 0);
-    if (Number.isFinite(cents) && cents > 0) return cents / 100;
-    return 0;
+    const base = Number.isFinite(cents) && cents > 0 ? cents / 100 : 0;
+    return roundMoney(base + extrasCentsFromOptions(options) / 100);
   }
 
   useEffect(() => {
@@ -400,7 +412,7 @@ export function ClientRestaurantMenuScreen() {
         const { data, error } = await supabase
           .from("restaurant_items")
           .select(
-            "id, name, description, price_cents, category, restaurant_user_id, image_url, is_available, position"
+            "id, name, description, price_cents, category, restaurant_user_id, image_url, is_available, position, options_json"
           )
           .eq("restaurant_user_id", restaurantId)
           .eq("is_available", true)
@@ -413,7 +425,35 @@ export function ClientRestaurantMenuScreen() {
           .map(normalizeRestaurantItem)
           .filter(Boolean) as RestaurantItem[];
 
-        if (!cancelled) setItems(safeItems);
+        if (!cancelled) {
+          setItems(safeItems);
+          const initial = Array.isArray(routeParams.initialItems) ? routeParams.initialItems : [];
+          if (initial.length > 0) {
+            const nextCart: CartItem[] = [];
+            for (const line of initial) {
+              const menuItem = safeItems.find((row) => row.id === String(line.item_id ?? ""));
+              if (!menuItem) continue;
+              const selected = parseFoodMenuOptionsCatalog(line.options);
+              const catalog = parseFoodMenuOptionsCatalog(menuItem.options_json);
+              const resolved = selected.filter((opt) =>
+                catalog.some((entry) => entry.id === opt.id || entry.name === opt.name)
+              );
+              const price = getItemPrice(menuItem, resolved);
+              if (price <= 0) continue;
+              nextCart.push({
+                id: menuItem.id,
+                lineKey: foodCartLineKey(menuItem.id, resolved),
+                name: menuItem.name,
+                category: menuItem.category ?? null,
+                unit_price: price,
+                quantity: Math.max(1, Math.trunc(Number(line.quantity ?? 1))),
+                image_url: menuItem.image_url ?? null,
+                options: resolved,
+              });
+            }
+            if (nextCart.length > 0) setCart(nextCart);
+          }
+        }
       } catch (err) {
         console.error("Erreur fetch menu restaurant (mobile):", err);
         if (!cancelled) {
@@ -453,8 +493,8 @@ export function ClientRestaurantMenuScreen() {
     lastEstimateKeyRef.current = "";
   }, [pickup, dropoff]);
 
-  function addToCart(item: RestaurantItem) {
-    const price = getItemPrice(item);
+  function commitCartItem(item: RestaurantItem, options: FoodMenuOption[]) {
+    const price = getItemPrice(item, options);
 
     if (!item.is_available || price <= 0) {
       Alert.alert(
@@ -467,38 +507,53 @@ export function ClientRestaurantMenuScreen() {
       return;
     }
 
+    const lineKey = foodCartLineKey(item.id, options);
     setCart((prev) => {
-      const existing = prev.find((c) => c.id === item.id);
+      const existing = prev.find((c) => c.lineKey === lineKey);
       if (existing) {
-        return prev.map((c) => (c.id === item.id ? { ...c, quantity: c.quantity + 1 } : c));
+        return prev.map((c) =>
+          c.lineKey === lineKey ? { ...c, quantity: c.quantity + 1 } : c
+        );
       }
 
       return [
         ...prev,
         {
           id: item.id,
+          lineKey,
           name: item.name,
           category: item.category ?? null,
           unit_price: price,
           quantity: 1,
           image_url: item.image_url ?? null,
+          options,
         },
       ];
     });
   }
 
-  function updateQuantity(id: string, quantity: number) {
+  function addToCart(item: RestaurantItem) {
+    const catalog = parseFoodMenuOptionsCatalog(item.options_json);
+    if (catalog.length > 0) {
+      setOptionPickerItem(item);
+      setOptionPickerSelected([]);
+      return;
+    }
+    commitCartItem(item, []);
+  }
+
+  function updateQuantity(lineKey: string, quantity: number) {
     const safeQuantity = Math.max(0, Math.min(99, Math.floor(Number(quantity) || 0)));
 
     setCart((prev) =>
       prev
-        .map((c) => (c.id === id ? { ...c, quantity: safeQuantity } : c))
+        .map((c) => (c.lineKey === lineKey ? { ...c, quantity: safeQuantity } : c))
         .filter((c) => c.quantity > 0)
     );
   }
 
-  function removeFromCart(id: string) {
-    setCart((prev) => prev.filter((c) => c.id !== id));
+  function removeFromCart(lineKey: string) {
+    setCart((prev) => prev.filter((c) => c.lineKey !== lineKey));
   }
 
   const subtotal = useMemo(
@@ -553,6 +608,7 @@ export function ClientRestaurantMenuScreen() {
           items: cart.map((item) => ({
             item_id: item.id,
             quantity: item.quantity,
+            options: item.options,
           })),
         },
         {
@@ -1029,6 +1085,7 @@ export function ClientRestaurantMenuScreen() {
         items: cart.map((item) => ({
           item_id: item.id,
           quantity: item.quantity,
+          options: item.options,
         })),
         leave_at_door: leaveAtDoor,
       };
@@ -1328,6 +1385,8 @@ export function ClientRestaurantMenuScreen() {
                     </Text>
 
                     <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`${tr("clientRestaurantMenu.menu.add", "Ajouter")} ${item.name}`}
                       onPress={() => addToCart(item)}
                       style={{
                         backgroundColor: ADD_PURPLE,
@@ -1593,6 +1652,80 @@ export function ClientRestaurantMenuScreen() {
           >
             {tr("clientRestaurantMenu.cart.title", "Panier")}
           </Text>
+          {optionPickerItem ? (
+            <View
+              style={{
+                marginBottom: 12,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: "rgba(255,215,0,0.25)",
+                padding: 12,
+              }}
+            >
+              <Text style={{ color: MMD_WHITE, fontFamily: MMD_FONT.semibold, marginBottom: 8 }}>
+                {tr("clientRestaurantMenu.options.title", "Options")} — {optionPickerItem.name}
+              </Text>
+              {parseFoodMenuOptionsCatalog(optionPickerItem.options_json).map((option) => {
+                const selected = optionPickerSelected.some((row) => row.id === option.id);
+                return (
+                  <TouchableOpacity
+                    key={option.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={option.name}
+                    onPress={() => {
+                      setOptionPickerSelected((prev) =>
+                        selected
+                          ? prev.filter((row) => row.id !== option.id)
+                          : [...prev, option]
+                      );
+                    }}
+                    style={{
+                      minHeight: 44,
+                      justifyContent: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <Text style={{ color: selected ? "#4DE58C" : MMD_MUTED }}>
+                      {selected ? "✓ " : ""}
+                      {option.name}
+                      {option.price_cents > 0
+                        ? ` (+${(option.price_cents / 100).toFixed(2)})`
+                        : ""}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={tr("common.cancel", "Cancel")}
+                  onPress={() => {
+                    setOptionPickerItem(null);
+                    setOptionPickerSelected([]);
+                  }}
+                  style={{ minHeight: 44, justifyContent: "center" }}
+                >
+                  <Text style={{ color: MMD_MUTED }}>
+                    {tr("common.cancel", "Annuler")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={tr("clientRestaurantMenu.options.add", "Add with options")}
+                  onPress={() => {
+                    commitCartItem(optionPickerItem, optionPickerSelected);
+                    setOptionPickerItem(null);
+                    setOptionPickerSelected([]);
+                  }}
+                  style={{ minHeight: 44, justifyContent: "center" }}
+                >
+                  <Text style={{ color: "#4DE58C", fontFamily: MMD_FONT.semibold }}>
+                    {tr("clientRestaurantMenu.options.add", "Ajouter")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
 
           {cart.length === 0 ? (
             <Text style={{ color: MMD_MUTED, fontSize: 15, fontFamily: MMD_FONT.regular }}>
@@ -1605,7 +1738,7 @@ export function ClientRestaurantMenuScreen() {
             <>
               {cart.map((item) => (
                 <View
-                  key={item.id}
+                  key={item.lineKey}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -1646,6 +1779,11 @@ export function ClientRestaurantMenuScreen() {
                         {item.category}
                       </Text>
                     )}
+                    {item.options.length > 0 ? (
+                      <Text style={{ color: "#9CA3AF", fontSize: 11, marginTop: 2 }}>
+                        {item.options.map((option) => option.name).join(", ")}
+                      </Text>
+                    ) : null}
 
                     <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 4 }}>
                       {money(item.unit_price)} {currency}{" "}
@@ -1655,7 +1793,7 @@ export function ClientRestaurantMenuScreen() {
 
                   <View style={{ flexDirection: "row", alignItems: "center", marginLeft: 10 }}>
                     <TouchableOpacity
-                      onPress={() => updateQuantity(item.id, item.quantity - 1)}
+                      onPress={() => updateQuantity(item.lineKey, item.quantity - 1)}
                       style={{
                         width: 28,
                         height: 28,
@@ -1683,7 +1821,7 @@ export function ClientRestaurantMenuScreen() {
                     </Text>
 
                     <TouchableOpacity
-                      onPress={() => updateQuantity(item.id, item.quantity + 1)}
+                      onPress={() => updateQuantity(item.lineKey, item.quantity + 1)}
                       style={{
                         width: 28,
                         height: 28,
@@ -1703,7 +1841,7 @@ export function ClientRestaurantMenuScreen() {
                       {money(item.unit_price * item.quantity)} {currency}
                     </Text>
 
-                    <TouchableOpacity onPress={() => removeFromCart(item.id)} style={{ marginTop: 4 }}>
+                    <TouchableOpacity onPress={() => removeFromCart(item.lineKey)} style={{ marginTop: 4 }}>
                       <Text style={{ color: "#F97373", fontSize: 11, fontWeight: "700" }}>
                         {tr("common.delete", "Supprimer")}
                       </Text>

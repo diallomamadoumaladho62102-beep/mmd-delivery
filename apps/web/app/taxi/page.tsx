@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
-import { renderComingSoonPage } from "@/components/site/renderComingSoonPage";
+import { renderInAppServicePage } from "@/components/site/renderInAppServicePage";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Taxi — MMD Delivery",
-  description: "MMD Taxi — coming soon.",
-  robots: "noindex,follow",
+  description:
+    "Book MMD Taxi in the MMD Delivery app. Enter pickup and dropoff, review the official quote (subtotal, service fee, tax), then confirm before payment.",
+  robots: "index,follow",
 };
 
 export default async function Page() {
-  return renderComingSoonPage(
-    "Taxi",
-    "A dedicated Taxi marketing page is coming soon. Drivers and ride information are available on the Drivers page.",
-  );
+  return renderInAppServicePage({
+    title: "MMD Taxi",
+    description:
+      "Taxi booking is live in the MMD Delivery app. The customer confirms pickup, dropoff, vehicle class, and the official fare before any ride is created or paid. This website does not take taxi payments.",
+    primaryHref: "/drivers",
+    primaryLabel: "How driving works",
+  });
 }

@@ -87,14 +87,19 @@ See: `docs/production/DISPATCH_CRON_STRATEGY.md`
 
 ---
 
-## F. Twilio (OPS)
+## F. Twilio — CODE vs OPS
+
+**CODE (in repo):** webhook routes, signature validation, SMS keywords (STOP/HELP), masked-call create, admin voice IVR. Automated tests exist (`twilioRequestValidation`, `smsA2p`, `twilioMaskedCallReadiness`).
+
+**OPS (cannot be simulated):**
 
 | # | Item |
 |---|------|
-| F1 | Production credentials on Vercel |
+| F1 | Production credentials on Vercel (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_FROM`, Verify SID) |
 | F2 | Voice/SMS webhooks point to `https://www.mmddelivery.com/api/twilio/*` |
 | F3 | Masked call E2E on real device during active trip |
 | F4 | US SMS at scale: A2P 10DLC registration (`SMS_A2P_10DLC_US_DONE`) |
+| F5 | Admin video rooms: Twilio Video API keys if staff video is used |
 
 ---
 

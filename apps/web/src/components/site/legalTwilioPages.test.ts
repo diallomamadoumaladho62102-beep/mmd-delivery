@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { PRIVACY_SECTIONS, TERMS_SECTIONS } from "./legalPageCopy";
+import { COOKIES_SECTIONS, PRIVACY_SECTIONS, TERMS_SECTIONS } from "./legalPageCopy";
+import { buildCookiesFallbackBlocks } from "./cookiesContent";
 import { buildPrivacyFallbackBlocks } from "./privacyContent";
 import { buildTermsFallbackBlocks } from "./termsContent";
 import {
@@ -52,6 +53,12 @@ assert.equal(termsBlocks[0]?.block_type, "hero");
 assert.ok(privacyBlocks.some((b) => b.block_type === "rich_text"));
 assert.ok(termsBlocks.some((b) => b.block_type === "rich_text"));
 
+const cookies = sectionText(COOKIES_SECTIONS);
+assert.match(cookies, /Cookie policy/);
+assert.match(cookies, /necessary/i);
+assert.doesNotMatch(cookies, /coming soon/i);
+assert.equal(buildCookiesFallbackBlocks()[0]?.block_type, "hero");
+
 const deletionBlocks = buildAccountDeletionFallbackBlocks();
 assert.equal(ACCOUNT_DELETION_URL, "https://www.mmddelivery.com/legal/account-deletion");
 assert.equal(deletionBlocks[0]?.block_type, "hero");
@@ -67,5 +74,6 @@ const siteShell = fs.readFileSync(
 );
 assert.match(siteShell, /hideComingSoonBanner/);
 assert.match(siteShell, /pathname\.startsWith\("\/legal"\)/);
+assert.match(siteShell, /pathname === "\/cookies"/);
 
 console.log("legalTwilioPages.test.ts — PASS");

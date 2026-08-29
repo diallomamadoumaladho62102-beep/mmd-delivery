@@ -297,12 +297,8 @@ export function DeliveryRequestScreen() {
   const subtotal = serverPricing?.subtotal ?? 0;
   const tax = serverPricing?.tax ?? 0;
   const serviceFee = serverPricing?.service_fee ?? 0;
-  const displayDeliveryFee = serverPricing?.delivery_fee ?? deliveryFee;
-  const displayGrandTotal =
-    serverPricing?.total ??
-    roundMoney(
-      subtotal + tax + toSafeMoney(displayDeliveryFee ?? 0) + toSafeMoney(serviceFee)
-    );
+  const displayDeliveryFee = serverPricing?.delivery_fee ?? null;
+  const displayGrandTotal = serverPricing?.total ?? null;
   const currency =
     pricingConfig?.currency ||
     (market.scopeResolved ? market.currencyCode : "USD");
@@ -320,14 +316,13 @@ export function DeliveryRequestScreen() {
 
   const estimateReady = useMemo(() => {
     return (
-      distanceMiles != null &&
-      etaMinutes != null &&
-      deliveryFee != null &&
-      Number.isFinite(distanceMiles) &&
-      Number.isFinite(etaMinutes) &&
-      Number.isFinite(deliveryFee)
+      serverPricing != null &&
+      Number.isFinite(Number(serverPricing.total_cents)) &&
+      Number(serverPricing.total_cents) > 0 &&
+      pickupCoords != null &&
+      dropoffCoords != null
     );
-  }, [distanceMiles, etaMinutes, deliveryFee]);
+  }, [serverPricing, pickupCoords, dropoffCoords]);
 
   const canPay = useMemo(() => {
     return (
@@ -360,6 +355,7 @@ export function DeliveryRequestScreen() {
     setPickupCoords(null);
     setDropoffCoords(null);
     setEstimateError(null);
+    setServerPricing(null);
   }, []);
 
   const loadPricingConfig = useCallback(async () => {
@@ -656,43 +652,71 @@ export function DeliveryRequestScreen() {
           json.coords?.dropoff_lng ??
           undefined;
 
-        const feeFromApi =
-          json.delivery_fee_usd?.deliveryFee ??
-          json.deliveryPrice?.deliveryFee ??
-          json.delivery_fee?.deliveryFee ??
-          undefined;
-
-        const feeLocal = computeDeliveryPricingFromConfig(dMiles, tMinutes, pricingConfig);
-
-        const finalFee =
-          typeof feeFromApi === "number" && !Number.isNaN(feeFromApi)
-            ? roundMoney(feeFromApi)
-            : roundMoney(feeLocal);
-
-        setDistanceMiles(dMiles);
-        setEtaMinutes(tMinutes);
-        setDeliveryFee(finalFee);
-
         if (
-          typeof pLat === "number" &&
-          typeof pLng === "number" &&
-          !Number.isNaN(pLat) &&
-          !Number.isNaN(pLng)
+          typeof pLat !== "number" ||
+          typeof pLng !== "number" ||
+          typeof dLat !== "number" ||
+          typeof dLng !== "number" ||
+          Number.isNaN(pLat) ||
+          Number.isNaN(pLng) ||
+          Number.isNaN(dLat) ||
+          Number.isNaN(dLng)
         ) {
-          setPickupCoords({ lat: pLat, lng: pLng });
-        } else {
-          setPickupCoords(null);
+          const friendly = tr(
+            "deliveryRequest.errors.missingCoords",
+            "Impossible de confirmer les coordonnées GPS. Vérifie les adresses."
+          );
+          resetEstimateState();
+          setEstimateError(friendly);
+          if (!silent) {
+            Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimation échouée"), friendly);
+          }
+          return false;
         }
 
-        if (
-          typeof dLat === "number" &&
-          typeof dLng === "number" &&
-          !Number.isNaN(dLat) &&
-          !Number.isNaN(dLng)
-        ) {
-          setDropoffCoords({ lat: dLat, lng: dLng });
-        } else {
-          setDropoffCoords(null);
+        const nextPickup = { lat: pLat, lng: pLng };
+        const nextDropoff = { lat: dLat, lng: dLng };
+        setDistanceMiles(dMiles);
+        setEtaMinutes(tMinutes);
+        setPickupCoords(nextPickup);
+        setDropoffCoords(nextDropoff);
+
+        const quote = await quoteDeliveryRequest(
+          {
+            request_type: requestType,
+            title: cleanText(title) || (requestType === "package" ? "Package delivery" : "Delivery"),
+            description: cleanText(description) || null,
+            pickup_address: pickupValue,
+            dropoff_address: dropoffValue,
+            pickup_contact_name: cleanText(pickupContactName) || null,
+            pickup_phone: cleanText(pickupPhone) || null,
+            dropoff_contact_name: cleanText(dropoffContactName) || null,
+            dropoff_phone: cleanText(dropoffPhone) || null,
+            pickup_lat: pLat,
+            pickup_lng: pLng,
+            dropoff_lat: dLat,
+            dropoff_lng: dLng,
+            dropoff_location_id: dropoffLocationId,
+            leave_at_door: requestType === "package" ? leaveAtDoor : false,
+          },
+          {
+            countryCode: market.countryCode,
+            lat: dLat,
+            lng: dLng,
+          }
+        );
+
+        if (activeEstimateRequestIdRef.current !== requestId) {
+          return false;
+        }
+
+        setServerPricing(quote);
+        setDeliveryFee(roundMoney(quote.delivery_fee));
+        if (Number.isFinite(Number(quote.distance_miles))) {
+          setDistanceMiles(Number(quote.distance_miles));
+        }
+        if (Number.isFinite(Number(quote.eta_minutes))) {
+          setEtaMinutes(Number(quote.eta_minutes));
         }
 
         setEstimateError(null);
@@ -725,7 +749,22 @@ export function DeliveryRequestScreen() {
         }
       }
     },
-    [pickupAddress, dropoffAddress, resetEstimateState, pricingConfig, tr]
+    [
+      pickupAddress,
+      dropoffAddress,
+      resetEstimateState,
+      requestType,
+      title,
+      description,
+      pickupContactName,
+      pickupPhone,
+      dropoffContactName,
+      dropoffPhone,
+      dropoffLocationId,
+      leaveAtDoor,
+      market.countryCode,
+      tr,
+    ]
   );
 
   useEffect(() => {
@@ -897,15 +936,21 @@ export function DeliveryRequestScreen() {
 
       const expectedQuoteTotalCents = Number.isFinite(Number(serverPricing?.total_cents))
         ? Math.round(Number(serverPricing?.total_cents))
-        : undefined;
+        : 0;
+      if (!(expectedQuoteTotalCents > 0)) {
+        throw new Error(
+          tr(
+            "deliveryRequest.errors.quoteRequired",
+            "Le devis serveur est requis avant le paiement. Recalcule l’estimation."
+          )
+        );
+      }
 
       // Stripe pay-then-create: no delivery_requests row until payment is confirmed.
       const checkout = await startDeliveryCheckoutFromQuote(
         {
           ...requestPayload,
-          ...(expectedQuoteTotalCents && expectedQuoteTotalCents > 0
-            ? { expectedQuoteTotalCents }
-            : {}),
+          expectedQuoteTotalCents,
         },
         scope
       );

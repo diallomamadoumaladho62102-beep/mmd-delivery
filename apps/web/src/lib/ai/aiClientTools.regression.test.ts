@@ -41,6 +41,7 @@ assert.doesNotMatch(taxiSrc, /payouts\.create/);
 const foodSrc = fs.readFileSync(path.join(here, "tools/client/foodTools.ts"), "utf8");
 assert.match(foodSrc, /quoteFoodOrderServerSide/);
 assert.match(foodSrc, /restaurant_items/);
+assert.match(foodSrc, /items,/);
 assert.doesNotMatch(foodSrc, /create-food-quote-checkout-session/);
 assert.doesNotMatch(foodSrc, /confirm-paid/);
 

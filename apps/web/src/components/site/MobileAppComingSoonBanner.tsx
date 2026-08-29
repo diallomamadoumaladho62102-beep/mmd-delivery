@@ -10,7 +10,7 @@ export default function MobileAppComingSoonBanner() {
   return (
     <div
       role="region"
-      aria-label="Application mobile bientôt disponible"
+      aria-label="MMD Delivery mobile app"
       className="border-b border-orange-400/25 bg-gradient-to-r from-orange-500/20 via-amber-500/10 to-rose-500/20"
     >
       <div className={`${siteContainerClass} py-3 sm:py-3.5`}>
@@ -26,11 +26,11 @@ export default function MobileAppComingSoonBanner() {
           </div>
           <div
             className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-2.5"
-            aria-label="Boutiques d'applications — bientôt disponible"
+            aria-label="App Store and Google Play listing status"
           >
             <span
               className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-slate-200 sm:text-sm"
-              title="Application iOS — bientôt sur l'App Store"
+              title="App Store listing pending publication"
             >
               <span aria-hidden="true">{storeBadges[0].icon}</span>
               <span>{storeBadges[0].platform}</span>
@@ -38,7 +38,7 @@ export default function MobileAppComingSoonBanner() {
             </span>
             <span
               className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-slate-200 sm:text-sm"
-              title="Application Android — bientôt sur Google Play"
+              title="Google Play listing pending publication"
             >
               <span aria-hidden="true">{storeBadges[1].icon}</span>
               <span>{storeBadges[1].platform}</span>

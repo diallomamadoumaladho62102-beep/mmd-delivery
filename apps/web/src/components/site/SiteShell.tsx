@@ -99,7 +99,10 @@ export default function SiteShell({
   const year = new Date().getFullYear();
   const pathname = usePathname() || "";
   const hideComingSoonBanner =
-    pathname.startsWith("/legal") || pathname === "/contact";
+    pathname.startsWith("/legal") ||
+    pathname === "/contact" ||
+    pathname === "/cookies" ||
+    pathname === "/download";
 
   return (
     <div className={siteRootClass}>

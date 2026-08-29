@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
-import { renderComingSoonPage } from "@/components/site/renderComingSoonPage";
+import { renderInAppServicePage } from "@/components/site/renderInAppServicePage";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Services — MMD Delivery",
-  description: "MMD Delivery services overview — coming soon.",
-  robots: "noindex,follow",
+  description:
+    "MMD Delivery services in the app: taxi, food delivery, package delivery, marketplace browse, and restaurant or driver work.",
+  robots: "index,follow",
 };
 
 export default async function Page() {
-  return renderComingSoonPage(
-    "Services",
-    "A dedicated Services page is coming soon. You can already explore taxi, food, packages, marketplace, and business from the home page.",
-  );
+  return renderInAppServicePage({
+    title: "Services",
+    description:
+      "The MMD Delivery app currently supports taxi rides, food delivery from approved restaurants, package delivery, marketplace browsing, and partner work for drivers and restaurants. Marketplace live checkout stays off until payout certification is complete. Pricing is always shown in-app before you pay.",
+    primaryHref: "/how-it-works",
+    primaryLabel: "How it works",
+  });
 }

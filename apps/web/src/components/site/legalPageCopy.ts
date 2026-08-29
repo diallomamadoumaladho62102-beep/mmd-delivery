@@ -151,3 +151,40 @@ Drivers, restaurants, sellers, and businesses must meet onboarding, identity, ve
 These Terms may be updated. The current version is published at [https://www.mmddelivery.com/legal/terms](https://www.mmddelivery.com/legal/terms). Questions: [${LEGAL_SUPPORT_EMAIL}](mailto:${LEGAL_SUPPORT_EMAIL}) or the [contact form](/contact).`,
   },
 ];
+
+export const COOKIES_SEO = {
+  title: "Cookies — MMD Delivery",
+  description:
+    "How MMD Delivery uses necessary cookies and similar storage on the website, including locale and session preferences.",
+  robots: "index,follow",
+} as const;
+
+export const COOKIES_SECTIONS: { id: string; title: string; body_md: string }[] = [
+  {
+    id: "cookies-intro",
+    title: "Cookie policy",
+    body_md: `This page describes how **MMD Delivery** uses cookies and similar storage on [https://www.mmddelivery.com](https://www.mmddelivery.com).
+
+Last updated: ${LEGAL_UPDATED}.
+
+The mobile apps use device permissions and local storage (for example session tokens and language) rather than website cookies. See the [Privacy Policy](/legal/privacy) for the full data practices.`,
+  },
+  {
+    id: "cookies-types",
+    title: "Cookies we use",
+    body_md: `We use **necessary** cookies and similar storage to operate the site:
+
+**Session and security.** Authentication and abuse-prevention cookies needed to keep you signed in on web account surfaces and to protect forms.
+
+**Preferences.** Locale or language preference (for example \`mmd_web_locale\`) so the site can remember the language you chose.
+
+We do **not** run third-party advertising cookies on the marketing site, and we do not sell cookie data.`,
+  },
+  {
+    id: "cookies-choices",
+    title: "Your choices",
+    body_md: `You can block or delete cookies in your browser settings. Necessary cookies may be required for sign-in or language preference to work.
+
+Questions: [${LEGAL_SUPPORT_EMAIL}](mailto:${LEGAL_SUPPORT_EMAIL}) or the [contact form](/contact). Related pages: [Privacy](/legal/privacy), [Terms](/legal/terms), [account deletion](/legal/account-deletion).`,
+  },
+];

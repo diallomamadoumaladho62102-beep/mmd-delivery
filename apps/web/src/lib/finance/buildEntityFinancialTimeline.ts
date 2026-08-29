@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { redactFinancialEventReferences } from "@/lib/finance/financialTimelineAccess";
 import {
   filterFinancialEventsForRole,
   sortFinancialEventsDesc,
@@ -463,5 +464,8 @@ export async function buildEntityFinancialTimeline(
   }
 
   const filtered = filterFinancialEventsForRole(events, params.role);
-  return sortFinancialEventsDesc(filtered).slice(0, limit);
+  return redactFinancialEventReferences(
+    sortFinancialEventsDesc(filtered).slice(0, limit),
+    params.role
+  );
 }

@@ -142,6 +142,7 @@ export async function quoteFoodOrder(
           params: {
             restaurantId,
             restaurantName: String(args.restaurant_name ?? "Restaurant"),
+            items,
           },
           priority: "high",
         },
@@ -182,6 +183,7 @@ export async function quoteFoodOrder(
           params: {
             restaurantId,
             restaurantName: String(args.restaurant_name ?? "Restaurant"),
+            items,
           },
           priority: "high",
         },
@@ -199,7 +201,7 @@ export async function quoteFoodOrder(
           type: "navigate",
           label: "Open restaurant menu",
           route: "ClientRestaurantMenu",
-          params: { restaurantId, restaurantName: "Restaurant" },
+          params: { restaurantId, restaurantName: "Restaurant", items },
         },
       ],
     };
@@ -229,7 +231,7 @@ export function prepareFoodOrder(args: Record<string, unknown>): AiToolResult {
         type: "navigate",
         label: "Confirm food order",
         route: "ClientRestaurantMenu",
-        params: { restaurantId, restaurantName },
+        params: { restaurantId, restaurantName, items },
         priority: "high",
       },
     ],

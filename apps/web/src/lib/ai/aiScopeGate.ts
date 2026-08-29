@@ -92,7 +92,7 @@ export async function assertAiOperational(params: {
       response: aiJson(
         {
           ok: false,
-          error: "MMD AI is not available yet.",
+          error: "MMD AI is turned off on the server.",
           code: "AI_DISABLED",
         },
         403
