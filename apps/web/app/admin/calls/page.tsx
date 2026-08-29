@@ -53,6 +53,8 @@ type AdminVoiceCallView = {
   status: string;
   displayStatus?: string;
   createdAt: string | null;
+  answeredAt?: string | null;
+  endedAt?: string | null;
   fromPhone: string | null;
   currentAdminUserId: string | null;
   assignedAdminUserId?: string | null;
@@ -60,6 +62,9 @@ type AdminVoiceCallView = {
   service?: string | null;
   ivrDigit?: string | null;
   transferCount?: number;
+  conferenceName?: string | null;
+  onHold?: boolean;
+  holdAvailable?: boolean;
   transferHistory?: Array<{
     id: string;
     fromAdminUserId: string | null;
@@ -150,7 +155,7 @@ function isExpired(row: CallSessionRow): boolean {
 
 function isEnded(row: CallSessionRow): boolean {
   const display = resolveCallSessionDisplayStatus(row);
-  return ["completed", "ended", "failed", "busy", "no-answer", "canceled", "cancelled", "missed", "declined"].includes(display);
+  return ["completed", "ended", "failed", "busy", "no-answer", "no_answer", "canceled", "cancelled", "missed", "declined"].includes(display);
 }
 
 function isActive(row: CallSessionRow): boolean {
@@ -328,7 +333,7 @@ export default function AdminCallsPage() {
 
   const voiceAction = useCallback(async (
     callId: string,
-    action: "accept" | "decline" | "end",
+    action: "accept" | "decline" | "end" | "hold" | "resume",
   ) => {
     try {
       setTransferringCallId(callId);
@@ -630,6 +635,9 @@ export default function AdminCallsPage() {
                       <p>Service: {adminVoiceServiceLabel(call.service)}</p>
                       <p>IVR: {call.ivrDigit ?? "—"}</p>
                       <p>Début : {formatDate(call.createdAt)}</p>
+                      {call.answeredAt ? (
+                        <p>Répondu : {formatDate(call.answeredAt)}</p>
+                      ) : null}
                       {(call.transferHistory?.length ?? 0) > 0 ? (
                         <p>
                           Transfers: {call.transferCount ?? call.transferHistory?.length}
@@ -661,15 +669,37 @@ export default function AdminCallsPage() {
                         </div>
                       ) : call.status === "answered" ||
                         call.status === "in_progress" ||
+                        call.status === "on_hold" ||
                         call.status === "transferred" ? (
-                        <button
-                          type="button"
-                          aria-label="End call"
-                          onClick={() => void voiceAction(call.id, "end")}
-                          className="min-h-12 rounded-xl bg-red-600 px-4 py-3 text-sm font-extrabold text-white"
-                        >
-                          End Call
-                        </button>
+                        <div className="flex w-full gap-2">
+                          {call.holdAvailable ? (
+                            <button
+                              type="button"
+                              aria-label={call.onHold || call.status === "on_hold" ? "Resume call" : "Hold call"}
+                              onClick={() =>
+                                void voiceAction(
+                                  call.id,
+                                  call.onHold || call.status === "on_hold"
+                                    ? "resume"
+                                    : "hold",
+                                )
+                              }
+                              className="min-h-12 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-900"
+                            >
+                              {call.onHold || call.status === "on_hold"
+                                ? "Resume"
+                                : "Hold"}
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            aria-label="End call"
+                            onClick={() => void voiceAction(call.id, "end")}
+                            className="min-h-12 flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-extrabold text-white"
+                          >
+                            End Call
+                          </button>
+                        </div>
                       ) : null}
                       {voiceDestinations.length > 0 ? (
                         <>
@@ -745,6 +775,7 @@ export default function AdminCallsPage() {
                     <th className="px-2 py-2">Statut</th>
                     <th className="px-2 py-2">Appelant</th>
                     <th className="px-2 py-2">IVR</th>
+                    <th className="px-2 py-2">Transferts</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -759,6 +790,7 @@ export default function AdminCallsPage() {
                       </td>
                       <td className="px-2 py-2">{call.fromPhone || "—"}</td>
                       <td className="px-2 py-2">{call.ivrDigit ?? "—"}</td>
+                      <td className="px-2 py-2">{call.transferCount ?? 0}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -872,7 +904,9 @@ export default function AdminCallsPage() {
                             {roleLabel(call.caller_role)} · {displayName(caller)}
                           </div>
                           <div className="mt-1 text-slate-600">
-                            {call.caller_phone || caller?.phone || "—"}
+                            {call.proxy_number
+                              ? `Masked · ${call.proxy_number}`
+                              : call.caller_phone || caller?.phone || "—"}
                           </div>
                         </div>
 
@@ -884,7 +918,9 @@ export default function AdminCallsPage() {
                             {roleLabel(call.target_role)} · {displayName(target)}
                           </div>
                           <div className="mt-1 text-slate-600">
-                            {call.target_phone || target?.phone || "—"}
+                            {call.proxy_number
+                              ? "Masked · (hidden)"
+                              : call.target_phone || target?.phone || "—"}
                           </div>
                         </div>
                       </div>
@@ -909,6 +945,10 @@ export default function AdminCallsPage() {
                         <p>
                           <span className="font-semibold text-slate-700">Début:</span>{" "}
                           {formatDate(call.started_at)}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-slate-700">Réponse:</span>{" "}
+                          {formatDate(call.answered_at)}
                         </p>
                         <p>
                           <span className="font-semibold text-slate-700">Fin:</span>{" "}

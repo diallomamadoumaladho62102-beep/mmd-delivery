@@ -44,6 +44,12 @@ updates:
       # Large client jumps — dedicated finance/auth regression PR only
       - dependency-name: "@supabase/supabase-js"
       - dependency-name: "@supabase/ssr"
+      # ESLint 10 is a breaking major; Dependabot PRs fail CI/Vercel Preview
+      # on pnpm overrides/lockfile mismatch. Upgrade only in a dedicated PR.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
 
   # Mobile is part of the root pnpm workspace (directory "/").
   # Do not scan /apps/mobile or /apps/web separately — nested scans previously

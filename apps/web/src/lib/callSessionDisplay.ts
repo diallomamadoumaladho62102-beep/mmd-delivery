@@ -4,6 +4,7 @@ export const CALL_SESSION_TERMINAL_STATUSES = [
   "failed",
   "busy",
   "no-answer",
+  "no_answer",
   "canceled",
   "cancelled",
   "missed",
@@ -117,9 +118,9 @@ export function formatCallDurationClock(totalSeconds: number | null): string {
   const minutes = Math.floor((sec % 3600) / 60);
   const seconds = sec % 60;
   if (hours > 0) {
-    return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }
-  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 export function formatCallSessionDuration(

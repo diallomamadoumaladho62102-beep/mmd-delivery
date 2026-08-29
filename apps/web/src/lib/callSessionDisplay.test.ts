@@ -31,8 +31,8 @@ test("incoming accept connected end state machine", () => {
 });
 
 test("incoming decline ended state machine", () => {
-  assert.equal(nextStatusAfterAdminVoiceAction("decline", "ringing"), "canceled");
-  assert.equal(shouldStopAdminVoiceRinging("canceled"), true);
+  assert.equal(nextStatusAfterAdminVoiceAction("decline", "ringing"), "declined");
+  assert.equal(shouldStopAdminVoiceRinging("declined"), true);
   assert.equal(canPerformAdminVoiceAction("decline", "completed"), false);
 });
 
@@ -47,8 +47,15 @@ test("incoming timeout maps to missed or expired", () => {
   assert.equal(shouldStopAdminVoiceRinging("missed"), true);
 });
 
-test("hold is not simulated as a supported action", () => {
-  assert.equal(canPerformAdminVoiceAction("accept", "answered"), false);
+test("hold and resume are real conference actions only when connected", () => {
+  assert.equal(canPerformAdminVoiceAction("hold", "answered"), true);
+  assert.equal(canPerformAdminVoiceAction("hold", "in_ivr"), false);
+  assert.equal(canPerformAdminVoiceAction("resume", "on_hold"), true);
+  assert.equal(canPerformAdminVoiceAction("resume", "answered"), false);
+  assert.equal(nextStatusAfterAdminVoiceAction("hold", "answered"), "on_hold");
+  assert.equal(nextStatusAfterAdminVoiceAction("resume", "on_hold"), "answered");
+  assert.equal(adminVoicePhase("on_hold"), "on_hold");
+  assert.equal(shouldStopAdminVoiceRinging("on_hold"), true);
   const patch = adminVoiceActionPatch({
     action: "accept",
     actorUserId: "admin-1",
@@ -94,7 +101,7 @@ test("duration uses endedAt - startedAt and never invents huge values", () => {
     ended_at: "2026-08-29T11:59:10.000Z",
   };
   assert.equal(callSessionDurationSeconds(completed, NOW), 70);
-  assert.equal(formatCallSessionDuration(completed, NOW), "1m 10s");
+  assert.equal(formatCallSessionDuration(completed, NOW), "01:10");
 });
 
 test("expired active rows without ended_at do not keep growing", () => {

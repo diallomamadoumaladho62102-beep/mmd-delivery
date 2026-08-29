@@ -1,3 +1,4 @@
+import { buildConferenceJoinTwiml } from "@/lib/adminVoiceConference";
 import {
   buildAdminDialTwiml,
   escapeTwiml,
@@ -244,19 +245,34 @@ export function buildIvrGatherTwiml(params: {
   `.trim();
 }
 
+export function ivrConnectPrefixSay(fallback?: boolean): string {
+  const prefix = fallback ? IVR_TIMEOUT_FALLBACK_PROMPT : IVR_CONNECT_PROMPT;
+  return getIvrVoiceLocales()
+    .map((locale) => prefix[locale])
+    .join(" ");
+}
+
 export function buildIvrConnectTwiml(params: {
   service: AdminVoiceService;
   destPhone: string;
   fallback?: boolean;
 }): string {
-  const prefix = params.fallback ? IVR_TIMEOUT_FALLBACK_PROMPT : IVR_CONNECT_PROMPT;
-  const locales = getIvrVoiceLocales();
-  const prefixSay = locales.map((locale) => prefix[locale]).join(" ");
-
   return buildAdminDialTwiml({
     destPhone: params.destPhone,
     includeWelcome: false,
-    prefixSay,
+    prefixSay: ivrConnectPrefixSay(params.fallback),
+  });
+}
+
+export function buildIvrConferenceConnectTwiml(params: {
+  conferenceName: string;
+  fallback?: boolean;
+}): string {
+  return buildConferenceJoinTwiml({
+    conferenceName: params.conferenceName,
+    startOnEnter: true,
+    endOnExit: true,
+    prefixSay: ivrConnectPrefixSay(params.fallback),
   });
 }
 
@@ -334,15 +350,26 @@ export function computeAdminVoiceDashboardStats(
   for (const row of rows) {
     const status = String(row.status || "").trim().toLowerCase();
     if (
-      ["incoming", "in_ivr", "queued", "ringing", "answered", "in_progress", "transferred"].includes(
+      ["incoming", "in_ivr", "queued", "ringing", "answered", "in_progress", "on_hold", "transferred"].includes(
         status,
       )
     ) {
       stats.active += 1;
     }
     if (["incoming", "in_ivr", "queued", "ringing"].includes(status)) stats.incoming += 1;
-    if (status === "answered" || status === "in_progress") stats.answered += 1;
-    if (status === "missed" || status === "canceled" || status === "expired") stats.missed += 1;
+    if (status === "answered" || status === "in_progress" || status === "on_hold") {
+      stats.answered += 1;
+    }
+    if (
+      status === "missed" ||
+      status === "canceled" ||
+      status === "declined" ||
+      status === "expired" ||
+      status === "busy" ||
+      status === "no_answer"
+    ) {
+      stats.missed += 1;
+    }
     if (status === "transferred") stats.transferred += 1;
     if (status === "completed") stats.completed += 1;
     const service =

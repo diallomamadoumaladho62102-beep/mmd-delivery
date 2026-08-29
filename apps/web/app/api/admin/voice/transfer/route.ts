@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { createTwilioOutboundCall } from "@/lib/adminVoiceConference";
 import {
   ADMIN_VOICE_CALL_PERMISSION,
   executeAdminVoiceTransfer,
+  getPublicVoiceCallerId,
   getTwilioVoiceCreds,
+  hangupTwilioCall,
   parseTransferRequest,
   redirectTwilioParentCall,
   type AdminVoiceCallRow,
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
           const { data } = await supabase
             .from("admin_voice_calls")
             .select(
-              "id, parent_call_sid, child_call_sid, from_phone, current_admin_user_id, current_admin_phone, assigned_admin_user_id, transferred_from_user_id, transferred_to_user_id, service, transfer_count, status, created_at, updated_at",
+              "id, parent_call_sid, child_call_sid, from_phone, current_admin_user_id, current_admin_phone, assigned_admin_user_id, transferred_from_user_id, transferred_to_user_id, service, transfer_count, status, conference_name, on_hold, created_at, updated_at",
             )
             .eq("id", callId)
             .maybeSingle();
@@ -91,6 +94,20 @@ export async function POST(request: NextRequest) {
             authToken: creds.token,
             callSid,
             twiml,
+          }),
+        createOutboundCall: async ({ to, twiml }) =>
+          createTwilioOutboundCall({
+            accountSid: creds.sid,
+            authToken: creds.token,
+            to,
+            from: getPublicVoiceCallerId(),
+            twiml,
+          }),
+        hangupCall: async (callSid) =>
+          hangupTwilioCall({
+            accountSid: creds.sid,
+            authToken: creds.token,
+            callSid,
           }),
       },
     });

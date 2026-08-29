@@ -21,7 +21,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CALL_SELECT =
-  "id, parent_call_sid, from_phone, current_admin_user_id, current_admin_phone, assigned_admin_user_id, ivr_digit, ivr_attempts, service, transfer_count, status, created_at, updated_at";
+  "id, parent_call_sid, from_phone, current_admin_user_id, current_admin_phone, assigned_admin_user_id, ivr_digit, ivr_attempts, service, transfer_count, status, conference_name, on_hold, answered_at, ended_at, created_at, updated_at";
 
 export async function GET(request: NextRequest) {
   try {

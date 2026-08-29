@@ -2,9 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   adminVoiceActionPatch,
+  actorOwnsAdminVoiceCall,
   canPerformAdminVoiceAction,
   type AdminVoiceUserAction,
 } from "@/lib/adminVoiceCallControl";
+import {
+  lookupInProgressConferenceSid,
+  setTwilioParticipantHold,
+} from "@/lib/adminVoiceConference";
 import {
   ADMIN_VOICE_CALL_PERMISSION,
   getTwilioVoiceCreds,
@@ -28,8 +33,13 @@ export async function executeAdminVoiceCallAction(params: {
   action: AdminVoiceUserAction;
   supabaseAdmin: SupabaseClient;
   hangup?: (callSid: string) => Promise<{ ok: boolean; status: number; error?: string }>;
+  setHold?: (params: {
+    conferenceName: string;
+    callSid: string;
+    hold: boolean;
+  }) => Promise<{ ok: boolean; status: number; error?: string }>;
 }): Promise<
-  | { ok: true; status: string; ringingStopped: true }
+  | { ok: true; status: string; ringingStopped: true; onHold?: boolean }
   | { ok: false; status: number; error: string }
 > {
   if (!actorCanControlAdminVoice(params.actor)) {
@@ -37,7 +47,13 @@ export async function executeAdminVoiceCallAction(params: {
   }
 
   const action = params.action;
-  if (action !== "accept" && action !== "decline" && action !== "end") {
+  if (
+    action !== "accept" &&
+    action !== "decline" &&
+    action !== "end" &&
+    action !== "hold" &&
+    action !== "resume"
+  ) {
     return { ok: false, status: 400, error: "Invalid call action" };
   }
 
@@ -49,7 +65,7 @@ export async function executeAdminVoiceCallAction(params: {
   const { data, error } = await params.supabaseAdmin
     .from("admin_voice_calls")
     .select(
-      "id, parent_call_sid, child_call_sid, status, assigned_admin_user_id, current_admin_user_id",
+      "id, parent_call_sid, child_call_sid, status, assigned_admin_user_id, current_admin_user_id, conference_name, on_hold",
     )
     .eq("id", callId)
     .maybeSingle();
@@ -63,6 +79,19 @@ export async function executeAdminVoiceCallAction(params: {
     return { ok: false, status: 409, error: "This call is no longer available" };
   }
 
+  const claimed = Boolean(call.assigned_admin_user_id || call.current_admin_user_id);
+  if (
+    claimed &&
+    !actorOwnsAdminVoiceCall({
+      actorUserId: params.actor.userId,
+      isFounder: params.actor.isFounder,
+      assignedAdminUserId: call.assigned_admin_user_id,
+      currentAdminUserId: call.current_admin_user_id,
+    })
+  ) {
+    return { ok: false, status: 403, error: "Forbidden" };
+  }
+
   const nowIso = new Date().toISOString();
   const patch = adminVoiceActionPatch({
     action,
@@ -72,6 +101,58 @@ export async function executeAdminVoiceCallAction(params: {
   });
   if (!patch) {
     return { ok: false, status: 409, error: "This call is no longer available" };
+  }
+
+  if (action === "hold" || action === "resume") {
+    const conferenceName = String(call.conference_name ?? "").trim();
+    const customerSid = String(call.parent_call_sid ?? "").trim();
+    if (!conferenceName || !customerSid) {
+      return {
+        ok: false,
+        status: 409,
+        error: "Hold is only available on conference support calls",
+      };
+    }
+
+    const creds = getTwilioVoiceCreds();
+    const setHold =
+      params.setHold ??
+      (creds
+        ? async ({ conferenceName: name, callSid, hold }) => {
+            const conferenceSid = await lookupInProgressConferenceSid({
+              accountSid: creds.sid,
+              authToken: creds.token,
+              friendlyName: name,
+            });
+            if (!conferenceSid) {
+              return { ok: false, status: 409, error: "Conference is not in progress" };
+            }
+            return setTwilioParticipantHold({
+              accountSid: creds.sid,
+              authToken: creds.token,
+              conferenceSid,
+              callSid,
+              hold,
+            });
+          }
+        : null);
+
+    if (!setHold) {
+      return { ok: false, status: 503, error: "Twilio credentials missing" };
+    }
+
+    const held = await setHold({
+      conferenceName,
+      callSid: customerSid,
+      hold: action === "hold",
+    });
+    if (!held.ok) {
+      return {
+        ok: false,
+        status: held.status || 502,
+        error: held.error || "Unable to update hold state",
+      };
+    }
   }
 
   if (action === "decline" || action === "end") {
@@ -118,6 +199,7 @@ export async function executeAdminVoiceCallAction(params: {
     ok: true,
     status: String(patch.status),
     ringingStopped: true,
+    onHold: action === "hold",
   };
 }
 
@@ -126,6 +208,14 @@ export function parseAdminVoiceCallAction(body: unknown): AdminVoiceUserAction |
   const action = String((body as { action?: unknown }).action ?? "")
     .trim()
     .toLowerCase();
-  if (action === "accept" || action === "decline" || action === "end") return action;
+  if (
+    action === "accept" ||
+    action === "decline" ||
+    action === "end" ||
+    action === "hold" ||
+    action === "resume"
+  ) {
+    return action;
+  }
   return null;
 }

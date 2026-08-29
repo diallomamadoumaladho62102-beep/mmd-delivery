@@ -8,6 +8,7 @@ import {
   type StaffRole,
 } from "@/lib/adminRbac";
 import { maskPhone, normalizePhoneE164, phonesEquivalent } from "@/lib/phoneE164";
+import { buildConferenceJoinTwiml } from "@/lib/adminVoiceConference";
 import { getTwilioPhoneNumber } from "@/lib/twilioPhone";
 import { getTwilioVoiceStatusCallbackUrl } from "@/lib/twilioProductionUrls";
 
@@ -20,6 +21,7 @@ export const ADMIN_VOICE_ACTIVE_STATUSES = [
   "ringing",
   "answered",
   "in_progress",
+  "on_hold",
   "transferred",
 ] as const;
 
@@ -27,8 +29,11 @@ export const ADMIN_VOICE_TERMINAL_STATUSES = [
   "completed",
   "failed",
   "canceled",
+  "declined",
   "missed",
   "expired",
+  "busy",
+  "no_answer",
 ] as const;
 
 export const ADMIN_VOICE_STALE_MS = 15 * 60 * 1000;
@@ -55,6 +60,10 @@ export type AdminVoiceCallRow = {
   ivr_attempts?: number | null;
   service?: string | null;
   transfer_count?: number | null;
+  conference_name?: string | null;
+  on_hold?: boolean | null;
+  answered_at?: string | null;
+  ended_at?: string | null;
   status: string;
   created_at?: string | null;
   updated_at?: string | null;
@@ -99,6 +108,15 @@ export type AdminVoiceTransferDeps = {
     callSid: string;
     twiml: string;
   }) => Promise<{ ok: boolean; status: number; error?: string }>;
+  createOutboundCall?: (params: {
+    to: string;
+    twiml: string;
+  }) => Promise<{ ok: boolean; sid?: string; status: number; error?: string }>;
+  hangupCall?: (callSid: string) => Promise<{
+    ok: boolean;
+    status: number;
+    error?: string;
+  }>;
 };
 
 export function escapeTwiml(value: string): string {
@@ -365,7 +383,8 @@ export function mapTwilioStatusToAdminVoice(
   if (["queued", "initiated", "ringing"].includes(incoming)) next = "ringing";
   else if (["in-progress", "answered"].includes(incoming)) next = "answered";
   else if (incoming === "completed") next = "completed";
-  else if (incoming === "busy" || incoming === "no-answer") next = "missed";
+  else if (incoming === "busy") next = "busy";
+  else if (incoming === "no-answer" || incoming === "no_answer") next = "no_answer";
   else if (incoming === "failed") next = "failed";
   else if (incoming === "canceled" || incoming === "cancelled") next = "canceled";
 
@@ -385,6 +404,10 @@ export function mapTwilioStatusToAdminVoice(
     return "transferred";
   }
 
+  if (current === "on_hold" && (next === "ringing" || next === "answered")) {
+    return "on_hold";
+  }
+
   return next;
 }
 
@@ -401,12 +424,20 @@ export function displayAdminVoiceStatus(status: string | null | undefined): stri
     case "answered":
     case "in_progress":
       return "Answered";
+    case "on_hold":
+      return "On hold";
     case "transferred":
       return "Transferred";
     case "completed":
       return "Completed";
     case "missed":
       return "Missed";
+    case "declined":
+      return "Declined";
+    case "busy":
+      return "Busy";
+    case "no_answer":
+      return "No answer";
     case "failed":
       return "Failed";
     case "expired":
@@ -423,7 +454,12 @@ export function isStaleAdminVoiceCall(
   nowMs = Date.now(),
 ): boolean {
   if (!isAdminVoiceCallActive(row.status)) return false;
-  if (row.status === "answered" || row.status === "in_progress" || row.status === "transferred") {
+  if (
+    row.status === "answered" ||
+    row.status === "in_progress" ||
+    row.status === "on_hold" ||
+    row.status === "transferred"
+  ) {
     return false;
   }
   const raw = row.updated_at || row.created_at;
@@ -458,13 +494,16 @@ export function redactAdminVoiceLog(value: unknown): unknown {
 
 export function publicAdminVoiceCallView(row: AdminVoiceCallRow) {
   const stale = isStaleAdminVoiceCall(row);
-  const status = stale ? "expired" : row.status;
+  const status = stale ? "expired" : row.on_hold ? "on_hold" : row.status;
+  const conferenceName = String(row.conference_name ?? "").trim() || null;
   return {
     id: row.id,
     status,
     displayStatus: displayAdminVoiceStatus(status),
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
+    answeredAt: row.answered_at ?? null,
+    endedAt: row.ended_at ?? null,
     fromPhone: row.from_phone ? maskPhone(row.from_phone) : null,
     currentAdminUserId: row.current_admin_user_id,
     assignedAdminUserId: row.assigned_admin_user_id ?? row.current_admin_user_id,
@@ -472,6 +511,9 @@ export function publicAdminVoiceCallView(row: AdminVoiceCallRow) {
     service: row.service ?? null,
     ivrDigit: row.ivr_digit ?? null,
     transferCount: row.transfer_count ?? 0,
+    conferenceName,
+    onHold: Boolean(row.on_hold) || status === "on_hold",
+    holdAvailable: Boolean(conferenceName),
   };
 }
 
@@ -599,6 +641,15 @@ export async function executeAdminVoiceTransfer(params: {
     return { ok: false, status: 409, error: "This call is no longer active" };
   }
 
+  const ownerId = call.assigned_admin_user_id ?? call.current_admin_user_id;
+  if (
+    ownerId &&
+    ownerId !== params.actor.userId &&
+    !params.actor.isFounder
+  ) {
+    return { ok: false, status: 403, error: "Forbidden" };
+  }
+
   if (!String(call.parent_call_sid || "").trim()) {
     return { ok: false, status: 409, error: "This call is no longer active" };
   }
@@ -615,20 +666,30 @@ export async function executeAdminVoiceTransfer(params: {
     return { ok: false, status: 409, error: "Select a different authorized admin" };
   }
 
-  const twiml = buildAdminDialTwiml({
-    destPhone: eligible.phone,
-    callerId: getPublicVoiceCallerId(),
-    includeWelcome: false,
-  });
+  const conferenceName = String(call.conference_name ?? "").trim();
+  const twiml = conferenceName
+    ? buildConferenceJoinTwiml({
+        conferenceName,
+        startOnEnter: true,
+        endOnExit: false,
+        prefixSay: "You are being connected to a transferred MMD support call.",
+      })
+    : buildAdminDialTwiml({
+        destPhone: eligible.phone,
+        callerId: getPublicVoiceCallerId(),
+        includeWelcome: false,
+      });
 
   const previous = {
     current_admin_user_id: call.current_admin_user_id,
     current_admin_phone: call.current_admin_phone,
     assigned_admin_user_id: call.assigned_admin_user_id ?? null,
+    child_call_sid: call.child_call_sid ?? null,
     status: call.status,
     transferred_from_user_id: call.transferred_from_user_id ?? null,
     transferred_to_user_id: call.transferred_to_user_id ?? null,
     transfer_count: call.transfer_count ?? 0,
+    on_hold: call.on_hold ?? false,
   };
 
   await params.deps.updateCall(call.id, {
@@ -639,24 +700,53 @@ export async function executeAdminVoiceTransfer(params: {
     transferred_to_user_id: destinationUserId,
     transfer_count: (call.transfer_count ?? 0) + 1,
     status: "transferred",
+    on_hold: false,
     updated_at: new Date().toISOString(),
   });
 
-  const redirected = await params.deps.redirectCall({
-    callSid: call.parent_call_sid,
-    twiml,
-  });
+  if (conferenceName && params.deps.createOutboundCall) {
+    const created = await params.deps.createOutboundCall({
+      to: eligible.phone,
+      twiml,
+    });
+    if (!created.ok || !created.sid) {
+      await params.deps.updateCall(call.id, {
+        ...previous,
+        updated_at: new Date().toISOString(),
+      });
+      return {
+        ok: false,
+        status: created.status || 502,
+        error: created.error || "Unable to transfer this call",
+      };
+    }
 
-  if (!redirected.ok) {
+    const previousChild = String(call.child_call_sid || "").trim();
     await params.deps.updateCall(call.id, {
-      ...previous,
+      child_call_sid: created.sid,
       updated_at: new Date().toISOString(),
     });
-    return {
-      ok: false,
-      status: redirected.status || 502,
-      error: redirected.error || "Unable to transfer this call",
-    };
+
+    if (previousChild && previousChild !== created.sid && params.deps.hangupCall) {
+      await params.deps.hangupCall(previousChild);
+    }
+  } else {
+    const redirected = await params.deps.redirectCall({
+      callSid: call.parent_call_sid,
+      twiml,
+    });
+
+    if (!redirected.ok) {
+      await params.deps.updateCall(call.id, {
+        ...previous,
+        updated_at: new Date().toISOString(),
+      });
+      return {
+        ok: false,
+        status: redirected.status || 502,
+        error: redirected.error || "Unable to transfer this call",
+      };
+    }
   }
 
   if (params.deps.insertTransferEvent) {
@@ -689,13 +779,16 @@ export async function applyAdminVoiceStatusCallback(params: {
         id?: string;
         status?: string | null;
         child_call_sid?: string | null;
+        answered_at?: string | null;
+        ended_at?: string | null;
+        on_hold?: boolean | null;
       }
     | null = null;
 
   for (const sid of candidates) {
     const byParent = await params.supabaseAdmin
       .from("admin_voice_calls")
-      .select("id, parent_call_sid, child_call_sid, status")
+      .select("id, parent_call_sid, child_call_sid, status, answered_at, ended_at, on_hold")
       .eq("parent_call_sid", sid)
       .maybeSingle();
     if (byParent.data) {
@@ -705,7 +798,7 @@ export async function applyAdminVoiceStatusCallback(params: {
 
     const byChild = await params.supabaseAdmin
       .from("admin_voice_calls")
-      .select("id, parent_call_sid, child_call_sid, status")
+      .select("id, parent_call_sid, child_call_sid, status, answered_at, ended_at, on_hold")
       .eq("child_call_sid", sid)
       .maybeSingle();
     if (byChild.data) {
@@ -718,11 +811,13 @@ export async function applyAdminVoiceStatusCallback(params: {
     return { callId: null, status: null };
   }
 
+  const isDialLeg = Boolean(dialCallSid) || Boolean(row.child_call_sid && candidates.includes(row.child_call_sid));
   const nextStatus = mapTwilioStatusToAdminVoice(params.callStatus, row.status, {
-    isDialLeg: Boolean(dialCallSid),
+    isDialLeg,
   });
+  const nowIso = new Date().toISOString();
   const patch: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+    updated_at: nowIso,
   };
 
   if (dialCallSid && !row.child_call_sid) {
@@ -731,9 +826,16 @@ export async function applyAdminVoiceStatusCallback(params: {
 
   if (nextStatus) {
     patch.status = nextStatus;
+    if (nextStatus === "answered" && !row.answered_at) {
+      patch.answered_at = nowIso;
+    }
+    if ((ADMIN_VOICE_TERMINAL_STATUSES as readonly string[]).includes(nextStatus)) {
+      if (!row.ended_at) patch.ended_at = nowIso;
+      patch.on_hold = false;
+    }
   }
 
-  if (patch.status || patch.child_call_sid) {
+  if (patch.status || patch.child_call_sid || patch.answered_at || patch.ended_at) {
     await params.supabaseAdmin
       .from("admin_voice_calls")
       .update(patch)

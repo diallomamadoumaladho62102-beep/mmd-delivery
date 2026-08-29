@@ -1,6 +1,12 @@
 import type { NextRequest } from "next/server";
 
 import {
+  adminVoiceConferenceName,
+  createTwilioOutboundCall,
+  buildConferenceJoinTwiml,
+} from "@/lib/adminVoiceConference";
+import {
+  buildIvrConferenceConnectTwiml,
   buildIvrConnectTwiml,
   buildIvrGatherTwiml,
   buildIvrUnavailableTwiml,
@@ -13,6 +19,8 @@ import {
 import {
   fetchAdminVoiceStaffProfiles,
   getAdminSupportPhone,
+  getPublicVoiceCallerId,
+  getTwilioVoiceCreds,
 } from "@/lib/adminVoiceTransfer";
 import { normalizePhoneE164 } from "@/lib/phoneE164";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
@@ -26,8 +34,8 @@ async function persistIvrProgress(params: {
   callSid: string;
   fromPhone: string | null;
   patch: Record<string, unknown>;
-}) {
-  if (!params.callSid) return;
+}): Promise<string | null> {
+  if (!params.callSid) return null;
   const supabaseAdmin = buildSupabaseAdminClient();
   const nowIso = new Date().toISOString();
   const patch: Record<string, unknown> = {
@@ -47,27 +55,34 @@ async function persistIvrProgress(params: {
       path: "/api/twilio/voice/ivr",
       code: updated.error.code,
     });
-    return;
+    return null;
   }
 
-  if (updated.data?.id) return;
+  if (updated.data?.id) return String(updated.data.id);
 
-  const inserted = await supabaseAdmin.from("admin_voice_calls").insert({
-    parent_call_sid: params.callSid,
-    from_phone: normalizePhoneE164(params.fromPhone),
-    current_admin_phone:
-      String(patch.current_admin_phone || "").trim() || getAdminSupportPhone(),
-    status: String(patch.status || "in_ivr"),
-    ivr_attempts: 0,
-    ...patch,
-  });
+  const inserted = await supabaseAdmin
+    .from("admin_voice_calls")
+    .insert({
+      parent_call_sid: params.callSid,
+      from_phone: normalizePhoneE164(params.fromPhone),
+      current_admin_phone:
+        String(patch.current_admin_phone || "").trim() || getAdminSupportPhone(),
+      status: String(patch.status || "in_ivr"),
+      ivr_attempts: 0,
+      ...patch,
+    })
+    .select("id")
+    .maybeSingle();
 
   if (inserted.error) {
     console.error("[twilio/voice/ivr] persist failed", {
       path: "/api/twilio/voice/ivr",
       code: inserted.error.code,
     });
+    return null;
   }
+
+  return inserted.data?.id ? String(inserted.data.id) : null;
 }
 
 export async function handleTwilioVoiceIvr(req: NextRequest) {
@@ -131,8 +146,9 @@ export async function handleTwilioVoiceIvr(req: NextRequest) {
     });
   }
 
+  let callId: string | null = null;
   try {
-    await persistIvrProgress({
+    callId = await persistIvrProgress({
       callSid,
       fromPhone,
       patch: {
@@ -153,6 +169,56 @@ export async function handleTwilioVoiceIvr(req: NextRequest) {
 
   if (!destPhone) {
     return twilioVoiceTwiml(buildIvrUnavailableTwiml());
+  }
+
+  if (callId) {
+    const conferenceName = adminVoiceConferenceName(callId);
+    const creds = getTwilioVoiceCreds();
+    const supabaseAdmin = buildSupabaseAdminClient();
+
+    await supabaseAdmin
+      .from("admin_voice_calls")
+      .update({
+        conference_name: conferenceName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", callId);
+
+    if (creds) {
+      const outbound = await createTwilioOutboundCall({
+        accountSid: creds.sid,
+        authToken: creds.token,
+        to: destPhone,
+        from: getPublicVoiceCallerId(),
+        twiml: buildConferenceJoinTwiml({
+          conferenceName,
+          startOnEnter: true,
+          endOnExit: false,
+        }),
+      });
+
+      if (outbound.ok) {
+        await supabaseAdmin
+          .from("admin_voice_calls")
+          .update({
+            child_call_sid: outbound.sid,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", callId);
+
+        return twilioVoiceTwiml(
+          buildIvrConferenceConnectTwiml({
+            conferenceName,
+            fallback: decision.action === "fallback",
+          }),
+        );
+      }
+
+      console.error("[twilio/voice/ivr] conference outbound failed", {
+        path: "/api/twilio/voice/ivr",
+        status: outbound.ok ? 200 : outbound.status,
+      });
+    }
   }
 
   return twilioVoiceTwiml(

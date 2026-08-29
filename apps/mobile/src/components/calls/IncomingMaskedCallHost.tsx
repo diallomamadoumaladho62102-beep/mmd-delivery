@@ -18,10 +18,25 @@ function isIncomingStatus(status: string | null): boolean {
   return ["active", "ringing", "queued", "initiated"].includes(normalized);
 }
 
+function formatElapsed(startedMs: number, nowMs: number): string {
+  if (nowMs < startedMs) return "00:00";
+  const sec = Math.floor((nowMs - startedMs) / 1000);
+  const hours = Math.floor(sec / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  const seconds = sec % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 export default function IncomingMaskedCallHost() {
   const { t } = useTranslation();
   const [userId, setUserId] = useState<string | null>(null);
   const [incoming, setIncoming] = useState<IncomingSession[]>([]);
+  const [connected, setConnected] = useState<IncomingSession | null>(null);
+  const [connectedAt, setConnectedAt] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [actingId, setActingId] = useState<string | null>(null);
 
   const load = useCallback(async (uid: string) => {
@@ -39,6 +54,14 @@ export default function IncomingMaskedCallHost() {
         return Number.isFinite(expires) && expires > Date.now();
       });
     setIncoming(rows);
+    setConnected((current) => {
+      if (!current) return null;
+      const stillOpen = (data ?? []).some((row) => {
+        const session = row as IncomingSession & { ended_at?: string | null };
+        return session.id === current.id && !session.ended_at;
+      });
+      return stillOpen ? current : null;
+    });
   }, []);
 
   useEffect(() => {
@@ -53,7 +76,10 @@ export default function IncomingMaskedCallHost() {
       const uid = session?.user?.id ?? null;
       setUserId(uid);
       if (uid) void load(uid);
-      else setIncoming([]);
+      else {
+        setIncoming([]);
+        setConnected(null);
+      }
     });
     return () => {
       cancelled = true;
@@ -80,8 +106,8 @@ export default function IncomingMaskedCallHost() {
     };
   }, [load, userId]);
 
-  const current = incoming[0] ?? null;
-  const shouldRing = Boolean(current);
+  const current = connected ?? incoming[0] ?? null;
+  const shouldRing = Boolean(incoming[0] && !connected);
 
   useEffect(() => {
     if (shouldRing) {
@@ -92,41 +118,93 @@ export default function IncomingMaskedCallHost() {
     }
     void mmdAudio.stopLongRing();
     return undefined;
-  }, [shouldRing, current?.id]);
+  }, [shouldRing, incoming[0]?.id]);
+
+  useEffect(() => {
+    if (!connected) return;
+    const clock = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(clock);
+  }, [connected]);
+
+  const roleLabel = useMemo(() => {
+    switch (String(current?.caller_role ?? "").trim().toLowerCase()) {
+      case "client":
+      case "customer":
+        return t("calls.role.customer", "Customer");
+      case "driver":
+        return t("calls.role.driver", "Driver");
+      case "restaurant":
+        return t("calls.role.restaurant", "Restaurant");
+      case "admin":
+      case "support":
+        return t("calls.role.support", "Support");
+      default:
+        return t("calls.role.caller", "Caller");
+    }
+  }, [current?.caller_role, t]);
 
   const title = useMemo(() => {
     if (!current) return "";
-    const role = String(current.caller_role ?? "caller");
-    return t("calls.incoming.fromRole", "{{role}} is calling", { role });
-  }, [current, t]);
+    if (connected) {
+      return t("calls.connected.withRole", "Call with {{role}}", { role: roleLabel });
+    }
+    return t("calls.incoming.fromRole", "{{role}} is calling", { role: roleLabel });
+  }, [connected, current, roleLabel, t]);
+
+  async function postAction(sessionId: string, action: "decline" | "end") {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    await fetch(`${String(API_BASE_URL ?? "").replace(/\/+$/, "")}/api/twilio/calls/action`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sessionId, action }),
+    });
+  }
 
   async function decline() {
     if (!current) return;
     setActingId(current.id);
     void mmdAudio.stopLongRing();
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (token) {
-        await fetch(`${String(API_BASE_URL ?? "").replace(/\/+$/, "")}/api/twilio/calls/action`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ sessionId: current.id, action: "decline" }),
-        });
-      }
+      await postAction(current.id, "decline");
     } finally {
       setActingId(null);
+      setConnected(null);
       if (userId) void load(userId);
     }
   }
 
-  async function accept() {
+  function accept() {
+    if (!current) return;
     void mmdAudio.stopLongRing();
-    setIncoming([]);
+    setConnected(current);
+    setConnectedAt(Date.now());
+    setNowMs(Date.now());
   }
+
+  async function endCall() {
+    if (!current) return;
+    setActingId(current.id);
+    void mmdAudio.stopLongRing();
+    try {
+      await postAction(current.id, "end");
+    } finally {
+      setActingId(null);
+      setConnected(null);
+      setConnectedAt(null);
+      if (userId) void load(userId);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      void mmdAudio.stopLongRing();
+    };
+  }, []);
 
   if (!current) return null;
 
@@ -152,59 +230,94 @@ export default function IncomingMaskedCallHost() {
             accessibilityRole="header"
             style={{ fontSize: 14, fontWeight: "800", color: "#B91C1C" }}
           >
-            {t("calls.incoming.title", "Incoming Call")}
+            {connected
+              ? t("calls.connected.title", "Call in progress")
+              : t("calls.incoming.title", "Incoming Call")}
           </Text>
           <Text style={{ fontSize: 24, fontWeight: "800", color: "#0F172A" }}>{title}</Text>
           <Text style={{ fontSize: 16, color: "#334155" }}>
-            {t("calls.incoming.subtitle", "Incoming call...")}
+            {connected
+              ? t("calls.connected.subtitle", "Connected")
+              : t("calls.incoming.subtitle", "Incoming call...")}
           </Text>
           {current.order_id ? (
             <Text style={{ fontSize: 14, color: "#64748B" }}>
               {t("calls.incoming.relatedOrder", "Related job")} · {current.order_id.slice(0, 8)}
             </Text>
           ) : null}
-          <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
+          {connected && connectedAt ? (
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#0F172A" }}>
+              {formatElapsed(connectedAt, nowMs)}
+            </Text>
+          ) : null}
+          {connected ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t("calls.incoming.declineA11y", "Decline call")}
-              onPress={() => void decline()}
+              accessibilityLabel={t("calls.connected.endA11y", "End call")}
+              onPress={() => void endCall()}
               disabled={actingId === current.id}
               style={{
-                flex: 1,
                 minHeight: 56,
                 borderRadius: 18,
                 backgroundColor: "#DC2626",
                 alignItems: "center",
                 justifyContent: "center",
+                marginTop: 16,
               }}
             >
               <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>
-                {t("calls.incoming.decline", "Decline")}
+                {t("calls.connected.end", "End Call")}
               </Text>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("calls.incoming.acceptA11y", "Accept call")}
-              onPress={() => void accept()}
-              style={{
-                flex: 1,
-                minHeight: 56,
-                borderRadius: 18,
-                backgroundColor: "#059669",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>
-                {t("calls.incoming.accept", "Accept")}
-              </Text>
-            </Pressable>
-          </View>
+          ) : (
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("calls.incoming.declineA11y", "Decline call")}
+                onPress={() => void decline()}
+                disabled={actingId === current.id}
+                style={{
+                  flex: 1,
+                  minHeight: 56,
+                  borderRadius: 18,
+                  backgroundColor: "#DC2626",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>
+                  {t("calls.incoming.decline", "Decline")}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("calls.incoming.acceptA11y", "Accept call")}
+                onPress={() => accept()}
+                style={{
+                  flex: 1,
+                  minHeight: 56,
+                  borderRadius: 18,
+                  backgroundColor: "#059669",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }}>
+                  {t("calls.incoming.accept", "Accept")}
+                </Text>
+              </Pressable>
+            </View>
+          )}
           <Text style={{ fontSize: 12, color: "#64748B", marginTop: 8 }}>
-            {t(
-              "calls.incoming.nativeHint",
-              "Accept stops the in-app ring. Answer the phone call itself to talk.",
-            )}
+            {connected
+              ? t(
+                  "calls.connected.nativeHint",
+                  "Talk on the phone. End Call hangs up the Twilio session. Mute and speaker are controlled on the phone.",
+                )
+              : t(
+                  "calls.incoming.nativeHint",
+                  "Accept stops the in-app ring. Answer the phone call itself to talk.",
+                )}
           </Text>
         </View>
       </View>

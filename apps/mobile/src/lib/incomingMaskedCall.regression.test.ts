@@ -15,8 +15,12 @@ const nav = fs.readFileSync(
 
 assert.match(host, /accessibilityLabel=\{t\("calls.incoming.acceptA11y"/);
 assert.match(host, /accessibilityLabel=\{t\("calls.incoming.declineA11y"/);
+assert.match(host, /accessibilityLabel=\{t\("calls.connected.endA11y"/);
 assert.match(host, /stopLongRing/);
 assert.match(host, /\/api\/twilio\/calls\/action/);
+assert.match(host, /action: "decline" \| "end"/);
+assert.match(host, /postAction\(current\.id, "end"\)/);
+assert.match(host, /calls.role.customer/);
 assert.match(nav, /IncomingMaskedCallHost/);
 
 console.log("incomingMaskedCall.regression.test.ts OK");

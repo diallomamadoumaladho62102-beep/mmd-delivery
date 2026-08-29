@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, ctx: RouteCtx) {
     const action = parseAdminVoiceCallAction(body);
     if (!action) {
       return NextResponse.json(
-        { ok: false, error: "action must be accept, decline, or end" },
+        { ok: false, error: "action must be accept, decline, end, hold, or resume" },
         { status: 400 },
       );
     }

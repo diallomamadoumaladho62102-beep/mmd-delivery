@@ -30,7 +30,11 @@ type ActiveCall = {
   fromPhone: string | null;
   service: string | null;
   createdAt: string | null;
+  answeredAt?: string | null;
   assignedAdminUserId?: string | null;
+  conferenceName?: string | null;
+  onHold?: boolean;
+  holdAvailable?: boolean;
 };
 
 const AUDIO_UNLOCK_KEY = "mmd_admin_voice_audio_unlocked";
@@ -121,7 +125,12 @@ export default function AdminIncomingVoiceAlerts({
     () =>
       calls.filter((call) => {
         const phase = adminVoicePhase(call.status);
-        return phase === "incoming" || phase === "connecting" || phase === "connected";
+        return (
+          phase === "incoming" ||
+          phase === "connecting" ||
+          phase === "connected" ||
+          phase === "on_hold"
+        );
       }),
     [calls],
   );
@@ -161,7 +170,10 @@ export default function AdminIncomingVoiceAlerts({
     }
   }
 
-  async function runAction(callId: string, action: "accept" | "decline" | "end") {
+  async function runAction(
+    callId: string,
+    action: "accept" | "decline" | "end" | "hold" | "resume",
+  ) {
     try {
       setActingId(callId);
       if (action === "accept" || action === "decline" || action === "end") {
@@ -223,8 +235,14 @@ export default function AdminIncomingVoiceAlerts({
         const phase = adminVoicePhase(call.status);
         const claimed = Boolean(acceptedIds[call.id] || call.assignedAdminUserId);
         const incoming = phase === "incoming" || (phase === "connecting" && !claimed);
-        const connected = phase === "connected";
-        const startedMs = call.createdAt ? new Date(call.createdAt).getTime() : null;
+        const onHold = phase === "on_hold" || Boolean(call.onHold);
+        const connected = phase === "connected" || onHold;
+        const holdAvailable = Boolean(call.holdAvailable || call.conferenceName);
+        const startedMs = call.answeredAt
+          ? new Date(call.answeredAt).getTime()
+          : call.createdAt
+            ? new Date(call.createdAt).getTime()
+            : null;
 
         return (
           <section
@@ -235,7 +253,13 @@ export default function AdminIncomingVoiceAlerts({
             aria-label={incoming ? "Incoming call" : "Active call"}
           >
             <p className="text-xs font-extrabold uppercase tracking-wide text-red-700">
-              {incoming ? "Incoming Call" : connected ? "Call in progress" : "Connecting"}
+              {incoming
+                ? "Incoming Call"
+                : onHold
+                  ? "On hold"
+                  : connected
+                    ? "Call in progress"
+                    : "Connecting"}
             </p>
             <p className="mt-2 text-2xl font-extrabold text-slate-900">
               {call.fromPhone || "Unknown caller"}
@@ -246,9 +270,11 @@ export default function AdminIncomingVoiceAlerts({
             <p className="mt-1 text-sm text-slate-600">
               {incoming
                 ? "Incoming call..."
-                : connected
-                  ? `Call with ${call.fromPhone || "caller"}`
-                  : "Pick up your phone to connect. Web ringing has stopped."}
+                : onHold
+                  ? `${call.fromPhone || "Caller"} is on hold`
+                  : connected
+                    ? `Connected with ${call.fromPhone || "caller"}`
+                    : "Pick up your phone to connect. Web ringing has stopped."}
             </p>
             <p className="mt-1 text-sm font-semibold text-slate-800">
               Status: {call.displayStatus || call.status}
@@ -278,10 +304,20 @@ export default function AdminIncomingVoiceAlerts({
               </div>
             ) : (
               <div className="mt-5 space-y-3">
-                {ADMIN_VOICE_HOLD_SUPPORTED ? null : (
+                {holdAvailable && ADMIN_VOICE_HOLD_SUPPORTED && connected ? (
+                  <button
+                    type="button"
+                    disabled={actingId === call.id}
+                    onClick={() => void runAction(call.id, onHold ? "resume" : "hold")}
+                    aria-label={onHold ? "Resume call" : "Hold call"}
+                    className="min-h-14 w-full rounded-2xl border-2 border-slate-800 bg-white px-4 py-4 text-lg font-extrabold text-slate-900 shadow-sm disabled:opacity-60"
+                  >
+                    {onHold ? "Resume" : "Hold"}
+                  </button>
+                ) : (
                   <p className="text-xs text-slate-500">
-                    Hold / Resume is not available on PSTN support calls. Mute and
-                    speaker are controlled on the phone that answered.
+                    Mute and speaker are controlled on the phone that answered.
+                    Hold is available only on conference support calls.
                   </p>
                 )}
                 <button
