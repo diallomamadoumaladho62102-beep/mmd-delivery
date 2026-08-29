@@ -13,7 +13,8 @@ import {
   formDataToParamRecord,
 } from "@/lib/twilioRequestValidation";
 import { getTwilioVoiceStatusCallbackUrl } from "@/lib/twilioProductionUrls";
-import { normalizePhoneE164, phonesEquivalent } from "@/lib/phoneE164";
+import { normalizePhoneE164 } from "@/lib/phoneE164";
+import { pickMaskedCallSession } from "@/lib/twilioMaskedSessionMatch";
 
 const MMD_TWILIO_NUMBER = getTwilioPhoneNumber();
 
@@ -96,6 +97,7 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
   }
 
   const from = normalizePhoneE164(String(formData.get("From") || "").trim());
+  const to = normalizePhoneE164(String(formData.get("To") || "").trim());
   const callSid = String(formData.get("CallSid") || "").trim();
 
   if (!from) {
@@ -114,15 +116,23 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
     .in("status", [...ROUTABLE_SESSION_STATUSES])
     .gt("expires_at", now)
     .order("created_at", { ascending: false })
-    .limit(25);
+    .limit(50);
 
-  const session =
-    (sessions ?? []).find((row) =>
-      phonesEquivalent(
-        (row as { caller_phone?: string | null }).caller_phone,
-        from,
-      ),
-    ) ?? null;
+  const matched = pickMaskedCallSession({
+    sessions: (sessions ?? []) as Array<{
+      id: string;
+      caller_phone?: string | null;
+      proxy_number?: string | null;
+      status?: string | null;
+      created_at?: string | null;
+      expires_at?: string | null;
+      twilio_call_sid?: string | null;
+    }>,
+    from,
+    to,
+    callSid,
+  });
+  const session = matched.ok ? matched.session : null;
 
   if (sessionError) {
     console.error("[twilio/voice/incoming] call_sessions lookup error", {

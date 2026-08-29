@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import {
   isAllowedMime,
   isSafeStoragePathSegment,
+  resolveIdentitySelfieContent,
   resolveLocationPhotoContent,
+  resolveSafetyRecordingBytes,
   resolveSafetyRecordingUpload,
   sniffImageMime,
+  sniffSafetyRecordingMagic,
   validateIdentitySelfiePath,
 } from "./uploadSecurity";
 
@@ -103,5 +106,24 @@ const selfieBad = validateIdentitySelfiePath({
   path: "drivers/other/check/selfie.jpg",
 });
 assert.equal(selfieBad.ok, false);
+
+const ftyp = Buffer.alloc(12);
+ftyp.write("xxxxftypisom", 0, 12, "ascii");
+assert.equal(sniffSafetyRecordingMagic(ftyp)?.mime, "video/mp4");
+assert.equal(resolveSafetyRecordingBytes({ buffer: Buffer.from("not-media") }).ok, false);
+assert.equal(
+  resolveIdentitySelfieContent({
+    claimedMime: "image/jpeg",
+    buffer: Buffer.from("GIF89a"),
+  }).ok,
+  false
+);
+assert.equal(
+  resolveIdentitySelfieContent({
+    claimedMime: "image/jpeg",
+    buffer: jpegBuffer(),
+  }).ok,
+  true
+);
 
 console.log("uploadSecurity tests passed");

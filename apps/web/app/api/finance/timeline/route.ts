@@ -17,6 +17,7 @@ import type {
 import { getProfileRole, isStaffRole } from "@/lib/taxiApi";
 import type { UserRole } from "@/lib/roles";
 import { isDriver, isRestaurant } from "@/lib/roles";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +77,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabaseAdmin = getSupabaseAdminClient();
+    const account = await assertProfileActive(supabaseAdmin, data.user.id);
+    if (account.ok === false) {
+      return mmdLocationJson(inactiveAccountBody(account), account.status);
+    }
     const profileRole = await getProfileRole(supabaseAdmin, data.user.id);
     let role = resolveRole(profileRole);
 

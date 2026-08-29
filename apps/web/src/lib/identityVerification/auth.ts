@@ -5,6 +5,7 @@ import {
   IDENTITY_SUBJECT_TYPES,
   type IdentitySubjectType,
 } from "@/lib/identityVerification";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -46,6 +47,11 @@ export async function requireIdentityActor(req: NextRequest) {
   const user = data?.user;
   if (error || !user?.id) {
     return { ok: false as const, response: json({ ok: false, error: "invalid_token" }, 401) };
+  }
+
+  const account = await assertProfileActive(supabaseAdmin, user.id);
+  if (account.ok === false) {
+    return { ok: false as const, response: json(inactiveAccountBody(account), account.status) };
   }
 
   const { data: profile } = await supabaseAdmin

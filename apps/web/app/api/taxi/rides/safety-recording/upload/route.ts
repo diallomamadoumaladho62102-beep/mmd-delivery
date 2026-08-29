@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
-import { resolveSafetyRecordingUpload } from "@/lib/uploadSecurity";
+import {
+  resolveSafetyRecordingBytes,
+  resolveSafetyRecordingUpload,
+} from "@/lib/uploadSecurity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +45,23 @@ export async function PATCH(req: NextRequest) {
 
     if (resolved.ok === false) {
       return taxiJson({ ok: false, error: resolved.error }, 400);
+    }
+
+    if (clientPath) {
+      const { data: object, error: downloadError } = await auth.supabaseAdmin.storage
+        .from("ride-safety-recordings")
+        .download(resolved.storagePath);
+      if (downloadError || !object) {
+        return taxiJson({ ok: false, error: "recording_missing" }, 400);
+      }
+      const recordingBytes = Buffer.from(await object.arrayBuffer());
+      const magic = resolveSafetyRecordingBytes({
+        buffer: recordingBytes,
+        claimedMime: resolved.mimeType,
+      });
+      if (magic.ok === false) {
+        return taxiJson({ ok: false, error: magic.error }, 400);
+      }
     }
 
     const { data, error } = await auth.supabaseUser.rpc("complete_ride_safety_recording_upload", {

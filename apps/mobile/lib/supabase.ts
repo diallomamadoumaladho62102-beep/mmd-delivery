@@ -1,8 +1,8 @@
 // apps/mobile/lib/supabase.ts
 import "react-native-url-polyfill/auto";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";
+import { createSecureAuthStorage } from "./secureAuthStorage";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
 
@@ -40,7 +40,7 @@ export const supabase = createClient(
   resolvedSupabasePublishableKey,
   {
     auth: {
-      storage: AsyncStorage,
+      storage: createSecureAuthStorage(),
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false, // mobile => pas d’URL callback

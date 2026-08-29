@@ -8,6 +8,8 @@ import {
   mmdLocationJson,
 } from "@/lib/mmdLocationCore";
 import { toUserFacingError } from "@/lib/userFacingError";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
+import { checkDistributedRateLimit, getRequestClientIp } from "@/lib/apiRateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +39,25 @@ export async function POST(req: NextRequest) {
   }
 
   const driverUserId = userData.user.id;
+  const supabaseAdmin = getSupabaseAdminClient();
+  const account = await assertProfileActive(supabaseAdmin, driverUserId);
+  if (account.ok === false) {
+    return mmdLocationJson(inactiveAccountBody(account), account.status);
+  }
+
+  const cashoutRate = await checkDistributedRateLimit({
+    supabaseAdmin,
+    namespace: "wallet-cashout",
+    key: `${getRequestClientIp(req.headers)}:${driverUserId}`,
+    limit: 5,
+    windowMs: 60_000,
+  });
+  if (cashoutRate.limited) {
+    return mmdLocationJson(
+      { ok: false, error: "rate_limited", message: "Too many cash out attempts" },
+      429,
+    );
+  }
 
   let body: Record<string, unknown> = {};
   try {
@@ -70,7 +91,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const supabaseAdmin = getSupabaseAdminClient();
     const { data: profileRow, error: roleErr } = await supabaseAdmin
       .from("profiles")
       .select("role")

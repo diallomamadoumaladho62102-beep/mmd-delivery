@@ -26,6 +26,7 @@ import {
   evaluateAiContentPolicy,
   getAiRefusalMessage,
   isBlockedAutoAction,
+  sanitizeClientAiHistory,
 } from "@/lib/ai/aiSafety";
 import { getOpenAiToolDefinitions, runToolForRole } from "@/lib/ai/tools/registry";
 import type { AiApiAuthSuccess } from "@/lib/ai/requireAiApiUser";
@@ -86,7 +87,8 @@ export async function runMmdAiChat(params: {
   const orderId = String(params.body.context?.orderId ?? "").trim() || undefined;
   const aiRole: AiRole = params.auth.aiRole === "client" ? "client" : params.auth.aiRole;
 
-  const policy = evaluateAiContentPolicy(params.body.message, params.body.history);
+  const history = sanitizeClientAiHistory(params.body.history);
+  const policy = evaluateAiContentPolicy(params.body.message, history);
   if (policy.action === "refuse") {
     return policyRefusalResponse({ conversationId, locale, aiRole });
   }
@@ -131,21 +133,10 @@ export async function runMmdAiChat(params: {
       : {}),
   };
 
-  const history = (params.body.history ?? [])
-    .slice(-20)
-    .filter((turn) => turn.content?.trim())
-    .map((turn) => {
-      const role = turn.role === "assistant" ? "assistant" : "user";
-      return {
-        role,
-        content: turn.content.trim().slice(0, 2000),
-      };
-    });
-
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
     ...history.map((turn) => ({
-      role: turn.role as "user" | "assistant",
+      role: "user" as const,
       content: turn.content,
     })),
     { role: "user", content: params.body.message.trim().slice(0, 2000) },

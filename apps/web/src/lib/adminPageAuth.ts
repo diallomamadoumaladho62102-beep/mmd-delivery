@@ -8,6 +8,7 @@ import {
 } from "@/lib/adminRbac";
 import { type UserRole } from "@/lib/roles";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { isAccountActive } from "@/lib/accountStatus";
 
 function getAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -35,9 +36,13 @@ export async function requireStaffPageAccess(
   const admin = getAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("role, is_founder")
+    .select("role, is_founder, account_status")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (!isAccountActive(profile?.account_status)) {
+    redirect("/admin/login");
+  }
 
   const isFounder = profile?.is_founder === true;
   const role = effectiveStaffRole({
@@ -72,9 +77,13 @@ export async function requirePricingPageAccess(): Promise<{
   const admin = getAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("role, is_founder")
+    .select("role, is_founder, account_status")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (!isAccountActive(profile?.account_status)) {
+    redirect("/admin/login");
+  }
 
   const isFounder = profile?.is_founder === true;
   const role = effectiveStaffRole({

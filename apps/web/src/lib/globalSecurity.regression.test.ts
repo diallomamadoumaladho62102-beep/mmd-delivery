@@ -28,6 +28,9 @@ const pushNotify = readRepo("apps/web/app/api/chat/push-notify/route.ts");
 assert.match(pushNotify, /targetAllowed/);
 assert.match(pushNotify, /targetUserId/);
 
+const chatMessages = readRepo("apps/web/app/api/chat/messages/route.ts");
+assert.match(chatMessages, /resolveAuthorizedChatPushTarget/);
+
 const driverReport = readRepo(
   "apps/web/app/api/client/driver-identity/report/route.ts",
 );

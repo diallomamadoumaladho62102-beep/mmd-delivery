@@ -64,6 +64,91 @@ function matchesMagic(buffer: Buffer, rule: MagicRule): boolean {
   return true;
 }
 
+export function sniffSafetyRecordingMagic(
+  buffer: Buffer
+): { mime: string; ext: string } | null {
+  if (buffer.length < 12) return null;
+  if (
+    buffer[4] === 0x66 &&
+    buffer[5] === 0x74 &&
+    buffer[6] === 0x79 &&
+    buffer[7] === 0x70
+  ) {
+    const brand = buffer.slice(8, 12).toString("ascii").toLowerCase();
+    if (brand.startsWith("qt") || brand.includes("qt")) {
+      return { mime: "video/quicktime", ext: "mov" };
+    }
+    return { mime: "video/mp4", ext: "mp4" };
+  }
+  if (buffer[0] === 0x49 && buffer[1] === 0x44 && buffer[2] === 0x33) {
+    return { mime: "audio/mpeg", ext: "mp3" };
+  }
+  if (buffer[0] === 0xff && buffer[1] != null && (buffer[1] & 0xe0) === 0xe0) {
+    return { mime: "audio/mpeg", ext: "mp3" };
+  }
+  return null;
+}
+
+export function resolveSafetyRecordingBytes(params: {
+  buffer: Buffer;
+  claimedMime?: string | null;
+}): { ok: true; mime: string; ext: string } | { ok: false; error: string } {
+  const sizeCheck = assertByteSize(
+    params.buffer.length,
+    SAFETY_RECORDING_MAX_BYTES,
+    "recording"
+  );
+  if (sizeCheck.ok === false) return sizeCheck;
+  const sniffed = sniffSafetyRecordingMagic(params.buffer);
+  if (!sniffed) return { ok: false, error: "recording_magic_bytes_invalid" };
+  const claimed = normalizeMime(params.claimedMime);
+  if (
+    claimed &&
+    claimed !== sniffed.mime &&
+    !(claimed.startsWith("audio/") && sniffed.mime.startsWith("audio/")) &&
+    !(claimed.startsWith("video/") && sniffed.mime.startsWith("video/"))
+  ) {
+    if (
+      !(
+        (claimed === "audio/mp4" || claimed === "audio/m4a" || claimed === "audio/aac") &&
+        sniffed.mime === "video/mp4"
+      )
+    ) {
+      return { ok: false, error: "recording_mime_mismatch" };
+    }
+  }
+  return { ok: true, mime: sniffed.mime, ext: sniffed.ext };
+}
+
+export function resolveIdentitySelfieContent(params: {
+  claimedMime?: string | null;
+  buffer: Buffer;
+}): { ok: true; mime: string; ext: string } | { ok: false; error: string } {
+  const sizeCheck = assertByteSize(
+    params.buffer.length,
+    IDENTITY_SELFIE_MAX_BYTES,
+    "selfie"
+  );
+  if (sizeCheck.ok === false) return sizeCheck;
+  const sniffed = sniffImageMime(params.buffer);
+  if (!sniffed) return { ok: false, error: "image_magic_bytes_invalid" };
+  if (!isAllowedMime(sniffed.mime, IDENTITY_SELFIE_MIME_ALLOWLIST)) {
+    return { ok: false, error: "image_mime_not_allowed" };
+  }
+  const claimed = normalizeMime(params.claimedMime);
+  if (
+    claimed &&
+    claimed !== sniffed.mime &&
+    !(
+      (claimed === "image/jpeg" || claimed === "image/jpg") &&
+      sniffed.mime === "image/jpeg"
+    )
+  ) {
+    return { ok: false, error: "image_mime_mismatch" };
+  }
+  return { ok: true, mime: sniffed.mime, ext: sniffed.ext };
+}
+
 export function sniffImageMime(buffer: Buffer): { mime: string; ext: string } | null {
   for (const rule of IMAGE_MAGIC) {
     if (matchesMagic(buffer, rule)) {

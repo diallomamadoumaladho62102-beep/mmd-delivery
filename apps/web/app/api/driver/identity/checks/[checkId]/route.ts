@@ -11,6 +11,7 @@ import {
   IDENTITY_SELFIE_MIME_ALLOWLIST,
   isAllowedMime,
   normalizeMime,
+  resolveIdentitySelfieContent,
   validateIdentitySelfiePath,
 } from "@/lib/uploadSecurity";
 
@@ -28,6 +29,10 @@ async function assertSelfieObjectExists(params: {
           opts: { search: string; limit: number }
         ) => Promise<{
           data: Array<{ name?: string; metadata?: { size?: number; mimetype?: string } }> | null;
+          error: { message: string } | null;
+        }>;
+        download: (path: string) => Promise<{
+          data: Blob | null;
           error: { message: string } | null;
         }>;
       };
@@ -58,6 +63,21 @@ async function assertSelfieObjectExists(params: {
   const mimetype = normalizeMime(match.metadata?.mimetype);
   if (mimetype && !isAllowedMime(mimetype, IDENTITY_SELFIE_MIME_ALLOWLIST)) {
     return { ok: false, error: "selfie_mime_not_allowed" };
+  }
+
+  const downloaded = await params.supabaseAdmin.storage
+    .from(IDENTITY_SELFIE_BUCKET)
+    .download(params.path);
+  if (downloaded.error || !downloaded.data) {
+    return { ok: false, error: "selfie_missing" };
+  }
+  const buffer = Buffer.from(await downloaded.data.arrayBuffer());
+  const sniffed = resolveIdentitySelfieContent({
+    claimedMime: mimetype || null,
+    buffer,
+  });
+  if (sniffed.ok === false) {
+    return { ok: false, error: sniffed.error };
   }
 
   return { ok: true };

@@ -8,6 +8,7 @@ import {
   requireIdentityActor,
 } from "@/lib/identityVerification/auth";
 import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
+import { assertSafeAppReturnUrl } from "@/lib/safeReturnUrl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,12 +49,20 @@ export async function POST(req: NextRequest) {
   }
 
   const featureKey = String(body.feature_key ?? body.featureKey ?? "default").trim() || "default";
-  const returnUrl =
+  const rawReturnUrl =
     typeof body.return_url === "string"
       ? body.return_url
       : typeof body.returnUrl === "string"
         ? body.returnUrl
         : null;
+  let returnUrl: string | null = null;
+  if (rawReturnUrl) {
+    const allowed = assertSafeAppReturnUrl(rawReturnUrl);
+    if (allowed.ok === false) {
+      return json({ ok: false, error: "invalid_return_url" }, 403);
+    }
+    returnUrl = allowed.url;
+  }
 
   try {
     const result = await createIdentitySession(auth.supabaseAdmin, {

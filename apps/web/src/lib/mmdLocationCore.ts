@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -198,6 +199,14 @@ export async function requireMmdLocationApiUser(
 
   if (error || !user?.id) {
     return { ok: false, response: mmdLocationJson({ error: "Invalid token" }, 401) };
+  }
+
+  const account = await assertProfileActive(supabaseAdmin, user.id);
+  if (account.ok === false) {
+    return {
+      ok: false,
+      response: mmdLocationJson(inactiveAccountBody(account), account.status),
+    };
   }
 
   return { ok: true, user, token, supabaseUser, supabaseAdmin };

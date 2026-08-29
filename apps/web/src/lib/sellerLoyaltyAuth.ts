@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { assertProfileActive } from "@/lib/requireActiveAccount";
 
 export type SellerAuthContext = {
   sellerUserId: string;
@@ -51,6 +52,11 @@ export async function requireSellerApiUser(
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  const account = await assertProfileActive(admin, sellerUserId);
+  if (account.ok === false) {
+    return { ok: false, message: account.error, status: account.status };
+  }
 
   const { data: sellerRow, error: sellerError } = await admin
     .from("sellers")

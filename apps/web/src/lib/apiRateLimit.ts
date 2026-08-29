@@ -54,6 +54,48 @@ export function checkRateLimit(params: {
   };
 }
 
+export async function checkDistributedRateLimit(params: {
+  supabaseAdmin?: { rpc: (name: string, args: Record<string, unknown>) => unknown } | null;
+  namespace: string;
+  key: string;
+  limit: number;
+  windowMs?: number;
+}): Promise<RateLimitResult> {
+  const local = checkRateLimit({
+    namespace: params.namespace,
+    key: params.key,
+    limit: params.limit,
+    windowMs: params.windowMs,
+  });
+  if (local.limited || !params.supabaseAdmin) return local;
+
+  try {
+    const result = (await Promise.resolve(
+      params.supabaseAdmin.rpc("check_api_rate_limit", {
+        p_namespace: params.namespace,
+        p_key: params.key,
+        p_window_ms: params.windowMs ?? 60_000,
+        p_max_hits: params.limit,
+      }) as Promise<{ data?: unknown; error?: { message: string } | null }>
+    )) as { data?: unknown; error?: { message: string } | null };
+    const data = result?.data;
+    const error = result?.error;
+    if (error) return local;
+    const payload = (data ?? {}) as { allowed?: boolean; retry_after?: number | null };
+    if (payload.allowed === false) {
+      return {
+        limited: true,
+        remaining: 0,
+        retryAfterSec: Math.max(1, Number(payload.retry_after ?? 60)),
+      };
+    }
+  } catch {
+    return local;
+  }
+
+  return local;
+}
+
 export function getRequestClientIp(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
@@ -96,8 +138,10 @@ export function classifyApiPath(pathname: string): ApiRateTier {
   if (
     p.startsWith("/api/stripe/") ||
     p.startsWith("/api/payments/") ||
+    p.startsWith("/api/wallet/") ||
     p.includes("checkout") ||
     p.includes("payout") ||
+    p.includes("cashout") ||
     p.includes("refund") ||
     p.startsWith("/api/orders/delivered-confirm") ||
     p.startsWith("/api/delivery-requests/delivered-confirm") ||
@@ -118,13 +162,18 @@ export function classifyApiPath(pathname: string): ApiRateTier {
 
   if (
     p.startsWith("/api/admin/login") ||
+    p.startsWith("/api/admin/staff-login-check") ||
     p.includes("sign-in") ||
     p.includes("password") ||
     p.startsWith("/api/push/") ||
     p.startsWith("/api/chat/") ||
     p.startsWith("/api/auth/transactional/") ||
     p.startsWith("/api/auth/phone") ||
-    p.startsWith("/api/sms/")
+    p.startsWith("/api/sms/") ||
+    p.startsWith("/api/ai/") ||
+    p.startsWith("/api/identity/") ||
+    p.startsWith("/api/twilio/calls/") ||
+    p.startsWith("/api/site/analytics")
   ) {
     return "auth_sensitive";
   }

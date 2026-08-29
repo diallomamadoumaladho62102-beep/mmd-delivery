@@ -22,6 +22,7 @@ test("deleted is not active", () => {
   assert.equal(isAccountActive("suspended"), false);
   assert.equal(isAccountActive("disabled"), false);
   assert.equal(isAccountActive("unknown"), false);
+  assert.equal(isAccountActive("banned"), false);
 });
 
 test("deleted block message is set", () => {

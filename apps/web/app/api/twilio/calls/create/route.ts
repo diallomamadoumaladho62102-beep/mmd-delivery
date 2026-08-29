@@ -10,6 +10,8 @@ import {
   type SourceTable,
 } from "@/lib/maskedCallCreate";
 import { normalizePhoneE164 } from "@/lib/phoneE164";
+import { toPublicMaskedCallSession } from "@/lib/publicMaskedCallSession";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 export const runtime = "nodejs";
 
@@ -188,6 +190,11 @@ export async function POST(req: NextRequest) {
       return jsonError("Invalid user token", 401);
     }
 
+    const account = await assertProfileActive(getSupabaseAdmin(), user.id);
+    if (account.ok === false) {
+      return NextResponse.json(inactiveAccountBody(account), { status: account.status });
+    }
+
     const body = await req.json().catch(() => null);
     const parsed = parseCreateMaskedCallBody(body);
 
@@ -316,7 +323,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      session,
+      session: toPublicMaskedCallSession(session, MMD_TWILIO_NUMBER),
       proxyNumber: MMD_TWILIO_NUMBER,
       sourceTable,
     });

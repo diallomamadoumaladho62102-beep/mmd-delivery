@@ -9,6 +9,7 @@ import {
 } from "@/lib/taxiApi";
 import { aiJson } from "@/lib/ai/aiJson";
 import type { AiRole } from "@/lib/ai/aiTypes";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 export type AiApiAuthSuccess = {
   ok: true;
@@ -68,6 +69,14 @@ export async function requireAiApiUser(
     return {
       ok: false,
       response: aiJson({ ok: false, error: "Invalid token", code: "UNAUTHORIZED" }, 401),
+    };
+  }
+
+  const account = await assertProfileActive(supabaseAdmin, user.id);
+  if (account.ok === false) {
+    return {
+      ok: false,
+      response: aiJson(inactiveAccountBody(account), account.status),
     };
   }
 

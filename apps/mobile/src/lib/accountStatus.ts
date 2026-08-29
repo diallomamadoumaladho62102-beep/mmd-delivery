@@ -2,7 +2,8 @@ export type AccountStatus =
   | "active"
   | "suspended"
   | "disabled"
-  | "deleted";
+  | "deleted"
+  | "banned";
 
 export function normalizeAccountStatus(
   value: string | null | undefined
@@ -11,7 +12,8 @@ export function normalizeAccountStatus(
   if (
     clean === "suspended" ||
     clean === "disabled" ||
-    clean === "deleted"
+    clean === "deleted" ||
+    clean === "banned"
   ) {
     return clean;
   }
@@ -30,6 +32,9 @@ export function accountStatusBlockMessage(
   const normalized = normalizeAccountStatus(status);
   if (normalized === "deleted") {
     return "Ce compte a été supprimé et ne peut plus être utilisé.";
+  }
+  if (normalized === "banned") {
+    return "Ce compte est banni. Contacte le support MMD Delivery.";
   }
   if (normalized === "suspended") {
     return "Votre compte est suspendu. Contactez le support MMD Delivery.";

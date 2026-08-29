@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getRequestClientIp } from "@/lib/apiRateLimit";
+import { resolveAuthorizedChatPushTarget } from "@/lib/chatPushTarget";
 import {
   afterOrderChatMessageSent,
   markOrderMessageDelivered,
@@ -8,6 +9,7 @@ import {
   sendOrderChatMessageViaRpc,
 } from "@/lib/chatMessageService";
 import { adjustUserPushBadge } from "@/lib/pushBadgeService";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { createClient } from "@supabase/supabase-js";
 
@@ -70,6 +72,24 @@ export async function POST(req: NextRequest) {
       return json({ ok: false, error: "Invalid user token" }, 401);
     }
 
+    const account = await assertProfileActive(admin, user.id);
+    if (account.ok === false) {
+      return json(inactiveAccountBody(account), account.status);
+    }
+
+    const pushTarget = await resolveAuthorizedChatPushTarget({
+      supabaseAdmin: admin,
+      orderId,
+      senderUserId: user.id,
+      targetUserId: targetUserId || null,
+    });
+    if (pushTarget.ok === false) {
+      return json(
+        { ok: false, error: pushTarget.error },
+        pushTarget.error === "access_check_failed" ? 503 : 403,
+      );
+    }
+
     const userClient = getUserSupabase(token);
     const sendResult = await sendOrderChatMessageViaRpc(
       userClient,
@@ -98,7 +118,7 @@ export async function POST(req: NextRequest) {
       supabaseAdmin: admin,
       orderId,
       senderUserId: user.id,
-      targetUserId: targetUserId || null,
+      targetUserId: pushTarget.targetUserId,
       targetRole: targetRole || null,
       preview: text || (imagePath ? "Photo" : null),
     });
@@ -133,6 +153,11 @@ export async function PATCH(req: NextRequest) {
 
     if (userError || !user?.id) {
       return json({ ok: false, error: "Invalid user token" }, 401);
+    }
+
+    const account = await assertProfileActive(admin, user.id);
+    if (account.ok === false) {
+      return json(inactiveAccountBody(account), account.status);
     }
 
     const userClient = getUserSupabase(token);

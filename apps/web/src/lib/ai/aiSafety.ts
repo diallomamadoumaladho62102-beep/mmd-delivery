@@ -60,6 +60,43 @@ export type AiGuardHistoryTurn = {
   content?: string;
 };
 
+const CLIENT_HISTORY_MAX_TURNS = 20;
+const CLIENT_HISTORY_MAX_CHARS = 2000;
+
+/**
+ * Client history is never an authority. Only sanitized user turns are kept.
+ * Assistant / system / tool roles from the client are dropped.
+ */
+export function sanitizeClientAiHistory(
+  history: unknown
+): Array<{ role: "user"; content: string }> {
+  if (!Array.isArray(history)) return [];
+
+  const sanitized: Array<{ role: "user"; content: string }> = [];
+  for (const raw of history) {
+    if (!raw || typeof raw !== "object") continue;
+    const turn = raw as AiGuardHistoryTurn;
+    const role = String(turn.role ?? "").trim().toLowerCase();
+    if (role !== "user") continue;
+    const content = String(turn.content ?? "").trim().slice(0, CLIENT_HISTORY_MAX_CHARS);
+    if (!content) continue;
+    sanitized.push({ role: "user", content });
+    if (sanitized.length >= CLIENT_HISTORY_MAX_TURNS) break;
+  }
+  return sanitized;
+}
+
+export function clientHistoryHasSpoofedRole(history: unknown): boolean {
+  if (!Array.isArray(history)) return false;
+  return history.some((raw) => {
+    if (!raw || typeof raw !== "object") return false;
+    const role = String((raw as AiGuardHistoryTurn).role ?? "")
+      .trim()
+      .toLowerCase();
+    return role === "system" || role === "tool" || role === "developer";
+  });
+}
+
 /** Canonical French refusal — also used as the default copy. */
 export const AI_REFUSAL_MESSAGE =
   "Je suis MMD AI. Je peux vous aider avec MMD Delivery, des sujets éducatifs, religieux, des informations générales utiles et la recherche de lieux publics. Je ne peux pas aider avec ce type de demande.";

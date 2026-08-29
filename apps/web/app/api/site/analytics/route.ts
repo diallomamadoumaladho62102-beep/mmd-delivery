@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const rate = checkRateLimit({
       namespace: "site-analytics",
       key: ip,
-      limit: 60,
+      limit: 20,
       windowMs: 60_000,
     });
     if (rate.limited) {

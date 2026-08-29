@@ -8,6 +8,8 @@ import {
   mmdLocationJson,
 } from "@/lib/mmdLocationCore";
 import { toUserFacingError } from "@/lib/userFacingError";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
+import { checkDistributedRateLimit, getRequestClientIp } from "@/lib/apiRateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +38,24 @@ export async function POST(req: NextRequest) {
   }
 
   const restaurantUserId = userData.user.id;
+  const supabaseAdminEarly = getSupabaseAdminClient();
+  const account = await assertProfileActive(supabaseAdminEarly, restaurantUserId);
+  if (account.ok === false) {
+    return mmdLocationJson(inactiveAccountBody(account), account.status);
+  }
+  const cashoutRate = await checkDistributedRateLimit({
+    supabaseAdmin: supabaseAdminEarly,
+    namespace: "wallet-cashout",
+    key: `${getRequestClientIp(req.headers)}:${restaurantUserId}`,
+    limit: 5,
+    windowMs: 60_000,
+  });
+  if (cashoutRate.limited) {
+    return mmdLocationJson(
+      { ok: false, error: "rate_limited", message: "Too many cash out attempts" },
+      429,
+    );
+  }
 
   let body: Record<string, unknown> = {};
   try {

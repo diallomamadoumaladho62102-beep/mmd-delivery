@@ -7,6 +7,7 @@ import {
   getSupabaseSecretKey,
   getSupabaseUrl,
 } from "@/lib/supabaseEnv";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
 export function taxiJson(body: Record<string, unknown>, status = 200) {
@@ -112,6 +113,11 @@ export async function requireTaxiApiUser(
 
   if (error || !user?.id) {
     return { ok: false, response: taxiJson({ error: "Invalid token" }, 401) };
+  }
+
+  const account = await assertProfileActive(supabaseAdmin, user.id);
+  if (account.ok === false) {
+    return { ok: false, response: taxiJson(inactiveAccountBody(account), account.status) };
   }
 
   return { ok: true, user, token, supabaseUser, supabaseAdmin };

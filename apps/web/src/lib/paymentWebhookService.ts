@@ -5,6 +5,7 @@ import {
   getPaymentTransactionByExternalReference,
   getPaymentTransactionById,
 } from "@/lib/paymentTransactionService";
+import { assertPaidAmountMatches } from "@/lib/paymentAmountMatch";
 
 /** After this age, a `processing` webhook claim is considered abandoned and may be reclaimed. */
 export const WEBHOOK_PROCESSING_STALE_SECONDS = 300;
@@ -141,6 +142,26 @@ export async function handleProviderWebhook(
           remote.status === "expired"
             ? remote.status
             : "processing";
+      } else {
+        const amountCheck = assertPaidAmountMatches({
+          expectedCents: Number(transaction.amount_cents ?? 0),
+          expectedCurrency: String(transaction.currency ?? ""),
+          provider,
+          payload: remote.payload,
+        });
+        if (amountCheck.ok === false) {
+          await finalizePaymentWebhookEvent(supabaseAdmin, {
+            eventId,
+            outcome: "failed",
+            paymentTransactionId: transaction.id,
+            lastError: amountCheck.error,
+          });
+          return {
+            ok: false as const,
+            status: 400,
+            error: amountCheck.error,
+          };
+        }
       }
     }
 

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getBearerToken, getSupabaseAdminClient, getSupabaseUserClient, mmdLocationJson } from "@/lib/mmdLocationCore";
+import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
 import { buildWorkerWalletSummary } from "@/lib/finance/workerWalletSummary";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
@@ -48,6 +49,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabaseAdmin = getSupabaseAdminClient();
+    const account = await assertProfileActive(supabaseAdmin, data.user.id);
+    if (account.ok === false) {
+      return mmdLocationJson(inactiveAccountBody(account), account.status);
+    }
 
     if (accountType === "driver") {
       const summary = await buildWorkerWalletSummary(supabaseAdmin, {

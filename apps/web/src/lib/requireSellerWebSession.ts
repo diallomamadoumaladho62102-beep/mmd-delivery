@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { isAccountActive } from "@/lib/accountStatus";
 
 export type SellerWebSession = {
   userId: string;
@@ -39,6 +40,16 @@ export async function requireSellerWebSession(): Promise<SellerWebSession> {
 
   const userId = auth.user.id;
   const admin = buildSupabaseAdminClient();
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("account_status")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!isAccountActive(profile?.account_status)) {
+    redirect("/login");
+  }
 
   const { data: seller } = await admin
     .from("sellers")
