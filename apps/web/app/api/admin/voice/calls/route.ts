@@ -54,8 +54,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const recentCalls = ((recentRaw ?? []) as AdminVoiceCallRow[]).map((row) =>
-      isStaleAdminVoiceCall(row) ? { ...row, status: "expired" } : row,
+    const recentSource = (recentRaw ?? []) as AdminVoiceCallRow[];
+    const staleIds = recentSource
+      .filter((row) => isStaleAdminVoiceCall(row))
+      .map((row) => row.id);
+    if (staleIds.length > 0) {
+      await supabase
+        .from("admin_voice_calls")
+        .update({
+          status: "expired",
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", staleIds);
+    }
+
+    const recentCalls = recentSource.map((row) =>
+      staleIds.includes(row.id) ? { ...row, status: "expired" } : row,
     );
 
     const eventsByCall = new Map<

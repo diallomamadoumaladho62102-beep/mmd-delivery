@@ -355,9 +355,11 @@ export function buildInboundAdminVoiceCallRow(params: {
 export function mapTwilioStatusToAdminVoice(
   twilioStatus: string,
   currentStatus: string | null | undefined,
+  options?: { isDialLeg?: boolean },
 ): string | null {
   const incoming = String(twilioStatus || "").trim().toLowerCase();
   const current = String(currentStatus || "").trim().toLowerCase();
+  const isDialLeg = options?.isDialLeg === true;
 
   let next: string | null = null;
   if (["queued", "initiated", "ringing"].includes(incoming)) next = "ringing";
@@ -365,7 +367,7 @@ export function mapTwilioStatusToAdminVoice(
   else if (incoming === "completed") next = "completed";
   else if (incoming === "busy" || incoming === "no-answer") next = "missed";
   else if (incoming === "failed") next = "failed";
-  else if (incoming === "canceled") next = "canceled";
+  else if (incoming === "canceled" || incoming === "cancelled") next = "canceled";
 
   if (!next) return null;
 
@@ -373,8 +375,10 @@ export function mapTwilioStatusToAdminVoice(
     return current === next ? next : null;
   }
 
+  // Parent in-progress is the IVR answering, not the admin picking up.
+  // Only the Dial child leg may leave in_ivr for ringing/answered.
   if (current === "in_ivr" && (next === "ringing" || next === "answered")) {
-    return "in_ivr";
+    return isDialLeg ? next : "in_ivr";
   }
 
   if (current === "transferred" && (next === "ringing" || next === "answered")) {
@@ -408,7 +412,7 @@ export function displayAdminVoiceStatus(status: string | null | undefined): stri
     case "expired":
       return "Expired";
     case "canceled":
-      return "Missed";
+      return "Cancelled";
     default:
       return "Incoming";
   }
@@ -528,6 +532,42 @@ export async function redirectTwilioParentCall(params: {
       ok: false,
       status: response.status >= 400 && response.status < 600 ? 502 : 500,
       error: "Unable to redirect the live call",
+    };
+  }
+
+  return { ok: true, status: 200 };
+}
+
+export async function hangupTwilioCall(params: {
+  accountSid: string;
+  authToken: string;
+  callSid: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ ok: boolean; status: number; error?: string }> {
+  const callSid = String(params.callSid || "").trim();
+  if (!callSid) {
+    return { ok: false, status: 400, error: "Missing Twilio Call SID" };
+  }
+  const fetchImpl = params.fetchImpl ?? fetch;
+  const auth = Buffer.from(`${params.accountSid}:${params.authToken}`).toString("base64");
+  const url = buildTwilioCallUpdateUrl(params.accountSid, callSid);
+  const body = new URLSearchParams({ Status: "completed" });
+
+  const response = await fetchImpl(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body.toString(),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status >= 400 && response.status < 600 ? 502 : 500,
+      error: "Unable to end the live call",
     };
   }
 
@@ -678,7 +718,9 @@ export async function applyAdminVoiceStatusCallback(params: {
     return { callId: null, status: null };
   }
 
-  const nextStatus = mapTwilioStatusToAdminVoice(params.callStatus, row.status);
+  const nextStatus = mapTwilioStatusToAdminVoice(params.callStatus, row.status, {
+    isDialLeg: Boolean(dialCallSid),
+  });
   const patch: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
   };

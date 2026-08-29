@@ -59,6 +59,7 @@ import {
   stopDriverMissionAlertService,
 } from "../lib/driverMissionAlertService";
 import { RestaurantOrderAlertBanner } from "../components/RestaurantOrderAlertBanner";
+import IncomingMaskedCallHost from "../components/calls/IncomingMaskedCallHost";
 
 export type RootStackParamList = {
   RoleSelect: undefined;
@@ -1846,6 +1847,7 @@ export function AppNavigator({
         navRef.current?.navigate("RestaurantOrderDetails", { orderId });
       }}
     />
+    <IncomingMaskedCallHost />
     </View>
   );
 }

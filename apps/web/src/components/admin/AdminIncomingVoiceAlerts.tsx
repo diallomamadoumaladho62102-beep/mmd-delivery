@@ -1,9 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { adminFetch, type ResolvedStaffSession } from "@/lib/adminBrowserAuth";
+import {
+  adminVoicePhase,
+  ADMIN_VOICE_HOLD_SUPPORTED,
+  formatLiveCallClock,
+} from "@/lib/adminVoiceCallControl";
+import { createAdminVoiceRingingController } from "@/lib/adminVoiceRinging";
 import {
   adminVoiceServiceLabel,
   shouldAlertIncomingAdminVoice,
@@ -26,6 +30,7 @@ type ActiveCall = {
   fromPhone: string | null;
   service: string | null;
   createdAt: string | null;
+  assignedAdminUserId?: string | null;
 };
 
 const AUDIO_UNLOCK_KEY = "mmd_admin_voice_audio_unlocked";
@@ -35,8 +40,6 @@ export default function AdminIncomingVoiceAlerts({
 }: {
   session: ResolvedStaffSession | null;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
   const canListen = Boolean(
     session &&
       sessionHasPermission(
@@ -50,9 +53,17 @@ export default function AdminIncomingVoiceAlerts({
   const [authorizedAdminCount, setAuthorizedAdminCount] = useState(0);
   const [transferTarget, setTransferTarget] = useState<Record<string, string>>({});
   const [transferringId, setTransferringId] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
   const [audioBlocked, setAudioBlocked] = useState(true);
   const [realtimeDegraded, setRealtimeDegraded] = useState(false);
-  const ringingRef = useRef(false);
+  const [acceptedIds, setAcceptedIds] = useState<Record<string, true>>({});
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const ringing = useRef(
+    createAdminVoiceRingingController({
+      start: () => mmdAudio.startLongRing("driver"),
+      stop: () => mmdAudio.stopLongRing(),
+    }),
+  );
 
   const loadCalls = useCallback(async () => {
     if (!canListen) return;
@@ -79,6 +90,7 @@ export default function AdminIncomingVoiceAlerts({
     if (!canListen) return;
     void loadCalls();
     const poll = window.setInterval(() => void loadCalls(), 4000);
+    const clock = window.setInterval(() => setNowMs(Date.now()), 1000);
     const channel = supabase
       .channel("admin-incoming-voice")
       .on(
@@ -99,17 +111,32 @@ export default function AdminIncomingVoiceAlerts({
       });
     return () => {
       window.clearInterval(poll);
+      window.clearInterval(clock);
       void supabase.removeChannel(channel);
-      mmdAudio.stopLongRing();
-      ringingRef.current = false;
+      ringing.current.stopAll();
     };
   }, [canListen, loadCalls]);
 
-  const incomingCalls = useMemo(
-    () => calls.filter((call) => shouldAlertIncomingAdminVoice(call.status)),
+  const visibleCalls = useMemo(
+    () =>
+      calls.filter((call) => {
+        const phase = adminVoicePhase(call.status);
+        return phase === "incoming" || phase === "connecting" || phase === "connected";
+      }),
     [calls],
   );
-  const shouldRing = incomingCalls.length > 0;
+
+  const shouldRing = visibleCalls.some((call) => {
+    const phase = adminVoicePhase(call.status);
+    if (acceptedIds[call.id] || phase === "connected" || phase === "ended") {
+      return false;
+    }
+    return (
+      shouldAlertIncomingAdminVoice(call.status) ||
+      phase === "incoming" ||
+      phase === "connecting"
+    );
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -119,31 +146,39 @@ export default function AdminIncomingVoiceAlerts({
   }, []);
 
   useEffect(() => {
-    if (!shouldRing) {
-      mmdAudio.stopLongRing();
-      ringingRef.current = false;
-      return;
-    }
-    if (audioBlocked) return;
-    if (ringingRef.current) return;
-    ringingRef.current = true;
-    try {
-      mmdAudio.startLongRing("driver");
-    } catch {
-      setAudioBlocked(true);
-      ringingRef.current = false;
-    }
+    ringing.current.sync({ shouldRing, audioBlocked });
   }, [audioBlocked, shouldRing]);
 
   async function unlockAudio() {
     try {
       mmdAudio.unlockOnInteraction();
-      mmdAudio.startLongRing("driver");
-      if (!shouldRing) mmdAudio.stopLongRing();
+      if (shouldRing) mmdAudio.startLongRing("driver");
+      if (!shouldRing) ringing.current.stopAll();
       window.sessionStorage.setItem(AUDIO_UNLOCK_KEY, "1");
       setAudioBlocked(false);
     } catch {
       setAudioBlocked(true);
+    }
+  }
+
+  async function runAction(callId: string, action: "accept" | "decline" | "end") {
+    try {
+      setActingId(callId);
+      if (action === "accept" || action === "decline" || action === "end") {
+        ringing.current.stopAll();
+      }
+      if (action === "accept") {
+        setAcceptedIds((current) => ({ ...current, [callId]: true }));
+      }
+      const response = await adminFetch(`/api/admin/voice/calls/${callId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      await response.json().catch(() => null);
+      await loadCalls();
+    } finally {
+      setActingId(null);
     }
   }
 
@@ -164,10 +199,10 @@ export default function AdminIncomingVoiceAlerts({
     }
   }
 
-  if (!canListen || incomingCalls.length === 0) return null;
+  if (!canListen || visibleCalls.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed right-4 top-[88px] z-50 w-[min(100%-2rem,380px)] space-y-3">
+    <div className="pointer-events-none fixed inset-x-4 top-[72px] z-50 mx-auto w-[min(100%,440px)] space-y-3 sm:right-4 sm:left-auto sm:mx-0">
       {audioBlocked ? (
         <button
           type="button"
@@ -184,37 +219,85 @@ export default function AdminIncomingVoiceAlerts({
         </p>
       ) : null}
 
-      {incomingCalls.map((call) => (
-        <section
-          key={call.id}
-          className="pointer-events-auto rounded-2xl border-2 border-red-500 bg-white p-4 shadow-2xl"
-          role="status"
-          aria-live="assertive"
-        >
-          <p className="text-sm font-extrabold tracking-wide text-red-700">
-            🔴 INCOMING MMD SUPPORT CALL
-          </p>
-          <p className="mt-2 text-sm text-slate-800">
-            Caller: {call.fromPhone || "Unknown"}
-          </p>
-          <p className="text-sm text-slate-800">
-            Service: {adminVoiceServiceLabel(call.service)}
-          </p>
-          <p className="text-sm text-slate-800">
-            Status: {call.displayStatus || call.status}
-          </p>
-          <div className="mt-3 flex flex-col gap-2">
-            <Link
-              href="/admin/calls"
-              className="rounded-xl bg-slate-900 px-3 py-2 text-center text-sm font-semibold text-white"
-              onClick={() => {
-                if (pathname === "/admin/calls") router.refresh();
-              }}
-            >
-              OPEN CALL
-            </Link>
+      {visibleCalls.map((call) => {
+        const phase = adminVoicePhase(call.status);
+        const claimed = Boolean(acceptedIds[call.id] || call.assignedAdminUserId);
+        const incoming = phase === "incoming" || (phase === "connecting" && !claimed);
+        const connected = phase === "connected";
+        const startedMs = call.createdAt ? new Date(call.createdAt).getTime() : null;
+
+        return (
+          <section
+            key={call.id}
+            className="pointer-events-auto rounded-3xl border-2 border-red-500 bg-white p-5 shadow-2xl"
+            role="alertdialog"
+            aria-live="assertive"
+            aria-label={incoming ? "Incoming call" : "Active call"}
+          >
+            <p className="text-xs font-extrabold uppercase tracking-wide text-red-700">
+              {incoming ? "Incoming Call" : connected ? "Call in progress" : "Connecting"}
+            </p>
+            <p className="mt-2 text-2xl font-extrabold text-slate-900">
+              {call.fromPhone || "Unknown caller"}
+            </p>
+            <p className="text-base font-semibold text-slate-700">
+              MMD Support · {adminVoiceServiceLabel(call.service)}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              {incoming
+                ? "Incoming call..."
+                : connected
+                  ? `Call with ${call.fromPhone || "caller"}`
+                  : "Pick up your phone to connect. Web ringing has stopped."}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              Status: {call.displayStatus || call.status}
+              {connected ? ` · ${formatLiveCallClock(startedMs, nowMs)}` : null}
+            </p>
+
+            {incoming ? (
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={actingId === call.id}
+                  onClick={() => void runAction(call.id, "decline")}
+                  aria-label="Decline call"
+                  className="min-h-14 rounded-2xl bg-red-600 px-4 py-4 text-lg font-extrabold text-white shadow-sm disabled:opacity-60"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  disabled={actingId === call.id}
+                  onClick={() => void runAction(call.id, "accept")}
+                  aria-label="Accept call"
+                  className="min-h-14 rounded-2xl bg-emerald-600 px-4 py-4 text-lg font-extrabold text-white shadow-sm disabled:opacity-60"
+                >
+                  Accept
+                </button>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {ADMIN_VOICE_HOLD_SUPPORTED ? null : (
+                  <p className="text-xs text-slate-500">
+                    Hold / Resume is not available on PSTN support calls. Mute and
+                    speaker are controlled on the phone that answered.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={actingId === call.id}
+                  onClick={() => void runAction(call.id, "end")}
+                  aria-label="End call"
+                  className="min-h-14 w-full rounded-2xl bg-red-600 px-4 py-4 text-lg font-extrabold text-white shadow-sm disabled:opacity-60"
+                >
+                  End Call
+                </button>
+              </div>
+            )}
+
             {destinations.length > 0 ? (
-              <div className="flex gap-2">
+              <div className="mt-3 flex gap-2">
                 <select
                   value={transferTarget[call.id] ?? ""}
                   onChange={(event) =>
@@ -223,7 +306,8 @@ export default function AdminIncomingVoiceAlerts({
                       [call.id]: event.target.value,
                     }))
                   }
-                  className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  aria-label="Transfer destination"
                 >
                   <option value="">Choose an admin…</option>
                   {destinations.map((destination) => (
@@ -234,25 +318,23 @@ export default function AdminIncomingVoiceAlerts({
                 </select>
                 <button
                   type="button"
-                  disabled={
-                    !transferTarget[call.id] || transferringId === call.id
-                  }
+                  disabled={!transferTarget[call.id] || transferringId === call.id}
                   onClick={() => void transferCall(call.id)}
-                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"
                 >
                   TRANSFER
                 </button>
               </div>
             ) : (
-              <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                 {authorizedAdminCount <= 1
-                  ? "Seul administrateur autorisé — décrochez le téléphone pour répondre. Le transfert vers un second admin n’est pas encore configuré."
+                  ? "Seul administrateur autorisé — décrochez le téléphone pour parler. Accept arrête la sonnerie web."
                   : "Aucun autre administrateur éligible n’est disponible pour un transfert."}
               </p>
             )}
-          </div>
-        </section>
-      ))}
+          </section>
+        );
+      })}
     </div>
   );
 }

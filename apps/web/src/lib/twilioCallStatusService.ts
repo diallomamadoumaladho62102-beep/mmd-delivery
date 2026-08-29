@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { callSessionPersistPatch } from "./callSessionDisplay";
 import { mapTwilioCallStatus } from "./chatReceiptStatus";
 import { normalizePhoneE164, phonesEquivalent } from "./phoneE164";
 
@@ -46,7 +47,7 @@ export type TwilioStatusCallbackInput = {
 export async function applyTwilioStatusCallback(params: {
   supabaseAdmin: SupabaseClient;
   input: TwilioStatusCallbackInput;
-}): Promise<{ sessionId: string | null; mappedStatus: MappedCallStatus }> {
+}): Promise<{ sessionId: string | null; mappedStatus: MappedCallStatus | "expired" }> {
   const { supabaseAdmin, input } = params;
   const mappedStatus = mapTwilioCallStatus(input.callStatus);
   const now = new Date().toISOString();
@@ -58,7 +59,9 @@ export async function applyTwilioStatusCallback(params: {
 
     const { data: sessions } = await supabaseAdmin
       .from("call_sessions")
-      .select("id, status, started_at, answered_at, caller_phone, twilio_call_sid")
+      .select(
+        "id, status, started_at, answered_at, ended_at, expires_at, caller_phone, twilio_call_sid",
+      )
       .order("created_at", { ascending: false })
       .limit(25);
 
@@ -84,9 +87,41 @@ export async function applyTwilioStatusCallback(params: {
       status?: string | null;
       started_at?: string | null;
       answered_at?: string | null;
+      ended_at?: string | null;
+      expires_at?: string | null;
     } | null;
 
     sessionId = sessionRow?.id ?? null;
+
+    const stalePatch = sessionRow
+      ? callSessionPersistPatch({
+          status: sessionRow.status,
+          ended_at: sessionRow.ended_at,
+          expires_at: sessionRow.expires_at,
+        })
+      : null;
+
+    if (sessionId && stalePatch) {
+      await supabaseAdmin.from("call_sessions").update(stalePatch).eq("id", sessionId);
+      if (!mappedStatus || statusRank(mappedStatus) < statusRank("expired")) {
+        await supabaseAdmin.from("call_events").insert({
+          call_session_id: sessionId,
+          twilio_call_sid: input.callSid || null,
+          dial_call_sid: input.dialCallSid || null,
+          event_source: "status_callback",
+          twilio_status: input.callStatus || "unknown",
+          mapped_status: "expired",
+          from_phone: input.fromPhone || null,
+          to_phone: input.toPhone || null,
+          duration_seconds: Number.isFinite(input.durationSeconds)
+            ? input.durationSeconds
+            : null,
+          failure_code: input.errorCode || null,
+          payload: input.payload,
+        });
+        return { sessionId, mappedStatus: "expired" as MappedCallStatus };
+      }
+    }
 
     if (sessionId && mappedStatus && shouldApplyStatusUpdate(sessionRow?.status, mappedStatus)) {
       const update: Record<string, unknown> = {

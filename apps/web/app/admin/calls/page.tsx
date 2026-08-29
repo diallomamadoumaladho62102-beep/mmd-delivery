@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { canAccessCommunication } from "@/lib/adminAccess";
 import { adminVoiceServiceLabel } from "@/lib/adminVoiceIvr";
+import {
+  formatCallSessionDuration,
+  isCallSessionLive,
+  resolveCallSessionDisplayStatus,
+} from "@/lib/callSessionDisplay";
 import { normalizeUserRole } from "@/lib/roles";
 
 type CallRole = "client" | "driver" | "restaurant" | "admin";
@@ -24,9 +29,11 @@ type CallSessionRow = {
   twilio_call_sid: string | null;
   status: string | null;
   started_at: string | null;
+  answered_at?: string | null;
   ended_at: string | null;
   expires_at: string | null;
   created_at: string | null;
+  duration_seconds?: number | null;
 };
 
 type ProfileRow = {
@@ -138,38 +145,20 @@ function statusClass(status: string | null | undefined): string {
 }
 
 function isExpired(row: CallSessionRow): boolean {
-  if (!row.expires_at) return false;
-  const expires = new Date(row.expires_at).getTime();
-  return Number.isFinite(expires) && expires < Date.now() && !row.ended_at;
+  return resolveCallSessionDisplayStatus(row) === "expired";
 }
 
 function isEnded(row: CallSessionRow): boolean {
-  const status = normalizeStatus(row.status);
-  return Boolean(row.ended_at) || ["completed", "ended", "failed", "busy", "no-answer", "canceled", "cancelled"].includes(status);
+  const display = resolveCallSessionDisplayStatus(row);
+  return ["completed", "ended", "failed", "busy", "no-answer", "canceled", "cancelled", "missed", "declined"].includes(display);
 }
 
 function isActive(row: CallSessionRow): boolean {
-  if (isEnded(row) || isExpired(row)) return false;
-  const status = normalizeStatus(row.status);
-  return ["active", "in_progress", "ringing", "queued", "initiated", "created", "pending"].includes(status);
+  return isCallSessionLive(row);
 }
 
 function durationLabel(row: CallSessionRow): string {
-  const startRaw = row.started_at ?? row.created_at;
-  if (!startRaw) return "—";
-
-  const start = new Date(startRaw).getTime();
-  const end = row.ended_at ? new Date(row.ended_at).getTime() : Date.now();
-
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-    return "—";
-  }
-
-  const totalSeconds = Math.floor((end - start) / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+  return formatCallSessionDuration(row);
 }
 
 export default function AdminCallsPage() {
@@ -288,9 +277,11 @@ export default function AdminCallsPage() {
           twilio_call_sid,
           status,
           started_at,
+          answered_at,
           ended_at,
           expires_at,
-          created_at
+          created_at,
+          duration_seconds
         `,
         )
         .order("created_at", { ascending: false })
@@ -334,6 +325,47 @@ export default function AdminCallsPage() {
       setLoading(false);
     }
   }, [router]);
+
+  const voiceAction = useCallback(async (
+    callId: string,
+    action: "accept" | "decline" | "end",
+  ) => {
+    try {
+      setTransferringCallId(callId);
+      setVoiceErr(null);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        setVoiceErr("Session admin expirée. Reconnecte-toi.");
+        return;
+      }
+      const response = await fetch(`/api/admin/voice/calls/${callId}/action`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      });
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!response.ok || !json?.ok) {
+        setVoiceErr(json?.error || "L’action d’appel a échoué.");
+        return;
+      }
+      await loadPage();
+    } catch (error) {
+      setVoiceErr(
+        error instanceof Error ? error.message : "L’action d’appel a échoué.",
+      );
+    } finally {
+      setTransferringCallId(null);
+    }
+  }, [loadPage]);
 
   const transferCall = useCallback(async (callId: string) => {
     const destinationUserId = transferTargetByCall[callId];
@@ -606,6 +638,39 @@ export default function AdminCallsPage() {
                     </div>
 
                     <div className="flex min-w-full flex-col gap-2 sm:flex-row lg:min-w-[420px]">
+                      {call.status === "in_ivr" ||
+                      call.status === "ringing" ||
+                      call.status === "incoming" ? (
+                        <div className="flex w-full gap-2">
+                          <button
+                            type="button"
+                            aria-label="Decline call"
+                            onClick={() => void voiceAction(call.id, "decline")}
+                            className="min-h-12 flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-extrabold text-white"
+                          >
+                            Decline
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Accept call"
+                            onClick={() => void voiceAction(call.id, "accept")}
+                            className="min-h-12 flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-extrabold text-white"
+                          >
+                            Accept
+                          </button>
+                        </div>
+                      ) : call.status === "answered" ||
+                        call.status === "in_progress" ||
+                        call.status === "transferred" ? (
+                        <button
+                          type="button"
+                          aria-label="End call"
+                          onClick={() => void voiceAction(call.id, "end")}
+                          className="min-h-12 rounded-xl bg-red-600 px-4 py-3 text-sm font-extrabold text-white"
+                        >
+                          End Call
+                        </button>
+                      ) : null}
                       {voiceDestinations.length > 0 ? (
                         <>
                           <select
@@ -769,6 +834,7 @@ export default function AdminCallsPage() {
         ) : (
           <section className="space-y-4">
             {filteredCalls.map((call) => {
+              const displayStatus = resolveCallSessionDisplayStatus(call);
               const caller = call.caller_user_id
                 ? profilesById.get(call.caller_user_id)
                 : null;
@@ -790,23 +856,11 @@ export default function AdminCallsPage() {
 
                         <span
                           className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(
-                            call.status,
+                            displayStatus,
                           )}`}
                         >
-                          {normalizeStatus(call.status)}
+                          {displayStatus}
                         </span>
-
-                        {isExpired(call) && (
-                          <span className="inline-flex rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
-                            Expiré
-                          </span>
-                        )}
-
-                        {isActive(call) && (
-                          <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
-                            En cours
-                          </span>
-                        )}
                       </div>
 
                       <div className="grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-2">

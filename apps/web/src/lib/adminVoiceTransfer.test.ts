@@ -403,6 +403,14 @@ test("transferred calls keep transferred status until the parent call ends", () 
   assert.equal(mapTwilioStatusToAdminVoice("in-progress", "transferred"), "transferred");
   assert.equal(mapTwilioStatusToAdminVoice("ringing", "in_ivr"), "in_ivr");
   assert.equal(mapTwilioStatusToAdminVoice("in-progress", "in_ivr"), "in_ivr");
+  assert.equal(
+    mapTwilioStatusToAdminVoice("ringing", "in_ivr", { isDialLeg: true }),
+    "ringing",
+  );
+  assert.equal(
+    mapTwilioStatusToAdminVoice("answered", "in_ivr", { isDialLeg: true }),
+    "answered",
+  );
   assert.equal(mapTwilioStatusToAdminVoice("completed", "transferred"), "completed");
   assert.equal(mapTwilioStatusToAdminVoice("completed", "completed"), "completed");
   assert.equal(mapTwilioStatusToAdminVoice("ringing", "completed"), null);
