@@ -70,7 +70,7 @@
     "react-native-web": "^0.21.0"
   },
   "devDependencies": {
-    "@expo/cli": "^54.0.16",
+    "@expo/cli": "^57.0.19",
     "@types/geojson": "^7946.0.16",
     "@types/react": "~19.1.10",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
