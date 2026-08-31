@@ -1,35 +1,24 @@
-# Dependabot: `image-size` (HIGH) — CVE-2025-71329 / CVE-2025-71330
+# `image-size` (CVE-2025-71329 / CVE-2025-71330)
 
-**Alerts:** #170 (GHSA-5p2g-fcmc-qvqq / CVE-2025-71329 JXL/HEIF), #171 (GHSA-w3rx-r6r6-pgpr / CVE-2025-71330 ICNS)  
-**Package:** `image-size` (transitive via Metro / Expo)  
-**Vulnerable published range:** `<= 2.0.2`  
-**Official patched npm version:** **none** (latest remains `2.0.2`, still in the advisory range)
+**Official npm patched version:** none (`image-size` latest remains `2.0.2`, still in the advisory range). Do **not** bump to `2.0.2` and do **not** swap to `image-size-next` without a Metro/Expo compatibility proof.
 
-## Fix in this repo (keep until upstream publishes a patched release)
+## Fix in this repo (Expo SDK 54)
 
-1. pnpm override pins `image-size@1.2.1` (do **not** bump to 2.0.2).
-2. pnpm patch `patches/image-size@1.2.1.patch` is declared in `package.json` → `pnpm.patchedDependencies`.
-3. The lockfile records `image-size@1.2.1(patch_hash=…)`.
-4. Patch contents:
-   - **CVE-2025-71330** — ICNS: abort the loop if an entry length is missing or `< 8`.
-   - **CVE-2025-71329** — JXL/HEIF: always advance at least 8 bytes on zero-sized boxes.
+Metro **0.83.8** (same 0.83.x line as Expo 54 / RN 0.81) [vendored image parsers and dropped the `image-size` dependency](https://github.com/facebook/metro/releases/tag/v0.83.8). Root `pnpm.overrides` pin the whole `metro*` family to `0.83.8`. After `pnpm install --frozen-lockfile`:
+
+- `require('metro/package.json').version === '0.83.8'`
+- `image-size` is **absent** from `pnpm-lock.yaml` and `node_modules`
+
+This is **not** Expo 55 and **not** React Native 0.84. Expo stays `~54.0.36`; React Native stays `0.81.5`.
+
+`patches/image-size@1.2.1.patch` is kept on disk as a fallback only. It is **not** in `pnpm.patchedDependencies` because `image-size` is no longer installed.
+
+## Expo 55 is not a fix for this CVE
+
+`expo@55.0.16` ships `@expo/metro` → `metro@0.83.6`, which still depends on `image-size@^1.0.2`. Do not bump Expo to “clear Snyk”.
 
 ## Reproducibility
-
-A clean install **without** the workspace `node_modules` is proven by:
 
 ```bash
 node scripts/image-size-clean-install.regression.test.mjs
 ```
-
-That test copies only `package.json` patch config + the patch file into a temp directory, runs `pnpm install --ignore-workspace`, and asserts the installed `icns.js` / `jxl.js` contain the CVE guards.
-
-CI runs the same script after `pnpm install --frozen-lockfile`.
-
-## Dependabot UI
-
-GitHub Dependabot keys on the **published version** (`1.2.1`), not on a local pnpm patch. Alerts #170/#171 may remain open in the GitHub UI even though the installed code is patched. **Do not drop the patch** just to silence Dependabot — that would reintroduce the infinite-loop DoS.
-
-## Status
-
-**Mitigated in-repo** via override + pnpm patch. Re-check `npm view image-size` before replacing the patch with an official version. Only switch if a **compatible** release exists whose advisory `first_patched_version` is published and Metro/Expo still resolve to it.

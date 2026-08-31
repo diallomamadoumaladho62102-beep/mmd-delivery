@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Prove image-size patch on clean install
+      - name: Prove metro 0.83.8 removed image-size (Expo 54 / Apple #121 intact)
         run: node scripts/image-size-clean-install.regression.test.mjs
 
       - name: Typecheck web
@@ -59,7 +59,7 @@ jobs:
       - name: Secret scan
         run: node scripts/secret-scan.mjs
 
-      - name: Dependency audit (high/critical, image-size pin documented)
+      - name: Dependency audit (high/critical)
         run: node scripts/dependency-audit.mjs
 
       - name: Security layer files
