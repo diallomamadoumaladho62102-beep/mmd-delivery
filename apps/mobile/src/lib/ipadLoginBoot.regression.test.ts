@@ -7,6 +7,7 @@ import {
   BOOT_AUTH_TIMEOUT_MS,
   BOOT_FONT_TIMEOUT_MS,
   BOOT_SHELL_TIMEOUT_MS,
+  CLIENT_HOME_FETCH_TIMEOUT_MS,
   withTimeout,
 } from "./bootFailOpen";
 
@@ -105,6 +106,20 @@ test("boot timeout constants are finite and sane", () => {
   assert.ok(BOOT_AUTH_TIMEOUT_MS >= 3000 && BOOT_AUTH_TIMEOUT_MS <= 15_000);
   assert.ok(BOOT_FONT_TIMEOUT_MS >= 2000 && BOOT_FONT_TIMEOUT_MS <= 10_000);
   assert.ok(BOOT_SHELL_TIMEOUT_MS >= 5000 && BOOT_SHELL_TIMEOUT_MS <= 20_000);
+  assert.ok(
+    CLIENT_HOME_FETCH_TIMEOUT_MS >= 3000 &&
+      CLIENT_HOME_FETCH_TIMEOUT_MS <= 15_000,
+  );
+});
+
+test("ClientHome fetch uses fail-open timeout", () => {
+  const src = fs.readFileSync(
+    path.join(mobileRoot, "src/screens/ClientHomeScreen.tsx"),
+    "utf8",
+  );
+  assert.match(src, /CLIENT_HOME_FETCH_TIMEOUT_MS/);
+  assert.match(src, /client_home_fetch/);
+  assert.match(src, /withTimeout\(/);
 });
 
 void withTimeout(Promise.resolve(true), 50, "unit_ok").then((v) => {
