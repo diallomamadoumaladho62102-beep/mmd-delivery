@@ -11,6 +11,10 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_HOME_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import {
   subscribePostgresChannel,
@@ -937,13 +941,49 @@ export function ClientHomeScreen() {
           setRecentActivityUnavailable(false);
         }
 
-        const { data: sessionData, error: sessionError } =
-          await supabase.auth.getSession();
+        const loaded = await withTimeout(
+          (async () => {
+            const { data: sessionData, error: sessionError } =
+              await supabase.auth.getSession();
 
-        if (sessionError) throw sessionError;
+            if (sessionError) throw sessionError;
 
-        const session = sessionData?.session;
-        if (!session) {
+            const session = sessionData?.session;
+            if (!session) {
+              return { kind: "no-session" as const };
+            }
+
+            const results = await Promise.all([
+              fetchAllForUser(session.user.id),
+              fetchLoyaltySummary("client").catch(() => null),
+              fetchClientAdvertisements({
+                placement: "client_home",
+                country: market.countryCode || null,
+                city: null,
+                language: (i18n.language || "en").split("-")[0],
+                limit: 12,
+              }).catch(() => []),
+              supabase
+                .from("client_profiles")
+                .select(
+                  "avatar_url, full_name, updated_at, city, state, address",
+                )
+                .eq("user_id", session.user.id)
+                .maybeSingle(),
+              supabase
+                .from("profiles")
+                .select("avatar_url, full_name, updated_at")
+                .eq("id", session.user.id)
+                .maybeSingle(),
+            ]);
+
+            return { kind: "ok" as const, session, results };
+          })(),
+          CLIENT_HOME_FETCH_TIMEOUT_MS,
+          "client_home_fetch",
+        );
+
+        if (loaded.kind === "no-session") {
           if (!isMountedRef.current) return;
 
           setError({
@@ -955,6 +995,15 @@ export function ClientHomeScreen() {
           setDisplayName("");
           return;
         }
+
+        const { session, results } = loaded;
+        const [
+          { items: mergedItems, hadFetchIssue },
+          loyalty,
+          ads,
+          clientProfileRes,
+          baseProfileRes,
+        ] = results;
 
         const user = session.user;
         const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
@@ -972,34 +1021,6 @@ export function ClientHomeScreen() {
           (typeof meta.photoURL === "string" && meta.photoURL) ||
           (typeof meta.photo_url === "string" && meta.photo_url) ||
           null;
-
-        const [
-          { items: mergedItems, hadFetchIssue },
-          loyalty,
-          ads,
-          clientProfileRes,
-          baseProfileRes,
-        ] = await Promise.all([
-          fetchAllForUser(user.id),
-          fetchLoyaltySummary("client").catch(() => null),
-          fetchClientAdvertisements({
-            placement: "client_home",
-            country: market.countryCode || null,
-            city: null,
-            language: (i18n.language || "en").split("-")[0],
-            limit: 12,
-          }),
-          supabase
-            .from("client_profiles")
-            .select("avatar_url, full_name, updated_at, city, state, address")
-            .eq("user_id", user.id)
-            .maybeSingle(),
-          supabase
-            .from("profiles")
-            .select("avatar_url, full_name, updated_at")
-            .eq("id", user.id)
-            .maybeSingle(),
-        ]);
 
         if (!isMountedRef.current) return;
 
@@ -1037,12 +1058,17 @@ export function ClientHomeScreen() {
 
         console.log("client home fetch error:", e);
         setRecentActivityUnavailable(true);
+        const timedOut =
+          e instanceof Error && /_timeout_\d+ms$/.test(e.message);
         setError({
           key: "client.home.errors.loadFailed",
           fallback:
-            e instanceof Error
-              ? e.message
-              : ts("client.home.errors.loadFailed", "Unable to load your recent activity."),
+            timedOut || !(e instanceof Error)
+              ? ts(
+                  "client.home.errors.loadFailed",
+                  "Unable to load your recent activity.",
+                )
+              : e.message,
         });
       } finally {
         fetchInFlightRef.current = false;

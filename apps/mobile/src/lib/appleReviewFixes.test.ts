@@ -286,6 +286,19 @@ test("StripeGate does not load Stripe native views on Login", () => {
   assert.match(src, /LazyStripeTree/);
 });
 
+test("Client Home fetch fail-open cannot leave branded loader forever", () => {
+  const boot = read("apps/mobile/src/lib/bootFailOpen.ts");
+  assert.match(boot, /CLIENT_HOME_FETCH_TIMEOUT_MS\s*=\s*8_000/);
+
+  const home = read("apps/mobile/src/screens/ClientHomeScreen.tsx");
+  assert.match(home, /CLIENT_HOME_FETCH_TIMEOUT_MS/);
+  assert.match(home, /withTimeout\(/);
+  assert.match(home, /client_home_fetch/);
+  assert.match(home, /fetchClientAdvertisements\(/);
+  assert.match(home, /\.catch\(\(\) => \[\]\)/);
+  assert.match(home, /setLoading\(false\)/);
+});
+
 test("DriverAuth does not statically import native image picker", () => {
   const src = read("apps/mobile/src/screens/DriverAuthScreen.tsx");
   assert.doesNotMatch(src, /from ["']expo-image-picker["']/);
