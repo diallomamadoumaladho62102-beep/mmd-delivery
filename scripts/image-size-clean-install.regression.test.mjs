@@ -6,8 +6,7 @@
  * only — it is no longer in pnpm.patchedDependencies because image-size is
  * not installed.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 
@@ -18,7 +17,6 @@ const MOBILE_PKG = join(ROOT, "apps", "mobile", "package.json");
 const LOCK = join(ROOT, "pnpm-lock.yaml");
 const BOOT = join(ROOT, "apps", "mobile", "src", "lib", "bootFailOpen.ts");
 const HOME = join(ROOT, "apps", "mobile", "src", "screens", "ClientHomeScreen.tsx");
-const require = createRequire(import.meta.url);
 
 function test(name, fn) {
   try {
@@ -56,8 +54,48 @@ test("lockfile installs metro@0.83.8 and no image-size package", () => {
   assert.doesNotMatch(lock, /image-size:/);
 });
 
+/**
+ * pnpm on GitHub CI does not hoist metro to node_modules/metro.
+ * Resolve the installed package.json from the virtual store without require().
+ */
+function findInstalledMetroPackageJson() {
+  const candidates = [
+    join(ROOT, "node_modules", "metro", "package.json"),
+    join(ROOT, "apps", "mobile", "node_modules", "metro", "package.json"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  const pnpmDir = join(ROOT, "node_modules", ".pnpm");
+  if (!existsSync(pnpmDir)) return null;
+
+  for (const name of readdirSync(pnpmDir)) {
+    const candidate = join(
+      pnpmDir,
+      name,
+      "node_modules",
+      "metro",
+      "package.json",
+    );
+    if (!existsSync(candidate)) continue;
+    try {
+      const probe = JSON.parse(readFileSync(candidate, "utf8"));
+      if (probe.name === "metro" && probe.version === "0.83.8") return candidate;
+    } catch {
+      /* ignore unreadable store entries */
+    }
+  }
+  return null;
+}
+
 test("installed metro is 0.83.8 and does not depend on image-size", () => {
-  const metroPkg = require("metro/package.json");
+  const metroPkgPath = findInstalledMetroPackageJson();
+  assert.ok(
+    metroPkgPath,
+    "metro@0.83.8 not found in node_modules or the pnpm virtual store",
+  );
+  const metroPkg = JSON.parse(readFileSync(metroPkgPath, "utf8"));
   assert.equal(metroPkg.version, "0.83.8");
   assert.equal(metroPkg.dependencies?.["image-size"], undefined);
   assert.equal(existsSync(join(ROOT, "node_modules", "image-size")), false);
