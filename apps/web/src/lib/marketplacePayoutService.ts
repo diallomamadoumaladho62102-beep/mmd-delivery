@@ -1,4 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+/**
+ * Marketplace seller/driver payouts.
+ *
+ * Seller payout rows are created `pending` and require admin approval before
+ * executeMarketplacePayouts runs live SCT — intentional fraud/compliance gate.
+ * Driver marketplace payouts auto-approve on delivered when live flags are on.
+ */
 import {
   isMarketplacePayoutsLiveEnvEnabled,
   type MarketplacePayoutStatus,

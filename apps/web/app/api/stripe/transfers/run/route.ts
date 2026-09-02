@@ -13,7 +13,7 @@ import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
-import { recordSuccessfulStripeOrderPayout } from "@/lib/payoutExecutionBridge";
+import { reconcileSuccessfulStripeOrderPayoutIfNeeded } from "@/lib/payoutExecutionBridge";
 import { recordProductionCriticalError } from "@/lib/productionMonitoring";
 import { stripe } from "@/lib/stripe";
 import {
@@ -1092,11 +1092,46 @@ export async function POST(req: NextRequest) {
     }
 
     if (payout.status === "succeeded" && payout.stripe_transfer_id) {
+      const recipientUserId =
+        target === "restaurant"
+          ? String(order.restaurant_user_id ?? order.restaurant_id)
+          : String(order.driver_id);
+
+      const reconcile = await reconcileSuccessfulStripeOrderPayoutIfNeeded(
+        supabaseAdmin,
+        {
+          orderPayoutId: payout.id,
+          orderId: order.id,
+          target,
+          recipientUserId,
+          countryCode: payoutCountry,
+          currency,
+          amountCents: payout.amount_cents ?? amount!,
+          stripeTransferId: payout.stripe_transfer_id,
+          destinationAccountId: payout.destination_account_id ?? destination!,
+        },
+      );
+
+      if (reconcile.ok === false) {
+        return json(
+          {
+            error: "Transfer succeeded but wallet ledger reconcile failed",
+            payout_id: payout.id,
+            transfer_id: payout.stripe_transfer_id,
+            reconcile_required: true,
+            missing: reconcile.missing,
+            detail: reconcile.error,
+          },
+          500,
+        );
+      }
+
       return json(
         {
           ok: true,
           dry_run: false,
           already_succeeded: true,
+          ledger_reconciled: reconcile.reconciled,
           order_id: order.id,
           payout_id: payout.id,
           target,
@@ -1396,17 +1431,44 @@ export async function POST(req: NextRequest) {
         : String(order.driver_id);
 
     try {
-      await recordSuccessfulStripeOrderPayout(supabaseAdmin, {
-        orderPayoutId: payout.id,
-        orderId: order.id,
-        target,
-        recipientUserId,
-        countryCode: payoutCountry,
-        currency,
-        amountCents: amount!,
-        stripeTransferId: transfer.id,
-        destinationAccountId: destination!,
-      });
+      const reconcile = await reconcileSuccessfulStripeOrderPayoutIfNeeded(
+        supabaseAdmin,
+        {
+          orderPayoutId: payout.id,
+          orderId: order.id,
+          target,
+          recipientUserId,
+          countryCode: payoutCountry,
+          currency,
+          amountCents: amount!,
+          stripeTransferId: transfer.id,
+          destinationAccountId: destination!,
+        },
+      );
+      if (reconcile.ok === false) {
+        logSupabaseError(
+          "[transfers/run] payout ledger bridge failed after transfer",
+          new Error(reconcile.error),
+          {
+            order_id: order.id,
+            payout_id: payout.id,
+            transfer_id: transfer.id,
+            missing: reconcile.missing,
+            actor,
+          },
+        );
+        return json(
+          {
+            error: "Transfer created but wallet ledger bridge failed",
+            payout_id: payout.id,
+            transfer_id: transfer.id,
+            reconcile_required: true,
+            missing: reconcile.missing,
+            detail: reconcile.error,
+          },
+          500,
+        );
+      }
     } catch (bridgeErr) {
       // Stripe transfer already succeeded — never swallow ledger failure.
       // Return 500 so ops/cron can reconcile without claiming a clean success.

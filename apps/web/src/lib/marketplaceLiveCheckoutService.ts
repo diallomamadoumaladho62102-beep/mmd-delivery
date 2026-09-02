@@ -343,6 +343,7 @@ export async function createMarketplaceLiveCheckoutSession(
   }
 
   let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
+  const checkoutIdempotencyKey = `mkt_checkout_${order.id}_${totals.total_cents}_${currency}`;
   try {
     session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -380,7 +381,7 @@ export async function createMarketplaceLiveCheckoutSession(
         user_id: params.clientUserId,
       },
     },
-  });
+  }, { idempotencyKey: checkoutIdempotencyKey });
   } catch (stripeError) {
     await releaseMarketplaceStockReservation(supabaseAdmin, order.id);
     throw stripeError;

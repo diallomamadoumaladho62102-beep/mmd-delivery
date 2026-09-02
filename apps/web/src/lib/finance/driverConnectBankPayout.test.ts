@@ -48,4 +48,26 @@ test("window helper uses America/New_York parts — exact Sunday 4am ET only", (
   assert.equal(isDriverBankPayoutWindow(sun4est), true);
 });
 
+test("Saturday 23:59 ET is not bank window; Sunday 04:00 ET is", () => {
+  // Sat 2026-08-15 23:59 America/New_York (EDT) = 2026-08-16T03:59:00.000Z
+  const sat2359et = new Date("2026-08-16T03:59:00.000Z");
+  assert.equal(isDriverBankPayoutWindow(sat2359et), false);
+
+  // Sun 2026-08-16 04:00 EDT = 2026-08-16T08:00:00.000Z
+  const sun4et = new Date("2026-08-16T08:00:00.000Z");
+  assert.equal(isDriverBankPayoutWindow(sun4et), true);
+
+  // Sun 04:01 EDT still hour 4
+  const sun401et = new Date("2026-08-16T08:01:00.000Z");
+  assert.equal(isDriverBankPayoutWindow(sun401et), true);
+
+  // Sun 05:00 EDT → outside
+  const sun5et = new Date("2026-08-16T09:00:00.000Z");
+  assert.equal(isDriverBankPayoutWindow(sun5et), false);
+
+  // Sun 03:59 EDT → before window
+  const sun359et = new Date("2026-08-16T07:59:00.000Z");
+  assert.equal(isDriverBankPayoutWindow(sun359et), false);
+});
+
 console.log("driverConnectBankPayout tests passed");

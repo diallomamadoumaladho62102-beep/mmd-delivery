@@ -23,10 +23,7 @@ import {
   executeWorkerSundayBankPayout,
   lockWorkerConnectManualPayoutSchedule,
 } from "@/lib/finance/workerFinance";
-import {
-  createPayoutTransaction,
-  updatePayoutTransactionStatus,
-} from "@/lib/payoutTransactionService";
+import { ensureSundayBankPayoutAuditRecord } from "@/lib/finance/bankPayoutLedgerBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -287,44 +284,30 @@ async function handle(req: NextRequest) {
         const stripePayout = payout.payout;
         const amountCents = payout.amountCents;
 
-        try {
-          const audit = await createPayoutTransaction(supabaseAdmin, {
-            countryCode: "US",
-            recipientType: role,
-            recipientUserId: userId,
-            provider: "stripe_connect",
-            methodCode: "payout_stripe_connect_sunday",
-            amountCents,
-            currency: String(stripePayout.currency ?? "usd").toUpperCase(),
-            status: "processing",
-            payoutMode: "automatic",
-            destinationAccount: acct,
-            externalReference: stripePayout.id,
-            providerPayload: {
-              source: ledgerSource,
-              stripe_payout_id: stripePayout.id,
-              et_date: parts.dateKey,
-              timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
-              no_minimum: true,
-              money_out_model: moneyModel,
-            },
+        const audit = await ensureSundayBankPayoutAuditRecord(supabaseAdmin, {
+          countryCode: "US",
+          recipientType: role,
+          recipientUserId: userId,
+          amountCents,
+          currency: String(stripePayout.currency ?? "usd").toUpperCase(),
+          stripePayoutId: stripePayout.id,
+          destinationAccount: acct,
+          ledgerSource,
+          etDateKey: parts.dateKey,
+          moneyModel,
+        });
+
+        if (audit.ok === false) {
+          failed += 1;
+          results.push({
+            role,
+            recipient_user_id: userId,
+            ok: false,
+            reconcile_required: true,
+            stripe_payout_id: audit.stripe_payout_id,
+            error: audit.error,
           });
-          // Keep processing until Stripe payout.paid / payout.failed webhook (or reconcile).
-          await updatePayoutTransactionStatus(supabaseAdmin, audit.id, "processing", {
-            external_reference: stripePayout.id,
-            provider_payload: {
-              source: ledgerSource,
-              stripe_payout_id: stripePayout.id,
-              money_out_model: moneyModel,
-              stripe_status: stripePayout.status,
-              worker_finance: true,
-            },
-          });
-        } catch (ledgerErr) {
-          console.warn(
-            "[cron:driver-connect-bank-payouts] ledger write fail-open",
-            ledgerErr instanceof Error ? ledgerErr.message : ledgerErr,
-          );
+          continue;
         }
 
         paid += 1;
@@ -333,6 +316,8 @@ async function handle(req: NextRequest) {
           recipient_user_id: userId,
           ok: true,
           stripe_payout_id: stripePayout.id,
+          payout_transaction_id: audit.payoutTransactionId,
+          audit_created: audit.created,
           amount_cents: amountCents,
           currency: stripePayout.currency,
         });

@@ -150,16 +150,16 @@ test("Sunday bank payout requires ba_ destination and stays processing", () => {
     path.join(webRoot, "src/lib/finance/driverConnectBankPayout.ts"),
     "utf8",
   );
-  const cron = fs.readFileSync(
-    path.join(webRoot, "app/api/cron/driver-connect-bank-payouts/route.ts"),
+  const ledgerBridge = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/bankPayoutLedgerBridge.ts"),
     "utf8",
   );
   assert.match(bank, /object:\s*"bank_account"/);
   assert.match(bank, /method:\s*"standard"/);
   assert.match(bank, /no_bank_account_destination/);
-  assert.match(cron, /status:\s*"processing"/);
+  assert.match(ledgerBridge, /status:\s*"processing"/);
   assert.doesNotMatch(
-    cron,
+    ledgerBridge,
     /updatePayoutTransactionStatus\([^)]*,\s*"paid"/,
   );
 });

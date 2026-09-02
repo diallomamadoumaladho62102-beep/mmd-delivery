@@ -614,11 +614,17 @@ export function DriverWalletScreen() {
                   <Text style={styles.reasonTextMuted}>
                     {t(
                       "driver.wallet.bankAvailable.hint",
-                      "Stripe bank-available: {{amount}} (Sunday automatic payout)",
+                      "Stripe available now: {{amount}} — eligible for Sunday 4:00 AM ET bank payout (not pending/settling).",
                       { amount: fmtMoney(connectAvailableCents) },
                     )}
                   </Text>
                 ) : null}
+                <Text style={styles.reasonTextMuted}>
+                  {t(
+                    "driver.wallet.moneyStages.hint",
+                    "Completed trip → MMD transfer to Connect → Stripe pending/settling → available → Sunday 4:00 AM ET bank payout. Pending amounts are not paid to your bank at 4:00.",
+                  )}
+                </Text>
                 {settlingCents > 0 || awaitingTransferCents > 0 ? (
                   <Text style={styles.reasonTextMuted}>
                     {t(

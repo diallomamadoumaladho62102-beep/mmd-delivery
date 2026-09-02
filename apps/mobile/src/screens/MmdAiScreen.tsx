@@ -24,6 +24,10 @@ import {
   postAiChat,
 } from "../lib/mmdAiApi";
 import {
+  AUTH_ACTION_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   cancelMmdAiRecording,
   getMicrophonePermission,
   requestMicrophonePermission,
@@ -279,7 +283,8 @@ export default function MmdAiScreen() {
 
       try {
         const grantedCoords = await getAlreadyGrantedClientCoords();
-        const response = await postAiChat({
+        const response = await withTimeout(
+          postAiChat({
           message: text,
           conversationId: conversationId ?? undefined,
           locale: (i18n.language || "en").split("-")[0],
@@ -300,7 +305,10 @@ export default function MmdAiScreen() {
             role: m.role,
             content: m.content,
           })),
-        });
+        }),
+          AUTH_ACTION_TIMEOUT_MS,
+          "mmd_ai_chat",
+        );
 
         const assistantMessage = createLocalMessage("assistant", response.message.content);
         const finalMessages = [...nextMessages, assistantMessage];
