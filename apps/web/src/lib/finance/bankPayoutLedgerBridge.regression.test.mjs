@@ -27,7 +27,7 @@ test("bank payout cron uses ensureSundayBankPayoutAuditRecord", () => {
 
 test("bank payout cron marks reconcile_required on audit failure", () => {
   assert.match(cron, /reconcile_required: true/);
-  assert.match(cron, /if \(!audit\.ok\)/);
+  assert.match(cron, /audit\.ok === false/);
 });
 
 test("bank payout bridge finds existing po_* before insert", () => {
