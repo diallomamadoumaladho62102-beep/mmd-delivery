@@ -46,7 +46,9 @@ test("sunday bank payout cron has no cashout minimum", () => {
   assert.match(cron, /restaurant_profiles/);
   assert.match(cron, /restaurantBankPayoutIdempotencyKey/);
   assert.match(helper, /interval: "manual"/);
-  assert.match(helper, /hour === 4/);
+  assert.match(helper, /DRIVER_BANK_PAYOUT_PRIMARY_HOUR\s*=\s*4/);
+  assert.match(helper, /DRIVER_BANK_PAYOUT_CATCHUP_HOUR\s*=\s*16/);
+  assert.match(helper, /resolveDriverBankPayoutWindow/);
 });
 
 test("exact Sunday 4am ET is driven by GitHub Actions dual schedules", () => {
@@ -56,6 +58,8 @@ test("exact Sunday 4am ET is driven by GitHub Actions dual schedules", () => {
   );
   assert.match(wf, /0 8 \* \* 0/);
   assert.match(wf, /0 9 \* \* 0/);
+  assert.match(wf, /0 20 \* \* 0/);
+  assert.match(wf, /0 21 \* \* 0/);
   assert.match(wf, /driver-connect-bank-payouts/);
   const root = fs.readFileSync(path.join(webRoot, "../../vercel.json"), "utf8");
   assert.doesNotMatch(root, /driver-connect-bank-payouts/);
