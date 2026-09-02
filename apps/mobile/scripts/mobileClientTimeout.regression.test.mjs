@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 
-const mobileRoot = join(import.meta.dirname, "..");
+const mobileRoot = join(import.meta.dirname, "../src");
 const boot = readFileSync(join(mobileRoot, "lib/bootFailOpen.ts"), "utf8");
 const home = readFileSync(join(mobileRoot, "screens/ClientHomeScreen.tsx"), "utf8");
 const wallet = readFileSync(join(mobileRoot, "screens/ClientWalletScreen.tsx"), "utf8");
