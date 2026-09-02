@@ -1,6 +1,8 @@
 # Payout money stages (driver / restaurant / seller)
 
-MMD uses **separate charges + Stripe Connect transfers (SCT)**, then **Sunday America/New_York** bank sweeps of Connect `available`. Instant Cash Out is the mid-week fast path when Stripe allows Instant.
+MMD uses **separate charges + Stripe Connect transfers (SCT)**, then **Sunday 04:00 America/New_York** bank sweep of Connect `available`. Instant Cash Out is the mid-week fast path when Stripe allows Instant.
+
+**There is NO Sunday 16:00 catch-up and NO daily automatic bank sweep.**
 
 ## Stages (do not conflate)
 
@@ -8,11 +10,11 @@ MMD uses **separate charges + Stripe Connect transfers (SCT)**, then **Sunday Am
 |-------|---------|--------------------------------------|
 | 1. Payment confirmed | Client PaymentIntent / Checkout succeeded | On pay |
 | 2. Earnings calculated | Commission snapshot + worker share | On complete / delivered |
-| 3. SCT (`tr_*`) | Platform → Connect account | **Immediately** after eligible (`TAXI_PAYOUT_HOLD_HOURS` default **0**) |
+| 3. SCT (`tr_*`) | Platform → Connect account | **Immediately** (`TAXI_PAYOUT_HOLD_HOURS` default **0**) |
 | 4. Connect **pending** | Stripe settlement in progress | Stripe-controlled |
 | 5. Connect **available** | Cashable on Connect (standard) | After Stripe releases pending |
 | 6a. Instant Cash Out (`po_*` Instant) | User-initiated → Instant dest | When Instant-eligible |
-| 6b. Bank payout (`po_*` standard) | Connect → verified `ba_*` | Sunday **04:00** ET primary + **16:00** ET catch-up |
+| 6b. Bank payout (`po_*` standard) | Connect → verified `ba_*` | Sunday **04:00–04:59 ET only** |
 | 7. `payout.paid` | Funds arrived / Instant settled | Stripe webhook |
 | 8. `payout.failed` | Bank/Instant failed | Stripe webhook → local status |
 
@@ -21,36 +23,27 @@ MMD uses **separate charges + Stripe Connect transfers (SCT)**, then **Sunday Am
 | Delay | Source | Controlled by MMD? | Removable? |
 |-------|--------|--------------------|------------|
 | SCT after complete | Code path + daily retry | Yes | **Already 0** hold; keep env at 0 |
-| Marketplace seller admin approve | Product gate | Yes | **Business decision** — keep unless founder removes |
+| Marketplace seller admin approve | Product gate | Yes | Keep (business decision) |
 | Connect pending → available | Stripe settlement | No | Cannot remove |
 | Instant Cash Out eligibility | Stripe Instant caps/dest | No | User/Stripe |
 | Bank Instant vs standard ACH | Stripe + bank | No | Cannot remove |
-| Sunday bank windows | MMD cron | Yes | Primary **required**; catch-up added for same-day available |
+| Sunday 04:00 bank | MMD cron | Yes | **Required** — sole automatic bank payout |
 
-## Sunday bank payouts (OBLIGATORY)
+## Sunday 04:00 ET (OBLIGATORY — sole automatic bank payout)
 
-- **04:00–04:59 ET** — primary weekly safety sweep of **100% Connect `balance.available`**.
-- **16:00–16:59 ET** — catch-up for funds that became available **after** 04:00 the same Sunday (distinct Stripe idempotency keys).
-- Pays **available only** — never pending, never “awaiting SCT”.
-- **No MMD cut-off** excluding Saturday 23:59 trips; eligibility is Stripe availability at window time.
-- GH Actions dual UTC schedules per window (EDT/EST). Handler gates on NY local hour.
+- Pays **100% of Connect `balance.available` only** — not pending, not awaiting SCT.
+- **No MMD cut-off** excluding Saturday 23:59 trips; eligibility is Stripe availability at 04:00.
+- Idempotency: `driver_sunday_bank_payout:{acct}:{YYYY-MM-DD_ET}`.
+- GH Actions dual UTC schedules (EDT/EST). Handler gates on NY local hour === 4.
+- Funds that become available **after** 04:00 stay on Connect until Instant Cash Out or **next** Sunday 04:00.
 
-## Saturday 23:59 → Sunday 04:00 / 16:00
+## Saturday 23:59 → Sunday 04:00
 
-1. Ride completes → SCT attempted → `driver_transfer_id` set if OK (**does not wait for Sunday**).
-2. If still **pending** at 04:00 → morning bank skip for that amount (not lost).
-3. If **available** by 04:00 → included in morning sweep.
-4. If becomes **available** at 10:00 Sunday → Instant Cash Out if eligible, else **16:00 catch-up** includes it.
-5. If becomes available Monday+ → Instant Cash Out if eligible, else next Sunday.
-
-## Mid-week available (not Instant-eligible)
-
-No aggressive polling. Options:
-
-1. User completes Instant-eligible destination → Instant Cash Out.
-2. Wait for next Sunday primary/catch-up.
-
-Daily automatic weekday bank sweeps are **not** enabled (preserves Instant + Sunday model).
+1. Ride completes → SCT attempted immediately → `driver_transfer_id` if OK.
+2. If still **pending** at 04:00 → bank skip for that amount (not lost).
+3. If **available** by 04:00 → included in Sunday bank sweep.
+4. If becomes available later Sunday/weekday → Instant Cash Out if eligible, else next Sunday 04:00.
+5. **No 16:00 catch-up.**
 
 ## Reconciliation
 

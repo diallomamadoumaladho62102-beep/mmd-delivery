@@ -614,7 +614,7 @@ export function DriverWalletScreen() {
                   <Text style={styles.reasonTextMuted}>
                     {t(
                       "driver.wallet.bankAvailable.hint",
-                      "Stripe available now: {{amount}} — Instant Cash Out if eligible, else Sunday bank (4:00 AM + 4:00 PM ET catch-up). Not pending/settling.",
+                      "Stripe available now: {{amount}} — Instant Cash Out if eligible, else Sunday 4:00 AM ET bank payout. Not pending/settling.",
                       { amount: fmtMoney(connectAvailableCents) },
                     )}
                   </Text>
@@ -622,7 +622,7 @@ export function DriverWalletScreen() {
                 <Text style={styles.reasonTextMuted}>
                   {t(
                     "driver.wallet.moneyStages.hint",
-                    "Stages: earned → transferred to Connect → Stripe pending → available → Instant Cash Out or Sunday bank (4:00 AM ET, catch-up 4:00 PM ET). Pending is never available or paid out.",
+                    "Stages: earned → transferred to Connect → Stripe pending → available → Instant Cash Out or Sunday 4:00 AM ET bank payout. Pending is never available or paid out.",
                   )}
                 </Text>
                 {settlingCents > 0 || awaitingTransferCents > 0 ? (
@@ -792,7 +792,7 @@ export function DriverWalletScreen() {
                 <Text style={styles.infoSub}>
                   {t(
                     "driver.wallet.nextAuto.desc",
-                    "MMD sends remaining Stripe Connect available funds to your bank every Sunday at 04:00 AM ET, with a 04:00 PM ET catch-up for funds that settled later the same day (America/New_York). Instant Cash Out is available mid-week when Stripe Instant eligibility allows. This is MMD’s schedule, not Stripe’s default daily payout.",
+                    "MMD sends remaining Stripe Connect available funds to your bank every Sunday at 04:00 AM (America/New_York). Instant Cash Out is available mid-week when Stripe Instant eligibility allows. There is no afternoon catch-up payout. This is MMD’s schedule, not Stripe’s default daily payout.",
                   )}
                 </Text>
               </View>

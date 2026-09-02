@@ -8,15 +8,15 @@ assert.equal(
 );
 assert.equal(
   MONEY_OUT_MODEL.driverBankPayout,
-  "sunday_0400_and_1600_america_new_york_full_available_to_bank_no_minimum",
+  "sunday_0400_america_new_york_full_available_to_bank_no_minimum",
 );
 assert.equal(
   MONEY_OUT_MODEL.restaurantBankPayout,
-  "sunday_0400_and_1600_america_new_york_full_available_to_bank_no_minimum",
+  "sunday_0400_america_new_york_full_available_to_bank_no_minimum",
 );
 assert.equal(
   MONEY_OUT_MODEL.sellerBankPayout,
-  "sunday_0400_and_1600_america_new_york_full_available_to_bank_no_minimum",
+  "sunday_0400_america_new_york_full_available_to_bank_no_minimum",
 );
 assert.equal(
   MONEY_OUT_MODEL.restaurantCashout,

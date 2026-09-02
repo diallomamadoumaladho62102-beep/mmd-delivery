@@ -94,7 +94,7 @@ test("restaurant cancel executes Stripe refund immediately", () => {
 test("restaurant bank payout is Sunday ET full available no $20 min", () => {
   assert.equal(
     MONEY_OUT_MODEL.restaurantBankPayout,
-    "sunday_0400_and_1600_america_new_york_full_available_to_bank_no_minimum",
+    "sunday_0400_america_new_york_full_available_to_bank_no_minimum",
   );
   assert.equal(
     restaurantBankPayoutIdempotencyKey("acct_x", "2026-08-16"),

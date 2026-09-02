@@ -15,9 +15,8 @@ import {
   restaurantBankPayoutIdempotencyKey,
   sellerBankPayoutIdempotencyKey,
   getNowPartsInTimeZone,
-  resolveDriverBankPayoutWindow,
+  isDriverBankPayoutWindow,
   DRIVER_BANK_PAYOUT_TIMEZONE,
-  type DriverBankPayoutWindowKind,
 } from "@/lib/finance/driverConnectBankPayout";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
 import {
@@ -37,15 +36,14 @@ function json(body: Record<string, unknown>, status = 200) {
 }
 
 /**
- * Sunday America/New_York bank payouts for drivers, restaurants, and sellers
+ * Sunday 04:00 America/New_York bank payouts for drivers, restaurants, and sellers
  * (full Connect available balance → ba_* standard).
  *
- * Windows (DST-aware; GH Actions dual UTC crons — Hobby Vercel cannot do both):
- * - Primary 04:00–04:59 ET: `0 8 * * 0` (EDT) / `0 9 * * 0` (EST)
- * - Catch-up 16:00–16:59 ET: `0 20 * * 0` (EDT) / `0 21 * * 0` (EST)
- *   — pays funds that became available after the morning sweep (distinct idempotency keys).
- *
- * Handler pays only inside those windows (or force=1).
+ * Trigger: GitHub Actions (dual Sunday UTC schedules — Hobby Vercel cannot do both):
+ * - `0 8 * * 0` → 04:00 EDT
+ * - `0 9 * * 0` → 04:00 EST
+ * Handler pays only when local NY time is Sunday 04:xx (or force=1).
+ * There is NO Sunday 16:00 catch-up and NO weekday automatic bank sweep.
  * schedule_only=1 (+ force): set Connect payout interval=manual without creating payouts.
  *
  * SCT (platform → Connect) is independent and must already have run — this is bank payout only.
@@ -76,17 +74,12 @@ async function handle(req: NextRequest) {
     );
   }
 
-  const bankWindow = resolveDriverBankPayoutWindow();
-  const windowKind: DriverBankPayoutWindowKind = bankWindow.active
-    ? bankWindow.kind
-    : "primary";
-
-  if (!force && !bankWindow.active) {
+  if (!force && !isDriverBankPayoutWindow()) {
     return json(
       finishCronRun(start, {
         ok: true,
         skipped: 1,
-        reason: "outside_sunday_bank_america_new_york_window",
+        reason: "outside_sunday_4am_america_new_york_window",
         timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
         local_weekday: parts.weekday,
         local_hour: parts.hour,
@@ -237,10 +230,10 @@ async function handle(req: NextRequest) {
 
         const idempotencyKey =
           role === "restaurant"
-            ? restaurantBankPayoutIdempotencyKey(acct, parts.dateKey, windowKind)
+            ? restaurantBankPayoutIdempotencyKey(acct, parts.dateKey)
             : role === "seller"
-              ? sellerBankPayoutIdempotencyKey(acct, parts.dateKey, windowKind)
-              : driverBankPayoutIdempotencyKey(acct, parts.dateKey, windowKind);
+              ? sellerBankPayoutIdempotencyKey(acct, parts.dateKey)
+              : driverBankPayoutIdempotencyKey(acct, parts.dateKey);
         const moneyModel =
           role === "restaurant"
             ? MONEY_OUT_MODEL.restaurantBankPayout
@@ -263,7 +256,6 @@ async function handle(req: NextRequest) {
           metadata: {
             et_date: parts.dateKey,
             timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
-            bank_window_kind: windowKind,
           },
         });
 
@@ -336,7 +328,6 @@ async function handle(req: NextRequest) {
         ok: true as const,
         timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
         local_date: parts.dateKey,
-        bank_window_kind: windowKind,
         scanned: driverRows.length + restaurantRows.length + sellerRows.length,
         scanned_drivers: driverRows.length,
         scanned_restaurants: restaurantRows.length,

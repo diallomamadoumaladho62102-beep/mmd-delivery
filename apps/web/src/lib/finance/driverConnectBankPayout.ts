@@ -3,28 +3,23 @@
  *
  * Product rule:
  * - SCT (platform → Connect): immediate after delivered/completed + paid
- * - Connect → bank (automatic):
- *   - Sunday 04:00 America/New_York primary sweep (full available → ba_*)
- *   - Sunday 16:00 America/New_York catch-up (funds that settled after 04:00)
+ * - Connect → bank (automatic): Sunday 04:00 America/New_York only
+ *   (full available → ba_* standard) — NO 16:00 catch-up, NO weekday bank sweep
  * - Manual Instant Cash Out: Instant card or Instant-eligible bank, no $ minimum, 1/day ET
- * - Mid-week available without Instant dest → Instant Cash Out once eligible, else next Sunday
+ * - Mid-week available without Instant → Instant Cash Out once eligible, else next Sunday 04:00
  * - Restaurants + sellers: same Cash Out + Sunday bank rules as drivers
  *
- * Transfer (SCT) is independent of these bank windows — never wait for Sunday to Transfer.
+ * Transfer (SCT) is independent of the Sunday bank window — never wait for Sunday to Transfer.
  */
 
 import type Stripe from "stripe";
 import { retrieveConnectBalance, stripe } from "@/lib/stripe";
 
-/** IANA zone for founder-requested Sunday bank windows (local New York time). */
+/** IANA zone for founder-requested Sunday 4:00 local New York time. */
 export const DRIVER_BANK_PAYOUT_TIMEZONE = "America/New_York";
 
-/** Primary automatic bank sweep hour (America/New_York). */
+/** Sole automatic bank sweep hour (America/New_York). */
 export const DRIVER_BANK_PAYOUT_PRIMARY_HOUR = 4;
-/** Same-day catch-up for funds that became available after the primary sweep. */
-export const DRIVER_BANK_PAYOUT_CATCHUP_HOUR = 16;
-
-export type DriverBankPayoutWindowKind = "primary" | "catchup";
 
 export function getNowPartsInTimeZone(
   timeZone: string,
@@ -51,61 +46,40 @@ export function getNowPartsInTimeZone(
 }
 
 /**
- * Resolve active Sunday bank window (DST-aware via America/New_York parts).
- * Primary 04:00–04:59 ET and catch-up 16:00–16:59 ET use distinct Stripe idempotency keys
- * so newly available funds after 04:00 can be paid the same Sunday without duplicate po_*.
+ * True only during Sunday 04:00–04:59 America/New_York (DST-aware).
+ * Exact 4am ET year-round via dual GitHub Actions schedules
+ * (Sunday 08:00 UTC for EDT, Sunday 09:00 UTC for EST); this gate accepts only hour 4.
+ * There is NO Sunday 16:00 catch-up window.
  */
-export function resolveDriverBankPayoutWindow(
-  now = new Date(),
-):
-  | { active: true; kind: DriverBankPayoutWindowKind }
-  | { active: false; kind: null } {
+export function isDriverBankPayoutWindow(now = new Date()): boolean {
   const { weekday, hour } = getNowPartsInTimeZone(
     DRIVER_BANK_PAYOUT_TIMEZONE,
     now,
   );
-  if (weekday !== "Sun") return { active: false, kind: null };
-  if (hour === DRIVER_BANK_PAYOUT_PRIMARY_HOUR) {
-    return { active: true, kind: "primary" };
-  }
-  if (hour === DRIVER_BANK_PAYOUT_CATCHUP_HOUR) {
-    return { active: true, kind: "catchup" };
-  }
-  return { active: false, kind: null };
-}
-
-/** True during Sunday primary (04) or catch-up (16) America/New_York windows. */
-export function isDriverBankPayoutWindow(now = new Date()): boolean {
-  return resolveDriverBankPayoutWindow(now).active;
+  return weekday === "Sun" && hour === DRIVER_BANK_PAYOUT_PRIMARY_HOUR;
 }
 
 export function driverBankPayoutIdempotencyKey(
   stripeAccountId: string,
   etDateKey: string,
-  kind: DriverBankPayoutWindowKind = "primary",
 ): string {
-  const suffix = kind === "catchup" ? "_catchup" : "";
-  return `driver_sunday_bank_payout${suffix}:${stripeAccountId}:${etDateKey}`;
+  return `driver_sunday_bank_payout:${stripeAccountId}:${etDateKey}`;
 }
 
 /** Same Sunday window / full-available rule for restaurant Connect → bank. */
 export function restaurantBankPayoutIdempotencyKey(
   stripeAccountId: string,
   etDateKey: string,
-  kind: DriverBankPayoutWindowKind = "primary",
 ): string {
-  const suffix = kind === "catchup" ? "_catchup" : "";
-  return `restaurant_sunday_bank_payout${suffix}:${stripeAccountId}:${etDateKey}`;
+  return `restaurant_sunday_bank_payout:${stripeAccountId}:${etDateKey}`;
 }
 
 /** Seller Sunday bank payout idempotency (remaining Connect available). */
 export function sellerBankPayoutIdempotencyKey(
   stripeAccountId: string,
   etDateKey: string,
-  kind: DriverBankPayoutWindowKind = "primary",
 ): string {
-  const suffix = kind === "catchup" ? "_catchup" : "";
-  return `seller_sunday_bank_payout${suffix}:${stripeAccountId}:${etDateKey}`;
+  return `seller_sunday_bank_payout:${stripeAccountId}:${etDateKey}`;
 }
 
 /**
