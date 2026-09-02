@@ -182,6 +182,8 @@ test("GitHub Actions schedules Sunday driver/restaurant bank payouts", () => {
   );
   assert.match(wf, /0 8 \* \* 0/);
   assert.match(wf, /0 9 \* \* 0/);
+  assert.match(wf, /0 20 \* \* 0/);
+  assert.match(wf, /0 21 \* \* 0/);
   assert.match(wf, /driver-connect-bank-payouts/);
 });
 
