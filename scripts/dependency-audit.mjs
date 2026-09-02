@@ -60,9 +60,9 @@ function summarize(label, result) {
     const name = String(adv.module_name ?? adv.name ?? adv.package ?? "").toLowerCase();
     const sev = String(adv.severity ?? "").toLowerCase();
     if (name === "image-size" && (sev === "high" || sev === "critical")) {
-      mitigated.push("image-size (pin 1.2.1 + in-repo patch; no official npm fix)");
-      if (sev === "high" && high > 0) high -= 1;
-      if (sev === "critical" && critical > 0) critical -= 1;
+      mitigated.push(
+        "image-size reappeared after metro@0.83.8 — treat as unfixed regression",
+      );
     } else if (!meta?.metadata?.vulnerabilities) {
       if (sev === "critical") critical += 1;
       if (sev === "high") high += 1;

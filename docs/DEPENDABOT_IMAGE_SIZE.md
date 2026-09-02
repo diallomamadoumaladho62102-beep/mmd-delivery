@@ -1,15 +1,11 @@
-# Dependabot HIGH: image-size (CVE-2025-71329 / CVE-2025-71330)
+# Dependabot / Snyk: `image-size` (CVE-2025-71329 / CVE-2025-71330)
 
-GitHub still shows two HIGH alerts on `image-size` (`<= 2.0.2`) with **no official patched npm release** (maintainer archived the GitHub repo).
+There is **no official patched `image-size` npm release** (latest `2.0.2` is still in the advisory range).
 
-## What we already did in-repo
+MMD Delivery on Expo 54 removes the package from the graph by pinning **Metro 0.83.8**, which vendored the parsers ([metro@0.83.8](https://github.com/facebook/metro/releases/tag/v0.83.8)).
 
-- pnpm override pins `image-size` to `1.2.1`
-- `patches/image-size@1.2.1.patch` closes the ICNS / JXL / HEIF infinite-loop paths
-- `scripts/image-size-clean-install.regression.test.mjs` proves the patch applies
+- Expo remains `~54.0.36`
+- React Native remains `0.81.5`
+- `patches/image-size@1.2.1.patch` is kept as a fallback file only
 
-## Why we did not bump the package
-
-There is no safe upstream version to upgrade to. A community fork (`image-size-next`) would be a mass-transitive swap and is not required while the pin+patch remains.
-
-**OPS:** leave the Dependabot alerts open or dismiss as “patched in-repo” after review. Do not `pnpm update` the whole tree for this.
+See `docs/security/DEPENDABOT-IMAGE-SIZE.md`.
