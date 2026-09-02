@@ -41,6 +41,9 @@ jobs:
       - name: Prove metro 0.83.8 removed image-size (Expo 54 / Apple #121 intact)
         run: node scripts/image-size-clean-install.regression.test.mjs
 
+      - name: Verify Snyk inflight ignore policy scope
+        run: node scripts/snyk-inflight-policy.regression.test.mjs
+
       - name: Typecheck web
         run: pnpm --dir apps/web exec tsc --noEmit
 

@@ -1,0 +1,15 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  SNYK-JS-INFLIGHT-6095116:
+    - 'inflight@1.0.6':
+        reason: >-
+          Transitive via glob@7.2.3 (react-native codegen, Expo dev tooling, jest
+          test stack). No patched inflight release exists (package deprecated).
+          Build/dev/test tooling only; not imported in apps/mobile/src. Structural
+          fix requires a future React Native / Expo upgrade. See
+          docs/security/SNYK-INFLIGHT-IGNORE.md.
+        expires: 2027-09-02T00:00:00.000Z
+        created: 2026-09-02T06:09:00.000Z
+patch: {}
