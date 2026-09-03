@@ -20,6 +20,7 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
+import { instantCashoutBlockMessage } from "../lib/instantCashoutBlockMessage";
 import { supabase } from "../lib/supabase";
 import {
   fetchDriverWalletSnapshot,
@@ -218,35 +219,16 @@ export function DriverWalletScreen() {
   }, [payoutTransactions]);
 
   const cashoutReason = useMemo(() => {
-    switch (cashoutBlockReason) {
-      case "stripe_setup_required":
-        return (
-          stripeStatusMessage ||
-          t("driver.wallet.cashoutReason.needStripe", "Enable Stripe payouts to cash out.")
-        );
-      case "already_cashed_out_today":
-        return t(
-          "driver.wallet.cashoutReason.alreadyToday",
-          "You already requested a cash out today. Try again tomorrow.",
-        );
-      case "below_minimum":
-      case "instant_not_eligible":
-      case "nothing_to_cashout":
-        return (
-          cashoutBlockReason === "below_minimum"
-            ? t("driver.wallet.cashoutReason.min", "Minimum cash out: {{min}}.", {
-                min: fmtMoney(minimumPayoutCents),
-              })
-            : t(
-                "driver.wallet.cashoutReason.instant",
-                "Instant Cash Out unavailable. Add an Instant-eligible bank or debit card, or wait for Sunday bank payout.",
-              )
-        );
-      default:
-        return cashoutBlockReason
-          ? toUserFacingError({ code: cashoutBlockReason }, "")
-          : "";
+    if (cashoutBlockReason === "stripe_setup_required" && stripeStatusMessage) {
+      return stripeStatusMessage;
     }
+    const mapped = instantCashoutBlockMessage(cashoutBlockReason, t, {
+      minimumLabel: fmtMoney(minimumPayoutCents),
+    });
+    if (mapped) return mapped;
+    return cashoutBlockReason
+      ? toUserFacingError({ code: cashoutBlockReason }, "")
+      : "";
   }, [cashoutBlockReason, minimumPayoutCents, fmtMoney, t, stripeStatusMessage]);
 
   const applyStripeStatus = useCallback(

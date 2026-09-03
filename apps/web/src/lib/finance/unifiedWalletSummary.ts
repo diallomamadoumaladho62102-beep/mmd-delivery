@@ -149,8 +149,11 @@ function resolveCashoutGate(input: {
   stripeAccountId: string | null;
   onboarded: boolean;
   liveVerified: boolean;
+  /** Instant-cashable cents only (never pending / standard-only available). */
   availableCents: number;
   blockedToday: boolean;
+  /** Stripe Instant block reason from resolveManualCashoutFunding when cashable is 0. */
+  instantBlockReason?: string | null;
 }): { canCashout: boolean; reason: string | null } {
   if (!input.stripeAccountId || !input.onboarded || !input.liveVerified) {
     return { canCashout: false, reason: "stripe_setup_required" };
@@ -159,7 +162,11 @@ function resolveCashoutGate(input: {
     return { canCashout: false, reason: "already_cashed_out_today" };
   }
   if (input.availableCents <= 0) {
-    return { canCashout: false, reason: "instant_not_eligible" };
+    // Prefer precise Stripe Instant reason so clients never claim false "available".
+    return {
+      canCashout: false,
+      reason: input.instantBlockReason || "instant_not_eligible",
+    };
   }
   return { canCashout: true, reason: null };
 }
@@ -207,6 +214,7 @@ export async function buildRestaurantWalletSummary(
     liveVerified: connect.liveVerified,
     availableCents: connect.cashableCents,
     blockedToday: dayLimit.blocked,
+    instantBlockReason: connect.instantBlockReason,
   });
 
   return {
@@ -336,6 +344,7 @@ export async function buildSellerWalletSummary(
     liveVerified: connect.liveVerified,
     availableCents: connect.cashableCents,
     blockedToday: dayLimit.blocked,
+    instantBlockReason: connect.instantBlockReason,
   });
 
   return {

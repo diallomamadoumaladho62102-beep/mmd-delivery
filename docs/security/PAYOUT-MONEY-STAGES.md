@@ -1,5 +1,7 @@
 # Payout money stages (driver / restaurant / seller)
 
+**Decision (Option A + B):** Keep **separate charges + transfers**. Do **not** migrate to destination/direct charges. Maximize partner speed by removing artificial MMD delays and making Instant Cash Out as clear/fast as Stripe allows.
+
 MMD uses **separate charges + Stripe Connect transfers (SCT)**, then **Sunday 04:00 America/New_York** bank sweep of Connect `available`. Instant Cash Out is the mid-week fast path when Stripe allows Instant.
 
 **There is NO Sunday 16:00 catch-up and NO daily automatic bank sweep.**
@@ -10,13 +12,15 @@ MMD uses **separate charges + Stripe Connect transfers (SCT)**, then **Sunday 04
 |-------|---------|--------------------------------------|
 | 1. Payment confirmed | Client PaymentIntent / Checkout succeeded | On pay |
 | 2. Earnings calculated | Commission snapshot + worker share | On complete / delivered |
-| 3. SCT (`tr_*`) | Platform → Connect account | **Immediately** (`TAXI_PAYOUT_HOLD_HOURS` default **0**) |
+| 3. SCT (`tr_*`) / TRANSFERRED | Platform → Connect account | **Immediately** (`TAXI_PAYOUT_HOLD_HOURS` default **0**) |
 | 4. Connect **pending** | Stripe settlement in progress | Stripe-controlled |
-| 5. Connect **available** | Cashable on Connect (standard) | After Stripe releases pending |
-| 6a. Instant Cash Out (`po_*` Instant) | User-initiated → Instant dest | When Instant-eligible |
+| 5. Connect **available** | Standard available on Connect | After Stripe releases pending |
+| 6a. Instant Cash Out (`po_*` Instant) | User-initiated when Instant-eligible | Stripe Instant rules |
 | 6b. Bank payout (`po_*` standard) | Connect → verified `ba_*` | Sunday **04:00–04:59 ET only** |
-| 7. `payout.paid` | Funds arrived / Instant settled | Stripe webhook |
+| 7. `payout.paid` / PAID | Funds arrived / Instant settled | Stripe webhook |
 | 8. `payout.failed` | Bank/Instant failed | Stripe webhook → local status |
+
+**UX rule:** never present pending/settling as cashable Instant balance. `available_cents` for Cash Out = Instant-cashable only.
 
 ## Delay matrix
 
