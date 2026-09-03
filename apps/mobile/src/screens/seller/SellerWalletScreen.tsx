@@ -18,6 +18,7 @@ import { getApiBaseUrl } from "../../lib/apiBase";
 import { formatWalletAmount, fetchWalletSummary, requestWalletCashOut } from "../../lib/walletApi";
 import { startStripeOnboarding } from "../../utils/stripe";
 import { toUserFacingError } from "../../lib/userFacingError";
+import { instantCashoutBlockMessage } from "../../lib/instantCashoutBlockMessage";
 import { formatDateTime } from "../../i18n/formatters";
 import {
   normalizeStripeConnectStatus,
@@ -163,7 +164,18 @@ export default function SellerWalletScreen() {
   );
 
   const onPressCashout = useCallback(async () => {
-    if (loading || cashoutInFlight || !canCashout) return;
+    if (loading || cashoutInFlight || !canCashout) {
+      const reason = instantCashoutBlockMessage(cashoutBlockReason, t, {
+        minimumLabel: fmt(minimumPayoutCents),
+      });
+      if (reason) {
+        Alert.alert(
+          t("seller.wallet.cashoutUnavailable", "Cash out unavailable"),
+          reason,
+        );
+      }
+      return;
+    }
 
     Alert.alert(
       t("seller.wallet.cashoutConfirmTitle", "Instant cash out"),
@@ -220,6 +232,7 @@ export default function SellerWalletScreen() {
     loading,
     cashoutInFlight,
     canCashout,
+    cashoutBlockReason,
     availableCents,
     minimumPayoutCents,
     currency,

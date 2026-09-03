@@ -49,7 +49,7 @@ No deferred push queue / `pending_notification` table / scheduled send worker wa
 
 ## 4. Taxi payout eligibility
 
-Must be: ride `completed`, `payment_status=paid`, not refunded/disputed, `driver_cents > 0`, hold window elapsed (`TAXI_PAYOUT_HOLD_HOURS`, default 24), Connect `charges_enabled && payouts_enabled`, idempotency key `taxi_driver_payout:{rideId}`.
+Must be: ride `completed`, `payment_status=paid`, not refunded/disputed, `driver_cents > 0`, hold window elapsed (`TAXI_PAYOUT_HOLD_HOURS`, default **0** = immediate SCT), Connect `charges_enabled && payouts_enabled`, idempotency key `taxi_driver_payout:{rideId}`.
 
 Live money requires `TAXI_PAYOUTS_DRY_RUN=false` **and** explicit validation — default remains dry-run.
 
@@ -65,7 +65,7 @@ Ledger tables `marketplace_seller_payouts` / `marketplace_driver_payouts` with s
 | `SUPABASE_SERVICE_ROLE_KEY` / `NEXT_PUBLIC_SUPABASE_URL` | Locks + DB work |
 | `STRIPE_SECRET_KEY` | expire-stale PI cancel; taxi-run |
 | `TAXI_PAYOUTS_DRY_RUN` | default `true` |
-| `TAXI_PAYOUT_HOLD_HOURS` | default `24` |
+| `TAXI_PAYOUT_HOLD_HOURS` | default `0` (immediate SCT; bank payout = Sunday ET) |
 | `EXPIRE_STALE_PAYMENTS_DRY_RUN` | optional |
 | `CRON_FETCH_TIMEOUT_MS` | GH runners (default 60s) |
 | `SITE_URL` / `PRODUCTION_SITE_URL` | GH cron invokers |

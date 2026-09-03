@@ -95,6 +95,101 @@ async function ensureOutboundLedgerPair(
   });
 }
 
+export async function isOrderTransferLedgerComplete(
+  supabaseAdmin: SupabaseClient,
+  input: Pick<OrderPayoutBridgeInput, "orderPayoutId" | "stripeTransferId">,
+): Promise<{
+  complete: boolean;
+  payoutTransactionId?: string;
+  missing: string[];
+}> {
+  const payout = await findExistingPayoutTransaction(
+    supabaseAdmin,
+    input as OrderPayoutBridgeInput,
+  );
+  if (!payout) {
+    return { complete: false, missing: ["payout_transaction"] };
+  }
+
+  const { data: rows, error } = await supabaseAdmin
+    .from("wallet_ledger")
+    .select("direction")
+    .eq("reference_type", "payout_transaction")
+    .eq("reference_id", input.orderPayoutId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const directions = new Set(
+    (rows ?? []).map((row) => String(row.direction ?? "").toLowerCase()),
+  );
+  const missing: string[] = [];
+  if (!directions.has("credit")) missing.push("ledger_credit");
+  if (!directions.has("debit")) missing.push("ledger_debit");
+
+  return {
+    complete: missing.length === 0,
+    payoutTransactionId: payout.id,
+    missing,
+  };
+}
+
+/**
+ * Idempotent repair when Stripe Transfer succeeded but local ledger is incomplete.
+ * Safe to call on cron retry / already_succeeded short-circuit.
+ */
+export async function reconcileSuccessfulStripeOrderPayoutIfNeeded(
+  supabaseAdmin: SupabaseClient,
+  input: OrderPayoutBridgeInput,
+): Promise<
+  | { ok: true; reconciled: boolean; alreadyComplete: boolean }
+  | {
+      ok: false;
+      reconcile_required: true;
+      error: string;
+      missing: string[];
+      transfer_id: string;
+      order_payout_id: string;
+    }
+> {
+  const before = await isOrderTransferLedgerComplete(supabaseAdmin, input);
+  if (before.complete) {
+    return { ok: true, reconciled: false, alreadyComplete: true };
+  }
+
+  try {
+    await recordSuccessfulStripeOrderPayout(supabaseAdmin, input);
+  } catch (err) {
+    const afterErr = await isOrderTransferLedgerComplete(supabaseAdmin, input);
+    if (afterErr.complete) {
+      return { ok: true, reconciled: true, alreadyComplete: false };
+    }
+    return {
+      ok: false,
+      reconcile_required: true,
+      error: err instanceof Error ? err.message : String(err),
+      missing: afterErr.missing.length ? afterErr.missing : before.missing,
+      transfer_id: input.stripeTransferId,
+      order_payout_id: input.orderPayoutId,
+    };
+  }
+
+  const after = await isOrderTransferLedgerComplete(supabaseAdmin, input);
+  if (!after.complete) {
+    return {
+      ok: false,
+      reconcile_required: true,
+      error: "ledger_still_incomplete_after_reconcile",
+      missing: after.missing,
+      transfer_id: input.stripeTransferId,
+      order_payout_id: input.orderPayoutId,
+    };
+  }
+
+  return { ok: true, reconciled: true, alreadyComplete: false };
+}
+
 export async function recordSuccessfulStripeOrderPayout(
   supabaseAdmin: SupabaseClient,
   input: OrderPayoutBridgeInput

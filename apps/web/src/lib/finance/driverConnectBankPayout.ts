@@ -3,9 +3,13 @@
  *
  * Product rule:
  * - SCT (platform → Connect): immediate after delivered/completed + paid
- * - Connect → bank: Sunday 04:00 America/New_York, full available → bank account
+ * - Connect → bank (automatic): Sunday 04:00 America/New_York only
+ *   (full available → ba_* standard) — NO 16:00 catch-up, NO weekday bank sweep
  * - Manual Instant Cash Out: Instant card or Instant-eligible bank, no $ minimum, 1/day ET
+ * - Mid-week available without Instant → Instant Cash Out once eligible, else next Sunday 04:00
  * - Restaurants + sellers: same Cash Out + Sunday bank rules as drivers
+ *
+ * Transfer (SCT) is independent of the Sunday bank window — never wait for Sunday to Transfer.
  */
 
 import type Stripe from "stripe";
@@ -13,6 +17,9 @@ import { retrieveConnectBalance, stripe } from "@/lib/stripe";
 
 /** IANA zone for founder-requested Sunday 4:00 local New York time. */
 export const DRIVER_BANK_PAYOUT_TIMEZONE = "America/New_York";
+
+/** Sole automatic bank sweep hour (America/New_York). */
+export const DRIVER_BANK_PAYOUT_PRIMARY_HOUR = 4;
 
 export function getNowPartsInTimeZone(
   timeZone: string,
@@ -38,16 +45,18 @@ export function getNowPartsInTimeZone(
   return { weekday, hour, dateKey };
 }
 
-/** True only during Sunday 04:00–04:59 America/New_York (DST-aware).
- * Exact 4am ET year-round is achieved by dual GitHub Actions schedules
+/**
+ * True only during Sunday 04:00–04:59 America/New_York (DST-aware).
+ * Exact 4am ET year-round via dual GitHub Actions schedules
  * (Sunday 08:00 UTC for EDT, Sunday 09:00 UTC for EST); this gate accepts only hour 4.
+ * There is NO Sunday 16:00 catch-up window.
  */
 export function isDriverBankPayoutWindow(now = new Date()): boolean {
   const { weekday, hour } = getNowPartsInTimeZone(
     DRIVER_BANK_PAYOUT_TIMEZONE,
     now,
   );
-  return weekday === "Sun" && hour === 4;
+  return weekday === "Sun" && hour === DRIVER_BANK_PAYOUT_PRIMARY_HOUR;
 }
 
 export function driverBankPayoutIdempotencyKey(

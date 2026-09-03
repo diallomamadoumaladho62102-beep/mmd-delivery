@@ -389,9 +389,11 @@ async function runProcessPayouts(request: NextRequest) {
 
         if (!forceRun) {
           if (payoutMode === "weekly") {
+            // Weekly SCT retry: delivery confirmation window (not order.created_at).
             query = query
-              .gte("created_at", weekStartIso)
-              .lt("created_at", weekEndIso);
+              .not("delivered_confirmed_at", "is", null)
+              .gte("delivered_confirmed_at", weekStartIso)
+              .lt("delivered_confirmed_at", weekEndIso);
           }
           // hybrid + immediate: process all unpaid delivered/paid SCTs (no
           // delivered_confirmed_at window) so stuck transfers keep retrying.

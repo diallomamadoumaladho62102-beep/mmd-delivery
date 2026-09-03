@@ -20,6 +20,7 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
+import { instantCashoutBlockMessage } from "../lib/instantCashoutBlockMessage";
 import { supabase } from "../lib/supabase";
 import {
   fetchDriverWalletSnapshot,
@@ -218,35 +219,16 @@ export function DriverWalletScreen() {
   }, [payoutTransactions]);
 
   const cashoutReason = useMemo(() => {
-    switch (cashoutBlockReason) {
-      case "stripe_setup_required":
-        return (
-          stripeStatusMessage ||
-          t("driver.wallet.cashoutReason.needStripe", "Enable Stripe payouts to cash out.")
-        );
-      case "already_cashed_out_today":
-        return t(
-          "driver.wallet.cashoutReason.alreadyToday",
-          "You already requested a cash out today. Try again tomorrow.",
-        );
-      case "below_minimum":
-      case "instant_not_eligible":
-      case "nothing_to_cashout":
-        return (
-          cashoutBlockReason === "below_minimum"
-            ? t("driver.wallet.cashoutReason.min", "Minimum cash out: {{min}}.", {
-                min: fmtMoney(minimumPayoutCents),
-              })
-            : t(
-                "driver.wallet.cashoutReason.instant",
-                "Instant Cash Out unavailable. Add an Instant-eligible bank or debit card, or wait for Sunday bank payout.",
-              )
-        );
-      default:
-        return cashoutBlockReason
-          ? toUserFacingError({ code: cashoutBlockReason }, "")
-          : "";
+    if (cashoutBlockReason === "stripe_setup_required" && stripeStatusMessage) {
+      return stripeStatusMessage;
     }
+    const mapped = instantCashoutBlockMessage(cashoutBlockReason, t, {
+      minimumLabel: fmtMoney(minimumPayoutCents),
+    });
+    if (mapped) return mapped;
+    return cashoutBlockReason
+      ? toUserFacingError({ code: cashoutBlockReason }, "")
+      : "";
   }, [cashoutBlockReason, minimumPayoutCents, fmtMoney, t, stripeStatusMessage]);
 
   const applyStripeStatus = useCallback(
@@ -614,11 +596,17 @@ export function DriverWalletScreen() {
                   <Text style={styles.reasonTextMuted}>
                     {t(
                       "driver.wallet.bankAvailable.hint",
-                      "Stripe bank-available: {{amount}} (Sunday automatic payout)",
+                      "Stripe available now: {{amount}} — Instant Cash Out if eligible, else Sunday 4:00 AM ET bank payout. Not pending/settling.",
                       { amount: fmtMoney(connectAvailableCents) },
                     )}
                   </Text>
                 ) : null}
+                <Text style={styles.reasonTextMuted}>
+                  {t(
+                    "driver.wallet.moneyStages.hint",
+                    "Stages: earned → transferred to Connect → Stripe pending → available → Instant Cash Out or Sunday 4:00 AM ET bank payout. Pending is never available or paid out.",
+                  )}
+                </Text>
                 {settlingCents > 0 || awaitingTransferCents > 0 ? (
                   <Text style={styles.reasonTextMuted}>
                     {t(
@@ -786,7 +774,7 @@ export function DriverWalletScreen() {
                 <Text style={styles.infoSub}>
                   {t(
                     "driver.wallet.nextAuto.desc",
-                    "MMD sends remaining Stripe Connect available funds to your bank every Sunday at 04:00 AM (America/New_York). This is MMD’s schedule, not Stripe’s default daily payout.",
+                    "MMD sends remaining Stripe Connect available funds to your bank every Sunday at 04:00 AM (America/New_York). Instant Cash Out is available mid-week when Stripe Instant eligibility allows. There is no afternoon catch-up payout. This is MMD’s schedule, not Stripe’s default daily payout.",
                   )}
                 </Text>
               </View>

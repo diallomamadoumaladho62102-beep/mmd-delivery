@@ -29,6 +29,10 @@ import { formatDateTime } from "../i18n/formatters";
 import { toUserFacingError } from "../lib/userFacingError";
 import { signOutToRoleSelect } from "../lib/signOutToRoleSelect";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   MMD_BLUE,
   MMD_CARD_BORDER,
   MMD_FONT,
@@ -79,16 +83,20 @@ export default function ClientWalletScreen() {
         return;
       }
 
-      const [summary, history] = await Promise.all([
-        fetchWalletSummary(token, {
-          accountType: "client",
-          countryCode: "US",
-        }),
-        fetchWalletHistory(token, {
-          accountType: "client",
-          limit: 50,
-        }),
-      ]);
+      const [summary, history] = await withTimeout(
+        Promise.all([
+          fetchWalletSummary(token, {
+            accountType: "client",
+            countryCode: "US",
+          }),
+          fetchWalletHistory(token, {
+            accountType: "client",
+            limit: 50,
+          }),
+        ]),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "client_wallet_fetch",
+      );
 
       setCurrency(String(summary.currency ?? "USD"));
       setAvailableCents(Number(summary.available_cents ?? 0));
@@ -118,8 +126,11 @@ export default function ClientWalletScreen() {
       let alive = true;
       (async () => {
         setLoading(true);
-        await refresh();
-        if (alive) setLoading(false);
+        try {
+          await refresh();
+        } finally {
+          if (alive) setLoading(false);
+        }
       })();
       return () => {
         alive = false;

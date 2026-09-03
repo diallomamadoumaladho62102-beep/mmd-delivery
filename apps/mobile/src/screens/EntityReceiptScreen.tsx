@@ -32,6 +32,10 @@ import {
 } from "../i18n/formatters";
 import { toUserFacingError } from "../lib/userFacingError";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_GLASS,
@@ -116,7 +120,11 @@ export function EntityReceiptScreenBody({
     }
     setError(null);
     try {
-      const data = await fetchReceipt(entityId);
+      const data = await withTimeout(
+        fetchReceipt(entityId),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "client_receipt_fetch",
+      );
       setReceipt(data);
     } catch (e) {
       setError(

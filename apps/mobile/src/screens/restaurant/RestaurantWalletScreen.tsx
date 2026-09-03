@@ -23,6 +23,7 @@ import {
 } from "../../lib/walletApi";
 import { formatDateTime } from "../../i18n/formatters";
 import { toUserFacingError } from "../../lib/userFacingError";
+import { instantCashoutBlockMessage } from "../../lib/instantCashoutBlockMessage";
 import { RestaurantStripeConnectCard } from "../../features/restaurant/components/RestaurantStripeConnectCard";
 import {
   MMD_BLUE,
@@ -143,12 +144,13 @@ export default function RestaurantWalletScreen() {
 
   const onPressCashout = useCallback(async () => {
     if (loading || cashoutInFlight || !canCashout) {
-      if (cashoutBlockReason === "below_minimum") {
+      const reason = instantCashoutBlockMessage(cashoutBlockReason, t, {
+        minimumLabel: fmt(minimumPayoutCents),
+      });
+      if (reason) {
         Alert.alert(
           t("restaurant.wallet.cashoutUnavailable", "Cash out unavailable"),
-          t("restaurant.wallet.minCashout", "Minimum cash out: {{min}}.", {
-            min: fmt(minimumPayoutCents),
-          })
+          reason,
         );
       }
       return;

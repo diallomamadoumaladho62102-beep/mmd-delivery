@@ -1,12 +1,13 @@
 /**
  * Founder-approved money-out model (WorkerFinance).
  *
- * Platform → Connect: Stripe Connect Transfers (SCT) — internal only.
+ * Platform → Connect: Stripe Connect Transfers (SCT) — internal only; immediate when eligible.
  * Connect → worker:
  * - Manual Cash Out: Instant Payout ONLY → Instant-eligible debit card or
  *   Instant-eligible bank (Stripe available_payout_methods). 100% Instant-eligible.
  *   No $ minimum. Max 1/day America/New_York. No standard fallback.
  * - Sunday 04:00 America/New_York: standard payout of remaining available → bank.
+ *   NO Sunday 16:00 catch-up. NO weekday automatic bank sweep.
  *
  * Wallet: Earnings / Available(Instant) / Cash Out / Next Sunday / Last status.
  * Never mark payout paid on create — wait for Stripe payout.paid.

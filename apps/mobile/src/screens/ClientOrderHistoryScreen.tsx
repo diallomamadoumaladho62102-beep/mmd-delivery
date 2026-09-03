@@ -20,6 +20,10 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 
 type Tr = (key: string, defaultValue?: string) => string;
 import {
@@ -146,7 +150,8 @@ export default function ClientOrderHistoryScreen() {
         return;
       }
 
-      const [ordersRes, drRes, taxiRes] = await Promise.all([
+      const [ordersRes, drRes, taxiRes] = await withTimeout(
+        Promise.all([
         applyLiveTripFilters(
           supabase
             .from("orders")
@@ -179,7 +184,10 @@ export default function ClientOrderHistoryScreen() {
           .eq("client_user_id", userId)
           .order("created_at", { ascending: false })
           .limit(100),
-      ]);
+      ]),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "client_order_history_fetch",
+      );
 
       const merged: HistoryItem[] = [];
 

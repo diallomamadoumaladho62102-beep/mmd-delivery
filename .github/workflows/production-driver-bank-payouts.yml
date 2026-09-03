@@ -3,6 +3,7 @@ name: Production driver Connect bank payouts
 # Exact Sunday 04:00 America/New_York year-round (DST-aware).
 # Vercel Hobby cannot schedule two Sunday UTC times; GitHub Actions can.
 # Handler /api/cron/driver-connect-bank-payouts only pays when local NY hour === 4.
+# NO Sunday 16:00 catch-up. Mid-week path = Instant Cash Out only.
 on:
   schedule:
     # EDT (UTC-4): Sunday 08:00 UTC = 04:00 America/New_York

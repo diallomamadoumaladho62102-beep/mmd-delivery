@@ -44,6 +44,9 @@ jobs:
       - name: Verify Snyk inflight ignore policy scope
         run: node scripts/snyk-inflight-policy.regression.test.mjs
 
+      - name: Audit payment reconcile regressions
+        run: node apps/web/src/lib/payoutExecutionBridge.reconcile.regression.test.mjs && node apps/web/src/lib/finance/bankPayoutLedgerBridge.regression.test.mjs && node apps/web/src/lib/finance/processPayoutsWeekly.regression.test.mjs && node apps/web/src/lib/marketplaceLiveCheckoutIdempotency.regression.test.mjs && node apps/web/src/lib/stripeWebhookGuards.regression.test.mjs && node apps/mobile/scripts/mobileClientTimeout.regression.test.mjs && node apps/web/src/lib/finance/moneySplitIdentity.regression.test.mjs && node apps/web/src/lib/finance/zeroMmdSctHold.regression.test.mjs && node apps/web/src/lib/finance/optionABPartnerEarnings.regression.test.mjs && pnpm --dir apps/web exec tsx src/lib/finance/driverConnectBankPayout.test.ts && pnpm --dir apps/mobile exec tsx src/lib/instantCashoutBlockMessage.test.ts
+
       - name: Typecheck web
         run: pnpm --dir apps/web exec tsc --noEmit
 
