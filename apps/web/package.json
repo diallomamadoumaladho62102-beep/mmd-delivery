@@ -45,7 +45,7 @@
     "test:ci": "tsx src/lib/pushCopy.test.ts && tsx src/lib/smsKeywords.test.ts && tsx src/lib/smsTemplates.test.ts && tsx src/lib/smsA2p.test.ts && tsx src/lib/twilioSmsInbound.test.ts && tsx src/components/site/smsProgramCopy.test.ts && tsx src/components/site/supportContent.test.ts && pnpm test:rbac && pnpm test:loyalty && tsx src/lib/routeDistanceLimits.regression.test.ts && tsx src/lib/apiRouteDistanceGuards.regression.test.ts && tsx src/lib/taxi/taxiCancellationPolicy.regression.test.ts && tsx src/lib/taxi/taxiCancelDestinationRatings.regression.test.ts && tsx src/lib/phase8Security.test.ts && tsx src/lib/finance/financialTimelineAccess.test.ts && tsx src/lib/finance/financeTimelineIdor.regression.test.ts && tsx src/lib/securityHeaders.test.ts && tsx src/lib/founderAccess.regression.test.ts && tsx src/lib/sentryFilter.test.ts && tsx src/lib/authValidation.test.ts && tsx src/lib/orderPaymentSelect.test.ts && tsx src/lib/deliveryRequestPaymentSelect.test.ts && tsx src/lib/requirePaymentIntentSucceeded.test.ts && tsx src/lib/createPaymentIntentIdempotency.test.ts && tsx src/lib/userFacingError.test.ts && tsx src/lib/taxiMapbox.test.ts && tsx src/lib/taxiPhase5.test.ts && tsx src/lib/driverIdentityPhone.test.ts && tsx src/lib/adminStaffLogin.test.ts && tsx src/lib/driverIdentityDisplay.test.ts && tsx src/lib/driverIdentityOps.test.ts && tsx src/lib/driverIdentityTrustScore.test.ts && tsx src/lib/driverIdentityAiInsight.test.ts && tsx src/lib/transactionalOutbound.test.ts && tsx src/lib/adminVoiceTransfer.test.ts && tsx src/lib/adminVoiceIvr.test.ts && tsx src/lib/callSessionDisplay.test.ts && tsx src/lib/adminVoiceConference.test.ts && tsx src/lib/driverLocationsRls.test.ts && tsx src/lib/driverIdentityRiskEngine.test.ts && tsx src/lib/driverIdentityRls.test.ts && tsx src/lib/restaurantOrderAutomation.test.ts && tsx src/lib/restaurantOrderStatusService.test.ts && tsx src/lib/restaurantPushNotifications.test.ts && tsx src/lib/vehicleCategoryEligibility.test.ts && tsx src/lib/driverServiceDispatch.test.ts && tsx src/lib/driverVehicleSecurity.test.ts && tsx src/lib/taxiInternationalFinalization.test.ts && tsx src/lib/taxiClientPreferences.test.ts && tsx src/lib/taxiCityDetection.test.ts && tsx src/lib/taxiActiveRideCompliance.test.ts && tsx src/lib/rideSafetyRecording.test.ts && tsx src/lib/productionTrustBoundary.test.ts && tsx src/lib/productionSite.test.ts && tsx src/components/site/mobileAppComingSoonBanner.test.ts && tsx src/components/site/legalTwilioPages.test.ts && tsx src/lib/foodOrderTrustBoundary.test.ts && tsx src/lib/stripeWebhookChargeRefunded.test.ts && tsx src/lib/finance/moneyOutArchitecture.test.ts && tsx src/lib/finance/manualCashoutService.test.ts && tsx src/lib/finance/selectInstantPayoutDestination.test.ts && tsx src/lib/finance/instantCashoutWalletLayers.regression.test.ts && tsx src/lib/finance/workerFinance.singleEngine.regression.test.ts && tsx src/lib/finance/workerFinance.sctWallet.regression.test.ts && tsx src/lib/finance/driverCashoutSecurity.regression.test.ts && tsx src/lib/finance/driverConnectBankPayout.test.ts && tsx src/lib/commissionDisplayCents.test.ts && tsx src/lib/finance/walletEarningsCashOut.regression.test.ts && tsx src/lib/finance/stripeSourceChargeId.test.ts && tsx src/lib/finance/taxiFareTransferGuards.test.ts && tsx src/lib/finance/taxiFareTransferWallet.regression.test.ts && tsx src/lib/finance/deliveryFinanceWalletRating.regression.test.ts && tsx src/lib/finance/restaurantFinanceWalletPayout.regression.test.ts && tsx src/lib/finance/restaurantConnectPayoutGate.regression.test.ts && tsx src/lib/finance/restaurantConnectSecurity.regression.test.ts && tsx src/lib/finance/retryAwaitingConnectTransfers.regression.test.ts && tsx src/lib/finance/commissionFreezeScenarios.regression.test.ts && tsx src/lib/taxiImmediatePayoutAndRating.regression.test.ts && tsx src/lib/taxiCompleteRideId.regression.test.ts && tsx src/lib/adminTaxiForceComplete.regression.test.ts && tsx src/lib/driverFinanceStripeSot.regression.test.ts && tsx src/lib/taxi/taxiQuoteCheckoutPromo.regression.test.ts && tsx src/lib/taxiRatingMonitoring.regression.test.ts && tsx src/lib/taxiRatingCompatHarden.regression.test.ts && tsx src/lib/stripeWebhookPaymentFailure.test.ts && tsx src/lib/expireStalePayments.test.ts && tsx src/lib/taxiPayoutEligibility.test.ts && tsx src/lib/cronJobLock.test.ts && tsx src/lib/cronTimeouts.test.ts && pnpm test:marketplace-live-checkout && tsx src/lib/deliveryProofUrl.test.ts && tsx src/lib/profilesSignupRoleGuard.test.ts && tsx src/lib/accountDeletion.test.ts && tsx src/lib/referralCodesRls.test.ts && tsx src/lib/opsMapDirections.test.ts && pnpm test:platform-launch && pnpm test:delivery-pricing && pnpm test:delivery-pricing-v2 && pnpm test:service-fee && pnpm test:payment-routing && pnpm test:payout-routing && pnpm test:payout-providers && pnpm test:wait-fee && pnpm test:wait-timer && pnpm test:admin-payment-methods && pnpm test:admin-payout-methods && tsx src/lib/inboundWalletLedgerIdempotency.test.ts && tsx src/lib/walletBalanceFromLedgerSum.test.ts && tsx src/lib/paymentWebhookRecovery.test.ts && tsx src/lib/accountStatus.test.ts && tsx src/lib/requireActiveAccount.test.ts && tsx src/lib/publicMaskedCallSession.test.ts && tsx src/lib/chatPushTarget.test.ts && tsx src/lib/paymentAmountMatch.test.ts && tsx src/lib/twilioMaskedSessionMatch.test.ts && tsx src/lib/safeReturnUrl.test.ts && tsx src/lib/securityHardening.regression.test.ts && tsx src/lib/adminClientSearch.test.ts && node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.70.0",
+    "@sentry/nextjs": "^10.73.0",
     "@stripe/stripe-js": "4.10.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "2.46.1",
@@ -64,24 +64,24 @@
     "tailwindcss": "3.4.10",
     "twilio": "^6.1.0",
     "twilio-video": "^2.35.0",
-    "web-vitals": "^6.1.0"
+    "web-vitals": "^6.2.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^9.39.5",
     "@types/node": "20.14.11",
     "@types/pdfkit": "^0.17.5",
     "@types/react": "19.1.17",
     "@types/react-dom": "19.1.9",
     "@types/twilio-video": "^2.11.0",
-    "@typescript-eslint/eslint-plugin": "^8.67.0",
-    "@typescript-eslint/parser": "^8.67.0",
+    "@typescript-eslint/eslint-plugin": "^8.69.0",
+    "@typescript-eslint/parser": "^8.69.0",
     "autoprefixer": "10.5.4",
-    "baseline-browser-mapping": "^2.11.13",
+    "baseline-browser-mapping": "^2.11.20",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^4.4.5",
     "postcss": "8.5.26",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.13",
     "typescript": "5.6.2"
   }
 }
