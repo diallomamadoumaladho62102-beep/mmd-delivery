@@ -340,7 +340,7 @@ async function findTransferIdsForDisputeEntity(
  * Lost-dispute clawback: reverse every Stripe Connect Transfer already paid
  * out for the disputed entity. Attempts every ref — a single unreversible
  * transfer must never block the others. Failed reverses persist
- * partner_transfer_recoveries (reconcile_required). Idempotent via shared
+ * partner_transfer_recoveries (recovery_required). Idempotent via shared
  * partner clawback keys keyed by dispute id.
  */
 async function clawbackDisputeTransfers(params: {
@@ -387,10 +387,10 @@ async function clawbackDisputeTransfers(params: {
       outcome.status === "already_reversed"
     ) {
       reversed.push(ref.transferId);
-    } else if (outcome.status === "reconcile_required") {
+    } else if (outcome.status === "recovery_required") {
       failed.push(ref.transferId);
       console.warn(
-        "[stripeWebhookDispute] transfer reversal reconcile_required",
+        "[stripeWebhookDispute] transfer reversal recovery_required",
         ref.transferId,
         ref.target,
         outcome.errorCode,

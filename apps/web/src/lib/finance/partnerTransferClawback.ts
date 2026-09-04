@@ -4,8 +4,8 @@
  *
  * Stripe SoT for money movement: transfers.createReversal when Connect balance
  * allows. If reverse fails (funds already Instant/bank paid out), persist
- * partner_transfer_recoveries with status=reconcile_required — never mark
- * recovered artificially.
+ * partner_transfer_recoveries with status=recovery_required — never mark
+ * recovered artificially (status `recovered` is ops-only after real recovery).
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -34,12 +34,17 @@ export type PartnerTransferRef = {
 export type PartnerClawbackOutcome = {
   transferId: string;
   target: string;
-  status: "reversed" | "already_reversed" | "reconcile_required" | "skipped";
+  status:
+    | "reversed"
+    | "already_reversed"
+    | "recovery_required"
+    | "skipped";
   reversalId: string | null;
   amountCents: number;
   currency: string;
   errorCode: string | null;
   errorMessage: string | null;
+  /** True when partner funds were not returned and ops recovery is required. */
   reconcile_required: boolean;
 };
 
@@ -92,7 +97,7 @@ async function upsertRecoveryRow(
     target: string;
     amountCents: number;
     currency: string;
-    status: "reversed" | "already_reversed" | "reconcile_required";
+    status: "reversed" | "already_reversed" | "recovery_required";
     failureCode: string | null;
     failureMessage: string | null;
     idempotencyKey: string;
@@ -131,18 +136,19 @@ async function upsertRecoveryRow(
     // Stripe may have succeeded — never fail-open silently for reconcile path.
     return {
       ok: false,
-      reconcile_required: row.status === "reconcile_required" || true,
+      reconcile_required: row.status === "recovery_required" || true,
     };
   }
 
   return {
     ok: true,
-    reconcile_required: row.status === "reconcile_required",
+    reconcile_required: row.status === "recovery_required",
   };
 }
 
 /**
- * Reverse one Connect Transfer or record reconcile_required with exact amount.
+ * Reverse one Connect Transfer or record recovery_required with exact amount.
+ * Never writes status `recovered` — that is ops-only after confirmed recovery.
  */
 export async function reverseStripeTransferOrRecover(params: {
   supabaseAdmin: SupabaseClient;
@@ -179,6 +185,73 @@ export async function reverseStripeTransferOrRecover(params: {
     transferId,
     correlationId: params.correlationId,
   });
+
+  // Idempotent short-circuit: never double-reverse when DB already recorded success.
+  {
+    const { data: prior } = await params.supabaseAdmin
+      .from("partner_transfer_recoveries")
+      .select("status, stripe_reversal_id, amount_cents, currency")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    const priorStatus = String(
+      (prior as { status?: string } | null)?.status ?? ""
+    ).trim();
+    if (priorStatus === "reversed" || priorStatus === "already_reversed") {
+      return {
+        transferId,
+        target: params.ref.target,
+        status: priorStatus as "reversed" | "already_reversed",
+        reversalId: asId(
+          (prior as { stripe_reversal_id?: string | null } | null)
+            ?.stripe_reversal_id
+        ),
+        amountCents: Math.max(
+          0,
+          Math.round(
+            Number(
+              (prior as { amount_cents?: number } | null)?.amount_cents ??
+                params.ref.amountCentsHint ??
+                0
+            )
+          )
+        ),
+        currency:
+          String(
+            (prior as { currency?: string } | null)?.currency ?? "USD"
+          ).toUpperCase() || "USD",
+        errorCode: null,
+        errorMessage: null,
+        reconcile_required: false,
+      };
+    }
+    // Never treat prior `recovered` as auto-retry target; ops owns that state.
+    if (priorStatus === "recovered") {
+      return {
+        transferId,
+        target: params.ref.target,
+        status: "already_reversed",
+        reversalId: asId(
+          (prior as { stripe_reversal_id?: string | null } | null)
+            ?.stripe_reversal_id
+        ),
+        amountCents: Math.max(
+          0,
+          Math.round(
+            Number(
+              (prior as { amount_cents?: number } | null)?.amount_cents ?? 0
+            )
+          )
+        ),
+        currency:
+          String(
+            (prior as { currency?: string } | null)?.currency ?? "USD"
+          ).toUpperCase() || "USD",
+        errorCode: null,
+        errorMessage: null,
+        reconcile_required: false,
+      };
+    }
+  }
 
   let amountCents = Math.max(
     0,
@@ -343,7 +416,7 @@ export async function reverseStripeTransferOrRecover(params: {
       target: params.ref.target,
       amountCents,
       currency,
-      status: "reconcile_required",
+      status: "recovery_required",
       failureCode,
       failureMessage,
       idempotencyKey,
@@ -358,7 +431,7 @@ export async function reverseStripeTransferOrRecover(params: {
     return {
       transferId,
       target: params.ref.target,
-      status: "reconcile_required",
+      status: "recovery_required",
       reversalId: null,
       amountCents,
       currency,
@@ -369,7 +442,7 @@ export async function reverseStripeTransferOrRecover(params: {
   }
 }
 
-/** Persist reconcile_required without attempting Stripe (caller already failed reverse). */
+/** Persist recovery_required without attempting Stripe (caller already failed reverse). */
 export async function recordFailedTransferRecovery(params: {
   supabaseAdmin: SupabaseClient;
   entityType: PartnerClawbackEntityType;
@@ -405,7 +478,7 @@ export async function recordFailedTransferRecovery(params: {
     target: params.target,
     amountCents: Math.max(0, Math.round(Number(params.amountCents ?? 0))),
     currency: String(params.currency ?? "USD").toUpperCase() || "USD",
-    status: "reconcile_required",
+    status: "recovery_required",
     failureCode: params.failureCode,
     failureMessage: params.failureMessage,
     idempotencyKey,
@@ -638,7 +711,7 @@ export async function clawbackPartnerTransfersForRefund(params: {
     .map((o) => o.transferId)
     .filter(Boolean);
   const failed = outcomes
-    .filter((o) => o.status === "reconcile_required")
+    .filter((o) => o.status === "recovery_required")
     .map((o) => o.transferId)
     .filter(Boolean);
 
@@ -743,7 +816,7 @@ export async function clawbackTipTransfersForRefund(params: {
     .map((o) => o.transferId)
     .filter(Boolean);
   const failed = outcomes
-    .filter((o) => o.status === "reconcile_required")
+    .filter((o) => o.status === "recovery_required")
     .map((o) => o.transferId)
     .filter(Boolean);
 

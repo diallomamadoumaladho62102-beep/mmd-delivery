@@ -1,7 +1,11 @@
 -- Partner SCT clawback / recovery after customer refund or lost dispute.
--- Stripe Transfer reverse is SoT when it succeeds; failed reverse (e.g. funds
--- already Instant/bank paid out of Connect) must never be silent — row stays
--- reconcile_required with the exact amount still owed to the platform.
+-- Status model (financial SoT):
+--   reversed          = Stripe createReversal succeeded this attempt
+--   already_reversed  = Stripe already had the transfer reversed (idempotent)
+--   recovery_required = reverse failed (e.g. Instant/Sunday bank already paid out)
+--   recovered         = RESERVED for explicit ops confirmation after non-Stripe
+--                       recovery — NEVER set by automatic clawback code
+-- Never mark recovered unless money was actually recovered.
 
 begin;
 
@@ -17,7 +21,12 @@ create table if not exists public.partner_transfer_recoveries (
   amount_cents bigint not null default 0 check (amount_cents >= 0),
   currency text not null default 'USD',
   status text not null
-    check (status in ('reversed', 'already_reversed', 'reconcile_required')),
+    check (status in (
+      'reversed',
+      'already_reversed',
+      'recovery_required',
+      'recovered'
+    )),
   failure_code text,
   failure_message text,
   idempotency_key text not null,
@@ -35,7 +44,7 @@ create index if not exists partner_transfer_recoveries_transfer_idx
 
 create index if not exists partner_transfer_recoveries_status_idx
   on public.partner_transfer_recoveries (status)
-  where status = 'reconcile_required';
+  where status = 'recovery_required';
 
 alter table public.partner_transfer_recoveries enable row level security;
 

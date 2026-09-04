@@ -133,9 +133,9 @@ check(
 
 check(
   "dispute_clawback_reconcile_required_per_transfer",
-  /reconcile_required/.test(dispute) &&
+  /recovery_required/.test(dispute) &&
     /reverseStripeTransferOrRecover/.test(dispute),
-  "clawback attempts every transfer ref and records reconcile_required on failure",
+  "clawback attempts every transfer ref and records recovery_required on failure",
 );
 
 // ---------------------------------------------------------------------------
