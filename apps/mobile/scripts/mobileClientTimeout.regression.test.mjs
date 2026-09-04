@@ -81,6 +81,12 @@ test("driver map trip load and Mapbox Directions have wall-clock timeouts", () =
   assert.match(marketplaceApi, /marketplace_fetch/);
   assert.match(notificationsApi, /notifications_inbox_get/);
   assert.match(driverWallet, /driver_wallet_session/);
+  const driverAccount = readFileSync(
+    join(mobileRoot, "screens/DriverAccountScreen.tsx"),
+    "utf8",
+  );
+  assert.match(driverAccount, /driver_account_load/);
+  assert.match(driverAccount, /CLIENT_SCREEN_FETCH_TIMEOUT_MS/);
 });
 
 console.log("mobile client timeout regression passed");
