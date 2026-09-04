@@ -15,6 +15,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { clearSelectedRole } from "../lib/authRole";
 import {
   confirmSignOutToRoleSelect,
@@ -170,155 +174,161 @@ export function DriverAccountScreen() {
     try {
       setLoadingProgress(true);
 
-      const { data: authRes, error: authErr } = await supabase.auth.getUser();
-      if (authErr) {
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          toUserFacingError(authErr, t("common.errorTitle", "Error")),
-        );
-        return;
-      }
+      await withTimeout(
+        (async () => {
+          const { data: authRes, error: authErr } = await supabase.auth.getUser();
+          if (authErr) {
+            Alert.alert(
+              t("common.errorTitle", "Error"),
+              toUserFacingError(authErr, t("common.errorTitle", "Error")),
+            );
+            return;
+          }
 
-      const uid = authRes.user?.id;
-      if (!uid) {
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          t("common.notConfigured", "Not configured"),
-        );
-        return;
-      }
+          const uid = authRes.user?.id;
+          if (!uid) {
+            Alert.alert(
+              t("common.errorTitle", "Error"),
+              t("common.notConfigured", "Not configured"),
+            );
+            return;
+          }
 
-      try {
-        const { error: syncErr } = await supabase.functions.invoke(
-          "check_connect_status",
-          { body: { role: "driver" } },
-        );
-        if (syncErr) console.log("check_connect_status error:", syncErr);
-      } catch (e) {
-        console.log("check_connect_status exception:", e);
-      }
+          try {
+            const { error: syncErr } = await supabase.functions.invoke(
+              "check_connect_status",
+              { body: { role: "driver" } },
+            );
+            if (syncErr) console.log("check_connect_status error:", syncErr);
+          } catch (e) {
+            console.log("check_connect_status exception:", e);
+          }
 
-      const profileRes = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", uid)
-        .maybeSingle();
-      if (profileRes.data?.full_name) {
-        safeSetState(() => setDisplayName(String(profileRes.data.full_name)));
-      } else if (authRes.user?.email) {
-        safeSetState(() => setDisplayName(String(authRes.user?.email)));
-      }
+          const profileRes = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", uid)
+            .maybeSingle();
+          if (profileRes.data?.full_name) {
+            safeSetState(() => setDisplayName(String(profileRes.data.full_name)));
+          } else if (authRes.user?.email) {
+            safeSetState(() => setDisplayName(String(authRes.user?.email)));
+          }
 
-      let { data: profileRaw, error: pErr } = await supabase
-        .from("driver_profiles")
-        .select(
-          "id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded,status",
-        )
-        .or(`user_id.eq.${uid},id.eq.${uid}`)
-        .maybeSingle();
+          let { data: profileRaw, error: pErr } = await supabase
+            .from("driver_profiles")
+            .select(
+              "id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded,status",
+            )
+            .or(`user_id.eq.${uid},id.eq.${uid}`)
+            .maybeSingle();
 
-      if (!profileRaw) {
-        const { error: upErr } = await supabase.from("driver_profiles").upsert(
-          {
-            id: uid,
-            user_id: uid,
-            transport_mode: "bike",
-            is_online: false,
-            total_deliveries: 0,
-            acceptance_rate: 0,
-            cancellation_rate: 0,
-            vehicle_verified: false,
-            stripe_onboarded: false,
-          } as any,
-          { onConflict: "id" },
-        );
+          if (!profileRaw) {
+            const { error: upErr } = await supabase.from("driver_profiles").upsert(
+              {
+                id: uid,
+                user_id: uid,
+                transport_mode: "bike",
+                is_online: false,
+                total_deliveries: 0,
+                acceptance_rate: 0,
+                cancellation_rate: 0,
+                vehicle_verified: false,
+                stripe_onboarded: false,
+              } as any,
+              { onConflict: "id" },
+            );
 
-        if (upErr) {
-          Alert.alert(
-            t("common.errorTitle", "Error"),
-            toUserFacingError(
-              upErr,
-              t(
-                "driver.account.createProfileFailed",
-                "Unable to create the driver profile right now.",
+            if (upErr) {
+              Alert.alert(
+                t("common.errorTitle", "Error"),
+                toUserFacingError(
+                  upErr,
+                  t(
+                    "driver.account.createProfileFailed",
+                    "Unable to create the driver profile right now.",
+                  ),
+                ),
+              );
+            }
+
+            const again = await supabase
+              .from("driver_profiles")
+              .select(
+                "id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded,status",
+              )
+              .or(`user_id.eq.${uid},id.eq.${uid}`)
+              .maybeSingle();
+
+            profileRaw = again.data ?? null;
+            pErr = again.error ?? null;
+          }
+
+          if (pErr) {
+            Alert.alert(
+              t("common.errorTitle", "Error"),
+              toUserFacingError(
+                pErr,
+                t(
+                  "driver.account.loadProfileFailed",
+                  "Unable to load the driver profile right now.",
+                ),
               ),
-            ),
-          );
-        }
+            );
+          }
 
-        const again = await supabase
-          .from("driver_profiles")
-          .select(
-            "id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded,status",
-          )
-          .or(`user_id.eq.${uid},id.eq.${uid}`)
-          .maybeSingle();
+          const dp = (profileRaw as unknown as DriverProfile | null) ?? null;
+          safeSetState(() => setAccountStatus(dp?.status ?? null));
 
-        profileRaw = again.data ?? null;
-        pErr = again.error ?? null;
-      }
+          let docs: { doc_type?: string | null; status?: string | null }[] = [];
+          const first = await supabase
+            .from("driver_documents")
+            .select("doc_type, status, driver_id, user_id")
+            .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
 
-      if (pErr) {
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          toUserFacingError(
-            pErr,
-            t(
-              "driver.account.loadProfileFailed",
-              "Unable to load the driver profile right now.",
-            ),
-          ),
-        );
-      }
+          if (!first.error) {
+            docs = first.data ?? [];
+          } else {
+            const second = await supabase
+              .from("driver_documents")
+              .select("doc_type, status, user_id")
+              .eq("user_id", uid);
+            if (second.error) {
+              Alert.alert(
+                t("common.errorTitle", "Error"),
+                toUserFacingError(
+                  second.error,
+                  t(
+                    "driver.account.loadDocsFailed",
+                    "Unable to load documents right now.",
+                  ),
+                ),
+              );
+            } else {
+              docs = second.data ?? [];
+            }
+          }
 
-      const dp = (profileRaw as unknown as DriverProfile | null) ?? null;
-      safeSetState(() => setAccountStatus(dp?.status ?? null));
+          const computed = computeDriverSetupProgress({
+            profile: {
+              transport_mode: dp?.transport_mode,
+              active_vehicle_id: dp?.active_vehicle_id,
+              stripe_onboarded: dp?.stripe_onboarded,
+            },
+            docs,
+          });
 
-      let docs: { doc_type?: string | null; status?: string | null }[] = [];
-      const first = await supabase
-        .from("driver_documents")
-        .select("doc_type, status, driver_id, user_id")
-        .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
-
-      if (!first.error) {
-        docs = first.data ?? [];
-      } else {
-        const second = await supabase
-          .from("driver_documents")
-          .select("doc_type, status, user_id")
-          .eq("user_id", uid);
-        if (second.error) {
-          Alert.alert(
-            t("common.errorTitle", "Error"),
-            toUserFacingError(
-              second.error,
-              t(
-                "driver.account.loadDocsFailed",
-                "Unable to load documents right now.",
-              ),
-            ),
-          );
-        } else {
-          docs = second.data ?? [];
-        }
-      }
-
-      const computed = computeDriverSetupProgress({
-        profile: {
-          transport_mode: dp?.transport_mode,
-          active_vehicle_id: dp?.active_vehicle_id,
-          stripe_onboarded: dp?.stripe_onboarded,
-        },
-        docs,
-      });
-
-      setP({
-        progress: computed.progress,
-        vehicleOk: computed.vehicleOk,
-        docsDone: computed.docsDone,
-        docsTotal: computed.docsTotal,
-        payoutOk: computed.payoutOk,
-      });
+          setP({
+            progress: computed.progress,
+            vehicleOk: computed.vehicleOk,
+            docsDone: computed.docsDone,
+            docsTotal: computed.docsTotal,
+            payoutOk: computed.payoutOk,
+          });
+        })(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "driver_account_load",
+      );
     } catch (e: any) {
       console.log("loadProgress error", e);
       Alert.alert(
