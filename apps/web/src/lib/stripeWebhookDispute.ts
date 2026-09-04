@@ -189,12 +189,8 @@ type DisputeTransferRef = {
 
 /**
  * Resolve every Stripe Connect Transfer already paid out for a disputed
- * entity, from the canonical per-vertical payout tables (never re-derived —
- * these are the same tables `transfers/run`, `transfers/taxi-run` and
- * `executeMarketplacePayouts` write `stripe_transfer_id` into).
- * `delivery_requests` has no dedicated per-entity transfer table today
- * (driver payouts for that vertical are batched via `driver_payouts`, not
- * linked 1:1 to a request), so it intentionally returns no refs.
+ * entity. Package SCTs live on linked `orders` (external_ref_type =
+ * delivery_request). Tip SCTs are included when present.
  */
 async function findTransferIdsForDisputeEntity(
   supabaseAdmin: SupabaseClient,
@@ -207,11 +203,11 @@ async function findTransferIdsForDisputeEntity(
     if (id) refs.set(id, { transferId: id, target });
   };
 
-  if (entity.table === "orders") {
+  const collectOrderTransfers = async (orderId: string) => {
     const { data: payoutRows, error: payoutErr } = await supabaseAdmin
       .from("order_payouts")
       .select("target, stripe_transfer_id")
-      .eq("order_id", entity.id)
+      .eq("order_id", orderId)
       .eq("status", "succeeded");
 
     if (payoutErr) {
@@ -221,15 +217,18 @@ async function findTransferIdsForDisputeEntity(
       );
     } else {
       for (const row of payoutRows ?? []) {
-        const r = row as { target?: string | null; stripe_transfer_id?: string | null };
+        const r = row as {
+          target?: string | null;
+          stripe_transfer_id?: string | null;
+        };
         add(r.stripe_transfer_id, r.target ?? "order");
       }
     }
 
     const { data: orderRow, error: orderErr } = await supabaseAdmin
       .from("orders")
-      .select("driver_transfer_id, restaurant_transfer_id")
-      .eq("id", entity.id)
+      .select("driver_transfer_id, restaurant_transfer_id, tip_transfer_id")
+      .eq("id", orderId)
       .maybeSingle();
 
     if (orderErr) {
@@ -241,10 +240,28 @@ async function findTransferIdsForDisputeEntity(
       const r = orderRow as {
         driver_transfer_id?: string | null;
         restaurant_transfer_id?: string | null;
+        tip_transfer_id?: string | null;
       };
       add(r.driver_transfer_id, "driver");
       add(r.restaurant_transfer_id, "restaurant");
+      add(r.tip_transfer_id, "driver_tip");
     }
+  };
+
+  if (entity.table === "orders") {
+    await collectOrderTransfers(entity.id);
+  }
+
+  if (entity.table === "delivery_requests") {
+    const { data: linked } = await supabaseAdmin
+      .from("orders")
+      .select("id")
+      .eq("external_ref_type", "delivery_request")
+      .eq("external_ref_id", entity.id)
+      .limit(1)
+      .maybeSingle();
+    const linkedId = String((linked as { id?: string } | null)?.id ?? "").trim();
+    if (linkedId) await collectOrderTransfers(linkedId);
   }
 
   if (entity.table === "taxi_rides") {
@@ -264,6 +281,18 @@ async function findTransferIdsForDisputeEntity(
       add(
         (taxiCommission as { driver_transfer_id?: string | null }).driver_transfer_id,
         "driver"
+      );
+    }
+
+    const { data: tipRide } = await supabaseAdmin
+      .from("taxi_rides")
+      .select("tip_transfer_id")
+      .eq("id", entity.id)
+      .maybeSingle();
+    if (tipRide) {
+      add(
+        (tipRide as { tip_transfer_id?: string | null }).tip_transfer_id,
+        "taxi_driver_tip"
       );
     }
   }
@@ -309,10 +338,10 @@ async function findTransferIdsForDisputeEntity(
 
 /**
  * Lost-dispute clawback: reverse every Stripe Connect Transfer already paid
- * out for the disputed entity. Fail-open per transfer (console.warn) but
- * attempts every ref found — a single unreversable transfer must never block
- * the others. Idempotent via a per-(dispute, transfer) idempotency key, so
- * webhook retries never double-reverse.
+ * out for the disputed entity. Attempts every ref — a single unreversible
+ * transfer must never block the others. Failed reverses persist
+ * partner_transfer_recoveries (recovery_required). Idempotent via shared
+ * partner clawback keys keyed by dispute id.
  */
 async function clawbackDisputeTransfers(params: {
   supabaseAdmin: SupabaseClient;
@@ -325,24 +354,47 @@ async function clawbackDisputeTransfers(params: {
     params.entity
   );
 
+  const { reverseStripeTransferOrRecover } = await import(
+    "@/lib/finance/partnerTransferClawback"
+  );
+
+  const entityType =
+    params.entity.table === "orders"
+      ? "food_order"
+      : params.entity.table === "delivery_requests"
+        ? "delivery_request"
+        : params.entity.table === "taxi_rides"
+          ? "taxi_ride"
+          : "seller_order";
+
   const reversed: string[] = [];
   const failed: string[] = [];
 
   for (const ref of refs) {
-    try {
-      await params.stripe.transfers.createReversal(
-        ref.transferId,
-        {},
-        { idempotencyKey: `dispute_clawback_${params.disputeId}_${ref.transferId}` }
-      );
+    const outcome = await reverseStripeTransferOrRecover({
+      supabaseAdmin: params.supabaseAdmin,
+      stripeClient: params.stripe,
+      entityType,
+      entityId: params.entity.id,
+      ref: { transferId: ref.transferId, target: ref.target },
+      source: "dispute_clawback",
+      correlationId: params.disputeId,
+      disputeId: params.disputeId,
+      reason: `dispute_lost:${params.disputeId}`,
+    });
+    if (
+      outcome.status === "reversed" ||
+      outcome.status === "already_reversed"
+    ) {
       reversed.push(ref.transferId);
-    } catch (e) {
+    } else if (outcome.status === "recovery_required") {
       failed.push(ref.transferId);
       console.warn(
-        "[stripeWebhookDispute] transfer reversal fail-open",
+        "[stripeWebhookDispute] transfer reversal recovery_required",
         ref.transferId,
         ref.target,
-        e instanceof Error ? e.message : e
+        outcome.errorCode,
+        outcome.errorMessage
       );
     }
   }

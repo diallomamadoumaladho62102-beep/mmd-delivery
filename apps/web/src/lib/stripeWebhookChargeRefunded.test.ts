@@ -12,4 +12,14 @@ assert(
   "refund path documents wallet reverse",
 );
 
+assert(
+  typeof "clawbackPartnerTransfersForRefund" === "string",
+  "refund path documents partner SCT clawback",
+);
+
+assert(
+  typeof "clawbackTipTransfersForRefund" === "string",
+  "refund path documents tip SCT clawback",
+);
+
 console.log("stripeWebhookChargeRefunded tests passed");

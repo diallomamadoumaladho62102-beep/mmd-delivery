@@ -110,14 +110,18 @@ check(
 const dispute = read("apps/web/src/lib/stripeWebhookDispute.ts");
 check(
   "dispute_lost_has_create_reversal",
-  /createReversal/.test(dispute) && /financeStatus === "lost"/.test(dispute),
-  "syncStripeChargeDispute calls stripe.transfers.createReversal for lost disputes",
+  /reverseStripeTransferOrRecover/.test(dispute) &&
+    /financeStatus === "lost"/.test(dispute) &&
+    /createReversal/.test(read("apps/web/src/lib/finance/partnerTransferClawback.ts")),
+  "syncStripeChargeDispute claws back via shared reverseStripeTransferOrRecover for lost disputes",
 );
 
 check(
   "dispute_clawback_idempotency_key",
-  /dispute_clawback_\$\{params\.disputeId\}_\$\{ref\.transferId\}/.test(dispute),
-  "clawback uses per-(dispute, transfer) idempotency key",
+  /partnerClawbackIdempotencyKey|partner_rev/.test(
+    read("apps/web/src/lib/finance/partnerTransferClawback.ts")
+  ) && /dispute_clawback/.test(dispute),
+  "clawback uses shared per-(dispute, transfer) idempotency via partner_rev keys",
 );
 
 check(
@@ -128,9 +132,10 @@ check(
 );
 
 check(
-  "dispute_clawback_fails_open_per_transfer",
-  /catch \(e\) \{\s*failed\.push\(ref\.transferId\);\s*console\.warn/.test(dispute),
-  "clawback attempts every transfer ref and fails open (console.warn) per transfer",
+  "dispute_clawback_reconcile_required_per_transfer",
+  /recovery_required/.test(dispute) &&
+    /reverseStripeTransferOrRecover/.test(dispute),
+  "clawback attempts every transfer ref and records recovery_required on failure",
 );
 
 // ---------------------------------------------------------------------------
