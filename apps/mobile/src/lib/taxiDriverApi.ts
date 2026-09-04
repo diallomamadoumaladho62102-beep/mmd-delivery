@@ -1,8 +1,18 @@
 import { API_BASE_URL } from "./apiBase";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { supabase } from "./supabase";
 
 async function getAuthHeaders() {
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "taxi_driver_session",
+  );
   if (error) throw error;
 
   const token = data.session?.access_token;
@@ -21,21 +31,31 @@ function baseUrl() {
 }
 
 async function taxiGet(path: string) {
-  const res = await fetch(`${baseUrl()}${path}`, {
-    method: "GET",
-    headers: await getAuthHeaders(),
-  });
+  const res = await fetchWithTimeout(
+    `${baseUrl()}${path}`,
+    {
+      method: "GET",
+      headers: await getAuthHeaders(),
+    },
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "taxi_driver_get",
+  );
   const out = await res.json().catch(() => null);
   if (!res.ok) throw new Error(out?.error ?? `Request failed (${res.status})`);
   return out;
 }
 
 async function taxiPost(path: string, body: Record<string, unknown>) {
-  const res = await fetch(`${baseUrl()}${path}`, {
-    method: "POST",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(body),
-  });
+  const res = await fetchWithTimeout(
+    `${baseUrl()}${path}`,
+    {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(body),
+    },
+    AUTH_ACTION_TIMEOUT_MS,
+    "taxi_driver_post",
+  );
   const out = await res.json().catch(() => null);
   if (!res.ok) throw new Error(out?.error ?? `Request failed (${res.status})`);
   return out;

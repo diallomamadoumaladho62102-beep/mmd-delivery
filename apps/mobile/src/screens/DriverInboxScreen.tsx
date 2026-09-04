@@ -12,6 +12,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
@@ -141,111 +145,117 @@ export function DriverInboxScreen() {
     try {
       safeSet(() => setLoading(true));
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const uid = sessionData.session?.user?.id ?? null;
+      await withTimeout(
+        (async () => {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const uid = sessionData.session?.user?.id ?? null;
 
-      if (!uid) {
-        safeSet(() => {
-          setMe(null);
-          setOrders([]);
-          setLastMsgByOrder({});
-          setLastReadByOrder({});
-        });
+          if (!uid) {
+            safeSet(() => {
+              setMe(null);
+              setOrders([]);
+              setLastMsgByOrder({});
+              setLastReadByOrder({});
+            });
 
-        Alert.alert(
-          t("driver.inbox.auth_title", "Login"),
-          t("driver.inbox.auth_body", "Log in as a driver to view your inbox.")
-        );
-        return;
-      }
+            Alert.alert(
+              t("driver.inbox.auth_title", "Login"),
+              t("driver.inbox.auth_body", "Log in as a driver to view your inbox.")
+            );
+            return;
+          }
 
-      safeSet(() => setMe(uid));
+          safeSet(() => setMe(uid));
 
-      const now = new Date();
-      const from = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
-      const fromISO = from.toISOString();
+          const now = new Date();
+          const from = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
+          const fromISO = from.toISOString();
 
-      const baseSelect = "id, created_at, status, driver_id, restaurant_name, kind";
-      const INBOX_ORDER_LIMIT = 50;
-      const INBOX_MESSAGE_LIMIT = 120;
+          const baseSelect = "id, created_at, status, driver_id, restaurant_name, kind";
+          const INBOX_ORDER_LIMIT = 50;
+          const INBOX_MESSAGE_LIMIT = 120;
 
-      const { data: inProgress, error: e1 } = await applyLiveTripFilters(
-        supabase.from("orders").select(baseSelect),
-      )
-        .eq("driver_id", uid)
-        .neq("status", "delivered")
-        .order("created_at", { ascending: false })
-        .limit(INBOX_ORDER_LIMIT);
+          const { data: inProgress, error: e1 } = await applyLiveTripFilters(
+            supabase.from("orders").select(baseSelect),
+          )
+            .eq("driver_id", uid)
+            .neq("status", "delivered")
+            .order("created_at", { ascending: false })
+            .limit(INBOX_ORDER_LIMIT);
 
-      if (e1) throw e1;
+          if (e1) throw e1;
 
-      const { data: delivered7d, error: e2 } = await applyLiveTripFilters(
-        supabase.from("orders").select(baseSelect),
-      )
-        .eq("driver_id", uid)
-        .eq("status", "delivered")
-        .gte("created_at", fromISO)
-        .order("created_at", { ascending: false })
-        .limit(INBOX_ORDER_LIMIT);
+          const { data: delivered7d, error: e2 } = await applyLiveTripFilters(
+            supabase.from("orders").select(baseSelect),
+          )
+            .eq("driver_id", uid)
+            .eq("status", "delivered")
+            .gte("created_at", fromISO)
+            .order("created_at", { ascending: false })
+            .limit(INBOX_ORDER_LIMIT);
 
-      if (e2) throw e2;
+          if (e2) throw e2;
 
-      const mergedMap = new Map<string, OrderRow>();
-      (inProgress ?? []).forEach((o: any) => mergedMap.set(o.id, o as OrderRow));
-      (delivered7d ?? []).forEach((o: any) => mergedMap.set(o.id, o as OrderRow));
+          const mergedMap = new Map<string, OrderRow>();
+          (inProgress ?? []).forEach((o: any) => mergedMap.set(o.id, o as OrderRow));
+          (delivered7d ?? []).forEach((o: any) => mergedMap.set(o.id, o as OrderRow));
 
-      const merged = Array.from(mergedMap.values()).sort((a, b) => {
-        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return tb - ta;
-      });
+          const merged = Array.from(mergedMap.values()).sort((a, b) => {
+            const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return tb - ta;
+          });
 
-      safeSet(() => setOrders(merged));
+          safeSet(() => setOrders(merged));
 
-      const ids = merged.slice(0, INBOX_ORDER_LIMIT).map((o) => o.id);
-      if (ids.length === 0) {
-        safeSet(() => {
-          setLastMsgByOrder({});
-          setLastReadByOrder({});
-        });
-        return;
-      }
+          const ids = merged.slice(0, INBOX_ORDER_LIMIT).map((o) => o.id);
+          if (ids.length === 0) {
+            safeSet(() => {
+              setLastMsgByOrder({});
+              setLastReadByOrder({});
+            });
+            return;
+          }
 
-      const { data: msgs, error: e3 } = await supabase
-        .from("order_messages")
-        .select("order_id, user_id, text, created_at")
-        .in("order_id", ids)
-        .order("created_at", { ascending: false })
-        .limit(INBOX_MESSAGE_LIMIT);
+          const { data: msgs, error: e3 } = await supabase
+            .from("order_messages")
+            .select("order_id, user_id, text, created_at")
+            .in("order_id", ids)
+            .order("created_at", { ascending: false })
+            .limit(INBOX_MESSAGE_LIMIT);
 
-      if (e3) {
-        console.log("⚠️ order_messages preview error:", e3);
-        safeSet(() => setLastMsgByOrder({}));
-      } else {
-        const map: Record<string, MsgRow> = {};
-        for (const m of (msgs ?? []) as any[]) {
-          const oid = m.order_id as string;
-          if (!map[oid]) map[oid] = m as MsgRow;
-        }
-        safeSet(() => setLastMsgByOrder(map));
-      }
+          if (e3) {
+            console.log("⚠️ order_messages preview error:", e3);
+            safeSet(() => setLastMsgByOrder({}));
+          } else {
+            const map: Record<string, MsgRow> = {};
+            for (const m of (msgs ?? []) as any[]) {
+              const oid = m.order_id as string;
+              if (!map[oid]) map[oid] = m as MsgRow;
+            }
+            safeSet(() => setLastMsgByOrder(map));
+          }
 
-      const { data: reads, error: e4 } = await supabase
-        .from("order_chat_reads")
-        .select("order_id, user_id, last_read_at")
-        .eq("user_id", uid)
-        .in("order_id", ids);
+          const { data: reads, error: e4 } = await supabase
+            .from("order_chat_reads")
+            .select("order_id, user_id, last_read_at")
+            .eq("user_id", uid)
+            .in("order_id", ids);
 
-      if (e4) {
-        console.log("⚠️ order_chat_reads error:", e4);
-        safeSet(() => setLastReadByOrder({}));
-      } else {
-        const rmap: Record<string, string> = {};
-        for (const r of (reads ?? []) as any[]) {
-          rmap[r.order_id] = r.last_read_at;
-        }
-        safeSet(() => setLastReadByOrder(rmap));
-      }
+          if (e4) {
+            console.log("⚠️ order_chat_reads error:", e4);
+            safeSet(() => setLastReadByOrder({}));
+          } else {
+            const rmap: Record<string, string> = {};
+            for (const r of (reads ?? []) as any[]) {
+              rmap[r.order_id] = r.last_read_at;
+            }
+            safeSet(() => setLastReadByOrder(rmap));
+          }
+        })(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "driver_inbox_fetch",
+      );
     } catch (e: any) {
       console.log("fetchInbox error:", e);
       Alert.alert(

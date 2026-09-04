@@ -13,6 +13,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import { loadOwnSeller } from "../../lib/sellerApi";
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { formatWalletAmount, fetchWalletSummary, requestWalletCashOut } from "../../lib/walletApi";
@@ -98,7 +103,11 @@ export default function SellerWalletScreen() {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData } = await withTimeout(
+        supabase.auth.getSession(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "seller_wallet_session",
+      );
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Session expired");
 
@@ -108,16 +117,26 @@ export default function SellerWalletScreen() {
       const base = getApiBaseUrl().replace(/\/$/, "");
       const [summary, activityRes, connectRes] = await Promise.all([
         fetchWalletSummary(token, { accountType: "seller", countryCode }),
-        fetch(`${base}/api/wallet/seller-activity?limit=50`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }).then(async (r) => {
+        (async () => {
+          const r = await fetchWithTimeout(
+            `${base}/api/wallet/seller-activity?limit=50`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+            CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+            "seller_wallet_activity",
+          );
           const j = await r.json().catch(() => ({}));
           if (!r.ok) throw new Error(String(j.error ?? `HTTP ${r.status}`));
           return j as { items?: ActivityItem[] };
-        }),
-        supabase.functions.invoke("check_connect_status", {
-          body: { role: "seller" },
-        }),
+        })(),
+        withTimeout(
+          supabase.functions.invoke("check_connect_status", {
+            body: { role: "seller" },
+          }),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "seller_wallet_connect",
+        ),
       ]);
 
       if (!summary.ok) throw new Error(summary.error ?? "wallet_summary_failed");

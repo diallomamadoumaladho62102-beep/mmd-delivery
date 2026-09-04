@@ -14,6 +14,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
@@ -295,70 +299,76 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
     (async () => {
       try {
-        const { data, error } = await supabase.auth.getUser();
-        if (error) throw error;
+        await withTimeout(
+          (async () => {
+            const { data, error } = await supabase.auth.getUser();
+            if (error) throw error;
 
-        const uid = data?.user?.id ?? null;
+            const uid = data?.user?.id ?? null;
 
-        if (!uid) {
-          if (!cancelled && mountedRef.current) {
-            setRestaurantUserId(null);
-          }
-          return;
-        }
+            if (!uid) {
+              if (!cancelled && mountedRef.current) {
+                setRestaurantUserId(null);
+              }
+              return;
+            }
 
-        const { data: roleProfile, error: roleError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", uid)
-          .maybeSingle();
+            const { data: roleProfile, error: roleError } = await supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", uid)
+              .maybeSingle();
 
-        if (roleError) {
-          console.log("resolve restaurant role error:", roleError);
-        }
+            if (roleError) {
+              console.log("resolve restaurant role error:", roleError);
+            }
 
-        const role = String((roleProfile as any)?.role || "")
-          .trim()
-          .toLowerCase();
+            const role = String((roleProfile as any)?.role || "")
+              .trim()
+              .toLowerCase();
 
-        if (role && role !== "restaurant") {
-          if (!cancelled && mountedRef.current) {
-            setRestaurantUserId(null);
-          }
+            if (role && role !== "restaurant") {
+              if (!cancelled && mountedRef.current) {
+                setRestaurantUserId(null);
+              }
 
-          navigation.reset({
-            index: 0,
-            routes: [
-              {
-                name:
-                  role === "driver"
-                    ? "DriverTabs"
-                    : role === "client"
-                      ? "ClientHome"
-                      : "RoleSelect",
-              },
-            ],
-          });
-          return;
-        }
+              navigation.reset({
+                index: 0,
+                routes: [
+                  {
+                    name:
+                      role === "driver"
+                        ? "DriverTabs"
+                        : role === "client"
+                          ? "ClientHome"
+                          : "RoleSelect",
+                  },
+                ],
+              });
+              return;
+            }
 
-        const { data: restaurantProfile, error: restaurantError } = await supabase
-          .from("restaurant_profiles")
-          .select("user_id,status")
-          .eq("user_id", uid)
-          .maybeSingle();
+            const { data: restaurantProfile, error: restaurantError } = await supabase
+              .from("restaurant_profiles")
+              .select("user_id,status")
+              .eq("user_id", uid)
+              .maybeSingle();
 
-        if (restaurantError) {
-          console.log("resolve restaurant profile error:", restaurantError);
-        }
+            if (restaurantError) {
+              console.log("resolve restaurant profile error:", restaurantError);
+            }
 
-        const isRestaurantProfile =
-          !!restaurantProfile &&
-          String((restaurantProfile as any)?.user_id || "") === uid;
+            const isRestaurantProfile =
+              !!restaurantProfile &&
+              String((restaurantProfile as any)?.user_id || "") === uid;
 
-        if (!cancelled && mountedRef.current) {
-          setRestaurantUserId(isRestaurantProfile ? uid : null);
-        }
+            if (!cancelled && mountedRef.current) {
+              setRestaurantUserId(isRestaurantProfile ? uid : null);
+            }
+          })(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "restaurant_orders_resolve",
+        );
       } catch (e) {
         console.log("resolve auth uid error:", e);
         if (!cancelled && mountedRef.current) {
@@ -413,17 +423,22 @@ export function RestaurantOrdersScreen({ navigation }: any) {
       }
 
       try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select(
-            "id,kind,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at,items_json"
-          )
-          .eq("kind", "food")
-          .eq("payment_status", "paid")
-          .or(
-            `restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`
-          )
-          .order("created_at", { ascending: false });
+        const { data, error } = await withTimeout(
+          (async () =>
+            await supabase
+              .from("orders")
+              .select(
+                "id,kind,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at,items_json"
+              )
+              .eq("kind", "food")
+              .eq("payment_status", "paid")
+              .or(
+                `restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`
+              )
+              .order("created_at", { ascending: false }))(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "restaurant_orders_fetch",
+        );
 
         if (error) throw error;
 

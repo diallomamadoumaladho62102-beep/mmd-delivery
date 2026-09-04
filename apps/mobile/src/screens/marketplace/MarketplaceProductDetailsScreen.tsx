@@ -26,6 +26,10 @@ import {
   type MarketplaceProduct,
 } from "../../lib/marketplaceApi";
 import { supabase } from "../../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
 import {
@@ -43,7 +47,11 @@ type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductDetai
 const MMD_CYAN = "#00C0E8";
 
 async function hasClientSession(): Promise<boolean> {
-  const { data } = await supabase.auth.getSession();
+  const { data } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "marketplace_product_details_session",
+  );
   return Boolean(data.session?.access_token);
 }
 

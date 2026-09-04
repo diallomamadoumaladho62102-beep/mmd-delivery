@@ -22,6 +22,10 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { supabase } from "../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
@@ -549,89 +553,95 @@ export function ClientOrderDetailsScreen() {
       setLoading(true);
       setErrorMsg(null);
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      await withTimeout(
+        (async () => {
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser();
 
-      if (userError) throw userError;
+          if (userError) throw userError;
 
-      const uid = user?.id ?? null;
+          const uid = user?.id ?? null;
 
-      if (!uid) {
-        throw new Error(ts("common.mustBeLoggedIn", "You must be logged in."));
-      }
+          if (!uid) {
+            throw new Error(ts("common.mustBeLoggedIn", "You must be logged in."));
+          }
 
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          [
-            "id",
-            "status",
-            "created_at",
-            "pickup_address",
-            "dropoff_address",
-            "distance_miles",
-            "total",
-            "grand_total",
-            "delivery_fee",
-            "dropoff_code",
-            "payment_status",
-            "currency",
-            "driver_id",
-            "restaurant_id",
-            "restaurant_user_id",
-            "restaurant_name",
-            "pickup_lat",
-            "pickup_lng",
-            "dropoff_lat",
-            "dropoff_lng",
-            "tip_cents",
-            "client_id",
-            "client_user_id",
-            "user_id",
-          ].join(",")
-        )
-        .eq("id", orderId)
-        .single();
+          const { data, error } = await supabase
+            .from("orders")
+            .select(
+              [
+                "id",
+                "status",
+                "created_at",
+                "pickup_address",
+                "dropoff_address",
+                "distance_miles",
+                "total",
+                "grand_total",
+                "delivery_fee",
+                "dropoff_code",
+                "payment_status",
+                "currency",
+                "driver_id",
+                "restaurant_id",
+                "restaurant_user_id",
+                "restaurant_name",
+                "pickup_lat",
+                "pickup_lng",
+                "dropoff_lat",
+                "dropoff_lng",
+                "tip_cents",
+                "client_id",
+                "client_user_id",
+                "user_id",
+              ].join(",")
+            )
+            .eq("id", orderId)
+            .single();
 
-      if (error) throw error;
+          if (error) throw error;
 
-      const nextOrder = data as unknown as Order;
+          const nextOrder = data as unknown as Order;
 
-      const ownerIds = [
-        nextOrder.client_id,
-        nextOrder.client_user_id,
-        nextOrder.user_id,
-      ]
-        .map((value) => String(value || "").trim())
-        .filter(Boolean);
+          const ownerIds = [
+            nextOrder.client_id,
+            nextOrder.client_user_id,
+            nextOrder.user_id,
+          ]
+            .map((value) => String(value || "").trim())
+            .filter(Boolean);
 
-      if (ownerIds.length > 0 && !ownerIds.includes(uid)) {
-        throw new Error(
-          ts("client.orderDetails.notOwnerError", "You are not logged in as the order owner.")
-        );
-      }
+          if (ownerIds.length > 0 && !ownerIds.includes(uid)) {
+            throw new Error(
+              ts("client.orderDetails.notOwnerError", "You are not logged in as the order owner.")
+            );
+          }
 
-      await loadParticipantProfiles(nextOrder);
+          await loadParticipantProfiles(nextOrder);
 
-      if (isMountedRef.current) {
-        const prevStatus = prevOrderStatusRef.current;
-        const nextStatus = String(nextOrder.status ?? "").trim().toLowerCase();
+          if (isMountedRef.current) {
+            const prevStatus = prevOrderStatusRef.current;
+            const nextStatus = String(nextOrder.status ?? "").trim().toLowerCase();
 
-        if (prevStatus && prevStatus !== nextStatus) {
-          mmdAudio.playForOrderStatus(nextStatus);
-        }
+            if (prevStatus && prevStatus !== nextStatus) {
+              mmdAudio.playForOrderStatus(nextStatus);
+            }
 
-        prevOrderStatusRef.current = nextStatus || null;
-        setOrder(nextOrder);
+            prevOrderStatusRef.current = nextStatus || null;
+            setOrder(nextOrder);
 
-        if (normalizePaymentStatus(nextOrder.payment_status) === "paid") {
-          setPaymentPending(false);
-        }
+            if (normalizePaymentStatus(nextOrder.payment_status) === "paid") {
+              setPaymentPending(false);
+            }
 
-        didFitRef.current = false;
-      }
+            didFitRef.current = false;
+          }
+        })(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "client_order_details_fetch",
+      );
     } catch (e: any) {
       if (isMountedRef.current) {
         setErrorMsg(e?.message ?? ts("client.orderDetails.errors.loadOrder", "Unable to load the order."));

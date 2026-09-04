@@ -87,6 +87,15 @@ test("driver map trip load and Mapbox Directions have wall-clock timeouts", () =
   );
   assert.match(driverAccount, /driver_account_load/);
   assert.match(driverAccount, /CLIENT_SCREEN_FETCH_TIMEOUT_MS/);
+  const restaurantCc = readFileSync(
+    join(mobileRoot, "lib/restaurantCommandCenterApi.ts"),
+    "utf8",
+  );
+  const taxiClient = readFileSync(join(mobileRoot, "lib/taxiClientApi.ts"), "utf8");
+  const foodOrder = readFileSync(join(mobileRoot, "lib/foodOrderApi.ts"), "utf8");
+  assert.match(restaurantCc, /restaurant_cc_fetch/);
+  assert.match(taxiClient, /taxi_client_get/);
+  assert.match(foodOrder, /food_order_fetch/);
 });
 
 console.log("mobile client timeout regression passed");

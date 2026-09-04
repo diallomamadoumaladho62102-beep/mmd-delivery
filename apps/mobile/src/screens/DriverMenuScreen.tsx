@@ -13,6 +13,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import { startStripeOnboarding } from "../utils/stripe";
 import ScreenHeader from "../components/navigation/ScreenHeader";
@@ -337,70 +341,76 @@ export function DriverMenuScreen() {
     try {
       safeSetState(() => setLoading(true));
 
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr) console.log("auth.getUser error", authErr);
+      await withTimeout(
+        (async () => {
+          const { data: authData, error: authErr } = await supabase.auth.getUser();
+          if (authErr) console.log("auth.getUser error", authErr);
 
-      const user = authData?.user;
-      if (!user) {
-        safeSetState(() => {
-          setDisplayName(driverLabelFallback);
-          setAvatarPath(null);
-          setAvatarUpdatedAt(0);
-          setAvgRating(null);
-          setRatingCount(0);
-          setTipsWeek(0);
-        });
-        return;
-      }
+          const user = authData?.user;
+          if (!user) {
+            safeSetState(() => {
+              setDisplayName(driverLabelFallback);
+              setAvatarPath(null);
+              setAvatarUpdatedAt(0);
+              setAvgRating(null);
+              setRatingCount(0);
+              setTipsWeek(0);
+            });
+            return;
+          }
 
-      const uid = user.id;
+          const uid = user.id;
 
-      const authFallback =
-        (user.user_metadata as any)?.full_name ??
-        (user.user_metadata as any)?.name ??
-        user.email ??
-        driverLabelFallback;
+          const authFallback =
+            (user.user_metadata as any)?.full_name ??
+            (user.user_metadata as any)?.name ??
+            user.email ??
+            driverLabelFallback;
 
-      // ✅ 1) Priorité: metadata auth
-      const metaAvatarPath =
-        ((user.user_metadata as any)?.avatar_path as string | undefined) ?? null;
-      const metaUpdatedAt =
-        Number((user.user_metadata as any)?.avatar_updated_at ?? 0) || 0;
+          // ✅ 1) Priorité: metadata auth
+          const metaAvatarPath =
+            ((user.user_metadata as any)?.avatar_path as string | undefined) ?? null;
+          const metaUpdatedAt =
+            Number((user.user_metadata as any)?.avatar_updated_at ?? 0) || 0;
 
-      // ✅ 2) Nom: driver_profiles > profiles > auth
-      const { data: dp, error: dpErr } = await supabase
-        .from("driver_profiles")
-        .select("user_id, full_name")
-        .eq("user_id", uid)
-        .maybeSingle();
+          // ✅ 2) Nom: driver_profiles > profiles > auth
+          const { data: dp, error: dpErr } = await supabase
+            .from("driver_profiles")
+            .select("user_id, full_name")
+            .eq("user_id", uid)
+            .maybeSingle();
 
-      if (dpErr) console.log("driver_profiles error", dpErr);
+          if (dpErr) console.log("driver_profiles error", dpErr);
 
-      // ✅ 3) Fallback avatar depuis profiles.avatar_url (si jamais metadata vide)
-      const { data: p, error: pErr } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .eq("id", uid)
-        .maybeSingle();
+          // ✅ 3) Fallback avatar depuis profiles.avatar_url (si jamais metadata vide)
+          const { data: p, error: pErr } = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url")
+            .eq("id", uid)
+            .maybeSingle();
 
-      if (pErr) console.log("profiles error", pErr);
+          if (pErr) console.log("profiles error", pErr);
 
-      const dpName = (dp?.full_name ?? "").trim();
-      const pName = (p?.full_name ?? "").trim();
-      const finalName =
-        dpName || pName || String(authFallback || driverLabelFallback);
+          const dpName = (dp?.full_name ?? "").trim();
+          const pName = (p?.full_name ?? "").trim();
+          const finalName =
+            dpName || pName || String(authFallback || driverLabelFallback);
 
-      const profileAvatarPath =
-        ((p as any)?.avatar_url as string | null) ?? null;
-      const finalAvatarPath = metaAvatarPath || profileAvatarPath || null;
+          const profileAvatarPath =
+            ((p as any)?.avatar_url as string | null) ?? null;
+          const finalAvatarPath = metaAvatarPath || profileAvatarPath || null;
 
-      safeSetState(() => {
-        setDisplayName(finalName);
-        setAvatarPath(finalAvatarPath);
-        setAvatarUpdatedAt(metaUpdatedAt);
-      });
+          safeSetState(() => {
+            setDisplayName(finalName);
+            setAvatarPath(finalAvatarPath);
+            setAvatarUpdatedAt(metaUpdatedAt);
+          });
 
-      await Promise.all([loadRating(uid), loadTipsWeek(uid)]);
+          await Promise.all([loadRating(uid), loadTipsWeek(uid)]);
+        })(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "driver_menu_load",
+      );
     } catch (e: any) {
       console.log("DriverMenu loadHeader error", e);
       Alert.alert(

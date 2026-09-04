@@ -13,6 +13,11 @@ import { useTranslation } from "react-i18next";
 import { RestaurantStripeConnectCard } from "../features/restaurant/components/RestaurantStripeConnectCard";
 import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { formatMoney } from "../i18n/formatters";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
@@ -80,7 +85,11 @@ export default function RestaurantFinancialCenterScreen() {
 
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await withTimeout(
+        supabase.auth.getSession(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "restaurant_financial_session",
+      );
 
       const accessToken = session?.access_token?.trim();
       if (!accessToken) {
@@ -92,13 +101,15 @@ export default function RestaurantFinancialCenterScreen() {
         );
       }
 
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${apiBase}/api/restaurant/financial/overview`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "restaurant_financial_overview",
       );
 
       const json = await response.json().catch(() => null);

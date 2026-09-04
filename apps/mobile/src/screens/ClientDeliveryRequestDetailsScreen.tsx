@@ -18,6 +18,10 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
@@ -452,10 +456,12 @@ export function ClientDeliveryRequestDetailsScreen() {
         else setLoading(true);
         setError(null);
 
-        const { data: directOrder, error: directOrderError } = await supabase
-          .from("orders")
-          .select(
-            `
+        await withTimeout(
+          (async () => {
+            const { data: directOrder, error: directOrderError } = await supabase
+              .from("orders")
+              .select(
+                `
             id,
             kind,
             status,
@@ -484,59 +490,59 @@ export function ClientDeliveryRequestDetailsScreen() {
             external_ref_id,
             external_ref_type
           `
-          )
-          .eq("id", requestId)
-          .maybeSingle();
+              )
+              .eq("id", requestId)
+              .maybeSingle();
 
-        if (directOrderError) throw directOrderError;
-        if (!alive) return;
+            if (directOrderError) throw directOrderError;
+            if (!alive) return;
 
-        if (directOrder) {
-          const kind = normalizeKind(directOrder.kind);
-          if (kind === "pickup_dropoff") {
-            setData(
-              mapOrderToScreenData({
-                id: String(directOrder.id),
-                kind: toSafeString(directOrder.kind),
-                status: toSafeString(directOrder.status),
-                payment_status: toSafeString(directOrder.payment_status),
-                created_at: toSafeString(directOrder.created_at),
-                updated_at: toSafeString(directOrder.updated_at),
-                paid_at: toSafeString(directOrder.paid_at),
-                pickup_address: toSafeString(directOrder.pickup_address),
-                dropoff_address: toSafeString(directOrder.dropoff_address),
-                pickup_lat: toSafeNumber(directOrder.pickup_lat),
-                pickup_lng: toSafeNumber(directOrder.pickup_lng),
-                dropoff_lat: toSafeNumber(directOrder.dropoff_lat),
-                dropoff_lng: toSafeNumber(directOrder.dropoff_lng),
-                distance_miles: toSafeNumber(directOrder.distance_miles),
-                total: toSafeNumber(directOrder.total),
-                delivery_fee: toSafeNumber(directOrder.delivery_fee),
-                stripe_session_id: toSafeString(directOrder.stripe_session_id),
-                stripe_payment_intent_id: toSafeString(
-                  directOrder.stripe_payment_intent_id
-                ),
-                pickup_code: toSafeString(directOrder.pickup_code),
-                dropoff_code: toSafeString(directOrder.dropoff_code),
-                picked_up_at: toSafeString(directOrder.picked_up_at),
-                delivered_confirmed_at: toSafeString(
-                  directOrder.delivered_confirmed_at
-                ),
-                pickup_photo_url: toSafeString(directOrder.pickup_photo_url),
-                dropoff_photo_url: toSafeString(directOrder.dropoff_photo_url),
-                driver_id: toSafeString(directOrder.driver_id),
-                external_ref_id: toSafeString(directOrder.external_ref_id),
-                external_ref_type: toSafeString(directOrder.external_ref_type),
-              })
-            );
-            return;
-          }
-        }
+            if (directOrder) {
+              const kind = normalizeKind(directOrder.kind);
+              if (kind === "pickup_dropoff") {
+                setData(
+                  mapOrderToScreenData({
+                    id: String(directOrder.id),
+                    kind: toSafeString(directOrder.kind),
+                    status: toSafeString(directOrder.status),
+                    payment_status: toSafeString(directOrder.payment_status),
+                    created_at: toSafeString(directOrder.created_at),
+                    updated_at: toSafeString(directOrder.updated_at),
+                    paid_at: toSafeString(directOrder.paid_at),
+                    pickup_address: toSafeString(directOrder.pickup_address),
+                    dropoff_address: toSafeString(directOrder.dropoff_address),
+                    pickup_lat: toSafeNumber(directOrder.pickup_lat),
+                    pickup_lng: toSafeNumber(directOrder.pickup_lng),
+                    dropoff_lat: toSafeNumber(directOrder.dropoff_lat),
+                    dropoff_lng: toSafeNumber(directOrder.dropoff_lng),
+                    distance_miles: toSafeNumber(directOrder.distance_miles),
+                    total: toSafeNumber(directOrder.total),
+                    delivery_fee: toSafeNumber(directOrder.delivery_fee),
+                    stripe_session_id: toSafeString(directOrder.stripe_session_id),
+                    stripe_payment_intent_id: toSafeString(
+                      directOrder.stripe_payment_intent_id
+                    ),
+                    pickup_code: toSafeString(directOrder.pickup_code),
+                    dropoff_code: toSafeString(directOrder.dropoff_code),
+                    picked_up_at: toSafeString(directOrder.picked_up_at),
+                    delivered_confirmed_at: toSafeString(
+                      directOrder.delivered_confirmed_at
+                    ),
+                    pickup_photo_url: toSafeString(directOrder.pickup_photo_url),
+                    dropoff_photo_url: toSafeString(directOrder.dropoff_photo_url),
+                    driver_id: toSafeString(directOrder.driver_id),
+                    external_ref_id: toSafeString(directOrder.external_ref_id),
+                    external_ref_type: toSafeString(directOrder.external_ref_type),
+                  })
+                );
+                return;
+              }
+            }
 
-        const { data: requestData, error: requestError } = await supabase
-          .from("delivery_requests")
-          .select(
-            `
+            const { data: requestData, error: requestError } = await supabase
+              .from("delivery_requests")
+              .select(
+                `
             id,
             status,
             payment_status,
@@ -556,46 +562,46 @@ export function ClientDeliveryRequestDetailsScreen() {
             stripe_payment_intent_id,
             driver_id
           `
-          )
-          .eq("id", requestId)
-          .maybeSingle();
+              )
+              .eq("id", requestId)
+              .maybeSingle();
 
-        if (requestError) throw requestError;
-        if (!alive) return;
+            if (requestError) throw requestError;
+            if (!alive) return;
 
-        if (!requestData) {
-          setData(null);
-          setError(t("client.deliveryRequest.notFound", "Delivery request not found."));
-          return;
-        }
+            if (!requestData) {
+              setData(null);
+              setError(t("client.deliveryRequest.notFound", "Delivery request not found."));
+              return;
+            }
 
-        const normalizedRequest: DeliveryRequestRecord = {
-          id: String(requestData.id),
-          status: toSafeString(requestData.status),
-          payment_status: toSafeString(requestData.payment_status),
-          created_at: toSafeString(requestData.created_at),
-          updated_at: toSafeString(requestData.updated_at),
-          paid_at: toSafeString(requestData.paid_at),
-          pickup_address: toSafeString(requestData.pickup_address),
-          dropoff_address: toSafeString(requestData.dropoff_address),
-          pickup_lat: toSafeNumber(requestData.pickup_lat),
-          pickup_lng: toSafeNumber(requestData.pickup_lng),
-          dropoff_lat: toSafeNumber(requestData.dropoff_lat),
-          dropoff_lng: toSafeNumber(requestData.dropoff_lng),
-          distance_miles: toSafeNumber(requestData.distance_miles),
-          total: toSafeNumber(requestData.total),
-          delivery_fee: toSafeNumber(requestData.delivery_fee),
-          stripe_session_id: toSafeString(requestData.stripe_session_id),
-          stripe_payment_intent_id: toSafeString(
-            requestData.stripe_payment_intent_id
-          ),
-          driver_id: toSafeString(requestData.driver_id),
-        };
+            const normalizedRequest: DeliveryRequestRecord = {
+              id: String(requestData.id),
+              status: toSafeString(requestData.status),
+              payment_status: toSafeString(requestData.payment_status),
+              created_at: toSafeString(requestData.created_at),
+              updated_at: toSafeString(requestData.updated_at),
+              paid_at: toSafeString(requestData.paid_at),
+              pickup_address: toSafeString(requestData.pickup_address),
+              dropoff_address: toSafeString(requestData.dropoff_address),
+              pickup_lat: toSafeNumber(requestData.pickup_lat),
+              pickup_lng: toSafeNumber(requestData.pickup_lng),
+              dropoff_lat: toSafeNumber(requestData.dropoff_lat),
+              dropoff_lng: toSafeNumber(requestData.dropoff_lng),
+              distance_miles: toSafeNumber(requestData.distance_miles),
+              total: toSafeNumber(requestData.total),
+              delivery_fee: toSafeNumber(requestData.delivery_fee),
+              stripe_session_id: toSafeString(requestData.stripe_session_id),
+              stripe_payment_intent_id: toSafeString(
+                requestData.stripe_payment_intent_id
+              ),
+              driver_id: toSafeString(requestData.driver_id),
+            };
 
-        const { data: linkedOrder, error: linkedOrderError } = await supabase
-          .from("orders")
-          .select(
-            `
+            const { data: linkedOrder, error: linkedOrderError } = await supabase
+              .from("orders")
+              .select(
+                `
             id,
             kind,
             status,
@@ -624,56 +630,60 @@ export function ClientDeliveryRequestDetailsScreen() {
             external_ref_id,
             external_ref_type
           `
-          )
-          .eq("external_ref_id", requestId)
-          .maybeSingle();
+              )
+              .eq("external_ref_id", requestId)
+              .maybeSingle();
 
-        if (linkedOrderError) throw linkedOrderError;
-        if (!alive) return;
+            if (linkedOrderError) throw linkedOrderError;
+            if (!alive) return;
 
-        if (linkedOrder && normalizeKind(linkedOrder.kind) === "pickup_dropoff") {
-          setData(
-            mapOrderToScreenData(
-              {
-                id: String(linkedOrder.id),
-                kind: toSafeString(linkedOrder.kind),
-                status: toSafeString(linkedOrder.status),
-                payment_status: toSafeString(linkedOrder.payment_status),
-                created_at: toSafeString(linkedOrder.created_at),
-                updated_at: toSafeString(linkedOrder.updated_at),
-                paid_at: toSafeString(linkedOrder.paid_at),
-                pickup_address: toSafeString(linkedOrder.pickup_address),
-                dropoff_address: toSafeString(linkedOrder.dropoff_address),
-                pickup_lat: toSafeNumber(linkedOrder.pickup_lat),
-                pickup_lng: toSafeNumber(linkedOrder.pickup_lng),
-                dropoff_lat: toSafeNumber(linkedOrder.dropoff_lat),
-                dropoff_lng: toSafeNumber(linkedOrder.dropoff_lng),
-                distance_miles: toSafeNumber(linkedOrder.distance_miles),
-                total: toSafeNumber(linkedOrder.total),
-                delivery_fee: toSafeNumber(linkedOrder.delivery_fee),
-                stripe_session_id: toSafeString(linkedOrder.stripe_session_id),
-                stripe_payment_intent_id: toSafeString(
-                  linkedOrder.stripe_payment_intent_id
-                ),
-                pickup_code: toSafeString(linkedOrder.pickup_code),
-                dropoff_code: toSafeString(linkedOrder.dropoff_code),
-                picked_up_at: toSafeString(linkedOrder.picked_up_at),
-                delivered_confirmed_at: toSafeString(
-                  linkedOrder.delivered_confirmed_at
-                ),
-                pickup_photo_url: toSafeString(linkedOrder.pickup_photo_url),
-                dropoff_photo_url: toSafeString(linkedOrder.dropoff_photo_url),
-                driver_id: toSafeString(linkedOrder.driver_id),
-                external_ref_id: toSafeString(linkedOrder.external_ref_id),
-                external_ref_type: toSafeString(linkedOrder.external_ref_type),
-              },
-              normalizedRequest.id
-            )
-          );
-          return;
-        }
+            if (linkedOrder && normalizeKind(linkedOrder.kind) === "pickup_dropoff") {
+              setData(
+                mapOrderToScreenData(
+                  {
+                    id: String(linkedOrder.id),
+                    kind: toSafeString(linkedOrder.kind),
+                    status: toSafeString(linkedOrder.status),
+                    payment_status: toSafeString(linkedOrder.payment_status),
+                    created_at: toSafeString(linkedOrder.created_at),
+                    updated_at: toSafeString(linkedOrder.updated_at),
+                    paid_at: toSafeString(linkedOrder.paid_at),
+                    pickup_address: toSafeString(linkedOrder.pickup_address),
+                    dropoff_address: toSafeString(linkedOrder.dropoff_address),
+                    pickup_lat: toSafeNumber(linkedOrder.pickup_lat),
+                    pickup_lng: toSafeNumber(linkedOrder.pickup_lng),
+                    dropoff_lat: toSafeNumber(linkedOrder.dropoff_lat),
+                    dropoff_lng: toSafeNumber(linkedOrder.dropoff_lng),
+                    distance_miles: toSafeNumber(linkedOrder.distance_miles),
+                    total: toSafeNumber(linkedOrder.total),
+                    delivery_fee: toSafeNumber(linkedOrder.delivery_fee),
+                    stripe_session_id: toSafeString(linkedOrder.stripe_session_id),
+                    stripe_payment_intent_id: toSafeString(
+                      linkedOrder.stripe_payment_intent_id
+                    ),
+                    pickup_code: toSafeString(linkedOrder.pickup_code),
+                    dropoff_code: toSafeString(linkedOrder.dropoff_code),
+                    picked_up_at: toSafeString(linkedOrder.picked_up_at),
+                    delivered_confirmed_at: toSafeString(
+                      linkedOrder.delivered_confirmed_at
+                    ),
+                    pickup_photo_url: toSafeString(linkedOrder.pickup_photo_url),
+                    dropoff_photo_url: toSafeString(linkedOrder.dropoff_photo_url),
+                    driver_id: toSafeString(linkedOrder.driver_id),
+                    external_ref_id: toSafeString(linkedOrder.external_ref_id),
+                    external_ref_type: toSafeString(linkedOrder.external_ref_type),
+                  },
+                  normalizedRequest.id
+                )
+              );
+              return;
+            }
 
-        setData(mapDeliveryRequestToScreenData(normalizedRequest));
+            setData(mapDeliveryRequestToScreenData(normalizedRequest));
+          })(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "client_delivery_request_details_load",
+        );
       } catch (e: any) {
         if (!alive) return;
         console.log("load delivery request details error:", e);

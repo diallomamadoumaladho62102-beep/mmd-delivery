@@ -1,10 +1,20 @@
 import { API_BASE_URL } from "./apiBase";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { supabase } from "./supabase";
 import { isExpectedTaxiPaymentPendingResponse } from "./taxiPaymentAbandonFlow";
 import { logTechnicalError, toUserFacingError } from "./userFacingError";
 
 async function getAuthHeaders() {
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "taxi_client_session",
+  );
   if (error) throw error;
 
   const token = data.session?.access_token;
@@ -33,10 +43,15 @@ function requireCountryCode(countryCode: string | undefined): string {
 }
 
 async function taxiGet(path: string) {
-  const res = await fetch(`${baseUrl()}${path}`, {
-    method: "GET",
-    headers: await getAuthHeaders(),
-  });
+  const res = await fetchWithTimeout(
+    `${baseUrl()}${path}`,
+    {
+      method: "GET",
+      headers: await getAuthHeaders(),
+    },
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "taxi_client_get",
+  );
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     logTechnicalError(`taxi.get${path}`, out, { status: res.status });
@@ -46,11 +61,16 @@ async function taxiGet(path: string) {
 }
 
 async function taxiPost(path: string, body: Record<string, unknown>) {
-  const res = await fetch(`${baseUrl()}${path}`, {
-    method: "POST",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(body),
-  });
+  const res = await fetchWithTimeout(
+    `${baseUrl()}${path}`,
+    {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(body),
+    },
+    AUTH_ACTION_TIMEOUT_MS,
+    "taxi_client_post",
+  );
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     const expectedPending =
@@ -337,11 +357,16 @@ export function addTaxiFavoriteDriver(driverUserId: string) {
 }
 
 export async function removeTaxiFavoriteDriver(driverUserId: string) {
-  const res = await fetch(`${baseUrl()}/api/taxi/favorites/drivers`, {
-    method: "DELETE",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify({ driver_user_id: driverUserId }),
-  });
+  const res = await fetchWithTimeout(
+    `${baseUrl()}/api/taxi/favorites/drivers`,
+    {
+      method: "DELETE",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ driver_user_id: driverUserId }),
+    },
+    AUTH_ACTION_TIMEOUT_MS,
+    "taxi_client_delete_favorite",
+  );
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     logTechnicalError("taxi.deleteFavoriteDriver", out, { status: res.status });

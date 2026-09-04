@@ -24,6 +24,10 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { supabase } from "../../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
+import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../../lib/supabaseRealtime";
@@ -563,75 +567,81 @@ export function OrderChatBaseScreen(props: {
       setLoading(true);
       setAccessDenied(false);
 
-      const access = await verifyAccess();
-      setCurrentUserId(access.userId || null);
-      currentUserIdRef.current = access.userId || null;
+      await withTimeout(
+        (async () => {
+          const access = await verifyAccess();
+          setCurrentUserId(access.userId || null);
+          currentUserIdRef.current = access.userId || null;
 
-      if (!access.canAccess) {
-        setRows([]);
-        setAccessDenied(true);
-        return;
-      }
+          if (!access.canAccess) {
+            setRows([]);
+            setAccessDenied(true);
+            return;
+          }
 
-      await loadParticipants(access);
+          await loadParticipants(access);
 
-      const selectWithRoles =
-        "id, order_id, user_id, text, image_path, created_at, sender_role, target_role, delivery_status, delivered_at, read_at";
-      const selectLegacy =
-        "id, order_id, user_id, text, image_path, created_at, sender_role, target_role";
+          const selectWithRoles =
+            "id, order_id, user_id, text, image_path, created_at, sender_role, target_role, delivery_status, delivered_at, read_at";
+          const selectLegacy =
+            "id, order_id, user_id, text, image_path, created_at, sender_role, target_role";
 
-      let query = supabase
-        .from("order_messages")
-        .select(selectWithRoles)
-        .eq("order_id", orderId)
-        .order("created_at", { ascending: true });
+          let query = supabase
+            .from("order_messages")
+            .select(selectWithRoles)
+            .eq("order_id", orderId)
+            .order("created_at", { ascending: true });
 
-      if (targetRole) {
-        query = query.or(
-          `target_role.eq.${targetRole},sender_role.eq.${targetRole},target_role.is.null`
-        );
-      }
+          if (targetRole) {
+            query = query.or(
+              `target_role.eq.${targetRole},sender_role.eq.${targetRole},target_role.is.null`
+            );
+          }
 
-      const result = await query;
+          const result = await query;
 
-      let rawRows: any[] = [];
-      let queryError: unknown = result.error;
+          let rawRows: any[] = [];
+          let queryError: unknown = result.error;
 
-      if (result.error && isMissingColumnError(result.error)) {
-        const legacy = await supabase
-          .from("order_messages")
-          .select(selectLegacy)
-          .eq("order_id", orderId)
-          .order("created_at", { ascending: true });
+          if (result.error && isMissingColumnError(result.error)) {
+            const legacy = await supabase
+              .from("order_messages")
+              .select(selectLegacy)
+              .eq("order_id", orderId)
+              .order("created_at", { ascending: true });
 
-        queryError = legacy.error;
-        rawRows = (legacy.data ?? []) as any[];
-      } else {
-        rawRows = (result.data ?? []) as any[];
-      }
+            queryError = legacy.error;
+            rawRows = (legacy.data ?? []) as any[];
+          } else {
+            rawRows = (result.data ?? []) as any[];
+          }
 
-      if (queryError) throw queryError;
+          if (queryError) throw queryError;
 
-      const normalizedRows: Row[] = rawRows.map((r) => ({
-        id: String(r.id),
-        order_id: String(r.order_id),
-        user_id: r.user_id ?? null,
-        text: r.text ?? null,
-        image_path: r.image_path ?? null,
-        created_at: String(r.created_at),
-        sender_role: normalizeTargetRole(r.sender_role),
-        target_role: normalizeTargetRole(r.target_role),
-      }));
+          const normalizedRows: Row[] = rawRows.map((r) => ({
+            id: String(r.id),
+            order_id: String(r.order_id),
+            user_id: r.user_id ?? null,
+            text: r.text ?? null,
+            image_path: r.image_path ?? null,
+            created_at: String(r.created_at),
+            sender_role: normalizeTargetRole(r.sender_role),
+            target_role: normalizeTargetRole(r.target_role),
+          }));
 
-      const enriched = await enrichSignedUrls(normalizedRows);
+          const enriched = await enrichSignedUrls(normalizedRows);
 
-      setRows(enriched);
-      scrollToEnd();
+          setRows(enriched);
+          scrollToEnd();
 
-      void markChatMessagesReadViaApi({
-        orderId,
-        targetRole: targetRole || null,
-      });
+          void markChatMessagesReadViaApi({
+            orderId,
+            targetRole: targetRole || null,
+          });
+        })(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "order_chat_base_load",
+      );
     } catch (e: any) {
       console.log("load chat error:", e);
 

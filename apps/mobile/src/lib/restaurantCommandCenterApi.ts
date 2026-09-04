@@ -1,4 +1,9 @@
 import { API_BASE_URL } from "./apiBase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { supabase } from "./supabase";
 
 export type CommandCenterDriverCard = {
@@ -145,7 +150,11 @@ export type RestaurantAiGrowthData = {
 };
 
 async function getAuthToken(): Promise<string> {
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "restaurant_cc_session",
+  );
   if (error) throw error;
   const token = data.session?.access_token;
   if (!token) throw new Error("SESSION_EXPIRED");
@@ -155,13 +164,18 @@ async function getAuthToken(): Promise<string> {
 async function fetchRestaurantApi<T>(path: string): Promise<T> {
   const token = await getAuthToken();
   const base = String(API_BASE_URL).replace(/\/$/, "");
-  const res = await fetch(`${base}${path}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
+  const res = await fetchWithTimeout(
+    `${base}${path}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
     },
-  });
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "restaurant_cc_fetch",
+  );
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     throw new Error(out?.error ?? `HTTP_${res.status}`);

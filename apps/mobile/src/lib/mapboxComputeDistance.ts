@@ -1,4 +1,10 @@
 import { supabase } from "./supabase";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 
 export type MapboxComputeDistanceBody = {
   pickupAddress?: string;
@@ -10,7 +16,11 @@ export type MapboxComputeDistanceBody = {
 };
 
 export async function getMapboxAuthHeaders(): Promise<Record<string, string>> {
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "mapbox_distance_session",
+  );
 
   if (error) {
     throw new Error(error.message || "Session error");
@@ -37,10 +47,15 @@ export async function fetchMapboxComputeDistance(params: {
   const url = `${base}/api/mapbox/compute-distance`;
   const headers = await getMapboxAuthHeaders();
 
-  return fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(params.body),
-    signal: params.signal,
-  });
+  return fetchWithTimeout(
+    url,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(params.body),
+      signal: params.signal,
+    },
+    AUTH_ACTION_TIMEOUT_MS,
+    "mapbox_compute_distance",
+  );
 }
