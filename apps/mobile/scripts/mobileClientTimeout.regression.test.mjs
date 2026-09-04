@@ -56,13 +56,31 @@ test("driver map trip load and Mapbox Directions have wall-clock timeouts", () =
     join(mobileRoot, "lib/signOutToRoleSelect.ts"),
     "utf8",
   );
+  const walletApi = readFileSync(join(mobileRoot, "lib/walletApi.ts"), "utf8");
+  const marketplaceApi = readFileSync(
+    join(mobileRoot, "lib/marketplaceApi.ts"),
+    "utf8",
+  );
+  const notificationsApi = readFileSync(
+    join(mobileRoot, "lib/notificationsInboxApi.ts"),
+    "utf8",
+  );
+  const driverWallet = readFileSync(
+    join(mobileRoot, "screens/DriverWalletScreen.tsx"),
+    "utf8",
+  );
   assert.match(boot, /DRIVER_NAV_FETCH_TIMEOUT_MS\s*=\s*8_000/);
+  assert.match(boot, /fetchWithTimeout/);
   assert.match(driverMap, /driver_map_load_trip/);
   assert.match(driverMap, /DRIVER_NAV_FETCH_TIMEOUT_MS/);
   assert.match(navRoute, /DRIVER_NAV_FETCH_TIMEOUT_MS/);
   assert.match(taxiReceipt, /taxi_receipt_fetch/);
   assert.match(signOut, /sign_out_auth/);
   assert.match(signOut, /AUTH_ACTION_TIMEOUT_MS/);
+  assert.match(walletApi, /fetchWithTimeout/);
+  assert.match(marketplaceApi, /marketplace_fetch/);
+  assert.match(notificationsApi, /notifications_inbox_get/);
+  assert.match(driverWallet, /driver_wallet_session/);
 });
 
 console.log("mobile client timeout regression passed");

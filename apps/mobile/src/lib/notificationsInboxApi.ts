@@ -1,5 +1,10 @@
 import i18n from "i18next";
 import { API_BASE_URL } from "./apiBase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { supabase } from "./supabase";
 import { logTechnicalError, toUserFacingError } from "./userFacingError";
 
@@ -23,7 +28,11 @@ export type NotificationInboxResponse = {
 };
 
 async function getAuthHeaders() {
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "notifications_inbox_session",
+  );
   if (error) throw error;
 
   const token = data.session?.access_token;
@@ -51,10 +60,15 @@ export async function fetchNotificationInbox(params?: {
   const q = qs.toString();
   const path = `/api/notifications/inbox${q ? `?${q}` : ""}`;
 
-  const res = await fetch(`${baseUrl()}${path}`, {
-    method: "GET",
-    headers: await getAuthHeaders(),
-  });
+  const res = await fetchWithTimeout(
+    `${baseUrl()}${path}`,
+    {
+      method: "GET",
+      headers: await getAuthHeaders(),
+    },
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "notifications_inbox_get",
+  );
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     logTechnicalError("notifications.inbox.get", out, { status: res.status });
@@ -79,11 +93,16 @@ export async function patchNotificationInbox(
   id: string,
   action: "read" | "unread" | "archive" | "unarchive"
 ) {
-  const res = await fetch(`${baseUrl()}/api/notifications/inbox`, {
-    method: "PATCH",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify({ id, action }),
-  });
+  const res = await fetchWithTimeout(
+    `${baseUrl()}/api/notifications/inbox`,
+    {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ id, action }),
+    },
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "notifications_inbox_patch",
+  );
   const out = await res.json().catch(() => null);
   if (!res.ok) {
     logTechnicalError("notifications.inbox.patch", out, {

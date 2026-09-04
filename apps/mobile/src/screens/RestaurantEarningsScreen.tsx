@@ -16,6 +16,11 @@ import { useTranslation } from "react-i18next";
 import * as Clipboard from "expo-clipboard";
 import { supabase } from "../lib/supabase";
 import { getApiBaseUrl } from "../lib/apiBase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
 import { logTechnicalError } from "../lib/userFacingError";
@@ -331,7 +336,11 @@ export function RestaurantEarningsScreen() {
       const {
         data: { session },
         error: sessionErr,
-      } = await supabase.auth.getSession();
+      } = await withTimeout(
+        supabase.auth.getSession(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "restaurant_earnings_session",
+      );
       if (sessionErr) throw sessionErr;
 
       const accessToken = session?.access_token?.trim();
@@ -340,13 +349,15 @@ export function RestaurantEarningsScreen() {
         return;
       }
 
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${apiBase}/api/restaurant/financial/overview`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
         },
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "restaurant_earnings_overview",
       );
 
       const json = await response.json().catch(() => null);
@@ -412,16 +423,23 @@ export function RestaurantEarningsScreen() {
         `and(dropoff_code_verified_at.is.null,created_at.gte.${startISO},created_at.lt.${endISO})`,
       ].join(",");
 
-      const [{ data, error },] = await Promise.all([
-        supabase
-          .from("orders")
-          .select(selectCols)
-          .or(`restaurant_id.eq.${restaurantId},restaurant_user_id.eq.${restaurantId}`)
-          .eq("status", "delivered")
-          .or(monthFilterOr)
-          .returns<Row[]>(),
-        fetchFinancialOverview(),
-      ]);
+      const [{ data, error }] = await withTimeout(
+        (async () =>
+          Promise.all([
+            supabase
+              .from("orders")
+              .select(selectCols)
+              .or(
+                `restaurant_id.eq.${restaurantId},restaurant_user_id.eq.${restaurantId}`,
+              )
+              .eq("status", "delivered")
+              .or(monthFilterOr)
+              .returns<Row[]>(),
+            fetchFinancialOverview(),
+          ]))(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "restaurant_earnings_fetch",
+      );
 
       if (error) throw error;
 

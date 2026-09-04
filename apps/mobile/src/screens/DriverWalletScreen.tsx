@@ -23,6 +23,10 @@ import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoading
 import { instantCashoutBlockMessage } from "../lib/instantCashoutBlockMessage";
 import { supabase } from "../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   fetchDriverWalletSnapshot,
   formatWalletAmount,
   requestWalletCashOut,
@@ -246,7 +250,11 @@ export function DriverWalletScreen() {
       try {
         setLoading(true);
 
-        const { data: sessionData, error: sErr } = await supabase.auth.getSession();
+        const { data: sessionData, error: sErr } = await withTimeout(
+          supabase.auth.getSession(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "driver_wallet_session",
+        );
         if (sErr) console.log("getSession error:", sErr);
 
         const session = sessionData?.session;
@@ -298,7 +306,11 @@ export function DriverWalletScreen() {
           applyStripeStatus(connect.status, String(connect.status_label ?? ""), null);
         }
 
-        const snapshot = await fetchDriverWalletSnapshot(session.access_token);
+        const snapshot = await withTimeout(
+          fetchDriverWalletSnapshot(session.access_token),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "driver_wallet_snapshot",
+        );
         if (aliveRef && !aliveRef.alive) return;
 
         const summary = snapshot.summary;
@@ -395,7 +407,11 @@ export function DriverWalletScreen() {
       setLoading(true);
       setConfirmOpen(false);
 
-      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionErr } = await withTimeout(
+        supabase.auth.getSession(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "driver_wallet_cashout_session",
+      );
       const accessToken = sessionData?.session?.access_token;
 
       if (sessionErr || !accessToken) {

@@ -1,4 +1,9 @@
 import { getApiBaseUrl } from "../../lib/apiBase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { supabase } from "./supabase";
 import {
   appendMarketplaceScopeQuery,
@@ -95,9 +100,17 @@ export type MarketplaceOrderDraft = {
 };
 
 async function getAccessToken(): Promise<string | null> {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) return null;
-  return data.session?.access_token ?? null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.auth.getSession(),
+      CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+      "marketplace_session",
+    );
+    if (error) return null;
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function buildMarketplacePath(
@@ -135,15 +148,20 @@ async function marketplaceFetch(
 
   if (!token && !allowGuest) throw new Error("Not authenticated");
 
-  const res = await fetch(`${getApiBaseUrl()}${path}`, {
-    ...init,
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
+  const res = await fetchWithTimeout(
+    `${getApiBaseUrl()}${path}`,
+    {
+      ...init,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
     },
-  });
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "marketplace_fetch",
+  );
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.ok === false) {
