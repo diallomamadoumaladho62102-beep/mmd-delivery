@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     const { data: commission, error: commissionError } = await supabaseAdmin
       .from("taxi_commissions")
-      .select("driver_paid_out, driver_transfer_id")
+      .select("driver_paid_out, driver_transfer_id, driver_cents")
       .eq("taxi_ride_id", rideId)
       .maybeSingle();
 
@@ -71,9 +71,9 @@ export async function POST(req: NextRequest) {
       commission?.driver_paid_out === true ||
       !!String(commission?.driver_transfer_id ?? "").trim();
 
-    if (payoutAlreadySent) {
-      return json({ error: "taxi_refund_not_allowed_after_payout" }, 409);
-    }
+    // Post-SCT refunds are allowed: Stripe refund + partner clawback
+    // (createReversal or partner_transfer_recoveries.reconcile_required).
+    // Never refuse silently — recovery must be explicit when reverse fails.
 
     const alreadyRefunded =
       !!ride.stripe_refund_id || !!ride.stripe_refunded_at;
@@ -199,8 +199,49 @@ export async function POST(req: NextRequest) {
         refunded_now: !!stripeRefund?.id,
         stripe_refund_id: stripeRefund?.id ?? null,
         refund_status: finalRefundStatus,
+        payout_already_sent: payoutAlreadySent,
       },
     });
+
+    let clawback: {
+      attempted: number;
+      reversed: string[];
+      failed: string[];
+      reconcile_required: boolean;
+    } | null = null;
+
+    if (
+      finalRefundStatus === "refunded" ||
+      alreadyRefunded ||
+      payoutAlreadySent
+    ) {
+      try {
+        const { clawbackPartnerTransfersForRefund } = await import(
+          "@/lib/finance/partnerTransferClawback"
+        );
+        clawback = await clawbackPartnerTransfersForRefund({
+          supabaseAdmin,
+          entityType: "taxi_ride",
+          entityId: rideId,
+          refundId:
+            stripeRefund?.id ??
+            (String(ride.stripe_refund_id ?? "").trim() || null),
+          reason: `admin_taxi_cancel_refund:${adminReason}`,
+        });
+      } catch (clawErr) {
+        console.error("[admin taxi cancel-refund] clawback failed", {
+          rideId,
+          message:
+            clawErr instanceof Error ? clawErr.message : String(clawErr),
+        });
+        clawback = {
+          attempted: 0,
+          reversed: [],
+          failed: [],
+          reconcile_required: true,
+        };
+      }
+    }
 
     await writeAdminAuditServer({
       supabaseAdmin,
@@ -215,6 +256,8 @@ export async function POST(req: NextRequest) {
         refunded_now: !!stripeRefund?.id,
         stripe_refund: stripeRefund,
         refund_status: finalRefundStatus,
+        payout_already_sent: payoutAlreadySent,
+        clawback,
       },
       request: req,
     });
@@ -228,6 +271,7 @@ export async function POST(req: NextRequest) {
           alreadyRefunded,
           refundedNow: false,
           stripeRefund,
+          clawback,
           message: "Ride canceled but Stripe refund failed.",
         },
         502
@@ -240,7 +284,10 @@ export async function POST(req: NextRequest) {
       alreadyRefunded,
       refundedNow: !!stripeRefund?.id,
       stripeRefund,
-      message: "Admin taxi cancel/refund completed.",
+      clawback,
+      message: clawback?.reconcile_required
+        ? "Admin taxi cancel/refund completed with partner reconcile_required."
+        : "Admin taxi cancel/refund completed.",
     });
   } catch (e) {
     const status = e instanceof AdminAccessError ? e.status : 500;

@@ -115,12 +115,37 @@ export async function reversePaidMarketplaceTransfers(
         .eq("id", row.id);
       reversed.push(row.transferId);
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
       console.error("[marketplace-refund] transfer reversal failed", {
         sellerOrderId,
         transferId: row.transferId,
-        message: e instanceof Error ? e.message : String(e),
+        message,
       });
       failed.push(row.transferId);
+      try {
+        const { recordFailedTransferRecovery } = await import(
+          "@/lib/finance/partnerTransferClawback"
+        );
+        await recordFailedTransferRecovery({
+          supabaseAdmin,
+          entityType: "seller_order",
+          entityId: sellerOrderId,
+          transferId: row.transferId,
+          target: row.table === "marketplace_seller_payouts" ? "seller" : "driver",
+          refundId: null,
+          source: "marketplace_refund",
+          correlationId: sellerOrderId,
+          failureCode: "transfer_reversal_failed",
+          failureMessage: message,
+          reason,
+        });
+      } catch (recordErr) {
+        console.error("[marketplace-refund] recovery record failed", {
+          transferId: row.transferId,
+          message:
+            recordErr instanceof Error ? recordErr.message : String(recordErr),
+        });
+      }
     }
   }
 
