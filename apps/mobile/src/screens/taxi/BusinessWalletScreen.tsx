@@ -18,6 +18,11 @@ import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { ClientServiceBottomNav } from "../../components/navigation/ClientServiceBottomNav";
 import { supabase } from "../../lib/supabase";
 import { getApiBaseUrl } from "../../lib/apiBase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import { formatWalletAmount } from "../../lib/walletApi";
 import { toUserFacingError } from "../../lib/userFacingError";
 import { formatDateTime } from "../../i18n/formatters";
@@ -79,18 +84,27 @@ type MemberRow = {
 type FilterKey = "all" | "credit" | "debit";
 
 async function authJson(path: string, init?: RequestInit) {
-  const { data } = await supabase.auth.getSession();
+  const { data } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "business_wallet_session",
+  );
   const token = data.session?.access_token;
   if (!token) throw new Error("Session expired");
   const base = getApiBaseUrl().replace(/\/$/, "");
-  const res = await fetch(`${base}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(init?.headers ?? {}),
+  const res = await fetchWithTimeout(
+    `${base}${path}`,
+    {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(init?.headers ?? {}),
+      },
     },
-  });
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "business_wallet_fetch",
+  );
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(

@@ -18,6 +18,43 @@ export const CLIENT_HOME_FETCH_TIMEOUT_MS = 8_000;
 /** Client secondary screens (wallet, history, receipt, AI) — same fail-open budget as #121. */
 export const CLIENT_SCREEN_FETCH_TIMEOUT_MS = 8_000;
 
+/** Driver map trip load / Mapbox Directions — never leave nav loader forever. */
+export const DRIVER_NAV_FETCH_TIMEOUT_MS = 8_000;
+
+/**
+ * Abortable fetch with a wall-clock timeout so hung TCP never leaves a spinner forever.
+ * Prefer this over bare `fetch` on Apple Review–reachable mobile screens.
+ */
+export async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  ms: number,
+  label: string,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  const upstream = init?.signal;
+  const onUpstreamAbort = () => controller.abort();
+  if (upstream) {
+    if (upstream.aborted) controller.abort();
+    else upstream.addEventListener("abort", onUpstreamAbort, { once: true });
+  }
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const aborted =
+      (error instanceof Error && error.name === "AbortError") ||
+      controller.signal.aborted;
+    if (aborted && !upstream?.aborted) {
+      throw new Error(`${label}_timeout_${ms}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    upstream?.removeEventListener("abort", onUpstreamAbort);
+  }
+}
+
 export function withTimeout<T>(
   promise: Promise<T>,
   ms: number,

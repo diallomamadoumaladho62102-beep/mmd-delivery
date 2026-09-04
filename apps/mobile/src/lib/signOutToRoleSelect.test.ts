@@ -62,6 +62,17 @@ async function main() {
     assert.equal(resets.length, 0);
   });
 
+  await test("signOutToRoleSelect wraps auth with AUTH_ACTION_TIMEOUT_MS", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const src = fs.readFileSync(path.join(here, "signOutToRoleSelect.ts"), "utf8");
+    assert.match(src, /AUTH_ACTION_TIMEOUT_MS/);
+    assert.match(src, /sign_out_auth/);
+    assert.match(src, /withTimeout/);
+  });
+
   await test("restaurantSignOutLabels expose Log out copy", () => {
     const labels = restaurantSignOutLabels((_k, fb) => fb);
     assert.match(labels.confirm, /log out/i);

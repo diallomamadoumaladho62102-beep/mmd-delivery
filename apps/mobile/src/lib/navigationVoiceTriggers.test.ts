@@ -27,7 +27,11 @@ function maneuver(id: string, isArrival = false): RouteManeuver {
   };
 }
 
-function selection(distanceMeters: number, id = "v1:1", isArrival = false): ActiveManeuverSelection {
+function selection(
+  distanceMeters: number,
+  id = "v1:1",
+  isArrival = false,
+): ActiveManeuverSelection {
   return {
     active: maneuver(id, isArrival),
     distanceMeters,
@@ -36,75 +40,109 @@ function selection(distanceMeters: number, id = "v1:1", isArrival = false): Acti
   };
 }
 
-// --- Approach sequence: 600 → 540 → 400 → 210 → 40 ---
+// --- Approach: one instruction when entering band; GPS spam must not re-fire ---
 let state = initVoiceTriggerState();
 
-let r = evaluateManeuverVoice({ state, routeVersion: "v1", selection: selection(600), locale: "fr" });
+let r = evaluateManeuverVoice({
+  state,
+  routeVersion: "v1",
+  selection: selection(600),
+  locale: "fr",
+});
 state = r.state;
 assert(r.announcement === null, "no announce beyond 550");
 
-r = evaluateManeuverVoice({ state, routeVersion: "v1", selection: selection(540), locale: "fr" });
+r = evaluateManeuverVoice({
+  state,
+  routeVersion: "v1",
+  selection: selection(540),
+  locale: "fr",
+});
 state = r.state;
 assert(r.announcement?.bucket === "500", "500 fires on crossing 540");
-assert(r.announcement?.text.startsWith("Dans 500 mètres"), "500 phrase");
+assert(
+  r.announcement?.text ===
+    "Dans 500 mètres, tournez à droite sur Main St",
+  "locked complete 500 phrase",
+);
 
-r = evaluateManeuverVoice({ state, routeVersion: "v1", selection: selection(400), locale: "fr" });
+r = evaluateManeuverVoice({
+  state,
+  routeVersion: "v1",
+  selection: selection(400),
+  locale: "fr",
+});
 state = r.state;
-assert(r.announcement === null, "no repeat 500 at 400");
+assert(r.announcement === null, "no second approach announce at 400");
 
-r = evaluateManeuverVoice({ state, routeVersion: "v1", selection: selection(210), locale: "fr" });
+r = evaluateManeuverVoice({
+  state,
+  routeVersion: "v1",
+  selection: selection(210),
+  locale: "fr",
+});
 state = r.state;
-assert(r.announcement?.bucket === "200", "200 fires on crossing 210");
+assert(r.announcement === null, "200 band does not fire second instruction");
 
-r = evaluateManeuverVoice({ state, routeVersion: "v1", selection: selection(205), locale: "fr" });
+r = evaluateManeuverVoice({
+  state,
+  routeVersion: "v1",
+  selection: selection(99),
+  locale: "fr",
+});
 state = r.state;
-assert(r.announcement === null, "no repeat 200");
+assert(r.announcement === null, "99m GPS tick does not reinvent instruction");
 
-r = evaluateManeuverVoice({ state, routeVersion: "v1", selection: selection(40), locale: "fr" });
+r = evaluateManeuverVoice({
+  state,
+  routeVersion: "v1",
+  selection: selection(40),
+  locale: "fr",
+});
 state = r.state;
-assert(r.announcement === null, "no third immediate announce");
+assert(r.announcement === null, "no third announce near turn");
 
-// --- GPS jump 540 -> 470 on FIRST observation still triggers 500 ---
-let jumpState = initVoiceTriggerState();
+// --- GPS jump into band still triggers once ---
 const jump = evaluateManeuverVoice({
-  state: jumpState,
+  state: initVoiceTriggerState(),
   routeVersion: "j1",
   selection: selection(470, "j1:1"),
   locale: "fr",
 });
 assert(jump.announcement?.bucket === "500", "GPS jump into 500 band still fires");
 
-// --- Maneuver first appears already close (reroute) → 200, not 500 ---
-let closeState = initVoiceTriggerState();
+// --- Already close (reroute) → near locked distance, still one instruction ---
 const close = evaluateManeuverVoice({
-  state: closeState,
+  state: initVoiceTriggerState(),
   routeVersion: "c1",
   selection: selection(150, "c1:1"),
   locale: "fr",
 });
-assert(close.announcement?.bucket === "200", "close appearance skips 500 → 200");
+assert(close.announcement?.bucket === "200", "close appearance uses near lock");
+assert(
+  close.announcement?.text.startsWith("Dans 200 mètres"),
+  "near distance locked in complete phrase",
+);
 
-// --- Reroute resets memory (new routeVersion) ---
-let rerouteState = jump.state;
+// --- Reroute resets memory ---
 const reroute = evaluateManeuverVoice({
-  state: rerouteState,
+  state: jump.state,
   routeVersion: "j2",
   selection: selection(480, "j2:1"),
   locale: "fr",
 });
-assert(reroute.announcement?.bucket === "500", "reroute resets and re-announces 500");
+assert(reroute.announcement?.bucket === "500", "reroute resets and re-announces");
 
-// --- Arrival announcement ---
-let arrState = initVoiceTriggerState();
+// --- Arrival ---
 const arr = evaluateManeuverVoice({
-  state: arrState,
+  state: initVoiceTriggerState(),
   routeVersion: "a1",
   selection: selection(55, "a1:9", true),
   locale: "fr",
 });
 assert(arr.announcement?.bucket === "arrival", "arrival bucket fires within 60m");
 
-// --- Priority arbitration: nav 200 beats safety 500 ---
+// --- Priority arbitration ---
 const nav200: VoiceAnnouncement = {
   bucket: "200",
   maneuverId: "m",
@@ -119,19 +157,20 @@ const safety500: VoiceAnnouncement = {
 };
 const arb = resolveVoicePriority([safety500, nav200]);
 assert(arb.primary?.text === "nav", "nav200 wins over safety500");
-assert(arb.deferred.length === 1 && arb.deferred[0].text === "safety", "safety deferred");
+assert(
+  arb.deferred.length === 1 && arb.deferred[0].text === "safety",
+  "safety deferred",
+);
 
-// --- Hard cap: third announcement blocked even if flags glitch ---
+// --- Hard lock: announced maneuver never re-fires ---
 let capState = initVoiceTriggerState();
 capState = {
   routeVersion: "cap",
   byManeuver: {
     "cap:1": {
-      a500: true,
-      a200: true,
-      immediate: true,
+      announced: true,
       arrival: false,
-      spokenCount: 2,
+      spokenCount: 1,
     },
   },
 };
@@ -141,6 +180,6 @@ const capped = evaluateManeuverVoice({
   selection: selection(180, "cap:1"),
   locale: "en",
 });
-assert(capped.announcement === null, "spokenCount>=2 blocks any further announce");
+assert(capped.announcement === null, "announced=true blocks further announce");
 
 console.log("navigationVoiceTriggers tests passed");

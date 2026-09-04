@@ -38,6 +38,10 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
@@ -1303,7 +1307,13 @@ export function DriverHomeScreen() {
           setGpsLoading(false);
         }
 
-        const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const current = await withTimeout(
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          }),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "driver_home_gps",
+        );
         if (cancelled || !mountedRef.current) return;
         applyDriverCoordinates(current.coords.latitude, current.coords.longitude);
         setGpsLoading(false);

@@ -15,6 +15,10 @@ import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
 import { supabase } from "../../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
+import {
   fetchWalletHistory,
   fetchWalletSummary,
   formatWalletAmount,
@@ -67,20 +71,28 @@ export default function RestaurantWalletScreen() {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData } = await withTimeout(
+        supabase.auth.getSession(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "restaurant_wallet_session",
+      );
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Session expired");
 
-      const [summary, history] = await Promise.all([
-        fetchWalletSummary(token, {
-          accountType: "restaurant",
-          countryCode: "US",
-        }),
-        fetchWalletHistory(token, {
-          accountType: "restaurant",
-          limit: 50,
-        }),
-      ]);
+      const [summary, history] = await withTimeout(
+        Promise.all([
+          fetchWalletSummary(token, {
+            accountType: "restaurant",
+            countryCode: "US",
+          }),
+          fetchWalletHistory(token, {
+            accountType: "restaurant",
+            limit: 50,
+          }),
+        ]),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "restaurant_wallet_fetch",
+      );
 
       setCurrency(String(summary.currency ?? "USD"));
       setBalanceCents(Number(summary.balance_cents ?? 0));

@@ -60,7 +60,7 @@ Deletion requires the account password and typing DELETE. It anonymizes personal
 | Location | Nearby restaurants, pickup/dropoff, live driver tracking on active trips |
 | Notifications | Order / ride / mission alerts |
 | Camera | Optional safety video + delivery proof |
-| Microphone | Optional **Safety Audio** (client + driver) and safety video audio — only after explicit start |
+| Microphone | Optional **Safety Audio** (client + driver), safety video audio, and optional **MMD AI** voice input — only after explicit start |
 | Photos | Profile / proof images |
 
 ---

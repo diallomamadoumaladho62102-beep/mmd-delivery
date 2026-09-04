@@ -37,6 +37,10 @@ import {
   formatDistance,
   formatDurationMinutes,
 } from "../../i18n/formatters";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   MMD_ACTION_NAVY,
@@ -133,10 +137,17 @@ export default function TaxiReceiptScreen() {
     }
     try {
       setError(null);
-      const [data, ratingRes] = await Promise.all([
-        fetchTaxiReceipt(rideId),
-        fetchTaxiRideRating(rideId).catch(() => ({ ok: false, rating: null })),
-      ]);
+      const [data, ratingRes] = await withTimeout(
+        Promise.all([
+          fetchTaxiReceipt(rideId),
+          fetchTaxiRideRating(rideId).catch(() => ({
+            ok: false,
+            rating: null,
+          })),
+        ]),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "taxi_receipt_fetch",
+      );
       setReceipt(data);
       const existing = ratingRes && "rating" in ratingRes ? ratingRes.rating : null;
       setMyRating(

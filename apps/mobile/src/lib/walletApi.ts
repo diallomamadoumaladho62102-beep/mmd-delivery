@@ -153,6 +153,11 @@ export function inferCountryCode(input?: {
 
 import i18n from "../i18n";
 import { formatMoneyFromCents } from "../i18n/formatters";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+} from "./bootFailOpen";
 
 /** Locale-aware wallet money — delegates to shared i18n formatters. */
 export function formatWalletAmount(cents: number, currency = "USD"): string {
@@ -162,17 +167,29 @@ export function formatWalletAmount(cents: number, currency = "USD"): string {
 async function authFetch<T>(
   path: string,
   accessToken: string,
-  init?: RequestInit
+  init?: RequestInit & { timeoutMs?: number }
 ): Promise<T> {
   const base = getApiBaseUrl().replace(/\/$/, "");
-  const res = await fetch(`${base}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      ...(init?.headers ?? {}),
+  const timeoutMs =
+    init?.timeoutMs ??
+    (String(init?.method ?? "GET").toUpperCase() === "POST"
+      ? AUTH_ACTION_TIMEOUT_MS
+      : CLIENT_SCREEN_FETCH_TIMEOUT_MS);
+  const { timeoutMs: _omit, ...fetchInit } = init ?? {};
+  void _omit;
+  const res = await fetchWithTimeout(
+    `${base}${path}`,
+    {
+      ...fetchInit,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        ...(fetchInit.headers ?? {}),
+      },
     },
-  });
+    timeoutMs,
+    "wallet_auth_fetch",
+  );
   const raw = await res.text();
   let json: T;
   try {

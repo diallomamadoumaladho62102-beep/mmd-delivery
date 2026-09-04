@@ -1,6 +1,8 @@
 /**
  * Shared mobile sign-out → RoleSelect (core, Node-testable with injected deps).
  */
+import { AUTH_ACTION_TIMEOUT_MS, withTimeout } from "./bootFailOpen";
+
 export type SignOutNavigation = {
   reset: (state: {
     index: number;
@@ -35,8 +37,12 @@ export async function signOutToRoleSelect(
       return { error: error ? new Error(error.message) : null };
     });
 
-  await clearRole();
-  const { error } = await doSignOut();
+  await withTimeout(clearRole(), AUTH_ACTION_TIMEOUT_MS, "sign_out_clear_role");
+  const { error } = await withTimeout(
+    doSignOut(),
+    AUTH_ACTION_TIMEOUT_MS,
+    "sign_out_auth",
+  );
   if (error) throw error;
   navigation.reset({
     index: 0,
