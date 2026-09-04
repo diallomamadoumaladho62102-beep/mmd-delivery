@@ -136,7 +136,7 @@ async function upsertRecoveryRow(
     // Stripe may have succeeded — never fail-open silently for reconcile path.
     return {
       ok: false,
-      reconcile_required: row.status === "recovery_required" || true,
+      reconcile_required: true,
     };
   }
 
@@ -437,7 +437,7 @@ export async function reverseStripeTransferOrRecover(params: {
       currency,
       errorCode: failureCode,
       errorMessage: failureMessage,
-      reconcile_required: true || !persist.ok,
+      reconcile_required: true,
     };
   }
 }
