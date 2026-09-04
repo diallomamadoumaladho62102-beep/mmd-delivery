@@ -55,7 +55,6 @@ import { buildStableRouteVersion } from "../lib/navigationRouteVersion";
 import { useSmoothedDriverMarker } from "../hooks/useSmoothedDriverMarker";
 import {
   resolveNavigationVoiceLanguage,
-  resetNavigationVoiceLedger,
   speakArrival,
   speakNavigation,
   speakReroute,
@@ -478,7 +477,7 @@ export default function DriverMapScreen() {
     voiceTriggerStateRef.current = initVoiceTriggerState(routeVersion);
     safetyVoiceStateRef.current = initSafetyVoiceState(routeVersion);
     voiceQueueRef.current = initVoiceQueue();
-    resetNavigationVoiceLedger();
+    void stopNavigationVoice();
   }, [routeVersion]);
 
   /** Ordered maneuvers with cumulative along-route distances. */
@@ -983,10 +982,8 @@ export default function DriverMapScreen() {
     voiceLanguage,
   ]);
 
-  // Distance-threshold voice engine: 500 m / 200 m / immediate announcements
-  // for the active maneuver, plus safety alerts, arbitrated by priority so a
-  // safety alert never masks an urgent navigation maneuver. No repetition
-  // (per-maneuver memory) and automatic reset on reroute (routeVersion).
+  // One approach instruction per maneuver (stable id). TTS speaks the COMPLETE
+  // text exactly twice, then stops. GPS distance ticks must not restart speech.
   useEffect(() => {
     if (!voiceEnabled || navigationPaused || !trip || !navigationActive) return;
     // Final arrival is handled by the geofence effect above.

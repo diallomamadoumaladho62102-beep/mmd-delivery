@@ -1,15 +1,14 @@
 /**
- * Distance-threshold voice trigger engine (500 m / 200 m / immediate / arrival).
+ * Distance-threshold voice trigger engine.
  *
- * Requirements honored:
- * - Threshold *crossing*, never exact equality: a bucket fires the first time
- *   the live distance drops into its band, so a GPS jump 540 m → 470 m still
- *   fires the 500 m announcement.
- * - Per-maneuver memory keyed by a stable id, so the same announcement is not
- *   repeated on every GPS update.
- * - If a maneuver first appears already close (e.g. after a reroute), the 500 m
- *   bucket is skipped and the 200 m bucket fires instead.
- * - Reroute resets all memory (state carries the current `routeVersion`).
+ * One COMPLETE instruction per maneuver (stable id). The TTS playback layer
+ * speaks that same complete text exactly twice, then stops. GPS updates that
+ * only change remaining meters must not create a new instruction.
+ *
+ * - Threshold *crossing*, never exact equality.
+ * - Per-maneuver memory keyed by stable maneuver id.
+ * - If a maneuver first appears already close (reroute), announce at near distance.
+ * - Reroute resets memory when `routeVersion` changes.
  */
 import {
   formatManeuverVoice,
@@ -31,11 +30,13 @@ export enum VoicePriority {
 }
 
 type ManeuverAnnounceFlags = {
-  a500: boolean;
-  a200: boolean;
-  immediate: boolean;
+  /** Primary approach instruction already dispatched (TTS will read it twice). */
+  announced: boolean;
   arrival: boolean;
-  /** Total spoken announcements for this maneuver (hard cap = 2). */
+  /**
+   * Instruction cycles started for this maneuver (max 1 approach + optional
+   * arrival). Playback performs 2 complete readings per cycle.
+   */
   spokenCount: number;
 };
 
@@ -57,13 +58,13 @@ export type VoiceTriggerResult = {
 };
 
 /**
- * Distance thresholds — max 2 announcements per maneuver:
- * ~500 m then ~150–200 m. Immediate "now" repeats are disabled.
+ * Distance thresholds — one approach announcement per maneuver when first
+ * entering the far band (or near band if already closer after reroute).
  */
 export const VOICE_THRESHOLDS = {
   far: 500,
   farBandTop: 550,
-  near: 175,
+  near: 200,
   nearBandTop: 210,
   immediate: 45,
   arrival: 60,
@@ -79,9 +80,7 @@ function flagsFor(
 ): ManeuverAnnounceFlags {
   return (
     state.byManeuver[maneuverId] ?? {
-      a500: false,
-      a200: false,
-      immediate: false,
+      announced: false,
       arrival: false,
       spokenCount: 0,
     }
@@ -116,23 +115,20 @@ export function evaluateManeuverVoice(params: {
   const flags = { ...flagsFor(state, active.id) };
   let announcement: VoiceAnnouncement | null = null;
 
-  // Hard lock — same maneuver cannot produce more than two announcements.
-  if (flags.spokenCount >= 2) {
-    return {
-      state: {
-        routeVersion: params.routeVersion,
-        byManeuver: { ...state.byManeuver, [active.id]: flags },
-      },
-      announcement: null,
-    };
-  }
-
-  const speak = (bucket: VoiceBucket, distance: number | null, priority: VoicePriority) => {
+  const speak = (
+    bucket: VoiceBucket,
+    distance: number | null,
+    priority: VoicePriority,
+  ) => {
     announcement = {
       bucket,
       maneuverId: active.id,
       priority,
-      text: formatManeuverVoice({ maneuver: active, distanceMeters: distance, locale }),
+      text: formatManeuverVoice({
+        maneuver: active,
+        distanceMeters: distance,
+        locale,
+      }),
     };
     flags.spokenCount += 1;
   };
@@ -140,21 +136,22 @@ export function evaluateManeuverVoice(params: {
   if (active.isArrival) {
     if (!flags.arrival && distanceMeters <= VOICE_THRESHOLDS.arrival) {
       flags.arrival = true;
+      flags.announced = true;
       speak("arrival", null, VoicePriority.ImmediateManeuver);
     }
-  } else if (!flags.a200 && distanceMeters <= VOICE_THRESHOLDS.nearBandTop) {
-    // Second (final) announcement ~150–200 m — never repeated after this.
-    flags.a200 = true;
-    flags.a500 = true;
-    flags.immediate = true;
-    speak("200", VOICE_THRESHOLDS.near, VoicePriority.Nav200);
-  } else if (
-    !flags.a500 &&
-    distanceMeters <= VOICE_THRESHOLDS.farBandTop &&
-    distanceMeters > VOICE_THRESHOLDS.nearBandTop
-  ) {
-    flags.a500 = true;
-    speak("500", VOICE_THRESHOLDS.far, VoicePriority.Nav500);
+  } else if (!flags.announced && distanceMeters <= VOICE_THRESHOLDS.farBandTop) {
+    // Lock distance phrase at trigger time (threshold), not live GPS meters,
+    // so 100→99→98 m updates cannot reinvent the instruction identity/text.
+    const lockedDistance =
+      distanceMeters <= VOICE_THRESHOLDS.nearBandTop
+        ? VOICE_THRESHOLDS.near
+        : VOICE_THRESHOLDS.far;
+    const bucket: VoiceBucket =
+      lockedDistance === VOICE_THRESHOLDS.near ? "200" : "500";
+    const priority =
+      bucket === "200" ? VoicePriority.Nav200 : VoicePriority.Nav500;
+    flags.announced = true;
+    speak(bucket, lockedDistance, priority);
   }
 
   const nextState: VoiceTriggerState = {
@@ -182,12 +179,12 @@ export function resolveVoicePriority(
   return { primary: sorted[0], deferred: sorted.slice(1) };
 }
 
-/** Convenience: does a maneuver still have pending (unspoken) buckets? */
+/** Convenience: does a maneuver still have a pending approach announcement? */
 export function hasPendingBuckets(
   state: VoiceTriggerState,
   maneuver: Pick<RouteManeuver, "id">,
 ): boolean {
   const flags = state.byManeuver[maneuver.id];
   if (!flags) return true;
-  return !(flags.a500 && flags.a200);
+  return !flags.announced;
 }

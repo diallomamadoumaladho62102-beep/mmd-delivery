@@ -18,7 +18,7 @@ const driverMap = read("../screens/DriverMapScreen.tsx");
 assert(driverMap.includes("buildStableRouteVersion"), "driver map uses stable route version");
 assert(driverMap.includes("instructionKey"), "voice uses instruction keys");
 assert(driverMap.includes("useSmoothedDriverMarker"), "driver map animates vehicle marker");
-assert(driverMap.includes("resetNavigationVoiceLedger"), "reroute resets voice ledger");
+assert(driverMap.includes("stopNavigationVoice"), "reroute stops voice and resets ledger");
 
 const taxiTracking = read("../screens/taxi/TaxiRideTrackingScreen.tsx");
 assert(taxiTracking.includes("useSmoothedDriverMarker"), "customer tracking smooths driver");
