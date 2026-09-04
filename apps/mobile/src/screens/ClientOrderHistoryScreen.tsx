@@ -143,7 +143,11 @@ export default function ClientOrderHistoryScreen() {
     else setLoading(true);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData } = await withTimeout(
+        supabase.auth.getSession(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "client_order_history_session",
+      );
       const userId = sessionData?.session?.user?.id;
       if (!userId) {
         setItems([]);

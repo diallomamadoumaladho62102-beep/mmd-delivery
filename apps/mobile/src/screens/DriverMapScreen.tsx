@@ -16,6 +16,10 @@ import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "../lib/supabase";
 import {
+  DRIVER_NAV_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   ensureMapboxTokenApplied,
   getMapStyleStreets,
   getMapStyleTrafficDay,
@@ -834,36 +838,44 @@ export default function DriverMapScreen() {
     setOrderError(null);
 
     try {
-      const result =
-        routeSourceTable === "marketplace_delivery_jobs"
-          ? await supabase
+      const result = await withTimeout(
+        (async () => {
+          if (routeSourceTable === "marketplace_delivery_jobs") {
+            return supabase
               .from("marketplace_delivery_jobs")
               .select(MARKETPLACE_DELIVERY_JOB_NAV_SELECT)
               .eq("id", routeOrderId)
-              .maybeSingle()
-          : routeSourceTable === "delivery_requests"
-            ? await supabase
-                .from("delivery_requests")
-                .select(
-                  "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,eta_minutes,driver_delivery_payout,dropoff_location_id",
-                )
-                .eq("id", routeOrderId)
-                .maybeSingle()
-            : routeSourceTable === "taxi_rides"
-              ? await supabase
-                  .from("taxi_rides")
-                  .select(
-                    "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code,pickup_location_id,dropoff_location_id",
-                  )
-                  .eq("id", routeOrderId)
-                  .maybeSingle()
-              : await supabase
-                  .from("orders")
-                  .select(
-                    "id,status,restaurant_name,pickup_address,dropoff_address,pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon,distance_miles,eta_minutes,driver_delivery_payout",
-                  )
-                  .eq("id", routeOrderId)
-                  .maybeSingle();
+              .maybeSingle();
+          }
+          if (routeSourceTable === "delivery_requests") {
+            return supabase
+              .from("delivery_requests")
+              .select(
+                "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,eta_minutes,driver_delivery_payout,dropoff_location_id",
+              )
+              .eq("id", routeOrderId)
+              .maybeSingle();
+          }
+          if (routeSourceTable === "taxi_rides") {
+            return supabase
+              .from("taxi_rides")
+              .select(
+                "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code,pickup_location_id,dropoff_location_id",
+              )
+              .eq("id", routeOrderId)
+              .maybeSingle();
+          }
+          return supabase
+            .from("orders")
+            .select(
+              "id,status,restaurant_name,pickup_address,dropoff_address,pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon,distance_miles,eta_minutes,driver_delivery_payout",
+            )
+            .eq("id", routeOrderId)
+            .maybeSingle();
+        })(),
+        DRIVER_NAV_FETCH_TIMEOUT_MS,
+        "driver_map_load_trip",
+      );
 
       if (result.error) throw result.error;
       if (!result.data) {

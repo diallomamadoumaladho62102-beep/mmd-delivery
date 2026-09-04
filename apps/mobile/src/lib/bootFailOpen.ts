@@ -18,6 +18,9 @@ export const CLIENT_HOME_FETCH_TIMEOUT_MS = 8_000;
 /** Client secondary screens (wallet, history, receipt, AI) — same fail-open budget as #121. */
 export const CLIENT_SCREEN_FETCH_TIMEOUT_MS = 8_000;
 
+/** Driver map trip load / Mapbox Directions — never leave nav loader forever. */
+export const DRIVER_NAV_FETCH_TIMEOUT_MS = 8_000;
+
 export function withTimeout<T>(
   promise: Promise<T>,
   ms: number,

@@ -10,6 +10,7 @@ import {
 } from "../lib/navigationProgress";
 import type { CoordinatePoint } from "../lib/coordinates";
 import type { NavigationStage, RouteEngineStatus } from "../lib/driverNavigation/types";
+import { DRIVER_NAV_FETCH_TIMEOUT_MS } from "../lib/bootFailOpen";
 
 const REROUTE_THRESHOLD_METERS = 110;
 const REROUTE_COOLDOWN_MS = 12_000;
@@ -109,6 +110,10 @@ export function useDriverNavigationRoute(
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+      const wallClock = setTimeout(
+        () => controller.abort(),
+        DRIVER_NAV_FETCH_TIMEOUT_MS,
+      );
 
       setStatus(reason === "reroute" ? "rerouting" : "loading");
 
@@ -121,7 +126,13 @@ export function useDriverNavigationRoute(
           { language, alternatives },
         );
 
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          if (abortRef.current === controller) {
+            setStatus(routeRef.current ? "stale" : "error");
+            onNetworkFailure?.();
+          }
+          return;
+        }
 
         if (!nextRoutes.length) {
           setStatus(routeRef.current ? "stale" : "error");
@@ -137,12 +148,13 @@ export function useDriverNavigationRoute(
           onReroute?.();
         }
       } catch {
-        if (!controller.signal.aborted) {
+        if (abortRef.current === controller) {
           setStatus(routeRef.current ? "stale" : "error");
           onNetworkFailure?.();
         }
       } finally {
-        if (!controller.signal.aborted) {
+        clearTimeout(wallClock);
+        if (abortRef.current === controller) {
           rerouteInFlightRef.current = false;
         }
       }

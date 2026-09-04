@@ -76,7 +76,11 @@ export default function ClientWalletScreen() {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData } = await withTimeout(
+        supabase.auth.getSession(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "client_wallet_session",
+      );
       const token = sessionData.session?.access_token;
       if (!token) {
         await signOutToRoleSelect(navigation);

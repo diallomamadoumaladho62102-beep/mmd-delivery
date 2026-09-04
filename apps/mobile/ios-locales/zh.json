@@ -1,7 +1,7 @@
 {
   "NSCameraUsageDescription": "MMD Delivery 使用相机进行应用内安全视频录制以及可选的配送凭证照片，而无需打开系统相机应用。",
   "NSPhotoLibraryUsageDescription": "MMD Delivery 访问您的照片图库，以便上传头像、配送凭证照片以及地点参考照片。",
-  "NSMicrophoneUsageDescription": "当您在进行中的出租车行程中明确开始录制时，MMD Delivery 会将麦克风用于可选的安全音频（及安全视频）。录音绝不会静默开始。",
+  "NSMicrophoneUsageDescription": "当您在进行中的出租车行程中明确开始录制时，MMD Delivery 会将麦克风用于可选的安全音频（及安全视频）；当您选择语音输入时，也可用于可选的 MMD AI 语音消息。录音与语音采集绝不会静默开始。",
   "NSLocationWhenInUseUsageDescription": "MMD Delivery 使用您的位置来显示附近餐厅、设置取送点，并在配送和出租车行程中帮助司机导航。",
   "NSLocationAlwaysAndWhenInUseUsageDescription": "在司机值班和实时行程期间，MMD Delivery 会在后台使用位置信息，以便客户跟踪订单或行程直至完成。",
   "NSLocationAlwaysUsageDescription": "在司机值班和实时行程期间，MMD Delivery 会在后台使用位置信息，以便客户跟踪订单或行程直至完成。"

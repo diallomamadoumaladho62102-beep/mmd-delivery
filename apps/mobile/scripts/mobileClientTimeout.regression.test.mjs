@@ -31,10 +31,38 @@ test("secondary client screens use CLIENT_SCREEN_FETCH_TIMEOUT_MS or AUTH", () =
   assert.match(boot, /CLIENT_SCREEN_FETCH_TIMEOUT_MS\s*=\s*8_000/);
   assert.match(wallet, /CLIENT_SCREEN_FETCH_TIMEOUT_MS/);
   assert.match(wallet, /client_wallet_fetch/);
+  assert.match(wallet, /client_wallet_session/);
   assert.match(history, /client_order_history_fetch/);
+  assert.match(history, /client_order_history_session/);
   assert.match(receipt, /client_receipt_fetch/);
   assert.match(ai, /AUTH_ACTION_TIMEOUT_MS/);
   assert.match(ai, /mmd_ai_chat/);
+});
+
+test("driver map trip load and Mapbox Directions have wall-clock timeouts", () => {
+  const driverMap = readFileSync(
+    join(mobileRoot, "screens/DriverMapScreen.tsx"),
+    "utf8",
+  );
+  const navRoute = readFileSync(
+    join(mobileRoot, "hooks/useDriverNavigationRoute.ts"),
+    "utf8",
+  );
+  const taxiReceipt = readFileSync(
+    join(mobileRoot, "screens/taxi/TaxiReceiptScreen.tsx"),
+    "utf8",
+  );
+  const signOut = readFileSync(
+    join(mobileRoot, "lib/signOutToRoleSelect.ts"),
+    "utf8",
+  );
+  assert.match(boot, /DRIVER_NAV_FETCH_TIMEOUT_MS\s*=\s*8_000/);
+  assert.match(driverMap, /driver_map_load_trip/);
+  assert.match(driverMap, /DRIVER_NAV_FETCH_TIMEOUT_MS/);
+  assert.match(navRoute, /DRIVER_NAV_FETCH_TIMEOUT_MS/);
+  assert.match(taxiReceipt, /taxi_receipt_fetch/);
+  assert.match(signOut, /sign_out_auth/);
+  assert.match(signOut, /AUTH_ACTION_TIMEOUT_MS/);
 });
 
 console.log("mobile client timeout regression passed");

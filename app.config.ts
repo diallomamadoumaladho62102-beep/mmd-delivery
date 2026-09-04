@@ -264,7 +264,7 @@ export default ({ config }) => {
         NSPhotoLibraryUsageDescription:
           "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos.",
         NSMicrophoneUsageDescription:
-          "MMD Delivery uses the microphone for optional in-ride Safety Audio (and safety video) during an active taxi trip when you explicitly start a recording. Recording never starts silently.",
+          "MMD Delivery uses the microphone for optional in-ride Safety Audio (and safety video) during an active taxi trip when you explicitly start a recording, and for optional MMD AI voice messages when you choose to speak. Recording and voice capture never start silently.",
         NSLocationWhenInUseUsageDescription:
           "MMD Delivery uses your location to show nearby restaurants, set pickup and drop-off points, and help drivers navigate during active deliveries and taxi rides.",
         NSLocationAlwaysAndWhenInUseUsageDescription:

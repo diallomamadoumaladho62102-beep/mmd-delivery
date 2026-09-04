@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./apiBase";
+import { CLIENT_SCREEN_FETCH_TIMEOUT_MS, withTimeout } from "./bootFailOpen";
 import { supabase } from "./supabase";
 
 export type DeleteAccountResult =
@@ -10,15 +11,20 @@ export type DeletableAccountRole = "client" | "driver" | "restaurant" | "seller"
 export async function resolveDeletableAccountRole(): Promise<
   DeletableAccountRole | null
 > {
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "delete_account_resolve_session",
+  );
   const uid = sessionData.session?.user?.id;
   if (!uid) return null;
 
-  const { data } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", uid)
-    .maybeSingle();
+  const { data } = await withTimeout(
+    (async () =>
+      supabase.from("profiles").select("role").eq("id", uid).maybeSingle())(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "delete_account_resolve_role",
+  );
 
   const role = String(
     (data as { role?: string } | null)?.role ?? "client",
@@ -50,10 +56,25 @@ export async function deleteMyAccount(params: {
   password: string;
   expectedRole: DeletableAccountRole;
 }): Promise<DeleteAccountResult> {
-  const { data: sessionData, error: sessionErr } =
-    await supabase.auth.getSession();
-  if (sessionErr) {
-    return { ok: false, error: sessionErr.message };
+  let sessionData: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"];
+  try {
+    const sessionRes = await withTimeout(
+      supabase.auth.getSession(),
+      CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+      "delete_account_session",
+    );
+    if (sessionRes.error) {
+      return { ok: false, error: sessionRes.error.message };
+    }
+    sessionData = sessionRes.data;
+  } catch (err) {
+    return {
+      ok: false,
+      error:
+        err instanceof Error
+          ? err.message
+          : "Session check timed out. Please try again.",
+    };
   }
   const token = sessionData.session?.access_token;
   if (!token) {
@@ -107,6 +128,14 @@ export async function deleteMyAccount(params: {
     };
   }
 
-  await supabase.auth.signOut().catch(() => undefined);
+  try {
+    await withTimeout(
+      supabase.auth.signOut(),
+      CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+      "delete_account_sign_out",
+    );
+  } catch {
+    // Deletion already succeeded server-side; proceed even if local sign-out hangs.
+  }
   return { ok: true };
 }
