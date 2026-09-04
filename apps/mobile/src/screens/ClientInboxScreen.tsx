@@ -16,6 +16,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import {
@@ -94,85 +98,91 @@ export function ClientInboxScreen() {
     try {
       setLoading(true);
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const uid = sessionData.session?.user?.id ?? null;
+      await withTimeout(
+        (async () => {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const uid = sessionData.session?.user?.id ?? null;
 
-      if (!uid) {
-        setMe(null);
-        setOrders([]);
-        setLastMsgByOrder({});
-        Alert.alert(
-          t("auth.title", "Connexion"),
-          t("client.inbox.alerts.loginAsClient", "Connecte-toi comme client.")
-        );
-        return;
-      }
+          if (!uid) {
+            setMe(null);
+            setOrders([]);
+            setLastMsgByOrder({});
+            Alert.alert(
+              t("auth.title", "Connexion"),
+              t("client.inbox.alerts.loginAsClient", "Connecte-toi comme client.")
+            );
+            return;
+          }
 
-      setMe(uid);
+          setMe(uid);
 
-      const now = new Date();
-      const from = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
-      const fromISO = from.toISOString();
+          const now = new Date();
+          const from = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
+          const fromISO = from.toISOString();
 
-      const baseSelect =
-        "id, created_at, status, client_id, restaurant_name, is_test, hidden_from_user, archived_at";
+          const baseSelect =
+            "id, created_at, status, client_id, restaurant_name, is_test, hidden_from_user, archived_at";
 
-      const { data: inProgress, error: e1 } = await applyLiveTripFilters(
-        supabase.from("orders").select(baseSelect),
-      )
-        .eq("client_id", uid)
-        .neq("status", "delivered")
-        .order("created_at", { ascending: false });
+          const { data: inProgress, error: e1 } = await applyLiveTripFilters(
+            supabase.from("orders").select(baseSelect),
+          )
+            .eq("client_id", uid)
+            .neq("status", "delivered")
+            .order("created_at", { ascending: false });
 
-      if (e1) throw e1;
+          if (e1) throw e1;
 
-      const { data: delivered7d, error: e2 } = await applyLiveTripFilters(
-        supabase.from("orders").select(baseSelect),
-      )
-        .eq("client_id", uid)
-        .eq("status", "delivered")
-        .gte("created_at", fromISO)
-        .order("created_at", { ascending: false });
+          const { data: delivered7d, error: e2 } = await applyLiveTripFilters(
+            supabase.from("orders").select(baseSelect),
+          )
+            .eq("client_id", uid)
+            .eq("status", "delivered")
+            .gte("created_at", fromISO)
+            .order("created_at", { ascending: false });
 
-      if (e2) throw e2;
+          if (e2) throw e2;
 
-      const mergedMap = new Map<string, OrderRow>();
-      (inProgress ?? []).forEach((o: any) => mergedMap.set(o.id, o as OrderRow));
-      (delivered7d ?? []).forEach((o: any) => mergedMap.set(o.id, o as OrderRow));
+          const mergedMap = new Map<string, OrderRow>();
+          (inProgress ?? []).forEach((o: any) => mergedMap.set(o.id, o as OrderRow));
+          (delivered7d ?? []).forEach((o: any) => mergedMap.set(o.id, o as OrderRow));
 
-      const merged = Array.from(mergedMap.values()).sort((a, b) => {
-        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return tb - ta;
-      });
+          const merged = Array.from(mergedMap.values()).sort((a, b) => {
+            const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return tb - ta;
+          });
 
-      setOrders(merged);
+          setOrders(merged);
 
-      const ids = merged.map((o) => o.id);
-      if (ids.length === 0) {
-        setLastMsgByOrder({});
-        return;
-      }
+          const ids = merged.map((o) => o.id);
+          if (ids.length === 0) {
+            setLastMsgByOrder({});
+            return;
+          }
 
-      const { data: msgs, error: e3 } = await supabase
-        .from("order_messages")
-        .select("order_id, text, created_at")
-        .in("order_id", ids)
-        .order("created_at", { ascending: false });
+          const { data: msgs, error: e3 } = await supabase
+            .from("order_messages")
+            .select("order_id, text, created_at")
+            .in("order_id", ids)
+            .order("created_at", { ascending: false });
 
-      if (e3) {
-        console.log("⚠️ order_messages preview error:", e3);
-        setLastMsgByOrder({});
-        return;
-      }
+          if (e3) {
+            console.log("⚠️ order_messages preview error:", e3);
+            setLastMsgByOrder({});
+            return;
+          }
 
-      const map: Record<string, MsgRow> = {};
-      for (const m of (msgs ?? []) as any[]) {
-        const oid = m.order_id as string;
-        if (!map[oid]) map[oid] = m as MsgRow;
-      }
+          const map: Record<string, MsgRow> = {};
+          for (const m of (msgs ?? []) as any[]) {
+            const oid = m.order_id as string;
+            if (!map[oid]) map[oid] = m as MsgRow;
+          }
 
-      setLastMsgByOrder(map);
+          setLastMsgByOrder(map);
+        })(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "client_inbox_fetch",
+      );
     } catch (e: any) {
       console.log("ClientInbox fetch error:", e);
       Alert.alert(

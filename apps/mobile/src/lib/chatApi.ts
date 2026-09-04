@@ -2,14 +2,28 @@ import * as Notifications from "expo-notifications";
 
 import { supabase } from "./supabase";
 import { API_BASE_URL } from "./apiBase";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 
 const BASE_URL = String(API_BASE_URL ?? "").replace(/\/+$/, "");
 
 async function getAccessToken(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+  try {
+    const {
+      data: { session },
+    } = await withTimeout(
+      supabase.auth.getSession(),
+      CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+      "chat_session",
+    );
+    return session?.access_token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function setAppBadgeCount(count: number): Promise<void> {
@@ -72,21 +86,26 @@ export async function sendChatMessageViaApi(
   const token = await getAccessToken();
   if (!token) return { ok: false, error: "not_authenticated" };
 
-  const response = await fetch(`${BASE_URL}/api/chat/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+  const response = await fetchWithTimeout(
+    `${BASE_URL}/api/chat/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        orderId: input.orderId,
+        text: input.text ?? null,
+        imagePath: input.imagePath ?? null,
+        senderRole: input.senderRole ?? null,
+        targetRole: input.targetRole ?? null,
+        targetUserId: input.targetUserId ?? null,
+      }),
     },
-    body: JSON.stringify({
-      orderId: input.orderId,
-      text: input.text ?? null,
-      imagePath: input.imagePath ?? null,
-      senderRole: input.senderRole ?? null,
-      targetRole: input.targetRole ?? null,
-      targetUserId: input.targetUserId ?? null,
-    }),
-  });
+    AUTH_ACTION_TIMEOUT_MS,
+    "chat_send",
+  );
 
   const json = (await response.json().catch(() => null)) as {
     ok?: boolean;
@@ -110,18 +129,23 @@ export async function markChatMessagesReadViaApi(params: {
   const token = await getAccessToken();
   if (!token) return { ok: false };
 
-  const response = await fetch(`${BASE_URL}/api/chat/messages`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+  const response = await fetchWithTimeout(
+    `${BASE_URL}/api/chat/messages`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "read",
+        orderId: params.orderId,
+        targetRole: params.targetRole ?? null,
+      }),
     },
-    body: JSON.stringify({
-      action: "read",
-      orderId: params.orderId,
-      targetRole: params.targetRole ?? null,
-    }),
-  });
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "chat_mark_read",
+  );
 
   const json = (await response.json().catch(() => null)) as {
     ok?: boolean;

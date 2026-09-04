@@ -16,6 +16,10 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import {
@@ -127,14 +131,19 @@ export function ClientRestaurantListScreen() {
       try {
         if (showSpinner) setLoading(true);
 
-        const { data, error } = await supabase
-          .from("restaurant_profiles")
-          .select(
-            "user_id, restaurant_name, address, phone, cuisine_type, status, is_accepting_orders, location_lat, location_lng, logo_url, avatar_url, cover_image_url"
-          )
-          .eq("status", "approved")
-          .eq("is_accepting_orders", true)
-          .order("restaurant_name", { ascending: true });
+        const { data, error } = await withTimeout(
+          (async () =>
+            await supabase
+              .from("restaurant_profiles")
+              .select(
+                "user_id, restaurant_name, address, phone, cuisine_type, status, is_accepting_orders, location_lat, location_lng, logo_url, avatar_url, cover_image_url"
+              )
+              .eq("status", "approved")
+              .eq("is_accepting_orders", true)
+              .order("restaurant_name", { ascending: true }))(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "client_restaurant_list_fetch",
+        );
 
         if (error) throw error;
 

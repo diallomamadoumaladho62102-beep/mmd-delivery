@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toUserFacingError } from "../../../lib/userFacingError";
 import { AppState, type AppStateStatus } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../../lib/bootFailOpen";
 import { supabase } from "../../../lib/supabase";
 import {
   subscribePostgresChannel,
@@ -33,15 +37,33 @@ export function useRestaurantCommandCenter(): UseRestaurantCommandCenterResult {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
   const refreshLock = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    void supabase.auth.getSession().then(({ data: sessionData }) => {
-      if (cancelled) return;
-      setRestaurantUserId(sessionData.session?.user?.id ?? null);
-    });
+    void (async () => {
+      try {
+        const { data: sessionData } = await withTimeout(
+          supabase.auth.getSession(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "restaurant_cc_hook_session",
+        );
+        if (cancelled) return;
+        setRestaurantUserId(sessionData.session?.user?.id ?? null);
+        if (!sessionData.session?.user?.id) {
+          setError("SESSION_EXPIRED");
+          setLoading(false);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setError(toUserFacingError(e));
+        setLoading(false);
+      } finally {
+        if (!cancelled) setSessionReady(true);
+      }
+    })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setRestaurantUserId(session?.user?.id ?? null);
@@ -88,9 +110,9 @@ export function useRestaurantCommandCenter(): UseRestaurantCommandCenterResult {
   }, [load]);
 
   useEffect(() => {
-    if (!restaurantUserId || !isFocused) return;
+    if (!sessionReady || !restaurantUserId || !isFocused) return;
     void load();
-  }, [restaurantUserId, isFocused, load]);
+  }, [sessionReady, restaurantUserId, isFocused, load]);
 
   useEffect(() => {
     if (!restaurantUserId || !isFocused) return;

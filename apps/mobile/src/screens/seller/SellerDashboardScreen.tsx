@@ -33,6 +33,10 @@ import type { AppLanguageCode } from "../../i18n/languageOptions";
 import { startStripeOnboarding } from "../../utils/stripe";
 import { supabase } from "../../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
+import {
   normalizeStripeConnectStatus,
   stripeConnectStatusLabel,
   stripeConnectUserMessage,
@@ -97,44 +101,50 @@ export default function SellerDashboardScreen({ navigation }: Props) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const gate = await requireSellerPlatformEnabled();
-      setPlatformOk(gate.enabled);
-      const row = await loadOwnSeller();
-      setSeller(row);
-      if (row) {
-        const counts = await loadSellerDashboardCounts(row.id);
-        setProductCount(counts.productCount);
-        setOrderCount(counts.orderCount);
+      await withTimeout(
+        (async () => {
+          const gate = await requireSellerPlatformEnabled();
+          setPlatformOk(gate.enabled);
+          const row = await loadOwnSeller();
+          setSeller(row);
+          if (row) {
+            const counts = await loadSellerDashboardCounts(row.id);
+            setProductCount(counts.productCount);
+            setOrderCount(counts.orderCount);
 
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData.session?.access_token;
-        if (token) {
-          const { data: connectData } = await supabase.functions.invoke(
-            "check_connect_status",
-            {
-              body: { role: "seller" },
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          );
-          if (connectData && typeof connectData === "object") {
-            const connect = connectData as Record<string, unknown>;
-            const code = normalizeStripeConnectStatus(connect.status);
-            setStripeStatus(code);
-            setStripeLabel(
-              String(connect.status_label ?? "") || stripeConnectStatusLabel(code),
-            );
-            setStripeMessage(stripeConnectUserMessage(code));
-          } else {
-            const code = normalizeStripeConnectStatus(
-              row.stripe_onboarding_status ??
-                (row.stripe_payouts_enabled ? "ready_for_payouts" : "setup_required"),
-            );
-            setStripeStatus(code);
-            setStripeLabel(stripeConnectStatusLabel(code));
-            setStripeMessage(stripeConnectUserMessage(code));
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData.session?.access_token;
+            if (token) {
+              const { data: connectData } = await supabase.functions.invoke(
+                "check_connect_status",
+                {
+                  body: { role: "seller" },
+                  headers: { Authorization: `Bearer ${token}` },
+                },
+              );
+              if (connectData && typeof connectData === "object") {
+                const connect = connectData as Record<string, unknown>;
+                const code = normalizeStripeConnectStatus(connect.status);
+                setStripeStatus(code);
+                setStripeLabel(
+                  String(connect.status_label ?? "") || stripeConnectStatusLabel(code),
+                );
+                setStripeMessage(stripeConnectUserMessage(code));
+              } else {
+                const code = normalizeStripeConnectStatus(
+                  row.stripe_onboarding_status ??
+                    (row.stripe_payouts_enabled ? "ready_for_payouts" : "setup_required"),
+                );
+                setStripeStatus(code);
+                setStripeLabel(stripeConnectStatusLabel(code));
+                setStripeMessage(stripeConnectUserMessage(code));
+              }
+            }
           }
-        }
-      }
+        })(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "seller_dashboard_refresh",
+      );
     } catch (e) {
       console.log("SellerDashboard refresh error:", e);
     } finally {

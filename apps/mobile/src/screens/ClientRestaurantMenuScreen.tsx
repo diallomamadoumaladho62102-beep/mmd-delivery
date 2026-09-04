@@ -27,6 +27,10 @@ import {
 } from "../lib/foodOrderApi";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
@@ -368,15 +372,20 @@ export function ClientRestaurantMenuScreen() {
           return;
         }
 
-        const { data: profileData, error: profileError } = await supabase
-          .from("restaurant_profiles")
-          .select(
-            "user_id, restaurant_name, address, status, is_accepting_orders, location_lat, location_lng, logo_url, avatar_url, cover_image_url"
-          )
-          .eq("user_id", restaurantId)
-          .eq("status", "approved")
-          .eq("is_accepting_orders", true)
-          .maybeSingle();
+        const { data: profileData, error: profileError } = await withTimeout(
+          (async () =>
+            await supabase
+              .from("restaurant_profiles")
+              .select(
+                "user_id, restaurant_name, address, status, is_accepting_orders, location_lat, location_lng, logo_url, avatar_url, cover_image_url"
+              )
+              .eq("user_id", restaurantId)
+              .eq("status", "approved")
+              .eq("is_accepting_orders", true)
+              .maybeSingle())(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "client_restaurant_menu_profile",
+        );
 
         if (profileError) throw profileError;
 
@@ -409,15 +418,20 @@ export function ClientRestaurantMenuScreen() {
           setPickup(profileAddress);
         }
 
-        const { data, error } = await supabase
-          .from("restaurant_items")
-          .select(
-            "id, name, description, price_cents, category, restaurant_user_id, image_url, is_available, position, options_json"
-          )
-          .eq("restaurant_user_id", restaurantId)
-          .eq("is_available", true)
-          .order("position", { ascending: true, nullsFirst: false })
-          .order("name", { ascending: true });
+        const { data, error } = await withTimeout(
+          (async () =>
+            await supabase
+              .from("restaurant_items")
+              .select(
+                "id, name, description, price_cents, category, restaurant_user_id, image_url, is_available, position, options_json"
+              )
+              .eq("restaurant_user_id", restaurantId)
+              .eq("is_available", true)
+              .order("position", { ascending: true, nullsFirst: false })
+              .order("name", { ascending: true }))(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "client_restaurant_menu_items",
+        );
 
         if (error) throw error;
 

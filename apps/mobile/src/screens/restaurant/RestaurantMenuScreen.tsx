@@ -16,6 +16,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { supabase } from "../../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
@@ -285,75 +289,81 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     (async () => {
       try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+        await withTimeout(
+          (async () => {
+            const {
+              data: { user },
+              error: userError,
+            } = await supabase.auth.getUser();
 
-        if (userError) throw userError;
+            if (userError) throw userError;
 
-        const uid = user?.id ?? null;
+            const uid = user?.id ?? null;
 
-        if (!mounted) return;
+            if (!mounted) return;
 
-        if (!uid) {
-          setRestaurantUserId(null);
-          navigation?.replace?.("RestaurantAuth");
-          return;
-        }
+            if (!uid) {
+              setRestaurantUserId(null);
+              navigation?.replace?.("RestaurantAuth");
+              return;
+            }
 
-        const { data: roleProfile, error: roleError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", uid)
-          .maybeSingle();
+            const { data: roleProfile, error: roleError } = await supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", uid)
+              .maybeSingle();
 
-        if (roleError) {
-          console.log("âŒ RestaurantMenuScreen role check:", roleError);
-        }
+            if (roleError) {
+              console.log("âŒ RestaurantMenuScreen role check:", roleError);
+            }
 
-        const role = String((roleProfile as any)?.role || "")
-          .trim()
-          .toLowerCase();
+            const role = String((roleProfile as any)?.role || "")
+              .trim()
+              .toLowerCase();
 
-        if (role && role !== "restaurant") {
-          setRestaurantUserId(null);
+            if (role && role !== "restaurant") {
+              setRestaurantUserId(null);
 
-          navigation?.reset?.({
-            index: 0,
-            routes: [
-              {
-                name:
-                  role === "driver"
-                    ? "DriverTabs"
-                    : role === "client"
-                      ? "ClientHome"
-                      : "RoleSelect",
-              },
-            ],
-          });
+              navigation?.reset?.({
+                index: 0,
+                routes: [
+                  {
+                    name:
+                      role === "driver"
+                        ? "DriverTabs"
+                        : role === "client"
+                          ? "ClientHome"
+                          : "RoleSelect",
+                  },
+                ],
+              });
 
-          return;
-        }
+              return;
+            }
 
-        const { data: restaurantProfile, error: profileError } = await supabase
-          .from("restaurant_profiles")
-          .select("user_id,status")
-          .eq("user_id", uid)
-          .maybeSingle();
+            const { data: restaurantProfile, error: profileError } = await supabase
+              .from("restaurant_profiles")
+              .select("user_id,status")
+              .eq("user_id", uid)
+              .maybeSingle();
 
-        if (profileError) {
-          console.log("âŒ RestaurantMenuScreen profile check:", profileError);
-        }
+            if (profileError) {
+              console.log("âŒ RestaurantMenuScreen profile check:", profileError);
+            }
 
-        if (!restaurantProfile) {
-          setRestaurantUserId(null);
-          navigation?.replace?.("RestaurantSetup");
-          return;
-        }
+            if (!restaurantProfile) {
+              setRestaurantUserId(null);
+              navigation?.replace?.("RestaurantSetup");
+              return;
+            }
 
-        setRestaurantUserId(uid);
-        await refreshAll(uid);
+            setRestaurantUserId(uid);
+            await refreshAll(uid);
+          })(),
+          CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+          "restaurant_menu_initial_load",
+        );
       } catch (e) {
         console.log("âŒ RestaurantMenuScreen boot exception:", e);
         if (mounted) {

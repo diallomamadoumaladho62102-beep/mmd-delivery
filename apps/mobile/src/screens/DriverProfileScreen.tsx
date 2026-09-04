@@ -24,6 +24,10 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
 import { applyLiveTripFilters } from "../lib/tripVisibility";
 import { startStripeOnboarding } from "../utils/stripe";
 import { useTranslation } from "react-i18next";
@@ -932,121 +936,127 @@ export function DriverProfileScreen() {
     try {
       setLoading(true);
 
-      const { data: authData, error: authErr } = await supabase.auth.getUser();
-      if (authErr) {
-        console.log("auth.getUser error", authErr);
-      }
+      await withTimeout(
+        (async () => {
+          const { data: authData, error: authErr } = await supabase.auth.getUser();
+          if (authErr) {
+            console.log("auth.getUser error", authErr);
+          }
 
-      const user = authData?.user;
-      if (!user) {
-        setProfile(null);
-        setDriver(null);
-        setDriverDocuments([]);
-        setAuthFallbackName(t("driver.profile.authFallbackName", { defaultValue: "Chauffeur" }));
-        setAvatarPath(null);
-        setAvatarUrl(null);
-        setAvatarBroken(false);
-        setAvatarUpdatedAt(0);
-        setStripeAccountId(null);
-        setStripeOnboarded(false);
-        setAvgRating(null);
-        setRatingCount(0);
-        setRatingHistory([]);
-        setStatsDeliveries(0);
-        setStatsAcceptanceRate(0);
-        setStatsCancellationRate(0);
-        return;
-      }
+          const user = authData?.user;
+          if (!user) {
+            setProfile(null);
+            setDriver(null);
+            setDriverDocuments([]);
+            setAuthFallbackName(t("driver.profile.authFallbackName", { defaultValue: "Chauffeur" }));
+            setAvatarPath(null);
+            setAvatarUrl(null);
+            setAvatarBroken(false);
+            setAvatarUpdatedAt(0);
+            setStripeAccountId(null);
+            setStripeOnboarded(false);
+            setAvgRating(null);
+            setRatingCount(0);
+            setRatingHistory([]);
+            setStatsDeliveries(0);
+            setStatsAcceptanceRate(0);
+            setStatsCancellationRate(0);
+            return;
+          }
 
-      const uid = user.id;
+          const uid = user.id;
 
-      const fallback =
-        (user.user_metadata as any)?.full_name ||
-        (user.user_metadata as any)?.name ||
-        user.email ||
-        t("driver.profile.authFallbackName", { defaultValue: "Chauffeur" });
-      setAuthFallbackName(String(fallback));
+          const fallback =
+            (user.user_metadata as any)?.full_name ||
+            (user.user_metadata as any)?.name ||
+            user.email ||
+            t("driver.profile.authFallbackName", { defaultValue: "Chauffeur" });
+          setAuthFallbackName(String(fallback));
 
-      const metaAvatarPath =
-        ((user.user_metadata as any)?.avatar_path as string | undefined) ?? null;
-      const metaUpdatedAt = Number((user.user_metadata as any)?.avatar_updated_at ?? 0) || 0;
+          const metaAvatarPath =
+            ((user.user_metadata as any)?.avatar_path as string | undefined) ?? null;
+          const metaUpdatedAt = Number((user.user_metadata as any)?.avatar_updated_at ?? 0) || 0;
 
-      const { data: p, error: pErr } = await supabase
-        .from("profiles")
-        .select(
-          "id, full_name, phone, role, avatar_url, emergency_phone, state, zip_code, personal_photo_url",
-        )
-        .eq("id", uid)
-        .maybeSingle();
+          const { data: p, error: pErr } = await supabase
+            .from("profiles")
+            .select(
+              "id, full_name, phone, role, avatar_url, emergency_phone, state, zip_code, personal_photo_url",
+            )
+            .eq("id", uid)
+            .maybeSingle();
 
-      if (pErr) {
-        console.log("profiles error", pErr);
-      }
+          if (pErr) {
+            console.log("profiles error", pErr);
+          }
 
-      const profileRow = (p as ProfileRow | null) ?? {
-        id: uid,
-        full_name: null,
-        phone: null,
-        role: "driver",
-        avatar_url: null,
-      };
-      setProfile(profileRow);
+          const profileRow = (p as ProfileRow | null) ?? {
+            id: uid,
+            full_name: null,
+            phone: null,
+            role: "driver",
+            avatar_url: null,
+          };
+          setProfile(profileRow);
 
-      const dbAvatarPath =
-        profileRow.avatar_url || profileRow.personal_photo_url || metaAvatarPath || null;
+          const dbAvatarPath =
+            profileRow.avatar_url || profileRow.personal_photo_url || metaAvatarPath || null;
 
-      setAvatarPath(dbAvatarPath);
-      setAvatarUpdatedAt(metaUpdatedAt);
-      await refreshAvatarUrl(dbAvatarPath);
+          setAvatarPath(dbAvatarPath);
+          setAvatarUpdatedAt(metaUpdatedAt);
+          await refreshAvatarUrl(dbAvatarPath);
 
-      const { data: d, error: dErr } = await supabase
-        .from("driver_profiles")
-        .select("*")
-        .eq("user_id", uid)
-        .maybeSingle();
+          const { data: d, error: dErr } = await supabase
+            .from("driver_profiles")
+            .select("*")
+            .eq("user_id", uid)
+            .maybeSingle();
 
-      if (dErr) {
-        console.log("driver_profiles error", dErr);
-      }
+          if (dErr) {
+            console.log("driver_profiles error", dErr);
+          }
 
-      if (!d) {
-        const { data: created, error: cErr } = await supabase
-          .from("driver_profiles")
-          .upsert(
-            {
-              user_id: uid,
-              transport_mode: "bike",
-              vehicle_type: "bike",
-              full_name: profileRow.full_name ?? null,
-              phone: profileRow.phone ?? null,
-              emergency_phone: profileRow.emergency_phone ?? null,
-              state: profileRow.state ?? null,
-              zip_code: profileRow.zip_code ?? null,
-              documents_required: true,
-              status: "pending",
-            },
-            { onConflict: "user_id" },
-          )
-          .select("*")
-          .single();
+          if (!d) {
+            const { data: created, error: cErr } = await supabase
+              .from("driver_profiles")
+              .upsert(
+                {
+                  user_id: uid,
+                  transport_mode: "bike",
+                  vehicle_type: "bike",
+                  full_name: profileRow.full_name ?? null,
+                  phone: profileRow.phone ?? null,
+                  emergency_phone: profileRow.emergency_phone ?? null,
+                  state: profileRow.state ?? null,
+                  zip_code: profileRow.zip_code ?? null,
+                  documents_required: true,
+                  status: "pending",
+                },
+                { onConflict: "user_id" },
+              )
+              .select("*")
+              .single();
 
-        if (cErr) {
-          console.log("upsert driver_profiles error", cErr);
-          setDriver(null);
-        } else {
-          setDriver((created as DriverProfileRow) ?? null);
-        }
-      } else {
-        setDriver((d as DriverProfileRow) ?? null);
-      }
+            if (cErr) {
+              console.log("upsert driver_profiles error", cErr);
+              setDriver(null);
+            } else {
+              setDriver((created as DriverProfileRow) ?? null);
+            }
+          } else {
+            setDriver((d as DriverProfileRow) ?? null);
+          }
 
-      await refreshStripeStatus(uid);
-      await Promise.all([
-        loadDocs(uid),
-        loadRating(uid),
-        loadRatingHistory(uid),
-        loadStatsFromOrders(uid),
-      ]);
+          await refreshStripeStatus(uid);
+          await Promise.all([
+            loadDocs(uid),
+            loadRating(uid),
+            loadRatingHistory(uid),
+            loadStatsFromOrders(uid),
+          ]);
+        })(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "driver_profile_load_all",
+      );
     } finally {
       setLoading(false);
     }

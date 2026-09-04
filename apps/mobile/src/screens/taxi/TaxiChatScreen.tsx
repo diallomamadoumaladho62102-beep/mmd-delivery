@@ -21,6 +21,10 @@ import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { supabase } from "../../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
+import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../../lib/supabaseRealtime";
@@ -66,34 +70,40 @@ export default function TaxiChatScreen() {
   const [userId, setUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const uid = sessionData.session?.user?.id ?? null;
-    setUserId(uid);
+    await withTimeout(
+      (async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData.session?.user?.id ?? null;
+        setUserId(uid);
 
-    const { data, error } = await supabase
-      .from("taxi_messages")
-      .select("id,taxi_ride_id,user_id,sender_role,text,image_path,created_at")
-      .eq("taxi_ride_id", rideId)
-      .order("created_at", { ascending: true });
+        const { data, error } = await supabase
+          .from("taxi_messages")
+          .select("id,taxi_ride_id,user_id,sender_role,text,image_path,created_at")
+          .eq("taxi_ride_id", rideId)
+          .order("created_at", { ascending: true });
 
-    if (error) {
-      console.log("[TaxiChat] load error", error.message);
-      setMessages([]);
-      return;
-    }
+        if (error) {
+          console.log("[TaxiChat] load error", error.message);
+          setMessages([]);
+          return;
+        }
 
-    const rows = (data ?? []) as TaxiMessage[];
-    const enriched = await Promise.all(
-      rows.map(async (row) => {
-        if (!row.image_path) return row;
-        const { data: signed } = await supabase.storage
-          .from(TAXI_IMAGES_BUCKET)
-          .createSignedUrl(row.image_path, 60 * 30);
-        return { ...row, _signedUrl: signed?.signedUrl ?? null };
-      })
+        const rows = (data ?? []) as TaxiMessage[];
+        const enriched = await Promise.all(
+          rows.map(async (row) => {
+            if (!row.image_path) return row;
+            const { data: signed } = await supabase.storage
+              .from(TAXI_IMAGES_BUCKET)
+              .createSignedUrl(row.image_path, 60 * 30);
+            return { ...row, _signedUrl: signed?.signedUrl ?? null };
+          })
+        );
+
+        setMessages(enriched);
+      })(),
+      CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+      "taxi_chat_load",
     );
-
-    setMessages(enriched);
   }, [rideId]);
 
   useEffect(() => {

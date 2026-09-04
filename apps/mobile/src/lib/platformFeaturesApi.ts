@@ -1,4 +1,9 @@
 import { getApiBaseUrl } from "../../lib/apiBase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { supabase } from "./supabase";
 
 export type PlatformScopeLevel = "country" | "region" | "zone" | "county";
@@ -54,9 +59,17 @@ export type PlatformFeaturesResponse = {
 };
 
 async function getAccessToken(): Promise<string | null> {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) return null;
-  return data.session?.access_token ?? null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.auth.getSession(),
+      CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+      "platform_features_session",
+    );
+    if (error) return null;
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function buildQuery(params: Record<string, string | number | undefined | null>): string {
@@ -121,12 +134,17 @@ export async function fetchClientPlatformFeatures(input?: {
     county: input?.manualCounty,
   });
 
-  const res = await fetch(`${getApiBaseUrl()}/api/platform/client-features${query}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
+  const res = await fetchWithTimeout(
+    `${getApiBaseUrl()}/api/platform/client-features${query}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
     },
-  });
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "platform_client_features",
+  );
 
   return parsePlatformFeaturesResponse(res);
 }
@@ -149,12 +167,17 @@ export async function fetchDriverPlatformFeatures(input?: {
     mission_county: input?.missionCountyCode,
   });
 
-  const res = await fetch(`${getApiBaseUrl()}/api/platform/driver-features${query}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
+  const res = await fetchWithTimeout(
+    `${getApiBaseUrl()}/api/platform/driver-features${query}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
     },
-  });
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "platform_driver_features",
+  );
 
   return parsePlatformFeaturesResponse(res);
 }
@@ -163,12 +186,17 @@ export async function fetchRestaurantPlatformFeatures(): Promise<PlatformFeature
   const token = await getAccessToken();
   if (!token) return { ok: false, error: "not_authenticated" };
 
-  const res = await fetch(`${getApiBaseUrl()}/api/platform/restaurant-features`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
+  const res = await fetchWithTimeout(
+    `${getApiBaseUrl()}/api/platform/restaurant-features`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
     },
-  });
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "platform_restaurant_features",
+  );
 
   return parsePlatformFeaturesResponse(res);
 }

@@ -1,4 +1,10 @@
 import { getApiBaseUrl } from "../../lib/apiBase";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { supabase } from "./supabase";
 
 export type FoodOrderLinePayload = {
@@ -57,9 +63,17 @@ export type CreateFoodOrderPayload = {
 };
 
 async function getAccessToken(): Promise<string | null> {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) return null;
-  return data.session?.access_token ?? null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.auth.getSession(),
+      CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+      "food_order_session",
+    );
+    if (error) return null;
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function appendScopeQuery(path: string, scope?: { countryCode?: string | null; lat?: number; lng?: number }) {
@@ -80,15 +94,20 @@ async function foodOrderFetch(
   const token = await getAccessToken();
   if (!token) throw new Error("Not authenticated");
 
-  const res = await fetch(`${getApiBaseUrl()}${appendScopeQuery(path, scope)}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-      "Content-Type": "application/json",
+  const res = await fetchWithTimeout(
+    `${getApiBaseUrl()}${appendScopeQuery(path, scope)}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  });
+    AUTH_ACTION_TIMEOUT_MS,
+    "food_order_fetch",
+  );
 
   const payload = await res.json().catch(() => ({}));
   if (!res.ok || payload.ok === false) {

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Location from "expo-location";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../lib/bootFailOpen";
+import {
   defaultPlatformFeatures,
   fetchClientPlatformFeatures,
   type PlatformFeaturesResponse,
@@ -31,9 +35,13 @@ async function readDeviceCoordinates(forceFresh: boolean): Promise<{
     if (!granted) return {};
 
     if (forceFresh) {
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const position = await withTimeout(
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "client_platform_gps_fresh",
+      );
       if (position?.coords) {
         return {
           lat: position.coords.latitude,
@@ -50,9 +58,13 @@ async function readDeviceCoordinates(forceFresh: boolean): Promise<{
       };
     }
 
-    const position = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
+    const position = await withTimeout(
+      Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      }),
+      CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+      "client_platform_gps",
+    );
     if (position?.coords) {
       return {
         lat: position.coords.latitude,

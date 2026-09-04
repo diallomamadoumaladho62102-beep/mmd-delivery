@@ -1,4 +1,8 @@
 import { supabase } from "./supabase";
+import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "./bootFailOpen";
 import type { SellerOrderRow, SellerProductRow, SellerRow } from "./sellerTypes";
 import { fetchClientPlatformFeatures } from "./platformFeaturesApi";
 
@@ -28,15 +32,24 @@ const ORDER_SELECT =
   "id,seller_id,client_user_id,status,currency,total_cents,country_code,region_code,notes,refund_status,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,dispatch_shadow,created_at";
 
 export async function loadOwnSeller(): Promise<SellerRow | null> {
-  const { data: session } = await supabase.auth.getSession();
+  const { data: session } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "seller_load_own_session",
+  );
   const userId = session.session?.user?.id;
   if (!userId) return null;
 
-  const { data, error } = await supabase
-    .from("sellers")
-    .select(SELLER_SELECT)
-    .eq("user_id", userId)
-    .maybeSingle();
+  const { data, error } = await withTimeout(
+    (async () =>
+      supabase
+        .from("sellers")
+        .select(SELLER_SELECT)
+        .eq("user_id", userId)
+        .maybeSingle())(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "seller_load_own_row",
+  );
 
   if (error) throw error;
   return (data as SellerRow | null) ?? null;
@@ -52,7 +65,11 @@ export async function upsertSellerOnboarding(input: {
   cover_image_url?: string | null;
   document_urls?: string[];
 }): Promise<SellerRow> {
-  const { data: session } = await supabase.auth.getSession();
+  const { data: session } = await withTimeout(
+    supabase.auth.getSession(),
+    CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+    "seller_upsert_session",
+  );
   const userId = session.session?.user?.id;
   if (!userId) throw new Error("Not authenticated");
 

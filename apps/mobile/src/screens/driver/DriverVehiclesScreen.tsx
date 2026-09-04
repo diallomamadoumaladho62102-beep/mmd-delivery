@@ -28,6 +28,10 @@ import {
 } from "../../lib/driverServicePreferencesApi";
 import { supabase } from "../../lib/supabase";
 import {
+  CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+  withTimeout,
+} from "../../lib/bootFailOpen";
+import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../../lib/supabaseRealtime";
@@ -211,7 +215,11 @@ export function DriverVehiclesScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchDriverVehiclesList();
+      const data = await withTimeout(
+        fetchDriverVehiclesList(),
+        CLIENT_SCREEN_FETCH_TIMEOUT_MS,
+        "driver_vehicles_list_load",
+      );
       setVehicles(data.vehicles);
       setIsOnline(data.is_online);
       setHistory(data.history.slice(0, 10));
