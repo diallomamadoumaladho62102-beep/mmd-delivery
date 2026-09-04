@@ -427,6 +427,12 @@ export async function reverseStripeTransferOrRecover(params: {
           "Stripe could not reverse SCT (often Connect balance already paid out via Instant or Sunday bank). Recovery required — do not treat refund as partner-settled.",
       },
     });
+    if (!persist.ok) {
+      console.error("[partner-clawback] recovery_required row persist failed", {
+        transferId,
+        entityId: params.entityId,
+      });
+    }
 
     return {
       transferId,
