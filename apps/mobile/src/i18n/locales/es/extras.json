@@ -207,7 +207,9 @@
       "unavailableTitle": "Taxi no disponible",
       "unavailable": "El taxi aún no está disponible en tu zona",
       "yourArea": "Tu zona",
-      "currencyLabel": "Moneda"
+      "currencyLabel": "Moneda",
+      "moreOptions": "Más opciones",
+      "wallet": "Billetera"
     },
     "quote": {
       "title": "Estimación",
@@ -709,6 +711,10 @@
       "cannotSendEmail": "No se pudo enviar el correo.",
       "addressOptional": "Dirección (opcional)",
       "addressOptionalHint": "Puedes añadir una dirección de entrega más tarde al pedir comida, paquetes o un taxi."
+    },
+    "restaurantMenu": {
+      "pickupAddressLabel": "Dirección de recogida (restaurante / inicio)",
+      "deliveryAddressLabel": "Dirección de entrega (cliente)"
     }
   },
   "location": {
@@ -1261,6 +1267,10 @@
     "createOrderError": "No se puede crear el pedido ahora.",
     "errors": {
       "deliveryShareInvalid": "El precio de envío no está disponible temporalmente. Inténtalo más tarde o contacta con soporte."
+    },
+    "addresses": {
+      "pickupLabel": "Dirección de recogida (restaurante / inicio)",
+      "deliveryLabel": "Dirección de entrega (cliente)"
     }
   },
   "order": {
@@ -1318,7 +1328,12 @@
       "paymentUnavailableExpoGoBody": "El pago nativo de Stripe requiere una build de desarrollo o una build real de iOS. Expo Go no es suficiente para una prueba de pago real.",
       "paymentFailed": "No se pudo completar el pago. Inténtalo de nuevo en unos instantes.",
       "initFailed": "No se pudo iniciar el pago. Inténtalo de nuevo en unos instantes.",
-      "tipInitFailed": "No se pudo iniciar el pago de la propina. Inténtalo de nuevo."
+      "tipInitFailed": "No se pudo iniciar el pago de la propina. Inténtalo de nuevo.",
+      "paymentCanceled": "Pago cancelado.",
+      "tipPaymentCanceled": "Pago de propina cancelado.",
+      "applePayUnavailableTitle": "Apple Pay no disponible",
+      "applePayUnavailableBody": "Apple Pay no está disponible en esta versión de la app. Puedes pagar con tarjeta o pedir a soporte que verifique el Merchant ID.",
+      "walletPayUnavailable": "El pago con billetera no está disponible. Usa una tarjeta."
     }
   },
   "promotions": {

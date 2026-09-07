@@ -284,10 +284,41 @@ export async function setLocaleForRoleAndApply(role: Role, locale: string) {
 }
 
 /**
- * ✅ Sync locale: read GLOBAL first, then role as fallback
+ * ✅ Sync locale: explicit user choice → cloud preferred_locale → saved global → device.
  */
 export async function syncLocaleForRole(role: Role) {
-  const next = ensureAllowedLocale(await resolveStartupLocale());
+  let next = ensureAllowedLocale(await resolveStartupLocale());
+
+  // Cross-device: if the user never chose a language on this device, prefer
+  // profiles.preferred_locale when logged in (written by setLocaleForRoleAndApply).
+  try {
+    const AsyncStorage = (await import("@react-native-async-storage/async-storage"))
+      .default;
+    const { LOCALE_USER_SET_KEY } = await import("./storage");
+    const userSet = await AsyncStorage.getItem(LOCALE_USER_SET_KEY);
+    if (userSet !== "true") {
+      const { supabase } = await import("../lib/supabase");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.id) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("preferred_locale")
+          .eq("id", user.id)
+          .maybeSingle();
+        const cloud = String(data?.preferred_locale ?? "").trim();
+        if (cloud) {
+          next = ensureAllowedLocale(cloud);
+          await markLocaleUserSelected(next);
+          await setGlobalLocale(next);
+          await setRoleLocale(role, next);
+        }
+      }
+    }
+  } catch {
+    // Boot must not block on profile locale fetch.
+  }
 
   if (!i18n.isInitialized) {
     await initI18n(next);

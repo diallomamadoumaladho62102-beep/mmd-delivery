@@ -196,7 +196,8 @@
     "permission": {
       "title": "Permiso",
       "camera": "Permite el acceso a la cámara para tomar una foto."
-    }
+    },
+    "backShort": "ATRÁS"
   },
   "shared": {
     "common": {
@@ -307,7 +308,10 @@
       "tipStateCountry": "Consejo: agrega Estado + País para evitar problemas.",
       "titleLogin": "Inicio de sesión",
       "titleSignup": "Registro",
-      "verifyEmailThenLogin": "Verifica tu email y luego inicia sesión."
+      "verifyEmailThenLogin": "Verifica tu email y luego inicia sesión.",
+      "showPassword": "Mostrar",
+      "hidePassword": "Ocultar",
+      "forgotPassword": "¿Olvidaste la contraseña?"
     }
   },
   "driver": {
@@ -1335,6 +1339,55 @@
     },
     "gate": {
       "loading": "Cargando…"
+    },
+    "signOut": {
+      "title": "Cerrar sesión",
+      "body": "¿Cerrar sesión en este dispositivo? Tu cuenta de restaurante y tus datos se conservan.",
+      "confirm": "Cerrar sesión",
+      "error": "No se puede cerrar sesión ahora."
+    },
+    "home": {
+      "status": {
+        "title": "Estado del restaurante",
+        "subtitle": "Elige cómo recibir pedidos.",
+        "online": "EN LÍNEA",
+        "onlineShort": "EN LÍNEA",
+        "offlineShort": "FUERA DE LÍNEA",
+        "busyShort": "OCUPADO",
+        "setup": "CONFIG",
+        "offline": "FUERA DE LÍNEA"
+      },
+      "nav": {
+        "home": "Inicio",
+        "dashboard": "Panel",
+        "orders": "Pedidos",
+        "menu": "Menú",
+        "drivers": "Repartidores",
+        "stats": "Estadísticas",
+        "payouts": "Pagos",
+        "finance": "Finanzas",
+        "tax": "Impuestos",
+        "dash": "Resumen del día",
+        "heatmap": "Mapa de calor",
+        "ai": "MMD AI",
+        "settings": "Ajustes",
+        "security": "Seguridad",
+        "language": "Idioma"
+      },
+      "map": {
+        "offlineTitle": "Restaurante desconectado",
+        "offlineHint": "Conéctate para mostrar repartidores y el mapa de calor."
+      },
+      "filter": {
+        "all": "Todos los estados",
+        "pending": "Pendiente",
+        "accepted": "Aceptado",
+        "prepared": "En preparación",
+        "ready": "Listo"
+      },
+      "account": {
+        "setup": "Perfil del restaurante"
+      }
     }
   }
 }

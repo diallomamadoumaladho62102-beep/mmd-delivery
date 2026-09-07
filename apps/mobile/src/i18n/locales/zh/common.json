@@ -196,7 +196,8 @@
     "permission": {
       "title": "权限",
       "camera": "允许相机权限以拍照。"
-    }
+    },
+    "backShort": "返回"
   },
   "shared": {
     "common": {
@@ -307,7 +308,10 @@
       "tipStateCountry": "提示：添加州/省 + 国家可避免错误。",
       "titleLogin": "登录",
       "titleSignup": "注册",
-      "verifyEmailThenLogin": "请先验证邮箱，然后再登录。"
+      "verifyEmailThenLogin": "请先验证邮箱，然后再登录。",
+      "showPassword": "显示",
+      "hidePassword": "隐藏",
+      "forgotPassword": "忘记密码？"
     }
   },
   "driver": {
@@ -1150,6 +1154,55 @@
     },
     "gate": {
       "loading": "加载中…"
+    },
+    "signOut": {
+      "title": "退出登录",
+      "body": "从此设备退出？餐厅账户和数据将保留。",
+      "confirm": "退出登录",
+      "error": "暂时无法退出登录。"
+    },
+    "home": {
+      "status": {
+        "title": "餐厅状态",
+        "subtitle": "选择如何接收订单。",
+        "online": "在线",
+        "onlineShort": "在线",
+        "offlineShort": "离线",
+        "busyShort": "忙碌",
+        "setup": "设置",
+        "offline": "离线"
+      },
+      "nav": {
+        "home": "首页",
+        "dashboard": "仪表盘",
+        "orders": "订单",
+        "menu": "菜单",
+        "drivers": "骑手",
+        "stats": "统计",
+        "payouts": "收款",
+        "finance": "财务",
+        "tax": "税务",
+        "dash": "今日概览",
+        "heatmap": "热力图",
+        "ai": "MMD AI",
+        "settings": "设置",
+        "security": "安全",
+        "language": "语言"
+      },
+      "map": {
+        "offlineTitle": "餐厅离线",
+        "offlineHint": "上线以显示骑手和热力。"
+      },
+      "filter": {
+        "all": "全部状态",
+        "pending": "待处理",
+        "accepted": "已接单",
+        "prepared": "制作中",
+        "ready": "就绪"
+      },
+      "account": {
+        "setup": "餐厅资料"
+      }
     }
   }
 }

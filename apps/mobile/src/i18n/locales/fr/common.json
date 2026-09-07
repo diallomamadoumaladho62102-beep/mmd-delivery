@@ -165,7 +165,8 @@
         "loadingOrders": "Chargement des commandes…",
         "empty": "Aucune commande active pour le moment."
       }
-    }
+    },
+    "backShort": "RETOUR"
   },
   "shared": {
     "common": {
@@ -278,7 +279,10 @@
       "tipStateCountry": "Astuce: ajoute État + Pays pour éviter les erreurs.",
       "titleLogin": "Connexion",
       "titleSignup": "Inscription",
-      "verifyEmailThenLogin": "Vérifie ton email puis connecte-toi."
+      "verifyEmailThenLogin": "Vérifie ton email puis connecte-toi.",
+      "showPassword": "Voir",
+      "hidePassword": "Cacher",
+      "forgotPassword": "Mot de passe oublié ?"
     }
   },
   "driver": {
@@ -1226,6 +1230,55 @@
     },
     "gate": {
       "loading": "Chargement…"
+    },
+    "signOut": {
+      "title": "Déconnexion",
+      "body": "Se déconnecter de cet appareil ? Votre compte restaurant et vos données restent intacts.",
+      "confirm": "Se déconnecter",
+      "error": "Impossible de se déconnecter pour le moment."
+    },
+    "home": {
+      "status": {
+        "title": "Statut du restaurant",
+        "subtitle": "Choisissez comment recevoir les commandes.",
+        "online": "EN LIGNE",
+        "onlineShort": "EN LIGNE",
+        "offlineShort": "HORS LIGNE",
+        "busyShort": "OCCUPÉ",
+        "setup": "CONFIG",
+        "offline": "HORS LIGNE"
+      },
+      "nav": {
+        "home": "Accueil",
+        "dashboard": "Tableau de bord",
+        "orders": "Commandes",
+        "menu": "Menu",
+        "drivers": "Livreurs",
+        "stats": "Statistiques",
+        "payouts": "Paiements",
+        "finance": "Finances",
+        "tax": "Taxes",
+        "dash": "Aperçu du jour",
+        "heatmap": "Carte de chaleur",
+        "ai": "MMD AI",
+        "settings": "Paramètres",
+        "security": "Sécurité",
+        "language": "Langue"
+      },
+      "map": {
+        "offlineTitle": "Restaurant hors ligne",
+        "offlineHint": "Passez en ligne pour afficher les livreurs et la chaleur."
+      },
+      "filter": {
+        "all": "Tous les statuts",
+        "pending": "En attente",
+        "accepted": "Accepté",
+        "prepared": "En préparation",
+        "ready": "Prêt"
+      },
+      "account": {
+        "setup": "Profil restaurant"
+      }
     }
   }
 }

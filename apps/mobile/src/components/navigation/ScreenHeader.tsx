@@ -70,6 +70,7 @@ const VARIANTS = {
     backBorder: "transparent",
     backBg: "transparent",
     backText: MMD_GOLD_BRIGHT,
+    /** Localized via `common.backShort` at render time. */
     backLabel: "BACK" as const,
     titleSize: 20,
     subtitleSize: 12,
@@ -113,7 +114,11 @@ export default function ScreenHeader({
   const safeBack = useSafeBackNavigation(fallbackRoute);
   const palette = VARIANTS[variant];
   const handleBack = onBack ?? safeBack;
-  const backLabel = backAccessibilityLabel ?? t("common.back", "Back");
+  const backA11y = backAccessibilityLabel ?? t("common.back", "Back");
+  const visibleBackLabel =
+    variant === "brand"
+      ? t("common.backShort", "BACK")
+      : palette.backLabel;
 
   return (
     <View style={[styles.wrapper, { paddingTop: Math.max(insets.top, 8) }, style]}>
@@ -135,7 +140,7 @@ export default function ScreenHeader({
             ]}
             activeOpacity={0.85}
             accessibilityRole="button"
-            accessibilityLabel={backLabel}
+            accessibilityLabel={backA11y}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text
@@ -148,7 +153,7 @@ export default function ScreenHeader({
                 },
               ]}
             >
-              {palette.backLabel}
+              {visibleBackLabel}
             </Text>
           </TouchableOpacity>
         ) : (

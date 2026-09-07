@@ -343,7 +343,9 @@
       "unavailableTitle": "Taxi unavailable",
       "unavailable": "Taxi is not available in your area yet",
       "yourArea": "Your area",
-      "currencyLabel": "Currency"
+      "currencyLabel": "Currency",
+      "moreOptions": "More options",
+      "wallet": "Wallet"
     },
     "quote": {
       "title": "Estimate",
@@ -624,7 +626,12 @@
       "paymentUnavailableExpoGoBody": "Native Stripe payment requires a development build or a real iOS build. Expo Go is not enough for a real payment test.",
       "paymentFailed": "The payment could not be completed. Please try again in a few moments.",
       "initFailed": "The payment could not be started. Please try again in a few moments.",
-      "tipInitFailed": "The tip payment could not be started. Please try again."
+      "tipInitFailed": "The tip payment could not be started. Please try again.",
+      "paymentCanceled": "Payment canceled.",
+      "tipPaymentCanceled": "Tip payment canceled.",
+      "applePayUnavailableTitle": "Apple Pay unavailable",
+      "applePayUnavailableBody": "Apple Pay is not available for this app build. You can pay with a card, or ask support to verify Apple Pay Merchant ID configuration.",
+      "walletPayUnavailable": "Wallet pay is unavailable on this device. Please use a card."
     }
   },
   "finance": {
@@ -766,6 +773,10 @@
         "cancelled": "Cancelled",
         "inProgress": "In progress"
       }
+    },
+    "restaurantMenu": {
+      "pickupAddressLabel": "Pickup address (restaurant / start point)",
+      "deliveryAddressLabel": "Delivery address (customer)"
     }
   },
   "location": {
@@ -1275,6 +1286,10 @@
     "createOrderError": "Unable to create the order right now.",
     "errors": {
       "deliveryShareInvalid": "Delivery pricing is temporarily unavailable. Please try again later or contact support."
+    },
+    "addresses": {
+      "pickupLabel": "Pickup address (restaurant / start point)",
+      "deliveryLabel": "Delivery address (customer)"
     }
   },
   "order": {

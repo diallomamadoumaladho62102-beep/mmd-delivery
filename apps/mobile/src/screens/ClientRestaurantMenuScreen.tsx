@@ -1457,7 +1457,7 @@ export function ClientRestaurantMenuScreen() {
             <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
               {tr(
                 "clientRestaurantMenu.addresses.pickupLabel",
-                "Adresse pickup (restaurant / point de départ)"
+                "Pickup address (restaurant / start point)"
               )}
             </Text>
 

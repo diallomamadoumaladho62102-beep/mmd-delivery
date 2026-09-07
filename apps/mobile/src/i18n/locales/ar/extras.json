@@ -207,7 +207,9 @@
       "unavailableTitle": "التاكسي غير متاح",
       "unavailable": "التاكسي غير متاح في منطقتك بعد",
       "yourArea": "منطقتك",
-      "currencyLabel": "العملة"
+      "currencyLabel": "العملة",
+      "moreOptions": "المزيد من الخيارات",
+      "wallet": "المحفظة"
     },
     "quote": {
       "title": "التقدير",
@@ -709,6 +711,10 @@
       "cannotSendEmail": "تعذّر إرسال البريد الإلكتروني.",
       "addressOptional": "العنوان (اختياري)",
       "addressOptionalHint": "يمكنك إضافة عنوان توصيل لاحقًا عند طلب طعام أو شحنة أو تاكسي."
+    },
+    "restaurantMenu": {
+      "pickupAddressLabel": "عنوان الاستلام (المطعم / نقطة البداية)",
+      "deliveryAddressLabel": "عنوان التسليم (العميل)"
     }
   },
   "location": {
@@ -1261,6 +1267,10 @@
     "createOrderError": "تعذّر إنشاء الطلب الآن.",
     "errors": {
       "deliveryShareInvalid": "أسعار التوصيل غير متاحة مؤقتًا. حاول لاحقًا أو اتصل بالدعم."
+    },
+    "addresses": {
+      "pickupLabel": "عنوان الاستلام (المطعم / نقطة البداية)",
+      "deliveryLabel": "عنوان التسليم (العميل)"
     }
   },
   "order": {
@@ -1318,7 +1328,12 @@
       "paymentUnavailableExpoGoBody": "يتطلب الدفع الأصلي عبر Stripe نسخة تطوير أو نسخة iOS حقيقية. Expo Go غير كافٍ لاختبار دفع حقيقي.",
       "paymentFailed": "تعذر إتمام الدفع. يرجى المحاولة مرة أخرى بعد قليل.",
       "initFailed": "تعذر بدء الدفع. يرجى المحاولة مرة أخرى بعد قليل.",
-      "tipInitFailed": "تعذر بدء دفع الإكرامية. حاول مرة أخرى."
+      "tipInitFailed": "تعذر بدء دفع الإكرامية. حاول مرة أخرى.",
+      "paymentCanceled": "تم إلغاء الدفع.",
+      "tipPaymentCanceled": "تم إلغاء دفع الإكرامية.",
+      "applePayUnavailableTitle": "Apple Pay غير متاح",
+      "applePayUnavailableBody": "Apple Pay غير متاح لهذا الإصدار. يمكنك الدفع بالبطاقة أو طلب التحقق من إعدادات Merchant ID.",
+      "walletPayUnavailable": "الدفع بالمحفظة غير متاح. يرجى استخدام بطاقة."
     }
   },
   "promotions": {

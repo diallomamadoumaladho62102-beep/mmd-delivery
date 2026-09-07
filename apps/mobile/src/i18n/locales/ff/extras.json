@@ -207,7 +207,9 @@
       "unavailableTitle": "Taxi alaa",
       "unavailable": "Taxi ngalaa e nokku maa tawo",
       "yourArea": "Zone maa",
-      "currencyLabel": "Kaalis"
+      "currencyLabel": "Kaalis",
+      "moreOptions": "Cuɓe goɗɗe",
+      "wallet": "Wallet"
     },
     "quote": {
       "title": "Hiisa",
@@ -760,6 +762,10 @@
       "cannotSendEmail": "Horiima neldude email.",
       "addressOptional": "Adresse (suɓaande)",
       "addressOptionalHint": "A waawi ɓeydude adresse livraison caggal, so aɗa ɗaɓɓa ñaamdu, colis walla taxi."
+    },
+    "restaurantMenu": {
+      "pickupAddressLabel": "Ñiiɓirde ƴettugol (restoraa / fuɗɗoode)",
+      "deliveryAddressLabel": "Ñiiɓirde bakkagol (kiliyaŋke)"
     }
   },
   "location": {
@@ -1312,6 +1318,10 @@
     "createOrderError": "Horiima sosde odaare jooni.",
     "errors": {
       "deliveryShareInvalid": "Njoɓdi livraison alaa jooni. Ete kadi walla jokkondir e support."
+    },
+    "addresses": {
+      "pickupLabel": "Ñiiɓirde ƴettugol (restoraa / fuɗɗoode)",
+      "deliveryLabel": "Ñiiɓirde bakkagol (kiliyaŋke)"
     }
   },
   "order": {
@@ -1369,7 +1379,12 @@
       "paymentUnavailableExpoGoBody": "Yoɓgol Stripe natif ina hatojini development build walla build iOS goongaajo. Expo Go yonaani ngam test yoɓgol goongaajo.",
       "paymentFailed": "Njoɓdi timmaani. Tiiɗno eto kadi caggal seeɗa.",
       "initFailed": "Njoɓdi ndin waawaa fuɗɗeede. Tiiɗno eto kadi caggal seeɗa.",
-      "tipInitFailed": "Njoɓdi dokkal ngal waawaa fuɗɗeede. Eto kadi."
+      "tipInitFailed": "Njoɓdi dokkal ngal waawaa fuɗɗeede. Eto kadi.",
+      "paymentCanceled": "Njoɓdi haɗtaa.",
+      "tipPaymentCanceled": "Njoɓdi tip haɗtaa.",
+      "applePayUnavailableTitle": "Apple Pay heɓaaka",
+      "applePayUnavailableBody": "Apple Pay heɓaaka e ngal yahrude app. Huutoro kartal walla ɗaɓɓit support ngam ƴeewde Merchant ID.",
+      "walletPayUnavailable": "Wallet njoɓdi heɓaaka. Huutoro kartal."
     }
   },
   "promotions": {

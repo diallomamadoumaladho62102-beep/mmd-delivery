@@ -1455,14 +1455,14 @@ export function RestaurantHomeScreen({ navigation }: any) {
       return;
     }
     Alert.alert(
-      t("restaurant.home.status.title", "Statut du restaurant"),
+      t("restaurant.home.status.title", "Restaurant status"),
       t(
         "restaurant.home.status.subtitle",
-        "Choisissez comment recevoir les commandes.",
+        "Choose how you receive orders.",
       ),
       [
         {
-          text: t("restaurant.home.status.online", "EN LIGNE"),
+          text: t("restaurant.home.status.online", "ONLINE"),
           onPress: () => {
             if (!restaurantOnline || restaurantBusy) {
               void updateRestaurantAvailability(true);
@@ -1470,14 +1470,14 @@ export function RestaurantHomeScreen({ navigation }: any) {
           },
         },
         {
-          text: t("restaurant.dashboard.busyOff", "Mode occupé"),
+          text: t("restaurant.dashboard.busyOff", "Busy mode"),
           onPress: () => {
             if (!restaurantOnline) {
               Alert.alert(
                 t("common.errorTitle", "Error"),
                 t(
                   "restaurant.dashboard.busyRequiresOnline",
-                  "Passez d’abord en ligne pour activer le mode occupé.",
+                  "Go online before enabling busy mode.",
                 ),
               );
               return;
@@ -1486,7 +1486,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
           },
         },
         {
-          text: t("restaurant.home.status.offline", "HORS LIGNE"),
+          text: t("restaurant.home.status.offline", "OFFLINE"),
           style: "destructive",
           onPress: () => {
             if (restaurantOnline) {
@@ -1513,19 +1513,19 @@ export function RestaurantHomeScreen({ navigation }: any) {
       restaurantIdShort ? `ID: ${restaurantIdShort}` : undefined,
       [
         {
-          text: t("restaurant.home.nav.settings", "Paramètres"),
+          text: t("restaurant.home.nav.settings", "Settings"),
           onPress: () => navigation.navigate("RestaurantOrderAutomation"),
         },
         {
-          text: t("restaurant.home.account.setup", "Profil restaurant"),
+          text: t("restaurant.home.account.setup", "Restaurant profile"),
           onPress: () => navigation.navigate("RestaurantSetup"),
         },
         {
-          text: t("restaurant.home.nav.language", "Langue"),
+          text: t("restaurant.home.nav.language", "Language"),
           onPress: () => navigation.navigate("RestaurantLanguage"),
         },
         {
-          text: t("restaurant.home.nav.security", "Sécurité"),
+          text: t("restaurant.home.nav.security", "Security"),
           onPress: () => navigation.navigate("RestaurantSecurity"),
         },
         {

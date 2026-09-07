@@ -38,19 +38,19 @@ export const RESTAURANT_HOME_NAV: RestaurantHomeNavItem[] = [
     key: "home",
     icon: "home-outline",
     labelKey: "restaurant.home.nav.home",
-    labelFallback: "Accueil",
+    labelFallback: "Home",
   },
   {
     key: "dashboard",
     icon: "grid-outline",
     labelKey: "restaurant.home.nav.dashboard",
-    labelFallback: "Tableau de bord",
+    labelFallback: "Dashboard",
   },
   {
     key: "orders",
     icon: "clipboard-outline",
     labelKey: "restaurant.home.nav.orders",
-    labelFallback: "Commandes",
+    labelFallback: "Orders",
     badge: "pendingOrders",
   },
   {
@@ -63,7 +63,7 @@ export const RESTAURANT_HOME_NAV: RestaurantHomeNavItem[] = [
     key: "drivers",
     icon: "bicycle-outline",
     labelKey: "restaurant.home.nav.drivers",
-    labelFallback: "Livreurs",
+    labelFallback: "Drivers",
     toggle: "drivers",
     badge: "drivers",
   },
@@ -71,7 +71,7 @@ export const RESTAURANT_HOME_NAV: RestaurantHomeNavItem[] = [
     key: "stats",
     icon: "bar-chart-outline",
     labelKey: "restaurant.home.nav.stats",
-    labelFallback: "Statistiques",
+    labelFallback: "Statistics",
     badge: "ordersToday",
   },
   {
@@ -96,7 +96,7 @@ export const RESTAURANT_HOME_NAV: RestaurantHomeNavItem[] = [
     key: "dash",
     icon: "analytics-outline",
     labelKey: "restaurant.home.nav.dash",
-    labelFallback: "Aperçu du jour",
+    labelFallback: "Day overview",
   },
   {
     key: "heatmap",
@@ -115,19 +115,19 @@ export const RESTAURANT_HOME_NAV: RestaurantHomeNavItem[] = [
     key: "settings",
     icon: "settings-outline",
     labelKey: "restaurant.home.nav.settings",
-    labelFallback: "Paramètres",
+    labelFallback: "Settings",
   },
   {
     key: "security",
     icon: "lock-closed-outline",
     labelKey: "restaurant.home.nav.security",
-    labelFallback: "Sécurité",
+    labelFallback: "Security",
   },
   {
     key: "language",
     icon: "globe-outline",
     labelKey: "restaurant.home.nav.language",
-    labelFallback: "Langue",
+    labelFallback: "Language",
   },
   {
     key: "logout",
@@ -139,11 +139,11 @@ export const RESTAURANT_HOME_NAV: RestaurantHomeNavItem[] = [
 
 /** Map order statuses that actually appear on the restaurant live map. */
 export const RESTAURANT_MAP_STATUS_FILTERS = [
-  { key: "all", labelKey: "restaurant.home.filter.all", labelFallback: "Tous les statuts" },
-  { key: "pending", labelKey: "restaurant.home.filter.pending", labelFallback: "En attente" },
-  { key: "accepted", labelKey: "restaurant.home.filter.accepted", labelFallback: "Accepté" },
-  { key: "prepared", labelKey: "restaurant.home.filter.prepared", labelFallback: "En préparation" },
-  { key: "ready", labelKey: "restaurant.home.filter.ready", labelFallback: "Prêt" },
+  { key: "all", labelKey: "restaurant.home.filter.all", labelFallback: "All statuses" },
+  { key: "pending", labelKey: "restaurant.home.filter.pending", labelFallback: "Pending" },
+  { key: "accepted", labelKey: "restaurant.home.filter.accepted", labelFallback: "Accepted" },
+  { key: "prepared", labelKey: "restaurant.home.filter.prepared", labelFallback: "Preparing" },
+  { key: "ready", labelKey: "restaurant.home.filter.ready", labelFallback: "Ready" },
 ] as const;
 
 export type RestaurantMapStatusFilter =

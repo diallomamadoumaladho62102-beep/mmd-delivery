@@ -196,7 +196,8 @@
     "permission": {
       "title": "إذن",
       "camera": "اسمح بالوصول للكاميرا لالتقاط صورة."
-    }
+    },
+    "backShort": "رجوع"
   },
   "shared": {
     "common": {
@@ -307,7 +308,10 @@
       "tipStateCountry": "نصيحة: أضف الولاية + الدولة لتجنب المشاكل.",
       "titleLogin": "تسجيل الدخول",
       "titleSignup": "إنشاء حساب",
-      "verifyEmailThenLogin": "تحقق من بريدك ثم سجّل الدخول."
+      "verifyEmailThenLogin": "تحقق من بريدك ثم سجّل الدخول.",
+      "showPassword": "إظهار",
+      "hidePassword": "إخفاء",
+      "forgotPassword": "نسيت كلمة المرور؟"
     }
   },
   "driver": {
@@ -1335,6 +1339,55 @@
     },
     "gate": {
       "loading": "جارٍ التحميل…"
+    },
+    "signOut": {
+      "title": "تسجيل الخروج",
+      "body": "تسجيل الخروج من هذا الجهاز؟ يبقى حساب المطعم وبياناتك كما هي.",
+      "confirm": "تسجيل الخروج",
+      "error": "تعذر تسجيل الخروج الآن."
+    },
+    "home": {
+      "status": {
+        "title": "حالة المطعم",
+        "subtitle": "اختر كيفية استلام الطلبات.",
+        "online": "متصل",
+        "onlineShort": "متصل",
+        "offlineShort": "غير متصل",
+        "busyShort": "مشغول",
+        "setup": "إعداد",
+        "offline": "غير متصل"
+      },
+      "nav": {
+        "home": "الرئيسية",
+        "dashboard": "لوحة التحكم",
+        "orders": "الطلبات",
+        "menu": "القائمة",
+        "drivers": "السائقون",
+        "stats": "الإحصاءات",
+        "payouts": "المدفوعات",
+        "finance": "المالية",
+        "tax": "الضرائب",
+        "dash": "نظرة اليوم",
+        "heatmap": "خريطة الحرارة",
+        "ai": "MMD AI",
+        "settings": "الإعدادات",
+        "security": "الأمان",
+        "language": "اللغة"
+      },
+      "map": {
+        "offlineTitle": "المطعم غير متصل",
+        "offlineHint": "اتصل لإظهار السائقين والحرارة."
+      },
+      "filter": {
+        "all": "كل الحالات",
+        "pending": "قيد الانتظار",
+        "accepted": "مقبول",
+        "prepared": "قيد التحضير",
+        "ready": "جاهز"
+      },
+      "account": {
+        "setup": "ملف المطعم"
+      }
     }
   }
 }

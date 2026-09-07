@@ -196,7 +196,8 @@
     "permission": {
       "title": "Duŋagol",
       "camera": "Naatnu duŋagol kamera ngam nattude foto."
-    }
+    },
+    "backShort": "RTTR"
   },
   "shared": {
     "common": {
@@ -255,7 +256,13 @@
       }
     }
   },
-  "client": {},
+  "client": {
+    "auth": {
+      "showPassword": "Hollu",
+      "hidePassword": "Suuɗ",
+      "forgotPassword": "A yejjitii finnde?"
+    }
+  },
   "driver": {
     "profile": {
       "authFallbackName": "Dooɓoowo",
@@ -1281,6 +1288,55 @@
     },
     "gate": {
       "loading": "Nana loowa…"
+    },
+    "signOut": {
+      "title": "Seŋtude",
+      "body": "Seŋtude e ngal kaɓirgal? Konte restoraa e keɓe maa ina njokki.",
+      "confirm": "Seŋtude",
+      "error": "Waawaa seŋtude jooni."
+    },
+    "home": {
+      "status": {
+        "title": "Ngonka restoraa",
+        "subtitle": "Suɓo no keɓata ɗaŋngeeje.",
+        "online": "E nder laylaytol",
+        "onlineShort": "ONLINE",
+        "offlineShort": "OFFLINE",
+        "busyShort": "BUSY",
+        "setup": "SETUP",
+        "offline": "OFFLINE"
+      },
+      "nav": {
+        "home": "Jaɓɓorgo",
+        "dashboard": "Dashboard",
+        "orders": "Ɗaŋngeeje",
+        "menu": "Menu",
+        "drivers": "Dogginooɓe",
+        "stats": "Limtooji",
+        "payouts": "Njoɓɗi",
+        "finance": "Kaalis",
+        "tax": "Taxe",
+        "dash": "Yiytirde ñalnde",
+        "heatmap": "Heatmap",
+        "ai": "MMD AI",
+        "settings": "Teelte",
+        "security": "Kisal",
+        "language": "Ɗemngal"
+      },
+      "map": {
+        "offlineTitle": "Restoraa offline",
+        "offlineHint": "Naat e laylaytol ngam hollude dogginooɓe e heat."
+      },
+      "filter": {
+        "all": "Ngonkeeji fof",
+        "pending": "Nana sabbi",
+        "accepted": "Jaɓaama",
+        "prepared": "Nana heblaa",
+        "ready": "Hebiima"
+      },
+      "account": {
+        "setup": "Profil restoraa"
+      }
     }
   }
 }

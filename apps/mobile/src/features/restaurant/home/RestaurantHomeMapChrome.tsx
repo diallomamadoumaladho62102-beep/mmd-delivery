@@ -92,7 +92,7 @@ export function RestaurantHomeMapChrome({
         title: t("restaurant.home.map.offlineTitle", "Restaurant Offline"),
         titleColor: RH.offline,
         subtitle: t(
-          "restaurant.home.map.offlineSubtitle",
+          "restaurant.home.map.offlineHint",
           "Go online to show drivers and heat."
         ),
       };

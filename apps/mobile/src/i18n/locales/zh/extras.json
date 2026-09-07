@@ -207,7 +207,9 @@
       "unavailableTitle": "出租车不可用",
       "unavailable": "您所在区域暂不提供出租车服务",
       "yourArea": "您的区域",
-      "currencyLabel": "货币"
+      "currencyLabel": "货币",
+      "moreOptions": "更多选项",
+      "wallet": "钱包"
     },
     "quote": {
       "title": "估价",
@@ -709,6 +711,10 @@
       "cannotSendEmail": "无法发送邮件。",
       "addressOptional": "地址（可选）",
       "addressOptionalHint": "你可以稍后在下单餐食、包裹或叫车时添加配送地址。"
+    },
+    "restaurantMenu": {
+      "pickupAddressLabel": "取餐地址（餐厅 / 起点）",
+      "deliveryAddressLabel": "送餐地址（客户）"
     }
   },
   "location": {
@@ -1446,6 +1452,10 @@
     "createOrderError": "暂时无法创建订单。",
     "errors": {
       "deliveryShareInvalid": "配送价格暂时不可用。请稍后重试或联系支持。"
+    },
+    "addresses": {
+      "pickupLabel": "取餐地址（餐厅 / 起点）",
+      "deliveryLabel": "送餐地址（客户）"
     }
   },
   "order": {
@@ -1503,7 +1513,12 @@
       "paymentUnavailableExpoGoBody": "原生 Stripe 支付需要开发版或真实 iOS 构建。Expo Go 无法进行真实支付测试。",
       "paymentFailed": "支付未能完成，请稍后重试。",
       "initFailed": "无法开始支付，请稍后重试。",
-      "tipInitFailed": "无法开始支付小费，请重试。"
+      "tipInitFailed": "无法开始支付小费，请重试。",
+      "paymentCanceled": "付款已取消。",
+      "tipPaymentCanceled": "小费付款已取消。",
+      "applePayUnavailableTitle": "Apple Pay 不可用",
+      "applePayUnavailableBody": "此应用版本无法使用 Apple Pay。请使用银行卡，或联系支持检查 Merchant ID 配置。",
+      "walletPayUnavailable": "此设备不支持钱包支付。请使用银行卡。"
     }
   },
   "promotions": {

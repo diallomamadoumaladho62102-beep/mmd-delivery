@@ -207,7 +207,9 @@
       "unavailableTitle": "Taxi indisponible",
       "unavailable": "Le taxi n'est pas encore disponible dans votre zone",
       "yourArea": "Votre zone",
-      "currencyLabel": "Devise"
+      "currencyLabel": "Devise",
+      "moreOptions": "Plus d'options",
+      "wallet": "Portefeuille"
     },
     "quote": {
       "title": "Estimation",
@@ -719,6 +721,10 @@
       "resetEmailSentTitle": "E-mail envoyé",
       "resetEmailSentBody": "Consultez votre boîte de réception. Cliquez sur le lien reçu pour réinitialiser votre mot de passe.",
       "cannotSendEmail": "Impossible d'envoyer l'e-mail."
+    },
+    "restaurantMenu": {
+      "pickupAddressLabel": "Adresse de retrait (restaurant / point de départ)",
+      "deliveryAddressLabel": "Adresse de livraison (client)"
     }
   },
   "location": {
@@ -1360,6 +1366,10 @@
     "createOrderError": "Impossible de créer la commande pour le moment.",
     "errors": {
       "deliveryShareInvalid": "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support."
+    },
+    "addresses": {
+      "pickupLabel": "Adresse de retrait (restaurant / point de départ)",
+      "deliveryLabel": "Adresse de livraison (client)"
     }
   },
   "order": {
@@ -1417,7 +1427,12 @@
       "paymentUnavailableExpoGoBody": "Le paiement Stripe natif nécessite un build de développement ou un vrai build iOS. Expo Go ne suffit pas pour un test de paiement réel.",
       "paymentFailed": "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.",
       "initFailed": "Le paiement n'a pas pu être initialisé. Réessayez dans quelques instants.",
-      "tipInitFailed": "Le paiement du pourboire n'a pas pu être initialisé. Réessayez."
+      "tipInitFailed": "Le paiement du pourboire n'a pas pu être initialisé. Réessayez.",
+      "paymentCanceled": "Paiement annulé.",
+      "tipPaymentCanceled": "Paiement du tip annulé.",
+      "applePayUnavailableTitle": "Apple Pay indisponible",
+      "applePayUnavailableBody": "Apple Pay n'est pas disponible pour cette version de l'application. Vous pouvez payer par carte, ou demander au support de vérifier la configuration du Merchant ID Apple Pay.",
+      "walletPayUnavailable": "Le paiement portefeuille n'est pas disponible sur cet appareil. Veuillez utiliser une carte."
     }
   },
   "promotions": {

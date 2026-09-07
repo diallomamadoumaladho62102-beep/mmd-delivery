@@ -47,6 +47,19 @@ const CONFIRM_PAYMENT_ATTEMPTS = 3;
 const CONFIRM_PAYMENT_RETRY_DELAY_MS = 1500;
 
 function mapStripePaymentError(error: { code?: string; message?: string }): string {
+  const raw = String(error?.message ?? error?.code ?? "").toLowerCase();
+  if (
+    raw.includes("apple pay") &&
+    (raw.includes("not available") ||
+      raw.includes("n’est pas disponible") ||
+      raw.includes("n'est pas disponible") ||
+      raw.includes("unavailable"))
+  ) {
+    return i18n.t(
+      "payment.stripe.applePayUnavailableBody",
+      "Apple Pay is not available for this app build. You can pay with a card, or ask support to verify Apple Pay Merchant ID configuration.",
+    );
+  }
   return toUserFacingError(
     { code: error.code, message: error.message },
     i18n.t(
@@ -616,9 +629,19 @@ async function presentTipPaymentSheet(params: {
   };
 
   if (Platform.OS === "ios") {
-    paymentSheetOptions.applePay = {
-      merchantCountryCode: params.merchantCountryCode,
-    };
+    try {
+      const supported =
+        typeof stripeNative.isPlatformPaySupported === "function"
+          ? await stripeNative.isPlatformPaySupported()
+          : true;
+      if (supported) {
+        paymentSheetOptions.applePay = {
+          merchantCountryCode: params.merchantCountryCode,
+        };
+      }
+    } catch {
+      // Card PaymentSheet remains available if Apple Pay probe fails.
+    }
   } else if (Platform.OS === "android") {
     paymentSheetOptions.googlePay = {
       merchantCountryCode: params.merchantCountryCode,
@@ -637,7 +660,9 @@ async function presentTipPaymentSheet(params: {
   const present = await presentPaymentSheet();
   if (present.error) {
     if (present.error.code === "Canceled") {
-      throw new Error("Paiement du tip annulé.");
+      throw new Error(
+        i18n.t("payment.stripe.tipPaymentCanceled", "Tip payment canceled."),
+      );
     }
     logTechnicalError(
       `${params.logScope}.presentPaymentSheet`,
@@ -870,9 +895,19 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
     allowsDelayedPaymentMethods: false,
   };
 
-  // Wallet buttons only on supported platforms; card always remains available via PaymentSheet.
+  // Wallet buttons only when the platform reports support; card always remains.
   if (Platform.OS === "ios") {
-    paymentSheetOptions.applePay = { merchantCountryCode };
+    try {
+      const supported =
+        typeof stripeNative.isPlatformPaySupported === "function"
+          ? await stripeNative.isPlatformPaySupported()
+          : true;
+      if (supported) {
+        paymentSheetOptions.applePay = { merchantCountryCode };
+      }
+    } catch {
+      // Continue with card-only PaymentSheet.
+    }
   } else if (Platform.OS === "android") {
     paymentSheetOptions.googlePay = {
       merchantCountryCode,
@@ -891,7 +926,9 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
 
   if (present.error) {
     if (present.error.code === "Canceled") {
-      throw new Error("Paiement annulé.");
+      throw new Error(
+        i18n.t("payment.stripe.paymentCanceled", "Payment canceled."),
+      );
     }
     logTechnicalError("payments.presentPaymentSheet", present.error, { orderId: normalizedOrderId });
     throw new Error(mapStripePaymentError(present.error));

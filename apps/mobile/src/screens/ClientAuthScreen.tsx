@@ -915,7 +915,9 @@ export function ClientAuthScreen() {
                 style={styles.showPasswordBtn}
               >
                 <Text style={styles.showPasswordText}>
-                  {showPassword ? "Cacher" : "Voir"}
+                  {showPassword
+                    ? t("client.auth.hidePassword", "Hide")
+                    : t("client.auth.showPassword", "Show")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -926,7 +928,9 @@ export function ClientAuthScreen() {
                 disabled={loading}
                 style={styles.forgotBtn}
               >
-                <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+                <Text style={styles.forgotText}>
+                  {t("client.auth.forgotPassword", "Forgot password?")}
+                </Text>
               </TouchableOpacity>
             ) : null}
 

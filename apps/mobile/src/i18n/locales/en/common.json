@@ -196,7 +196,8 @@
     "permission": {
       "title": "Permission",
       "camera": "Allow camera access to take a photo."
-    }
+    },
+    "backShort": "BACK"
   },
   "shared": {
     "common": {
@@ -309,7 +310,10 @@
       "tipStateCountry": "Tip: add State + Country to avoid issues.",
       "titleLogin": "Login",
       "titleSignup": "Sign up",
-      "verifyEmailThenLogin": "Verify your email, then log in."
+      "verifyEmailThenLogin": "Verify your email, then log in.",
+      "showPassword": "Show",
+      "hidePassword": "Hide",
+      "forgotPassword": "Forgot password?"
     }
   },
   "driver": {
@@ -332,13 +336,30 @@
     },
     "tax": {
       "title": "Tax information",
-      "sections": { "overview": "Overview", "important": "Important" },
-      "badges": { "soon": "Soon" },
+      "sections": {
+        "overview": "Overview",
+        "important": "Important"
+      },
+      "badges": {
+        "soon": "Soon"
+      },
       "overview": {
-        "status": { "label": "Status", "value": "Not required now" },
-        "formType": { "label": "Form type", "value": "W-9 / 1099 (US)" },
-        "country": { "label": "Country", "value": "United States" },
-        "withholding": { "label": "Withholding", "value": "No taxes withheld" }
+        "status": {
+          "label": "Status",
+          "value": "Not required now"
+        },
+        "formType": {
+          "label": "Form type",
+          "value": "W-9 / 1099 (US)"
+        },
+        "country": {
+          "label": "Country",
+          "value": "United States"
+        },
+        "withholding": {
+          "label": "Withholding",
+          "value": "No taxes withheld"
+        }
       },
       "important": {
         "title": "We do not withhold taxes",
@@ -698,20 +719,28 @@
       "tip": "Tip",
       "driver_label": "Driver",
       "details": {
-        "auth": { "title": "Login" },
+        "auth": {
+          "title": "Login"
+        },
         "breakdown": {
           "netPrice": "Net price",
           "tip": "Tip",
           "title": "Breakdown",
           "total": "Total earnings"
         },
-        "calc": { "title": "Calculation" },
-        "completed": { "title": "Completed trips" },
+        "calc": {
+          "title": "Calculation"
+        },
+        "completed": {
+          "title": "Completed trips"
+        },
         "driverId": "Driver",
         "earnings": "Earnings",
         "loadError": "Unable to load details.",
         "noTripToShow": "No trip available to show details.",
-        "range": { "today": "Today" },
+        "range": {
+          "today": "Today"
+        },
         "stats": {
           "driving": "Driving",
           "online": "Online",
@@ -720,7 +749,9 @@
           "trips": "Trips"
         },
         "title": "Details",
-        "tripAlert": { "title": "Trip" },
+        "tripAlert": {
+          "title": "Trip"
+        },
         "tripsLabel": "Trips",
         "week": {
           "fri": "Fri",
@@ -733,13 +764,17 @@
         }
       },
       "history": {
-        "auth": { "title": "Login" },
+        "auth": {
+          "title": "Login"
+        },
         "filters": {
           "month": "Month",
           "today": "Today",
           "week": "Week"
         },
-        "list": { "title": "Delivered trips" },
+        "list": {
+          "title": "Delivered trips"
+        },
         "loadError": "Unable to load history.",
         "range": {
           "month": "This month",
@@ -978,8 +1013,12 @@
         "refreshing": "Refreshing..."
       },
       "alert": {
-        "boostSelected": { "title": "Boost selected ✅" },
-        "help": { "title": "Help" }
+        "boostSelected": {
+          "title": "Boost selected ✅"
+        },
+        "help": {
+          "title": "Help"
+        }
       },
       "badge": {
         "bonusDollar": "Bonus $",
@@ -1104,8 +1143,12 @@
     "referrals": {
       "deliveriesLabel": "🍔 Deliveries",
       "footer": "MMD Referral • Driver",
-      "header": { "title": "Refer friends" },
-      "headline": { "noProgram": "Invite your friends" },
+      "header": {
+        "title": "Refer friends"
+      },
+      "headline": {
+        "noProgram": "Invite your friends"
+      },
       "inviteNow": "Invite",
       "modal": {
         "allRewardsTitle": "All rewards",
@@ -1156,8 +1199,12 @@
         "min": "Minimum cash out: {{min}}.",
         "instant": "Instant Cash Out unavailable. Add an Instant-eligible bank or debit card, or wait for Sunday bank payout."
       },
-      "debug": { "driver": "Driver" },
-      "header": { "title": "Wallet" },
+      "debug": {
+        "driver": "Driver"
+      },
+      "header": {
+        "title": "Wallet"
+      },
       "loadError": "Unable to load wallet.",
       "pending": {
         "title": "Pending",
@@ -1294,6 +1341,55 @@
     },
     "gate": {
       "loading": "Loading…"
+    },
+    "signOut": {
+      "title": "Log out",
+      "body": "Sign out of this device? Your restaurant account and data stay intact.",
+      "confirm": "Log out",
+      "error": "Unable to sign out right now."
+    },
+    "home": {
+      "status": {
+        "title": "Restaurant status",
+        "subtitle": "Choose how you receive orders.",
+        "online": "ONLINE",
+        "onlineShort": "ONLINE",
+        "offlineShort": "OFFLINE",
+        "busyShort": "BUSY",
+        "setup": "SETUP",
+        "offline": "OFFLINE"
+      },
+      "nav": {
+        "home": "Home",
+        "dashboard": "Dashboard",
+        "orders": "Orders",
+        "menu": "Menu",
+        "drivers": "Drivers",
+        "stats": "Statistics",
+        "payouts": "Payouts",
+        "finance": "Finances",
+        "tax": "Taxes",
+        "dash": "Day overview",
+        "heatmap": "Heatmap",
+        "ai": "MMD AI",
+        "settings": "Settings",
+        "security": "Security",
+        "language": "Language"
+      },
+      "map": {
+        "offlineTitle": "Restaurant Offline",
+        "offlineHint": "Go online to show drivers and heat."
+      },
+      "filter": {
+        "all": "All statuses",
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "prepared": "Preparing",
+        "ready": "Ready"
+      },
+      "account": {
+        "setup": "Restaurant profile"
+      }
     }
   }
 }
