@@ -152,6 +152,11 @@
       "bundleIdentifier": "com.maladho2025.mmddelivery",
       "icon": "./assets/ios-marketing-icon.png",
       "supportsTablet": true,
+      "entitlements": {
+        "com.apple.developer.in-app-payments": [
+          "merchant.com.maladho2025.mmddelivery"
+        ]
+      },
       "associatedDomains": [
         "applinks:www.mmddelivery.com"
       ],

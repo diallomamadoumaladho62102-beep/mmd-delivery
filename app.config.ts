@@ -254,6 +254,12 @@ export default ({ config }) => {
           existingIos.buildNumber ||
           "72",
       ),
+      // Explicit Apple Pay entitlement so EAS/Xcode profiles must include the Merchant ID.
+      // The Stripe plugin also sets merchantIdentifier; this makes the IPA entitlement non-optional.
+      entitlements: {
+        ...(existingIos.entitlements ?? {}),
+        "com.apple.developer.in-app-payments": [STRIPE_MERCHANT_ID],
+      },
       // Only www: apex mmddelivery.com 307s to www, and Apple forbids AASA host redirects.
       associatedDomains: ["applinks:www.mmddelivery.com"],
       infoPlist: {
