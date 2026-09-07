@@ -461,13 +461,49 @@ export default function AdminCallsPage() {
         }
       });
 
-    const poll = window.setInterval(() => void loadPage(), 4000);
+    const poll = (() => {
+      let id: number | null = null;
+      const clear = () => {
+        if (id != null) {
+          window.clearInterval(id);
+          id = null;
+        }
+      };
+      const start = () => {
+        clear();
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+          return;
+        }
+        // Realtime is primary; keep a slow heartbeat, faster only when degraded.
+        const ms = realtimeDegraded ? 10_000 : 30_000;
+        id = window.setInterval(() => {
+          if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+            return;
+          }
+          void loadPage();
+        }, ms);
+      };
+      start();
+      const onVisibility = () => {
+        if (document.visibilityState === "visible") {
+          void loadPage();
+          start();
+        } else {
+          clear();
+        }
+      };
+      document.addEventListener("visibilitychange", onVisibility);
+      return () => {
+        clear();
+        document.removeEventListener("visibilitychange", onVisibility);
+      };
+    })();
 
     return () => {
-      window.clearInterval(poll);
+      poll();
       void supabase.removeChannel(channel);
     };
-  }, [loadPage]);
+  }, [loadPage, realtimeDegraded]);
 
   const activeCount = useMemo(() => calls.filter(isActive).length, [calls]);
   const endedCount = useMemo(() => calls.filter(isEnded).length, [calls]);

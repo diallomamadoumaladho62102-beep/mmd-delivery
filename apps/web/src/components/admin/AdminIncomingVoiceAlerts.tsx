@@ -97,8 +97,42 @@ export default function AdminIncomingVoiceAlerts({
   useEffect(() => {
     if (!canListen) return;
     void loadCalls();
-    const poll = window.setInterval(() => void loadCalls(), 4000);
+
+    // Realtime is primary; poll only as fallback (slow when healthy, faster when degraded).
+    // Always skip while the tab is hidden to avoid burning Vercel Function Invocations.
+    let poll: number | null = null;
+    const clearPoll = () => {
+      if (poll != null) {
+        window.clearInterval(poll);
+        poll = null;
+      }
+    };
+    const startPoll = () => {
+      clearPoll();
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      const ms = realtimeDegraded ? 8_000 : 30_000;
+      poll = window.setInterval(() => {
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+          return;
+        }
+        void loadCalls();
+      }, ms);
+    };
+
+    startPoll();
     const clock = window.setInterval(() => setNowMs(Date.now()), 1000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadCalls();
+        startPoll();
+      } else {
+        clearPoll();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     const channel = supabase
       .channel("admin-incoming-voice")
       .on(
@@ -118,12 +152,13 @@ export default function AdminIncomingVoiceAlerts({
         }
       });
     return () => {
-      window.clearInterval(poll);
+      clearPoll();
       window.clearInterval(clock);
+      document.removeEventListener("visibilitychange", onVisibility);
       void supabase.removeChannel(channel);
       ringing.current.stopAll();
     };
-  }, [canListen, loadCalls]);
+  }, [canListen, loadCalls, realtimeDegraded]);
 
   const visibleCalls = useMemo(
     () =>

@@ -225,10 +225,39 @@ export default function StaffCommsPanel({
     };
 
     void poll();
-    const timer = window.setInterval(() => void poll(), 4000);
+    let timer: number | null = null;
+    const clear = () => {
+      if (timer != null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    };
+    const start = () => {
+      clear();
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      timer = window.setInterval(() => {
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+          return;
+        }
+        void poll();
+      }, 15_000);
+    };
+    start();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void poll();
+        start();
+      } else {
+        clear();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       alive = false;
-      window.clearInterval(timer);
+      clear();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [activeCallId, currentUserId, peerAdminId]);
 

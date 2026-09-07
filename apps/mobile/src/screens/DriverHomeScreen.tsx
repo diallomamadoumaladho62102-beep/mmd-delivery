@@ -2842,15 +2842,22 @@ export function DriverHomeScreen() {
     }, [refreshActiveTaxiRide, refreshAreaIntelligence, refreshNextReward]),
   );
 
+  // Keep latest refresh fns in refs so the interval does NOT reset on every GPS tick
+  // (refreshAreaIntelligence depends on lat/lng and previously restarted every location update).
+  const refreshAreaIntelligenceRef = useRef(refreshAreaIntelligence);
+  const refreshActiveTaxiRideRef = useRef(refreshActiveTaxiRide);
+  refreshAreaIntelligenceRef.current = refreshAreaIntelligence;
+  refreshActiveTaxiRideRef.current = refreshActiveTaxiRide;
+
   useEffect(() => {
     if (!hasLocation) return;
-    void refreshAreaIntelligence();
+    void refreshAreaIntelligenceRef.current();
     const id = setInterval(() => {
-      void refreshAreaIntelligence();
-      void refreshActiveTaxiRide();
-    }, 45_000);
+      void refreshAreaIntelligenceRef.current();
+      void refreshActiveTaxiRideRef.current();
+    }, 60_000);
     return () => clearInterval(id);
-  }, [hasLocation, isOnline, refreshActiveTaxiRide, refreshAreaIntelligence]);
+  }, [hasLocation, isOnline]);
 
   const centerOnDriver = useCallback(() => {
     hapticLight();

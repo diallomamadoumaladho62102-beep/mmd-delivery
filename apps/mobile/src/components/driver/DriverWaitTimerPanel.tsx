@@ -122,7 +122,7 @@ export function DriverWaitTimerPanel({
 
   useEffect(() => {
     void refresh();
-    const timer = setInterval(() => void refresh({ silent: true }), 5000);
+    const timer = setInterval(() => void refresh({ silent: true }), 15_000);
     return () => clearInterval(timer);
   }, [refresh]);
 

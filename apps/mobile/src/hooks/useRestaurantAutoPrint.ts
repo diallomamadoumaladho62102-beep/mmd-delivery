@@ -55,9 +55,10 @@ export function useRestaurantAutoPrint(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return undefined;
     void processQueue();
+    // 5s was burning Vercel invocations when restaurant screens stay mounted.
     const timer = setInterval(() => {
       void processQueue();
-    }, 5000);
+    }, 20_000);
     return () => clearInterval(timer);
   }, [enabled, processQueue]);
 

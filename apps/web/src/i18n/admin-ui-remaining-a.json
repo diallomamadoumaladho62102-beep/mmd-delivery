@@ -1,0 +1,307 @@
+{
+  "filesScanned": 134,
+  "filesWithBareCatalogKeys": 15,
+  "totalBareCatalogKeyHits": 30,
+  "top": [
+    {
+      "file": "app/admin/orders/[orderId]/chat/page.tsx",
+      "count": 6,
+      "sample": [
+        "Client",
+        "Driver",
+        "Restaurant",
+        "Order",
+        "Rafraîchir",
+        "Admin"
+      ],
+      "contexts": [
+        {
+          "text": "Client",
+          "line": 46,
+          "source": "return t(\"admin.chat.roles.client\", \"Client\");"
+        },
+        {
+          "text": "Driver",
+          "line": 48,
+          "source": "return t(\"admin.chat.roles.driver\", \"Driver\");"
+        },
+        {
+          "text": "Restaurant",
+          "line": 50,
+          "source": "return t(\"admin.chat.roles.restaurant\", \"Restaurant\");"
+        },
+        {
+          "text": "Order",
+          "line": 253,
+          "source": "{t(\"admin.chat.orderLabel\", \"Order\")} #{orderId.slice(0, 8)}"
+        },
+        {
+          "text": "Rafraîchir",
+          "line": 265,
+          "source": ": t(\"admin.chat.refresh\", \"Rafraîchir\")}"
+        },
+        {
+          "text": "Admin",
+          "line": 52,
+          "source": "return t(\"admin.chat.roles.admin\", \"Admin\");"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/county-management/page.tsx",
+      "count": 3,
+      "sample": [
+        "US",
+        "OFF",
+        "ON"
+      ],
+      "contexts": [
+        {
+          "text": "US",
+          "line": 119,
+          "source": "const [countryFilter, setCountryFilter] = useState(\"US\");"
+        },
+        {
+          "text": "OFF",
+          "line": 425,
+          "source": "County Status · {countyOn && stateOn ? \"ON\" : \"OFF\"}"
+        },
+        {
+          "text": "ON",
+          "line": 425,
+          "source": "County Status · {countyOn && stateOn ? \"ON\" : \"OFF\"}"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/payment-methods/page.tsx",
+      "count": 3,
+      "sample": [
+        "Available",
+        "Unavailable",
+        "GN"
+      ],
+      "contexts": [
+        {
+          "text": "Available",
+          "line": 49,
+          "source": "{t(\"Available\")}"
+        },
+        {
+          "text": "Unavailable",
+          "line": 55,
+          "source": "{t(\"Unavailable\")}"
+        },
+        {
+          "text": "GN",
+          "line": 321,
+          "source": "{row.country_code === \"GN\" && row.provider === \"stripe\" ? ("
+        }
+      ]
+    },
+    {
+      "file": "app/admin/mmd-ai/launch/page.tsx",
+      "count": 2,
+      "sample": [
+        "US",
+        "GN"
+      ],
+      "contexts": [
+        {
+          "text": "US",
+          "line": 56,
+          "source": "const [regionCountryFilter, setRegionCountryFilter] = useState(\"US\");"
+        },
+        {
+          "text": "GN",
+          "line": 247,
+          "source": "{[\"US\", \"GN\", \"SN\", \"CI\", \"ML\"].map((code) => ("
+        }
+      ]
+    },
+    {
+      "file": "app/admin/mmd-ai/page.tsx",
+      "count": 2,
+      "sample": [
+        "OFF",
+        "ON"
+      ],
+      "contexts": [
+        {
+          "text": "OFF",
+          "line": 146,
+          "source": "value={control?.globalEnabled ? \"ON\" : \"OFF\"}"
+        },
+        {
+          "text": "ON",
+          "line": 146,
+          "source": "value={control?.globalEnabled ? \"ON\" : \"OFF\"}"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/payout-methods/page.tsx",
+      "count": 2,
+      "sample": [
+        "Available",
+        "Unavailable"
+      ],
+      "contexts": [
+        {
+          "text": "Available",
+          "line": 72,
+          "source": "{t(\"Available\")}"
+        },
+        {
+          "text": "Unavailable",
+          "line": 78,
+          "source": "{t(\"Unavailable\")}"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/platform-launch/page.tsx",
+      "count": 2,
+      "sample": [
+        "US",
+        "GN"
+      ],
+      "contexts": [
+        {
+          "text": "US",
+          "line": 123,
+          "source": "const [regionCountryFilter, setRegionCountryFilter] = useState(\"US\");"
+        },
+        {
+          "text": "GN",
+          "line": 393,
+          "source": "<option value=\"GN\">{t(\"GN\")}</option>"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/staff/[id]/page.tsx",
+      "count": 2,
+      "sample": [
+        "Title",
+        "Department"
+      ],
+      "contexts": [
+        {
+          "text": "Title",
+          "line": 191,
+          "source": "<Info label={t(\"Title\")} value={row.staff_title} />"
+        },
+        {
+          "text": "Department",
+          "line": 192,
+          "source": "<Info label={t(\"Department\")} value={row.staff_department} />"
+        }
+      ]
+    },
+    {
+      "file": "src/components/admin/AdminMmdAiSummary.tsx",
+      "count": 2,
+      "sample": [
+        "OFF",
+        "ON"
+      ],
+      "contexts": [
+        {
+          "text": "OFF",
+          "line": 114,
+          "source": "<SummaryCard label={t(\"Global Enabled\")} value={control.globalEnabled ? \"ON\" : \"OFF\"} />"
+        },
+        {
+          "text": "ON",
+          "line": 114,
+          "source": "<SummaryCard label={t(\"Global Enabled\")} value={control.globalEnabled ? \"ON\" : \"OFF\"} />"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/delivery-requests/page.tsx",
+      "count": 1,
+      "sample": [
+        "ID"
+      ],
+      "contexts": [
+        {
+          "text": "ID",
+          "line": 53,
+          "source": "label: \"ID\","
+        }
+      ]
+    },
+    {
+      "file": "app/admin/pricing/AdminPricingView.tsx",
+      "count": 1,
+      "sample": [
+        "Delivery split / Partage livraison"
+      ],
+      "contexts": [
+        {
+          "text": "Delivery split / Partage livraison",
+          "line": 597,
+          "source": "title={t(\"Delivery split / Partage livraison\")}"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/road-safety/page.tsx",
+      "count": 1,
+      "sample": [
+        "US"
+      ],
+      "contexts": [
+        {
+          "text": "US",
+          "line": 49,
+          "source": "const [eventCountry, setEventCountry] = useState(\"US\");"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/site/page.tsx",
+      "count": 1,
+      "sample": [
+        "FAQ"
+      ],
+      "contexts": [
+        {
+          "text": "FAQ",
+          "line": 21,
+          "source": "{ href: \"/admin/site/faq\", title: \"FAQ\", desc: t(\"FAQ items\") },"
+        }
+      ]
+    },
+    {
+      "file": "app/admin/taxi-pricing/page.tsx",
+      "count": 1,
+      "sample": [
+        "US"
+      ],
+      "contexts": [
+        {
+          "text": "US",
+          "line": 68,
+          "source": "const [countryFilter, setCountryFilter] = useState(\"US\");"
+        }
+      ]
+    },
+    {
+      "file": "src/components/admin/AdminClientsManager.tsx",
+      "count": 1,
+      "sample": [
+        "Client"
+      ],
+      "contexts": [
+        {
+          "text": "Client",
+          "line": 414,
+          "source": "<th className=\"px-4 py-3\">{t(\"Client\")}</th>"
+        }
+      ]
+    }
+  ]
+}

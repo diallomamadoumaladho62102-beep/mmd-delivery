@@ -149,11 +149,41 @@ export default function AdminOpsLiveMap({
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(
-      () => void load(),
-      Math.max(3, refreshSeconds) * 1000
-    );
-    return () => window.clearInterval(timer);
+    let timer: number | null = null;
+    const clear = () => {
+      if (timer != null) {
+        window.clearInterval(timer);
+        timer = null;
+      }
+    };
+    const start = () => {
+      clear();
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      // Floor at 10s to avoid burning Vercel invocations on idle live-map tabs.
+      const ms = Math.max(10, refreshSeconds) * 1000;
+      timer = window.setInterval(() => {
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+          return;
+        }
+        void load();
+      }, ms);
+    };
+    start();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void load();
+        start();
+      } else {
+        clear();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      clear();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [load, refreshSeconds]);
 
   // Smooth animation for moving driver/client/order points between polls

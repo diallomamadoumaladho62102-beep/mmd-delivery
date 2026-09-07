@@ -1,0 +1,163 @@
+{
+  "summary": {
+    "A": 0,
+    "C": 15,
+    "D": 0,
+    "A_sample": [],
+    "C_sample": [
+      {
+        "file": "app/admin/county-management/page.tsx",
+        "text": "US",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/county-management/page.tsx",
+        "text": "OFF",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/county-management/page.tsx",
+        "text": "ON",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/delivery-requests/page.tsx",
+        "text": "ID",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/mmd-ai/launch/page.tsx",
+        "text": "US",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/mmd-ai/launch/page.tsx",
+        "text": "GN",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/mmd-ai/page.tsx",
+        "text": "OFF",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/mmd-ai/page.tsx",
+        "text": "ON",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/payment-methods/page.tsx",
+        "text": "GN",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/platform-launch/page.tsx",
+        "text": "US",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/platform-launch/page.tsx",
+        "text": "GN",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/road-safety/page.tsx",
+        "text": "US",
+        "class": "C"
+      },
+      {
+        "file": "app/admin/taxi-pricing/page.tsx",
+        "text": "US",
+        "class": "C"
+      },
+      {
+        "file": "src/components/admin/AdminMmdAiSummary.tsx",
+        "text": "OFF",
+        "class": "C"
+      },
+      {
+        "file": "src/components/admin/AdminMmdAiSummary.tsx",
+        "text": "ON",
+        "class": "C"
+      }
+    ]
+  },
+  "A": [],
+  "C": [
+    {
+      "file": "app/admin/county-management/page.tsx",
+      "text": "US",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/county-management/page.tsx",
+      "text": "OFF",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/county-management/page.tsx",
+      "text": "ON",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/delivery-requests/page.tsx",
+      "text": "ID",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/mmd-ai/launch/page.tsx",
+      "text": "US",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/mmd-ai/launch/page.tsx",
+      "text": "GN",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/mmd-ai/page.tsx",
+      "text": "OFF",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/mmd-ai/page.tsx",
+      "text": "ON",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/payment-methods/page.tsx",
+      "text": "GN",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/platform-launch/page.tsx",
+      "text": "US",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/platform-launch/page.tsx",
+      "text": "GN",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/road-safety/page.tsx",
+      "text": "US",
+      "class": "C"
+    },
+    {
+      "file": "app/admin/taxi-pricing/page.tsx",
+      "text": "US",
+      "class": "C"
+    },
+    {
+      "file": "src/components/admin/AdminMmdAiSummary.tsx",
+      "text": "OFF",
+      "class": "C"
+    },
+    {
+      "file": "src/components/admin/AdminMmdAiSummary.tsx",
+      "text": "ON",
+      "class": "C"
+    }
+  ]
+}

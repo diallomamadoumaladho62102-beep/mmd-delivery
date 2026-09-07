@@ -1,0 +1,23 @@
+{
+  "changed": 18,
+  "touched": [
+    "app/admin/calls/page.tsx",
+    "app/admin/chats/page.tsx",
+    "app/admin/delivery-requests/page.tsx",
+    "app/admin/orders/[orderId]/page.tsx",
+    "app/admin/payouts/page.tsx",
+    "app/admin/payouts/reconciliation/page.tsx",
+    "app/admin/payouts/[orderId]/page.tsx",
+    "app/admin/pricing/AdminPricingView.tsx",
+    "app/admin/restaurants/page.tsx",
+    "app/admin/site/page.tsx",
+    "app/admin/stripe/page.tsx",
+    "app/admin/tasks/page.tsx",
+    "src/components/admin/AdminClientsManager.tsx",
+    "src/components/admin/AdminEnterpriseDashboard.tsx",
+    "src/components/admin/DriverIdentityControlCenter.tsx",
+    "src/components/admin/DriverIdentityInvestigationPanel.tsx",
+    "src/components/admin/drivers/DriverDocBadges.tsx",
+    "src/components/admin/foodOrders/FoodOrdersToolbar.tsx"
+  ]
+}

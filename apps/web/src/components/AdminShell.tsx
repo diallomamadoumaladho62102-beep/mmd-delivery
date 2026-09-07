@@ -90,10 +90,20 @@ export default function AdminShell({
       }
     };
     void beat();
-    const timer = window.setInterval(() => void beat(), 60_000);
+    const timer = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      void beat();
+    }, 120_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void beat();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       alive = false;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 
