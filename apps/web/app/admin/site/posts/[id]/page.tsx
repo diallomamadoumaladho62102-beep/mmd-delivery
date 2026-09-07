@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
@@ -36,6 +38,8 @@ function toLocalInput(iso: string | null | undefined): string {
 }
 
 function PostEditorInner() {
+  const { t } = useAdminT();
+
   const params = useParams();
   const id = String(params?.id ?? "");
   const [canEdit, setCanEdit] = useState(false);
@@ -102,7 +106,7 @@ function PostEditorInner() {
   };
 
   const onDelete = async () => {
-    if (!canEdit || !window.confirm("Delete this post?")) return;
+    if (!canEdit || !window.confirm(t("Delete this post?"))) return;
     const http = await adminFetch(`/api/admin/site/posts/${id}`, { method: "DELETE" });
     const res = (await http.json().catch(() => ({}))) as Record<string, unknown>;
     if (!http.ok || res.ok === false) {
@@ -113,7 +117,7 @@ function PostEditorInner() {
   };
 
   if (!post) {
-    return <div className="p-6 text-sm text-slate-600">{error ?? "Loading…"}</div>;
+    return <div className="p-6 text-sm text-slate-600">{error ?? t("Loading…")}</div>;
   }
 
   return (
@@ -122,7 +126,7 @@ function PostEditorInner() {
         <Link href="/admin/site/posts" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Posts
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Edit post</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Edit post")}</h1>
       </div>
 
       {error ? (
@@ -139,7 +143,7 @@ function PostEditorInner() {
       <form onSubmit={save} className={`${CARD} space-y-4`}>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block">
-            <span className={LABEL}>Title</span>
+            <span className={LABEL}>{t("Title")}</span>
             <input
               className={INPUT}
               value={post.title}
@@ -149,7 +153,7 @@ function PostEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Slug</span>
+            <span className={LABEL}>{t("Slug")}</span>
             <input
               className={INPUT}
               value={post.slug}
@@ -159,7 +163,7 @@ function PostEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Type</span>
+            <span className={LABEL}>{t("Type")}</span>
             <select
               className={INPUT}
               value={post.post_type}
@@ -174,7 +178,7 @@ function PostEditorInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Status</span>
+            <span className={LABEL}>{t("Status")}</span>
             <select
               className={INPUT}
               value={post.status}
@@ -188,7 +192,7 @@ function PostEditorInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Author</span>
+            <span className={LABEL}>{t("Author")}</span>
             <input
               className={INPUT}
               value={post.author_name ?? ""}
@@ -197,7 +201,7 @@ function PostEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Scheduled for</span>
+            <span className={LABEL}>{t("Scheduled for")}</span>
             <input
               className={INPUT}
               type="datetime-local"
@@ -214,7 +218,7 @@ function PostEditorInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>Excerpt</span>
+            <span className={LABEL}>{t("Excerpt")}</span>
             <textarea
               className={`${INPUT} min-h-[80px]`}
               value={post.excerpt ?? ""}
@@ -223,7 +227,7 @@ function PostEditorInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>Body (Markdown)</span>
+            <span className={LABEL}>{t("Body (Markdown)")}</span>
             <textarea
               className={`${INPUT} min-h-[260px] font-mono text-xs`}
               value={post.body_md ?? ""}
@@ -232,7 +236,7 @@ function PostEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Categories (comma)</span>
+            <span className={LABEL}>{t("Categories (comma)")}</span>
             <input
               className={INPUT}
               value={(post.categories ?? []).join(", ")}
@@ -249,7 +253,7 @@ function PostEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Tags (comma)</span>
+            <span className={LABEL}>{t("Tags (comma)")}</span>
             <input
               className={INPUT}
               value={(post.tags ?? []).join(", ")}
@@ -266,7 +270,7 @@ function PostEditorInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>SEO JSON</span>
+            <span className={LABEL}>{t("SEO JSON")}</span>
             <textarea
               className={`${INPUT} min-h-[100px] font-mono text-xs`}
               value={seoText}
@@ -289,7 +293,7 @@ function PostEditorInner() {
             onClick={() => void onDelete()}
             className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600"
           >
-            Delete
+            {t("Delete")}
           </button>
         </div>
       </form>
@@ -298,6 +302,8 @@ function PostEditorInner() {
 }
 
 export default function SitePostEditorPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <PostEditorInner />

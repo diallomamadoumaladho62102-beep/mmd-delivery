@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiRides } from "@/lib/adminAccess";
@@ -21,6 +23,8 @@ type FavoriteStats = {
 };
 
 export default function AdminTaxiLoyaltyPage() {
+  const { t } = useAdminT();
+
   const [accounts, setAccounts] = useState<LoyaltyAccount[]>([]);
   const [stats, setStats] = useState<FavoriteStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,13 +96,13 @@ export default function AdminTaxiLoyaltyPage() {
   return (
     <AdminGate requiredPermission="taxi_rides.read">
       <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
-        <h1>Taxi Loyalty & Favorites</h1>
+        <h1>{t("Taxi Loyalty & Favorites")}</h1>
         {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
-        {loading ? <p>Chargement…</p> : null}
+        {loading ? <p>{t("Chargement…")}</p> : null}
 
         {stats ? (
           <section style={{ marginBottom: 24 }}>
-            <h2>Favorite driver stats</h2>
+            <h2>{t("Favorite driver stats")}</h2>
             <ul>
               <li>Total favorites: {stats.total_favorites}</li>
               <li>Unique drivers favorited: {stats.unique_drivers_favorited}</li>
@@ -106,7 +110,7 @@ export default function AdminTaxiLoyaltyPage() {
             </ul>
             {stats.top_drivers.length > 0 ? (
               <>
-                <h3>Top drivers</h3>
+                <h3>{t("Top drivers")}</h3>
                 <ul>
                   {stats.top_drivers.map((row) => (
                     <li key={row.driver_user_id}>
@@ -121,21 +125,21 @@ export default function AdminTaxiLoyaltyPage() {
 
         {canEdit ? (
           <form onSubmit={adjust} style={{ display: "grid", gap: 8, marginBottom: 24 }}>
-            <h2>Manual loyalty adjustment</h2>
+            <h2>{t("Manual loyalty adjustment")}</h2>
             <input
-              placeholder="User ID"
+              placeholder={t("User ID")}
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               required
             />
             <input
-              placeholder="Delta points (+/-)"
+              placeholder={t("Delta points (+/-)")}
               value={delta}
               onChange={(e) => setDelta(e.target.value)}
               required
             />
             <input
-              placeholder="Description"
+              placeholder={t("Description")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -145,14 +149,14 @@ export default function AdminTaxiLoyaltyPage() {
           </form>
         ) : null}
 
-        <h2>Loyalty accounts</h2>
+        <h2>{t("Loyalty accounts")}</h2>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th align="left">User</th>
-              <th align="left">Balance</th>
-              <th align="left">Lifetime</th>
-              <th align="left">Tier</th>
+              <th align="left">{t("User")}</th>
+              <th align="left">{t("Balance")}</th>
+              <th align="left">{t("Lifetime")}</th>
+              <th align="left">{t("Tier")}</th>
             </tr>
           </thead>
           <tbody>

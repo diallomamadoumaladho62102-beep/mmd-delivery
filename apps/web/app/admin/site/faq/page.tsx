@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -29,6 +31,8 @@ const EMPTY = {
 };
 
 function FaqInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [items, setItems] = useState<FaqItem[]>([]);
   const [form, setForm] = useState(EMPTY);
@@ -87,7 +91,7 @@ function FaqInner() {
   };
 
   const onDelete = async (id: string) => {
-    if (!canEdit || !window.confirm("Delete FAQ item?")) return;
+    if (!canEdit || !window.confirm(t("Delete FAQ item?"))) return;
     const http = await adminFetch(`/api/admin/site/faq?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
@@ -106,7 +110,7 @@ function FaqInner() {
         <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Corporate Website
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">FAQ</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("FAQ")}</h1>
       </div>
 
       {error ? (
@@ -123,13 +127,13 @@ function FaqInner() {
           <h2 className="font-semibold text-slate-900">{form.id ? "Edit item" : "New item"}</h2>
           {form.id ? (
             <button type="button" className="text-sm text-slate-500" onClick={() => setForm(EMPTY)}>
-              New
+              {t("New")}
             </button>
           ) : null}
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block">
-            <span className={LABEL}>Category</span>
+            <span className={LABEL}>{t("Category")}</span>
             <input
               className={INPUT}
               value={form.category}
@@ -138,7 +142,7 @@ function FaqInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Sort order</span>
+            <span className={LABEL}>{t("Sort order")}</span>
             <input
               className={INPUT}
               type="number"
@@ -148,7 +152,7 @@ function FaqInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>Question</span>
+            <span className={LABEL}>{t("Question")}</span>
             <input
               className={INPUT}
               value={form.question}
@@ -158,7 +162,7 @@ function FaqInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>Answer (Markdown)</span>
+            <span className={LABEL}>{t("Answer (Markdown)")}</span>
             <textarea
               className={`${INPUT} min-h-[120px]`}
               value={form.answer_md}
@@ -174,7 +178,7 @@ function FaqInner() {
               onChange={(e) => setForm({ ...form, visible: e.target.checked })}
               disabled={!canEdit}
             />
-            Visible
+            {t("Visible")}
           </label>
         </div>
         <button
@@ -182,7 +186,7 @@ function FaqInner() {
           disabled={!canEdit || saving}
           className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? t("Saving…") : t("Save")}
         </button>
       </form>
 
@@ -213,7 +217,7 @@ function FaqInner() {
                   })
                 }
               >
-                Edit
+                {t("Edit")}
               </button>
               <button
                 type="button"
@@ -221,7 +225,7 @@ function FaqInner() {
                 className="rounded-lg border border-red-200 px-3 py-1 text-sm font-semibold text-red-600"
                 onClick={() => void onDelete(item.id)}
               >
-                Delete
+                {t("Delete")}
               </button>
             </div>
           </div>
@@ -232,6 +236,8 @@ function FaqInner() {
 }
 
 export default function SiteFaqPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <FaqInner />

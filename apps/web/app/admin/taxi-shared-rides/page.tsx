@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -22,6 +24,8 @@ type SharedRow = {
 };
 
 export default function AdminTaxiSharedRidesPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<SharedRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,18 +55,18 @@ export default function AdminTaxiSharedRidesPage() {
   return (
     <AdminGate requiredPermission="taxi_shared_rides.read">
       <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
-        <h1>Taxi Shared Rides</h1>
-        {!canView ? <p>Read-only access required.</p> : null}
+        <h1>{t("Taxi Shared Rides")}</h1>
+        {!canView ? <p>{t("Read-only access required.")}</p> : null}
         {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
-        {loading ? <p>Loading…</p> : null}
+        {loading ? <p>{t("Loading…")}</p> : null}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th align="left">Status</th>
-              <th align="left">Passengers</th>
-              <th align="left">Discount</th>
-              <th align="left">Window</th>
-              <th align="left">Segments</th>
+              <th align="left">{t("Status")}</th>
+              <th align="left">{t("Passengers")}</th>
+              <th align="left">{t("Discount")}</th>
+              <th align="left">{t("Window")}</th>
+              <th align="left">{t("Segments")}</th>
             </tr>
           </thead>
           <tbody>

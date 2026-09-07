@@ -156,7 +156,7 @@ export default function ClientWalletScreen() {
               borderRadius: logoHero / 2,
             }}
             resizeMode="contain"
-            accessibilityLabel="MMD Delivery"
+            accessibilityLabel={t("brand.name", "MMD Delivery")}
           />
           <Text style={styles.brandTitle}>MMD DELIVERY</Text>
           <Text style={styles.tagline}>
@@ -181,7 +181,7 @@ export default function ClientWalletScreen() {
               borderRadius: logoHero / 2,
             }}
             resizeMode="contain"
-            accessibilityLabel="MMD Delivery"
+            accessibilityLabel={t("brand.name", "MMD Delivery")}
           />
           <Text style={styles.brandTitle}>MMD DELIVERY</Text>
           <Text style={styles.tagline}>
@@ -247,7 +247,7 @@ export default function ClientWalletScreen() {
             marginBottom: 8,
           }}
           resizeMode="contain"
-          accessibilityLabel="MMD Delivery"
+          accessibilityLabel={t("brand.name", "MMD Delivery")}
         />
 
         <View style={styles.summaryCard}>

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
@@ -26,6 +28,8 @@ export default function StaffVideoRoom({
   callId: string;
   onClose: () => void;
 }) {
+  const { t } = useAdminT();
+
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<
     "connecting" | "connected" | "reconnecting" | "disconnected"
@@ -517,7 +521,7 @@ export default function StaffVideoRoom({
       <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <div>
-            <p className="text-sm font-semibold text-slate-900">Live call</p>
+            <p className="text-sm font-semibold text-slate-900">{t("Live call")}</p>
             <p className="text-xs text-slate-500">
               Status: {status}
               {participants.length ? ` · ${participants.length} remote` : ""}
@@ -530,7 +534,7 @@ export default function StaffVideoRoom({
             onClick={() => void leave(false)}
             className="rounded-lg px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100"
           >
-            Close
+            {t("Close")}
           </button>
         </div>
 
@@ -565,9 +569,9 @@ export default function StaffVideoRoom({
             value={audioId}
             onChange={(e) => void switchAudioDevice(e.target.value)}
             className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
-            title="Microphone"
+            title={t("Microphone")}
           >
-            <option value="">Default mic</option>
+            <option value="">{t("Default mic")}</option>
             {audioDevices.map((d) => (
               <option key={d.deviceId} value={d.deviceId}>
                 {d.label}
@@ -578,9 +582,9 @@ export default function StaffVideoRoom({
             value={videoId}
             onChange={(e) => void switchVideoDevice(e.target.value)}
             className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
-            title="Camera"
+            title={t("Camera")}
           >
-            <option value="">Default camera</option>
+            <option value="">{t("Default camera")}</option>
             {videoDevices.map((d) => (
               <option key={d.deviceId} value={d.deviceId}>
                 {d.label}
@@ -613,14 +617,14 @@ export default function StaffVideoRoom({
             onClick={() => void leave(false)}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
           >
-            Leave
+            {t("Leave")}
           </button>
           <button
             type="button"
             onClick={() => void leave(true)}
             className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white"
           >
-            End call
+            {t("End call")}
           </button>
         </div>
 

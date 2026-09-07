@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import type { AdminDriverListItem, DriverActionStatus, DriverReviewStatus } from "@/lib/adminDriverDisplay";
 import DriverCardSkeleton from "./DriverCardSkeleton";
 import DriverOpsCard, { type DriverProfileDraft } from "./DriverOpsCard";
@@ -58,6 +60,8 @@ export default function DriversList({
   selectedIds?: Set<string>;
   onToggleSelect?: (userId: string) => void;
 }) {
+  const { t } = useAdminT();
+
   void selectedIds;
   void onToggleSelect;
 
@@ -74,8 +78,8 @@ export default function DriversList({
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-800">No drivers match</p>
-        <p className="mt-1 text-sm text-slate-500">Try clearing filters or refreshing.</p>
+        <p className="text-sm font-medium text-slate-800">{t("No drivers match")}</p>
+        <p className="mt-1 text-sm text-slate-500">{t("Try clearing filters or refreshing.")}</p>
       </div>
     );
   }
@@ -114,7 +118,7 @@ export default function DriversList({
             onClick={onLoadMore}
             className="inline-flex h-11 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium"
           >
-            Load more
+            {t("Load more")}
           </button>
         </div>
       ) : null}

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -17,6 +19,8 @@ type Subscriber = {
 };
 
 function NewsletterInner() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<Subscriber[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +46,7 @@ function NewsletterInner() {
         <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Corporate Website
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Newsletter subscribers</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Newsletter subscribers")}</h1>
         <p className="mt-1 text-sm text-slate-600">{rows.length} subscriber(s)</p>
       </div>
 
@@ -54,11 +58,11 @@ function NewsletterInner() {
         <table className="min-w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-              <th className="px-2 py-2">Email</th>
-              <th className="px-2 py-2">Status</th>
-              <th className="px-2 py-2">Source</th>
-              <th className="px-2 py-2">Locale</th>
-              <th className="px-2 py-2">Joined</th>
+              <th className="px-2 py-2">{t("Email")}</th>
+              <th className="px-2 py-2">{t("Status")}</th>
+              <th className="px-2 py-2">{t("Source")}</th>
+              <th className="px-2 py-2">{t("Locale")}</th>
+              <th className="px-2 py-2">{t("Joined")}</th>
             </tr>
           </thead>
           <tbody>
@@ -75,13 +79,15 @@ function NewsletterInner() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 ? <p className="p-2 text-sm text-slate-500">No subscribers.</p> : null}
+        {rows.length === 0 ? <p className="p-2 text-sm text-slate-500">{t("No subscribers.")}</p> : null}
       </div>
     </div>
   );
 }
 
 export default function SiteNewsletterPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <NewsletterInner />

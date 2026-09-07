@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -136,6 +138,8 @@ function safeJsonPreview(value: Record<string, unknown> | null | undefined) {
 }
 
 export default function AdminPayoutAuditLogsPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const copyTimeoutRef = useRef<number | null>(null);
 
@@ -225,7 +229,7 @@ export default function AdminPayoutAuditLogsPage() {
         const json = (await response.json()) as ApiResponse;
 
         if (!response.ok || !json.ok) {
-          throw new Error(json.error || "Failed to load audit logs");
+          throw new Error(json.error || t("Failed to load audit logs"));
         }
 
         setData(json);
@@ -287,14 +291,13 @@ export default function AdminPayoutAuditLogsPage() {
         <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-              MMD Delivery · Finance Ops · Audit
+              {t("MMD Delivery · Finance Ops · Audit")}
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-              Admin Payout Audit Logs
+              {t("Admin Payout Audit Logs")}
             </h1>
             <p className="mt-2 max-w-3xl text-sm text-slate-600">
-              Review retry requests, rejections, successes and failures across
-              restaurant and driver payout actions.
+              {t("Review retry requests, rejections, successes and failures across restaurant and driver payout actions.")}
             </p>
           </div>
 
@@ -303,13 +306,13 @@ export default function AdminPayoutAuditLogsPage() {
               href="/admin/payouts"
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
             >
-              Back to payouts
+              {t("Back to payouts")}
             </Link>
             <Link
               href="/admin/payouts/reconciliation"
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
             >
-              Reconciliation
+              {t("Reconciliation")}
             </Link>
             <button
               type="button"
@@ -317,64 +320,64 @@ export default function AdminPayoutAuditLogsPage() {
               disabled={refreshing}
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {refreshing ? "Refreshing..." : "Refresh"}
+              {refreshing ? t("Refreshing...") : t("Refresh")}
             </button>
           </div>
         </div>
 
         {loading || !authChecked ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <div className="text-sm text-slate-500">Loading audit logs...</div>
+            <div className="text-sm text-slate-500">{t("Loading audit logs...")}</div>
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
             <div className="text-sm font-medium text-red-800">
-              Failed to load audit logs
+              {t("Failed to load audit logs")}
             </div>
             <div className="mt-2 text-sm text-red-700">{error}</div>
           </div>
         ) : !isAdmin ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
             <div className="text-sm font-medium text-amber-800">
-              Access restricted
+              {t("Access restricted")}
             </div>
             <div className="mt-2 text-sm text-amber-700">
-              This page is reserved for administrators.
+              {t("This page is reserved for administrators.")}
             </div>
           </div>
         ) : (
           <>
             <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-              <StatCard title="Matching logs" value={summary?.total_matching ?? 0} />
-              <StatCard title="Requested" value={summary?.requested ?? 0} />
+              <StatCard title={t("Matching logs")} value={summary?.total_matching ?? 0} />
+              <StatCard title={t("Requested")} value={summary?.requested ?? 0} />
               <StatCard
-                title="Rejected"
+                title={t("Rejected")}
                 value={summary?.rejected ?? 0}
                 tone="warning"
               />
               <StatCard
-                title="Succeeded"
+                title={t("Succeeded")}
                 value={summary?.succeeded ?? 0}
                 tone="success"
               />
               <StatCard
-                title="Failed"
+                title={t("Failed")}
                 value={summary?.failed ?? 0}
                 tone="danger"
               />
             </section>
 
             <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              <StatCard title="Restaurant target" value={summary?.restaurant ?? 0} />
-              <StatCard title="Driver target" value={summary?.driver ?? 0} />
-              <StatCard title="Rows returned" value={summary?.total ?? 0} />
+              <StatCard title={t("Restaurant target")} value={summary?.restaurant ?? 0} />
+              <StatCard title={t("Driver target")} value={summary?.driver ?? 0} />
+              <StatCard title={t("Rows returned")} value={summary?.total ?? 0} />
             </section>
 
             <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_220px_220px_180px_auto]">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Search
+                    {t("Search")}
                   </label>
                   <input
                     type="text"
@@ -385,14 +388,14 @@ export default function AdminPayoutAuditLogsPage() {
                         applySearch();
                       }
                     }}
-                    placeholder="Search by order_id, target, status, actor, action or message..."
+                    placeholder={t("Search by order_id, target, status, actor, action or message...")}
                     className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   />
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Status
+                    {t("Status")}
                   </label>
                   <select
                     value={status}
@@ -401,17 +404,17 @@ export default function AdminPayoutAuditLogsPage() {
                     }
                     className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   >
-                    <option value="all">All</option>
-                    <option value="requested">Requested</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="succeeded">Succeeded</option>
-                    <option value="failed">Failed</option>
+                    <option value="all">{t("All")}</option>
+                    <option value="requested">{t("Requested")}</option>
+                    <option value="rejected">{t("Rejected")}</option>
+                    <option value="succeeded">{t("Succeeded")}</option>
+                    <option value="failed">{t("Failed")}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Target
+                    {t("Target")}
                   </label>
                   <select
                     value={target}
@@ -420,23 +423,23 @@ export default function AdminPayoutAuditLogsPage() {
                     }
                     className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   >
-                    <option value="all">All</option>
-                    <option value="restaurant">Restaurant</option>
-                    <option value="driver">Driver</option>
+                    <option value="all">{t("All")}</option>
+                    <option value="restaurant">{t("Restaurant")}</option>
+                    <option value="driver">{t("Driver")}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Sort
+                    {t("Sort")}
                   </label>
                   <select
                     value={sort}
                     onChange={(e) => setSort(e.target.value as SortDirection)}
                     className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   >
-                    <option value="desc">Newest first</option>
-                    <option value="asc">Oldest first</option>
+                    <option value="desc">{t("Newest first")}</option>
+                    <option value="asc">{t("Oldest first")}</option>
                   </select>
                 </div>
 
@@ -446,14 +449,14 @@ export default function AdminPayoutAuditLogsPage() {
                     onClick={applySearch}
                     className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
                   >
-                    Search
+                    {t("Search")}
                   </button>
                   <button
                     type="button"
                     onClick={resetFilters}
                     className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
                   >
-                    Reset
+                    {t("Reset")}
                   </button>
                 </div>
               </div>
@@ -470,10 +473,10 @@ export default function AdminPayoutAuditLogsPage() {
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-200 px-5 py-4">
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Audit log entries
+                  {t("Audit log entries")}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Trace sensitive payout retry activity across admin operations.
+                  {t("Trace sensitive payout retry activity across admin operations.")}
                 </p>
               </div>
 
@@ -481,15 +484,15 @@ export default function AdminPayoutAuditLogsPage() {
                 <table className="min-w-[1600px] divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50">
                     <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                      <th className="px-4 py-3 font-medium">Created</th>
-                      <th className="px-4 py-3 font-medium">Order</th>
-                      <th className="px-4 py-3 font-medium">Target</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Action</th>
-                      <th className="px-4 py-3 font-medium">Actor</th>
-                      <th className="px-4 py-3 font-medium">Message</th>
-                      <th className="px-4 py-3 font-medium">Metadata</th>
-                      <th className="px-4 py-3 font-medium">Navigation</th>
+                      <th className="px-4 py-3 font-medium">{t("Created")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Order")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Target")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Status")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Action")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Actor")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Message")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Metadata")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Navigation")}</th>
                     </tr>
                   </thead>
 
@@ -500,7 +503,7 @@ export default function AdminPayoutAuditLogsPage() {
                           colSpan={9}
                           className="px-4 py-12 text-center text-sm text-slate-500"
                         >
-                          No audit logs found for the current filters.
+                          {t("No audit logs found for the current filters.")}
                         </td>
                       </tr>
                     ) : (
@@ -575,13 +578,13 @@ export default function AdminPayoutAuditLogsPage() {
                                 href={`/admin/payouts/${item.order_id}`}
                                 className="text-xs font-medium text-blue-600 hover:text-blue-800"
                               >
-                                Open payout detail
+                                {t("Open payout detail")}
                               </Link>
                               <Link
                                 href={`/admin/orders/${item.order_id}`}
                                 className="text-xs font-medium text-slate-700 hover:text-slate-900"
                               >
-                                Open order
+                                {t("Open order")}
                               </Link>
                             </div>
                           </td>

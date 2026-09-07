@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -37,6 +39,8 @@ const EMPTY = {
 };
 
 function OverlaysInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [rows, setRows] = useState<Overlay[]>([]);
   const [form, setForm] = useState(EMPTY);
@@ -99,7 +103,7 @@ function OverlaysInner() {
   };
 
   const onDelete = async (id: string) => {
-    if (!canEdit || !window.confirm("Delete overlay?")) return;
+    if (!canEdit || !window.confirm(t("Delete overlay?"))) return;
     const http = await adminFetch(`/api/admin/site/overlays?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
@@ -118,7 +122,7 @@ function OverlaysInner() {
         <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Corporate Website
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Overlays</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Overlays")}</h1>
       </div>
 
       {error ? (
@@ -133,7 +137,7 @@ function OverlaysInner() {
       <form onSubmit={onSubmit} className={`${CARD} space-y-3`}>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block">
-            <span className={LABEL}>Kind</span>
+            <span className={LABEL}>{t("Kind")}</span>
             <select
               className={INPUT}
               value={form.kind}
@@ -147,7 +151,7 @@ function OverlaysInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Status</span>
+            <span className={LABEL}>{t("Status")}</span>
             <select
               className={INPUT}
               value={form.status}
@@ -161,7 +165,7 @@ function OverlaysInner() {
             </select>
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>Title</span>
+            <span className={LABEL}>{t("Title")}</span>
             <input
               className={INPUT}
               value={form.title}
@@ -170,7 +174,7 @@ function OverlaysInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>Body</span>
+            <span className={LABEL}>{t("Body")}</span>
             <textarea
               className={`${INPUT} min-h-[80px]`}
               value={form.body}
@@ -179,7 +183,7 @@ function OverlaysInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>CTA label</span>
+            <span className={LABEL}>{t("CTA label")}</span>
             <input
               className={INPUT}
               value={form.cta_label}
@@ -188,7 +192,7 @@ function OverlaysInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>CTA href</span>
+            <span className={LABEL}>{t("CTA href")}</span>
             <input
               className={INPUT}
               value={form.cta_href}
@@ -197,7 +201,7 @@ function OverlaysInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Placement</span>
+            <span className={LABEL}>{t("Placement")}</span>
             <input
               className={INPUT}
               value={form.placement}
@@ -206,7 +210,7 @@ function OverlaysInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Sort order</span>
+            <span className={LABEL}>{t("Sort order")}</span>
             <input
               className={INPUT}
               type="number"
@@ -256,7 +260,7 @@ function OverlaysInner() {
                   })
                 }
               >
-                Edit
+                {t("Edit")}
               </button>
               <button
                 type="button"
@@ -264,7 +268,7 @@ function OverlaysInner() {
                 className="rounded-lg border border-red-200 px-3 py-1 text-sm font-semibold text-red-600"
                 onClick={() => void onDelete(row.id)}
               >
-                Delete
+                {t("Delete")}
               </button>
             </div>
           </div>
@@ -275,6 +279,8 @@ function OverlaysInner() {
 }
 
 export default function SiteOverlaysPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <OverlaysInner />

@@ -40,6 +40,7 @@ import {
   MMD_NAVY,
   MMD_WHITE,
 } from "../../theme/mmdUi";
+import { rowDirection, textAlignStart } from "../../i18n/rtl";
 
 const DEFAULT_GN_CENTER = {
   latitude: 9.6412,
@@ -79,6 +80,7 @@ function FieldLabel({ children }: { children: string }) {
         marginBottom: 4,
         fontWeight: "600",
         fontFamily: MMD_FONT.semibold,
+        textAlign: textAlignStart(),
       }}
     >
       {children}
@@ -103,6 +105,7 @@ function FieldInput(props: React.ComponentProps<typeof TextInput>) {
           backgroundColor: MMD_NAVY,
           fontFamily: MMD_FONT.regular,
           fontSize: 16,
+          textAlign: textAlignStart(),
         },
         props.style,
       ]}
@@ -112,19 +115,25 @@ function FieldInput(props: React.ComponentProps<typeof TextInput>) {
 
 export default function MMDLocationPicker({
   countryCode,
-  title = "Exact location",
-  submitLabel = "Save location",
+  title,
+  submitLabel,
   onSave,
   onCancel,
 }: Props) {
   const { t } = useTranslation();
+  const resolvedTitle = title ?? t("locationPicker.title", "Exact location");
+  const resolvedSubmit =
+    submitLabel ?? t("locationPicker.submitLabel", "Save location");
   const mapReady = ensureMapboxTokenApplied();
 
   if (!countryCode?.trim()) {
     return (
       <View style={{ flex: 1, justifyContent: "center", padding: 20, backgroundColor: MMD_BLUE }}>
         <Text style={{ color: "#FCA5A5", textAlign: "center", fontFamily: MMD_FONT.semibold }}>
-          Market scope is required before choosing a location.
+          {t(
+            "locationPicker.marketRequired",
+            "Market scope is required before choosing a location.",
+          )}
         </Text>
       </View>
     );
@@ -398,16 +407,23 @@ export default function MMDLocationPicker({
       contentContainerStyle={{ padding: 16, gap: 18, paddingBottom: 32 }}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+      <View
+        style={{
+          flexDirection: rowDirection(),
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
         <Text
           style={{
             color: MMD_WHITE,
             fontSize: 24,
             fontWeight: "700",
             fontFamily: MMD_FONT.bold,
+            textAlign: textAlignStart(),
           }}
         >
-          {title}
+          {resolvedTitle}
         </Text>
         {onCancel ? (
           <TouchableOpacity onPress={onCancel}>
@@ -418,18 +434,34 @@ export default function MMDLocationPicker({
                 fontFamily: MMD_FONT.regular,
               }}
             >
-              Cancel
+              {t("locationPicker.cancel", "Cancel")}
             </Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
-      <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.regular }}>
+      <Text
+        style={{
+          color: MMD_MUTED,
+          fontSize: 14,
+          fontFamily: MMD_FONT.regular,
+          textAlign: textAlignStart(),
+        }}
+      >
         {structuredMode
-          ? "Enter your street number, city, and ZIP, then place the pin on the exact entrance."
+          ? t(
+              "locationPicker.hintStructured",
+              "Enter your street number, city, and ZIP, then place the pin on the exact entrance.",
+            )
           : requirePinConfirm
-            ? "Tap the map to place your pin, confirm it, and add a landmark or directions so the driver can find you."
-            : "Tap the map to place your exact pin. Describe the place so the driver can find you even without a street number."}
+            ? t(
+                "locationPicker.hintPinConfirm",
+                "Tap the map to place your pin, confirm it, and add a landmark or directions so the driver can find you.",
+              )
+            : t(
+                "locationPicker.hintPin",
+                "Tap the map to place your exact pin. Describe the place so the driver can find you even without a street number.",
+              )}
       </Text>
 
       <View
@@ -444,7 +476,10 @@ export default function MMDLocationPicker({
         {!mapReady || !isMapboxConfigured() ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 16 }}>
             <Text style={{ color: MMD_MUTED, textAlign: "center", fontFamily: MMD_FONT.regular }}>
-              Map unavailable. Configure EXPO_PUBLIC_MAPBOX_TOKEN to use the location picker.
+              {t(
+                "locationPicker.mapUnavailable",
+                "Map unavailable. Configure EXPO_PUBLIC_MAPBOX_TOKEN to use the location picker.",
+              )}
             </Text>
           </View>
         ) : (
@@ -500,18 +535,28 @@ export default function MMDLocationPicker({
               fontSize: 15,
             }}
           >
-            Use my current GPS
+            {t("locationPicker.useGps", "Use my current GPS")}
           </Text>
         )}
       </TouchableOpacity>
 
       {accuracyM != null ? (
         <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-          GPS accuracy: ~{Math.round(accuracyM)} m · Pin: {pinLat.toFixed(5)}, {pinLng.toFixed(5)}
+          {t("locationPicker.gpsAccuracy", {
+            defaultValue: "GPS accuracy: ~{{meters}} m · Pin: {{lat}}, {{lng}}",
+            meters: Math.round(accuracyM),
+            lat: pinLat.toFixed(5),
+            lng: pinLng.toFixed(5),
+          })}
         </Text>
       ) : (
         <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-          Pin: {pinLat.toFixed(5)}, {pinLng.toFixed(5)} · source: {locationSource}
+          {t("locationPicker.pinSource", {
+            defaultValue: "Pin: {{lat}}, {{lng}} · source: {{source}}",
+            lat: pinLat.toFixed(5),
+            lng: pinLng.toFixed(5),
+            source: locationSource,
+          })}
         </Text>
       )}
 
@@ -535,17 +580,22 @@ export default function MMDLocationPicker({
             }}
           >
             {pinConfirmed
-              ? "Pin confirmed"
-              : "Confirm pin location"}
+              ? t("locationPicker.pinConfirmed", "Pin confirmed")
+              : t("locationPicker.confirmPin", "Confirm pin location")}
           </Text>
         </TouchableOpacity>
       ) : null}
 
       {zones.length > 0 && !structuredMode ? (
         <View style={{ gap: 8 }}>
-          <FieldLabel>{`Zone (${scopedCountryCode})`}</FieldLabel>
+          <FieldLabel>
+            {t("locationPicker.zoneLabel", {
+              defaultValue: "Zone ({{code}})",
+              code: scopedCountryCode,
+            })}
+          </FieldLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flexDirection: rowDirection(), gap: 8 }}>
               {zones.slice(0, 16).map((zone) => (
                 <TouchableOpacity
                   key={zone.id}
@@ -579,62 +629,89 @@ export default function MMDLocationPicker({
       {structuredMode ? (
         <View style={{ gap: 10 }}>
           <View>
-            <FieldLabel>Street number *</FieldLabel>
+            <FieldLabel>
+              {t("locationPicker.streetNumber", "Street number *")}
+            </FieldLabel>
             <FieldInput
               value={streetNumber}
               onChangeText={setStreetNumber}
-              placeholder="123"
+              placeholder={t("locationPicker.streetNumberPlaceholder", "123")}
               keyboardType="numbers-and-punctuation"
             />
           </View>
           <View>
-            <FieldLabel>City *</FieldLabel>
+            <FieldLabel>{t("locationPicker.city", "City *")}</FieldLabel>
             <FieldInput
               value={cityName}
               onChangeText={setCityName}
-              placeholder="New York"
+              placeholder={t("locationPicker.cityPlaceholder", "New York")}
             />
           </View>
           <View>
-            <FieldLabel>ZIP / Postal code *</FieldLabel>
+            <FieldLabel>
+              {t("locationPicker.zip", "ZIP / Postal code *")}
+            </FieldLabel>
             <FieldInput
               value={postalCode}
               onChangeText={setPostalCode}
-              placeholder="10001"
+              placeholder={t("locationPicker.zipPlaceholder", "10001")}
               autoCapitalize="characters"
             />
           </View>
           <View>
-            <FieldLabel>Street / place name (optional)</FieldLabel>
+            <FieldLabel>
+              {t(
+                "locationPicker.streetOptional",
+                "Street / place name (optional)",
+              )}
+            </FieldLabel>
             <FieldInput
               value={formattedAddress}
               onChangeText={setFormattedAddress}
-              placeholder="Main St / building name"
+              placeholder={t(
+                "locationPicker.streetOptionalPlaceholder",
+                "Main St / building name",
+              )}
             />
           </View>
         </View>
       ) : (
         <>
-      <View style={{ flexDirection: "row", gap: 10 }}>
+      <View style={{ flexDirection: rowDirection(), gap: 10 }}>
         <View style={{ flex: 1 }}>
-          <FieldLabel>Commune</FieldLabel>
-          <FieldInput value={communeName} onChangeText={setCommuneName} placeholder="Matoto" />
+          <FieldLabel>{t("locationPicker.commune", "Commune")}</FieldLabel>
+          <FieldInput
+            value={communeName}
+            onChangeText={setCommuneName}
+            placeholder={t("locationPicker.communePlaceholder", "Matoto")}
+          />
         </View>
         <View style={{ flex: 1 }}>
-          <FieldLabel>Quartier</FieldLabel>
-          <FieldInput value={quartierName} onChangeText={setQuartierName} placeholder="Lambanyi" />
+          <FieldLabel>{t("locationPicker.quartier", "Quartier")}</FieldLabel>
+          <FieldInput
+            value={quartierName}
+            onChangeText={setQuartierName}
+            placeholder={t("locationPicker.quartierPlaceholder", "Lambanyi")}
+          />
         </View>
       </View>
 
       <View>
-        <FieldLabel>{requireLandmark ? "Landmark search *" : "Landmark search"}</FieldLabel>
+        <FieldLabel>
+          {requireLandmark
+            ? t("locationPicker.landmarkSearchRequired", "Landmark search *")
+            : t("locationPicker.landmarkSearch", "Landmark search")}
+        </FieldLabel>
         <FieldInput
           value={landmarkQuery}
           onChangeText={(text) => {
             setLandmarkQuery(text);
             setSelectedLandmark(null);
           }}
-          placeholder="Station Total, mosquée, marché..."
+          placeholder={t(
+            "locationPicker.landmarkPlaceholder",
+            "Station Total, mosque, market...",
+          )}
         />
         {loadingLandmarks ? (
           <ActivityIndicator color={MMD_GOLD_BRIGHT} style={{ marginTop: 8 }} />
@@ -676,20 +753,33 @@ export default function MMDLocationPicker({
       </View>
 
       <View>
-        <FieldLabel>Formatted address (optional)</FieldLabel>
+        <FieldLabel>
+          {t("locationPicker.formattedAddress", "Formatted address (optional)")}
+        </FieldLabel>
         <FieldInput
           value={formattedAddress}
           onChangeText={setFormattedAddress}
-          placeholder="Street or place name if known"
+          placeholder={t(
+            "locationPicker.formattedAddressPlaceholder",
+            "Street or place name if known",
+          )}
         />
       </View>
 
       <View>
-        <FieldLabel>Describe your exact location *</FieldLabel>
+        <FieldLabel>
+          {t(
+            "locationPicker.directions",
+            "Describe your exact location *",
+          )}
+        </FieldLabel>
         <FieldInput
           value={directionsText}
           onChangeText={setDirectionsText}
-          placeholder="After Total station, second road on the right, yellow house with blue gate..."
+          placeholder={t(
+            "locationPicker.directionsPlaceholder",
+            "After Total station, second road on the right, yellow house with blue gate...",
+          )}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
@@ -704,7 +794,10 @@ export default function MMDLocationPicker({
               fontFamily: MMD_FONT.regular,
             }}
           >
-            Minimum 8 characters required.
+            {t(
+              "locationPicker.directionsMin",
+              "Minimum 8 characters required.",
+            )}
           </Text>
         ) : null}
       </View>
@@ -712,7 +805,9 @@ export default function MMDLocationPicker({
       )}
 
       <View style={{ gap: 8 }}>
-        <FieldLabel>Photo of the place (recommended)</FieldLabel>
+        <FieldLabel>
+          {t("locationPicker.photoLabel", "Photo of the place (recommended)")}
+        </FieldLabel>
         <TouchableOpacity
           onPress={() => void handlePickPhoto()}
           style={{
@@ -734,7 +829,12 @@ export default function MMDLocationPicker({
               fontSize: 15,
             }}
           >
-            {photoUri ? "Retake location photo" : "Add photo of gate, shop, or building"}
+            {photoUri
+              ? t("locationPicker.retakePhoto", "Retake location photo")
+              : t(
+                  "locationPicker.addPhoto",
+                  "Add photo of gate, shop, or building",
+                )}
           </Text>
         </TouchableOpacity>
         {photoUri ? (
@@ -775,7 +875,7 @@ export default function MMDLocationPicker({
                 fontSize: 16,
               }}
             >
-              {submitLabel}
+              {resolvedSubmit}
             </Text>
           )}
         </LinearGradient>

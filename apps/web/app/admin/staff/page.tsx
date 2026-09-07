@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
@@ -33,6 +35,8 @@ type AdminRow = {
 };
 
 export default function AdminStaffPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +192,7 @@ export default function AdminStaffPage() {
   }
 
   async function removeAdmin(userId: string) {
-    if (!window.confirm("Remove this administrator from staff?")) return;
+    if (!window.confirm(t("Remove this administrator from staff?"))) return;
     setSavingId(userId);
     const res = await adminFetch("/api/admin/admins", {
       method: "DELETE",
@@ -288,10 +292,10 @@ export default function AdminStaffPage() {
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cc-muted)]">
-              Administration
+              {t("Administration")}
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-              Administrators
+              {t("Administrators")}
             </h1>
             <p className="mt-1 text-sm text-[var(--cc-muted)]">
               Founder · manage 100% of administrators (create, roles, suspend,
@@ -303,19 +307,19 @@ export default function AdminStaffPage() {
               href="/admin/teams"
               className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm font-semibold text-slate-700"
             >
-              Org chart
+              {t("Org chart")}
             </Link>
             <Link
               href="/admin/hr"
               className="rounded-xl bg-[var(--cc-ai)] px-3 py-2 text-sm font-semibold text-white"
             >
-              People Ops
+              {t("People Ops")}
             </Link>
             <Link
               href="/admin/audit"
               className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm font-semibold text-slate-700"
             >
-              Audit
+              {t("Audit")}
             </Link>
           </div>
         </header>
@@ -351,7 +355,7 @@ export default function AdminStaffPage() {
         (roleCounts.finance_admin ?? 0) === 0 ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             No Support and/or Finance administrators currently exist in the
-            database. Use <strong>Add administrator</strong> below to create
+            database. Use <strong>{t("Add administrator")}</strong> below to create
             them — they are not hidden by RBAC for the Founder.
           </div>
         ) : null}
@@ -363,7 +367,7 @@ export default function AdminStaffPage() {
         ) : null}
 
         <form onSubmit={(e) => void handleCreate(e)} className="cc-card p-5">
-          <h2 className="text-sm font-semibold text-slate-900">Add administrator</h2>
+          <h2 className="text-sm font-semibold text-slate-900">{t("Add administrator")}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-4">
             <input
               type="email"
@@ -377,7 +381,7 @@ export default function AdminStaffPage() {
               type="text"
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
-              placeholder="Full name"
+              placeholder={t("Full name")}
               className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
             />
             <select
@@ -405,7 +409,7 @@ export default function AdminStaffPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, email, phone"
+            placeholder={t("Search name, email, phone")}
             className="min-w-[220px] flex-1 rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
           />
           <select
@@ -413,7 +417,7 @@ export default function AdminStaffPage() {
             onChange={(e) => setRoleFilter(e.target.value)}
             className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
           >
-            <option value="all">All roles</option>
+            <option value="all">{t("All roles")}</option>
             {STAFF_ROLES.map((role) => (
               <option key={role} value={role}>
                 {roleDisplayName(role)}
@@ -425,10 +429,10 @@ export default function AdminStaffPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
           >
-            <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="suspended">Suspended</option>
-            <option value="disabled">Disabled</option>
+            <option value="all">{t("All statuses")}</option>
+            <option value="active">{t("Active")}</option>
+            <option value="suspended">{t("Suspended")}</option>
+            <option value="disabled">{t("Disabled")}</option>
           </select>
           <select
             value={countryFilter}
@@ -438,7 +442,7 @@ export default function AdminStaffPage() {
             }}
             className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
           >
-            <option value="all">All countries</option>
+            <option value="all">{t("All countries")}</option>
             {countryOptions.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -462,7 +466,7 @@ export default function AdminStaffPage() {
             onChange={(e) => setCityFilter(e.target.value)}
             className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
           >
-            <option value="all">All cities</option>
+            <option value="all">{t("All cities")}</option>
             {cityOptions.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -472,7 +476,7 @@ export default function AdminStaffPage() {
         </div>
 
         {loading ? (
-          <p className="text-sm text-[var(--cc-muted)]">Loading…</p>
+          <p className="text-sm text-[var(--cc-muted)]">{t("Loading…")}</p>
         ) : error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
@@ -482,20 +486,20 @@ export default function AdminStaffPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-[var(--cc-border)] bg-slate-50 text-xs uppercase tracking-wide text-[var(--cc-muted)]">
                 <tr>
-                  <th className="px-4 py-3">Photo</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Phone</th>
-                    <th className="px-4 py-3">Role</th>
-                    <th className="px-4 py-3">Country</th>
-                    <th className="px-4 py-3">State</th>
-                    <th className="px-4 py-3">City</th>
-                    <th className="px-4 py-3">TZ</th>
-                    <th className="px-4 py-3">Presence</th>
-                    <th className="px-4 py-3">Last seen</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Created</th>
-                    <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">{t("Photo")}</th>
+                  <th className="px-4 py-3">{t("Name")}</th>
+                  <th className="px-4 py-3">{t("Email")}</th>
+                  <th className="px-4 py-3">{t("Phone")}</th>
+                    <th className="px-4 py-3">{t("Role")}</th>
+                    <th className="px-4 py-3">{t("Country")}</th>
+                    <th className="px-4 py-3">{t("State")}</th>
+                    <th className="px-4 py-3">{t("City")}</th>
+                    <th className="px-4 py-3">{t("TZ")}</th>
+                    <th className="px-4 py-3">{t("Presence")}</th>
+                    <th className="px-4 py-3">{t("Last seen")}</th>
+                    <th className="px-4 py-3">{t("Status")}</th>
+                    <th className="px-4 py-3">{t("Created")}</th>
+                    <th className="px-4 py-3">{t("Actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -518,7 +522,7 @@ export default function AdminStaffPage() {
                       </Link>
                       {row.is_founder ? (
                         <div className="mt-0.5 text-xs font-semibold text-[var(--cc-ai)]">
-                          Founder
+                          {t("Founder")}
                         </div>
                       ) : null}
                     </td>
@@ -601,10 +605,10 @@ export default function AdminStaffPage() {
                             href={`/admin/staff/${row.id}`}
                             className="rounded-lg border border-[var(--cc-border)] px-2 py-1 text-xs font-medium"
                           >
-                            Profile
+                            {t("Profile")}
                           </Link>
                           <span className="self-center text-xs text-[var(--cc-muted)]">
-                            Protected
+                            {t("Protected")}
                           </span>
                         </div>
                       ) : (
@@ -613,7 +617,7 @@ export default function AdminStaffPage() {
                             href={`/admin/staff/${row.id}`}
                             className="rounded-lg border border-[var(--cc-border)] px-2 py-1 text-xs font-medium"
                           >
-                            Profile
+                            {t("Profile")}
                           </Link>
                           <Link
                             href={`/admin/staff/${row.id}#comms`}
@@ -625,13 +629,13 @@ export default function AdminStaffPage() {
                             href={`/admin/tasks?assignee=${row.id}`}
                             className="rounded-lg border border-violet-200 px-2 py-1 text-xs font-medium text-violet-800"
                           >
-                            Task
+                            {t("Task")}
                           </Link>
                           <Link
                             href={`/admin/audit?actor=${row.id}`}
                             className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium"
                           >
-                            Audit
+                            {t("Audit")}
                           </Link>
                           {row.account_status === "active" &&
                           !row.is_founder &&
@@ -642,7 +646,7 @@ export default function AdminStaffPage() {
                               onClick={() => void resendInvite(row.id)}
                               className="rounded-lg border border-indigo-300 px-2 py-1 text-xs font-medium text-indigo-800"
                             >
-                              Resend invite
+                              {t("Resend invite")}
                             </button>
                           ) : null}
                           {row.account_status === "suspended" ? (
@@ -652,7 +656,7 @@ export default function AdminStaffPage() {
                               onClick={() => void runLifecycle(row.id, "unsuspend")}
                               className="rounded-lg border border-emerald-300 px-2 py-1 text-xs"
                             >
-                              Unsuspend
+                              {t("Unsuspend")}
                             </button>
                           ) : (
                             <button
@@ -661,7 +665,7 @@ export default function AdminStaffPage() {
                               onClick={() => void runLifecycle(row.id, "suspend")}
                               className="rounded-lg border border-orange-300 px-2 py-1 text-xs"
                             >
-                              Suspend
+                              {t("Suspend")}
                             </button>
                           )}
                           {row.account_status === "disabled" ? (
@@ -671,7 +675,7 @@ export default function AdminStaffPage() {
                               onClick={() => void runLifecycle(row.id, "activate")}
                               className="rounded-lg border border-emerald-300 px-2 py-1 text-xs"
                             >
-                              Reactivate
+                              {t("Reactivate")}
                             </button>
                           ) : (
                             <button
@@ -680,7 +684,7 @@ export default function AdminStaffPage() {
                               onClick={() => void runLifecycle(row.id, "deactivate")}
                               className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
                             >
-                              Deactivate
+                              {t("Deactivate")}
                             </button>
                           )}
                           <button
@@ -689,7 +693,7 @@ export default function AdminStaffPage() {
                             onClick={() => void removeAdmin(row.id)}
                             className="rounded-lg border border-red-300 px-2 py-1 text-xs text-red-700"
                           >
-                            Remove
+                            {t("Remove")}
                           </button>
                         </div>
                       )}

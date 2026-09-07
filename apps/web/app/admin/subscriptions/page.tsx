@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageSubscriptions } from "@/lib/adminAccess";
@@ -31,6 +33,8 @@ const INPUT = "mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
 const CARD = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 
 function SubscriptionsAdminInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
@@ -108,7 +112,7 @@ function SubscriptionsAdminInner() {
       )}
 
       <section className={CARD}>
-        <h2 className="text-lg font-semibold">Plans</h2>
+        <h2 className="text-lg font-semibold">{t("Plans")}</h2>
         <ul className="mt-3 divide-y divide-slate-100 text-sm">
           {plans.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -129,21 +133,21 @@ function SubscriptionsAdminInner() {
 
       {canEdit && (
         <section className={CARD}>
-          <h2 className="text-lg font-semibold">Offrir un abonnement</h2>
+          <h2 className="text-lg font-semibold">{t("Offrir un abonnement")}</h2>
           <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={(e) => void offer(e)}>
             <label className="text-sm">
-              Type
+              {t("Type")}
               <select
                 className={INPUT}
                 value={offerPartnerType}
                 onChange={(e) => setOfferPartnerType(e.target.value)}
               >
-                <option value="restaurant">Restaurant</option>
-                <option value="seller">Seller</option>
+                <option value="restaurant">{t("Restaurant")}</option>
+                <option value="seller">{t("Seller")}</option>
               </select>
             </label>
             <label className="text-sm">
-              Partner user ID
+              {t("Partner user ID")}
               <input
                 className={INPUT}
                 value={offerUserId}
@@ -152,7 +156,7 @@ function SubscriptionsAdminInner() {
               />
             </label>
             <label className="text-sm sm:col-span-2">
-              Plan
+              {t("Plan")}
               <select
                 className={INPUT}
                 value={offerPlanId}
@@ -170,7 +174,7 @@ function SubscriptionsAdminInner() {
               </select>
             </label>
             <label className="text-sm sm:col-span-2">
-              Motif
+              {t("Motif")}
               <input
                 className={INPUT}
                 value={offerReason}
@@ -182,16 +186,16 @@ function SubscriptionsAdminInner() {
               type="submit"
               className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-medium text-white sm:col-span-2"
             >
-              Offrir
+              {t("Offrir")}
             </button>
           </form>
         </section>
       )}
 
       <section className={CARD}>
-        <h2 className="text-lg font-semibold">Abonnements récents</h2>
+        <h2 className="text-lg font-semibold">{t("Abonnements récents")}</h2>
         <ul className="mt-3 space-y-2 text-sm">
-          {subs.length === 0 && <li className="text-slate-500">Aucun abonnement.</li>}
+          {subs.length === 0 && <li className="text-slate-500">{t("Aucun abonnement.")}</li>}
           {subs.map((s) => (
             <li key={s.id} className="rounded-lg border border-slate-100 px-3 py-2">
               <span className="font-medium">
@@ -213,12 +217,14 @@ function SubscriptionsAdminInner() {
 }
 
 export default function SubscriptionsAdminPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="subscriptions.read">
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="text-2xl font-bold">Abonnements</h1>
+        <h1 className="text-2xl font-bold">{t("Abonnements")}</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Plans Premium restaurants & marketplace — indépendants de la fidélité.
+          {t("Plans Premium restaurants & marketplace — indépendants de la fidélité.")}
         </p>
         <div className="mt-6">
           <SubscriptionsAdminInner />

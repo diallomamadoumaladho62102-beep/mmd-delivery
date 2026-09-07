@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useTranslation } from "react-i18next";
+import { useAdminT } from "@/i18n/useAdminT";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -40,16 +40,16 @@ function fmtDate(value: string) {
   }
 }
 
-function roleLabel(role: ChatRole, t: (key: string, fallback: string) => string) {
+function roleLabel(role: ChatRole, t: (source: string) => string) {
   switch (role) {
     case "client":
-      return t("admin.chat.roles.client", "Client");
+      return t("Client");
     case "driver":
-      return t("admin.chat.roles.driver", "Driver");
+      return t("Driver");
     case "restaurant":
-      return t("admin.chat.roles.restaurant", "Restaurant");
+      return t("Restaurant");
     case "admin":
-      return t("admin.chat.roles.admin", "Admin");
+      return t("Admin");
     default:
       return role;
   }
@@ -58,13 +58,7 @@ function roleLabel(role: ChatRole, t: (key: string, fallback: string) => string)
 export default function AdminOrderChatPage() {
   const params = useParams<{ orderId: string }>();
   const search = useSearchParams();
-  const { t: translate } = useTranslation();
-
-  const t = useCallback(
-    (key: string, fallback: string) =>
-      String(translate(key, { defaultValue: fallback })),
-    [translate]
-  );
+  const { t } = useAdminT();
 
   const orderId = String(params?.orderId ?? "").trim();
   const targetRole = normalizeChatRole(search?.get("targetRole"));
@@ -102,7 +96,7 @@ export default function AdminOrderChatPage() {
 
       if (!res.ok || !payload.ok) {
         throw new Error(
-          String(payload.error ?? "Impossible de charger les messages.")
+          String(payload.error ?? t("Failed to load messages."))
         );
       }
 
@@ -114,7 +108,7 @@ export default function AdminOrderChatPage() {
       const message =
         error instanceof Error
           ? error.message
-          : t("admin.chat.errors.loadFailed", "Impossible de charger les messages.");
+          : t("Failed to load messages.");
 
       setLoadError(message);
     } finally {
@@ -170,7 +164,7 @@ export default function AdminOrderChatPage() {
 
       if (!res.ok || !payload.ok) {
         throw new Error(
-          String(payload.error ?? "Impossible d'envoyer le message.")
+          String(payload.error ?? t("Failed to send message."))
         );
       }
 
@@ -182,7 +176,7 @@ export default function AdminOrderChatPage() {
       const message =
         error instanceof Error
           ? error.message
-          : t("admin.chat.errors.sendFailed", "Impossible d’envoyer le message.");
+          : t("Failed to send message.");
 
       setLoadError(message);
     } finally {
@@ -191,10 +185,7 @@ export default function AdminOrderChatPage() {
   }, [load, orderId, sending, t, targetRole, text]);
 
   const title = useMemo(() => {
-    return t("admin.chat.title", "Admin Chat → {{role}}").replace(
-      "{{role}}",
-      roleLabel(targetRole, t)
-    );
+    return `${t("Admin Chat →")} ${roleLabel(targetRole, t)}`;
   }, [t, targetRole]);
 
   if (!orderId) {
@@ -202,9 +193,7 @@ export default function AdminOrderChatPage() {
       <main className="min-w-0">
         <div className="mx-auto max-w-4xl p-4">
           <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <p className="text-sm text-red-600">
-              {t("admin.chat.errors.missingOrderId", "Order ID manquant.")}
-            </p>
+            <p className="text-sm text-red-600">{t("Missing order ID.")}</p>
           </div>
         </div>
       </main>
@@ -219,7 +208,7 @@ export default function AdminOrderChatPage() {
             href={`/admin/orders/${orderId}`}
             className="text-sm font-medium text-blue-600 underline"
           >
-            {t("admin.chat.backOrder", "← Retour commande")}
+            {t("Back to order")}
           </Link>
 
           <div className="flex flex-wrap gap-2">
@@ -250,7 +239,7 @@ export default function AdminOrderChatPage() {
               <h1 className="text-xl font-bold text-slate-950">{title}</h1>
 
               <p className="mt-1 text-sm text-slate-500">
-                {t("admin.chat.orderLabel", "Order")} #{orderId.slice(0, 8)}
+                {t("Order")} #{orderId.slice(0, 8)}
               </p>
             </div>
 
@@ -260,9 +249,7 @@ export default function AdminOrderChatPage() {
               disabled={loading}
               className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
             >
-              {loading
-                ? t("admin.chat.loading", "Chargement...")
-                : t("admin.chat.refresh", "Rafraîchir")}
+              {loading ? t("Loading…") : t("Refresh")}
             </button>
           </div>
 
@@ -278,18 +265,14 @@ export default function AdminOrderChatPage() {
           className="h-[520px] space-y-4 overflow-y-auto rounded-2xl border bg-white p-4 shadow-sm"
         >
           {loading && rows.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              {t("admin.chat.loadingMessages", "Chargement des messages...")}
-            </p>
+            <p className="text-sm text-slate-500">{t("Loading messages…")}</p>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              {t("admin.chat.empty", "Aucun message.")}
-            </p>
+            <p className="text-sm text-slate-500">{t("No messages.")}</p>
           ) : (
             rows.map((row) => {
               const sender = row.sender_role
                 ? roleLabel(row.sender_role, t)
-                : t("admin.chat.legacy", "legacy");
+                : t("legacy");
 
               return (
                 <div
@@ -319,7 +302,7 @@ export default function AdminOrderChatPage() {
 
                   {row.image_path ? (
                     <p className="mt-2 text-xs text-slate-500">
-                      {t("admin.chat.imageAttached", "Image jointe")}
+                      {t("Image attached")}
                     </p>
                   ) : null}
                 </div>
@@ -332,10 +315,7 @@ export default function AdminOrderChatPage() {
           <textarea
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder={t(
-              "admin.chat.placeholder",
-              "Écrire un message admin..."
-            )}
+            placeholder={t("Write an admin message…")}
             className="min-h-[120px] w-full rounded-xl border p-3 text-sm outline-none focus:border-slate-500"
           />
 
@@ -345,9 +325,7 @@ export default function AdminOrderChatPage() {
             disabled={sending || text.trim() === ""}
             className="mt-3 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
           >
-            {sending
-              ? t("admin.chat.sending", "Envoi...")
-              : t("admin.chat.send", "Envoyer")}
+            {sending ? t("Sending…") : t("Send")}
           </button>
         </div>
       </div>

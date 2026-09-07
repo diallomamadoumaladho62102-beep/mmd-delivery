@@ -98,11 +98,24 @@ const FR: MessageTree = {
 
 const ES: MessageTree = {
   ...EN,
+  "app.description": "Entrega, taxi, restaurantes y marketplace",
   "nav.home": "Inicio",
   "nav.login": "Entrar",
   "nav.signup": "Registrarse",
+  "nav.client": "Cliente",
+  "nav.restaurants": "Restaurantes",
+  "nav.marketplace": "Marketplace",
+  "nav.seller": "Vendedor",
   "public.hero": "Tu plataforma local de entregas",
   "public.subhero": "Pedidos, taxi y marketplace en una sola app.",
+  "public.feature.tracking": "Seguimiento en tiempo real",
+  "public.feature.trackingDesc": "Sigue cada pedido y entrega en vivo.",
+  "public.feature.payments": "Pagos seguros",
+  "public.feature.paymentsDesc": "Transacciones rápidas, seguras y cifradas.",
+  "public.feature.driver": "Ganancias del conductor",
+  "public.feature.driverDesc": "Más entregas, más oportunidades.",
+  "public.feature.restaurant": "Herramientas para restaurantes",
+  "public.feature.restaurantDesc": "Gestión potente de pedidos y negocio.",
   "client.title": "Mis pedidos",
   "client.empty": "Sin pedidos aún.",
   "client.loading": "Cargando…",
@@ -123,11 +136,24 @@ const ES: MessageTree = {
 
 const AR: MessageTree = {
   ...EN,
+  "app.description": "توصيل، تاكسي، مطاعم وسوق",
   "nav.home": "الرئيسية",
   "nav.login": "تسجيل الدخول",
   "nav.signup": "إنشاء حساب",
+  "nav.client": "العميل",
+  "nav.restaurants": "المطاعم",
+  "nav.marketplace": "السوق",
+  "nav.seller": "البائع",
   "public.hero": "منصة التوصيل المحلية",
   "public.subhero": "طلبات، تاكسي، وسوق — في تطبيق واحد.",
+  "public.feature.tracking": "تتبع مباشر",
+  "public.feature.trackingDesc": "تتبع كل طلب وتوصيل مباشرة.",
+  "public.feature.payments": "مدفوعات آمنة",
+  "public.feature.paymentsDesc": "معاملات سريعة وآمنة ومشفرة.",
+  "public.feature.driver": "أرباح السائق",
+  "public.feature.driverDesc": "المزيد من التوصيلات والمزيد من الفرص.",
+  "public.feature.restaurant": "أدوات المطعم",
+  "public.feature.restaurantDesc": "إدارة قوية للطلبات والأعمال.",
   "client.title": "طلباتي",
   "client.empty": "لا توجد طلبات بعد.",
   "client.loading": "جاري التحميل…",
@@ -148,11 +174,24 @@ const AR: MessageTree = {
 
 const ZH: MessageTree = {
   ...EN,
+  "app.description": "配送、出租车、餐厅与商城",
   "nav.home": "首页",
   "nav.login": "登录",
   "nav.signup": "注册",
+  "nav.client": "客户",
+  "nav.restaurants": "餐厅",
+  "nav.marketplace": "商城",
+  "nav.seller": "卖家",
   "public.hero": "您的本地配送平台",
   "public.subhero": "订餐、叫车、商城购物，尽在一 app。",
+  "public.feature.tracking": "实时追踪",
+  "public.feature.trackingDesc": "实时跟踪每笔订单与配送。",
+  "public.feature.payments": "安全支付",
+  "public.feature.paymentsDesc": "快速、安全、加密的交易。",
+  "public.feature.driver": "司机收入",
+  "public.feature.driverDesc": "更多配送，更多机会。",
+  "public.feature.restaurant": "餐厅工具",
+  "public.feature.restaurantDesc": "强大的业务与订单管理。",
   "client.title": "我的订单",
   "client.empty": "暂无订单。",
   "client.loading": "加载中…",
@@ -173,9 +212,27 @@ const ZH: MessageTree = {
 
 const FF: MessageTree = {
   ...FR,
+  "app.description": "Neldugol, taksi, restoraŋ e marketplace",
+  "nav.home": "Jaɓɓorgo",
+  "nav.login": "Seŋo",
+  "nav.signup": "Winndito",
+  "nav.client": "Kiliyaŋke",
+  "nav.restaurants": "Restoraŋji",
+  "nav.marketplace": "Suudu lataande",
+  "nav.seller": "Jeeyoowo",
   "public.hero": "Platform maa e nder leydi maa",
-  "nav.home": "Accueil",
-  "client.title": "Commandes am",
+  "public.subhero": "Yamoto ñamdu, noddu taksi, sood e marketplace — e app gooto.",
+  "public.feature.tracking": "Rewindowal e sahaa gooto",
+  "public.feature.trackingDesc": "Rewindoto yamiroore kala e neldugol e sahaa gooto.",
+  "public.feature.payments": "Njoɓdi hisniiɗi",
+  "public.feature.paymentsDesc": "Njulaagu jaawɗi, hisniiɗi e cuɓaaɗi.",
+  "public.feature.driver": "Njeñtudi dogoowo",
+  "public.feature.driverDesc": "Neldugol ɓurɗol, fartaŋŋe ɓurɗe.",
+  "public.feature.restaurant": "Kuutorɗe restoraŋ",
+  "public.feature.restaurantDesc": "Njuɓɓudi njulaagu e yamirooje semmbe.",
+  "client.title": "Yamirooje am",
+  "client.empty": "Alaa yamiroore tawo.",
+  "client.loading": "Loowgol…",
   "client.phoneVerify.title": "Nenndin cinndel maa",
   "client.phoneVerify.hint": "Min neldat kod SMS ngam jaɓɓude ndee limre.",
   "client.phoneVerify.sendCode": "Neldu kod SMS",
@@ -186,6 +243,8 @@ const FF: MessageTree = {
   "client.phoneVerify.verifiedNotice": "Cinndel nenndinaama.",
   "client.phoneVerify.sendFailed": "Horiima neldude kod",
   "client.phoneVerify.invalidCode": "Kod moƴƴaani",
+  "restaurant.title": "Portal restoraŋ",
+  "seller.title": "Portal jeeyoowo",
   "marketplace.title": "Suudu lataande",
 };
 
@@ -198,9 +257,9 @@ export const WEB_MESSAGES: Record<WebLocale, MessageTree> = {
   ff: FF,
 };
 
-/** Admin/staff UI stays EN/FR only — see apps/web/app/admin/* */
+/** Admin Control Center: shell + nav localized in en/fr/es/ar/zh/ff via adminNavI18n. Page bodies progressively use the same locale cookie (mmd_web_locale). */
 export const ADMIN_I18N_NOTE =
-  "Admin UI: English + French only (staff bilingual). User-facing pages support en, fr, es, ar, zh, ff.";
+  "Admin UI: shell/nav support en, fr, es, ar, zh, ff. Individual admin page bodies are localized via the shared web locale cookie.";
 
 export function normalizeWebLocale(raw: string | null | undefined): WebLocale {
   const v = String(raw ?? "en").trim().toLowerCase();

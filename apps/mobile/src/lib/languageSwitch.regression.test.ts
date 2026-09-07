@@ -55,4 +55,42 @@ test("seller is a locale role", () => {
   assert.match(storage, /seller: "mmd_locale_seller"/);
 });
 
+test("all six app languages are allowed", () => {
+  assert.match(i18n, /ALLOWED_LOCALES = new Set\(\["en", "fr", "es", "ar", "zh", "ff"\]\)/);
+  for (const code of ["en", "fr", "es", "ar", "zh", "ff"]) {
+    assert.ok(
+      fs.existsSync(path.join(root, "i18n", "locales", code, "common.json")),
+      `missing locale pack ${code}`,
+    );
+    assert.ok(
+      fs.existsSync(path.join(root, "i18n", "locales", code, "extras.json")),
+      `missing extras pack ${code}`,
+    );
+  }
+  // Bundled resources must include the same 6 locale codes.
+  const resources = read("i18n/resources.ts");
+  for (const code of ["en", "fr", "es", "ar", "zh", "ff"]) {
+    assert.match(resources, new RegExp(`\\b${code}\\s*:`), `resources missing ${code}`);
+  }
+});
+
+test("locale priority is user choice then preferred_locale then device", () => {
+  assert.match(i18n, /explicit user choice/);
+  assert.match(i18n, /preferred_locale/);
+  const device = read("i18n/deviceLocale.ts");
+  assert.match(device, /explicit user choice/);
+  assert.match(device, /detectDeviceLocale/);
+  assert.match(device, /LOCALE_USER_SET_KEY/);
+});
+
+test("language switch cycle covers FR EN ES AR ZH FF", () => {
+  // Static contract: every hop in the release gate cycle is a supported code.
+  const cycle = ["fr", "en", "es", "ar", "zh", "ff", "fr"];
+  for (const code of cycle) {
+    assert.match(i18n, new RegExp(`"${code}"`));
+  }
+  assert.match(i18n, /setLocaleForRoleAndApply/);
+  assert.match(i18n, /markLocaleUserSelected/);
+});
+
 console.log("languageSwitch.regression.test.ts — PASS");

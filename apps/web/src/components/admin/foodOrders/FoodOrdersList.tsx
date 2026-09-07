@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import type { AdminFoodOrderListItem } from "@/lib/adminFoodOrderDisplay";
 import FoodOrderCard from "./FoodOrderCard";
 import FoodOrderCardSkeleton from "./FoodOrderCardSkeleton";
@@ -23,6 +25,8 @@ export default function FoodOrdersList({
   hasMore?: boolean;
   onLoadMore?: () => void;
 }) {
+  const { t } = useAdminT();
+
   if (loading) {
     return (
       <div
@@ -40,7 +44,7 @@ export default function FoodOrdersList({
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-800">No orders match</p>
+        <p className="text-sm font-medium text-slate-800">{t("No orders match")}</p>
         <p className="mt-1 text-sm text-slate-500">{emptyMessage}</p>
       </div>
     );
@@ -64,7 +68,7 @@ export default function FoodOrdersList({
             onClick={onLoadMore}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Load more
+            {t("Load more")}
           </button>
         </div>
       ) : null}

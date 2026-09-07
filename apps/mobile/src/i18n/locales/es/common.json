@@ -197,7 +197,23 @@
       "title": "Permiso",
       "camera": "Permite el acceso a la cámara para tomar una foto."
     },
-    "backShort": "ATRÁS"
+    "backShort": "ATRÁS",
+    "a11y": {
+      "close": "Cerrar",
+      "closeFilter": "Cerrar filtro",
+      "closeMenu": "Cerrar menú",
+      "retry": "Reintentar",
+      "back": "Atrás"
+    },
+    "close": "Cerrar",
+    "retry": "Reintentar",
+    "backAction": "Volver",
+    "saving": "Guardando…",
+    "settings": "Ajustes",
+    "no": "No",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "view": "Ver"
   },
   "shared": {
     "common": {
@@ -400,7 +416,10 @@
         "createMyAccount": "Crear mi cuenta",
         "files": "Archivos",
         "haveAccountLogin": "Ya tengo una cuenta",
-        "login": "Iniciar sesión"
+        "login": "Iniciar sesión",
+        "showPassword": "Mostrar",
+        "hidePassword": "Ocultar",
+        "forgotPassword": "¿Olvidaste la contraseña?"
       },
       "alert": {
         "cameraPermission": "Permite el acceso a la cámara.",
@@ -438,7 +457,22 @@
         "password": "Contraseña",
         "passwordPlaceholder": "Contraseña",
         "phone": "Teléfono",
-        "phonePlaceholder": "p. ej. +1 555 123 4567"
+        "phonePlaceholder": "p. ej. +1 555 123 4567",
+        "emergencyPhone": "Teléfono de emergencia",
+        "emergencyPhonePlaceholder": "Ej: 9297408722",
+        "address": "Dirección",
+        "addressPlaceholder": "Ej: 1112 Flatbush Ave",
+        "city": "Ciudad",
+        "cityPlaceholder": "New York",
+        "state": "Estado",
+        "statePlaceholder": "NY",
+        "zipCode": "Código postal",
+        "zipPlaceholder": "11226",
+        "dateOfBirth": "Fecha de nacimiento",
+        "dateOfBirthPlaceholder": "AAAA-MM-DD",
+        "dateFormatError": "Formato de fecha requerido: AAAA-MM-DD",
+        "licenseNumber": "Número de licencia",
+        "licenseNumberPlaceholder": "Número de licencia de conducir"
       },
       "footer": "Al continuar, aceptas los términos del servicio.",
       "header": {
@@ -473,7 +507,10 @@
         "modelPlaceholder": "p. ej. Corolla",
         "plate": "Placa",
         "title": "Vehículo",
-        "yearOptional": "Año (opcional)"
+        "yearOptional": "Año (opcional)",
+        "yearPlaceholder": "2020",
+        "colorPlaceholder": "Negro",
+        "platePlaceholder": "ABC123"
       }
     },
     "payments": {
@@ -669,7 +706,8 @@
       },
       "debug": {
         "testIncomingOrder": "Probar viaje entrante"
-      }
+      },
+      "preparingNavigation": "Preparando la navegación…"
     },
     "revenue": {
       "title": "Ganancias",
@@ -1216,6 +1254,126 @@
         "title": "Stripe"
       },
       "title": "Ganancias"
+    },
+    "identity": {
+      "screenTitle": "Verificación de identidad",
+      "loading": "Cargando...",
+      "waitHint": "Espere mientras verificamos su identidad.\nEsto puede tardar unos momentos."
+    },
+    "vehicles": {
+      "title": "Mis vehículos",
+      "subtitleManage": "Gestiona tu flota de vehículos",
+      "subtitleActive": "Solo un vehículo activo a la vez",
+      "loading": "Cargando tus vehículos..."
+    },
+    "services": {
+      "title": "Mis servicios",
+      "subtitle": "Gestiona tus tipos de misiones",
+      "loading": "Cargando tus servicios...",
+      "food": "Entrega de comida",
+      "package": "Entrega de paquetes",
+      "taxi": "Viajes en taxi",
+      "availableSection": "Servicios disponibles",
+      "advancedSection": "Opciones avanzadas",
+      "foodDesc": "Pedidos de restaurante y entrega de comida",
+      "packageDesc": "Entrega de paquetes y mandados",
+      "taxiDesc": "Viajes en taxi según las categorías autorizadas de tu vehículo",
+      "acceptStandard": "Aceptar también viajes Standard",
+      "acceptStandardDesc": "Comfort, XL o Wheelchair también pueden recibir viajes Standard"
+    },
+    "vehicle": {
+      "screenTitle": "Vehículo",
+      "detailsSubtitle": "Detalles del vehículo",
+      "loading": "Cargando vehículo...",
+      "addTitle": "Añadir un vehículo",
+      "chooseType": "Elige primero el tipo",
+      "mode": {
+        "car": "Coche",
+        "carHint": "Coche - comida, paquetes, taxi",
+        "moto": "Moto",
+        "motoHint": "Moto - entrega rápida",
+        "bike": "Bicicleta",
+        "bikeHint": "Bicicleta - no se requiere flota motorizada"
+      },
+      "categorySynced": "La categoría se sincroniza automáticamente",
+      "bikeTitle": "Bicicleta",
+      "bikeSubtitle": "No se requiere vehículo motorizado",
+      "changeType": "Cambiar tipo",
+      "changeTypeHint": "Volver a Coche / Moto / Bicicleta",
+      "confirmBike": "Confirmar modo bicicleta",
+      "confirmBikeHint": "Confirma para sincronizar con el despacho",
+      "changeVehicleType": "Cambiar tipo de vehículo",
+      "photoTitle": "Foto del vehículo",
+      "photoPreview": "Vista previa de la foto",
+      "noPhoto": "Aún no hay foto",
+      "camera": "Cámara",
+      "gallery": "Galería",
+      "remove": "Quitar",
+      "seats": "Asientos de pasajeros",
+      "taxiCategories": "Categorías de taxi (servidor)",
+      "taxiCategoriesHint": "Las categorías de taxi las calcula el servidor.",
+      "amenity": {
+        "ac": "Aire acondicionado",
+        "accessible": "Accesible",
+        "babySeat": "Silla de bebé",
+        "luggage": "Equipaje grande",
+        "pets": "Mascotas",
+        "charger": "Cargador de teléfono",
+        "quiet": "Vehículo silencioso",
+        "nonsmoking": "No fumar",
+        "largeLuggage": "Equipaje grande",
+        "phoneCharger": "Cargador de teléfono",
+        "nonSmoking": "No fumar"
+      },
+      "save": "Guardar",
+      "addAction": "Añadir",
+      "photoHelp": "Sube una foto clara del vehículo",
+      "field": {
+        "make": "Marca",
+        "model": "Modelo",
+        "year": "Año",
+        "color": "Color",
+        "plate": "Matrícula",
+        "type": "Tipo (sedán, suv, van, minivan)",
+        "fuel": "Motorización (gasolina, diésel, híbrido, eléctrico, híbrido enchufable)",
+        "nickname": "Apodo (opcional)",
+        "seats": "Asientos de pasajeros",
+        "vehicleType": "Tipo (sedan, suv, van, minivan)",
+        "fuelType": "Motorización (gasolina, diésel, híbrido, eléctrico, plug_in_hybrid)",
+        "dashPlaceholder": "—"
+      },
+      "createSubtitle": "Tipo: {{type}}. Las categorías de taxi las calcula el servidor.",
+      "errorTitle": "Error",
+      "loadFailed": "No se pudo cargar la información del vehículo.",
+      "cameraTitle": "Cámara",
+      "cameraPermission": "Permite el acceso a la cámara.",
+      "photosTitle": "Fotos",
+      "photosPermission": "Permite el acceso a la galería.",
+      "photoUploadedTitle": "Foto del vehículo",
+      "photoUploadedBody": "Foto subida correctamente.",
+      "uploadFailed": "No se pudo subir la foto.",
+      "removePhotoTitle": "Eliminar foto",
+      "removePhotoBody": "¿Eliminar esta foto del vehículo?",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "deletePhotoFailed": "No se pudo eliminar la foto.",
+      "typeRequiredTitle": "Tipo de vehículo",
+      "typeRequiredBody": "Elige primero Coche, Moto o Bicicleta.",
+      "bikeModeTitle": "Modo bicicleta",
+      "bikeModeBody": "Tu categoría ahora es Bicicleta. No se requiere vehículo motorizado para estar en línea.",
+      "formIncompleteTitle": "Formulario incompleto",
+      "formIncompleteBody": "Marca, modelo y matrícula son obligatorios.",
+      "savedTitle": "Vehículo",
+      "savedCreateBody": "Vehículo añadido. Pendiente de validación por el equipo MMD.",
+      "savedUpdateBody": "Información guardada. Si cambiaron campos importantes, el vehículo vuelve a validación admin.",
+      "saveFailed": "No se pudo guardar el vehículo ahora.",
+      "subtitleCreateCar": "Tipo: Coche. Las categorías de taxi las calcula el servidor.",
+      "subtitleCreateMoto": "Tipo: Moto. Las categorías de taxi las calcula el servidor.",
+      "subtitleEdit": "Las categorías de taxi las calcula el servidor.",
+      "photoPreviewA11y": "Vista previa de la foto",
+      "noPhotoYet": "Sin foto aún",
+      "taxiCategoriesTitle": "Categorías de taxi (servidor)",
+      "add": "Añadir"
     }
   },
   "restaurant": {
@@ -1310,7 +1468,10 @@
         "signIn": "Iniciar sesión",
         "signUp": "Crear cuenta",
         "switchToLogin": "Ya tengo una cuenta",
-        "switchToSignup": "Crear cuenta"
+        "switchToSignup": "Crear cuenta",
+        "hidePassword": "Ocultar",
+        "showPassword": "Mostrar",
+        "forgotPassword": "¿Olvidaste la contraseña?"
       },
       "debug": {
         "help": "Si tienes un problema, contacta soporte.",
@@ -1383,11 +1544,112 @@
         "pending": "Pendiente",
         "accepted": "Aceptado",
         "prepared": "En preparación",
-        "ready": "Listo"
+        "ready": "Listo",
+        "close": "Cerrar filtro"
       },
       "account": {
         "setup": "Perfil del restaurante"
+      },
+      "close": "Cerrar",
+      "closeMenu": "Cerrar menú",
+      "menu": "Menú"
+    },
+    "automation": {
+      "title": "Automatización de pedidos",
+      "subtitle": "Ajustes",
+      "loadingTitle": "Cargando ajustes...",
+      "loadingSubtitle": "Obteniendo tus preferencias de automatización",
+      "infoTitle": "Aceptación automática e impresión",
+      "infoBody": "Controla cómo se aceptan e imprimen los nuevos pedidos.",
+      "autoAccept": "Aceptar automáticamente nuevos pedidos",
+      "autoPrint": "Imprimir automáticamente al aceptar",
+      "soundAlert": "Alerta sonora",
+      "defaultPrep": "Tiempo de prep. predeterminado",
+      "saving": "Saving…",
+      "saveSettings": "Save Settings",
+      "testPrint": "Test print",
+      "prepMinutes": "{{mins}} min"
+    },
+    "orders": {
+      "accept": "Aceptar",
+      "prepared": "Preparado",
+      "ready": "Listo"
+    },
+    "orderDetails": {
+      "title": "Pedido",
+      "loading": "Cargando pedido...",
+      "loadingSubtitle": "Obteniendo detalles del pedido",
+      "notFoundTitle": "Pedido no encontrado",
+      "notFoundBody": "No se pudo encontrar este pedido.",
+      "showToDriver": "Mostrar al repartidor",
+      "noItems": "Sin artículos.",
+      "orderLabel": "Pedido #{{id}}",
+      "customer": "Cliente",
+      "clientId": "Cliente {{id}}",
+      "items": "Artículos",
+      "notes": "Notas",
+      "leaveAtDoor": "Dejar en la puerta",
+      "actions": {
+        "print": "Imprimir",
+        "printing": "Imprimiendo…",
+        "refuse": "Rechazar",
+        "cancel": "Cancelar",
+        "accept": "Aceptar",
+        "prepared": "Preparado",
+        "ready": "Listo"
+      },
+      "confirm": {
+        "refuseTitle": "Rechazar pedido",
+        "cancelTitle": "Cancelar pedido",
+        "body": "¿Confirmar esta acción?",
+        "no": "No",
+        "confirm": "Confirmar"
+      },
+      "status": {
+        "pending": "Pendiente",
+        "accepted": "Aceptado",
+        "prepared": "Preparado",
+        "ready": "Listo",
+        "dispatched": "Despachado",
+        "delivered": "Entregado",
+        "canceled": "Cancelado"
       }
+    },
+    "orderPrint": {
+      "title": "Imprimir",
+      "reprintQueued": "Reimpresión en cola.",
+      "ticketQueued": "Ticket añadido a la cola de impresión.",
+      "printFailed": "No se pudo iniciar la impresión."
+    }
+  },
+  "promotions": {
+    "screenTitle": "Promociones"
+  },
+  "brand": {
+    "name": "MMD Delivery"
+  },
+  "location": {
+    "picker": {
+      "streetNumber": "Número de calle *",
+      "streetNumberPh": "123",
+      "city": "Ciudad *",
+      "cityPh": "New York",
+      "postal": "Código postal *",
+      "postalPh": "10001",
+      "streetOptional": "Calle / lugar (opcional)",
+      "streetOptionalPh": "Calle principal / edificio",
+      "commune": "Comuna",
+      "communePh": "Matoto",
+      "quartier": "Barrio",
+      "quartierPh": "Lambanyi",
+      "landmark": "Buscar punto de referencia",
+      "landmarkRequired": "Buscar punto de referencia *",
+      "landmarkPh": "Estación Total, mezquita, mercado...",
+      "formattedOptional": "Dirección formateada (opcional)",
+      "formattedOptionalPh": "Calle o lugar si se conoce",
+      "directions": "Describe tu ubicación exacta *",
+      "directionsPh": "Después de la estación Total, segunda calle a la derecha, casa amarilla con portón azul...",
+      "directionsMin": "Se requieren al menos 8 caracteres."
     }
   }
 }

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiTaxes } from "@/lib/adminAccess";
@@ -15,6 +17,8 @@ type TaxRow = {
 };
 
 export default function AdminTaxiTaxesPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<TaxRow[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -68,15 +72,15 @@ export default function AdminTaxiTaxesPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-4xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold">Taxi Taxes</h1>
-            <p className="text-sm text-slate-600">Taxes par pays (placeholders MVP).</p>
+            <h1 className="text-2xl font-bold">{t("Taxi Taxes")}</h1>
+            <p className="text-sm text-slate-600">{t("Taxes par pays (placeholders MVP).")}</p>
           </header>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="rounded-xl border px-3 py-2 text-sm"
           >
-            <option value="">Tous les pays</option>
+            <option value="">{t("Tous les pays")}</option>
             {countries.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -84,7 +88,7 @@ export default function AdminTaxiTaxesPage() {
             ))}
           </select>
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : (
             <div className="space-y-4">
               {visible.map((row) => (
@@ -108,7 +112,7 @@ export default function AdminTaxiTaxesPage() {
                     </label>
                   </div>
                   <label className="block text-sm">
-                    Taux (%)
+                    {t("Taux (%)")}
                     <input
                       name="tax_rate"
                       type="number"
@@ -120,7 +124,7 @@ export default function AdminTaxiTaxesPage() {
                   </label>
                   {canEdit ? (
                     <button type="submit" className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white">
-                      Enregistrer
+                      {t("Enregistrer")}
                     </button>
                   ) : null}
                 </form>

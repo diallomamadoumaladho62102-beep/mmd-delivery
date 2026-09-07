@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -28,6 +30,8 @@ function formatMoney(cents: number | null | undefined, currency = "USD") {
 }
 
 export default function AdminMarketplaceDispatchPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<DispatchJobRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [canView, setCanView] = useState(false);
@@ -51,7 +55,7 @@ export default function AdminMarketplaceDispatchPage() {
   return (
     <AdminGate requiredPermission="users.sellers.read">
       <div style={{ padding: 24, color: "#E2E8F0" }}>
-        <h1 style={{ fontSize: 28, marginBottom: 8 }}>Marketplace Dispatch</h1>
+        <h1 style={{ fontSize: 28, marginBottom: 8 }}>{t("Marketplace Dispatch")}</h1>
         <p style={{ color: "#94A3B8", marginBottom: 20 }}>
           Paid marketplace delivery jobs — prepared for live dispatch but OFF by default (
           MARKETPLACE_DISPATCH_LIVE_ENABLED={String(platformFlag)}). No driver notifications,
@@ -59,9 +63,9 @@ export default function AdminMarketplaceDispatchPage() {
         </p>
 
         {!canView ? (
-          <p>Read-only access required.</p>
+          <p>{t("Read-only access required.")}</p>
         ) : loading ? (
-          <p>Loading…</p>
+          <p>{t("Loading…")}</p>
         ) : rows.length === 0 ? (
           <p>
             No marketplace dispatch jobs yet. Jobs are created when a seller order is marked paid
@@ -81,7 +85,7 @@ export default function AdminMarketplaceDispatchPage() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                   <div>
-                    <strong>{row.seller?.business_name ?? "Seller"}</strong>
+                    <strong>{row.seller?.business_name ?? t("Seller")}</strong>
                     <div style={{ color: "#94A3B8", fontSize: 13 }}>
                       {row.seller_order_id} · {row.status ?? "—"}
                     </div>
@@ -95,23 +99,23 @@ export default function AdminMarketplaceDispatchPage() {
 
                 <div style={{ marginTop: 12, display: "grid", gap: 6, fontSize: 13 }}>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Pickup: </span>
+                    <span style={{ color: "#94A3B8" }}>{t("Pickup:")} </span>
                     {row.pickup_address ?? "—"}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Dropoff: </span>
+                    <span style={{ color: "#94A3B8" }}>{t("Dropoff:")} </span>
                     {row.dropoff_address ?? "—"}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Assigned driver: </span>
+                    <span style={{ color: "#94A3B8" }}>{t("Assigned driver:")} </span>
                     {row.assigned_driver_id ?? "—"}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Driver earning: </span>
+                    <span style={{ color: "#94A3B8" }}>{t("Driver earning:")} </span>
                     {formatMoney(row.driver_earning_cents)}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Platform margin: </span>
+                    <span style={{ color: "#94A3B8" }}>{t("Platform margin:")} </span>
                     {formatMoney(row.platform_margin_cents)}
                   </div>
                   <div style={{ color: "#64748B" }}>

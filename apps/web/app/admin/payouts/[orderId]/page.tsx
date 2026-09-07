@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -198,21 +200,21 @@ function getPayoutBadgeClass(status: string | null) {
   }
 }
 
-function labelForDashboardStatus(status: DashboardStatus) {
+function labelForDashboardStatus(status: DashboardStatus, t: (source: string) => string) {
   switch (status) {
     case "completed":
-      return "Completed";
+      return t("Completed");
     case "partial":
       return "Partial";
     case "failed":
-      return "Failed";
+      return t("Failed");
     case "data_mismatch":
-      return "Data mismatch";
+      return t("Data mismatch");
     case "paid_no_payout":
       return "Paid / no payout";
     case "unpaid":
     default:
-      return "Unpaid";
+      return t("Unpaid");
   }
 }
 
@@ -262,6 +264,8 @@ export default function AdminPayoutDetailPage({
 }: {
   params: Promise<{ orderId: string }>;
 }) {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const copyTimeoutRef = useRef<number | null>(null);
 
@@ -351,7 +355,7 @@ export default function AdminPayoutDetailPage({
         const json = (await response.json()) as ApiResponse;
 
         if (!response.ok || !json.ok) {
-          throw new Error(json.error || "Failed to load payout detail");
+          throw new Error(json.error || t("Failed to load payout detail"));
         }
 
         setData(json);
@@ -449,14 +453,13 @@ export default function AdminPayoutDetailPage({
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-              MMD Delivery · Admin Payout Detail
+              {t("MMD Delivery · Admin Payout Detail")}
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-              Payout Detail
+              {t("Payout Detail")}
             </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Full order, payout, Stripe transfer and timeline detail for one
-              order.
+              {t("Full order, payout, Stripe transfer and timeline detail for one order.")}
             </p>
           </div>
 
@@ -465,7 +468,7 @@ export default function AdminPayoutDetailPage({
               href="/admin/payouts"
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
             >
-              Back to payouts
+              {t("Back to payouts")}
             </Link>
             <button
               type="button"
@@ -473,7 +476,7 @@ export default function AdminPayoutDetailPage({
               disabled={refreshing || !orderId}
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {refreshing ? "Refreshing..." : "Refresh"}
+              {refreshing ? t("Refreshing...") : t("Refresh")}
             </button>
             {orderId ? (
               <button
@@ -489,53 +492,53 @@ export default function AdminPayoutDetailPage({
 
         {loading || !authChecked ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <div className="text-sm text-slate-500">Loading payout detail...</div>
+            <div className="text-sm text-slate-500">{t("Loading payout detail...")}</div>
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
             <div className="text-sm font-medium text-red-800">
-              Failed to load payout detail
+              {t("Failed to load payout detail")}
             </div>
             <div className="mt-2 text-sm text-red-700">{error}</div>
           </div>
         ) : !isAdmin ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
             <div className="text-sm font-medium text-amber-800">
-              Access restricted
+              {t("Access restricted")}
             </div>
             <div className="mt-2 text-sm text-amber-700">
-              This page is reserved for administrators.
+              {t("This page is reserved for administrators.")}
             </div>
           </div>
         ) : !order || !item ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <div className="text-sm text-slate-500">No detail found.</div>
+            <div className="text-sm text-slate-500">{t("No detail found.")}</div>
           </div>
         ) : (
           <div className="space-y-6">
             <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="text-sm text-slate-500">Order ID</div>
+                <div className="text-sm text-slate-500">{t("Order ID")}</div>
                 <div className="mt-2 font-mono text-sm text-slate-900">
                   {truncateMiddle(order.id, 12, 10)}
                 </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="text-sm text-slate-500">Dashboard status</div>
+                <div className="text-sm text-slate-500">{t("Dashboard status")}</div>
                 <div className="mt-3">
                   <span
                     className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(
                       item.dashboard_status
                     )}`}
                   >
-                    {labelForDashboardStatus(item.dashboard_status)}
+                    {labelForDashboardStatus(item.dashboard_status, t)}
                   </span>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="text-sm text-slate-500">Payment status</div>
+                <div className="text-sm text-slate-500">{t("Payment status")}</div>
                 <div className="mt-3">
                   <span
                     className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
@@ -550,7 +553,7 @@ export default function AdminPayoutDetailPage({
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="text-sm text-slate-500">Total</div>
+                <div className="text-sm text-slate-500">{t("Total")}</div>
                 <div className="mt-2 text-2xl font-semibold text-slate-900">
                   {formatMoney(order.total, order.currency || "USD")}
                 </div>
@@ -558,49 +561,49 @@ export default function AdminPayoutDetailPage({
             </section>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
-              <Card title="Order overview" subtitle="Core business and payment data">
-                <InfoRow label="Order ID" value={order.id} mono />
-                <InfoRow label="Restaurant" value={order.restaurant_name || "—"} />
-                <InfoRow label="Order status" value={order.status} />
-                <InfoRow label="Payment status" value={order.payment_status} />
-                <InfoRow label="Currency" value={order.currency || "—"} />
+              <Card title={t("Order overview")} subtitle={t("Core business and payment data")}>
+                <InfoRow label={t("Order ID")} value={order.id} mono />
+                <InfoRow label={t("Restaurant")} value={order.restaurant_name || "—"} />
+                <InfoRow label={t("Order status")} value={order.status} />
+                <InfoRow label={t("Payment status")} value={order.payment_status} />
+                <InfoRow label={t("Currency")} value={order.currency || "—"} />
                 <InfoRow
-                  label="Total"
+                  label={t("Total")}
                   value={formatMoney(order.total, order.currency || "USD")}
                 />
                 <InfoRow
-                  label="Subtotal"
+                  label={t("Subtotal")}
                   value={formatMoney(order.subtotal, order.currency || "USD")}
                 />
                 <InfoRow
-                  label="Tax"
+                  label={t("Tax")}
                   value={formatMoney(order.tax, order.currency || "USD")}
                 />
                 <InfoRow
-                  label="Delivery fee"
+                  label={t("Delivery fee")}
                   value={formatMoney(order.delivery_fee, order.currency || "USD")}
                 />
                 <InfoRow
-                  label="Tip"
+                  label={t("Tip")}
                   value={formatMoney(order.tip, order.currency || "USD")}
                 />
-                <InfoRow label="Created at" value={formatDate(order.created_at)} />
-                <InfoRow label="Paid at" value={formatDate(order.paid_at)} />
-                <InfoRow label="Picked up at" value={formatDate(order.picked_up_at)} />
+                <InfoRow label={t("Created at")} value={formatDate(order.created_at)} />
+                <InfoRow label={t("Paid at")} value={formatDate(order.paid_at)} />
+                <InfoRow label={t("Picked up at")} value={formatDate(order.picked_up_at)} />
                 <InfoRow
-                  label="Delivered at"
+                  label={t("Delivered at")}
                   value={formatDate(order.delivered_confirmed_at)}
                 />
-                <InfoRow label="Type" value={order.type || "—"} />
-                <InfoRow label="Kind" value={order.kind || "—"} />
-                <InfoRow label="Order type" value={order.order_type || "—"} />
-                <InfoRow label="Title" value={order.title || "—"} />
+                <InfoRow label={t("Type")} value={order.type || "—"} />
+                <InfoRow label={t("Kind")} value={order.kind || "—"} />
+                <InfoRow label={t("Order type")} value={order.order_type || "—"} />
+                <InfoRow label={t("Title")} value={order.title || "—"} />
               </Card>
 
-              <Card title="Timeline" subtitle="Main lifecycle and payout events">
+              <Card title={t("Timeline")} subtitle={t("Main lifecycle and payout events")}>
                 <div className="space-y-3">
                   {item.timeline.length === 0 ? (
-                    <div className="text-sm text-slate-500">No timeline events.</div>
+                    <div className="text-sm text-slate-500">{t("No timeline events.")}</div>
                   ) : (
                     item.timeline.map((t) => (
                       <div
@@ -633,8 +636,8 @@ export default function AdminPayoutDetailPage({
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <Card
-                title="Restaurant payout"
-                subtitle="Restaurant transfer and payout metadata"
+                title={t("Restaurant payout")}
+                subtitle={t("Restaurant transfer and payout metadata")}
               >
                 <div className="mb-4">
                   <span
@@ -647,22 +650,22 @@ export default function AdminPayoutDetailPage({
                 </div>
 
                 <InfoRow
-                  label="Paid out"
+                  label={t("Paid out")}
                   value={order.restaurant_paid_out ? "true" : "false"}
                 />
                 <InfoRow
-                  label="Paid out at"
+                  label={t("Paid out at")}
                   value={formatDate(order.restaurant_paid_out_at)}
                 />
                 <InfoRow
-                  label="Amount"
+                  label={t("Amount")}
                   value={formatMoneyFromCents(
                     restaurantPayout?.amount_cents ?? null,
                     order.currency || "USD"
                   )}
                 />
                 <InfoRow
-                  label="Transfer ID"
+                  label={t("Transfer ID")}
                   value={
                     restaurantPayout?.stripe_transfer_id ||
                     order.restaurant_transfer_id ||
@@ -671,46 +674,46 @@ export default function AdminPayoutDetailPage({
                   mono
                 />
                 <InfoRow
-                  label="Destination account"
+                  label={t("Destination account")}
                   value={restaurantPayout?.destination_account_id || "—"}
                   mono
                 />
                 <InfoRow
-                  label="Source charge"
+                  label={t("Source charge")}
                   value={restaurantPayout?.source_charge_id || "—"}
                   mono
                 />
                 <InfoRow
-                  label="Idempotency key"
+                  label={t("Idempotency key")}
                   value={restaurantPayout?.idempotency_key || "—"}
                   mono
                 />
                 <InfoRow
-                  label="Locked by"
+                  label={t("Locked by")}
                   value={restaurantPayout?.locked_by || "—"}
                 />
                 <InfoRow
-                  label="Locked at"
+                  label={t("Locked at")}
                   value={formatDate(restaurantPayout?.locked_at || null)}
                 />
                 <InfoRow
-                  label="Succeeded at"
+                  label={t("Succeeded at")}
                   value={formatDate(restaurantPayout?.succeeded_at || null)}
                 />
                 <InfoRow
-                  label="Failed at"
+                  label={t("Failed at")}
                   value={formatDate(restaurantPayout?.failed_at || null)}
                 />
                 <InfoRow
-                  label="Failure code"
+                  label={t("Failure code")}
                   value={restaurantPayout?.failure_code || "—"}
                 />
                 <InfoRow
-                  label="Failure message"
+                  label={t("Failure message")}
                   value={restaurantPayout?.failure_message || "—"}
                 />
                 <InfoRow
-                  label="Last error"
+                  label={t("Last error")}
                   value={restaurantPayout?.last_error || "—"}
                 />
 
@@ -743,7 +746,7 @@ export default function AdminPayoutDetailPage({
                       rel="noreferrer"
                       className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
                     >
-                      Open Stripe
+                      {t("Open Stripe")}
                     </a>
                   )}
 
@@ -763,8 +766,8 @@ export default function AdminPayoutDetailPage({
               </Card>
 
               <Card
-                title="Driver payout"
-                subtitle="Driver transfer and payout metadata"
+                title={t("Driver payout")}
+                subtitle={t("Driver transfer and payout metadata")}
               >
                 <div className="mb-4">
                   <span
@@ -777,22 +780,22 @@ export default function AdminPayoutDetailPage({
                 </div>
 
                 <InfoRow
-                  label="Paid out"
+                  label={t("Paid out")}
                   value={order.driver_paid_out ? "true" : "false"}
                 />
                 <InfoRow
-                  label="Paid out at"
+                  label={t("Paid out at")}
                   value={formatDate(order.driver_paid_out_at)}
                 />
                 <InfoRow
-                  label="Amount"
+                  label={t("Amount")}
                   value={formatMoneyFromCents(
                     driverPayout?.amount_cents ?? null,
                     order.currency || "USD"
                   )}
                 />
                 <InfoRow
-                  label="Transfer ID"
+                  label={t("Transfer ID")}
                   value={
                     driverPayout?.stripe_transfer_id ||
                     order.driver_transfer_id ||
@@ -801,42 +804,42 @@ export default function AdminPayoutDetailPage({
                   mono
                 />
                 <InfoRow
-                  label="Destination account"
+                  label={t("Destination account")}
                   value={driverPayout?.destination_account_id || "—"}
                   mono
                 />
                 <InfoRow
-                  label="Source charge"
+                  label={t("Source charge")}
                   value={driverPayout?.source_charge_id || "—"}
                   mono
                 />
                 <InfoRow
-                  label="Idempotency key"
+                  label={t("Idempotency key")}
                   value={driverPayout?.idempotency_key || "—"}
                   mono
                 />
-                <InfoRow label="Locked by" value={driverPayout?.locked_by || "—"} />
+                <InfoRow label={t("Locked by")} value={driverPayout?.locked_by || "—"} />
                 <InfoRow
-                  label="Locked at"
+                  label={t("Locked at")}
                   value={formatDate(driverPayout?.locked_at || null)}
                 />
                 <InfoRow
-                  label="Succeeded at"
+                  label={t("Succeeded at")}
                   value={formatDate(driverPayout?.succeeded_at || null)}
                 />
                 <InfoRow
-                  label="Failed at"
+                  label={t("Failed at")}
                   value={formatDate(driverPayout?.failed_at || null)}
                 />
                 <InfoRow
-                  label="Failure code"
+                  label={t("Failure code")}
                   value={driverPayout?.failure_code || "—"}
                 />
                 <InfoRow
-                  label="Failure message"
+                  label={t("Failure message")}
                   value={driverPayout?.failure_message || "—"}
                 />
-                <InfoRow label="Last error" value={driverPayout?.last_error || "—"} />
+                <InfoRow label={t("Last error")} value={driverPayout?.last_error || "—"} />
 
                 <div className="mt-4 flex flex-wrap gap-3">
                   {(driverPayout?.stripe_transfer_id || order.driver_transfer_id) && (
@@ -866,7 +869,7 @@ export default function AdminPayoutDetailPage({
                       rel="noreferrer"
                       className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
                     >
-                      Open Stripe
+                      {t("Open Stripe")}
                     </a>
                   )}
 
@@ -888,25 +891,25 @@ export default function AdminPayoutDetailPage({
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <Card
-                title="Business amounts"
-                subtitle="Net, commission and payout numbers"
+                title={t("Business amounts")}
+                subtitle={t("Net, commission and payout numbers")}
               >
                 <InfoRow
-                  label="Restaurant net amount"
+                  label={t("Restaurant net amount")}
                   value={formatMoney(
                     order.restaurant_net_amount,
                     order.currency || "USD"
                   )}
                 />
                 <InfoRow
-                  label="Restaurant commission amount"
+                  label={t("Restaurant commission amount")}
                   value={formatMoney(
                     order.restaurant_commission_amount,
                     order.currency || "USD"
                   )}
                 />
                 <InfoRow
-                  label="Restaurant commission rate"
+                  label={t("Restaurant commission rate")}
                   value={
                     order.restaurant_commission_rate != null
                       ? `${Number(order.restaurant_commission_rate) * 100}%`
@@ -914,70 +917,70 @@ export default function AdminPayoutDetailPage({
                   }
                 />
                 <InfoRow
-                  label="Driver delivery payout"
+                  label={t("Driver delivery payout")}
                   value={formatMoney(
                     order.driver_delivery_payout,
                     order.currency || "USD"
                   )}
                 />
                 <InfoRow
-                  label="Platform delivery fee"
+                  label={t("Platform delivery fee")}
                   value={formatMoney(
                     order.platform_delivery_fee,
                     order.currency || "USD"
                   )}
                 />
                 <InfoRow
-                  label="Distance"
+                  label={t("Distance")}
                   value={
                     order.distance_miles != null ? `${order.distance_miles} mi` : "—"
                   }
                 />
                 <InfoRow
-                  label="ETA"
+                  label={t("ETA")}
                   value={order.eta_minutes != null ? `${order.eta_minutes} min` : "—"}
                 />
               </Card>
 
               <Card
-                title="Identifiers and addresses"
-                subtitle="Useful ops references"
+                title={t("Identifiers and addresses")}
+                subtitle={t("Useful ops references")}
               >
-                <InfoRow label="User ID" value={order.user_id || "—"} mono />
-                <InfoRow label="Client ID" value={order.client_id || "—"} mono />
+                <InfoRow label={t("User ID")} value={order.user_id || "—"} mono />
+                <InfoRow label={t("Client ID")} value={order.client_id || "—"} mono />
                 <InfoRow
-                  label="Client user ID"
+                  label={t("Client user ID")}
                   value={order.client_user_id || "—"}
                   mono
                 />
-                <InfoRow label="Driver ID" value={order.driver_id || "—"} mono />
+                <InfoRow label={t("Driver ID")} value={order.driver_id || "—"} mono />
                 <InfoRow
-                  label="Restaurant ID"
+                  label={t("Restaurant ID")}
                   value={order.restaurant_id || "—"}
                   mono
                 />
                 <InfoRow
-                  label="Restaurant user ID"
+                  label={t("Restaurant user ID")}
                   value={order.restaurant_user_id || "—"}
                   mono
                 />
                 <InfoRow
-                  label="Payment Intent ID"
+                  label={t("Payment Intent ID")}
                   value={order.stripe_payment_intent_id || "—"}
                   mono
                 />
                 <InfoRow
-                  label="Stripe Session ID"
+                  label={t("Stripe Session ID")}
                   value={order.stripe_session_id || "—"}
                   mono
                 />
-                <InfoRow label="Pickup address" value={order.pickup_address || "—"} />
+                <InfoRow label={t("Pickup address")} value={order.pickup_address || "—"} />
                 <InfoRow
-                  label="Dropoff address"
+                  label={t("Dropoff address")}
                   value={order.dropoff_address || "—"}
                 />
                 <InfoRow
-                  label="Pickup coordinates"
+                  label={t("Pickup coordinates")}
                   value={
                     order.pickup_lat != null && order.pickup_lng != null
                       ? `${order.pickup_lat}, ${order.pickup_lng}`
@@ -985,7 +988,7 @@ export default function AdminPayoutDetailPage({
                   }
                 />
                 <InfoRow
-                  label="Dropoff coordinates"
+                  label={t("Dropoff coordinates")}
                   value={
                     order.dropoff_lat != null && order.dropoff_lng != null
                       ? `${order.dropoff_lat}, ${order.dropoff_lng}`
@@ -996,21 +999,21 @@ export default function AdminPayoutDetailPage({
             </div>
 
             <Card
-              title="Raw payout records"
-              subtitle="Database payout rows for this order"
+              title={t("Raw payout records")}
+              subtitle={t("Database payout rows for this order")}
             >
               <div className="overflow-x-auto">
                 <table className="min-w-[1100px] divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50">
                     <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                      <th className="px-4 py-3 font-medium">Target</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Amount</th>
-                      <th className="px-4 py-3 font-medium">Transfer ID</th>
-                      <th className="px-4 py-3 font-medium">Source charge</th>
-                      <th className="px-4 py-3 font-medium">Created</th>
-                      <th className="px-4 py-3 font-medium">Succeeded</th>
-                      <th className="px-4 py-3 font-medium">Failed</th>
+                      <th className="px-4 py-3 font-medium">{t("Target")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Status")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Amount")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Transfer ID")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Source charge")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Created")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Succeeded")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Failed")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 bg-white">
@@ -1020,7 +1023,7 @@ export default function AdminPayoutDetailPage({
                           colSpan={8}
                           className="px-4 py-8 text-center text-sm text-slate-500"
                         >
-                          No payout rows found.
+                          {t("No payout rows found.")}
                         </td>
                       </tr>
                     ) : (

@@ -53,6 +53,12 @@ import {
   MMD_TAXI_GREEN,
   MMD_WHITE,
 } from "../../theme/mmdUi";
+import {
+  mirrorChevron,
+  rowDirection,
+  textAlignEnd,
+  textAlignStart,
+} from "../../i18n/rtl";
 
 const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
@@ -68,16 +74,24 @@ function statusColor(status: string) {
 }
 
 function BrandFooter({ compact }: { compact?: boolean }) {
+  const { t } = useTranslation();
+  const brand = t("brand.name", "MMD Delivery");
   return (
-    <View style={[styles.brandFooter, compact && styles.brandFooterCompact]}>
+    <View
+      style={[
+        styles.brandFooter,
+        compact && styles.brandFooterCompact,
+        { flexDirection: rowDirection() },
+      ]}
+    >
       <Image
         source={MMD_LOGO}
         style={[styles.brandLogo, compact && styles.brandLogoCompact]}
         resizeMode="contain"
-        accessibilityLabel="MMD Delivery"
+        accessibilityLabel={brand}
       />
       <Text style={[styles.brandLabel, compact && styles.brandLabelCompact]}>
-        MMD Delivery
+        {brand}
       </Text>
     </View>
   );
@@ -90,9 +104,11 @@ function AmenityToggle(props: {
   onValueChange: (value: boolean) => void;
 }) {
   return (
-    <View style={styles.toggleRow}>
+    <View style={[styles.toggleRow, { flexDirection: rowDirection() }]}>
       <Text style={styles.toggleEmoji}>{props.emoji}</Text>
-      <Text style={styles.toggleLabel}>{props.label}</Text>
+      <Text style={[styles.toggleLabel, { textAlign: textAlignStart() }]}>
+        {props.label}
+      </Text>
       <Switch
         value={props.value}
         onValueChange={props.onValueChange}
@@ -444,12 +460,15 @@ export function DriverVehicleScreen() {
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
-          title="Vehicle"
-          subtitle="Vehicle details"
+          title={t("driver.vehicle.screenTitle", "Vehicle")}
+          subtitle={t("driver.vehicle.detailsSubtitle", "Vehicle details")}
           variant="dark"
           fallbackRoute="DriverVehicles"
         />
-        <DriverBrandLoadingState title="Loading vehicle..." logoAtBottom />
+        <DriverBrandLoadingState
+          title={t("driver.vehicle.loading", "Loading vehicle...")}
+          logoAtBottom
+        />
       </SafeAreaView>
     );
   }
@@ -459,8 +478,8 @@ export function DriverVehicleScreen() {
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
-          title="Add a vehicle"
-          subtitle="Choose the type first"
+          title={t("driver.vehicle.addTitle", "Add a vehicle")}
+          subtitle={t("driver.vehicle.chooseType", "Choose the type first")}
           variant="dark"
           fallbackRoute="DriverVehicles"
         />
@@ -470,26 +489,32 @@ export function DriverVehicleScreen() {
               {
                 id: "car" as const,
                 emoji: "🚗",
-                label: "Car",
-                hint: "Car - food, parcels, taxi",
+                labelKey: "driver.vehicle.mode.car",
+                labelFallback: "Car",
+                hintKey: "driver.vehicle.mode.carHint",
+                hintFallback: "Car - food, parcels, taxi",
               },
               {
                 id: "moto" as const,
                 emoji: "🏍️",
-                label: "Motorcycle",
-                hint: "Motorcycle - fast delivery",
+                labelKey: "driver.vehicle.mode.moto",
+                labelFallback: "Motorcycle",
+                hintKey: "driver.vehicle.mode.motoHint",
+                hintFallback: "Motorcycle - fast delivery",
               },
               {
                 id: "bike" as const,
                 emoji: "🚲",
-                label: "Bicycle",
-                hint: "Bicycle - no motorized fleet required",
+                labelKey: "driver.vehicle.mode.bike",
+                labelFallback: "Bicycle",
+                hintKey: "driver.vehicle.mode.bikeHint",
+                hintFallback: "Bicycle - no motorized fleet required",
               },
             ] as const
           ).map((opt) => (
             <TouchableOpacity
               key={opt.id}
-              style={styles.modeCard}
+              style={[styles.modeCard, { flexDirection: rowDirection() }]}
               activeOpacity={0.9}
               onPress={() => {
                 setTransportMode(opt.id);
@@ -514,13 +539,23 @@ export function DriverVehicleScreen() {
             >
               <Text style={styles.modeEmoji}>{opt.emoji}</Text>
               <View style={styles.modeText}>
-                <Text style={styles.modeLabel}>{opt.label}</Text>
-                <Text style={styles.modeHint}>{opt.hint}</Text>
+                <Text style={[styles.modeLabel, { textAlign: textAlignStart() }]}>
+                  {t(opt.labelKey, opt.labelFallback)}
+                </Text>
+                <Text style={[styles.modeHint, { textAlign: textAlignStart() }]}>
+                  {t(opt.hintKey, opt.hintFallback)}
+                </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={MMD_WHITE} />
+              <Ionicons
+                name={mirrorChevron("forward") === "→" ? "chevron-forward" : "chevron-back"}
+                size={20}
+                color={MMD_WHITE}
+              />
             </TouchableOpacity>
           ))}
-          <Text style={styles.modeInfo}>Category is synced automatically</Text>
+          <Text style={styles.modeInfo}>
+            {t("driver.vehicle.categorySynced", "Category is synced automatically")}
+          </Text>
           <BrandFooter />
         </View>
       </SafeAreaView>
@@ -532,8 +567,11 @@ export function DriverVehicleScreen() {
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
-          title="Bicycle"
-          subtitle="No motorized vehicle required"
+          title={t("driver.vehicle.bikeTitle", "Bicycle")}
+          subtitle={t(
+            "driver.vehicle.bikeSubtitle",
+            "No motorized vehicle required",
+          )}
           variant="dark"
           fallbackRoute="DriverVehicles"
         />
@@ -544,9 +582,14 @@ export function DriverVehicleScreen() {
             activeOpacity={0.9}
           >
             <Text style={styles.bikeEmoji}>🚲</Text>
-            <Text style={styles.modeLabel}>Change type</Text>
+            <Text style={styles.modeLabel}>
+              {t("driver.vehicle.changeType", "Change type")}
+            </Text>
             <Text style={[styles.modeHint, styles.bikeHintCentered]}>
-              Back to Car / Motorcycle / Bicycle selection
+              {t(
+                "driver.vehicle.changeTypeHint",
+                "Back to Car / Motorcycle / Bicycle selection",
+              )}
             </Text>
           </TouchableOpacity>
 
@@ -560,10 +603,14 @@ export function DriverVehicleScreen() {
               {saving ? (
                 <ActivityIndicator color={MMD_WHITE} />
               ) : (
-                <Text style={styles.saveText}>Confirm bicycle mode</Text>
+                <Text style={styles.saveText}>
+                  {t("driver.vehicle.confirmBike", "Confirm bicycle mode")}
+                </Text>
               )}
             </TouchableOpacity>
-            <Text style={styles.bikeHint}>Confirm to sync with dispatch</Text>
+            <Text style={styles.bikeHint}>
+              {t("driver.vehicle.confirmBikeHint", "Confirm to sync with dispatch")}
+            </Text>
           </View>
 
           <BrandFooter />
@@ -573,34 +620,54 @@ export function DriverVehicleScreen() {
   }
 
   const motoForm = transportMode === "moto";
-  const fieldRows: Array<[string, string]> = [
-    ["vehicle_make", "Make"],
-    ["vehicle_model", "Model"],
-    ["vehicle_year", "Year"],
-    ["vehicle_color", "Color"],
-    ["license_plate", "Plate"],
+  const fieldRows: Array<[string, string, string]> = [
+    ["vehicle_make", "driver.vehicle.field.make", "Make"],
+    ["vehicle_model", "driver.vehicle.field.model", "Model"],
+    ["vehicle_year", "driver.vehicle.field.year", "Year"],
+    ["vehicle_color", "driver.vehicle.field.color", "Color"],
+    ["license_plate", "driver.vehicle.field.plate", "Plate"],
     ...(motoForm
       ? []
       : ([
-          ["seats_count", "Passenger seats"],
-          ["vehicle_type", "Type (sedan, suv, van, minivan)"],
-        ] as Array<[string, string]>)),
+          ["seats_count", "driver.vehicle.seats", "Passenger seats"],
+          [
+            "vehicle_type",
+            "driver.vehicle.field.type",
+            "Type (sedan, suv, van, minivan)",
+          ],
+        ] as Array<[string, string, string]>)),
     [
       "fuel_type",
+      "driver.vehicle.field.fuel",
       "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
     ],
-    ["nickname", "Nickname (optional)"],
+    ["nickname", "driver.vehicle.field.nickname", "Nickname (optional)"],
   ];
+
+  const transportLabel =
+    transportMode === "moto"
+      ? t("driver.vehicle.mode.moto", "Motorcycle")
+      : t("driver.vehicle.mode.car", "Car");
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
-        title={isCreate ? "Add a vehicle" : "Vehicle"}
+        title={
+          isCreate
+            ? t("driver.vehicle.addTitle", "Add a vehicle")
+            : t("driver.vehicle.screenTitle", "Vehicle")
+        }
         subtitle={
           isCreate
-            ? `Type: ${transportMode === "moto" ? "Motorcycle" : "Car"}. Taxi categories are calculated by the server.`
-            : "Taxi categories are calculated by the server."
+            ? t("driver.vehicle.createSubtitle", {
+                defaultValue: "Type: {{type}}. Taxi categories are calculated by the server.",
+                type: transportLabel,
+              })
+            : t(
+                "driver.vehicle.taxiCategoriesHint",
+                "Taxi categories are calculated by the server.",
+              )
         }
         variant="dark"
         fallbackRoute="DriverVehicles"
@@ -612,14 +679,21 @@ export function DriverVehicleScreen() {
       >
         {isCreate ? (
           <TouchableOpacity onPress={() => setTransportMode(null)}>
-            <Text style={styles.changeType}>Change vehicle type</Text>
+            <Text style={styles.changeType}>
+              {t("driver.vehicle.changeVehicleType", "Change vehicle type")}
+            </Text>
           </TouchableOpacity>
         ) : null}
 
         <View style={styles.photoCard}>
-          <Text style={styles.photoTitle}>Vehicle photo</Text>
-          <Text style={styles.photoHelp}>
-            Upload a clear photo of the vehicle
+          <Text style={[styles.photoTitle, { textAlign: textAlignStart() }]}>
+            {t("driver.vehicle.photoTitle", "Vehicle photo")}
+          </Text>
+          <Text style={[styles.photoHelp, { textAlign: textAlignStart() }]}>
+            {t(
+              "driver.vehicle.photoHelp",
+              "Upload a clear photo of the vehicle",
+            )}
           </Text>
           <View style={styles.photoPreview}>
             {previewUri ? (
@@ -627,12 +701,17 @@ export function DriverVehicleScreen() {
                 source={{ uri: previewUri }}
                 style={styles.photoImage}
                 resizeMode="cover"
-                accessibilityLabel="Vehicle photo preview"
+                accessibilityLabel={t(
+                  "driver.vehicle.photoPreview",
+                  "Vehicle photo preview",
+                )}
               />
             ) : (
               <View style={styles.photoPlaceholder}>
                 <Text style={styles.photoPlaceholderEmoji}>📸</Text>
-                <Text style={styles.photoPlaceholderText}>No photo yet</Text>
+                <Text style={styles.photoPlaceholderText}>
+                  {t("driver.vehicle.noPhoto", "No photo yet")}
+                </Text>
               </View>
             )}
             {uploadingPhoto ? (
@@ -641,20 +720,24 @@ export function DriverVehicleScreen() {
               </View>
             ) : null}
           </View>
-          <View style={styles.photoActions}>
+          <View style={[styles.photoActions, { flexDirection: rowDirection() }]}>
             <TouchableOpacity
               style={styles.photoBtn}
               onPress={() => pickPhoto("camera")}
               disabled={uploadingPhoto || saving}
             >
-              <Text style={styles.photoBtnText}>Camera</Text>
+              <Text style={styles.photoBtnText}>
+                {t("driver.vehicle.camera", "Camera")}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.photoBtn}
               onPress={() => pickPhoto("gallery")}
               disabled={uploadingPhoto || saving}
             >
-              <Text style={styles.photoBtnText}>Gallery</Text>
+              <Text style={styles.photoBtnText}>
+                {t("driver.vehicle.gallery", "Gallery")}
+              </Text>
             </TouchableOpacity>
             {previewUri ? (
               <TouchableOpacity
@@ -662,24 +745,31 @@ export function DriverVehicleScreen() {
                 onPress={removePhoto}
                 disabled={uploadingPhoto || saving}
               >
-                <Text style={styles.photoBtnText}>Remove</Text>
+                <Text style={styles.photoBtnText}>
+                  {t("driver.vehicle.remove", "Remove")}
+                </Text>
               </TouchableOpacity>
             ) : null}
           </View>
         </View>
 
         <View style={styles.fieldsCard}>
-          {fieldRows.map(([key, label]) => (
-            <View key={key} style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>{label}</Text>
+          {fieldRows.map(([key, labelKey, labelFallback]) => (
+            <View
+              key={key}
+              style={[styles.fieldRow, { flexDirection: rowDirection() }]}
+            >
+              <Text style={[styles.fieldLabel, { textAlign: textAlignStart() }]}>
+                {t(labelKey, labelFallback)}
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { textAlign: textAlignEnd() }]}
                 value={(form as Record<string, string | boolean>)[key] as string}
                 onChangeText={(text) =>
                   setForm((prev) => ({ ...prev, [key]: text }))
                 }
                 placeholderTextColor="rgba(255,255,255,0.35)"
-                placeholder="—"
+                placeholder={t("driver.vehicle.field.dashPlaceholder", "—")}
               />
             </View>
           ))}
@@ -690,7 +780,7 @@ export function DriverVehicleScreen() {
             <>
               <AmenityToggle
                 emoji="❄️"
-                label="Air conditioning"
+                label={t("driver.vehicle.amenity.ac", "Air conditioning")}
                 value={form.has_air_conditioning}
                 onValueChange={(v) =>
                   setForm((prev) => ({ ...prev, has_air_conditioning: v }))
@@ -698,7 +788,7 @@ export function DriverVehicleScreen() {
               />
               <AmenityToggle
                 emoji="♿"
-                label="Accessible"
+                label={t("driver.vehicle.amenity.accessible", "Accessible")}
                 value={form.wheelchair_accessible}
                 onValueChange={(v) =>
                   setForm((prev) => ({ ...prev, wheelchair_accessible: v }))
@@ -706,7 +796,7 @@ export function DriverVehicleScreen() {
               />
               <AmenityToggle
                 emoji="👶"
-                label="Baby seat"
+                label={t("driver.vehicle.amenity.babySeat", "Baby seat")}
                 value={form.child_seat_available}
                 onValueChange={(v) =>
                   setForm((prev) => ({ ...prev, child_seat_available: v }))
@@ -714,7 +804,7 @@ export function DriverVehicleScreen() {
               />
               <AmenityToggle
                 emoji="🧳"
-                label="Large luggage"
+                label={t("driver.vehicle.amenity.luggage", "Large luggage")}
                 value={form.large_luggage}
                 onValueChange={(v) =>
                   setForm((prev) => ({ ...prev, large_luggage: v }))
@@ -724,7 +814,7 @@ export function DriverVehicleScreen() {
           ) : null}
           <AmenityToggle
             emoji="🐾"
-            label="Pets"
+            label={t("driver.vehicle.amenity.pets", "Pets")}
             value={form.pets_allowed}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, pets_allowed: v }))
@@ -732,7 +822,7 @@ export function DriverVehicleScreen() {
           />
           <AmenityToggle
             emoji="🔌"
-            label="Phone charger"
+            label={t("driver.vehicle.amenity.charger", "Phone charger")}
             value={form.phone_charger_available}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, phone_charger_available: v }))
@@ -740,7 +830,7 @@ export function DriverVehicleScreen() {
           />
           <AmenityToggle
             emoji="🔇"
-            label="Quiet vehicle"
+            label={t("driver.vehicle.amenity.quiet", "Quiet vehicle")}
             value={form.quiet_vehicle}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, quiet_vehicle: v }))
@@ -748,7 +838,7 @@ export function DriverVehicleScreen() {
           />
           <AmenityToggle
             emoji="🚭"
-            label="Non-smoking"
+            label={t("driver.vehicle.amenity.nonsmoking", "Non-smoking")}
             value={form.non_smoking}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, non_smoking: v }))
@@ -758,9 +848,14 @@ export function DriverVehicleScreen() {
 
         {categories.length > 0 ? (
           <View style={styles.categoriesCard}>
-            <Text style={styles.categoriesTitle}>Taxi categories (server)</Text>
+            <Text style={[styles.categoriesTitle, { textAlign: textAlignStart() }]}>
+              {t("driver.vehicle.taxiCategories", "Taxi categories (server)")}
+            </Text>
             {categories.map((c) => (
-              <View key={c.category} style={styles.categoryRow}>
+              <View
+                key={c.category}
+                style={[styles.categoryRow, { flexDirection: rowDirection() }]}
+              >
                 <View
                   style={[
                     styles.categoryDot,
@@ -785,7 +880,9 @@ export function DriverVehicleScreen() {
             <ActivityIndicator color={MMD_WHITE} />
           ) : (
             <Text style={styles.saveText}>
-              {isCreate ? "Add" : "Save"}
+              {isCreate
+                ? t("driver.vehicle.addAction", "Add")
+                : t("driver.vehicle.save", "Save")}
             </Text>
           )}
         </TouchableOpacity>
@@ -815,7 +912,6 @@ const styles = StyleSheet.create({
     backgroundColor: MMD_ACTION_NAVY,
     borderRadius: 16,
     padding: 16,
-    flexDirection: "row",
     alignItems: "center",
     gap: 12,
     shadowColor: "#000",
@@ -921,7 +1017,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  photoActions: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  photoActions: { gap: 6, flexWrap: "wrap" },
   photoBtn: {
     flex: 1,
     minWidth: 80,
@@ -945,7 +1041,6 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   fieldRow: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
@@ -967,7 +1062,6 @@ const styles = StyleSheet.create({
     fontFamily: MMD_FONT.bold,
     fontWeight: "700",
     fontSize: 12,
-    textAlign: "right",
     paddingVertical: 2,
     minWidth: 80,
   },
@@ -978,7 +1072,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   toggleRow: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 8,
@@ -1006,7 +1099,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   categoryRow: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
@@ -1039,7 +1131,6 @@ const styles = StyleSheet.create({
   brandFooter: {
     marginTop: "auto",
     paddingTop: 16,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,

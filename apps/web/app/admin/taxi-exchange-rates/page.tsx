@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiExchangeRates } from "@/lib/adminAccess";
@@ -16,6 +18,8 @@ type RateRow = {
 };
 
 export default function AdminTaxiExchangeRatesPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<RateRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
@@ -58,23 +62,23 @@ export default function AdminTaxiExchangeRatesPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-5xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold">Taxi Exchange Rates</h1>
+            <h1 className="text-2xl font-bold">{t("Taxi Exchange Rates")}</h1>
             <p className="text-sm text-slate-600">
               Taux de référence pour analytics/display — pas de conversion Stripe checkout.
             </p>
           </header>
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : (
             <div className="overflow-x-auto rounded-2xl border bg-white">
               <table className="min-w-full text-sm">
                 <thead className="border-b bg-slate-50 text-left">
                   <tr>
-                    <th className="p-3">From</th>
-                    <th className="p-3">To</th>
-                    <th className="p-3">Rate</th>
-                    <th className="p-3">Source</th>
-                    <th className="p-3">Actif</th>
+                    <th className="p-3">{t("From")}</th>
+                    <th className="p-3">{t("To")}</th>
+                    <th className="p-3">{t("Rate")}</th>
+                    <th className="p-3">{t("Source")}</th>
+                    <th className="p-3">{t("Actif")}</th>
                     <th className="p-3" />
                   </tr>
                 </thead>
@@ -112,7 +116,7 @@ export default function AdminTaxiExchangeRatesPage() {
                           </label>
                           {canEdit ? (
                             <button type="submit" className="rounded bg-slate-900 px-3 py-1 text-white">
-                              Save
+                              {t("Save")}
                             </button>
                           ) : null}
                         </form>

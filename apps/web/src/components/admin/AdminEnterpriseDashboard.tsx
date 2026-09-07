@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -70,6 +72,8 @@ const ALERT_BORDER: Record<AlertCard["tone"], string> = {
 };
 
 export default function AdminEnterpriseDashboard() {
+  const { t } = useAdminT();
+
   const [role, setRole] = useState<StaffRole | null>(null);
   const [isFounder, setIsFounder] = useState(false);
   const [metrics, setMetrics] = useState<OverviewMetrics | null>(null);
@@ -261,7 +265,7 @@ export default function AdminEnterpriseDashboard() {
     const cards: AlertCard[] = [
       {
         id: "payouts_failed",
-        label: "Failed payouts",
+        label: t("Failed payouts"),
         count: failed,
         href: "/admin/payouts",
         tone: "critical",
@@ -299,7 +303,7 @@ export default function AdminEnterpriseDashboard() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-[32px] font-bold tracking-tight text-white sm:text-[36px]">
-            Overview
+            {t("Overview")}
           </h1>
           <p className="mt-1 text-sm text-white/70">
             {roleDisplayName(role, { isFounder })}
@@ -319,7 +323,7 @@ export default function AdminEnterpriseDashboard() {
               href="/admin/hr"
               className="rounded-xl bg-[var(--cc-ai)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
             >
-              People Ops
+              {t("People Ops")}
             </Link>
           ) : null}
         </div>
@@ -329,7 +333,7 @@ export default function AdminEnterpriseDashboard() {
       </header>
 
       {/* KPI row — Figma Overview */}
-      <section aria-label="Key metrics">
+      <section aria-label={t("Key metrics")}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((kpi) => (
             <Link
@@ -344,7 +348,7 @@ export default function AdminEnterpriseDashboard() {
                   className={`inline-block size-2.5 rounded-[5px] ${TONE_DOT[kpi.tone]}`}
                 />
                 <span className="text-base font-semibold text-white/80">
-                  Live
+                  {t("Live")}
                 </span>
               </div>
             </Link>
@@ -357,15 +361,15 @@ export default function AdminEnterpriseDashboard() {
         persona === "admin" ||
         persona === "ops" ||
         persona === "support") && (
-        <section aria-label="Live operations">
+        <section aria-label={t("Live operations")}>
           <AdminOpsLiveMap />
         </section>
       )}
 
       {/* Critical alerts — only when real counts exist */}
       {alerts.length > 0 ? (
-        <section aria-label="Critical alerts" className="space-y-3">
-          <h2 className="text-base font-semibold text-white">Critical alerts</h2>
+        <section aria-label={t("Critical alerts")} className="space-y-3">
+          <h2 className="text-base font-semibold text-white">{t("Critical alerts")}</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {alerts.map((alert) => (
               <Link
@@ -385,20 +389,20 @@ export default function AdminEnterpriseDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* My tasks */}
-        <section aria-label="My tasks" className="space-y-3">
+        <section aria-label={t("My tasks")} className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-white">My tasks</h2>
+            <h2 className="text-base font-semibold text-white">{t("My tasks")}</h2>
             <Link
               href="/admin/tasks"
               className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
             >
-              View all
+              {t("View all")}
             </Link>
           </div>
           <div className="cc-card divide-y divide-[var(--cc-border)]">
             {tasks.length === 0 ? (
               <p className="px-5 py-6 text-sm text-[var(--cc-muted)]">
-                No tasks assigned.
+                {t("No tasks assigned.")}
               </p>
             ) : (
               tasks.map((task) => (
@@ -411,7 +415,7 @@ export default function AdminEnterpriseDashboard() {
                     {task.title}
                   </span>
                   <span className="text-xs font-semibold text-[var(--cc-info)]">
-                    Open
+                    {t("Open")}
                   </span>
                 </Link>
               ))
@@ -420,17 +424,17 @@ export default function AdminEnterpriseDashboard() {
         </section>
 
         {/* Recent activity — Figma table */}
-        <section aria-label="Recent activity" className="space-y-4 lg:col-span-2">
-          <h2 className="text-2xl font-bold text-white">Recent activity</h2>
+        <section aria-label={t("Recent activity")} className="space-y-4 lg:col-span-2">
+          <h2 className="text-2xl font-bold text-white">{t("Recent activity")}</h2>
           <div className="overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.04] shadow-[0px_18px_36px_-18px_rgba(0,0,0,0.25)] backdrop-blur-[20px]">
             <div className="grid grid-cols-2 gap-3 bg-white/[0.06] px-5 py-3.5 text-sm font-bold uppercase tracking-[0.08em] text-white/70 sm:grid-cols-4">
-              <span>Time</span>
-              <span className="sm:col-span-2">Event</span>
-              <span className="hidden sm:block">Status</span>
+              <span>{t("Time")}</span>
+              <span className="sm:col-span-2">{t("Event")}</span>
+              <span className="hidden sm:block">{t("Status")}</span>
             </div>
             {activity.length === 0 ? (
               <p className="px-5 py-6 text-sm text-white/70">
-                Activity will appear here as admins take actions.
+                {t("Activity will appear here as admins take actions.")}
               </p>
             ) : (
               activity.map((item) => (
@@ -446,7 +450,7 @@ export default function AdminEnterpriseDashboard() {
                   </span>
                   <span className="hidden sm:inline-flex">
                     <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-sm font-bold text-[#22C55E]">
-                      Live
+                      {t("Live")}
                     </span>
                   </span>
                 </div>

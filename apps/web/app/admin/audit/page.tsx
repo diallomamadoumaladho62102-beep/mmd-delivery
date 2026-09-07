@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { canAccessAuditLogs } from "@/lib/adminAccess";
@@ -130,6 +132,8 @@ function safeJsonPreview(value: Record<string, unknown> | null | undefined) {
 }
 
 export default function AdminAuditPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [rows, setRows] = useState<AuditRow[]>([]);
@@ -276,9 +280,9 @@ export default function AdminAuditPage() {
         <div className="mx-auto max-w-7xl p-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="mb-4 text-2xl font-bold text-slate-900">
-              Admin audit logs
+              {t("Admin audit logs")}
             </h1>
-            <p className="text-sm text-slate-600">Chargement…</p>
+            <p className="text-sm text-slate-600">{t("Chargement…")}</p>
           </div>
         </div>
       </main>
@@ -291,7 +295,7 @@ export default function AdminAuditPage() {
         <div className="mx-auto max-w-7xl p-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="mb-4 text-2xl font-bold text-slate-900">
-              Admin audit logs
+              {t("Admin audit logs")}
             </h1>
             <p className="text-sm text-red-600">{err || "Accès refusé"}</p>
           </div>
@@ -305,50 +309,49 @@ export default function AdminAuditPage() {
       <div className="mx-auto max-w-7xl space-y-6 p-6">
         <header className="space-y-3">
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-            MMD Delivery · Admin Audit
+            {t("MMD Delivery · Admin Audit")}
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-            Admin audit logs
+            {t("Admin audit logs")}
           </h1>
 
           <p className="text-sm text-slate-600">
-            Trace les actions sensibles des administrateurs sur les drivers,
-            restaurants, payouts et autres opérations.
+            {t("Trace les actions sensibles des administrateurs sur les drivers, restaurants, payouts et autres opérations.")}
           </p>
         </header>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Logs affichés</div>
+            <div className="text-sm text-slate-500">{t("Logs affichés")}</div>
             <div className="mt-2 text-3xl font-semibold text-slate-900">
               {summary.total}
             </div>
           </div>
 
           <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Approvals</div>
+            <div className="text-sm text-slate-500">{t("Approvals")}</div>
             <div className="mt-2 text-3xl font-semibold text-slate-900">
               {summary.approvals}
             </div>
           </div>
 
           <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Rejections</div>
+            <div className="text-sm text-slate-500">{t("Rejections")}</div>
             <div className="mt-2 text-3xl font-semibold text-slate-900">
               {summary.rejections}
             </div>
           </div>
 
           <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Drivers</div>
+            <div className="text-sm text-slate-500">{t("Drivers")}</div>
             <div className="mt-2 text-3xl font-semibold text-slate-900">
               {summary.drivers}
             </div>
           </div>
 
           <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Restaurants</div>
+            <div className="text-sm text-slate-500">{t("Restaurants")}</div>
             <div className="mt-2 text-3xl font-semibold text-slate-900">
               {summary.restaurants}
             </div>
@@ -365,27 +368,27 @@ export default function AdminAuditPage() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_260px_260px_auto_auto]">
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Search
+                {t("Search")}
               </label>
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by action, target, target ID, admin ID, metadata..."
+                placeholder={t("Search by action, target, target ID, admin ID, metadata...")}
                 className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Action
+                {t("Action")}
               </label>
               <select
                 value={actionFilter}
                 onChange={(e) => setActionFilter(e.target.value)}
                 className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
-                <option value="all">All</option>
+                <option value="all">{t("All")}</option>
                 {actionOptions.map((action) => (
                   <option key={action} value={action}>
                     {labelForAction(action)}
@@ -396,14 +399,14 @@ export default function AdminAuditPage() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Target
+                {t("Target")}
               </label>
               <select
                 value={targetFilter}
                 onChange={(e) => setTargetFilter(e.target.value)}
                 className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               >
-                <option value="all">All</option>
+                <option value="all">{t("All")}</option>
                 {targetOptions.map((target) => (
                   <option key={target} value={target}>
                     {target}
@@ -418,7 +421,7 @@ export default function AdminAuditPage() {
                 onClick={resetFilters}
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
               >
-                Reset
+                {t("Reset")}
               </button>
             </div>
 
@@ -429,7 +432,7 @@ export default function AdminAuditPage() {
                 disabled={refreshing}
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {refreshing ? "Refreshing..." : "Refresh"}
+                {refreshing ? t("Refreshing...") : t("Refresh")}
               </button>
             </div>
           </div>
@@ -437,9 +440,9 @@ export default function AdminAuditPage() {
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Audit entries</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{t("Audit entries")}</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Historique des actions admin enregistrées dans la base.
+              {t("Historique des actions admin enregistrées dans la base.")}
             </p>
           </div>
 
@@ -447,15 +450,15 @@ export default function AdminAuditPage() {
             <table className="min-w-[1500px] divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50">
                 <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-3 font-medium">Created</th>
-                  <th className="px-4 py-3 font-medium">Action</th>
-                  <th className="px-4 py-3 font-medium">Target type</th>
-                  <th className="px-4 py-3 font-medium">Target ID</th>
-                  <th className="px-4 py-3 font-medium">Admin user</th>
-                  <th className="px-4 py-3 font-medium">IP</th>
-                  <th className="px-4 py-3 font-medium">Avant</th>
-                  <th className="px-4 py-3 font-medium">Après</th>
-                  <th className="px-4 py-3 font-medium">Metadata</th>
+                  <th className="px-4 py-3 font-medium">{t("Created")}</th>
+                  <th className="px-4 py-3 font-medium">{t("Action")}</th>
+                  <th className="px-4 py-3 font-medium">{t("Target type")}</th>
+                  <th className="px-4 py-3 font-medium">{t("Target ID")}</th>
+                  <th className="px-4 py-3 font-medium">{t("Admin user")}</th>
+                  <th className="px-4 py-3 font-medium">{t("IP")}</th>
+                  <th className="px-4 py-3 font-medium">{t("Avant")}</th>
+                  <th className="px-4 py-3 font-medium">{t("Après")}</th>
+                  <th className="px-4 py-3 font-medium">{t("Metadata")}</th>
                 </tr>
               </thead>
 
@@ -466,7 +469,7 @@ export default function AdminAuditPage() {
                       colSpan={9}
                       className="px-4 py-12 text-center text-sm text-slate-500"
                     >
-                      Aucun log trouvé pour les filtres actuels.
+                      {t("Aucun log trouvé pour les filtres actuels.")}
                     </td>
                   </tr>
                 ) : (

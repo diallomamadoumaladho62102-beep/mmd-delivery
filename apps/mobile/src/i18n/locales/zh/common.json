@@ -197,7 +197,23 @@
       "title": "权限",
       "camera": "允许相机权限以拍照。"
     },
-    "backShort": "返回"
+    "backShort": "返回",
+    "a11y": {
+      "close": "关闭",
+      "closeFilter": "关闭筛选",
+      "closeMenu": "关闭菜单",
+      "retry": "重试",
+      "back": "返回"
+    },
+    "close": "关闭",
+    "retry": "重试",
+    "backAction": "返回",
+    "saving": "保存中…",
+    "settings": "设置",
+    "no": "否",
+    "edit": "编辑",
+    "delete": "删除",
+    "view": "查看"
   },
   "shared": {
     "common": {
@@ -400,7 +416,10 @@
         "createMyAccount": "创建我的账户",
         "files": "文件",
         "haveAccountLogin": "我已有账户",
-        "login": "登录"
+        "login": "登录",
+        "showPassword": "显示",
+        "hidePassword": "隐藏",
+        "forgotPassword": "忘记密码？"
       },
       "alert": {
         "cameraPermission": "请允许相机权限。",
@@ -438,7 +457,22 @@
         "password": "密码",
         "passwordPlaceholder": "密码",
         "phone": "电话",
-        "phonePlaceholder": "例如：+1 555 123 4567"
+        "phonePlaceholder": "例如：+1 555 123 4567",
+        "emergencyPhone": "紧急电话",
+        "emergencyPhonePlaceholder": "例如：9297408722",
+        "address": "地址",
+        "addressPlaceholder": "例如：1112 Flatbush Ave",
+        "city": "城市",
+        "cityPlaceholder": "New York",
+        "state": "州",
+        "statePlaceholder": "NY",
+        "zipCode": "邮编",
+        "zipPlaceholder": "11226",
+        "dateOfBirth": "出生日期",
+        "dateOfBirthPlaceholder": "YYYY-MM-DD",
+        "dateFormatError": "日期格式要求：YYYY-MM-DD",
+        "licenseNumber": "驾照号码",
+        "licenseNumberPlaceholder": "驾驶证号码"
       },
       "footer": "继续即表示你同意服务条款。",
       "header": {
@@ -473,7 +507,10 @@
         "modelPlaceholder": "例如：Corolla",
         "plate": "车牌",
         "title": "车辆",
-        "yearOptional": "年份（可选）"
+        "yearOptional": "年份（可选）",
+        "yearPlaceholder": "2020",
+        "colorPlaceholder": "黑色",
+        "platePlaceholder": "ABC123"
       }
     },
     "payments": {
@@ -669,7 +706,8 @@
       },
       "debug": {
         "testIncomingOrder": "测试来单"
-      }
+      },
+      "preparingNavigation": "正在准备导航…"
     },
     "revenue": {
       "title": "收入",
@@ -1031,6 +1069,126 @@
         "title": "Stripe"
       },
       "title": "收入"
+    },
+    "identity": {
+      "screenTitle": "身份验证",
+      "loading": "加载中…",
+      "waitHint": "正在验证您的身份，请稍候。\n这可能需要一些时间。"
+    },
+    "vehicles": {
+      "title": "我的车辆",
+      "subtitleManage": "管理您的车队",
+      "subtitleActive": "一次只能有一辆启用车辆",
+      "loading": "正在加载您的车辆…"
+    },
+    "services": {
+      "title": "我的服务",
+      "subtitle": "管理您的任务类型",
+      "loading": "正在加载您的服务…",
+      "food": "餐饮配送",
+      "package": "包裹配送",
+      "taxi": "出租车行程",
+      "availableSection": "可用服务",
+      "advancedSection": "高级选项",
+      "foodDesc": "餐厅订单与餐食配送",
+      "packageDesc": "包裹与跑腿配送",
+      "taxiDesc": "按您车辆授权类别接出租车订单",
+      "acceptStandard": "同时接受 Standard 行程",
+      "acceptStandardDesc": "Comfort、XL 或 Wheelchair 也可接收 Standard 行程"
+    },
+    "vehicle": {
+      "screenTitle": "车辆",
+      "detailsSubtitle": "车辆详情",
+      "loading": "正在加载车辆…",
+      "addTitle": "添加车辆",
+      "chooseType": "请先选择类型",
+      "mode": {
+        "car": "汽车",
+        "carHint": "汽车 - 外卖、包裹、出租车",
+        "moto": "摩托车",
+        "motoHint": "摩托车 - 快速配送",
+        "bike": "自行车",
+        "bikeHint": "自行车 - 无需机动车车队"
+      },
+      "categorySynced": "类别会自动同步",
+      "bikeTitle": "自行车",
+      "bikeSubtitle": "无需机动车",
+      "changeType": "更改类型",
+      "changeTypeHint": "返回汽车 / 摩托车 / 自行车选择",
+      "confirmBike": "确认自行车模式",
+      "confirmBikeHint": "确认以与调度同步",
+      "changeVehicleType": "更改车辆类型",
+      "photoTitle": "车辆照片",
+      "photoPreview": "车辆照片预览",
+      "noPhoto": "暂无照片",
+      "camera": "相机",
+      "gallery": "相册",
+      "remove": "移除",
+      "seats": "乘客座位数",
+      "taxiCategories": "出租车类别（服务器）",
+      "taxiCategoriesHint": "出租车类别由服务器计算。",
+      "amenity": {
+        "ac": "空调",
+        "accessible": "无障碍",
+        "babySeat": "婴儿座椅",
+        "luggage": "大件行李",
+        "pets": "宠物",
+        "charger": "手机充电器",
+        "quiet": "安静车辆",
+        "nonsmoking": "禁止吸烟",
+        "largeLuggage": "大件行李",
+        "phoneCharger": "手机充电器",
+        "nonSmoking": "禁烟"
+      },
+      "save": "保存",
+      "addAction": "添加",
+      "photoHelp": "上传清晰的车辆照片",
+      "field": {
+        "make": "品牌",
+        "model": "型号",
+        "year": "年份",
+        "color": "颜色",
+        "plate": "车牌",
+        "type": "类型（轿车、SUV、面包车、小型厢式车）",
+        "fuel": "动力类型（汽油、柴油、混动、电动、插电混动）",
+        "nickname": "昵称（可选）",
+        "seats": "乘客座位数",
+        "vehicleType": "类型 (sedan, suv, van, minivan)",
+        "fuelType": "动力 (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
+        "dashPlaceholder": "—"
+      },
+      "createSubtitle": "类型：{{type}}。出租车类别由服务器计算。",
+      "errorTitle": "错误",
+      "loadFailed": "无法加载车辆信息。",
+      "cameraTitle": "相机",
+      "cameraPermission": "请允许访问相机。",
+      "photosTitle": "照片",
+      "photosPermission": "请允许访问相册。",
+      "photoUploadedTitle": "车辆照片",
+      "photoUploadedBody": "照片上传成功。",
+      "uploadFailed": "无法上传照片。",
+      "removePhotoTitle": "移除照片",
+      "removePhotoBody": "删除此车辆照片？",
+      "cancel": "取消",
+      "delete": "删除",
+      "deletePhotoFailed": "无法删除照片。",
+      "typeRequiredTitle": "车辆类型",
+      "typeRequiredBody": "请先选择汽车、摩托车或自行车。",
+      "bikeModeTitle": "自行车模式",
+      "bikeModeBody": "您的类别现为自行车。上线无需机动车。",
+      "formIncompleteTitle": "表单不完整",
+      "formIncompleteBody": "品牌、型号和车牌为必填项。",
+      "savedTitle": "车辆",
+      "savedCreateBody": "车辆已添加，等待 MMD 团队审核。",
+      "savedUpdateBody": "信息已保存。若重要字段变更，车辆将重新进入管理员审核。",
+      "saveFailed": "暂时无法保存车辆。",
+      "subtitleCreateCar": "类型：汽车。出租车类别由服务器计算。",
+      "subtitleCreateMoto": "类型：摩托车。出租车类别由服务器计算。",
+      "subtitleEdit": "出租车类别由服务器计算。",
+      "photoPreviewA11y": "车辆照片预览",
+      "noPhotoYet": "暂无照片",
+      "taxiCategoriesTitle": "出租车类别（服务器）",
+      "add": "添加"
     }
   },
   "restaurant": {
@@ -1125,7 +1283,10 @@
         "signIn": "登录",
         "signUp": "创建账户",
         "switchToLogin": "我已有账户",
-        "switchToSignup": "创建账户"
+        "switchToSignup": "创建账户",
+        "hidePassword": "隐藏",
+        "showPassword": "显示",
+        "forgotPassword": "忘记密码？"
       },
       "debug": {
         "help": "如有问题，请联系支持。",
@@ -1198,11 +1359,112 @@
         "pending": "待处理",
         "accepted": "已接单",
         "prepared": "制作中",
-        "ready": "就绪"
+        "ready": "就绪",
+        "close": "关闭筛选"
       },
       "account": {
         "setup": "餐厅资料"
+      },
+      "close": "关闭",
+      "closeMenu": "关闭菜单",
+      "menu": "菜单"
+    },
+    "automation": {
+      "title": "订单自动化",
+      "subtitle": "设置",
+      "loadingTitle": "正在加载设置…",
+      "loadingSubtitle": "正在获取自动化偏好",
+      "infoTitle": "自动接单与厨房打印",
+      "infoBody": "控制新订单的接单与打印方式。",
+      "autoAccept": "自动接受新订单",
+      "autoPrint": "接单后自动打印",
+      "soundAlert": "声音提醒",
+      "defaultPrep": "默认备餐时间",
+      "saving": "Saving…",
+      "saveSettings": "Save Settings",
+      "testPrint": "Test print",
+      "prepMinutes": "{{mins}} min"
+    },
+    "orders": {
+      "accept": "接受",
+      "prepared": "已备好",
+      "ready": "就绪"
+    },
+    "orderDetails": {
+      "title": "订单",
+      "loading": "正在加载订单…",
+      "loadingSubtitle": "正在获取订单详情",
+      "notFoundTitle": "未找到订单",
+      "notFoundBody": "找不到此订单。",
+      "showToDriver": "出示给骑手",
+      "noItems": "暂无商品。",
+      "orderLabel": "订单 #{{id}}",
+      "customer": "顾客",
+      "clientId": "客户 {{id}}",
+      "items": "商品",
+      "notes": "备注",
+      "leaveAtDoor": "放在门口",
+      "actions": {
+        "print": "打印",
+        "printing": "打印中…",
+        "refuse": "拒绝",
+        "cancel": "取消",
+        "accept": "接受",
+        "prepared": "已备餐",
+        "ready": "就绪"
+      },
+      "confirm": {
+        "refuseTitle": "拒绝订单",
+        "cancelTitle": "取消订单",
+        "body": "确认此操作？",
+        "no": "否",
+        "confirm": "确认"
+      },
+      "status": {
+        "pending": "待处理",
+        "accepted": "已接受",
+        "prepared": "已备餐",
+        "ready": "就绪",
+        "dispatched": "已派出",
+        "delivered": "已送达",
+        "canceled": "已取消"
       }
+    },
+    "orderPrint": {
+      "title": "打印",
+      "reprintQueued": "已加入重新打印队列。",
+      "ticketQueued": "小票已加入打印队列。",
+      "printFailed": "无法开始打印。"
+    }
+  },
+  "promotions": {
+    "screenTitle": "优惠活动"
+  },
+  "brand": {
+    "name": "MMD Delivery"
+  },
+  "location": {
+    "picker": {
+      "streetNumber": "门牌号 *",
+      "streetNumberPh": "123",
+      "city": "城市 *",
+      "cityPh": "纽约",
+      "postal": "邮编 *",
+      "postalPh": "10001",
+      "streetOptional": "街道/地点名（可选）",
+      "streetOptionalPh": "主街 / 建筑名",
+      "commune": "行政区",
+      "communePh": "Matoto",
+      "quartier": "街区",
+      "quartierPh": "Lambanyi",
+      "landmark": "地标搜索",
+      "landmarkRequired": "地标搜索 *",
+      "landmarkPh": "Total 加油站、清真寺、市场…",
+      "formattedOptional": "格式化地址（可选）",
+      "formattedOptionalPh": "已知的街道或地点名",
+      "directions": "描述您的确切位置 *",
+      "directionsPh": "过 Total 加油站后，右侧第二条路，黄房子蓝门…",
+      "directionsMin": "至少需要 8 个字符。"
     }
   }
 }

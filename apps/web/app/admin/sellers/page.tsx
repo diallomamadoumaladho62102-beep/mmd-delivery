@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canReviewSellers } from "@/lib/adminAccess";
@@ -23,6 +25,8 @@ type SellerRow = {
 };
 
 export default function AdminSellersPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<SellerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
@@ -68,32 +72,32 @@ export default function AdminSellersPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Marketplace Sellers</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Marketplace Sellers")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Review seller onboarding applications. Separate from restaurant profiles.
+              {t("Review seller onboarding applications. Separate from restaurant profiles.")}
             </p>
           </header>
 
           <div className="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4">
             <label className="flex min-w-[180px] flex-col text-sm">
-              Status
+              {t("Status")}
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="mt-1 rounded-lg border px-3 py-2"
               >
-                <option value="all">All</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-                <option value="suspended">Suspended</option>
+                <option value="all">{t("All")}</option>
+                <option value="pending">{t("Pending")}</option>
+                <option value="approved">{t("Approved")}</option>
+                <option value="rejected">{t("Rejected")}</option>
+                <option value="suspended">{t("Suspended")}</option>
               </select>
             </label>
             <div className="flex items-end text-sm text-slate-500">{filteredCount} sellers</div>
           </div>
 
           {loading ? (
-            <p className="text-sm text-slate-500">Loading…</p>
+            <p className="text-sm text-slate-500">{t("Loading…")}</p>
           ) : (
             <div className="space-y-4">
               {rows.map((row) => (
@@ -126,7 +130,7 @@ export default function AdminSellersPage() {
                         onClick={() => void reviewSeller(row.id, "approved")}
                         className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                       >
-                        Approve
+                        {t("Approve")}
                       </button>
                       <button
                         type="button"
@@ -134,7 +138,7 @@ export default function AdminSellersPage() {
                         onClick={() => void reviewSeller(row.id, "rejected")}
                         className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                       >
-                        Reject
+                        {t("Reject")}
                       </button>
                       <button
                         type="button"
@@ -142,7 +146,7 @@ export default function AdminSellersPage() {
                         onClick={() => void reviewSeller(row.id, "suspended")}
                         className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                       >
-                        Suspend
+                        {t("Suspend")}
                       </button>
                     </div>
                   ) : null}

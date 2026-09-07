@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiRides } from "@/lib/adminAccess";
@@ -15,6 +17,8 @@ type RewardRow = {
 };
 
 export default function AdminTaxiLoyaltyRewardsPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<RewardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,37 +78,37 @@ export default function AdminTaxiLoyaltyRewardsPage() {
   return (
     <AdminGate requiredPermission="taxi_rides.read">
       <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
-        <h1>Taxi Loyalty Rewards</h1>
+        <h1>{t("Taxi Loyalty Rewards")}</h1>
         {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
         {canEdit ? (
           <form onSubmit={createReward} style={{ display: "grid", gap: 8, marginBottom: 24 }}>
             <input
-              placeholder="Title"
+              placeholder={t("Title")}
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
             />
             <input
-              placeholder="Points cost"
+              placeholder={t("Points cost")}
               value={form.points_cost}
               onChange={(e) => setForm({ ...form, points_cost: e.target.value })}
             />
             <input
-              placeholder="Discount cents"
+              placeholder={t("Discount cents")}
               value={form.discount_cents}
               onChange={(e) => setForm({ ...form, discount_cents: e.target.value })}
             />
-            <button type="submit">Create reward</button>
+            <button type="submit">{t("Create reward")}</button>
           </form>
         ) : null}
-        {loading ? <p>Loading…</p> : null}
+        {loading ? <p>{t("Loading…")}</p> : null}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th align="left">Title</th>
-              <th align="left">Points</th>
-              <th align="left">Credit</th>
-              <th align="left">Active</th>
+              <th align="left">{t("Title")}</th>
+              <th align="left">{t("Points")}</th>
+              <th align="left">{t("Credit")}</th>
+              <th align="left">{t("Active")}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,7 +120,7 @@ export default function AdminTaxiLoyaltyRewardsPage() {
                 <td>
                   {canEdit ? (
                     <button type="button" onClick={() => toggle(row)}>
-                      {row.active ? "Disable" : "Enable"}
+                      {row.active ? t("Disable") : t("Enable")}
                     </button>
                   ) : row.active ? (
                     "Yes"

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageMarketing } from "@/lib/adminAccess";
@@ -59,6 +61,8 @@ function toLocalInput(iso: string | null | undefined): string {
 }
 
 function AdvertisementsAdminInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [rows, setRows] = useState<AdRow[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -202,7 +206,7 @@ function AdvertisementsAdminInner() {
 
   const onDelete = async (id: string) => {
     if (!canEdit) return;
-    if (!window.confirm("Supprimer cette publicité ?")) return;
+    if (!window.confirm(t("Supprimer cette publicité ?"))) return;
     const http = await adminFetch("/api/admin/advertisements", {
       method: "POST",
       body: JSON.stringify({ action: "delete", id }),
@@ -221,7 +225,7 @@ function AdvertisementsAdminInner() {
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
-          Advertisements — Client & Restaurant
+          {t("Advertisements — Client & Restaurant")}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
           Gérez les publicités affichées dans les apps Client (home) et Restaurant
@@ -232,15 +236,15 @@ function AdvertisementsAdminInner() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className={CARD}>
-          <div className={LABEL}>Impressions</div>
+          <div className={LABEL}>{t("Impressions")}</div>
           <div className="mt-1 text-2xl font-bold text-slate-900">{totals.impressions}</div>
         </div>
         <div className={CARD}>
-          <div className={LABEL}>Clics</div>
+          <div className={LABEL}>{t("Clics")}</div>
           <div className="mt-1 text-2xl font-bold text-slate-900">{totals.clicks}</div>
         </div>
         <div className={CARD}>
-          <div className={LABEL}>CTR global</div>
+          <div className={LABEL}>{t("CTR global")}</div>
           <div className="mt-1 text-2xl font-bold text-emerald-600">{totals.ctr}%</div>
         </div>
       </div>
@@ -267,14 +271,14 @@ function AdvertisementsAdminInner() {
               className="text-sm font-semibold text-slate-500 hover:text-slate-800"
               onClick={() => setForm(EMPTY_FORM)}
             >
-              Nouvelle
+              {t("Nouvelle")}
             </button>
           ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
-            <span className={LABEL}>Titre</span>
+            <span className={LABEL}>{t("Titre")}</span>
             <input
               className={INPUT}
               value={form.title}
@@ -284,7 +288,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Sous-titre</span>
+            <span className={LABEL}>{t("Sous-titre")}</span>
             <input
               className={INPUT}
               value={form.subtitle}
@@ -293,7 +297,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>Image URL (Storage)</span>
+            <span className={LABEL}>{t("Image URL (Storage)")}</span>
             <input
               className={INPUT}
               value={form.image_url}
@@ -303,7 +307,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>Remplacer l&apos;image</span>
+            <span className={LABEL}>{t("Remplacer l&apos;image")}</span>
             <input
               className="mt-1 block w-full text-sm"
               type="file"
@@ -321,7 +325,7 @@ function AdvertisementsAdminInner() {
             />
           ) : null}
           <label className="block">
-            <span className={LABEL}>Texte bouton</span>
+            <span className={LABEL}>{t("Texte bouton")}</span>
             <input
               className={INPUT}
               value={form.button_text}
@@ -335,12 +339,12 @@ function AdvertisementsAdminInner() {
               className={INPUT}
               value={form.button_action}
               onChange={(e) => setForm((p) => ({ ...p, button_action: e.target.value }))}
-              placeholder="taxi | food | delivery | marketplace | rewards | https://..."
+              placeholder={t("taxi | food | delivery | marketplace | rewards | https://...")}
               disabled={!canEdit}
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Catégorie</span>
+            <span className={LABEL}>{t("Catégorie")}</span>
             <select
               className={INPUT}
               value={form.category}
@@ -355,7 +359,7 @@ function AdvertisementsAdminInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Placement</span>
+            <span className={LABEL}>{t("Placement")}</span>
             <select
               className={INPUT}
               value={form.placement}
@@ -367,7 +371,7 @@ function AdvertisementsAdminInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Pays</span>
+            <span className={LABEL}>{t("Pays")}</span>
             <input
               className={INPUT}
               value={form.country}
@@ -376,7 +380,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Ville</span>
+            <span className={LABEL}>{t("Ville")}</span>
             <input
               className={INPUT}
               value={form.city}
@@ -385,7 +389,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Langue</span>
+            <span className={LABEL}>{t("Langue")}</span>
             <input
               className={INPUT}
               value={form.language}
@@ -394,7 +398,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Audience</span>
+            <span className={LABEL}>{t("Audience")}</span>
             <select
               className={INPUT}
               value={form.audience}
@@ -408,7 +412,7 @@ function AdvertisementsAdminInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Priorité</span>
+            <span className={LABEL}>{t("Priorité")}</span>
             <input
               className={INPUT}
               type="number"
@@ -418,7 +422,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Ordre d&apos;affichage</span>
+            <span className={LABEL}>{t("Ordre d&apos;affichage")}</span>
             <input
               className={INPUT}
               type="number"
@@ -428,7 +432,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Début</span>
+            <span className={LABEL}>{t("Début")}</span>
             <input
               className={INPUT}
               type="datetime-local"
@@ -438,7 +442,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Fin</span>
+            <span className={LABEL}>{t("Fin")}</span>
             <input
               className={INPUT}
               type="datetime-local"
@@ -454,7 +458,7 @@ function AdvertisementsAdminInner() {
               onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
               disabled={!canEdit}
             />
-            Publié (actif dans les apps)
+            {t("Publié (actif dans les apps)")}
           </label>
         </div>
 
@@ -467,7 +471,7 @@ function AdvertisementsAdminInner() {
             {saving
               ? "Enregistrement…"
               : form.id
-                ? "Enregistrer"
+                ? t("Enregistrer")
                 : form.is_active
                   ? "Créer et publier"
                   : "Enregistrer en brouillon"}
@@ -480,7 +484,7 @@ function AdvertisementsAdminInner() {
                 onClick={() => void saveAd(false)}
                 className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
               >
-                Sauver brouillon
+                {t("Sauver brouillon")}
               </button>
               <button
                 type="button"
@@ -488,7 +492,7 @@ function AdvertisementsAdminInner() {
                 onClick={() => void saveAd(true)}
                 className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 disabled:opacity-50"
               >
-                Publier la campagne
+                {t("Publier la campagne")}
               </button>
             </>
           ) : null}
@@ -498,7 +502,7 @@ function AdvertisementsAdminInner() {
       <div className={`${CARD} space-y-3`}>
         <h2 className="text-lg font-semibold text-slate-900">Publicités ({rows.length})</h2>
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-500">Aucune publicité pour le moment.</p>
+          <p className="text-sm text-slate-500">{t("Aucune publicité pour le moment.")}</p>
         ) : (
           <div className="space-y-3">
             {rows.map((row) => (
@@ -530,7 +534,7 @@ function AdvertisementsAdminInner() {
                     className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold"
                     onClick={() => editRow(row)}
                   >
-                    Éditer
+                    {t("Éditer")}
                   </button>
                   {canEdit ? (
                     <button
@@ -578,7 +582,7 @@ function AdvertisementsAdminInner() {
                         })()
                       }
                     >
-                      {row.is_active ? "Désactiver" : "Publier"}
+                      {row.is_active ? t("Désactiver") : t("Publier")}
                     </button>
                   ) : null}
                   <button
@@ -587,7 +591,7 @@ function AdvertisementsAdminInner() {
                     disabled={!canEdit}
                     onClick={() => void onDelete(row.id)}
                   >
-                    Supprimer
+                    {t("Supprimer")}
                   </button>
                 </div>
               </div>
@@ -600,6 +604,8 @@ function AdvertisementsAdminInner() {
 }
 
 export default function AdvertisementsAdminPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <AdvertisementsAdminInner />

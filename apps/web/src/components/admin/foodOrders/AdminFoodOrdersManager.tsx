@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { adminFetch } from "@/lib/adminBrowserAuth";
@@ -32,6 +34,8 @@ function partyOptionLabel(
 }
 
 export default function AdminFoodOrdersManager() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -78,7 +82,7 @@ export default function AdminFoodOrdersManager() {
     const res = await adminFetch(url.toString());
     const body = await res.json().catch(() => ({}));
     if (!res.ok || !body.ok) {
-      throw new Error(body.error ?? "Failed to load orders");
+      throw new Error(body.error ?? t("Failed to load orders"));
     }
     setHasMore(Boolean(body.page?.hasMore));
     return (body.items ?? []) as AdminFoodOrderListItem[];
@@ -93,7 +97,7 @@ export default function AdminFoodOrdersManager() {
         const orders = await loadOrders(filters.status);
         setItems(orders);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        setError(err instanceof Error ? err.message : t("Unknown error"));
         setItems([]);
       } finally {
         setLoading(false);
@@ -173,10 +177,10 @@ export default function AdminFoodOrdersManager() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-            MMD Delivery · Admin Food Orders
+            {t("MMD Delivery · Admin Food Orders")}
           </div>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
-            Food orders
+            {t("Food orders")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
             Enterprise list view with search, filters, and order progress. Status and
@@ -189,7 +193,7 @@ export default function AdminFoodOrdersManager() {
           disabled={refreshing || loading}
           className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-60"
         >
-          {refreshing ? "Refreshing…" : "Refresh"}
+          {refreshing ? t("Refreshing…") : t("Refresh")}
         </button>
       </div>
 
@@ -198,14 +202,14 @@ export default function AdminFoodOrdersManager() {
           role="alert"
           className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 shadow-sm"
         >
-          <p className="font-medium">Could not load orders</p>
+          <p className="font-medium">{t("Could not load orders")}</p>
           <p className="mt-1">{error}</p>
           <button
             type="button"
             onClick={() => void loadPage("refresh")}
             className="mt-3 inline-flex h-9 items-center rounded-lg border border-red-300 bg-white px-3 text-sm font-medium text-red-800"
           >
-            Retry
+            {t("Retry")}
           </button>
         </div>
       ) : (
@@ -225,7 +229,7 @@ export default function AdminFoodOrdersManager() {
               items={visible}
               loading={loading}
               canManageOrders={manageOrders}
-              emptyMessage="Try clearing filters or refreshing the list."
+              emptyMessage={t("Try clearing filters or refreshing the list.")}
               hasMore={hasMore && !filters.q && !filters.status}
               // Hook reserved for future pagination; current API returns one page.
               onLoadMore={undefined}

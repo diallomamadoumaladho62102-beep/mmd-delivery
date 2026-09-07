@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
@@ -15,6 +17,8 @@ type Metrics = {
 };
 
 export default function AdminSupervisionPage() {
+  const { t } = useAdminT();
+
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,9 +54,9 @@ export default function AdminSupervisionPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Supervision</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Supervision")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Vue opérationnelle temps réel de la plateforme.
+              {t("Vue opérationnelle temps réel de la plateforme.")}
             </p>
           </header>
 
@@ -61,7 +65,7 @@ export default function AdminSupervisionPage() {
               {error}
             </div>
           ) : !metrics ? (
-            <div className="text-sm text-slate-500">Chargement métriques…</div>
+            <div className="text-sm text-slate-500">{t("Chargement métriques…")}</div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {cards.map((card) => (

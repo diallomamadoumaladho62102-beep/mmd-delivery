@@ -31,10 +31,23 @@ const REQUIRED: Array<{ file: "common" | "extras"; key: string }> = [
   { file: "common", key: "restaurant.home.status.offlineShort" },
   { file: "common", key: "restaurant.home.nav.payouts" },
   { file: "common", key: "restaurant.home.map.offlineHint" },
+  { file: "common", key: "common.a11y.close" },
+  { file: "common", key: "common.a11y.retry" },
+  { file: "common", key: "common.a11y.back" },
+  { file: "common", key: "restaurant.orders.accept" },
+  { file: "common", key: "restaurant.orders.prepared" },
+  { file: "common", key: "restaurant.orders.ready" },
+  { file: "common", key: "restaurant.automation.title" },
   { file: "extras", key: "taxi.home.moreOptions" },
+  { file: "extras", key: "taxi.home.wallet" },
   { file: "extras", key: "payment.stripe.paymentCanceled" },
   { file: "extras", key: "payment.stripe.applePayUnavailableBody" },
   { file: "extras", key: "clientRestaurantMenu.addresses.pickupLabel" },
+  { file: "extras", key: "driver.vehicles.title" },
+  { file: "extras", key: "driver.services.title" },
+  { file: "extras", key: "driver.identity.screenTitle" },
+  { file: "extras", key: "driver.map.preparingNavigation" },
+  { file: "extras", key: "promotions.title" },
 ];
 
 for (const lang of ["en", "fr", "es", "ar", "zh", "ff"]) {
@@ -65,6 +78,27 @@ for (const lang of ["en", "fr", "es", "ar", "zh", "ff"]) {
     "Log out",
     "French restaurant signOut must be translated",
   );
+}
+
+// Cross-locale: critical chrome must not remain English when FR/ES/AR/ZH/FF selected.
+for (const lang of ["fr", "es", "ar", "zh", "ff"] as const) {
+  const back = String(get(load(lang, "common"), "common.backShort") ?? "");
+  assert.notEqual(back, "BACK", `${lang} backShort must not stay BACK`);
+  const more = String(get(load(lang, "extras"), "taxi.home.moreOptions") ?? "");
+  assert.notEqual(more, "More options", `${lang} moreOptions must be translated`);
+  const wallet = String(get(load(lang, "extras"), "taxi.home.wallet") ?? "");
+  assert.notEqual(wallet, "Wallet", `${lang} taxi.home.wallet must be translated`);
+  if (lang === "ff") {
+    assert.notEqual(
+      wallet,
+      "Portefeuille",
+      "ff taxi.home.wallet must be Fulfulde, not French",
+    );
+    assert.equal(wallet, "Kaalis");
+  }
+  if (lang === "en") continue;
+  const forgot = String(get(load(lang, "common"), "client.auth.forgotPassword") ?? "");
+  assert.notEqual(forgot, "Forgot password?", `${lang} forgotPassword must be translated`);
 }
 
 const header = fs.readFileSync(

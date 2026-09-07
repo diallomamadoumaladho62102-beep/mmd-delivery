@@ -120,7 +120,11 @@ export default function PromotionsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right", "bottom"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
-      <ScreenHeader title="Promotions" fallbackRoute="ClientHome" variant="dark" />
+      <ScreenHeader
+        title={t("promotions.screenTitle", "Promotions")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       {loading ? (
         <View style={styles.stateWrap}>
           <ActivityIndicator color={MMD_GREEN_SOFT} />

@@ -19,6 +19,15 @@
     "continue": "Continue",
     "na": "—",
     "yes": "Yes",
+    "no": "No",
+    "close": "Close",
+    "retry": "Retry",
+    "backAction": "Back",
+    "saving": "Saving…",
+    "settings": "Settings",
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View",
     "errorTitle": "Error",
     "refresh": "Refresh",
     "refreshIcon": "↻",
@@ -197,7 +206,14 @@
       "title": "Permission",
       "camera": "Allow camera access to take a photo."
     },
-    "backShort": "BACK"
+    "backShort": "BACK",
+    "a11y": {
+      "close": "Close",
+      "closeFilter": "Close filter",
+      "closeMenu": "Close menu",
+      "retry": "Retry",
+      "back": "Back"
+    }
   },
   "shared": {
     "common": {
@@ -402,7 +418,10 @@
         "createMyAccount": "Create my account",
         "files": "Files",
         "haveAccountLogin": "I already have an account",
-        "login": "Log in"
+        "login": "Log in",
+        "showPassword": "Show",
+        "hidePassword": "Hide",
+        "forgotPassword": "Forgot password?"
       },
       "alert": {
         "cameraPermission": "Allow camera access.",
@@ -440,7 +459,22 @@
         "password": "Password",
         "passwordPlaceholder": "Password",
         "phone": "Phone",
-        "phonePlaceholder": "e.g. +1 555 123 4567"
+        "phonePlaceholder": "e.g. +1 555 123 4567",
+        "emergencyPhone": "Emergency phone",
+        "emergencyPhonePlaceholder": "Ex: 9297408722",
+        "address": "Address",
+        "addressPlaceholder": "Ex: 1112 Flatbush Ave",
+        "city": "City",
+        "cityPlaceholder": "New York",
+        "state": "State",
+        "statePlaceholder": "NY",
+        "zipCode": "Zip code",
+        "zipPlaceholder": "11226",
+        "dateOfBirth": "Date of birth",
+        "dateOfBirthPlaceholder": "YYYY-MM-DD",
+        "dateFormatError": "Date format required: YYYY-MM-DD",
+        "licenseNumber": "License number",
+        "licenseNumberPlaceholder": "Driver license number"
       },
       "footer": "By continuing, you agree to the terms of service.",
       "header": {
@@ -475,7 +509,10 @@
         "modelPlaceholder": "e.g. Corolla",
         "plate": "Plate",
         "title": "Vehicle",
-        "yearOptional": "Year (optional)"
+        "yearOptional": "Year (optional)",
+        "yearPlaceholder": "2020",
+        "colorPlaceholder": "Black",
+        "platePlaceholder": "ABC123"
       }
     },
     "payments": {
@@ -671,7 +708,8 @@
       },
       "debug": {
         "testIncomingOrder": "Test incoming trip"
-      }
+      },
+      "preparingNavigation": "Preparing navigation…"
     },
     "revenue": {
       "title": "Earnings",
@@ -1218,6 +1256,126 @@
         "title": "Stripe"
       },
       "title": "Earnings"
+    },
+    "identity": {
+      "screenTitle": "Identity Verification",
+      "loading": "Loading...",
+      "waitHint": "Please wait while we verify your identity.\nThis may take a few moments."
+    },
+    "vehicles": {
+      "title": "My vehicles",
+      "subtitleManage": "Manage your vehicle fleet",
+      "subtitleActive": "Only one active vehicle at a time",
+      "loading": "Loading your vehicles..."
+    },
+    "services": {
+      "title": "My services",
+      "subtitle": "Manage your mission types",
+      "loading": "Loading your services...",
+      "food": "Food delivery",
+      "package": "Package delivery",
+      "taxi": "Taxi rides",
+      "availableSection": "Available services",
+      "advancedSection": "Advanced options",
+      "foodDesc": "Restaurant orders and meal delivery",
+      "packageDesc": "Package and errand delivery",
+      "taxiDesc": "Taxi rides for your authorized vehicle categories",
+      "acceptStandard": "Also accept Standard rides",
+      "acceptStandardDesc": "Comfort, XL or Wheelchair can also receive Standard rides"
+    },
+    "vehicle": {
+      "screenTitle": "Vehicle",
+      "detailsSubtitle": "Vehicle details",
+      "loading": "Loading vehicle...",
+      "addTitle": "Add a vehicle",
+      "chooseType": "Choose the type first",
+      "mode": {
+        "car": "Car",
+        "carHint": "Car - food, parcels, taxi",
+        "moto": "Motorcycle",
+        "motoHint": "Motorcycle - fast delivery",
+        "bike": "Bicycle",
+        "bikeHint": "Bicycle - no motorized fleet required"
+      },
+      "categorySynced": "Category is synced automatically",
+      "bikeTitle": "Bicycle",
+      "bikeSubtitle": "No motorized vehicle required",
+      "changeType": "Change type",
+      "changeTypeHint": "Back to Car / Motorcycle / Bicycle selection",
+      "confirmBike": "Confirm bicycle mode",
+      "confirmBikeHint": "Confirm to sync with dispatch",
+      "changeVehicleType": "Change vehicle type",
+      "photoTitle": "Vehicle photo",
+      "photoPreview": "Vehicle photo preview",
+      "noPhoto": "No photo yet",
+      "camera": "Camera",
+      "gallery": "Gallery",
+      "remove": "Remove",
+      "seats": "Passenger seats",
+      "taxiCategories": "Taxi categories (server)",
+      "taxiCategoriesHint": "Taxi categories are calculated by the server.",
+      "amenity": {
+        "ac": "Air conditioning",
+        "accessible": "Accessible",
+        "babySeat": "Baby seat",
+        "luggage": "Large luggage",
+        "pets": "Pets",
+        "charger": "Phone charger",
+        "quiet": "Quiet vehicle",
+        "nonsmoking": "Non-smoking",
+        "largeLuggage": "Large luggage",
+        "phoneCharger": "Phone charger",
+        "nonSmoking": "Non-smoking"
+      },
+      "save": "Save",
+      "addAction": "Add",
+      "photoHelp": "Upload a clear photo of the vehicle",
+      "field": {
+        "make": "Make",
+        "model": "Model",
+        "year": "Year",
+        "color": "Color",
+        "plate": "Plate",
+        "type": "Type (sedan, suv, van, minivan)",
+        "fuel": "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
+        "nickname": "Nickname (optional)",
+        "seats": "Passenger seats",
+        "vehicleType": "Type (sedan, suv, van, minivan)",
+        "fuelType": "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
+        "dashPlaceholder": "—"
+      },
+      "createSubtitle": "Type: {{type}}. Taxi categories are calculated by the server.",
+      "errorTitle": "Error",
+      "loadFailed": "Unable to load vehicle information.",
+      "cameraTitle": "Camera",
+      "cameraPermission": "Allow camera access.",
+      "photosTitle": "Photos",
+      "photosPermission": "Allow photo library access.",
+      "photoUploadedTitle": "Vehicle photo",
+      "photoUploadedBody": "Photo uploaded successfully.",
+      "uploadFailed": "Unable to upload the photo.",
+      "removePhotoTitle": "Remove photo",
+      "removePhotoBody": "Delete this vehicle photo?",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deletePhotoFailed": "Unable to delete the photo.",
+      "typeRequiredTitle": "Vehicle type",
+      "typeRequiredBody": "Choose Car, Motorcycle, or Bicycle first.",
+      "bikeModeTitle": "Bicycle mode",
+      "bikeModeBody": "Your category is now Bicycle. No motorized vehicle is required to go online.",
+      "formIncompleteTitle": "Incomplete form",
+      "formIncompleteBody": "Make, model, and license plate are required.",
+      "savedTitle": "Vehicle",
+      "savedCreateBody": "Vehicle added. It is pending validation by the MMD team.",
+      "savedUpdateBody": "Information saved. If important fields changed, the vehicle goes back to admin validation.",
+      "saveFailed": "Unable to save the vehicle right now.",
+      "subtitleCreateCar": "Type: Car. Taxi categories are calculated by the server.",
+      "subtitleCreateMoto": "Type: Motorcycle. Taxi categories are calculated by the server.",
+      "subtitleEdit": "Taxi categories are calculated by the server.",
+      "photoPreviewA11y": "Vehicle photo preview",
+      "noPhotoYet": "No photo yet",
+      "taxiCategoriesTitle": "Taxi categories (server)",
+      "add": "Add"
     }
   },
   "restaurant": {
@@ -1312,7 +1470,10 @@
         "signIn": "Log in",
         "signUp": "Create account",
         "switchToLogin": "I already have an account",
-        "switchToSignup": "Create account"
+        "switchToSignup": "Create account",
+        "hidePassword": "Hide",
+        "showPassword": "Show",
+        "forgotPassword": "Forgot password?"
       },
       "debug": {
         "help": "If you have an issue, contact support.",
@@ -1390,6 +1551,100 @@
       "account": {
         "setup": "Restaurant profile"
       }
+    },
+    "automation": {
+      "title": "Order Automation",
+      "subtitle": "Settings",
+      "loadingTitle": "Loading Settings...",
+      "loadingSubtitle": "Fetching your automation preferences",
+      "infoTitle": "Auto-accept & Kitchen Print",
+      "infoBody": "Control how new orders are accepted and printed.",
+      "autoAccept": "Auto-accept new orders",
+      "autoPrint": "Auto-print on accept",
+      "soundAlert": "Sound alert",
+      "defaultPrep": "Default Prep Time",
+      "saving": "Saving…",
+      "saveSettings": "Save Settings",
+      "testPrint": "Test print",
+      "prepMinutes": "{{mins}} min"
+    },
+    "orders": {
+      "accept": "Accept",
+      "prepared": "Prepared",
+      "ready": "Ready"
+    },
+    "orderDetails": {
+      "title": "Order",
+      "loading": "Loading Order...",
+      "loadingSubtitle": "Fetching order details",
+      "notFoundTitle": "Order Not Found",
+      "notFoundBody": "This order could not be found.",
+      "showToDriver": "Show to driver",
+      "noItems": "No items.",
+      "orderLabel": "Order #{{id}}",
+      "customer": "Customer",
+      "clientId": "Client {{id}}",
+      "items": "Items",
+      "notes": "Notes",
+      "leaveAtDoor": "Leave at door",
+      "actions": {
+        "print": "Print",
+        "printing": "Printing…",
+        "refuse": "Refuse",
+        "cancel": "Cancel"
+      },
+      "confirm": {
+        "refuseTitle": "Refuse order",
+        "cancelTitle": "Cancel order",
+        "body": "Confirm this action?",
+        "no": "No",
+        "confirm": "Confirm"
+      },
+      "status": {
+        "pending": "Pending",
+        "accepted": "Accepted",
+        "prepared": "Prepared",
+        "ready": "Ready",
+        "dispatched": "Dispatched",
+        "delivered": "Delivered",
+        "canceled": "Canceled"
+      }
+    },
+    "orderPrint": {
+      "title": "Print",
+      "reprintQueued": "Reprint queued.",
+      "ticketQueued": "Ticket added to print queue.",
+      "printFailed": "Unable to start printing."
+    }
+  },
+  "promotions": {
+    "screenTitle": "Promotions"
+  },
+  "brand": {
+    "name": "MMD Delivery"
+  },
+  "location": {
+    "picker": {
+      "streetNumber": "Street number *",
+      "streetNumberPh": "123",
+      "city": "City *",
+      "cityPh": "New York",
+      "postal": "ZIP / Postal code *",
+      "postalPh": "10001",
+      "streetOptional": "Street / place name (optional)",
+      "streetOptionalPh": "Main St / building name",
+      "commune": "Commune",
+      "communePh": "Matoto",
+      "quartier": "Quartier",
+      "quartierPh": "Lambanyi",
+      "landmark": "Landmark search",
+      "landmarkRequired": "Landmark search *",
+      "landmarkPh": "Station Total, mosque, market...",
+      "formattedOptional": "Formatted address (optional)",
+      "formattedOptionalPh": "Street or place name if known",
+      "directions": "Describe your exact location *",
+      "directionsPh": "After Total station, second road on the right, yellow house with blue gate...",
+      "directionsMin": "Minimum 8 characters required."
     }
   }
 }

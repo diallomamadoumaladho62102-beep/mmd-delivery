@@ -197,7 +197,23 @@
       "title": "Duŋagol",
       "camera": "Naatnu duŋagol kamera ngam nattude foto."
     },
-    "backShort": "RTTR"
+    "backShort": "RTTR",
+    "a11y": {
+      "close": "Uddu",
+      "closeFilter": "Uddu filtre",
+      "closeMenu": "Uddu menu",
+      "retry": "Fuɗɗito",
+      "back": "Rutto"
+    },
+    "close": "Uddu",
+    "retry": "Fuɗɗit",
+    "backAction": "Rutto",
+    "saving": "Ina seerma…",
+    "settings": "Teelte",
+    "no": "Alaa",
+    "edit": "Waylu",
+    "delete": "Momtu",
+    "view": "Ƴeew"
   },
   "shared": {
     "common": {
@@ -349,7 +365,10 @@
         "createMyAccount": "Sos konto am",
         "files": "Failuuji",
         "haveAccountLogin": "Mi waɗii konto kadi",
-        "login": "Naatu"
+        "login": "Naatu",
+        "showPassword": "Hollu",
+        "hidePassword": "Suuɗ",
+        "forgotPassword": "Finnde mjiiɗnde?"
       },
       "alert": {
         "cameraPermission": "Jaɓ kamera.",
@@ -387,7 +406,22 @@
         "password": "Mot de passe",
         "passwordPlaceholder": "Mot de passe",
         "phone": "Téléphone",
-        "phonePlaceholder": "ex: +1 555 123 4567"
+        "phonePlaceholder": "ex: +1 555 123 4567",
+        "emergencyPhone": "Telefon caɗeele",
+        "emergencyPhonePlaceholder": "Mis: 9297408722",
+        "address": "Ñiiɓirde",
+        "addressPlaceholder": "Mis: 1112 Flatbush Ave",
+        "city": "Wuro",
+        "cityPlaceholder": "New York",
+        "state": "Leydi-ɗiɗi",
+        "statePlaceholder": "NY",
+        "zipCode": "Kod posto",
+        "zipPlaceholder": "11226",
+        "dateOfBirth": "Ñalngu jibinannde",
+        "dateOfBirthPlaceholder": "YYYY-MM-DD",
+        "dateFormatError": "Mbayaandu ñalngu: YYYY-MM-DD",
+        "licenseNumber": "Limngal licence",
+        "licenseNumberPlaceholder": "Limngal licence"
       },
       "footer": "So a ɗaɓɓii, a jaɓii terms of service.",
       "header": {
@@ -422,7 +456,10 @@
         "modelPlaceholder": "ex: Corolla",
         "plate": "Plaque",
         "title": "Mootor",
-        "yearOptional": "Hitaande (suɓaande)"
+        "yearOptional": "Hitaande (suɓaande)",
+        "yearPlaceholder": "2020",
+        "colorPlaceholder": "Baleejo",
+        "platePlaceholder": "ABC123"
       }
     },
     "payments": {
@@ -618,7 +655,8 @@
       },
       "debug": {
         "testIncomingOrder": "Ete yahdu arɗo"
-      }
+      },
+      "preparingNavigation": "Peewnugol navigation…"
     },
     "revenue": {
       "title": "Cakkitiiɗe",
@@ -1165,6 +1203,126 @@
         "title": "Stripe"
       },
       "title": "Cakkitiiɗe"
+    },
+    "identity": {
+      "screenTitle": "Ñeewndo neɗɗankaagal",
+      "loading": "Loowgol...",
+      "waitHint": "Njokkee seɗɗa haa min ñeewnda neɗɗankaagal maa.\nƊum waawi ƴettude seɗɗa."
+    },
+    "vehicles": {
+      "title": "Otooji am",
+      "subtitleManage": "Njiyloto flotte otooji maa",
+      "subtitleActive": "Otoo gooto tan ena huutoree e sahaa",
+      "loading": "Loowgol otooji maa..."
+    },
+    "services": {
+      "title": "Sarwiisji am",
+      "subtitle": "Njiyloto sifaaaji mission maa",
+      "loading": "Loowgol sarwiisji maa...",
+      "food": "Neldugol ñamdu",
+      "package": "Neldugol pakke",
+      "taxi": "Yahduuji taksi",
+      "availableSection": "Sarwiisji woodɗi",
+      "advancedSection": "Cuɓe ɓeydaaɗe",
+      "foodDesc": "Yamirooje restoraŋ e neldugol ñamdu",
+      "packageDesc": "Neldugol pakke e yahduuji",
+      "taxiDesc": "Yahduuji taksi e sifaaaji otoo maa jaɓaaɗi",
+      "acceptStandard": "Jaɓ kadi yahduuji Standard",
+      "acceptStandardDesc": "Comfort, XL walla Wheelchair ena mbaawi heɓde kadi Standard"
+    },
+    "vehicle": {
+      "screenTitle": "Otoo",
+      "detailsSubtitle": "Cifol otoo",
+      "loading": "Loowgol otoo...",
+      "addTitle": "Ɓeydu otoo",
+      "chooseType": "Cuɓo sifaa ado",
+      "mode": {
+        "car": "Oto",
+        "carHint": "Oto - ñamri, pakke, taksi",
+        "moto": "Moto",
+        "motoHint": "Moto - yeɓgol yaawngol",
+        "bike": "Bike",
+        "bikeHint": "Bike - alaa fleet motoor"
+      },
+      "categorySynced": "Sifaa ina sync e jaajol",
+      "bikeTitle": "Bike",
+      "bikeSubtitle": "Alaa otoo motoor haani",
+      "changeType": "Waylu sifaa",
+      "changeTypeHint": "Rutto e Oto / Moto / Bike",
+      "confirmBike": "Tabitin modu bike",
+      "confirmBikeHint": "Tabitin ngam sync e dispatch",
+      "changeVehicleType": "Waylu sifaa otoo",
+      "photoTitle": "Nata otoo",
+      "photoPreview": "Yiytude natal otoo",
+      "noPhoto": "Alaa natal tawo",
+      "camera": "Kamera",
+      "gallery": "Galleeri",
+      "remove": "Momtu",
+      "seats": "Jooɗorde yahooɓe",
+      "taxiCategories": "Sifaaaji taksi (server)",
+      "taxiCategoriesHint": "Sifaaaji taksi hiisaama e server.",
+      "amenity": {
+        "ac": "Clim",
+        "accessible": "Naatgol moƴƴo",
+        "babySeat": "Jooɗorde cukalel",
+        "luggage": "Bagaji mawɗi",
+        "pets": "Dabbaji",
+        "charger": "Chargeur telefon",
+        "quiet": "Otoo deƴƴo",
+        "nonsmoking": "Alaa yitte",
+        "largeLuggage": "Bagage mawɗe",
+        "phoneCharger": "Chargeur telefon",
+        "nonSmoking": "Alaa yitte"
+      },
+      "save": "Seernu",
+      "addAction": "Ɓeydu",
+      "photoHelp": "Yowlu nata laaɓɗo otoo",
+      "field": {
+        "make": "Marque",
+        "model": "Modele",
+        "year": "Hitaande",
+        "color": "Noone",
+        "plate": "Plaque",
+        "type": "Sifaa (sedan, suv, van, minivan)",
+        "fuel": "Motor (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
+        "nickname": "Innde (suɓaande)",
+        "seats": "Jooɗorɗe yahooɓe",
+        "vehicleType": "Sifaa (sedan, suv, van, minivan)",
+        "fuelType": "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
+        "dashPlaceholder": "—"
+      },
+      "createSubtitle": "Sifaa: {{type}}. Sifaaaji taksi hiisaama e server.",
+      "errorTitle": "Juumre",
+      "loadFailed": "Horiima loowde humpito otoo.",
+      "cameraTitle": "Kamera",
+      "cameraPermission": "Yakkite naatgol kamera.",
+      "photosTitle": "Nate",
+      "photosPermission": "Yakkite naatgol deftere nate.",
+      "photoUploadedTitle": "Nata otoo",
+      "photoUploadedBody": "Nata yowlama no feewi.",
+      "uploadFailed": "Horiima yowlude nata.",
+      "removePhotoTitle": "Momtu nata",
+      "removePhotoBody": "Momtu ndee nata otoo?",
+      "cancel": "Haɗ",
+      "delete": "Momtu",
+      "deletePhotoFailed": "Horiima momtude nata.",
+      "typeRequiredTitle": "Sifaa otoo",
+      "typeRequiredBody": "Cuɓo ado Oto / Moto / Bike.",
+      "bikeModeTitle": "Modu bike",
+      "bikeModeBody": "Sifaa maa jooni ko Bike. Alaa otoo motoor haani ngam online.",
+      "formIncompleteTitle": "Form ina ŋakki",
+      "formIncompleteBody": "Marque, modele e plaque ina poti.",
+      "savedTitle": "Otoo",
+      "savedCreateBody": "Otoo ɓeydaama. Ina sabbii ƴeewndo fedde MMD.",
+      "savedUpdateBody": "Humpito seernaama. So golle mawɗe mbayliima, otoo ruttoo e ƴeewndo admin.",
+      "saveFailed": "Horiima seernude otoo jooni.",
+      "subtitleCreateCar": "Sifaa: Oto. Kategoriiji taksi ina limtee e serveur.",
+      "subtitleCreateMoto": "Sifaa: Moto. Kategoriiji taksi ina limtee e serveur.",
+      "subtitleEdit": "Kategoriiji taksi ina limtee e serveur.",
+      "photoPreviewA11y": "Yiytagol nata otoo",
+      "noPhotoYet": "Alaa nata tawo",
+      "taxiCategoriesTitle": "Kategoriiji taksi (serveur)",
+      "add": "Ɓeydu"
     }
   },
   "restaurant": {
@@ -1259,7 +1417,10 @@
         "signIn": "Naatu",
         "signUp": "Sos konto",
         "switchToLogin": "Mi jogii konto",
-        "switchToSignup": "Sos konto"
+        "switchToSignup": "Sos konto",
+        "hidePassword": "Suuɗ",
+        "showPassword": "Hollu",
+        "forgotPassword": "Finnde mjiiɗnde?"
       },
       "debug": {
         "help": "So a jogii juume, jokkondir e support.",
@@ -1332,11 +1493,112 @@
         "pending": "Nana sabbi",
         "accepted": "Jaɓaama",
         "prepared": "Nana heblaa",
-        "ready": "Hebiima"
+        "ready": "Hebiima",
+        "close": "Uddu filtre"
       },
       "account": {
         "setup": "Profil restoraa"
+      },
+      "close": "Uddu",
+      "closeMenu": "Uddu menu",
+      "menu": "Menu"
+    },
+    "automation": {
+      "title": "Otomatisasi yamirooje",
+      "subtitle": "Teelte",
+      "loadingTitle": "Loowgol teelte...",
+      "loadingSubtitle": "Nana ƴeewa cuɓe otomatisaasiyoŋ maa",
+      "infoTitle": "Jaɓgol otomatik e print kuɗol",
+      "infoBody": "Njiyloto no yamirooje kesi njaɓete e nprintete.",
+      "autoAccept": "Jaɓ yamirooje kesi otomatik",
+      "autoPrint": "Print otomatik so jaɓaa",
+      "soundAlert": "Alarme son",
+      "defaultPrep": "Waktu peewnugol goowaaɗo",
+      "saving": "Saving…",
+      "saveSettings": "Save Settings",
+      "testPrint": "Test print",
+      "prepMinutes": "{{mins}} min"
+    },
+    "orders": {
+      "accept": "Jaɓ",
+      "prepared": "Peewnaama",
+      "ready": "Hewtii"
+    },
+    "orderDetails": {
+      "title": "Yamiroore",
+      "loading": "Loowgol yamiroore...",
+      "loadingSubtitle": "Awaana cifol yamiroore",
+      "notFoundTitle": "Yamiroore yiyaaka",
+      "notFoundBody": "Ndee yamiroore horiima yiyeede.",
+      "showToDriver": "Hollu dognoowo",
+      "noItems": "Alaa geɗe.",
+      "orderLabel": "Yamiroore #{{id}}",
+      "customer": "Kiliyaŋke",
+      "clientId": "Kiliyaŋke {{id}}",
+      "items": "Geɗe",
+      "notes": "Ciimtol",
+      "leaveAtDoor": "Accu e damal",
+      "actions": {
+        "print": "Print",
+        "printing": "Ina print…",
+        "refuse": "Salaa",
+        "cancel": "Haɗ",
+        "accept": "Jaɓ",
+        "prepared": "Hebɓinaama",
+        "ready": "Hebbii"
+      },
+      "confirm": {
+        "refuseTitle": "Salaa yamiroore",
+        "cancelTitle": "Haɗ yamiroore",
+        "body": "Tabitin ngol baɗal?",
+        "no": "Alaa",
+        "confirm": "Tabitin"
+      },
+      "status": {
+        "pending": "Ina sabbii",
+        "accepted": "Jaɓaama",
+        "prepared": "Hebɓinaama",
+        "ready": "Hebbii",
+        "dispatched": "Neldaama",
+        "delivered": "Yeɓaama",
+        "canceled": "Haɗaama"
       }
+    },
+    "orderPrint": {
+      "title": "Print",
+      "reprintQueued": "Reprint ina e queue.",
+      "ticketQueued": "Ticket ɓeydaama e print queue.",
+      "printFailed": "Horiima fuɗɗude print."
+    }
+  },
+  "promotions": {
+    "screenTitle": "Promoosiyaŋji"
+  },
+  "brand": {
+    "name": "MMD Delivery"
+  },
+  "location": {
+    "picker": {
+      "streetNumber": "Limre laawol *",
+      "streetNumberPh": "123",
+      "city": "Wuro *",
+      "cityPh": "New York",
+      "postal": "Kod postal *",
+      "postalPh": "10001",
+      "streetOptional": "Laawol / nokku (cuɓaaɗo)",
+      "streetOptionalPh": "Laawol mawɗol / innde suudu",
+      "commune": "Kommune",
+      "communePh": "Matoto",
+      "quartier": "Quartier",
+      "quartierPh": "Lambanyi",
+      "landmark": "Yiylo nokku anndiraaɗo",
+      "landmarkRequired": "Yiylo nokku anndiraaɗo *",
+      "landmarkPh": "Station Total, juulirde, luumo...",
+      "formattedOptional": "Ñiiɓirde mooftaande (cuɓaaɗo)",
+      "formattedOptionalPh": "Laawol walla nokku so anndaa",
+      "directions": "Sifto nokku maa goonga *",
+      "directionsPh": "Caggal Station Total, laawol ɗiɗaɓol ñaamo, suudu mboɗeeri e damal buloori...",
+      "directionsMin": "Haani ko famɗi 8 karakteer."
     }
   }
 }

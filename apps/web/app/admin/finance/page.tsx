@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import {
@@ -11,30 +13,32 @@ import {
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
 import { FINANCE_MODULES, type FinanceModule } from "@/lib/finance/financeTypes";
 
-const LABELS: Record<FinanceModule, string> = {
-  overview: "Vue générale",
-  treasury: "Trésorerie",
-  revenue: "Revenus",
-  expenses: "Dépenses",
-  commissions: "Commissions",
-  payments: "Paiements",
-  refunds: "Remboursements",
-  payouts: "Payouts",
-  partners: "Partenaires",
-  clients: "Clients",
-  mmd_credit: "Crédit MMD",
-  cashback: "Cashback",
-  subscriptions: "Abonnements",
-  taxes: "Taxes",
-  reconciliation: "Rapprochements",
-  settlements: "Settlements",
-  disputes: "Litiges",
-  adjustments: "Ajustements",
-  ledger: "Grand livre",
-  periods: "Périodes",
-  reports: "Rapports",
-  audit: "Audit",
-};
+function getLabels(t: (source: string) => string): Record<FinanceModule, string> {
+  return {
+  overview: t("Vue générale"),
+  treasury: t("Trésorerie"),
+  revenue: t("Revenus"),
+  expenses: t("Dépenses"),
+  commissions: t("Commissions"),
+  payments: t("Paiements"),
+  refunds: t("Remboursements"),
+  payouts: t("Payouts"),
+  partners: t("Partenaires"),
+  clients: t("Clients"),
+  mmd_credit: t("Crédit MMD"),
+  cashback: t("Cashback"),
+  subscriptions: t("Abonnements"),
+  taxes: t("Taxes"),
+  reconciliation: t("Rapprochements"),
+  settlements: t("Settlements"),
+  disputes: t("Litiges"),
+  adjustments: t("Ajustements"),
+  ledger: t("Grand livre"),
+  periods: t("Périodes"),
+  reports: t("Rapports"),
+  audit: t("Audit"),
+  };
+}
 
 function money(cents: unknown): string {
   const n = Number(cents ?? 0) / 100;
@@ -45,6 +49,9 @@ function money(cents: unknown): string {
 }
 
 function FinanceInner() {
+  const { t } = useAdminT();
+  const labels = getLabels(t);
+
   const [canRead, setCanRead] = useState(false);
   const [canExport, setCanExport] = useState(false);
   const [canAdjust, setCanAdjust] = useState(false);
@@ -117,7 +124,7 @@ function FinanceInner() {
 
   const runAction = useCallback(
     async (action: string, extra?: Record<string, unknown>) => {
-      const reason = window.prompt("Motif (audit)")?.trim();
+      const reason = window.prompt(t("Motif (audit)"))?.trim();
       if (!reason) return;
       const res = await adminFetch("/api/admin/finance", {
         method: "POST",
@@ -160,7 +167,7 @@ function FinanceInner() {
   if (!canRead) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
-        Permission <code>finance.read</code> requise.
+        {t("Permission")} <code>finance.read</code> requise.
       </div>
     );
   }
@@ -168,7 +175,7 @@ function FinanceInner() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Centre Financier</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{t("Centre Financier")}</h1>
         <p className="mt-1 text-sm text-slate-600">
           Consolidation des flux monétaires — lecture des moteurs existants, grand livre
           double entrée, rapprochements et périodes.
@@ -186,7 +193,7 @@ function FinanceInner() {
         </div>
       )}
 
-      <nav className="flex flex-wrap gap-1" aria-label="Modules finance">
+      <nav className="flex flex-wrap gap-1" aria-label={t("Modules finance")}>
         {FINANCE_MODULES.map((m) => (
           <button
             key={m}
@@ -199,7 +206,7 @@ function FinanceInner() {
                 : "border border-slate-200 bg-white text-slate-700",
             ].join(" ")}
           >
-            {LABELS[m]}
+            {labels[m]}
           </button>
         ))}
       </nav>
@@ -211,7 +218,7 @@ function FinanceInner() {
           onClick={() => void load()}
           disabled={loading}
         >
-          {loading ? "…" : "Actualiser"}
+          {loading ? "…" : t("Actualiser")}
         </button>
         {canPeriods && (
           <>
@@ -220,14 +227,14 @@ function FinanceInner() {
               className="rounded-xl border px-3 py-2 text-sm"
               onClick={() => void runAction("process_pending")}
             >
-              Traiter événements
+              {t("Traiter événements")}
             </button>
             <button
               type="button"
               className="rounded-xl border px-3 py-2 text-sm"
               onClick={() => void runAction("refresh_balances")}
             >
-              Rafraîchir soldes
+              {t("Rafraîchir soldes")}
             </button>
           </>
         )}
@@ -237,7 +244,7 @@ function FinanceInner() {
             className="rounded-xl border px-3 py-2 text-sm"
             onClick={() => void exportJournal()}
           >
-            Export journal CSV
+            {t("Export journal CSV")}
           </button>
         )}
       </div>
@@ -272,7 +279,7 @@ function FinanceInner() {
 
       {(module === "ledger" || module === "reports") && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Journal</h2>
+          <h2 className="font-semibold">{t("Journal")}</h2>
           <ul className="mt-3 divide-y text-sm">
             {entries.map((e) => (
               <li key={String(e.id)} className="py-2">
@@ -282,7 +289,7 @@ function FinanceInner() {
               </li>
             ))}
             {entries.length === 0 && (
-              <li className="py-2 text-slate-500">Aucune écriture.</li>
+              <li className="py-2 text-slate-500">{t("Aucune écriture.")}</li>
             )}
           </ul>
         </section>
@@ -290,7 +297,7 @@ function FinanceInner() {
 
       {(module === "payments" || module === "refunds") && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Événements source</h2>
+          <h2 className="font-semibold">{t("Événements source")}</h2>
           <ul className="mt-3 divide-y text-sm">
             {events.map((e) => (
               <li key={String(e.id)} className="py-2">
@@ -302,7 +309,7 @@ function FinanceInner() {
               </li>
             ))}
             {events.length === 0 && (
-              <li className="py-2 text-slate-500">Aucun événement.</li>
+              <li className="py-2 text-slate-500">{t("Aucun événement.")}</li>
             )}
           </ul>
         </section>
@@ -310,7 +317,7 @@ function FinanceInner() {
 
       {module === "periods" && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Périodes comptables</h2>
+          <h2 className="font-semibold">{t("Périodes comptables")}</h2>
           <ul className="mt-3 divide-y text-sm">
             {periods.map((p) => (
               <li key={String(p.id)} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -326,7 +333,7 @@ function FinanceInner() {
                       void runAction("close_period", { period_id: p.id })
                     }
                   >
-                    Clôturer
+                    {t("Clôturer")}
                   </button>
                 )}
               </li>
@@ -337,7 +344,7 @@ function FinanceInner() {
 
       {module === "adjustments" && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Ajustements</h2>
+          <h2 className="font-semibold">{t("Ajustements")}</h2>
           <ul className="mt-3 divide-y text-sm">
             {adjustments.map((a) => (
               <li key={String(a.id)} className="py-2">
@@ -346,7 +353,7 @@ function FinanceInner() {
               </li>
             ))}
             {adjustments.length === 0 && (
-              <li className="py-2 text-slate-500">Aucun ajustement.</li>
+              <li className="py-2 text-slate-500">{t("Aucun ajustement.")}</li>
             )}
           </ul>
         </section>
@@ -363,7 +370,7 @@ function FinanceInner() {
               </li>
             ))}
             {disputes.length === 0 && (
-              <li className="py-2 text-slate-500">Aucun litige.</li>
+              <li className="py-2 text-slate-500">{t("Aucun litige.")}</li>
             )}
           </ul>
         </section>
@@ -371,7 +378,7 @@ function FinanceInner() {
 
       {(module === "reconciliation" || module === "settlements") && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Rapprochements</h2>
+          <h2 className="font-semibold">{t("Rapprochements")}</h2>
           <ul className="mt-3 divide-y text-sm">
             {runs.map((r) => (
               <li key={String(r.id)} className="py-2">
@@ -379,7 +386,7 @@ function FinanceInner() {
               </li>
             ))}
             {runs.length === 0 && (
-              <li className="py-2 text-slate-500">Aucun run de rapprochement.</li>
+              <li className="py-2 text-slate-500">{t("Aucun run de rapprochement.")}</li>
             )}
           </ul>
         </section>
@@ -387,7 +394,7 @@ function FinanceInner() {
 
       {module === "audit" && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Audit finance</h2>
+          <h2 className="font-semibold">{t("Audit finance")}</h2>
           <ul className="mt-3 divide-y text-sm">
             {audits.map((a) => (
               <li key={String(a.id)} className="py-2">
@@ -395,7 +402,7 @@ function FinanceInner() {
               </li>
             ))}
             {audits.length === 0 && (
-              <li className="py-2 text-slate-500">Aucun événement d’audit.</li>
+              <li className="py-2 text-slate-500">{t("Aucun événement d’audit.")}</li>
             )}
           </ul>
         </section>
@@ -411,14 +418,14 @@ function FinanceInner() {
         module === "payouts") && (
         <section className="space-y-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
-            Module <strong>{LABELS[module]}</strong> : soldes dérivés des écritures consolidées et
+            {t("Module")} <strong>{labels[module]}</strong> : soldes dérivés des écritures consolidées et
             des ledgers opérationnels (pas de modification directe de solde). Filtrer le journal /
             les événements source pour le détail.
             {canAdjust ? " Ajustements sensibles → double approbation." : ""}
           </div>
           {module === "subscriptions" && (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm">
-              Reconnaissance du revenu : cron <code>/api/cron/recognize-finance-revenue</code> sur
+              {t("Reconnaissance du revenu : cron")} <code>/api/cron/recognize-finance-revenue</code> sur
               <code> finance_revenue_schedules</code> (mensuel / annuel straight-line).
             </div>
           )}
@@ -427,7 +434,7 @@ function FinanceInner() {
 
       {accounts.length > 0 && module === "overview" && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Plan comptable (aperçu)</h2>
+          <h2 className="font-semibold">{t("Plan comptable (aperçu)")}</h2>
           <p className="mt-1 text-xs text-slate-500">{accounts.length} comptes configurés</p>
         </section>
       )}

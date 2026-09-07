@@ -291,14 +291,23 @@ export function buildAdminDialTwiml(params: {
   callerId?: string;
   includeWelcome?: boolean;
   prefixSay?: string;
+  sayVoice?: string;
+  sayLanguage?: string;
+  noAnswerSay?: string;
 }): string {
   const destPhone = normalizePhoneE164(params.destPhone) || "";
   const callerId = normalizePhoneE164(params.callerId) || getPublicVoiceCallerId();
   const statusCallbackUrl = getTwilioVoiceStatusCallbackUrl();
   const prefix = String(params.prefixSay || "").trim();
+  const sayVoice = String(params.sayVoice || "alice").trim() || "alice";
+  const sayLanguage = String(params.sayLanguage || "en-US").trim() || "en-US";
+  const noAnswer = String(
+    params.noAnswerSay ||
+      "All of our support representatives are currently unavailable. Please leave a message or try again later.",
+  ).trim();
   const welcome = params.includeWelcome
     ? `
-  <Say voice="alice" language="en-US">
+  <Say voice="${escapeTwiml(sayVoice)}" language="${escapeTwiml(sayLanguage)}">
     Welcome to MMD Delivery and Ride support.
     Thank you for calling us.
     For safety and quality purposes, this call may be recorded.
@@ -307,10 +316,10 @@ export function buildAdminDialTwiml(params: {
 `
     : prefix
       ? `
-  <Say voice="alice" language="en-US">${escapeTwiml(prefix)}</Say>
+  <Say voice="${escapeTwiml(sayVoice)}" language="${escapeTwiml(sayLanguage)}">${escapeTwiml(prefix)}</Say>
 `
       : `
-  <Say voice="alice" language="en-US">
+  <Say voice="${escapeTwiml(sayVoice)}" language="${escapeTwiml(sayLanguage)}">
     Please wait while we transfer your call.
   </Say>
 `;
@@ -331,8 +340,8 @@ ${welcome}
     <Number>${escapeTwiml(destPhone)}</Number>
   </Dial>
 
-  <Say voice="alice" language="en-US">
-    All of our support representatives are currently unavailable. Please leave a message or try again later.
+  <Say voice="${escapeTwiml(sayVoice)}" language="${escapeTwiml(sayLanguage)}">
+    ${escapeTwiml(noAnswer)}
   </Say>
 
   <Record

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiCountries } from "@/lib/adminAccess";
@@ -18,6 +20,8 @@ type CountryRow = {
 };
 
 export default function AdminTaxiCountriesPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<CountryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
@@ -68,13 +72,13 @@ export default function AdminTaxiCountriesPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Taxi Countries</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Taxi Countries")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Configuration pays — devise, langue, fuseau, téléphone.
+              {t("Configuration pays — devise, langue, fuseau, téléphone.")}
             </p>
           </header>
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {rows.map((row) => (
@@ -96,12 +100,12 @@ export default function AdminTaxiCountriesPage() {
                         defaultChecked={row.active}
                         disabled={!canEdit}
                       />
-                      Actif
+                      {t("Actif")}
                     </label>
                   </div>
                   <div className="grid gap-2 text-sm">
                     <label>
-                      Devise
+                      {t("Devise")}
                       <input
                         name="currency_code"
                         defaultValue={row.currency_code}
@@ -110,19 +114,19 @@ export default function AdminTaxiCountriesPage() {
                       />
                     </label>
                     <label>
-                      Langue
+                      {t("Langue")}
                       <select
                         name="default_language"
                         defaultValue={row.default_language}
                         disabled={!canEdit}
                         className="mt-1 w-full rounded-lg border px-2 py-1"
                       >
-                        <option value="en">EN</option>
-                        <option value="fr">FR</option>
+                        <option value="en">{t("EN")}</option>
+                        <option value="fr">{t("FR")}</option>
                       </select>
                     </label>
                     <label>
-                      Fuseau
+                      {t("Fuseau")}
                       <input
                         name="timezone"
                         defaultValue={row.timezone ?? ""}
@@ -131,7 +135,7 @@ export default function AdminTaxiCountriesPage() {
                       />
                     </label>
                     <label>
-                      Indicatif
+                      {t("Indicatif")}
                       <input
                         name="phone_country_code"
                         defaultValue={row.phone_country_code ?? ""}
@@ -146,7 +150,7 @@ export default function AdminTaxiCountriesPage() {
                       disabled={savingCode === row.country_code}
                       className="mt-3 w-full rounded-xl bg-slate-900 py-2 text-sm text-white disabled:opacity-50"
                     >
-                      Enregistrer
+                      {t("Enregistrer")}
                     </button>
                   ) : null}
                 </form>

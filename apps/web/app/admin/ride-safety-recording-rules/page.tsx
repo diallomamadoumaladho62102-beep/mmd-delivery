@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiDrivers } from "@/lib/adminAccess";
@@ -17,6 +19,8 @@ type RuleRow = {
 };
 
 export default function AdminRideSafetyRecordingRulesPage() {
+  const { t } = useAdminT();
+
   const [rules, setRules] = useState<RuleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
@@ -66,13 +70,13 @@ export default function AdminRideSafetyRecordingRulesPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-5xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Ride Safety Recordings</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Ride Safety Recordings")}</h1>
             <p className="mt-1 text-sm text-slate-600">
               Conformité audio/vidéo par pays, état ou ville. Conservation 14 jours par défaut.
             </p>
           </header>
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : (
             rules.map((rule) => (
               <form
@@ -104,7 +108,7 @@ export default function AdminRideSafetyRecordingRulesPage() {
                   Vidéo chauffeur
                 </label>
                 <label className="block text-sm mt-3">
-                  Conservation (jours)
+                  {t("Conservation (jours)")}
                   <input
                     name="retention_days"
                     type="number"
@@ -125,7 +129,7 @@ export default function AdminRideSafetyRecordingRulesPage() {
                     disabled={savingId === rule.id}
                     className="mt-3 rounded bg-slate-900 px-4 py-2 text-sm text-white"
                   >
-                    Enregistrer
+                    {t("Enregistrer")}
                   </button>
                 ) : null}
               </form>

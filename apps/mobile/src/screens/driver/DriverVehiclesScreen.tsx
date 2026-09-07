@@ -51,25 +51,28 @@ const DANGER = "#EF4444";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverVehicles">;
 
-function fuelLabel(fuel: string) {
+function fuelLabel(fuel: string, t: (key: string, fallback: string) => string) {
   const map: Record<string, string> = {
-    electric: "Électrique",
-    hybrid: "Hybride",
-    plug_in_hybrid: "Hybride rechargeable",
-    gasoline: "Essence",
-    diesel: "Diesel",
+    electric: t("driver.vehicles.fuel.electric", "Electric"),
+    hybrid: t("driver.vehicles.fuel.hybrid", "Hybrid"),
+    plug_in_hybrid: t("driver.vehicles.fuel.plugInHybrid", "Plug-in hybrid"),
+    gasoline: t("driver.vehicles.fuel.gasoline", "Gasoline"),
+    diesel: t("driver.vehicles.fuel.diesel", "Diesel"),
   };
   return map[fuel] ?? fuel;
 }
 
-function statusBadge(vehicle: DriverVehicleListItem): {
+function statusBadge(
+  vehicle: DriverVehicleListItem,
+  t: (key: string, fallback: string) => string,
+): {
   label: string;
   color: string;
   bg: string;
 } {
   if (vehicle.is_active) {
     return {
-      label: "Actif",
+      label: t("driver.vehicles.statusActive", "Active"),
       color: MMD_TAXI_GREEN,
       bg: "rgba(34,197,94,0.1)",
     };
@@ -78,10 +81,14 @@ function statusBadge(vehicle: DriverVehicleListItem): {
     vehicle.vehicle_status === "pending_review" ||
     vehicle.categories.some((c) => c.status === "pending_review");
   if (pending) {
-    return { label: "En attente", color: AMBER, bg: "rgba(245,158,11,0.1)" };
+    return {
+      label: t("driver.vehicles.statusPending", "Pending"),
+      color: AMBER,
+      bg: "rgba(245,158,11,0.1)",
+    };
   }
   return {
-    label: vehicle.vehicle_status || "Inactif",
+    label: vehicle.vehicle_status || t("driver.vehicles.statusInactive", "Inactive"),
     color: "rgba(255,255,255,0.7)",
     bg: "rgba(255,255,255,0.08)",
   };
@@ -93,13 +100,14 @@ function VehicleCard(props: {
   onSelectActive: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  t: (key: string, fallback: string, options?: Record<string, unknown>) => string;
 }) {
-  const { vehicle, isOnline } = props;
+  const { vehicle, isOnline, t } = props;
   const title =
     vehicle.nickname?.trim() ||
     [vehicle.vehicle_make, vehicle.vehicle_model].filter(Boolean).join(" ") ||
-    "Véhicule";
-  const badge = statusBadge(vehicle);
+    t("driver.vehicles.fallbackName", "Vehicle");
+  const badge = statusBadge(vehicle, t);
   const emoji = vehicle.is_active ? "🚗" : "🚙";
   const categoriesLine = vehicle.categories
     .map((cat) =>
@@ -125,16 +133,24 @@ function VehicleCard(props: {
 
       <Text style={styles.meta}>
         {vehicle.vehicle_year ?? "—"} · {vehicle.license_plate ?? "—"} ·{" "}
-        {fuelLabel(vehicle.fuel_type)}
+        {fuelLabel(vehicle.fuel_type, t)}
       </Text>
 
       {vehicle.is_active ? (
         <View style={styles.statusRow}>
           <View style={styles.statusDot} />
-          <Text style={styles.meta}>Statut: {vehicle.vehicle_status}</Text>
+          <Text style={styles.meta}>
+            {t("driver.vehicles.statusLabel", "Status: {{status}}", {
+              status: vehicle.vehicle_status,
+            })}
+          </Text>
         </View>
       ) : (
-        <Text style={styles.meta}>Statut: {vehicle.vehicle_status}</Text>
+        <Text style={styles.meta}>
+          {t("driver.vehicles.statusLabel", "Status: {{status}}", {
+            status: vehicle.vehicle_status,
+          })}
+        </Text>
       )}
 
       {categoriesLine ? (
@@ -142,7 +158,11 @@ function VehicleCard(props: {
       ) : null}
 
       {vehicle.admin_review_notes ? (
-        <Text style={styles.note}>Admin : {vehicle.admin_review_notes}</Text>
+        <Text style={styles.note}>
+          {t("driver.vehicles.adminNote", "Admin: {{note}}", {
+            note: vehicle.admin_review_notes,
+          })}
+        </Text>
       ) : null}
 
       <View style={styles.actions}>
@@ -154,7 +174,9 @@ function VehicleCard(props: {
             activeOpacity={0.9}
           >
             <Text style={styles.btnPrimaryText}>
-              {isOnline ? "Hors ligne requis" : "Activer"}
+              {isOnline
+                ? t("driver.vehicles.offlineRequired", "Go offline required")
+                : t("driver.vehicles.activate", "Activate")}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -170,7 +192,7 @@ function VehicleCard(props: {
                 : styles.btnOutlineWhiteText
             }
           >
-            Modifier
+            {t("driver.vehicles.edit", "Edit")}
           </Text>
         </TouchableOpacity>
         {!vehicle.is_active ? (
@@ -179,7 +201,9 @@ function VehicleCard(props: {
             onPress={props.onDelete}
             activeOpacity={0.9}
           >
-            <Text style={styles.btnDangerText}>Supprimer</Text>
+            <Text style={styles.btnDangerText}>
+              {t("driver.vehicles.delete", "Delete")}
+            </Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -347,13 +371,13 @@ export function DriverVehiclesScreen() {
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
-          title="Mes véhicules"
-          subtitle="Gérez votre flotte de véhicules"
+          title={t("driver.vehicles.title", "My vehicles")}
+          subtitle={t("driver.vehicles.subtitleManage", "Manage your vehicle fleet")}
           variant="dark"
           fallbackRoute="DriverTabs"
         />
         <DriverBrandLoadingState
-          title="Chargement de vos véhicules..."
+          title={t("driver.vehicles.loading", "Loading your vehicles...")}
           logoAtBottom
         />
       </SafeAreaView>
@@ -364,8 +388,11 @@ export function DriverVehiclesScreen() {
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
-        title="Mes véhicules"
-        subtitle="Un seul véhicule actif à la fois"
+        title={t("driver.vehicles.title", "My vehicles")}
+        subtitle={t(
+          "driver.vehicles.subtitleActive",
+          "Only one active vehicle at a time",
+        )}
         variant="dark"
         fallbackRoute="DriverTabs"
       />
@@ -378,6 +405,7 @@ export function DriverVehiclesScreen() {
             key={vehicle.id}
             vehicle={vehicle}
             isOnline={isOnline}
+            t={t}
             onSelectActive={() => void activate(vehicle.id)}
             onEdit={() =>
               navigation.navigate("DriverVehicle", { vehicleId: vehicle.id })

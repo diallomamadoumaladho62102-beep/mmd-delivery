@@ -276,7 +276,7 @@ export function RestaurantHomeMapChrome({
             <Pressable
               style={StyleSheet.absoluteFillObject}
               onPress={() => setFilterOpen(false)}
-              accessibilityLabel="Close filter"
+              accessibilityLabel={t("common.a11y.closeFilter", "Close filter")}
             />
             <View style={styles.filterSheet} accessibilityViewIsModal>
               <Text style={styles.filterSheetTitle}>

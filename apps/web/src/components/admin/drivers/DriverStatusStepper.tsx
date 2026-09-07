@@ -1,22 +1,26 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { statusStepperIndex, type AdminDriverListItem } from "@/lib/adminDriverDisplay";
 
-const STEPS = [
-  "Created",
-  "Docs sent",
-  "Verification",
-  "Approved",
-  "Active",
-  "Online",
-] as const;
 
 export default function DriverStatusStepper({ driver }: { driver: AdminDriverListItem }) {
+  const { t } = useAdminT();
+  const steps = [
+    t("Created"),
+    t("Docs sent"),
+    t("Verification"),
+    t("Approved"),
+    t("Active"),
+    t("Online"),
+  ];
+
   const current = statusStepperIndex(driver);
 
   return (
-    <ol className="flex items-center gap-1" aria-label="Driver onboarding progress">
-      {STEPS.map((step, index) => {
+    <ol className="flex items-center gap-1" aria-label={t("Driver onboarding progress")}>
+      {steps.map((step, index) => {
         const done = index <= current;
         return (
           <li key={step} className="flex min-w-0 flex-1 items-center gap-1">
@@ -36,7 +40,7 @@ export default function DriverStatusStepper({ driver }: { driver: AdminDriverLis
                 {step}
               </span>
             </div>
-            {index < STEPS.length - 1 ? (
+            {index < steps.length - 1 ? (
               <div
                 className={[
                   "mb-3 h-px flex-1",

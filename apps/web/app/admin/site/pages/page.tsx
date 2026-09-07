@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -20,6 +22,8 @@ type PageRow = {
 };
 
 function PagesListInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [rows, setRows] = useState<PageRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +83,7 @@ function PagesListInner() {
         <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Corporate Website
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Pages</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Pages")}</h1>
       </div>
 
       {error ? (
@@ -96,11 +100,11 @@ function PagesListInner() {
       {canEdit ? (
         <form onSubmit={createPage} className={`${CARD} grid gap-3 sm:grid-cols-3`}>
           <label className="block">
-            <span className={LABEL}>Slug</span>
+            <span className={LABEL}>{t("Slug")}</span>
             <input className={INPUT} value={slug} onChange={(e) => setSlug(e.target.value)} required />
           </label>
           <label className="block">
-            <span className={LABEL}>Title</span>
+            <span className={LABEL}>{t("Title")}</span>
             <input className={INPUT} value={title} onChange={(e) => setTitle(e.target.value)} required />
           </label>
           <div className="flex items-end">
@@ -117,7 +121,7 @@ function PagesListInner() {
 
       <div className={`${CARD} space-y-2`}>
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-500">No pages.</p>
+          <p className="text-sm text-slate-500">{t("No pages.")}</p>
         ) : (
           rows.map((row) => (
             <Link
@@ -143,6 +147,8 @@ function PagesListInner() {
 }
 
 export default function SitePagesListPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <PagesListInner />

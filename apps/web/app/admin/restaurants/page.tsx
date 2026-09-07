@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { canReviewRestaurants, canViewRestaurants } from "@/lib/adminAccess";
@@ -190,7 +192,7 @@ function badgeClassForStatus(status: RestaurantDocStatus): string {
   }
 }
 
-function statusLabel(status: RestaurantDocStatus): string {
+function statusLabel(status: RestaurantDocStatus, t: (source: string) => string): string {
   switch (status) {
     case "approved":
       return "Approuvé";
@@ -198,7 +200,7 @@ function statusLabel(status: RestaurantDocStatus): string {
       return "Refusé";
     case "pending":
     default:
-      return "En attente";
+      return t("En attente");
   }
 }
 
@@ -354,6 +356,8 @@ async function buildSignedDocument(
 }
 
 export default function AdminRestaurantsPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [rows, setRows] = useState<RestaurantAdminRow[]>([]);
@@ -657,9 +661,9 @@ export default function AdminRestaurantsPage() {
         <div className="mx-auto max-w-6xl p-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="mb-4 text-2xl font-bold">
-              Restaurants — vérification admin
+              {t("Restaurants — vérification admin")}
             </h1>
-            <p className="text-sm text-slate-600">Chargement…</p>
+            <p className="text-sm text-slate-600">{t("Chargement…")}</p>
           </div>
         </div>
       </main>
@@ -672,7 +676,7 @@ export default function AdminRestaurantsPage() {
         <div className="mx-auto max-w-6xl p-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <h1 className="mb-4 text-2xl font-bold">
-              Restaurants — vérification admin
+              {t("Restaurants — vérification admin")}
             </h1>
             <p className="text-sm text-red-600">{err}</p>
           </div>
@@ -686,23 +690,22 @@ export default function AdminRestaurantsPage() {
       <div className="mx-auto w-full max-w-screen-xl space-y-6 px-6 py-6">
         <header className="space-y-3">
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-            MMD Delivery · Admin Restaurants
+            {t("MMD Delivery · Admin Restaurants")}
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Restaurants — vérification admin
+            {t("Restaurants — vérification admin")}
           </h1>
 
           <p className="text-sm text-slate-600">
-            Vérifie les profils restaurants, leurs documents et approuve ou
-            refuse les demandes.
+            {t("Vérifie les profils restaurants, leurs documents et approuve ou refuse les demandes.")}
           </p>
         </header>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="min-h-[132px] rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="text-sm font-medium leading-none text-slate-500">
-              Total restaurants
+              {t("Total restaurants")}
             </div>
             <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-slate-900">
               {totalRestaurants}
@@ -711,7 +714,7 @@ export default function AdminRestaurantsPage() {
 
           <div className="min-h-[132px] rounded-2xl border border-green-200 bg-green-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="text-sm font-medium leading-none text-green-700">
-              Approuvés
+              {t("Approuvés")}
             </div>
             <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-green-900">
               {approvedCount}
@@ -720,7 +723,7 @@ export default function AdminRestaurantsPage() {
 
           <div className="min-h-[132px] rounded-2xl border border-yellow-200 bg-yellow-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="text-sm font-medium leading-none text-yellow-700">
-              En attente
+              {t("En attente")}
             </div>
             <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-yellow-900">
               {pendingCount}
@@ -729,7 +732,7 @@ export default function AdminRestaurantsPage() {
 
           <div className="min-h-[132px] rounded-2xl border border-red-200 bg-red-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="text-sm font-medium leading-none text-red-700">
-              Refusés
+              {t("Refusés")}
             </div>
             <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-red-900">
               {rejectedCount}
@@ -752,7 +755,7 @@ export default function AdminRestaurantsPage() {
         {rows.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <p className="text-sm text-slate-600">
-              Aucun profil restaurant enregistré pour le moment.
+              {t("Aucun profil restaurant enregistré pour le moment.")}
             </p>
           </div>
         ) : (
@@ -785,7 +788,7 @@ export default function AdminRestaurantsPage() {
                               status
                             )}`}
                           >
-                            {statusLabel(status)}
+                            {statusLabel(status, t)}
                           </span>
                           <span
                             className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${insight.className}`}
@@ -796,33 +799,33 @@ export default function AdminRestaurantsPage() {
 
                         <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2">
                           <p>
-                            <span className="font-medium">Contact :</span>{" "}
+                            <span className="font-medium">{t("Contact :")}</span>{" "}
                             {r.contact_name || "—"}
                           </p>
                           <p>
-                            <span className="font-medium">Téléphone :</span>{" "}
+                            <span className="font-medium">{t("Téléphone :")}</span>{" "}
                             {r.phone || "—"}
                           </p>
                           <p className="break-all">
-                            <span className="font-medium">Email :</span>{" "}
+                            <span className="font-medium">{t("Email :")}</span>{" "}
                             {r.restaurant_email || r.contact_email || "—"}
                           </p>
                           <p>
-                            <span className="font-medium">Cuisine :</span>{" "}
+                            <span className="font-medium">{t("Cuisine :")}</span>{" "}
                             {r.cuisine_type || "—"}
                           </p>
                         </div>
 
                         <p className="text-sm text-slate-600">
                           <span className="font-medium text-slate-700">
-                            Adresse :
+                            {t("Adresse :")}
                           </span>{" "}
                           {formatRestaurantAddress(r)}
                         </p>
 
                         <p className="text-sm text-slate-600">
                           <span className="font-medium text-slate-700">
-                            Options :
+                            {t("Options :")}
                           </span>{" "}
                           {[
                             r.offers_delivery ? "Livraison" : null,
@@ -837,7 +840,7 @@ export default function AdminRestaurantsPage() {
                       <div className="w-full rounded-2xl border border-slate-100 bg-[#0033cc] p-5 flex flex-col justify-center">
                         <div className="rounded-2xl border border-slate-200 bg-[#0033cc] p-4 shadow-sm">
                           <div className="mb-3 text-sm font-semibold text-slate-900">
-                            Actions rapides
+                            {t("Actions rapides")}
                           </div>
 
                           {canManageRestaurants ? (
@@ -865,7 +868,7 @@ export default function AdminRestaurantsPage() {
                             >
                               {updatingUserId === r.user_id
                                 ? "Validation..."
-                                : "Approuver"}
+                                : t("Approuver")}
                             </button>
 
                             <button
@@ -891,7 +894,7 @@ export default function AdminRestaurantsPage() {
                             >
                               {updatingUserId === r.user_id
                                 ? "Traitement..."
-                                : "Refuser"}
+                                : t("Refuser")}
                             </button>
 
                             <button
@@ -911,7 +914,7 @@ export default function AdminRestaurantsPage() {
                                 fontWeight: 700,
                               }}
                             >
-                              Suspendre
+                              {t("Suspendre")}
                             </button>
 
                             <button
@@ -931,12 +934,12 @@ export default function AdminRestaurantsPage() {
                                 fontWeight: 700,
                               }}
                             >
-                              Désactiver
+                              {t("Désactiver")}
                             </button>
                           </div>
                           ) : (
                             <p className="text-xs text-slate-500">
-                              Mode lecture seule — permissions insuffisantes.
+                              {t("Mode lecture seule — permissions insuffisantes.")}
                             </p>
                           )}
                         </div>
@@ -945,29 +948,29 @@ export default function AdminRestaurantsPage() {
 
                     <details className="rounded-2xl border border-slate-200 bg-[#0033cc] open:shadow-sm">
                       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-900">
-                        Voir les détails
+                        {t("Voir les détails")}
                       </summary>
 
                       <div className="space-y-5 border-t border-slate-200 px-4 py-4">
                         <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
                           <div className="space-y-2">
                             <p>
-                              <span className="font-medium">Licence :</span>{" "}
+                              <span className="font-medium">{t("Licence :")}</span>{" "}
                               {r.license_number || "—"}
                             </p>
                             <p>
-                              <span className="font-medium">Tax ID (EIN) :</span>{" "}
+                              <span className="font-medium">{t("Tax ID (EIN) :")}</span>{" "}
                               {r.tax_id || "—"}
                             </p>
                             <p>
-                              <span className="font-medium">Email contact :</span>{" "}
+                              <span className="font-medium">{t("Email contact :")}</span>{" "}
                               {r.contact_email || "—"}
                             </p>
                           </div>
 
                           <div className="space-y-2">
                             <p>
-                              <span className="font-medium">Site web :</span>{" "}
+                              <span className="font-medium">{t("Site web :")}</span>{" "}
                               {websiteHref ? (
                                 <a
                                   href={websiteHref}
@@ -982,7 +985,7 @@ export default function AdminRestaurantsPage() {
                               )}
                             </p>
                             <p>
-                              <span className="font-medium">Instagram :</span>{" "}
+                              <span className="font-medium">{t("Instagram :")}</span>{" "}
                               {instagramHref ? (
                                 <a
                                   href={instagramHref}
@@ -990,14 +993,14 @@ export default function AdminRestaurantsPage() {
                                   rel="noreferrer"
                                   className="text-blue-600 underline"
                                 >
-                                  Profil
+                                  {t("Profil")}
                                 </a>
                               ) : (
                                 "—"
                               )}
                             </p>
                             <p>
-                              <span className="font-medium">Facebook :</span>{" "}
+                              <span className="font-medium">{t("Facebook :")}</span>{" "}
                               {facebookHref ? (
                                 <a
                                   href={facebookHref}
@@ -1005,7 +1008,7 @@ export default function AdminRestaurantsPage() {
                                   rel="noreferrer"
                                   className="text-blue-600 underline"
                                 >
-                                  Page
+                                  {t("Page")}
                                 </a>
                               ) : (
                                 "—"
@@ -1017,7 +1020,7 @@ export default function AdminRestaurantsPage() {
                         {r.opening_hours && (
                           <div className="space-y-2 text-xs text-slate-700">
                             <p className="text-sm font-semibold text-slate-900">
-                              Horaires d’ouverture
+                              {t("Horaires d’ouverture")}
                             </p>
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                               {(Object.keys(DAY_LABELS) as DayKey[]).map(
@@ -1041,12 +1044,12 @@ export default function AdminRestaurantsPage() {
 
                         <div className="space-y-3 text-sm">
                           <p className="font-semibold text-slate-900">
-                            Documents
+                            {t("Documents")}
                           </p>
 
                           {r.documents.length === 0 ? (
                             <p className="text-slate-600">
-                              Aucun document envoyé pour l’instant.
+                              {t("Aucun document envoyé pour l’instant.")}
                             </p>
                           ) : (
                             <ul className="space-y-3">
@@ -1075,7 +1078,7 @@ export default function AdminRestaurantsPage() {
                                               rel="noreferrer"
                                               className="text-xs text-blue-600 underline"
                                             >
-                                              Ouvrir
+                                              {t("Ouvrir")}
                                             </a>
                                             <div className="text-xs text-slate-500">
                                               Créé : {formatDate(d.created_at)}
@@ -1099,7 +1102,7 @@ export default function AdminRestaurantsPage() {
                                               rel="noreferrer"
                                               className="text-xs text-blue-600 underline"
                                             >
-                                              Ouvrir
+                                              {t("Ouvrir")}
                                             </a>
                                           )}
 
@@ -1124,7 +1127,7 @@ export default function AdminRestaurantsPage() {
                                         d.status
                                       )}`}
                                     >
-                                      {statusLabel(d.status)}
+                                      {statusLabel(d.status, t)}
                                     </span>
                                   </div>
                                 </li>
@@ -1135,7 +1138,7 @@ export default function AdminRestaurantsPage() {
 
                         <div className="space-y-3">
                           <label className="block text-sm font-medium text-slate-700">
-                            Note admin
+                            {t("Note admin")}
                           </label>
                           <textarea
                             value={reviewNote}
@@ -1146,7 +1149,7 @@ export default function AdminRestaurantsPage() {
                               }))
                             }
                             rows={3}
-                            placeholder="Ajouter une note interne pour cette review..."
+                            placeholder={t("Ajouter une note interne pour cette review...")}
                             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                           />
                         </div>

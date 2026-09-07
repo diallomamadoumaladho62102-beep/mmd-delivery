@@ -46,9 +46,6 @@ import {
   MMD_WHITE,
 } from "../theme/mmdUi";
 
-const IDENTITY_MESSAGE =
-  "To protect clients, drivers and the MMD Delivery platform, we need to confirm your identity. Please take a clear selfie of your face.";
-
 const SHIELD_BG = "#4f46e5";
 const CAPTURE_BTN = "#d43737";
 const WAITING_BTN = "#a78bfa";
@@ -128,17 +125,20 @@ export function DriverIdentityVerificationScreen() {
     switch (gateStatus) {
       case "submitted":
       case "manual_review":
-        return "Verification in progress";
+        return t(
+          "driver.identity.statusInProgress",
+          "Verification in progress",
+        );
       case "rejected":
-        return "Verification refused";
+        return t("driver.identity.statusRejected", "Verification refused");
       case "verified":
-        return "Identity Confirmed";
+        return t("driver.identity.statusVerified", "Identity Confirmed");
       case "expired":
-        return "Verification expired";
+        return t("driver.identity.statusExpired", "Verification expired");
       default:
-        return "Identity Verification";
+        return t("driver.identity.screenTitle", "Identity Verification");
     }
-  }, [gateStatus]);
+  }, [gateStatus, t]);
 
   const handleCapture = useCallback(async () => {
     try {
@@ -211,15 +211,21 @@ export function DriverIdentityVerificationScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
         <ScreenHeader
-          title="Identity Verification"
-          subtitle="Identity Verification"
+          title={t("driver.identity.screenTitle", "Identity Verification")}
+          subtitle={t("driver.identity.screenTitle", "Identity Verification")}
           fallbackRoute="DriverTabs"
           variant="dark"
         />
         <Text style={styles.waitHint}>
-          Please wait while we verify your identity.{"\n"}This may take a few moments.
+          {t(
+            "driver.identity.waitHint",
+            "Please wait while we verify your identity.\nThis may take a few moments.",
+          )}
         </Text>
-        <DriverBrandLoadingState title="Loading..." logoAtBottom />
+        <DriverBrandLoadingState
+          title={t("driver.identity.loading", "Loading...")}
+          logoAtBottom
+        />
       </SafeAreaView>
     );
   }
@@ -233,7 +239,7 @@ export function DriverIdentityVerificationScreen() {
         ]}
       >
         <ScreenHeader
-          title="Identity Verification"
+          title={t("driver.identity.screenTitle", "Identity Verification")}
           subtitle={statusTitle}
           fallbackRoute="DriverTabs"
           variant="dark"
@@ -244,20 +250,31 @@ export function DriverIdentityVerificationScreen() {
           <View style={styles.iconCircle}>
             <Ionicons name="shield-checkmark" size={34} color={MMD_WHITE} />
           </View>
-          <Text style={styles.subtitle}>{IDENTITY_MESSAGE}</Text>
+          <Text style={styles.subtitle}>
+            {t(
+              "driver.identity.intro",
+              "To protect clients, drivers and the MMD Delivery platform, we need to confirm your identity. Please take a clear selfie of your face.",
+            )}
+          </Text>
           {reason ? <Text style={styles.reason}>{reason}</Text> : null}
         </View>
 
         {phase === "waiting" ? (
           <View style={styles.card}>
             <Text style={styles.emojiIcon}>⏳</Text>
-            <Text style={styles.cardTitle}>Pending Validation</Text>
+            <Text style={styles.cardTitle}>
+              {t("driver.identity.pendingTitle", "Pending Validation")}
+            </Text>
             <Text style={styles.cardBody}>
-              Your selfie has been received. Our team or automated system is validating your
-              identity. You can go online once verification is complete.
+              {t(
+                "driver.identity.pendingBody",
+                "Your selfie has been received. Our team or automated system is validating your identity. You can go online once verification is complete.",
+              )}
             </Text>
             <TouchableOpacity style={styles.waitingBtn} onPress={refreshStatus} activeOpacity={0.85}>
-              <Text style={styles.waitingBtnText}>Refresh Status</Text>
+              <Text style={styles.waitingBtnText}>
+                {t("driver.identity.refreshStatus", "Refresh Status")}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -265,10 +282,16 @@ export function DriverIdentityVerificationScreen() {
         {phase === "success" ? (
           <View style={styles.card}>
             <Text style={[styles.emojiIcon, { color: MMD_GREEN_SOFT }]}>✓</Text>
-            <Text style={styles.cardTitle}>Identity Confirmed</Text>
-            <Text style={styles.cardBody}>You can now go online.</Text>
+            <Text style={styles.cardTitle}>
+              {t("driver.identity.statusVerified", "Identity Confirmed")}
+            </Text>
+            <Text style={styles.cardBody}>
+              {t("driver.identity.successBody", "You can now go online.")}
+            </Text>
             <TouchableOpacity style={styles.successBtn} onPress={handleDone} activeOpacity={0.85}>
-              <Text style={styles.primaryBtnText}>Continue</Text>
+              <Text style={styles.primaryBtnText}>
+                {t("common.continue", "Continue")}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -276,10 +299,17 @@ export function DriverIdentityVerificationScreen() {
         {phase === "error" ? (
           <View style={styles.card}>
             <Ionicons name="alert-circle-outline" size={32} color="#fca5a5" />
-            <Text style={styles.cardTitle}>Verification problem</Text>
-            <Text style={styles.cardBody}>{errorMessage ?? "Something went wrong."}</Text>
+            <Text style={styles.cardTitle}>
+              {t("driver.identity.problemTitle", "Verification problem")}
+            </Text>
+            <Text style={styles.cardBody}>
+              {errorMessage ??
+                t("driver.identity.somethingWrong", "Something went wrong.")}
+            </Text>
             <TouchableOpacity style={styles.successBtn} onPress={refreshStatus} activeOpacity={0.85}>
-              <Text style={styles.primaryBtnText}>Retry</Text>
+              <Text style={styles.primaryBtnText}>
+                {t("common.a11y.retry", "Retry")}
+              </Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -292,7 +322,10 @@ export function DriverIdentityVerificationScreen() {
               <View style={styles.previewPlaceholder}>
                 <Text style={styles.previewCircle}>◯</Text>
                 <Text style={styles.previewHint}>
-                  Selfie required — centered face, good lighting
+                  {t(
+                    "driver.identity.selfieHint",
+                    "Selfie required — centered face, good lighting",
+                  )}
                 </Text>
               </View>
             )}
@@ -302,8 +335,8 @@ export function DriverIdentityVerificationScreen() {
                 <ActivityIndicator size="large" color={MMD_WHITE} />
                 <Text style={styles.helper}>
                   {phase === "uploading"
-                    ? "Secure selfie upload…"
-                    : "Submitting…"}
+                    ? t("driver.identity.uploading", "Secure selfie upload…")
+                    : t("driver.identity.submitting", "Submitting…")}
                 </Text>
               </View>
             ) : (
@@ -314,7 +347,9 @@ export function DriverIdentityVerificationScreen() {
                   activeOpacity={0.85}
                 >
                   <Text style={styles.primaryBtnText}>
-                    {photoUri ? "Retake selfie" : "Take a Selfie"}
+                    {photoUri
+                      ? t("driver.identity.retakeSelfie", "Retake selfie")
+                      : t("driver.identity.takeSelfie", "Take a Selfie")}
                   </Text>
                 </TouchableOpacity>
 

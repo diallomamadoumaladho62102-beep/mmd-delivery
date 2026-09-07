@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
@@ -20,6 +22,8 @@ export default function AdminPricingHistory({
   configId?: string;
   canRollback: boolean;
 }) {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [rolling, setRolling] = useState<string | null>(null);
@@ -39,7 +43,7 @@ export default function AdminPricingHistory({
   }, [load]);
 
   async function rollback(historyId: string) {
-    if (!confirm("Restaurer cette version du pricing ?")) return;
+    if (!confirm(t("Restaurer cette version du pricing ?"))) return;
     setRolling(historyId);
     const res = await adminFetch("/api/admin/pricing/rollback", {
       method: "POST",
@@ -55,24 +59,24 @@ export default function AdminPricingHistory({
     window.location.reload();
   }
 
-  if (loading) return <div className="text-sm text-slate-500">Historique…</div>;
+  if (loading) return <div className="text-sm text-slate-500">{t("Historique…")}</div>;
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
       <table className="min-w-full text-left text-xs">
         <thead className="border-b bg-slate-50 uppercase text-slate-500">
           <tr>
-            <th className="px-3 py-2">Date</th>
-            <th className="px-3 py-2">Type</th>
-            <th className="px-3 py-2">Config</th>
-            <th className="px-3 py-2">Action</th>
+            <th className="px-3 py-2">{t("Date")}</th>
+            <th className="px-3 py-2">{t("Type")}</th>
+            <th className="px-3 py-2">{t("Config")}</th>
+            <th className="px-3 py-2">{t("Action")}</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
               <td colSpan={4} className="px-3 py-4 text-slate-500">
-                Aucun historique.
+                {t("Aucun historique.")}
               </td>
             </tr>
           ) : (
@@ -91,7 +95,7 @@ export default function AdminPricingHistory({
                       onClick={() => void rollback(row.id)}
                       className="text-blue-600 underline disabled:opacity-50"
                     >
-                      Rollback
+                      {t("Rollback")}
                     </button>
                   ) : (
                     "—"

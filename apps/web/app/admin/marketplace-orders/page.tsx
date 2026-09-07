@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -34,6 +36,8 @@ function formatMoney(cents: number, currency = "USD") {
 }
 
 export default function AdminMarketplaceOrdersPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<MarketplaceOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [canView, setCanView] = useState(false);
@@ -59,11 +63,11 @@ export default function AdminMarketplaceOrdersPage() {
       <div style={{ padding: 24, color: "#E2E8F0" }}>
         <h1 style={{ fontSize: 28, marginBottom: 8 }}>Marketplace Orders (Draft / Checkout)</h1>
         <p style={{ color: "#94A3B8", marginBottom: 20 }}>
-          Draft, shadow checkout, and live payment preparation — payouts and marketplace dispatch remain off until go-live.
+          {t("Draft, shadow checkout, and live payment preparation — payouts and marketplace dispatch remain off until go-live.")}
         </p>
 
         {!canView ? (
-          <p>Read-only access required.</p>
+          <p>{t("Read-only access required.")}</p>
         ) : (
           <>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -88,9 +92,9 @@ export default function AdminMarketplaceOrdersPage() {
             </div>
 
             {loading ? (
-              <p>Loading…</p>
+              <p>{t("Loading…")}</p>
             ) : rows.length === 0 ? (
-              <p>No draft marketplace orders.</p>
+              <p>{t("No draft marketplace orders.")}</p>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {rows.map((row) => (
@@ -105,7 +109,7 @@ export default function AdminMarketplaceOrdersPage() {
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                       <div>
-                        <strong>{row.sellers?.business_name ?? "Seller"}</strong>
+                        <strong>{row.sellers?.business_name ?? t("Seller")}</strong>
                         <div style={{ color: "#94A3B8", fontSize: 13 }}>
                           {row.status}
                           {row.payment_status ? ` · pay ${row.payment_status}` : ""} · {row.id}

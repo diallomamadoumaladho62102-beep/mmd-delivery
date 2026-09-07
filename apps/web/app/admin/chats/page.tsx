@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -80,16 +82,16 @@ function formatDate(value: string | null | undefined): string {
   }).format(date);
 }
 
-function roleLabel(role: ChatRole): string {
+function roleLabel(role: ChatRole, t: (source: string) => string): string {
   switch (role) {
     case "client":
-      return "Client";
+      return t("Client");
     case "driver":
-      return "Driver";
+      return t("Driver");
     case "restaurant":
-      return "Restaurant";
+      return t("Restaurant");
     case "admin":
-      return "Admin";
+      return t("Admin");
     default:
       return role;
   }
@@ -119,6 +121,8 @@ function displayName(profile: ProfileRow | null): string {
 }
 
 export default function AdminChatsPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -326,8 +330,8 @@ export default function AdminChatsPage() {
     return (
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">Admin chats</h1>
-          <p className="mt-2 text-sm text-slate-600">Chargement…</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t("Admin chats")}</h1>
+          <p className="mt-2 text-sm text-slate-600">{t("Chargement…")}</p>
         </div>
       </main>
     );
@@ -348,16 +352,15 @@ export default function AdminChatsPage() {
       <div className="mx-auto w-full max-w-screen-xl space-y-6 px-6 py-6">
         <header className="space-y-3">
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-            MMD Delivery · Admin Chats
+            {t("MMD Delivery · Admin Chats")}
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Centre de messages admin
+            {t("Centre de messages admin")}
           </h1>
 
           <p className="text-sm text-slate-600">
-            Suis tous les chats liés aux commandes et réponds rapidement au client,
-            au chauffeur ou au restaurant.
+            {t("Suis tous les chats liés aux commandes et réponds rapidement au client, au chauffeur ou au restaurant.")}
           </p>
         </header>
 
@@ -369,7 +372,7 @@ export default function AdminChatsPage() {
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-            <div className="text-sm font-medium text-slate-500">Conversations</div>
+            <div className="text-sm font-medium text-slate-500">{t("Conversations")}</div>
             <div className="mt-3 text-4xl font-extrabold text-slate-900">
               {threads.length}
             </div>
@@ -380,7 +383,7 @@ export default function AdminChatsPage() {
               key={role}
               className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-center shadow-sm"
             >
-              <div className="text-sm font-medium text-blue-700">{roleLabel(role)}</div>
+              <div className="text-sm font-medium text-blue-700">{roleLabel(role, t)}</div>
               <div className="mt-3 text-4xl font-extrabold text-blue-900">
                 {
                   threads.filter(
@@ -399,7 +402,7 @@ export default function AdminChatsPage() {
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Rechercher par commande, nom, email, message..."
+              placeholder={t("Rechercher par commande, nom, email, message...")}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             />
 
@@ -408,11 +411,11 @@ export default function AdminChatsPage() {
               onChange={(event) => setTargetFilter(event.target.value as ChatRole | "all")}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             >
-              <option value="all">Tous les rôles</option>
-              <option value="client">Client</option>
-              <option value="driver">Driver</option>
-              <option value="restaurant">Restaurant</option>
-              <option value="admin">Admin</option>
+              <option value="all">{t("Tous les rôles")}</option>
+              <option value="client">{t("Client")}</option>
+              <option value="driver">{t("Driver")}</option>
+              <option value="restaurant">{t("Restaurant")}</option>
+              <option value="admin">{t("Admin")}</option>
             </select>
 
             <button
@@ -420,7 +423,7 @@ export default function AdminChatsPage() {
               onClick={() => void loadPage()}
               className="rounded-xl border border-slate-300 bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
             >
-              Rafraîchir
+              {t("Rafraîchir")}
             </button>
           </div>
         </section>
@@ -428,7 +431,7 @@ export default function AdminChatsPage() {
         {filteredThreads.length === 0 ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <p className="text-sm text-slate-600">
-              Aucun chat trouvé pour ce filtre.
+              {t("Aucun chat trouvé pour ce filtre.")}
             </p>
           </section>
         ) : (
@@ -464,15 +467,15 @@ export default function AdminChatsPage() {
 
                       <div className="grid grid-cols-1 gap-2 text-sm text-slate-600 md:grid-cols-3">
                         <p>
-                          <span className="font-semibold text-slate-700">Client:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Client:")}</span>{" "}
                           {displayName(thread.participants.client)}
                         </p>
                         <p>
-                          <span className="font-semibold text-slate-700">Driver:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Driver:")}</span>{" "}
                           {displayName(thread.participants.driver)}
                         </p>
                         <p>
-                          <span className="font-semibold text-slate-700">Restaurant:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Restaurant:")}</span>{" "}
                           {displayName(thread.participants.restaurant)}
                         </p>
                       </div>
@@ -481,8 +484,8 @@ export default function AdminChatsPage() {
                         {last ? (
                           <>
                             <div className="mb-1 text-xs font-semibold text-slate-500">
-                              Dernier message · {roleLabel(last.sender_role ?? "admin")} →{" "}
-                              {roleLabel(last.target_role ?? "admin")} ·{" "}
+                              Dernier message · {roleLabel(last.sender_role ?? "admin", t)} →{" "}
+                              {roleLabel(last.target_role ?? "admin", t)} ·{" "}
                               {formatDate(last.created_at)}
                             </div>
                             <div className="line-clamp-2">
@@ -502,7 +505,7 @@ export default function AdminChatsPage() {
                           href={`/admin/orders/${thread.order.id}/chat?targetRole=${role}`}
                           className="rounded-xl border border-slate-300 bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
                         >
-                          Répondre {roleLabel(role)}
+                          Répondre {roleLabel(role, t)}
                         </Link>
                       ))}
                     </div>

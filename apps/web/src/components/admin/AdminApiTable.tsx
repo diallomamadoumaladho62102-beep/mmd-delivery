@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 import {
@@ -37,6 +39,8 @@ export default function AdminApiTable<T extends Record<string, unknown>>({
   searchPlaceholder = "Rechercher…",
   emptyLabel = "Aucun résultat",
 }: Props<T>) {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,12 +82,12 @@ export default function AdminApiTable<T extends Record<string, unknown>>({
           className={`${CC_INPUT} max-w-md`}
         />
         <button type="button" onClick={() => void load()} className={CC_BTN_PRIMARY}>
-          Actualiser
+          {t("Actualiser")}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-sm text-[var(--cc-muted)]">Chargement…</div>
+        <div className="text-sm text-[var(--cc-muted)]">{t("Chargement…")}</div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}

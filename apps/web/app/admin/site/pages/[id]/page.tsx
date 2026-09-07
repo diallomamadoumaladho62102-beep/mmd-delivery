@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
@@ -42,6 +44,8 @@ function toLocalInput(iso: string | null | undefined): string {
 }
 
 function PageEditorInner() {
+  const { t } = useAdminT();
+
   const params = useParams();
   const pageId = String(params?.id ?? "");
   const [canEdit, setCanEdit] = useState(false);
@@ -199,7 +203,7 @@ function PageEditorInner() {
   };
 
   const deleteBlock = async (id: string) => {
-    if (!canEdit || !window.confirm("Delete this block?")) return;
+    if (!canEdit || !window.confirm(t("Delete this block?"))) return;
     const http = await adminFetch(`/api/admin/site/blocks/${id}`, {
       method: "DELETE",
     });
@@ -230,7 +234,7 @@ function PageEditorInner() {
   if (!page) {
     return (
       <div className="p-6 text-sm text-slate-600">
-        {error ? error : "Loading…"}
+        {error ? error : t("Loading…")}
       </div>
     );
   }
@@ -244,7 +248,7 @@ function PageEditorInner() {
         >
           ← Pages
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Edit page</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Edit page")}</h1>
       </div>
 
       {error ? (
@@ -261,7 +265,7 @@ function PageEditorInner() {
       <form onSubmit={saveMeta} className={`${CARD} space-y-4`}>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block">
-            <span className={LABEL}>Title</span>
+            <span className={LABEL}>{t("Title")}</span>
             <input
               className={INPUT}
               value={page.title}
@@ -271,7 +275,7 @@ function PageEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Slug</span>
+            <span className={LABEL}>{t("Slug")}</span>
             <input
               className={INPUT}
               value={page.slug}
@@ -281,7 +285,7 @@ function PageEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Kind</span>
+            <span className={LABEL}>{t("Kind")}</span>
             <input
               className={INPUT}
               value={page.kind}
@@ -290,7 +294,7 @@ function PageEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Template</span>
+            <span className={LABEL}>{t("Template")}</span>
             <input
               className={INPUT}
               value={page.template}
@@ -299,7 +303,7 @@ function PageEditorInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Status</span>
+            <span className={LABEL}>{t("Status")}</span>
             <select
               className={INPUT}
               value={page.status}
@@ -313,7 +317,7 @@ function PageEditorInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Scheduled for</span>
+            <span className={LABEL}>{t("Scheduled for")}</span>
             <input
               className={INPUT}
               type="datetime-local"
@@ -330,7 +334,7 @@ function PageEditorInner() {
             />
           </label>
           <label className="block md:col-span-2">
-            <span className={LABEL}>SEO JSON</span>
+            <span className={LABEL}>{t("SEO JSON")}</span>
             <textarea
               className={`${INPUT} min-h-[120px] font-mono text-xs`}
               value={seoText}
@@ -351,7 +355,7 @@ function PageEditorInner() {
       <div className={`${CARD} space-y-4`}>
         <div className="flex flex-wrap items-end gap-3">
           <label className="block min-w-[180px] flex-1">
-            <span className={LABEL}>Add block</span>
+            <span className={LABEL}>{t("Add block")}</span>
             <select
               className={INPUT}
               value={newBlockType}
@@ -371,12 +375,12 @@ function PageEditorInner() {
             onClick={() => void addBlock()}
             className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
           >
-            Add
+            {t("Add")}
           </button>
         </div>
 
         {blocks.length === 0 ? (
-          <p className="text-sm text-slate-500">No blocks.</p>
+          <p className="text-sm text-slate-500">{t("No blocks.")}</p>
         ) : (
           <div className="space-y-3">
             {blocks.map((block, index) => (
@@ -401,7 +405,7 @@ function PageEditorInner() {
                       className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold disabled:opacity-40"
                       onClick={() => move(index, -1)}
                     >
-                      Move up
+                      {t("Move up")}
                     </button>
                     <button
                       type="button"
@@ -409,7 +413,7 @@ function PageEditorInner() {
                       className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold disabled:opacity-40"
                       onClick={() => move(index, 1)}
                     >
-                      Move down
+                      {t("Move down")}
                     </button>
                     <button
                       type="button"
@@ -424,7 +428,7 @@ function PageEditorInner() {
                       className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold"
                       onClick={() => openBlockEdit(block)}
                     >
-                      Edit payload
+                      {t("Edit payload")}
                     </button>
                     <button
                       type="button"
@@ -432,7 +436,7 @@ function PageEditorInner() {
                       className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600"
                       onClick={() => void deleteBlock(block.id)}
                     >
-                      Delete
+                      {t("Delete")}
                     </button>
                   </div>
                 </div>
@@ -451,14 +455,14 @@ function PageEditorInner() {
                         onClick={() => void saveBlock()}
                         className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
                       >
-                        Save payload
+                        {t("Save payload")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingBlockId(null)}
                         className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold"
                       >
-                        Cancel
+                        {t("Cancel")}
                       </button>
                     </div>
                   </div>
@@ -473,6 +477,8 @@ function PageEditorInner() {
 }
 
 export default function SitePageEditorPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <PageEditorInner />

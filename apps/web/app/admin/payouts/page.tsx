@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -211,21 +213,21 @@ function getPayoutBadgeClass(status: string | null) {
   }
 }
 
-function labelForDashboardStatus(status: DashboardStatus) {
+function labelForDashboardStatus(t: (source: string) => string, status: DashboardStatus) {
   switch (status) {
     case "completed":
-      return "Completed";
+      return t("Completed");
     case "partial":
       return "Partial";
     case "failed":
-      return "Failed";
+      return t("Failed");
     case "data_mismatch":
-      return "Data mismatch";
+      return t("Data mismatch");
     case "paid_no_payout":
       return "Paid / no payout";
     case "unpaid":
     default:
-      return "Unpaid";
+      return t("Unpaid");
   }
 }
 
@@ -260,22 +262,22 @@ function getLastActivity(item: DashboardItem): string | null {
   return candidates.sort((a, b) => getTimestamp(b) - getTimestamp(a))[0];
 }
 
-function dashboardFilterLabel(value: DashboardFilter) {
+function dashboardFilterLabel(value: DashboardFilter, t: (source: string) => string) {
   switch (value) {
     case "all":
-      return "All";
+      return t("All");
     case "completed":
-      return "Completed";
+      return t("Completed");
     case "partial":
       return "Partial";
     case "failed":
-      return "Failed";
+      return t("Failed");
     case "unpaid":
-      return "Unpaid";
+      return t("Unpaid");
     case "paid_no_payout":
       return "Paid / no payout";
     case "data_mismatch":
-      return "Data mismatch";
+      return t("Data mismatch");
     default:
       return value;
   }
@@ -692,6 +694,7 @@ function FinanceBarChart({
   subtitle: string;
   data: ChartDatum[];
 }) {
+  const { t } = useAdminT();
   const maxValue = Math.max(...data.map((item) => item.valueCents), 1);
   const chartWidth = 720;
   const chartHeight = 260;
@@ -716,7 +719,7 @@ function FinanceBarChart({
           <p className="mt-1 text-sm font-medium text-slate-500">{subtitle}</p>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-          Bar chart
+          {t("Bar chart")}
         </div>
       </div>
 
@@ -810,6 +813,7 @@ function FinanceDonutChart({
   data: ChartDatum[];
   totalCents: number;
 }) {
+  const { t } = useAdminT();
   const safeTotal = Math.max(totalCents, 1);
   const radius = 74;
   const circumference = 2 * Math.PI * radius;
@@ -825,7 +829,7 @@ function FinanceDonutChart({
           <p className="mt-1 text-sm font-medium text-slate-500">{subtitle}</p>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-          Donut chart
+          {t("Donut chart")}
         </div>
       </div>
 
@@ -878,7 +882,7 @@ function FinanceDonutChart({
               textAnchor="middle"
               className="fill-slate-400 text-[11px] font-black uppercase tracking-[0.18em]"
             >
-              Total
+              {t("Total")}
             </text>
             <text
               x="120"
@@ -935,6 +939,7 @@ function FinanceTrendChart({
   subtitle: string;
   data: TrendDatum[];
 }) {
+  const { t } = useAdminT();
   const chartWidth = 760;
   const chartHeight = 280;
   const paddingX = 54;
@@ -983,24 +988,24 @@ function FinanceTrendChart({
           <p className="mt-1 text-sm font-medium text-slate-500">{subtitle}</p>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-          Trend chart
+          {t("Trend chart")}
         </div>
       </div>
 
       {data.length === 0 ? (
         <div className="rounded-3xl bg-slate-50 p-10 text-center text-sm font-bold text-slate-400 ring-1 ring-slate-200">
-          No paid orders available for trend chart.
+          {t("No paid orders available for trend chart.")}
         </div>
       ) : (
         <>
           <div className="mb-4 flex flex-wrap gap-3 text-xs font-black text-slate-600">
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-2 text-blue-700 ring-1 ring-blue-100">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-600" />
-              Gross revenue
+              {t("Gross revenue")}
             </div>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-emerald-700 ring-1 ring-emerald-100">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              Platform revenue
+              {t("Platform revenue")}
             </div>
           </div>
 
@@ -1109,6 +1114,8 @@ function FinanceTrendChart({
 }
 
 export default function AdminPayoutsPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const copyTimeoutRef = useRef<number | null>(null);
 
@@ -1169,7 +1176,7 @@ export default function AdminPayoutsPage() {
         const json = (await response.json()) as ApiResponse;
 
         if (!response.ok || !json.ok) {
-          throw new Error(json.error || "Failed to load admin payouts");
+          throw new Error(json.error || t("Failed to load admin payouts"));
         }
 
         setData(json);
@@ -1401,12 +1408,12 @@ export default function AdminPayoutsPage() {
         tone: "blue",
       },
       {
-        label: "Restaurants",
+        label: t("Restaurants"),
         valueCents: financeSummary.restaurantPayoutsCents,
         tone: "amber",
       },
       {
-        label: "Drivers",
+        label: t("Drivers"),
         valueCents: financeSummary.driverPayoutsCents,
         tone: "slate",
       },
@@ -1422,12 +1429,12 @@ export default function AdminPayoutsPage() {
   const distributionChartData = useMemo<ChartDatum[]>(
     () => [
       {
-        label: "Restaurants",
+        label: t("Restaurants"),
         valueCents: financeSummary.restaurantPayoutsCents,
         tone: "amber",
       },
       {
-        label: "Drivers",
+        label: t("Drivers"),
         valueCents: financeSummary.driverPayoutsCents,
         tone: "slate",
       },
@@ -1489,11 +1496,11 @@ export default function AdminPayoutsPage() {
             <div className="relative flex flex-col gap-8">
               <div>
                 <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300 ring-1 ring-white/10">
-                  MMD Delivery · Finance Ops
+                  {t("MMD Delivery · Finance Ops")}
                 </div>
 
                 <h1 className="mt-5 text-4xl font-black tracking-tight text-white sm:text-5xl">
-                  Payout Operations
+                  {t("Payout Operations")}
                 </h1>
 
                 <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
@@ -1504,7 +1511,7 @@ export default function AdminPayoutsPage() {
 
               <div className="w-full rounded-3xl bg-white/10 p-4 ring-1 ring-white/10 backdrop-blur">
                 <div className="mb-3 text-sm font-bold text-white">
-                  Quick actions
+                  {t("Quick actions")}
                 </div>
 
                 <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1512,20 +1519,20 @@ export default function AdminPayoutsPage() {
                     href="/admin/payouts/reconciliation"
                     className="inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-white px-5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-slate-100"
                   >
-                    Reconciliation
+                    {t("Reconciliation")}
                   </Link>
 
                   <Link
                     href="/admin/payouts/audit"
                     className="inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-white/10 px-5 text-sm font-bold text-white ring-1 ring-white/15 transition hover:bg-white/15"
                   >
-                    Audit Logs
+                    {t("Audit Logs")}
                   </Link>
 
-                  <ActionButton label="Reset filters" onClick={resetFilters} />
+                  <ActionButton label={t("Reset filters")} onClick={resetFilters} />
 
                   <ActionButton
-                    label="Export CSV"
+                    label={t("Export CSV")}
                     onClick={exportCsv}
                     disabled={filteredItems.length === 0}
                   />
@@ -1540,7 +1547,7 @@ export default function AdminPayoutsPage() {
                   </button>
 
                   <ActionButton
-                    label={refreshing ? "Refreshing..." : "Refresh"}
+                    label={refreshing ? t("Refreshing...") : t("Refresh")}
                     onClick={() => void loadPage("refresh")}
                     variant="blue"
                     disabled={refreshing}
@@ -1554,46 +1561,46 @@ export default function AdminPayoutsPage() {
         {loading || !authChecked ? (
           <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
             <div className="text-sm font-medium text-slate-500">
-              Loading payouts...
+              {t("Loading payouts...")}
             </div>
           </div>
         ) : error ? (
           <div className="rounded-3xl bg-red-50 p-6 shadow-sm ring-1 ring-red-200">
             <div className="text-sm font-bold text-red-800">
-              Failed to load admin payouts
+              {t("Failed to load admin payouts")}
             </div>
             <div className="mt-2 text-sm text-red-700">{error}</div>
           </div>
         ) : !isAdmin ? (
           <div className="rounded-3xl bg-amber-50 p-6 shadow-sm ring-1 ring-amber-200">
             <div className="text-sm font-bold text-amber-800">
-              Access restricted
+              {t("Access restricted")}
             </div>
             <div className="mt-2 text-sm text-amber-700">
-              This page is reserved for administrators.
+              {t("This page is reserved for administrators.")}
             </div>
           </div>
         ) : (
           <>
             <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-              <StatCard title="Total orders" value={summary?.total_orders ?? 0} />
+              <StatCard title={t("Total orders")} value={summary?.total_orders ?? 0} />
               <StatCard
-                title="Paid orders"
+                title={t("Paid orders")}
                 value={summary?.paid_orders ?? 0}
                 tone="success"
               />
               <StatCard
-                title="Completed payouts"
+                title={t("Completed payouts")}
                 value={summary?.completed_orders ?? 0}
                 tone="success"
               />
               <StatCard
-                title="Partial payouts"
+                title={t("Partial payouts")}
                 value={summary?.partial_orders ?? 0}
                 tone="warning"
               />
               <StatCard
-                title="Failed payouts"
+                title={t("Failed payouts")}
                 value={summary?.orders_with_failed_payouts ?? 0}
                 tone="danger"
               />
@@ -1601,20 +1608,20 @@ export default function AdminPayoutsPage() {
 
             <section className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
-                title="Restaurant paid out"
+                title={t("Restaurant paid out")}
                 value={summary?.restaurant_paid_out_orders ?? 0}
               />
               <StatCard
-                title="Driver paid out"
+                title={t("Driver paid out")}
                 value={summary?.driver_paid_out_orders ?? 0}
               />
               <StatCard
-                title="Unpaid"
+                title={t("Unpaid")}
                 value={summary?.unpaid_orders ?? 0}
                 tone="warning"
               />
               <StatCard
-                title="Data mismatch"
+                title={t("Data mismatch")}
                 value={summary?.mismatch_orders ?? 0}
                 tone="danger"
               />
@@ -1624,7 +1631,7 @@ export default function AdminPayoutsPage() {
               <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <div className="inline-flex rounded-full bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-emerald-700 ring-1 ring-emerald-100">
-                    Finance dashboard
+                    {t("Finance dashboard")}
                   </div>
                   <h2 className="mt-4 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
                     💰 Platform Money
@@ -1638,7 +1645,7 @@ export default function AdminPayoutsPage() {
 
                 <div className="rounded-2xl bg-slate-950 px-5 py-4 text-right text-white shadow-lg">
                   <div className="text-xs font-black uppercase tracking-[0.18em] text-white/50">
-                    Paid orders included
+                    {t("Paid orders included")}
                   </div>
                   <div className="mt-1 text-3xl font-black">
                     {financeSummary.paidItemsCount}
@@ -1648,26 +1655,26 @@ export default function AdminPayoutsPage() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <MoneyCard
-                  title="Gross revenue"
+                  title={t("Gross revenue")}
                   valueCents={financeSummary.grossRevenueCents}
-                  subtitle="Total money collected from paid customer orders."
+                  subtitle={t("Total money collected from paid customer orders.")}
                   tone="blue"
                 />
                 <MoneyCard
-                  title="Restaurant payouts"
+                  title={t("Restaurant payouts")}
                   valueCents={financeSummary.restaurantPayoutsCents}
-                  subtitle="Money prepared or sent to restaurants."
+                  subtitle={t("Money prepared or sent to restaurants.")}
                   tone="warning"
                 />
                 <MoneyCard
-                  title="Driver payouts"
+                  title={t("Driver payouts")}
                   valueCents={financeSummary.driverPayoutsCents}
-                  subtitle="Money prepared or sent to delivery drivers."
+                  subtitle={t("Money prepared or sent to delivery drivers.")}
                 />
                 <MoneyCard
-                  title="Platform revenue"
+                  title={t("Platform revenue")}
                   valueCents={financeSummary.platformRevenueCents}
-                  subtitle="Estimated money kept by MMD Delivery after payouts."
+                  subtitle={t("Estimated money kept by MMD Delivery after payouts.")}
                   tone="success"
                 />
               </div>
@@ -1675,19 +1682,19 @@ export default function AdminPayoutsPage() {
               <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <div className="space-y-4 xl:col-span-2">
                   <RevenueBar
-                    label="Restaurant payouts"
+                    label={t("Restaurant payouts")}
                     valueCents={financeSummary.restaurantPayoutsCents}
                     totalCents={financeSummary.grossRevenueCents}
                     tone="amber"
                   />
                   <RevenueBar
-                    label="Driver payouts"
+                    label={t("Driver payouts")}
                     valueCents={financeSummary.driverPayoutsCents}
                     totalCents={financeSummary.grossRevenueCents}
                     tone="slate"
                   />
                   <RevenueBar
-                    label="Platform revenue"
+                    label={t("Platform revenue")}
                     valueCents={financeSummary.platformRevenueCents}
                     totalCents={financeSummary.grossRevenueCents}
                     tone="emerald"
@@ -1696,7 +1703,7 @@ export default function AdminPayoutsPage() {
 
                 <div className="grid grid-cols-1 gap-4">
                   <FinancialInsight
-                    label="Average order"
+                    label={t("Average order")}
                     value={formatMoneyFromCents(
                       financeSummary.averageOrderCents,
                       "USD"
@@ -1704,7 +1711,7 @@ export default function AdminPayoutsPage() {
                     detail="Average customer payment for the paid orders currently shown."
                   />
                   <FinancialInsight
-                    label="Average platform money"
+                    label={t("Average platform money")}
                     value={formatMoneyFromCents(
                       financeSummary.averagePlatformRevenueCents,
                       "USD"
@@ -1712,7 +1719,7 @@ export default function AdminPayoutsPage() {
                     detail="Average estimated MMD Delivery revenue per paid order."
                   />
                   <FinancialInsight
-                    label="Platform margin"
+                    label={t("Platform margin")}
                     value={formatPercent(financeSummary.platformMarginPercent)}
                     detail="Estimated platform share compared with gross paid order money."
                   />
@@ -1721,14 +1728,14 @@ export default function AdminPayoutsPage() {
 
               <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <FinanceBarChart
-                  title="📊 Revenue comparison"
-                  subtitle="Gross revenue vs payouts vs platform revenue."
+                  title={t("📊 Revenue comparison")}
+                  subtitle={t("Gross revenue vs payouts vs platform revenue.")}
                   data={revenueChartData}
                 />
 
                 <FinanceDonutChart
-                  title="🍩 Money distribution"
-                  subtitle="How paid order money is split."
+                  title={t("🍩 Money distribution")}
+                  subtitle={t("How paid order money is split.")}
                   data={distributionChartData}
                   totalCents={financeSummary.grossRevenueCents}
                 />
@@ -1736,8 +1743,8 @@ export default function AdminPayoutsPage() {
 
               <div className="mt-4">
                 <FinanceTrendChart
-                  title="📈 Revenue trend"
-                  subtitle="Last paid-order dates: gross revenue compared with platform revenue."
+                  title={t("📈 Revenue trend")}
+                  subtitle={t("Last paid-order dates: gross revenue compared with platform revenue.")}
                   data={trendChartData}
                 />
               </div>
@@ -1747,10 +1754,10 @@ export default function AdminPayoutsPage() {
               <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h2 className="text-xl font-black tracking-tight text-slate-950">
-                    Filters
+                    {t("Filters")}
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Search by order, restaurant, or transfer ID.
+                    {t("Search by order, restaurant, or transfer ID.")}
                   </p>
                 </div>
 
@@ -1766,21 +1773,21 @@ export default function AdminPayoutsPage() {
                     htmlFor="payout-search"
                     className="mb-2 block text-sm font-bold text-slate-700"
                   >
-                    Search
+                    {t("Search")}
                   </label>
                   <input
                     id="payout-search"
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Order ID, restaurant, transfer ID..."
+                    placeholder={t("Order ID, restaurant, transfer ID...")}
                     className="h-13 w-full rounded-2xl bg-slate-50 px-4 py-4 text-sm font-medium text-slate-900 shadow-sm ring-1 ring-slate-200 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-400"
                   />
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-bold text-slate-700">
-                    Payment status
+                    {t("Payment status")}
                   </label>
                   <select
                     value={paymentFilter}
@@ -1789,27 +1796,27 @@ export default function AdminPayoutsPage() {
                     }
                     className="h-13 w-full rounded-2xl bg-slate-50 px-4 py-4 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-slate-400"
                   >
-                    <option value="all">All</option>
-                    <option value="paid">Paid</option>
-                    <option value="unpaid">Unpaid</option>
+                    <option value="all">{t("All")}</option>
+                    <option value="paid">{t("Paid")}</option>
+                    <option value="unpaid">{t("Unpaid")}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-bold text-slate-700">
-                    Sort
+                    {t("Sort")}
                   </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
                     className="h-13 w-full rounded-2xl bg-slate-50 px-4 py-4 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-slate-400"
                   >
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="amount_desc">Amount high to low</option>
-                    <option value="amount_asc">Amount low to high</option>
-                    <option value="restaurant_asc">Restaurant A → Z</option>
-                    <option value="restaurant_desc">Restaurant Z → A</option>
+                    <option value="newest">{t("Newest first")}</option>
+                    <option value="oldest">{t("Oldest first")}</option>
+                    <option value="amount_desc">{t("Amount high to low")}</option>
+                    <option value="amount_asc">{t("Amount low to high")}</option>
+                    <option value="restaurant_asc">{t("Restaurant A → Z")}</option>
+                    <option value="restaurant_desc">{t("Restaurant Z → A")}</option>
                   </select>
                 </div>
               </div>
@@ -1829,7 +1836,7 @@ export default function AdminPayoutsPage() {
                   <FilterPill
                     key={value}
                     active={dashboardFilter === value}
-                    label={dashboardFilterLabel(value)}
+                    label={dashboardFilterLabel(value, t)}
                     onClick={() => setDashboardFilter(value)}
                   />
                 ))}
@@ -1882,11 +1889,10 @@ export default function AdminPayoutsPage() {
             <section className="overflow-hidden rounded-[2rem] bg-white shadow-xl ring-1 ring-slate-200">
               <div className="border-b border-slate-200 px-6 py-5">
                 <h2 className="text-xl font-black tracking-tight text-slate-950">
-                  Orders and payouts
+                  {t("Orders and payouts")}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Search, filter, sort, export and inspect payout health order by
-                  order.
+                  {t("Search, filter, sort, export and inspect payout health order by order.")}
                 </p>
               </div>
 
@@ -1895,46 +1901,46 @@ export default function AdminPayoutsPage() {
                   <thead className="sticky top-0 z-10 bg-white shadow-sm">
                     <tr className="text-center text-xs uppercase tracking-[0.14em] text-slate-500">
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Order
+                        {t("Order")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Created
+                        {t("Created")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Last activity
+                        {t("Last activity")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Restaurant
+                        {t("Restaurant")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Order status
+                        {t("Order status")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Payment
+                        {t("Payment")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Total
+                        {t("Total")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Dashboard
+                        {t("Dashboard")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Restaurant payout
+                        {t("Restaurant payout")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Restaurant transfer
+                        {t("Restaurant transfer")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Driver payout
+                        {t("Driver payout")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Driver transfer
+                        {t("Driver transfer")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Platform money
+                        {t("Platform money")}
                       </th>
                       <th className="whitespace-nowrap px-4 py-4 font-black">
-                        Errors
+                        {t("Errors")}
                       </th>
                     </tr>
                   </thead>
@@ -1946,7 +1952,7 @@ export default function AdminPayoutsPage() {
                           colSpan={14}
                           className="px-4 py-14 text-center text-sm font-medium text-slate-500"
                         >
-                          No results match the current filters.
+                          {t("No results match the current filters.")}
                         </td>
                       </tr>
                     ) : (
@@ -1993,7 +1999,7 @@ export default function AdminPayoutsPage() {
                                   href={`/admin/payouts/${item.order_id}`}
                                   className="text-xs font-bold text-slate-600 hover:text-slate-950"
                                 >
-                                  Open order
+                                  {t("Open order")}
                                 </Link>
                               </div>
                             </td>
@@ -2047,7 +2053,7 @@ export default function AdminPayoutsPage() {
                                   getDisplayDashboardStatus(item)
                                 )}`}
                               >
-                                {labelForDashboardStatus(
+                                {labelForDashboardStatus(t, 
                                   getDisplayDashboardStatus(item)
                                 )}
                               </span>
@@ -2112,7 +2118,7 @@ export default function AdminPayoutsPage() {
                                     rel="noreferrer"
                                     className="text-xs font-bold text-slate-600 hover:text-slate-950"
                                   >
-                                    Open Stripe
+                                    {t("Open Stripe")}
                                   </a>
                                 )}
                               </div>
@@ -2171,7 +2177,7 @@ export default function AdminPayoutsPage() {
                                     rel="noreferrer"
                                     className="text-xs font-bold text-slate-600 hover:text-slate-950"
                                   >
-                                    Open Stripe
+                                    {t("Open Stripe")}
                                   </a>
                                 )}
                               </div>
@@ -2180,7 +2186,7 @@ export default function AdminPayoutsPage() {
                             <td className="px-4 py-6 text-center align-middle">
                               <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-center ring-1 ring-emerald-100">
                                 <div className="text-xs font-black uppercase tracking-[0.14em] text-emerald-600">
-                                  MMD keeps
+                                  {t("MMD keeps")}
                                 </div>
                                 <div className="mt-2 text-lg font-black text-emerald-900">
                                   {formatMoneyFromCents(
@@ -2197,7 +2203,7 @@ export default function AdminPayoutsPage() {
                                   {item.restaurant_failure_message && (
                                     <div className="rounded-xl bg-red-50 p-3 font-medium text-red-700 ring-1 ring-red-200">
                                       <span className="font-black">
-                                        Restaurant:
+                                        {t("Restaurant:")}
                                       </span>{" "}
                                       {item.restaurant_failure_message}
                                     </div>
@@ -2206,7 +2212,7 @@ export default function AdminPayoutsPage() {
                                   {item.restaurant_last_error && (
                                     <div className="rounded-xl bg-red-50 p-3 font-medium text-red-700 ring-1 ring-red-200">
                                       <span className="font-black">
-                                        Restaurant last error:
+                                        {t("Restaurant last error:")}
                                       </span>{" "}
                                       {item.restaurant_last_error}
                                     </div>
@@ -2215,7 +2221,7 @@ export default function AdminPayoutsPage() {
                                   {item.driver_failure_message && (
                                     <div className="rounded-xl bg-red-50 p-3 font-medium text-red-700 ring-1 ring-red-200">
                                       <span className="font-black">
-                                        Driver:
+                                        {t("Driver:")}
                                       </span>{" "}
                                       {item.driver_failure_message}
                                     </div>
@@ -2224,7 +2230,7 @@ export default function AdminPayoutsPage() {
                                   {item.driver_last_error && (
                                     <div className="rounded-xl bg-red-50 p-3 font-medium text-red-700 ring-1 ring-red-200">
                                       <span className="font-black">
-                                        Driver last error:
+                                        {t("Driver last error:")}
                                       </span>{" "}
                                       {item.driver_last_error}
                                     </div>

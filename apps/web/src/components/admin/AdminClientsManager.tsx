@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { adminFetch } from "@/lib/adminBrowserAuth";
@@ -82,7 +84,7 @@ type ClientActionKey =
   | "deactivate"
   | "soft_delete";
 
-function statusActions(status: string): Array<{
+function statusActions(status: string, t: (source: string) => string): Array<{
   action: ClientActionKey;
   label: string;
   className: string;
@@ -103,13 +105,13 @@ function statusActions(status: string): Array<{
     return [
       {
         action: "unsuspend",
-        label: "Reactivate",
+        label: t("Reactivate"),
         className:
           "rounded-lg border border-emerald-300 px-2 py-1 text-[11px] font-semibold text-emerald-800",
       },
       {
         action: "deactivate",
-        label: "Disable",
+        label: t("Disable"),
         className:
           "rounded-lg border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700",
       },
@@ -126,7 +128,7 @@ function statusActions(status: string): Array<{
     return [
       {
         action: "activate",
-        label: "Enable",
+        label: t("Enable"),
         className:
           "rounded-lg border border-emerald-300 px-2 py-1 text-[11px] font-semibold text-emerald-800",
       },
@@ -143,13 +145,13 @@ function statusActions(status: string): Array<{
   return [
     {
       action: "suspend",
-      label: "Suspend",
+      label: t("Suspend"),
       className:
         "rounded-lg border border-orange-300 px-2 py-1 text-[11px] font-semibold text-orange-800",
     },
     {
       action: "deactivate",
-      label: "Disable",
+      label: t("Disable"),
       className:
         "rounded-lg border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700",
     },
@@ -164,6 +166,8 @@ function statusActions(status: string): Array<{
 }
 
 export default function AdminClientsManager() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<ClientRow[]>([]);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("real");
@@ -287,10 +291,10 @@ export default function AdminClientsManager() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            Control Center
+            {t("Control Center")}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            Clients
+            {t("Clients")}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             Premium CRM — search by name, email, phone or UUID. Manage,
@@ -303,25 +307,25 @@ export default function AdminClientsManager() {
           onClick={() => void load()}
           className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
         >
-          Refresh
+          {t("Refresh")}
         </button>
       </header>
 
       <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-6">
         <label className="block text-xs font-semibold text-slate-500 xl:col-span-2">
-          Search
+          {t("Search")}
           <input
             value={query}
             onChange={(e) => {
               setPage(1);
               setQuery(e.target.value);
             }}
-            placeholder="Name, email, phone, id…"
+            placeholder={t("Name, email, phone, id…")}
             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900"
           />
         </label>
         <label className="block text-xs font-semibold text-slate-500">
-          Account kind
+          {t("Account kind")}
           <select
             value={kind}
             onChange={(e) => {
@@ -330,16 +334,16 @@ export default function AdminClientsManager() {
             }}
             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
           >
-            <option value="real">Real (default)</option>
-            <option value="demo">Demo</option>
-            <option value="test">Test</option>
-            <option value="certification">Certification</option>
-            <option value="deleted">Deleted</option>
-            <option value="all">All kinds</option>
+            <option value="real">{t("Real (default)")}</option>
+            <option value="demo">{t("Demo")}</option>
+            <option value="test">{t("Test")}</option>
+            <option value="certification">{t("Certification")}</option>
+            <option value="deleted">{t("Deleted")}</option>
+            <option value="all">{t("All kinds")}</option>
           </select>
         </label>
         <label className="block text-xs font-semibold text-slate-500">
-          Status
+          {t("Status")}
           <select
             value={status}
             onChange={(e) => {
@@ -348,25 +352,25 @@ export default function AdminClientsManager() {
             }}
             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
           >
-            <option value="active">Active (default)</option>
-            <option value="suspended">Suspended</option>
-            <option value="disabled">Disabled</option>
-            <option value="deleted">Deleted</option>
-            <option value="all">All statuses</option>
+            <option value="active">{t("Active (default)")}</option>
+            <option value="suspended">{t("Suspended")}</option>
+            <option value="disabled">{t("Disabled")}</option>
+            <option value="deleted">{t("Deleted")}</option>
+            <option value="all">{t("All statuses")}</option>
           </select>
         </label>
         <label className="block text-xs font-semibold text-slate-500">
-          Sort
+          {t("Sort")}
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
             className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
           >
-            <option value="created_at">Signup date</option>
-            <option value="last_seen_at">Last activity</option>
-            <option value="full_name">Name</option>
-            <option value="orders_count">Orders</option>
-            <option value="completeness">Completeness</option>
+            <option value="created_at">{t("Signup date")}</option>
+            <option value="last_seen_at">{t("Last activity")}</option>
+            <option value="full_name">{t("Name")}</option>
+            <option value="orders_count">{t("Orders")}</option>
+            <option value="completeness">{t("Completeness")}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 pt-6 text-sm font-medium text-slate-700">
@@ -378,25 +382,25 @@ export default function AdminClientsManager() {
               setIncomplete(e.target.checked);
             }}
           />
-          Incomplete only
+          {t("Incomplete only")}
         </label>
       </div>
 
       {error ? (
         <AdminErrorState
-          title="Unable to load clients"
+          title={t("Unable to load clients")}
           message={error}
           onRetry={() => void load()}
         />
       ) : null}
 
       {loading && rows.length === 0 ? (
-        <AdminLoadingState title="Loading clients…" subtitle="Fetching real profiles" />
+        <AdminLoadingState title={t("Loading clients…")} subtitle={t("Fetching real profiles")} />
       ) : null}
 
       {!loading && !error && rows.length === 0 ? (
         <AdminEmptyState
-          title="No clients found"
+          title={t("No clients found")}
           description="No clients match these filters."
         />
       ) : null}
@@ -407,20 +411,20 @@ export default function AdminClientsManager() {
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3">Client</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Location</th>
-                <th className="px-4 py-3">Activity</th>
-                <th className="px-4 py-3">Wallet</th>
-                <th className="px-4 py-3">Profile</th>
-                <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3">{t("Client")}</th>
+                <th className="px-4 py-3">{t("Contact")}</th>
+                <th className="px-4 py-3">{t("Location")}</th>
+                <th className="px-4 py-3">{t("Activity")}</th>
+                <th className="px-4 py-3">{t("Wallet")}</th>
+                <th className="px-4 py-3">{t("Profile")}</th>
+                <th className="px-4 py-3">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
-                    Loading…
+                    {t("Loading…")}
                   </td>
                 </tr>
               ) : (
@@ -457,9 +461,9 @@ export default function AdminClientsManager() {
                       <div className="text-slate-800">{row.email || "—"}</div>
                       <div className="text-xs text-slate-500">{row.phone || "—"}</div>
                       <div className="mt-1 flex flex-wrap gap-1">
-                        <Badge ok={row.email_verified} label="Email" />
-                        <Badge ok={row.phone_verified} label="Phone" />
-                        <Badge ok={row.address_verified} label="Address" />
+                        <Badge ok={row.email_verified} label={t("Email")} />
+                        <Badge ok={row.phone_verified} label={t("Phone")} />
+                        <Badge ok={row.address_verified} label={t("Address")} />
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-700">
@@ -467,9 +471,9 @@ export default function AdminClientsManager() {
                       <div className="text-xs text-slate-500">{row.country || "—"}</div>
                     </td>
                     <td className="px-4 py-3 text-slate-700">
-                      <div className="text-xs text-slate-500">Joined</div>
+                      <div className="text-xs text-slate-500">{t("Joined")}</div>
                       <div>{new Date(row.created_at).toLocaleDateString()}</div>
-                      <div className="mt-1 text-xs text-slate-500">Last seen</div>
+                      <div className="mt-1 text-xs text-slate-500">{t("Last seen")}</div>
                       <div>
                         {row.last_seen_at
                           ? new Date(row.last_seen_at).toLocaleString()
@@ -516,7 +520,7 @@ export default function AdminClientsManager() {
                           History / Audit
                         </button>
                         {canManage
-                          ? statusActions(row.account_status).map((a) => (
+                          ? statusActions(row.account_status, t).map((a) => (
                               <button
                                 key={`${row.id}-${a.action}`}
                                 type="button"
@@ -549,7 +553,7 @@ export default function AdminClientsManager() {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               className="rounded-lg border border-slate-200 px-3 py-1 disabled:opacity-40"
             >
-              Previous
+              {t("Previous")}
             </button>
             <button
               type="button"
@@ -557,7 +561,7 @@ export default function AdminClientsManager() {
               onClick={() => setPage((p) => p + 1)}
               className="rounded-lg border border-slate-200 px-3 py-1 disabled:opacity-40"
             >
-              Next
+              {t("Next")}
             </button>
           </div>
         </div>
@@ -570,7 +574,7 @@ export default function AdminClientsManager() {
             <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  {selected.full_name || "Client"}
+                  {selected.full_name || t("Client")}
                 </h2>
                 <p className="text-xs text-slate-500">{selected.id}</p>
               </div>
@@ -579,17 +583,17 @@ export default function AdminClientsManager() {
                 onClick={() => setSelected(null)}
                 className="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100"
               >
-                Close
+                {t("Close")}
               </button>
             </div>
             <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
               <div className="flex flex-wrap gap-1">
-                <Badge ok={selected.email_verified} label="Email verified" />
-                <Badge ok={selected.phone_verified} label="Phone verified" />
-                <Badge ok={selected.address_verified} label="Address verified" />
+                <Badge ok={selected.email_verified} label={t("Email verified")} />
+                <Badge ok={selected.phone_verified} label={t("Phone verified")} />
+                <Badge ok={selected.address_verified} label={t("Address verified")} />
               </div>
               <label className="block text-xs font-semibold text-slate-500">
-                Full name
+                {t("Full name")}
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
@@ -598,7 +602,7 @@ export default function AdminClientsManager() {
                 />
               </label>
               <label className="block text-xs font-semibold text-slate-500">
-                Email
+                {t("Email")}
                 <input
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
@@ -607,7 +611,7 @@ export default function AdminClientsManager() {
                 />
               </label>
               <label className="block text-xs font-semibold text-slate-500">
-                Phone
+                {t("Phone")}
                 <input
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
@@ -638,9 +642,9 @@ export default function AdminClientsManager() {
                     onClick={() => void saveEdits()}
                     className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
                   >
-                    Save profile
+                    {t("Save profile")}
                   </button>
-                  {statusActions(selected.account_status).map((a) => (
+                  {statusActions(selected.account_status, t).map((a) => (
                     <button
                       key={`drawer-${a.action}`}
                       type="button"
@@ -660,11 +664,11 @@ export default function AdminClientsManager() {
               ) : null}
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Audit history
+                  {t("Audit history")}
                 </h3>
                 <ul className="mt-2 space-y-2 text-xs text-slate-600">
                   {history.length === 0 ? (
-                    <li>No history</li>
+                    <li>{t("No history")}</li>
                   ) : (
                     history.map((h) => (
                       <li

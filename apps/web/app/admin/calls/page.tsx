@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -107,16 +109,16 @@ function formatDate(value: string | null | undefined): string {
   }).format(date);
 }
 
-function roleLabel(role: string | null | undefined): string {
+function roleLabel(role: string | null | undefined, t: (source: string) => string): string {
   switch (role) {
     case "client":
-      return "Client";
+      return t("Client");
     case "driver":
-      return "Driver";
+      return t("Driver");
     case "restaurant":
-      return "Restaurant";
+      return t("Restaurant");
     case "admin":
-      return "Admin";
+      return t("Admin");
     default:
       return role || "—";
   }
@@ -167,6 +169,8 @@ function durationLabel(row: CallSessionRow): string {
 }
 
 export default function AdminCallsPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [calls, setCalls] = useState<CallSessionRow[]>([]);
@@ -507,8 +511,8 @@ export default function AdminCallsPage() {
     return (
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">Admin calls</h1>
-          <p className="mt-2 text-sm text-slate-600">Chargement…</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t("Admin calls")}</h1>
+          <p className="mt-2 text-sm text-slate-600">{t("Chargement…")}</p>
         </div>
       </main>
     );
@@ -529,11 +533,11 @@ export default function AdminCallsPage() {
       <div className="mx-auto w-full max-w-screen-xl space-y-6 px-6 py-6">
         <header className="space-y-3">
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-            MMD Delivery · Admin Calls
+            {t("MMD Delivery · Admin Calls")}
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Centre de surveillance des appels
+            {t("Centre de surveillance des appels")}
           </h1>
 
           <p className="text-sm text-slate-600">
@@ -547,7 +551,7 @@ export default function AdminCallsPage() {
             {voiceErr || err}
             {realtimeDegraded ? (
               <p className="mt-1 text-amber-800">
-                Realtime indisponible — rafraîchissement automatique toutes les 4 secondes.
+                {t("Realtime indisponible — rafraîchissement automatique toutes les 4 secondes.")}
               </p>
             ) : null}
           </div>
@@ -556,12 +560,12 @@ export default function AdminCallsPage() {
         {voiceStats ? (
           <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             {[
-              ["Active", voiceStats.active],
+              [t("Active"), voiceStats.active],
               ["Incoming", voiceStats.incoming],
               ["Answered", voiceStats.answered],
               ["Missed", voiceStats.missed],
               ["Transferred", voiceStats.transferred],
-              ["Completed", voiceStats.completed],
+              [t("Completed"), voiceStats.completed],
             ].map(([label, value]) => (
               <div
                 key={String(label)}
@@ -598,11 +602,10 @@ export default function AdminCallsPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
-                Appels support en cours
+                {t("Appels support en cours")}
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                Numéro public MMD Delivery : +1 929-492-4563. Transfert direct
-                vers un admin autorisé.
+                {t("Numéro public MMD Delivery : +1 929-492-4563. Transfert direct vers un admin autorisé.")}
               </p>
             </div>
             <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
@@ -612,7 +615,7 @@ export default function AdminCallsPage() {
 
           {voiceCalls.length === 0 ? (
             <p className="mt-4 text-sm text-slate-600">
-              Aucun appel support en cours.
+              {t("Aucun appel support en cours.")}
             </p>
           ) : (
             <div className="mt-4 space-y-3">
@@ -652,19 +655,19 @@ export default function AdminCallsPage() {
                         <div className="flex w-full gap-2">
                           <button
                             type="button"
-                            aria-label="Decline call"
+                            aria-label={t("Decline call")}
                             onClick={() => void voiceAction(call.id, "decline")}
                             className="min-h-12 flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-extrabold text-white"
                           >
-                            Decline
+                            {t("Decline")}
                           </button>
                           <button
                             type="button"
-                            aria-label="Accept call"
+                            aria-label={t("Accept call")}
                             onClick={() => void voiceAction(call.id, "accept")}
                             className="min-h-12 flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-extrabold text-white"
                           >
-                            Accept
+                            {t("Accept")}
                           </button>
                         </div>
                       ) : call.status === "answered" ||
@@ -687,17 +690,17 @@ export default function AdminCallsPage() {
                               className="min-h-12 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-900"
                             >
                               {call.onHold || call.status === "on_hold"
-                                ? "Resume"
+                                ? t("Resume")
                                 : "Hold"}
                             </button>
                           ) : null}
                           <button
                             type="button"
-                            aria-label="End call"
+                            aria-label={t("End call")}
                             onClick={() => void voiceAction(call.id, "end")}
                             className="min-h-12 flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-extrabold text-white"
                           >
-                            End Call
+                            {t("End Call")}
                           </button>
                         </div>
                       ) : null}
@@ -713,7 +716,7 @@ export default function AdminCallsPage() {
                             }
                             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                           >
-                            <option value="">Choisir un admin…</option>
+                            <option value="">{t("Choisir un admin…")}</option>
                             {voiceDestinations.map((destination) => (
                               <option
                                 key={destination.userId}
@@ -755,7 +758,7 @@ export default function AdminCallsPage() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-slate-900">
-            Historique des appels support
+            {t("Historique des appels support")}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             24 dernières heures, y compris les appels terminés, transférés ou
@@ -763,19 +766,19 @@ export default function AdminCallsPage() {
           </p>
           {recentVoiceCalls.length === 0 ? (
             <p className="mt-4 text-sm text-slate-600">
-              Aucun appel support sur les dernières 24 heures.
+              {t("Aucun appel support sur les dernières 24 heures.")}
             </p>
           ) : (
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full text-left text-sm text-slate-700">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-                    <th className="px-2 py-2">Heure</th>
-                    <th className="px-2 py-2">Service</th>
-                    <th className="px-2 py-2">Statut</th>
-                    <th className="px-2 py-2">Appelant</th>
-                    <th className="px-2 py-2">IVR</th>
-                    <th className="px-2 py-2">Transferts</th>
+                    <th className="px-2 py-2">{t("Heure")}</th>
+                    <th className="px-2 py-2">{t("Service")}</th>
+                    <th className="px-2 py-2">{t("Statut")}</th>
+                    <th className="px-2 py-2">{t("Appelant")}</th>
+                    <th className="px-2 py-2">{t("IVR")}</th>
+                    <th className="px-2 py-2">{t("Transferts")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -801,21 +804,21 @@ export default function AdminCallsPage() {
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-            <div className="text-sm font-medium text-slate-500">Total appels</div>
+            <div className="text-sm font-medium text-slate-500">{t("Total appels")}</div>
             <div className="mt-3 text-4xl font-extrabold text-slate-900">
               {calls.length}
             </div>
           </div>
 
           <div className="rounded-2xl border border-green-200 bg-green-50 p-5 text-center shadow-sm">
-            <div className="text-sm font-medium text-green-700">Actifs</div>
+            <div className="text-sm font-medium text-green-700">{t("Actifs")}</div>
             <div className="mt-3 text-4xl font-extrabold text-green-900">
               {activeCount}
             </div>
           </div>
 
           <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-center shadow-sm">
-            <div className="text-sm font-medium text-blue-700">Terminés</div>
+            <div className="text-sm font-medium text-blue-700">{t("Terminés")}</div>
             <div className="mt-3 text-4xl font-extrabold text-blue-900">
               {endedCount}
             </div>
@@ -834,7 +837,7 @@ export default function AdminCallsPage() {
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Rechercher par téléphone, commande, rôle, SID Twilio..."
+              placeholder={t("Rechercher par téléphone, commande, rôle, SID Twilio...")}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             />
 
@@ -843,9 +846,9 @@ export default function AdminCallsPage() {
               onChange={(event) => setFilter(event.target.value as CallFilter)}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             >
-              <option value="all">Tous les appels</option>
-              <option value="active">Actifs</option>
-              <option value="ended">Terminés</option>
+              <option value="all">{t("Tous les appels")}</option>
+              <option value="active">{t("Actifs")}</option>
+              <option value="ended">{t("Terminés")}</option>
               <option value="expired">Expirés/échoués</option>
             </select>
 
@@ -854,14 +857,14 @@ export default function AdminCallsPage() {
               onClick={() => void loadPage()}
               className="rounded-xl border border-slate-300 bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
             >
-              Rafraîchir
+              {t("Rafraîchir")}
             </button>
           </div>
         </section>
 
         {filteredCalls.length === 0 ? (
           <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="text-sm text-slate-600">Aucun appel trouvé pour ce filtre.</p>
+            <p className="text-sm text-slate-600">{t("Aucun appel trouvé pour ce filtre.")}</p>
           </section>
         ) : (
           <section className="space-y-4">
@@ -898,10 +901,10 @@ export default function AdminCallsPage() {
                       <div className="grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-2">
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                           <div className="text-xs font-semibold uppercase text-slate-500">
-                            Appelant
+                            {t("Appelant")}
                           </div>
                           <div className="mt-1 font-semibold text-slate-900">
-                            {roleLabel(call.caller_role)} · {displayName(caller)}
+                            {roleLabel(call.caller_role, t)} · {displayName(caller)}
                           </div>
                           <div className="mt-1 text-slate-600">
                             {call.proxy_number
@@ -912,10 +915,10 @@ export default function AdminCallsPage() {
 
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                           <div className="text-xs font-semibold uppercase text-slate-500">
-                            Destinataire
+                            {t("Destinataire")}
                           </div>
                           <div className="mt-1 font-semibold text-slate-900">
-                            {roleLabel(call.target_role)} · {displayName(target)}
+                            {roleLabel(call.target_role, t)} · {displayName(target)}
                           </div>
                           <div className="mt-1 text-slate-600">
                             {call.proxy_number
@@ -927,31 +930,31 @@ export default function AdminCallsPage() {
 
                       <div className="grid grid-cols-1 gap-2 text-sm text-slate-600 md:grid-cols-3">
                         <p>
-                          <span className="font-semibold text-slate-700">Proxy:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Proxy:")}</span>{" "}
                           {call.proxy_number || "—"}
                         </p>
                         <p className="break-all">
-                          <span className="font-semibold text-slate-700">Twilio SID:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Twilio SID:")}</span>{" "}
                           {call.twilio_call_sid || "—"}
                         </p>
                         <p>
-                          <span className="font-semibold text-slate-700">Durée:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Durée:")}</span>{" "}
                           {durationLabel(call)}
                         </p>
                         <p>
-                          <span className="font-semibold text-slate-700">Créé:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Créé:")}</span>{" "}
                           {formatDate(call.created_at)}
                         </p>
                         <p>
-                          <span className="font-semibold text-slate-700">Début:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Début:")}</span>{" "}
                           {formatDate(call.started_at)}
                         </p>
                         <p>
-                          <span className="font-semibold text-slate-700">Réponse:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Réponse:")}</span>{" "}
                           {formatDate(call.answered_at)}
                         </p>
                         <p>
-                          <span className="font-semibold text-slate-700">Fin:</span>{" "}
+                          <span className="font-semibold text-slate-700">{t("Fin:")}</span>{" "}
                           {formatDate(call.ended_at)}
                         </p>
                       </div>
@@ -964,14 +967,14 @@ export default function AdminCallsPage() {
                             href={`/admin/orders/${call.order_id}`}
                             className="rounded-xl border border-slate-300 bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
                           >
-                            Voir commande
+                            {t("Voir commande")}
                           </Link>
 
                           <Link
                             href={`/admin/orders/${call.order_id}/chat?targetRole=${call.caller_role || "client"}`}
                             className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50"
                           >
-                            Ouvrir chat
+                            {t("Ouvrir chat")}
                           </Link>
                         </>
                       )}

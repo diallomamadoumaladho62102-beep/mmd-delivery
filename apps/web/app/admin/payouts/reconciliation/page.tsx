@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -174,17 +176,17 @@ function reviewBadgeClass(status: "open" | "reviewed" | "resolved") {
   }
 }
 
-function reviewFilterLabel(value: ReviewFilter) {
+function reviewFilterLabel(value: ReviewFilter, t: (source: string) => string) {
   switch (value) {
     case "open":
-      return "Open";
+      return t("Open");
     case "reviewed":
       return "Reviewed";
     case "resolved":
       return "Resolved";
     case "all":
     default:
-      return "All";
+      return t("All");
   }
 }
 
@@ -217,6 +219,8 @@ function StatCard({
 }
 
 export default function AdminPayoutsReconciliationPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [authChecked, setAuthChecked] = useState(false);
@@ -288,7 +292,7 @@ export default function AdminPayoutsReconciliationPage() {
         const json = (await response.json()) as ApiResponse;
 
         if (!response.ok || !json.ok) {
-          throw new Error(json.error || "Failed to load reconciliation data");
+          throw new Error(json.error || t("Failed to load reconciliation data"));
         }
 
         setData(json);
@@ -483,7 +487,7 @@ export default function AdminPayoutsReconciliationPage() {
         <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-              MMD Delivery · Finance Ops · Reconciliation
+              {t("MMD Delivery · Finance Ops · Reconciliation")}
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
               Reconciliation / Anomaly Center
@@ -500,7 +504,7 @@ export default function AdminPayoutsReconciliationPage() {
               href="/admin/payouts"
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
             >
-              Back to payouts
+              {t("Back to payouts")}
             </Link>
             <button
               type="button"
@@ -508,7 +512,7 @@ export default function AdminPayoutsReconciliationPage() {
               disabled={refreshing}
               className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {refreshing ? "Refreshing..." : "Refresh"}
+              {refreshing ? t("Refreshing...") : t("Refresh")}
             </button>
           </div>
         </div>
@@ -516,49 +520,49 @@ export default function AdminPayoutsReconciliationPage() {
         {loading || !authChecked ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <div className="text-sm text-slate-500">
-              Loading reconciliation data...
+              {t("Loading reconciliation data...")}
             </div>
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
             <div className="text-sm font-medium text-red-800">
-              Failed to load reconciliation data
+              {t("Failed to load reconciliation data")}
             </div>
             <div className="mt-2 text-sm text-red-700">{error}</div>
           </div>
         ) : !isAdmin ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
             <div className="text-sm font-medium text-amber-800">
-              Access restricted
+              {t("Access restricted")}
             </div>
             <div className="mt-2 text-sm text-amber-700">
-              This page is reserved for administrators.
+              {t("This page is reserved for administrators.")}
             </div>
           </div>
         ) : (
           <>
             <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <StatCard
-                title="Orders scanned"
+                title={t("Orders scanned")}
                 value={summary?.total_orders_scanned ?? 0}
               />
               <StatCard
-                title="Total anomalies"
+                title={t("Total anomalies")}
                 value={summary?.total_anomalies ?? 0}
                 tone="danger"
               />
               <StatCard
-                title="High severity"
+                title={t("High severity")}
                 value={summary?.high_severity ?? 0}
                 tone="danger"
               />
               <StatCard
-                title="Payout failed"
+                title={t("Payout failed")}
                 value={summary?.payout_failed ?? 0}
                 tone="danger"
               />
               <StatCard
-                title="Partial payout"
+                title={t("Partial payout")}
                 value={summary?.partial_payout ?? 0}
                 tone="warning"
               />
@@ -566,21 +570,21 @@ export default function AdminPayoutsReconciliationPage() {
 
             <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
-                title="Paid / no payout rows"
+                title={t("Paid / no payout rows")}
                 value={summary?.paid_without_any_payout_rows ?? 0}
                 tone="danger"
               />
               <StatCard
-                title="Transfer missing"
+                title={t("Transfer missing")}
                 value={summary?.transfer_missing ?? 0}
                 tone="warning"
               />
               <StatCard
-                title="Duplicate payout rows"
+                title={t("Duplicate payout rows")}
                 value={summary?.duplicates ?? 0}
               />
               <StatCard
-                title="Medium severity"
+                title={t("Medium severity")}
                 value={summary?.medium_severity ?? 0}
               />
             </section>
@@ -589,30 +593,30 @@ export default function AdminPayoutsReconciliationPage() {
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_260px]">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Search
+                    {t("Search")}
                   </label>
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by order ID, restaurant, transfer ID, title, description or review note..."
+                    placeholder={t("Search by order ID, restaurant, transfer ID, title, description or review note...")}
                     className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   />
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Severity
+                    {t("Severity")}
                   </label>
                   <select
                     value={severity}
                     onChange={(e) => setSeverity(e.target.value as SeverityFilter)}
                     className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   >
-                    <option value="all">All</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
+                    <option value="all">{t("All")}</option>
+                    <option value="high">{t("High")}</option>
+                    <option value="medium">{t("Medium")}</option>
+                    <option value="low">{t("Low")}</option>
                   </select>
                 </div>
               </div>
@@ -630,7 +634,7 @@ export default function AdminPayoutsReconciliationPage() {
                           : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                       }`}
                     >
-                      {reviewFilterLabel(value)}
+                      {reviewFilterLabel(value, t)}
                     </button>
                   )
                 )}
@@ -706,11 +710,10 @@ export default function AdminPayoutsReconciliationPage() {
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-200 px-5 py-4">
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Anomalies to investigate
+                  {t("Anomalies to investigate")}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Each row highlights a finance or payout inconsistency that
-                  should be reviewed.
+                  {t("Each row highlights a finance or payout inconsistency that should be reviewed.")}
                 </p>
               </div>
 
@@ -718,18 +721,18 @@ export default function AdminPayoutsReconciliationPage() {
                 <table className="min-w-[1900px] divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50">
                     <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                      <th className="px-4 py-3 font-medium">Severity</th>
-                      <th className="px-4 py-3 font-medium">Issue</th>
-                      <th className="px-4 py-3 font-medium">Order</th>
-                      <th className="px-4 py-3 font-medium">Restaurant</th>
-                      <th className="px-4 py-3 font-medium">Payment</th>
-                      <th className="px-4 py-3 font-medium">Dashboard</th>
-                      <th className="px-4 py-3 font-medium">Restaurant payout</th>
-                      <th className="px-4 py-3 font-medium">Driver payout</th>
-                      <th className="px-4 py-3 font-medium">Transfers</th>
-                      <th className="px-4 py-3 font-medium">Last activity</th>
-                      <th className="px-4 py-3 font-medium">Case review</th>
-                      <th className="px-4 py-3 font-medium">Actions</th>
+                      <th className="px-4 py-3 font-medium">{t("Severity")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Issue")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Order")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Restaurant")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Payment")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Dashboard")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Restaurant payout")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Driver payout")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Transfers")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Last activity")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Case review")}</th>
+                      <th className="px-4 py-3 font-medium">{t("Actions")}</th>
                     </tr>
                   </thead>
 
@@ -740,7 +743,7 @@ export default function AdminPayoutsReconciliationPage() {
                           colSpan={12}
                           className="px-4 py-12 text-center text-sm text-slate-500"
                         >
-                          No anomalies found for the current filters.
+                          {t("No anomalies found for the current filters.")}
                         </td>
                       </tr>
                     ) : (
@@ -918,7 +921,7 @@ export default function AdminPayoutsReconciliationPage() {
                                     }))
                                   }
                                   rows={3}
-                                  placeholder="Add admin note..."
+                                  placeholder={t("Add admin note...")}
                                   className="w-full min-w-[220px] rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-900 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                                 />
                               </div>
@@ -930,13 +933,13 @@ export default function AdminPayoutsReconciliationPage() {
                                   href={`/admin/payouts/${item.order_id}`}
                                   className="text-xs font-medium text-blue-600 hover:text-blue-800"
                                 >
-                                  Open detail
+                                  {t("Open detail")}
                                 </Link>
                                 <Link
                                   href={`/admin/orders/${item.order_id}`}
                                   className="text-xs font-medium text-slate-700 hover:text-slate-900"
                                 >
-                                  Open order
+                                  {t("Open order")}
                                 </Link>
 
                                 <button
@@ -949,7 +952,7 @@ export default function AdminPayoutsReconciliationPage() {
                                   disabled={isSaving}
                                   className="text-left text-xs font-medium text-slate-700 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                  Mark reviewed
+                                  {t("Mark reviewed")}
                                 </button>
 
                                 <button
@@ -963,7 +966,7 @@ export default function AdminPayoutsReconciliationPage() {
                                   disabled={isSaving}
                                   className="text-left text-xs font-medium text-green-700 hover:text-green-800 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                  Mark resolved
+                                  {t("Mark resolved")}
                                 </button>
 
                                 <button
@@ -977,7 +980,7 @@ export default function AdminPayoutsReconciliationPage() {
                                   disabled={isSaving}
                                   className="text-left text-xs font-medium text-amber-700 hover:text-amber-800 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                  Re-open
+                                  {t("Re-open")}
                                 </button>
 
                                 <button
@@ -993,7 +996,7 @@ export default function AdminPayoutsReconciliationPage() {
                                   disabled={isSaving}
                                   className="text-left text-xs font-medium text-blue-700 hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                  Save note
+                                  {t("Save note")}
                                 </button>
 
                                 {item.anomaly_kind === "restaurant_failed" && (

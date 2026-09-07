@@ -147,14 +147,17 @@ export function RestaurantOrderAutomationScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
         <ScreenHeader
-          title="Order Automation"
-          subtitle="Settings"
+          title={t("restaurant.automation.title", "Order Automation")}
+          subtitle={t("restaurant.automation.subtitle", "Settings")}
           variant="mmd"
           fallbackRoute="RestaurantCommandCenter"
         />
         <RestaurantBrandLoadingState
-          title="Loading Settings..."
-          subtitle="Fetching your automation preferences"
+          title={t("restaurant.automation.loadingTitle", "Loading Settings...")}
+          subtitle={t(
+            "restaurant.automation.loadingSubtitle",
+            "Fetching your automation preferences",
+          )}
           glass
         />
       </SafeAreaView>
@@ -164,8 +167,8 @@ export function RestaurantOrderAutomationScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title="Order Automation"
-        subtitle="Settings"
+        title={t("restaurant.automation.title", "Order Automation")}
+        subtitle={t("restaurant.automation.subtitle", "Settings")}
         variant="mmd"
         fallbackRoute="RestaurantCommandCenter"
       />
@@ -177,30 +180,35 @@ export function RestaurantOrderAutomationScreen() {
         <View style={styles.infoCard}>
           <Text style={styles.infoIcon}>⚙️</Text>
           <View style={styles.infoText}>
-            <Text style={styles.infoTitle}>Auto-accept & Kitchen Print</Text>
+            <Text style={styles.infoTitle}>
+              {t("restaurant.automation.infoTitle", "Auto-accept & Kitchen Print")}
+            </Text>
             <Text style={styles.infoBody}>
-              Control how new orders are accepted and printed.
+              {t(
+                "restaurant.automation.infoBody",
+                "Control how new orders are accepted and printed.",
+              )}
             </Text>
           </View>
         </View>
 
         <View style={styles.toggles}>
           <ToggleRow
-            label="Auto-accept new orders"
+            label={t("restaurant.automation.autoAccept", "Auto-accept new orders")}
             value={draft.auto_accept_orders_enabled}
             onValueChange={(value) =>
               setDraft((s) => (s ? { ...s, auto_accept_orders_enabled: value } : s))
             }
           />
           <ToggleRow
-            label="Auto-print on accept"
+            label={t("restaurant.automation.autoPrint", "Auto-print on accept")}
             value={draft.auto_print_enabled}
             onValueChange={(value) =>
               setDraft((s) => (s ? { ...s, auto_print_enabled: value } : s))
             }
           />
           <ToggleRow
-            label="Sound alert"
+            label={t("restaurant.automation.soundAlert", "Sound alert")}
             value={draft.sound_alert}
             onValueChange={(value) =>
               setDraft((s) => (s ? { ...s, sound_alert: value } : s))
@@ -209,7 +217,9 @@ export function RestaurantOrderAutomationScreen() {
         </View>
 
         <View style={styles.prepBlock}>
-          <Text style={styles.prepTitle}>⏱️ Default Prep Time</Text>
+          <Text style={styles.prepTitle}>
+            ⏱️ {t("restaurant.automation.defaultPrep", "Default Prep Time")}
+          </Text>
           <View style={styles.pillRow}>
             {PREP_OPTIONS.map((mins) => {
               const selected = draft.default_prep_minutes === mins;
@@ -223,7 +233,11 @@ export function RestaurantOrderAutomationScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                 >
-                  <Text style={styles.pillText}>{mins} min</Text>
+                  <Text style={styles.pillText}>
+                    {t("restaurant.automation.prepMinutes", "{{mins}} min", {
+                      mins,
+                    })}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -239,7 +253,9 @@ export function RestaurantOrderAutomationScreen() {
           accessibilityRole="button"
         >
           <Text style={styles.saveBtnText}>
-            {saving ? "Saving…" : "Save Settings"}
+            {saving
+              ? t("restaurant.automation.saving", "Saving…")
+              : t("restaurant.automation.saveSettings", "Save Settings")}
           </Text>
         </TouchableOpacity>
 
@@ -248,7 +264,9 @@ export function RestaurantOrderAutomationScreen() {
           onPress={handleTestPrint}
           accessibilityRole="button"
         >
-          <Text style={styles.testBtnText}>Test print</Text>
+          <Text style={styles.testBtnText}>
+            {t("restaurant.automation.testPrint", "Test print")}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

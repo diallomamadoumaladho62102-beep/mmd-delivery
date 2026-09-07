@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
@@ -21,6 +23,8 @@ type AdminRow = {
 };
 
 export default function AdminTeamsPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<AdminRow[]>([]);
 
   useEffect(() => {
@@ -47,13 +51,13 @@ export default function AdminTeamsPage() {
       <div className="mx-auto max-w-[1400px] space-y-6">
         <header>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cc-muted)]">
-            Administration
+            {t("Administration")}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            Teams & Organization
+            {t("Teams & Organization")}
           </h1>
           <p className="mt-1 text-sm text-[var(--cc-muted)]">
-            Interactive org chart · click a card to open profile or assign work
+            {t("Interactive org chart · click a card to open profile or assign work")}
           </p>
         </header>
 
@@ -127,6 +131,7 @@ function OrgCard({
   headcount: number;
   depth: number;
 }) {
+  const { t } = useAdminT();
   const href = lead ? `/admin/staff/${lead.id}` : "/admin/staff";
   return (
     <div
@@ -160,7 +165,7 @@ function OrgCard({
               : "text-[var(--cc-disabled)]"
           }
         >
-          {lead ? (lead.account_status === "active" ? "Online" : "Offline") : "—"}
+          {lead ? (lead.account_status === "active" ? t("Online") : t("Offline")) : "—"}
         </span>
         <span>{headcount} people</span>
       </div>
@@ -169,21 +174,21 @@ function OrgCard({
           href={href}
           className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-semibold text-white"
         >
-          Profile
+          {t("Profile")}
         </Link>
         <Link
           href={lead ? `/admin/tasks?assignee=${lead.id}` : "/admin/tasks"}
           className="rounded-lg border border-[var(--cc-border)] px-2 py-1 text-xs font-semibold"
         >
-          Task
+          {t("Task")}
         </Link>
         <button
           type="button"
           disabled
-          title="Coming soon"
+          title={t("Coming soon")}
           className="cursor-not-allowed rounded-lg border border-[var(--cc-border)] bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-400"
         >
-          Message
+          {t("Message")}
         </button>
       </div>
     </div>

@@ -1,0 +1,3236 @@
+{
+  "No submissions.": {
+    "fr": "Aucune soumission.",
+    "es": "Sin presentaciones.",
+    "ar": "لا التقديمات.",
+    "zh": "没有提交。",
+    "ff": "Alaa ko neldaa."
+  },
+  "No subscribers.": {
+    "fr": "Aucun abonné.",
+    "es": "Sin suscriptores.",
+    "ar": "لا يوجد مشتركين.",
+    "zh": "没有订阅者。",
+    "ff": "Alaa abonmaaji."
+  },
+  "No tasks assigned.": {
+    "fr": "Aucune tâche assignée.",
+    "es": "No hay tareas asignadas.",
+    "ar": "لم يتم تعيين أي مهام.",
+    "zh": "没有分配任务。",
+    "ff": "Alaa golle toɗɗaaɗe."
+  },
+  "No tasks yet. Create the first work item above.": {
+    "fr": "Aucune tâche pour l'instant. Créez le premier élément de travail ci-dessus.",
+    "es": "Aún no hay tareas. Cree el primer elemento de trabajo anterior.",
+    "ar": "لا توجد مهام حتى الآن. قم بإنشاء عنصر العمل الأول أعلاه.",
+    "zh": "还没有任务。 创建上面的第一个工作项。",
+    "ff": "Alaa golle tawo. Sos huunde golle adannde to dow too."
+  },
+  "No timeline events.": {
+    "fr": "Aucun événement chronologique.",
+    "es": "Sin eventos en la línea de tiempo.",
+    "ar": "لا توجد أحداث الجدول الزمني.",
+    "zh": "没有时间线事件。",
+    "ff": "Alaa kewuuji limto sahaa."
+  },
+  "Nom du restaurant": {
+    "fr": "Nom du restaurant",
+    "es": "Nombre del restaurante",
+    "ar": "اسم المطعم",
+    "zh": "餐厅名称",
+    "ff": "Innde restoraa"
+  },
+  "Non": {
+    "fr": "Non",
+    "es": "No",
+    "ar": "غير",
+    "zh": "非",
+    "ff": "Alaa"
+  },
+  "Non assigné": {
+    "fr": "Non assigné",
+    "es": "No asignado",
+    "ar": "غير معين",
+    "zh": "未分配",
+    "ff": "Toɗɗaaka"
+  },
+  "Non historique — ne pas utiliser comme montant facturé d’une commande passée.": {
+    "fr": "Non historique — ne pas utiliser comme montant facturé d’une commande passée.",
+    "es": "No histórico: no lo utilice como monto de factura para un pedido realizado.",
+    "ar": "غير تاريخي — لا تستخدم كمبلغ فاتورة لطلب مقدم.",
+    "zh": "非历史 — 请勿用作已下订单的发票金额。",
+    "ff": "Ko wonaa daartol — woto huutoro no limre faktiir ngam yamiroore waɗaande."
+  },
+  "Non-fumeur": {
+    "fr": "Non-fumeur",
+    "es": "No fumador",
+    "ar": "غير مدخن",
+    "zh": "不吸烟者",
+    "ff": "Mo wonaa simme"
+  },
+  "Not started": {
+    "fr": "Pas commencé",
+    "es": "No iniciado",
+    "ar": "لم يبدأ",
+    "zh": "未开始",
+    "ff": "Fuɗɗaaki"
+  },
+  "Note": {
+    "fr": "Note",
+    "es": "Nota",
+    "ar": "ملحوظة",
+    "zh": "笔记",
+    "ff": "Bindol"
+  },
+  "Note admin": {
+    "fr": "Remarque administrateur",
+    "es": "Administrador de notas",
+    "ar": "ملاحظة المشرف",
+    "zh": "备注管理员",
+    "ff": "Tesko admin"
+  },
+  "Note interne (visible dans l": {
+    "fr": "Note interne (visible dans l",
+    "es": "Nota interna (visible en el",
+    "ar": "ملاحظة داخلية (مرئية في",
+    "zh": "内部注释（在",
+    "ff": "Teskorde nder (yiyteende e nder..."
+  },
+  "Nouvelle": {
+    "fr": "Nouvelle",
+    "es": "Nuevo",
+    "ar": "جديد",
+    "zh": "新的",
+    "ff": "Keesum"
+  },
+  "Nouvelle campagne": {
+    "fr": "Nouvelle campagne",
+    "es": "Nueva campaña",
+    "ar": "حملة جديدة",
+    "zh": "新活动",
+    "ff": "Kampaañ keso"
+  },
+  "Nouvelle photo": {
+    "fr": "Nouvelle photo",
+    "es": "Nueva foto",
+    "ar": "صورة جديدة",
+    "zh": "新照片",
+    "ff": "Foto keso"
+  },
+  "Nouvelle promotion": {
+    "fr": "Nouvelle promotion",
+    "es": "Nueva promoción",
+    "ar": "ترقية جديدة",
+    "zh": "新促销",
+    "ff": "Promotion keso"
+  },
+  "Numéro public MMD Delivery : +1 929-492-4563. Transfert direct vers un admin autorisé.": {
+    "fr": "Numéro public MMD Delivery : +1 929-492-4563. Transfert direct vers un admin autorisé.",
+    "es": "Número público MMD Entrega: +1 929-492-4563. Transferencia directa a un administrador autorizado.",
+    "ar": "الرقم العام MMD التوصيل: +1 929-492-4563. النقل المباشر إلى المسؤول المعتمد.",
+    "zh": "公众号MMD 投递：+1 929-492-4563。 直接转移给授权管理员。",
+    "ff": "Limoore renndo MMD Jokkondire: +1 929-492-4563. Jolngo to admin baawɗo."
+  },
+  "Official social accounts": {
+    "fr": "Comptes sociaux officiels",
+    "es": "Cuentas sociales oficiales",
+    "ar": "الحسابات الاجتماعية الرسمية",
+    "zh": "官方社交账号",
+    "ff": "Konte renndo laawɗuɗe"
+  },
+  "Offres envoyées aux chauffeurs (food orders + delivery requests).": {
+    "fr": "Offres envoyées aux chauffeurs (food orders + delivery requests).",
+    "es": "Ofertas enviadas a conductores (pedidos de comida + solicitudes de entrega).",
+    "ar": "العروض المرسلة للسائقين (طلبات الطعام + طلبات التوصيل).",
+    "zh": "发送给司机的报价（食品订单+送货请求）。",
+    "ff": "Offers neldaaɗi e sofereeɓe (yamiroore nguura + ɗaɓɓaande jokkondire)."
+  },
+  "Open": {
+    "fr": "Ouvrir",
+    "es": "Abierta",
+    "ar": "يفتح",
+    "zh": "打开",
+    "ff": "Mabbiti"
+  },
+  "Open client": {
+    "fr": "Client ouvert",
+    "es": "Cliente abierta",
+    "ar": "فتح العميل",
+    "zh": "打开客户端",
+    "ff": "Uddit kiliyan"
+  },
+  "Open drivers": {
+    "fr": "Pilotes ouverts",
+    "es": "Conductoras abiertas",
+    "ar": "فتح السائقين",
+    "zh": "打开驱动程序",
+    "ff": "Uddit sofereeɓe"
+  },
+  "Open file": {
+    "fr": "Ouvrir le fichier",
+    "es": "Abrir archivo",
+    "ar": "افتح الملف",
+    "zh": "打开文件",
+    "ff": "Uddit fiilde"
+  },
+  "Open Live Map": {
+    "fr": "Ouvrir la carte en direct",
+    "es": "Abrir mapa en vivo",
+    "ar": "افتح الخريطة الحية",
+    "zh": "打开实时地图",
+    "ff": "Uddit Kartal Nguurndam"
+  },
+  "Open payout detail": {
+    "fr": "Ouvrir les détails du paiement",
+    "es": "Abrir detalle de pago",
+    "ar": "فتح تفاصيل الدفع",
+    "zh": "打开付款详细信息",
+    "ff": "Uddit detaay yoɓde"
+  },
+  "Open record →": {
+    "fr": "Ouvrir l'enregistrement →",
+    "es": "Abrir registro →",
+    "ar": "فتح السجل →",
+    "zh": "打开记录 →",
+    "ff": "Uddit winndannde →"
+  },
+  "Open restaurants": {
+    "fr": "Restaurants ouverts",
+    "es": "restaurantes abiertos",
+    "ar": "المطاعم المفتوحة",
+    "zh": "开设餐厅",
+    "ff": "Uddit restoraaji"
+  },
+  "Opérations Phase 7.1": {
+    "fr": "Opérations Phase 7.1",
+    "es": "Fase de Operaciones 7.1",
+    "ar": "مرحلة العمليات 7.1",
+    "zh": "运营阶段 7.1",
+    "ff": "Faandaare golle 7.1"
+  },
+  "Ops controls": {
+    "fr": "Contrôles opérationnels",
+    "es": "Controles de operaciones",
+    "ar": "ضوابط العمليات",
+    "zh": "操作控制",
+    "ff": "Ops ina jogoo"
+  },
+  "Optional note for approve / reject…": {
+    "fr": "Note facultative pour approuver/rejeter…",
+    "es": "Nota opcional para aprobar/rechazar…",
+    "ar": "ملاحظة اختيارية للموافقة/الرفض...",
+    "zh": "用于批准/拒绝的可选注释...",
+    "ff": "Teskorde cuɓaande ngam jaɓde / salaade..."
+  },
+  "Options :": {
+    "fr": "Possibilités :",
+    "es": "Opciones:",
+    "ar": "خيارات :",
+    "zh": "选项 ：",
+    "ff": "Cuɓe :"
+  },
+  "Order actions": {
+    "fr": "Actions de commande",
+    "es": "Ordenar acciones",
+    "ar": "إجراءات النظام",
+    "zh": "订购行动",
+    "ff": "Golle yamiroore"
+  },
+  "Order cancelled — pipeline stopped": {
+    "fr": "Commande annulée – pipeline arrêté",
+    "es": "Pedido cancelado: canalización detenida",
+    "ar": "تم إلغاء الطلب — توقف خط الأنابيب",
+    "zh": "订单取消——管道停止",
+    "ff": "Yamiroore ndee dartinaama — pipeline dartinaama"
+  },
+  "Order ID, client, restaurant, phone, address…": {
+    "fr": "Commande ID, client, restaurant, téléphone, adresse…",
+    "es": "Pedido ID, cliente, restaurante, teléfono, dirección…",
+    "ar": "الطلب ID، العميل، المطعم، الهاتف، العنوان...",
+    "zh": "订单 ID、客户、餐厅、电话、地址……",
+    "ff": "Yamiroore ID, kiliyaneeɓe, restoraan, telefoŋ, adrees..."
+  },
+  "Order ID, restaurant, transfer ID...": {
+    "fr": "Commande ID, restaurant, transfert ID...",
+    "es": "Pedido ID, restaurante, traslado ID...",
+    "ar": "طلب ID، مطعم، تحويل ID...",
+    "zh": "点餐 ID，餐厅，接送 ID...",
+    "ff": "Yamiro ID, suudu nyaamdu, jolnude ID..."
+  },
+  "Order overview": {
+    "fr": "Aperçu de la commande",
+    "es": "Resumen de pedidos",
+    "ar": "نظرة عامة على الطلب",
+    "zh": "订单概览",
+    "ff": "Yiyngo yamiroore"
+  },
+  "Order status progress": {
+    "fr": "Progression de l'état de la commande",
+    "es": "Progreso del estado del pedido",
+    "ar": "تقدم حالة الطلب",
+    "zh": "订单状态进度",
+    "ff": "Yahrugol ngonka yamiroore"
+  },
+  "Order type": {
+    "fr": "Type de commande",
+    "es": "Tipo de orden",
+    "ar": "نوع الطلب",
+    "zh": "订单类型",
+    "ff": "Sifaa yamiroore"
+  },
+  "Orders": {
+    "fr": "Ordres",
+    "es": "Órdenes",
+    "ar": "طلبات",
+    "zh": "订单",
+    "ff": "Yamirooje"
+  },
+  "Orders and payouts": {
+    "fr": "Commandes et paiements",
+    "es": "Pedidos y pagos",
+    "ar": "الطلبات والدفعات",
+    "zh": "订单和付款",
+    "ff": "Yamirooje e yoɓde"
+  },
+  "Orders scanned": {
+    "fr": "Commandes scannées",
+    "es": "Pedidos escaneados",
+    "ar": "تم مسح الطلبات",
+    "zh": "订单已扫描",
+    "ff": "Yamirooje skannde"
+  },
+  "Ordre d&apos;affichage": {
+    "fr": "Ordre d&apos;affichage",
+    "es": "Orden de visualización",
+    "ar": "ترتيب العرض",
+    "zh": "显示顺序",
+    "ff": "Hollitde yamiroore"
+  },
+  "Ordre suppression (clés séparées par virgule)": {
+    "fr": "Ordre suppression (clés séparées par virgule)",
+    "es": "Orden de eliminación (teclas separadas por comas)",
+    "ar": "ترتيب الحذف (مفاتيح مفصولة بفواصل)",
+    "zh": "删除顺序（逗号分隔键）",
+    "ff": "Jamiroore momtugol (kuule ceertuɗe e komma)"
+  },
+  "Org chart": {
+    "fr": "Organigramme",
+    "es": "organigrama",
+    "ar": "المخطط التنظيمي",
+    "zh": "组织结构图",
+    "ff": "Taggal Org"
+  },
+  "Other": {
+    "fr": "Autre",
+    "es": "Otra",
+    "ar": "آخر",
+    "zh": "其他",
+    "ff": "Feere"
+  },
+  "Oui": {
+    "fr": "Oui",
+    "es": "Sí",
+    "ar": "نعم",
+    "zh": "奥伊",
+    "ff": "Oui"
+  },
+  "Outbound payout methods →": {
+    "fr": "Méthodes de paiement sortantes →",
+    "es": "Métodos de pago salientes →",
+    "ar": "طرق الدفع الصادرة →",
+    "zh": "境外支付方式 →",
+    "ff": "Laabi yoɓde yaltugol →"
+  },
+  "Ouvrir aussi la vue payout de cette commande": {
+    "fr": "Ouvrir aussi la vue payout de cette commande",
+    "es": "Abra también la vista de pagos de este pedido",
+    "ar": "افتح أيضًا طريقة عرض الدفع لهذا الطلب",
+    "zh": "同时打开该订单的付款视图",
+    "ff": "Kadi udditaa yiyngo yoɓde ndee yamiroore"
+  },
+  "Ouvrir chat": {
+    "fr": "Ouvrir chat",
+    "es": "abrir chat",
+    "ar": "افتح الدردشة",
+    "zh": "打开聊天",
+    "ff": "Uddit yeewtere"
+  },
+  "Ouvrir le dossier suivant après décision": {
+    "fr": "Ouvrir le dossier suivant après décision",
+    "es": "Abra el siguiente archivo después de la decisión.",
+    "ar": "افتح الملف التالي بعد القرار",
+    "zh": "决定后打开下一个文件",
+    "ff": "Uddit fiilde aroore caggal kuulal"
+  },
+  "Ouvrir sur OpenStreetMap": {
+    "fr": "Ouvrir sur OpenStreetMap",
+    "es": "Abrir en OpenStreetMap",
+    "ar": "مفتوح على OpenStreetMap",
+    "zh": "在 OpenStreetMap 上打开",
+    "ff": "Uddit e Kartal Laabi Uddit"
+  },
+  "Overlays": {
+    "fr": "Superpositions",
+    "es": "Superposiciones",
+    "ar": "تراكبات",
+    "zh": "叠加层",
+    "ff": "Ko dow"
+  },
+  "Overrides commerciaux sparse (US states, zones GN). OFF par défaut.": {
+    "fr": "Overrides commerciaux sparse (US states, zones GN). OFF par défaut.",
+    "es": "Anulaciones comerciales escasas (US estados, zonas GN). OFF de forma predeterminada.",
+    "ar": "تجاوزات تجارية متفرقة (US الولايات، المناطق GN). OFF بشكل افتراضي.",
+    "zh": "稀疏的商业覆盖（US 州，区域 GN）。 默认为 OFF。",
+    "ff": "Ɓooygol njulaagu seeɗa (US dowlaaji, nokkuuji GN). OFF ko mbaydi."
+  },
+  "Overview": {
+    "fr": "Aperçu",
+    "es": "Descripción general",
+    "ar": "ملخص",
+    "zh": "概述",
+    "ff": "Yiyngo"
+  },
+  "Page": {
+    "fr": "Page",
+    "es": "Página",
+    "ar": "صفحة",
+    "zh": "页",
+    "ff": "Hello"
+  },
+  "Pages": {
+    "fr": "Pages",
+    "es": "paginas",
+    "ar": "الصفحات",
+    "zh": "页数",
+    "ff": "Kelle"
+  },
+  "Paid / no payout rows": {
+    "fr": "Lignes payantes / sans paiement",
+    "es": "Filas pagadas/sin pagos",
+    "ar": "صفوف مدفوعة / بدون دفع تعويضات",
+    "zh": "已付款/无付款行",
+    "ff": "Yoɓaa / alaa rowrowre yoɓaare"
+  },
+  "Paid at": {
+    "fr": "Payé à",
+    "es": "Pagado en",
+    "ar": "دفعت في",
+    "zh": "支付于",
+    "ff": "Yoɓaama e"
+  },
+  "Paid orders": {
+    "fr": "Commandes payantes",
+    "es": "Pedidos pagados",
+    "ar": "الطلبات المدفوعة",
+    "zh": "已付款订单",
+    "ff": "Yamirooje yoɓaaɗe"
+  },
+  "Paid orders included": {
+    "fr": "Commandes payantes incluses",
+    "es": "Pedidos pagados incluidos",
+    "ar": "وشملت الطلبات المدفوعة",
+    "zh": "包含已付款订单",
+    "ff": "Yamirooje yoɓaaɗe ina heen"
+  },
+  "Paramètres vérification identité": {
+    "fr": "Paramètres vérification identité",
+    "es": "Configuración de verificación de identidad",
+    "ar": "إعدادات التحقق من الهوية",
+    "zh": "身份验证设置",
+    "ff": "Cuɓe hoolkiso anndinde"
+  },
+  "Paris": {
+    "fr": "Paris",
+    "es": "París",
+    "ar": "باريس",
+    "zh": "巴黎",
+    "ff": "Pari"
+  },
+  "Part MMD (plateforme)": {
+    "fr": "Part MMD (plateforme)",
+    "es": "Parte MMD (plataforma)",
+    "ar": "الجزء MMD (المنصة)",
+    "zh": "第 MMD 部分（平台）",
+    "ff": "Feccere MMD (daande)"
+  },
+  "Part MMD (split interne)": {
+    "fr": "Partie MMD (split interne)",
+    "es": "Parte MMD (interno dividido)",
+    "ar": "الجزء MMD (مقسم داخليًا)",
+    "zh": "MMD 部分（拆分内部）",
+    "ff": "Feccere MMD (feccere nder)"
+  },
+  "Partial payout": {
+    "fr": "Paiement partiel",
+    "es": "Pago parcial",
+    "ar": "الدفع الجزئي",
+    "zh": "部分支付",
+    "ff": "Yoɓde feccere"
+  },
+  "Partial payouts": {
+    "fr": "Paiements partiels",
+    "es": "Pagos parciales",
+    "ar": "دفعات جزئية",
+    "zh": "部分支出",
+    "ff": "Yoɓde feccere"
+  },
+  "Participants": {
+    "fr": "Participantes",
+    "es": "Las participantes",
+    "ar": "مشاركون",
+    "zh": "参加者",
+    "ff": "Tawtoraaɓe"
+  },
+  "Passenger On Board": {
+    "fr": "Passager à bord",
+    "es": "Pasajera a bordo",
+    "ar": "الركاب على متن الطائرة",
+    "zh": "机上乘客",
+    "ff": "Passenger E nder Laana"
+  },
+  "Passengers": {
+    "fr": "Passagères",
+    "es": "Pasajeras",
+    "ar": "الركاب",
+    "zh": "乘客",
+    "ff": "Yahooɓe"
+  },
+  "Password": {
+    "fr": "Mot de passe",
+    "es": "Contraseña",
+    "ar": "كلمة المرور",
+    "zh": "密码",
+    "ff": "Siiri nastirde"
+  },
+  "Pause": {
+    "fr": "Pause",
+    "es": "Pausa",
+    "ar": "يوقف",
+    "zh": "暂停",
+    "ff": "Siwtare"
+  },
+  "Payload JSON": {
+    "fr": "Charge utile JSON",
+    "es": "Carga útil JSON",
+    "ar": "الحمولة JSON",
+    "zh": "有效负载 JSON",
+    "ff": "Jolngo JSON"
+  },
+  "Payment Intent ID": {
+    "fr": "Intention de paiement ID",
+    "es": "Intención de pago ID",
+    "ar": "نية الدفع ID",
+    "zh": "付款意向 ID",
+    "ff": "Anniya yoɓde ID"
+  },
+  "Payment Methods (Inbound)": {
+    "fr": "Méthodes de paiement (entrant)",
+    "es": "Métodos de pago (entrante)",
+    "ar": "طرق الدفع (الوارد)",
+    "zh": "付款方式（入境）",
+    "ff": "Laabi yoɓde (Naatgol)"
+  },
+  "PaymentIntent": {
+    "fr": "Intention de paiement",
+    "es": "Intención de pago",
+    "ar": "PaymentIntent",
+    "zh": "付款意向",
+    "ff": "Anniya yoɓde"
+  },
+  "Payout Detail": {
+    "fr": "Détails du paiement",
+    "es": "Detalle de pago",
+    "ar": "تفاصيل الدفع",
+    "zh": "付款详情",
+    "ff": "Detaay yoɓde"
+  },
+  "Payout failed": {
+    "fr": "Le paiement a échoué",
+    "es": "Pago fallido",
+    "ar": "فشل الدفع",
+    "zh": "付款失败",
+    "ff": "Yoɓde ndee ŋakki"
+  },
+  "Payout frequency": {
+    "fr": "Fréquence de paiement",
+    "es": "Frecuencia de pago",
+    "ar": "تردد الدفع",
+    "zh": "支付频率",
+    "ff": "Keewgol yoɓde"
+  },
+  "Payout Methods (Outbound)": {
+    "fr": "Méthodes de paiement (sortant)",
+    "es": "Métodos de pago (salientes)",
+    "ar": "طرق الدفع (الصادرة)",
+    "zh": "付款方式（出站）",
+    "ff": "Laabi yoɓde (Yaltude)"
+  },
+  "Payout Operations": {
+    "fr": "Opérations de paiement",
+    "es": "Operaciones de pago",
+    "ar": "عمليات الدفع",
+    "zh": "支付操作",
+    "ff": "Golle yoɓde"
+  },
+  "Payout statuses:": {
+    "fr": "Statuts de paiement :",
+    "es": "Estados de pago:",
+    "ar": "حالات الدفع:",
+    "zh": "付款状态：",
+    "ff": "Ngonka yoɓde:"
+  },
+  "Payouts processed: ${processed}\\nSkipped: ${skipped}\\nFailed: ${failed}": {
+    "fr": "Paiements traités : ${processed}\\nIgnorés : ${skipped}\\nÉchec : ${failed}",
+    "es": "Pagos procesados: ${processed}\\nOmitido: ${skipped}\\nError: ${failed}",
+    "ar": "تمت معالجة العوائد: ${processed}\\nتم تخطيها: ${skipped}\\nفشلت: ${failed}",
+    "zh": "已处理付款：${processed}\\n已跳过：${skipped}\\n失败：${failed}",
+    "ff": "Yoɓdeeji baɗaaɗi: ${processed}\\nƊaɓɓuɗi: ${skipped}\\nFaaɓaani: ${failed}"
+  },
+  "Pays régions": {
+    "fr": "Pays régions",
+    "es": "Regiones de países",
+    "ar": "مناطق الدول",
+    "zh": "国家地区",
+    "ff": "Leyɗeele diiwanuuji"
+  },
+  "PDF": {
+    "fr": "PDF",
+    "es": "PDF",
+    "ar": "PDF",
+    "zh": "PDF",
+    "ff": "PDF"
+  },
+  "People Ops is reserved for the Founder and Super Admin.": {
+    "fr": "People Ops est réservé au fondateur et au super administrateur.",
+    "es": "People Ops está reservado para el fundador y el superadministrador.",
+    "ar": "People Ops محجوز للمؤسس والمشرف المتميز.",
+    "zh": "人员行动是为创始人和超级管理员保留的。",
+    "ff": "People Ops ko ngam Sosɗo e Super Admin."
+  },
+  "Per mile": {
+    "fr": "Par mile",
+    "es": "Por milla",
+    "ar": "لكل ميل",
+    "zh": "每英里",
+    "ff": "E kala kiloomeeteer"
+  },
+  "Per mile / Par mile": {
+    "fr": "Per mile / Par mile",
+    "es": "Por milla / Por milla",
+    "ar": "لكل ميل / لكل ميل",
+    "zh": "每英里/每英里",
+    "ff": "Kala kiloomeeteer / Kala kiloomeeteer"
+  },
+  "Per minute": {
+    "fr": "Par minute",
+    "es": "Por minuto",
+    "ar": "في الدقيقة",
+    "zh": "每分钟",
+    "ff": "Hojomaaji kala"
+  },
+  "Per minute / Par minute": {
+    "fr": "Per minute / Par minute",
+    "es": "Por minuto / Por minuto",
+    "ar": "في الدقيقة / في الدقيقة",
+    "zh": "每分钟/每分钟",
+    "ff": "Hojomaaji / Hojomaaji"
+  },
+  "Percent": {
+    "fr": "Pour cent",
+    "es": "Por ciento",
+    "ar": "نسبة مئوية",
+    "zh": "百分比",
+    "ff": "Teemdere"
+  },
+  "Performance": {
+    "fr": "Performance",
+    "es": "Actuación",
+    "ar": "أداء",
+    "zh": "表现",
+    "ff": "Kugal"
+  },
+  "Périodes comptables": {
+    "fr": "Périodes comptables",
+    "es": "Períodos contables",
+    "ar": "الفترات المحاسبية",
+    "zh": "会计期间",
+    "ff": "Duuɓi hiisa"
+  },
+  "Phone verified": {
+    "fr": "Téléphone vérifié",
+    "es": "Teléfono verificado",
+    "ar": "تم التحقق من الهاتف",
+    "zh": "电话已验证",
+    "ff": "Telefoŋ hoolkisaama"
+  },
+  "Photo": {
+    "fr": "Photo",
+    "es": "Foto",
+    "ar": "صورة",
+    "zh": "照片",
+    "ff": "Footo"
+  },
+  "Photo agrandie": {
+    "fr": "Photo agrandie",
+    "es": "Foto ampliada",
+    "ar": "صورة مكبرة",
+    "zh": "放大照片",
+    "ff": "Foto mawningol"
+  },
+  "Picked up at": {
+    "fr": "Récupéré à",
+    "es": "Recogido en",
+    "ar": "التقطت في",
+    "zh": "拾取于",
+    "ff": "Piilaaɗo e..."
+  },
+  "Pickup address": {
+    "fr": "Adresse de retrait",
+    "es": "Dirección de recogida",
+    "ar": "عنوان الالتقاط",
+    "zh": "取货地址",
+    "ff": "Adres ƴettugol"
+  },
+  "Pickup coordinates": {
+    "fr": "Coordonnées de ramassage",
+    "es": "Coordenadas de recogida",
+    "ar": "إحداثيات الالتقاط",
+    "zh": "取货坐标",
+    "ff": "Koordinateeji ƴettugol"
+  },
+  "Plan comptable (aperçu)": {
+    "fr": "Plan comptable (aperçu)",
+    "es": "Plan de cuentas (resumen)",
+    "ar": "مخطط الحسابات (نظرة عامة)",
+    "zh": "会计科目表（概述）",
+    "ff": "Natal konte (yiyngo)"
+  },
+  "Planification vagues": {
+    "fr": "Planification vagues",
+    "es": "Olas de planificación",
+    "ar": "موجات التخطيط",
+    "zh": "规划波",
+    "ff": "Peewnugol ɓoggi"
+  },
+  "Plans Premium restaurants & marketplace — indépendants de la fidélité.": {
+    "fr": "Plans Premium restaurants & marketplace — indépendants de la fidélité.",
+    "es": "Planes premium de restaurantes y mercados, independientemente de la lealtad.",
+    "ar": "خطط المطاعم والأسواق المميزة - مستقلة عن الولاء.",
+    "zh": "高级餐厅和市场计划——与忠诚度无关。",
+    "ff": "Peeje restoraaji & luumo ɓurɗi moƴƴude — ko aldaa e nuunɗal."
+  },
+  "Plaque": {
+    "fr": "Plaque",
+    "es": "Placa",
+    "ar": "لوحة",
+    "zh": "牌匾",
+    "ff": "Pilaat"
+  },
+  "Platform % / Plateforme %": {
+    "fr": "Platform % / Plateforme %",
+    "es": "% de plataforma / % de plataforma",
+    "ar": "المنصة % / المنصة %",
+    "zh": "平台% / 平台%",
+    "ff": "Platform % / Plateau %"
+  },
+  "Platform commission (%)": {
+    "fr": "Commission plateforme (%)",
+    "es": "Comisión de plataforma (%)",
+    "ar": "عمولة المنصة (%)",
+    "zh": "平台佣金（%）",
+    "ff": "Komisoŋ plateau (%)"
+  },
+  "Platform delivery fee": {
+    "fr": "Frais de livraison sur plateforme",
+    "es": "Tarifa de entrega de la plataforma",
+    "ar": "رسوم توصيل المنصة",
+    "zh": "平台配送费",
+    "ff": "Njoɓdi jokkondire plateau"
+  },
+  "Platform Launch": {
+    "fr": "Lancement de la plateforme",
+    "es": "Lanzamiento de plataforma",
+    "ar": "إطلاق المنصة",
+    "zh": "平台发布",
+    "ff": "Udditgol Plateau"
+  },
+  "Platform Launch Control": {
+    "fr": "Contrôle du lancement de la plateforme",
+    "es": "Control de lanzamiento de plataforma",
+    "ar": "التحكم في إطلاق المنصة",
+    "zh": "平台启动控制",
+    "ff": "Konngol udditgol Platform"
+  },
+  "Platform margin": {
+    "fr": "Marge de la plateforme",
+    "es": "Margen de plataforma",
+    "ar": "هامش المنصة",
+    "zh": "平台保证金",
+    "ff": "Marge plateau"
+  },
+  "Platform margin:": {
+    "fr": "Marge de la plateforme :",
+    "es": "Margen de plataforma:",
+    "ar": "هامش المنصة:",
+    "zh": "平台保证金：",
+    "ff": "Marge laylaytol ngol:"
+  },
+  "Platform money": {
+    "fr": "Argent de plateforme",
+    "es": "dinero de plataforma",
+    "ar": "أموال المنصة",
+    "zh": "平台资金",
+    "ff": "Kaalis plateau"
+  },
+  "Please wait": {
+    "fr": "S'il vous plaît, attendez",
+    "es": "Espere por favor",
+    "ar": "انتظر من فضلك",
+    "zh": "请稍等",
+    "ff": "Tiiɗno, ɗaɓɓu"
+  },
+  "Points cost": {
+    "fr": "Coût en points",
+    "es": "Costo de puntos",
+    "ar": "تكلفة النقاط",
+    "zh": "积分成本",
+    "ff": "Toɓɓe njoɓdi"
+  },
+  "Points parrainage (chauffeur)": {
+    "fr": "Points parrainage (chauffeur)",
+    "es": "Puntos de patrocinio (conductor)",
+    "ar": "نقاط الرعاية (السائق)",
+    "zh": "赞助积分（司机）",
+    "ff": "Toɓɓe ballondiral (sofer)"
+  },
+  "Points parrainage (client)": {
+    "fr": "Points parrainage (client)",
+    "es": "Puntos de patrocinio (cliente)",
+    "ar": "نقاط الرعاية (العميل)",
+    "zh": "赞助积分（客户）",
+    "ff": "Toɓɓe ballondiral (sosiyatee)"
+  },
+  "Points pour conversion": {
+    "fr": "Points pour conversion",
+    "es": "Puntos para conversión",
+    "ar": "نقاط صب التحويل",
+    "zh": "积分转换",
+    "ff": "Toɓɓe pour waylude"
+  },
+  "Policy": {
+    "fr": "Politique",
+    "es": "Política",
+    "ar": "سياسة",
+    "zh": "政策",
+    "ff": "Siyasa"
+  },
+  "Pont taxi (dry-run)": {
+    "fr": "Pont taxi (à sec)",
+    "es": "Pont taxi (ensayo)",
+    "ar": "تاكسي بونت (التشغيل الجاف)",
+    "zh": "Pont 出租车（空运行）",
+    "ff": "Taksi Pont (dogdu yoorndu)"
+  },
+  "Posts": {
+    "fr": "Messages",
+    "es": "Publicaciones",
+    "ar": "دعامات",
+    "zh": "帖子",
+    "ff": "Postooji"
+  },
+  "Pourquoi le risque peut être élevé": {
+    "fr": "Pourquoi le risque peut être élevé",
+    "es": "Por qué el riesgo puede ser alto",
+    "ar": "لماذا قد تكون المخاطر عالية",
+    "zh": "为什么风险可能很高",
+    "ff": "Ko waɗi riis ina waawi toowde"
+  },
+  "Préférences disponibles": {
+    "fr": "Préférences disponibles",
+    "es": "Preferencias disponibles",
+    "ar": "التفضيلات المتاحة",
+    "zh": "可用的偏好",
+    "ff": "Cuɓe ina ngoodi"
+  },
+  "Premium drivers": {
+    "fr": "Pilotes premium",
+    "es": "Conductores premium",
+    "ar": "برامج تشغيل متميزة",
+    "zh": "高级司机",
+    "ff": "Sofereeɓe ɓurɓe moƴƴude"
+  },
+  "Previous": {
+    "fr": "Précédente",
+    "es": "Previa",
+    "ar": "سابق",
+    "zh": "以前的",
+    "ff": "Je sali"
+  },
+  "Pricing →": {
+    "fr": "Tarifs →",
+    "es": "Precios →",
+    "ar": "التسعير →",
+    "zh": "定价 →",
+    "ff": "Coodgu →"
+  },
+  "Pricing Preview": {
+    "fr": "Aperçu des prix",
+    "es": "Vista previa de precios",
+    "ar": "معاينة التسعير",
+    "zh": "定价预览",
+    "ff": "Yiyngo Coodgu"
+  },
+  "Priorité": {
+    "fr": "Priorité",
+    "es": "Prioridad",
+    "ar": "أولوية",
+    "zh": "优先事项",
+    "ff": "Mangu"
+  },
+  "Prioritized ops view: identity, documents, vehicle, and status-aware actions. Approval rules are unchanged.": {
+    "fr": "Vue des opérations prioritaires : identité, documents, véhicule et actions tenant compte de l'état. Les règles d'approbation restent inchangées.",
+    "es": "Vista de operaciones priorizadas: identidad, documentos, vehículo y acciones con reconocimiento de estado. Las reglas de aprobación no cambian.",
+    "ar": "عرض العمليات ذات الأولوية: الهوية والمستندات والمركبة والإجراءات المدركة للحالة. قواعد الموافقة لم تتغير.",
+    "zh": "优先操作视图：身份、文档、车辆和状态感知操作。 审批规则不变。",
+    "ff": "Yiyngo ops ɓurngo teeŋtude : anndinde, binndanɗe, oto, e golle anndinde ngonka. Kuule jaɓgol ɗee mbaylaaka."
+  },
+  "Private bucket + signed URLs. Drag-and-drop supported. Images 8MB · Audio 15MB · Video 50MB · Docs 20MB.": {
+    "fr": "Bucket privé + URL signées. Glisser-déposer pris en charge. Images 8 Mo · Audio 15 Mo · Vidéo 50 Mo · Docs 20 Mo.",
+    "es": "Depósito privado + URL firmadas. Se admite arrastrar y soltar. Imágenes 8 MB · Audio 15 MB · Vídeo 50 MB · Documentos 20 MB.",
+    "ar": "مجموعة خاصة + عناوين URL موقعة. دعم السحب والإفلات. الصور 8 ميجا بايت · الصوت 15 ميجا بايت · الفيديو 50 ميجا بايت · المستندات 20 ميجا بايت.",
+    "zh": "私有存储桶 + 签名 URL。 支持拖放。 图片 8MB · 音频 15MB · 视频 50MB · 文档 20MB。",
+    "ff": "Bucket keeriiɗo + URL-ji siynaaɗi. Drag-e-drop ina wallita. Nate 8MB · Nate 15MB · Wideyoo 50MB · Dokimaaji 20MB."
+  },
+  "Prix course (fare)": {
+    "fr": "Prix ​​cours (tarif)",
+    "es": "Curso de precio (tarifa)",
+    "ar": "دورة الجائزة (الأجرة)",
+    "zh": "奖励课程（票价）",
+    "ff": "Kursu Prix (fare)"
+  },
+  "Profil": {
+    "fr": "Profil",
+    "es": "Perfil",
+    "ar": "حساب تعريفي",
+    "zh": "轮廓",
+    "ff": "Sappinol"
+  },
+  "Programmé": {
+    "fr": "Programmé",
+    "es": "Programa",
+    "ar": "برنامج",
+    "zh": "程序",
+    "ff": "Porogaraam"
+  },
+  "Programme actif": {
+    "fr": "Programme actif",
+    "es": "programa activo",
+    "ar": "برنامج نشط",
+    "zh": "活动计划",
+    "ff": "Porogaraam golloowo"
+  },
+  "Programme unifié Delivery + Taxi — points, Crédit MMD, campagnes et parrainage.": {
+    "fr": "Programme unifié Delivery + Taxi — points, Crédit MMD, campagnes et parrainage.",
+    "es": "Programa Unified Delivery + Taxi: puntos, crédito MMD, campañas y patrocinio.",
+    "ar": "برنامج التوصيل الموحد + التاكسي — النقاط والرصيد MMD والحملات والرعاية.",
+    "zh": "统一交付 + 出租车计划 — 积分、信用 MMD、活动和赞助。",
+    "ff": "Porogaraam Ƴellitaare + Taksi — toɓɓe, Njoɓdi MMD, kampaañuuji e ballal."
+  },
+  "Promo code / Code promo": {
+    "fr": "Code promo / Code promo",
+    "es": "Código promocional / Código promocional",
+    "ar": "الرمز الترويجي / الرمز الترويجي",
+    "zh": "促销代码/促销代码",
+    "ff": "Kod promo / Kod promo"
+  },
+  "Promo ends (ISO) / Fin promo": {
+    "fr": "Fin de la promotion (ISO) / Fin de la promotion",
+    "es": "La promoción finaliza (ISO) / Fin de la promoción",
+    "ar": "ينتهي العرض الترويجي (ISO) / العرض الترويجي Fin",
+    "zh": "促销结束 (ISO)/Fin 促销",
+    "ff": "Jaagorgal ina joofi (ISO) / Jaagorgal Fin"
+  },
+  "Promo redemptions": {
+    "fr": "Échanges promotionnels",
+    "es": "Canjes de promociones",
+    "ar": "عمليات الاسترداد الترويجية",
+    "zh": "促销兑换",
+    "ff": "Promo rimɗinde"
+  },
+  "Promo starts (ISO) / D??but promo": {
+    "fr": "La promo commence (ISO) / D??mais la promo",
+    "es": "La promoción comienza (ISO) / D??pero promoción",
+    "ar": "يبدأ العرض الترويجي (ISO) / D؟؟ عرض ترويجي",
+    "zh": "促销开始 (ISO) / D??但是促销",
+    "ff": "Jaambaraagal fuɗɗotoo ko (ISO) / D??kono jaambaraagal"
+  },
+  "Promo value / Valeur promo": {
+    "fr": "Promo value / Valeur promo",
+    "es": "Valor promocional / Valor promocional",
+    "ar": "القيمة الترويجية / القيمة الترويجية",
+    "zh": "促销价值/促销价值",
+    "ff": "Nafoore Promo / Nafoore Promo"
+  },
+  "Promote": {
+    "fr": "Promouvoir",
+    "es": "Promover",
+    "ar": "يرقي",
+    "zh": "推动",
+    "ff": "Wallugo"
+  },
+  "Protected": {
+    "fr": "Protégée",
+    "es": "Protegida",
+    "ar": "محمي",
+    "zh": "受保护",
+    "ff": "Reenaama"
+  },
+  "Provider par défaut (internal, facetec, onfido…)": {
+    "fr": "Provider par défaut (internal, facetec, onfido…)",
+    "es": "Proveedor predeterminado (interno, facetec, onfido, etc.)",
+    "ar": "الموفر الافتراضي (داخلي، Facetec، Onfido، إلخ.)",
+    "zh": "默认提供商（内部、facetec、onfido 等）",
+    "ff": "Hokkuɗo (nder, facetec, onfido, ekn)"
+  },
+  "Proxy:": {
+    "fr": "Procuration:",
+    "es": "Apoderada:",
+    "ar": "الوكيل:",
+    "zh": "代理人：",
+    "ff": "Wakiiliijo:"
+  },
+  "Public base URL:": {
+    "fr": "Base publique URL :",
+    "es": "Base pública URL:",
+    "ar": "القاعدة العامة URL:",
+    "zh": "公共基地URL：",
+    "ff": "Duɗal renndo URL:"
+  },
+  "Publicités apps →": {
+    "fr": "Publicités apps →",
+    "es": "Anuncios de aplicaciones →",
+    "ar": "إعلانات التطبيقات →",
+    "zh": "应用广告 →",
+    "ff": "Jeeyngal app →"
+  },
+  "Publié (actif dans les apps)": {
+    "fr": "Publié (actif dans les apps)",
+    "es": "Publicado (activo en aplicaciones)",
+    "ar": "منشور (نشط في التطبيقات)",
+    "zh": "已发布（在应用程序中活跃）",
+    "ff": "Jaaynaama (ina golloo e apps)"
+  },
+  "Publier la campagne": {
+    "fr": "Publier la campagne",
+    "es": "Publicar la campaña",
+    "ar": "نشر الحملة",
+    "zh": "发布活动",
+    "ff": "Bayyinde kampaañ oo"
+  },
+  "Publish": {
+    "fr": "Publier",
+    "es": "Publicar",
+    "ar": "نشر",
+    "zh": "发布",
+    "ff": "Bayyin"
+  },
+  "Published": {
+    "fr": "Publié",
+    "es": "Publicada",
+    "ar": "تم النشر",
+    "zh": "已发表",
+    "ff": "Yahdaama"
+  },
+  "Question": {
+    "fr": "Question",
+    "es": "Pregunta",
+    "ar": "سؤال",
+    "zh": "问题",
+    "ff": "Demde"
+  },
+  "Queued": {
+    "fr": "En file d'attente",
+    "es": "En cola",
+    "ar": "في قائمة الانتظار",
+    "zh": "排队",
+    "ff": "Laabi"
+  },
+  "Qui a décidé, combien de temps, changements de décision": {
+    "fr": "Qui a décidé, combien de temps, changements de décision",
+    "es": "Quién decidió, en cuánto tiempo, cambios de decisión.",
+    "ar": "من قرر، إلى متى، يتغير القرار",
+    "zh": "谁决定，多长时间，决定改变",
+    "ff": "Mo felliti, hol no foti, pellital waylata"
+  },
+  "Quick actions": {
+    "fr": "Actions rapides",
+    "es": "Acciones rápidas",
+    "ar": "إجراءات سريعة",
+    "zh": "快速行动",
+    "ff": "Golle jaawɗe"
+  },
+  "Radar feu rouge": {
+    "fr": "Radar feu rouge",
+    "es": "radar de luz roja",
+    "ar": "رادار الضوء الأحمر",
+    "zh": "红光雷达",
+    "ff": "Radar fitirla boɗeewa"
+  },
+  "Radar vitesse": {
+    "fr": "Radar vitesse",
+    "es": "radar de velocidad",
+    "ar": "رادار السرعة",
+    "zh": "测速雷达",
+    "ff": "Radar njaaweeki"
+  },
+  "Rafraîchir soldes": {
+    "fr": "Rafraîchir soldes",
+    "es": "Actualizar ventas",
+    "ar": "تحديث المبيعات",
+    "zh": "刷新销量",
+    "ff": "Hesɗitin yeeyirde"
+  },
+  "Raison de l": {
+    "fr": "Raison de l",
+    "es": "Razón para",
+    "ar": "سبب ل",
+    "zh": "原因",
+    "ff": "Sabaabu ngam..."
+  },
+  "Raisons du risque": {
+    "fr": "Raisons du risque",
+    "es": "Razones del riesgo",
+    "ar": "أسباب المخاطرة",
+    "zh": "风险原因",
+    "ff": "Sabaabuuji riis"
+  },
+  "Rapprochements": {
+    "fr": "Rapprochements",
+    "es": "Conciliaciones",
+    "ar": "المصالحات",
+    "zh": "调节",
+    "ff": "Naatgol"
+  },
+  "Rate": {
+    "fr": "Taux",
+    "es": "Tasa",
+    "ar": "معدل",
+    "zh": "速度",
+    "ff": "Ceede"
+  },
+  "Raw payout records": {
+    "fr": "Enregistrements de paiements bruts",
+    "es": "Registros de pagos sin procesar",
+    "ar": "سجلات الدفع الخام",
+    "zh": "原始支付记录",
+    "ff": "Rekorde yoɓde raw"
+  },
+  "Re-open": {
+    "fr": "Rouvrir",
+    "es": "Reabrir",
+    "ar": "إعادة فتح",
+    "zh": "重新开放",
+    "ff": "Uddit kadi"
+  },
+  "React": {
+    "fr": "Réagir",
+    "es": "Reaccionar",
+    "ar": "رد فعل",
+    "zh": "反应",
+    "ff": "Jaabo"
+  },
+  "Reactivate": {
+    "fr": "Réactiver",
+    "es": "Reactivar",
+    "ar": "إعادة التنشيط",
+    "zh": "重新激活",
+    "ff": "Waɗtu"
+  },
+  "Real (default)": {
+    "fr": "Réel (par défaut)",
+    "es": "Real (predeterminada)",
+    "ar": "حقيقي (افتراضي)",
+    "zh": "真实（默认）",
+    "ff": "Goonga (ko woowaani)"
+  },
+  "Realtime indisponible — les appels sont synchronisés par sonde automatique.": {
+    "fr": "Realtime indisponible — les appels sont synchronisés par sonde automatique.",
+    "es": "Tiempo real no disponible: las llamadas se sincronizan mediante sonda automática.",
+    "ar": "الوقت الفعلي غير متاح — تتم مزامنة المكالمات بواسطة مسبار تلقائي.",
+    "zh": "实时不可用——呼叫通过自动探测同步。",
+    "ff": "Wakkati goonga heɓaaka — noddaali ina sinkronisee e sonndu otomatik."
+  },
+  "Realtime indisponible — rafraîchissement automatique toutes les 4 secondes.": {
+    "fr": "Realtime indisponible — rafraîchissement automatique toutes les 4 secondes.",
+    "es": "Tiempo real no disponible: actualización automática cada 4 segundos.",
+    "ar": "الوقت الفعلي غير متاح — التحديث التلقائي كل 4 ثوانٍ.",
+    "zh": "实时不可用 — 每 4 秒自动刷新一次。",
+    "ff": "Waktu goonga oo alaa — hesɗitin oto kala leƴƴanɗe 4."
+  },
+  "Récapitulatif de la commande (plats)": {
+    "fr": "Récapitulatif de la commande (plats)",
+    "es": "Resumen del pedido (platos)",
+    "ar": "ملخص الطلب (الأطباق)",
+    "zh": "订单汇总（菜品）",
+    "ff": "Ciimtol yamiroore (dishes)"
+  },
+  "Receive a login link by email. Staff accounts must already exist.": {
+    "fr": "Recevez un lien de connexion par email. Les comptes du personnel doivent déjà exister.",
+    "es": "Reciba un enlace de inicio de sesión por correo electrónico. Las cuentas del personal ya deben existir.",
+    "ar": "تلقي رابط تسجيل الدخول عن طريق البريد الإلكتروني. يجب أن تكون حسابات الموظفين موجودة بالفعل.",
+    "zh": "通过电子邮件接收登录链接。 员工帐户必须已存在。",
+    "ff": "Jaɓ jokkorde naatgol e iimeel. Konte gollotooɓe ina poti woodde tawo."
+  },
+  "Recent spend events": {
+    "fr": "Événements de dépenses récents",
+    "es": "Eventos de gasto recientes",
+    "ar": "أحداث الإنفاق الأخيرة",
+    "zh": "最近的支出事件",
+    "ff": "Kewuuji spend cakkitiiɗi"
+  },
+  "Recherche pays": {
+    "fr": "Recherche pays",
+    "es": "búsqueda de país",
+    "ar": "بحث البلد",
+    "zh": "国家搜索",
+    "ff": "Njiylawu leydi"
+  },
+  "Rechercher": {
+    "fr": "Rechercher",
+    "es": "investigar",
+    "ar": "للبحث",
+    "zh": "去研究",
+    "ff": "Ngam wiɗtude"
+  },
+  "Rechercher chauffeur, ville, ID…": {
+    "fr": "Rechercher chauffeur, ville, ID…",
+    "es": "Buscar conductor, ciudad, ID…",
+    "ar": "البحث عن السائق، المدينة، ID...",
+    "zh": "搜索司机、城市、ID...",
+    "ff": "Yiylo sofereeɓe, wuro, ID..."
+  },
+  "Rechercher client (user_id)": {
+    "fr": "Rechercher client (user_id)",
+    "es": "Buscar cliente (user_id)",
+    "ar": "البحث عن العميل (user_id)",
+    "zh": "搜索客户 (user_id)",
+    "ff": "Yiylo soodoowo (id kuutortooɗo)"
+  },
+  "Rechercher nom / téléphone…": {
+    "fr": "Rechercher nom / téléphone…",
+    "es": "Buscar nombre/teléfono…",
+    "ar": "البحث عن الاسم/الهاتف...",
+    "zh": "搜索姓名/电话...",
+    "ff": "Innde/telefoŋ njiylawu..."
+  },
+  "Rechercher nom ou plaque": {
+    "fr": "Rechercher nom ou plaque",
+    "es": "Buscar nombre o placa",
+    "ar": "البحث بالاسم أو اللوحة",
+    "zh": "搜索名称或车牌",
+    "ff": "Yiylo innde walla lefol"
+  },
+  "Rechercher par commande, nom, email, message...": {
+    "fr": "Rechercher par commande, nom, email, message...",
+    "es": "Busca por pedido, nombre, email, mensaje...",
+    "ar": "البحث حسب الطلب، الاسم، البريد الإلكتروني، الرسالة...",
+    "zh": "按订单、姓名、电子邮件、消息搜索...",
+    "ff": "Yiylo e yamiroore, innde, iimeel, mesaas..."
+  },
+  "Rechercher par téléphone, commande, rôle, SID Twilio...": {
+    "fr": "Rechercher par téléphone, commande, rôle, SID Twilio...",
+    "es": "Buscar por teléfono, pedido, rol, SID Twilio...",
+    "ar": "البحث عن طريق الهاتف، الطلب، الدور، SID Twilio...",
+    "zh": "按电话、订单、角色、SID Twilio 搜索...",
+    "ff": "Yiylo e telefoŋ, yamiroore, darnde, SID Twilio..."
+  },
+  "Rechercher un destinataire (email, nom ou téléphone)": {
+    "fr": "Rechercher un destinataire (email, nom ou téléphone)",
+    "es": "Buscar un destinatario (correo electrónico, nombre o teléfono)",
+    "ar": "البحث عن مستلم (البريد الإلكتروني أو الاسم أو الهاتف)",
+    "zh": "搜索收件人（电子邮件、姓名或电话）",
+    "ff": "Yiylo keɓoowo (imeel, innde walla telefoŋ)"
+  },
+  "Recipient": {
+    "fr": "Destinataire",
+    "es": "Beneficiaria",
+    "ar": "متلقي",
+    "zh": "接受者",
+    "ff": "Jaɓɓoowo"
+  },
+  "Reconnaissance du revenu : cron": {
+    "fr": "Reconnaissance du revenu : cron",
+    "es": "Reconocimiento de ingresos: cron",
+    "ar": "الاعتراف بالإيرادات: كرون",
+    "zh": "收入确认：cron",
+    "ff": "Anndinde ngalu: cron"
+  },
+  "Redirecting to Administrators…": {
+    "fr": "Redirection vers les administrateurs…",
+    "es": "Redirigir a las administradoras ...",
+    "ar": "إعادة التوجيه إلى المسؤولين...",
+    "zh": "正在重定向至管理员...",
+    "ff": "Rewtin'de to njuɓɓudi..."
+  },
+  "Refresh (s)": {
+    "fr": "Actualiser(s)",
+    "es": "Actualizar(es)",
+    "ar": "تحديث (ق)",
+    "zh": "刷新",
+    "ff": "Hesɗitin (s)"
+  },
+  "Refresh now": {
+    "fr": "Actualiser maintenant",
+    "es": "Actualizar ahora",
+    "ar": "قم بالتحديث الآن",
+    "zh": "立即刷新",
+    "ff": "Hesɗitin jooni"
+  },
+  "Refund (detail)": {
+    "fr": "Remboursement (détail)",
+    "es": "Reembolso (detalle)",
+    "ar": "استرداد (التفاصيل)",
+    "zh": "退款（详情）",
+    "ff": "Yoɓde (detaay)"
+  },
+  "Refund: ${String(ride.refund_status)}": {
+    "fr": "Remboursement : ${String(ride.refund_status)}",
+    "es": "Reembolso: ${String(ride.refund_status)}",
+    "ar": "رد الأموال: ${String(ride.refund_status)}",
+    "zh": "退款：${String(ride.refund_status)}",
+    "ff": "Yoɓde: ${String(ride.refund_status)}"
+  },
+  "Refunded": {
+    "fr": "Remboursé",
+    "es": "Reintegrada",
+    "ar": "ردها",
+    "zh": "已退款",
+    "ff": "Yoɓaama"
+  },
+  "Refusés": {
+    "fr": "Refusés",
+    "es": "Rechazado",
+    "ar": "رفض",
+    "zh": "拒绝",
+    "ff": "Salli no"
+  },
+  "Regional rollout, taxi ops monitoring, platform launch, and MMD AI controls.": {
+    "fr": "Déploiement régional, surveillance des opérations de taxi, lancement de la plateforme et contrôles MMD AI.",
+    "es": "Despliegue regional, monitoreo de operaciones de taxi, lanzamiento de plataforma y controles MMD AI.",
+    "ar": "الطرح الإقليمي، ومراقبة عمليات سيارات الأجرة، وإطلاق النظام الأساسي، وعناصر تحكم MMD AI.",
+    "zh": "区域部署、出租车运营监控、平台启动和 MMD AI 控制。",
+    "ff": "Jaltugol diiwaan, ƴeewndo ops taksiiji, udditgol laylaytol, e MMD AI jokkondire."
+  },
+  "Règle": {
+    "fr": "Règle",
+    "es": "Gobernante",
+    "ar": "حاكم",
+    "zh": "统治者",
+    "ff": "Arduɗo"
+  },
+  "Règles dispatch": {
+    "fr": "Règles dispatch",
+    "es": "Reglas de envío",
+    "ar": "قواعد الإرسال",
+    "zh": "调度规则",
+    "ff": "Kuule neldugol"
+  },
+  "Reject": {
+    "fr": "Rejeter",
+    "es": "Rechazar",
+    "ar": "يرفض",
+    "zh": "拒绝",
+    "ff": "Accugo"
+  },
+  "Rejections": {
+    "fr": "Rejets",
+    "es": "Rechazos",
+    "ar": "الرفض",
+    "zh": "拒绝",
+    "ff": "Jaɓde"
+  },
+  "Relancer dispatch": {
+    "fr": "Relancer dispatch",
+    "es": "Reiniciar despacho",
+    "ar": "إعادة تشغيل الإرسال",
+    "zh": "重启调度",
+    "ff": "Fuɗɗoo neldude"
+  },
+  "Release Admin Stop": {
+    "fr": "Libérer l'arrêt de l'administrateur",
+    "es": "Liberar parada de administrador",
+    "ar": "الافراج عن توقف المسؤول",
+    "zh": "发布管理停止",
+    "ff": "Woppu Admin Jokkude"
+  },
+  "Remises": {
+    "fr": "Remises",
+    "es": "Descuentos",
+    "ar": "خصومات",
+    "zh": "折扣",
+    "ff": "Teskuyaaji"
+  },
+  "Remove this administrator from staff?": {
+    "fr": "Supprimer cet administrateur du personnel ?",
+    "es": "¿Eliminar esta administradora del personal?",
+    "ar": "هل ترغب في إزالة هذا المسؤول من فريق العمل؟",
+    "zh": "将此管理员从员工中删除吗？",
+    "ff": "Ittu oo gardiiɗo e gollotooɓe?"
+  },
+  "Remplacer l&apos;image": {
+    "fr": "Remplacer l&apos;image",
+    "es": "Reemplazar imagen",
+    "ar": "استبدال الصورة",
+    "zh": "替换图片",
+    "ff": "Lomto natal ngal"
+  },
+  "Rémunération chauffeur (persistée)": {
+    "fr": "Rémunération chauffeur (persistée)",
+    "es": "Remuneración del conductor (persistente)",
+    "ar": "مكافأة السائق (المستمرة)",
+    "zh": "司机薪酬（持续）",
+    "ff": "Njoɓdi sofereeɓe (jokkondiral)"
+  },
+  "Rename": {
+    "fr": "Rebaptiser",
+    "es": "Rebautizar",
+    "ar": "إعادة تسمية",
+    "zh": "重命名",
+    "ff": "Waylu innde"
+  },
+  "Répartition (subtotal course)": {
+    "fr": "Répartition (subtotal course)",
+    "es": "Distribución (subtotal carrera)",
+    "ar": "التوزيع (السباق الإجمالي الفرعي)",
+    "zh": "分布（种族小计）",
+    "ff": "Feccere (leñol tokosol)"
+  },
+  "Répartition persistée des frais de livraison": {
+    "fr": "Répartition persistée des frais de livraison",
+    "es": "Distribución persistente de los costos de entrega.",
+    "ar": "استمرار توزيع تكاليف التسليم",
+    "zh": "持续分配配送成本",
+    "ff": "Feccere duumiinde e njoɓdi jokkondire"
+  },
+  "Replace": {
+    "fr": "Remplacer",
+    "es": "Reemplazar",
+    "ar": "يستبدل",
+    "zh": "代替",
+    "ff": "Saanjugo"
+  },
+  "Reply": {
+    "fr": "Répondre",
+    "es": "Responder",
+    "ar": "رد",
+    "zh": "回复",
+    "ff": "Jabbuye"
+  },
+  "Réponse:": {
+    "fr": "Réponse:",
+    "es": "Respuesta:",
+    "ar": "إجابة:",
+    "zh": "回答：",
+    "ff": "Jabbuye:"
+  },
+  "Reprendre": {
+    "fr": "Reprendre",
+    "es": "para reanudar",
+    "ar": "لاستئناف",
+    "zh": "恢复",
+    "ff": "Ngam fuɗɗaade"
+  },
+  "Resend invite": {
+    "fr": "Renvoyer l'invitation",
+    "es": "Reenviar invitación",
+    "ar": "إعادة إرسال الدعوة",
+    "zh": "重新发送邀请",
+    "ff": "Neldu noddaango"
+  },
+  "Réservations, cashback → Crédit MMD, bonus chauffeurs, pont taxi legacy.": {
+    "fr": "Réservations, cashback → Crédit MMD, bonus chauffeurs, pont taxi legacy.",
+    "es": "Reservas, reembolso → Crédito MMD, bonificación de conductor, puente de taxi heredado.",
+    "ar": "الحجوزات، استرداد النقود → رصيد MMD، مكافأة السائق، جسر التاكسي القديم.",
+    "zh": "预订、现金返还 → 积分 MMD、司机奖金、传统出租车桥。",
+    "ff": "Reservations, ceede → Njaru MMD, bonus sofereeɓe, ponto taksi legacy."
+  },
+  "Résilier": {
+    "fr": "Résilier",
+    "es": "Terminar",
+    "ar": "إنهاء",
+    "zh": "终止",
+    "ff": "Joofnu"
+  },
+  "Resolve": {
+    "fr": "Résoudre",
+    "es": "Resolver",
+    "ar": "حل",
+    "zh": "解决",
+    "ff": "Tawugo dabare"
+  },
+  "Restaurant (restaurant_id)": {
+    "fr": "Restaurant (restaurant_id)",
+    "es": "Restaurante (restaurant_id)",
+    "ar": "مطعم (restaurant_id)",
+    "zh": "餐厅 (restaurant_id)",
+    "ff": "Restoran (id_restoraan)"
+  },
+  "Restaurant %": {
+    "fr": "Restaurant %",
+    "es": "Restaurante %",
+    "ar": "مطعم ٪",
+    "zh": "餐厅 ％",
+    "ff": "Suudu nyamde %"
+  },
+  "Restaurant A → Z": {
+    "fr": "Restaurant A → Z",
+    "es": "Restaurante A → Z",
+    "ar": "مطعم أ → ي",
+    "zh": "餐厅 A → Z",
+    "ff": "Restoran A → Z"
+  },
+  "Restaurant commission amount": {
+    "fr": "Montant de la commission du restaurant",
+    "es": "Monto de la comisión del restaurante",
+    "ar": "مبلغ عمولة المطعم",
+    "zh": "餐厅佣金金额",
+    "ff": "Njoɓdi komisoŋ restoraan"
+  },
+  "Restaurant commission rate": {
+    "fr": "Taux de commission des restaurants",
+    "es": "Tasa de comisión del restaurante",
+    "ar": "معدل عمولة المطعم",
+    "zh": "餐厅佣金率",
+    "ff": "Toɓɓere komisoŋ restoraan"
+  },
+  "Restaurant ID": {
+    "fr": "Restaurant ID",
+    "es": "Restaurante ID",
+    "ar": "مطعم ID",
+    "zh": "餐厅ID",
+    "ff": "Suudu nyaamdu ID"
+  },
+  "Restaurant last error:": {
+    "fr": "Dernière erreur du restaurant :",
+    "es": "Último error del restaurante:",
+    "ar": "الخطأ الأخير في المطعم:",
+    "zh": "餐厅上次错误：",
+    "ff": "Juumre sakkitiinde e restoraa:"
+  },
+  "Restaurant net amount": {
+    "fr": "Montant net du restaurant",
+    "es": "Importe neto del restaurante",
+    "ar": "المبلغ الصافي للمطعم",
+    "zh": "餐厅净额",
+    "ff": "Restoran net limre"
+  },
+  "Restaurant paid out": {
+    "fr": "Restaurant payé",
+    "es": "Restaurante pagado",
+    "ar": "المطعم مدفوع",
+    "zh": "餐厅已付款",
+    "ff": "Restoran yoɓaama"
+  },
+  "Restaurant target": {
+    "fr": "Cible du restaurant",
+    "es": "Objetivo del restaurante",
+    "ar": "هدف المطعم",
+    "zh": "餐厅目标",
+    "ff": "Target restoraa"
+  },
+  "Restaurant transfer": {
+    "fr": "Transfert restaurant",
+    "es": "Traslado restaurante",
+    "ar": "نقل المطعم",
+    "zh": "餐厅接送",
+    "ff": "Jaltugol restoraan"
+  },
+  "Restaurant transfer and payout metadata": {
+    "fr": "Métadonnées de transfert et de paiement du restaurant",
+    "es": "Metadatos de transferencia y pago de restaurantes",
+    "ar": "نقل المطعم والبيانات الوصفية للدفع",
+    "zh": "餐厅转账和付款元数据",
+    "ff": "Metadataaji jolngo e yoɓde restoraan"
+  },
+  "Restaurant Z → A": {
+    "fr": "Restaurant Z → A",
+    "es": "Restaurante Z → A",
+    "ar": "مطعم Z → أ",
+    "zh": "餐厅 Z → A",
+    "ff": "Restoran Z → A"
+  },
+  "Restaurants": {
+    "fr": "Restaurants",
+    "es": "Restaurantes",
+    "ar": "مطاعم",
+    "zh": "餐厅",
+    "ff": "Restoranuuji"
+  },
+  "Restaurer cette version du pricing ?": {
+    "fr": "Restaurer cette version du pricing ?",
+    "es": "¿Restaurar esta versión de precios?",
+    "ar": "هل تريد استعادة هذا الإصدار من التسعير؟",
+    "zh": "恢复这个版本的定价吗？",
+    "ff": "Wartir ndee mbaydi coggu?"
+  },
+  "Resume": {
+    "fr": "CV",
+    "es": "Reanudar",
+    "ar": "سيرة ذاتية",
+    "zh": "恢复",
+    "ff": "Fudditugo"
+  },
+  "Résumé": {
+    "fr": "CV",
+    "es": "Reanudar",
+    "ar": "سيرة ذاتية",
+    "zh": "恢复",
+    "ff": "Fudditugo"
+  },
+  "Résumé financier MMD (par commande)": {
+    "fr": "Résumé financier MMD (par commande)",
+    "es": "Resumen financiero MMD (por pedido)",
+    "ar": "الملخص المالي MMD (لكل طلب)",
+    "zh": "财务摘要 MMD（每个订单）",
+    "ff": "Ciimtol kaalis MMD (e kala yamiroore)"
+  },
+  "Revenu MMD (share + SF)": {
+    "fr": "Revenu MMD (part + SF)",
+    "es": "Ingresos MMD (participación + SF)",
+    "ar": "الإيرادات MMD (مشاركة + SF)",
+    "zh": "收入 MMD（份额 + SF）",
+    "ff": "Njoɓdi MMD (feccere + SF)"
+  },
+  "Revenue": {
+    "fr": "Revenu",
+    "es": "Ganancia",
+    "ar": "ربح",
+    "zh": "收入",
+    "ff": "Geedal"
+  },
+  "Review note": {
+    "fr": "Note de révision",
+    "es": "Nota de revisión",
+    "ar": "ملاحظة المراجعة",
+    "zh": "复习笔记",
+    "ff": "Teskorde ƴeewndo"
+  },
+  "Review retry requests, rejections, successes and failures across restaurant and driver payout actions.": {
+    "fr": "Examinez les demandes de nouvelle tentative, les rejets, les réussites et les échecs des actions de paiement des restaurants et des chauffeurs.",
+    "es": "Revise las solicitudes de reintento, los rechazos, los éxitos y los fracasos en las acciones de pago de restaurantes y conductores.",
+    "ar": "قم بمراجعة طلبات إعادة المحاولة والرفض والنجاحات والإخفاقات عبر إجراءات دفع تعويضات المطاعم والسائقين.",
+    "zh": "查看餐厅和司机付款操作的重试请求、拒绝、成功和失败。",
+    "ff": "Ƴeewto ɗaɓɓaande ƴeewndo, jaɓgol, nafooje e caɗeele e nder golle yoɓde restoraaji e sofereeɓe."
+  },
+  "Review seller onboarding applications. Separate from restaurant profiles.": {
+    "fr": "Examinez les demandes d’intégration des vendeurs. Séparé des profils de restaurant.",
+    "es": "Revisar las solicitudes de incorporación de vendedores. Separado de los perfiles de restaurantes.",
+    "ar": "مراجعة طلبات تأهيل البائع. منفصلة عن الملفات الشخصية للمطعم.",
+    "zh": "审核卖家入职申请。 与餐厅简介分开。",
+    "ff": "Yiylo ɗaɓɓaaɗe onboarding yeeyoowo. Seerndude e porofaayiiluuji restoraaji."
+  },
+  "Revue manuelle": {
+    "fr": "Revue manuelle",
+    "es": "revisión manual",
+    "ar": "مراجعة يدوية",
+    "zh": "人工审核",
+    "ff": "Ƴeewndo junngo"
+  },
+  "Revue manuelle, selfies, historique et audit — interface ops premium pour une décision rapide et traçable.": {
+    "fr": "Revue manuelle, selfies, historique et audit — interface ops premium pour une décision rapide et traçable.",
+    "es": "Revisión manual, selfies, historial y auditoría: interfaz de operaciones premium para decisiones rápidas y rastreables.",
+    "ar": "المراجعة اليدوية والصور الشخصية والتاريخ والتدقيق - واجهة العمليات المتميزة لاتخاذ قرار سريع ويمكن تتبعه.",
+    "zh": "手动审查、自拍、历史记录和审计——高级操作界面，可实现快速且可追踪的决策。",
+    "ff": "Ƴeewndo junngo, selfiiji, daartol e ƴeewndo — jokkorde ops premium ngam hujjaaji yaawɗi e rewindaade."
+  },
+  "Ride #, client, driver, phone, email, plate, address…": {
+    "fr": "N° de trajet, client, chauffeur, téléphone, email, plaque, adresse…",
+    "es": "Nº de viaje, cliente, conductor, teléfono, email, matrícula, dirección…",
+    "ar": "رقم الرحلة، العميل، السائق، الهاتف، البريد الإلكتروني، اللوحة، العنوان...",
+    "zh": "行程编号、客户、司机、电话、电子邮件、车牌、地址……",
+    "ff": "Ride #, kiliyanke, sofereeɓe, telefoŋ, iimeel, plaque, adres..."
+  },
+  "Ride progress": {
+    "fr": "Progression du trajet",
+    "es": "Progreso del viaje",
+    "ar": "تقدم الركوب",
+    "zh": "骑行进度",
+    "ff": "Ride yahrude yeeso"
+  },
+  "Ride Safety Recordings": {
+    "fr": "Enregistrements de sécurité de conduite",
+    "es": "Grabaciones de seguridad en el viaje",
+    "ar": "تسجيلات سلامة الركوب",
+    "zh": "乘坐安全记录",
+    "ff": "Winndannde kisal Ride"
+  },
+  "Rides": {
+    "fr": "Manèges",
+    "es": "paseos",
+    "ar": "ركوب الخيل",
+    "zh": "游乐设施",
+    "ff": "Waɗde"
+  },
+  "Road Safety": {
+    "fr": "Sécurité routière",
+    "es": "Seguridad Vial",
+    "ar": "السلامة على الطرق",
+    "zh": "道路安全",
+    "ff": "Kisal laawol"
+  },
+  "Rollback": {
+    "fr": "Restauration",
+    "es": "Revertir",
+    "ar": "التراجع",
+    "zh": "回滚",
+    "ff": "Rolde caggal"
+  },
+  "Route": {
+    "fr": "Itinéraire",
+    "es": "Ruta",
+    "ar": "طريق",
+    "zh": "路线",
+    "ff": "Lawol"
+  },
+  "Rows returned": {
+    "fr": "Lignes renvoyées",
+    "es": "Filas devueltas",
+    "ar": "عادت الصفوف",
+    "zh": "返回的行数",
+    "ff": "Rowreeji ngartii"
+  },
+  "Sales tax / TVA": {
+    "fr": "Taxe de vente / TVA",
+    "es": "Impuesto sobre las ventas / TVA",
+    "ar": "ضريبة المبيعات / TVA",
+    "zh": "销售税 / TVA",
+    "ff": "Taƴre yeeyirde / TVA"
+  },
+  "Santé système, KPI business, alertes opérationnelles.": {
+    "fr": "Santé système, KPI business, alertes opérationnelles.",
+    "es": "Estado del sistema, KPI negocio, alertas operativas.",
+    "ar": "صحة النظام، KPI الأعمال، التنبيهات التشغيلية.",
+    "zh": "系统运行状况、KPI 业务、操作警报。",
+    "ff": "Cellal njuɓɓudi, KPI njulaagu, jeertinaango golle."
+  },
+  "Sauver brouillon": {
+    "fr": "Sauver brouillon",
+    "es": "Guardar borrador",
+    "ar": "حفظ المسودة",
+    "zh": "保存草稿",
+    "ff": "Hisnu eɓɓoore ndee"
+  },
+  "Sauver cartes": {
+    "fr": "Sauver cartes",
+    "es": "guardar tarjetas",
+    "ar": "حفظ البطاقات",
+    "zh": "保存卡片",
+    "ff": "Hisnude kaayitaaji"
+  },
+  "Save note": {
+    "fr": "Enregistrer la note",
+    "es": "guardar nota",
+    "ar": "حفظ الملاحظة",
+    "zh": "保存备注",
+    "ff": "Hisnu teskorde"
+  },
+  "Save payload": {
+    "fr": "Enregistrer la charge utile",
+    "es": "Guardar carga útil",
+    "ar": "حفظ الحمولة",
+    "zh": "保存有效负载",
+    "ff": "Hisnu payndaale"
+  },
+  "SAVE10": {
+    "fr": "SAVE10",
+    "es": "SAVE10",
+    "ar": "SAVE10",
+    "zh": "SAVE10",
+    "ff": "SAVE10"
+  },
+  "Schedule": {
+    "fr": "Calendrier",
+    "es": "Cronograma",
+    "ar": "جدول",
+    "zh": "日程",
+    "ff": "Jaahargal"
+  },
+  "Schedule meeting": {
+    "fr": "Planifier une réunion",
+    "es": "Programar reunión",
+    "ar": "جدولة الاجتماع",
+    "zh": "安排会议",
+    "ff": "Jadwal batu"
+  },
+  "Scheduled": {
+    "fr": "Programmé",
+    "es": "Programada",
+    "ar": "المقرر",
+    "zh": "预定",
+    "ff": "Jaɓɓaama"
+  },
+  "Score de confiance": {
+    "fr": "Score de confiance",
+    "es": "Puntuación de confianza",
+    "ar": "نقاط الثقة",
+    "zh": "信任分数",
+    "ff": "Njoɓdi Hoolaare"
+  },
+  "Search by action, target, target ID, admin ID, metadata...": {
+    "fr": "Recherche par action, cible, cible ID, admin ID, métadonnées...",
+    "es": "Buscar por acción, objetivo, objetivo ID, administrador ID, metadatos...",
+    "ar": "البحث حسب الإجراء، الهدف، الهدف ID، المشرف ID، البيانات الوصفية...",
+    "zh": "按操作、目标、目标 ID、管理 ID、元数据搜索...",
+    "ff": "Njiylawu e golle, paandaale, paandaale ID, gardiiɗo ID, dokke..."
+  },
+  "Search by order ID, restaurant, transfer ID, title, description or review note...": {
+    "fr": "Recherche par commande ID, restaurant, transfert ID, titre, description ou note d'avis...",
+    "es": "Busca por pedido ID, restaurante, traslado ID, título, descripción o nota de reseña...",
+    "ar": "البحث حسب الطلب ID، المطعم، النقل ID، العنوان، الوصف أو ملاحظة المراجعة...",
+    "zh": "按订单 ID、餐厅、接送服务 ID、标题、描述或评论说明搜索...",
+    "ff": "Yiylo e yamiroore ID, restoraan, jolngo ID, tiitoonde, sifaa walla teskorde ƴeewndo..."
+  },
+  "Search by order_id, target, status, actor, action or message...": {
+    "fr": "Recherchez par order_id, cible, statut, acteur, action ou message...",
+    "es": "Busque por order_id, objetivo, estado, actor, acción o mensaje...",
+    "ar": "البحث حسب order_id أو الهدف أو الحالة أو الممثل أو الإجراء أو الرسالة...",
+    "zh": "按 order_id、目标、状态、参与者、操作或消息搜索...",
+    "ff": "Yiylo e dow yamiroore_id, paandaale, ngonka, golloowo, gollal walla mesaas..."
+  },
+  "Search by order, restaurant, or transfer ID.": {
+    "fr": "Recherchez par commande, restaurant ou transfert ID.",
+    "es": "Busca por pedido, restaurante o transferencia ID.",
+    "ar": "البحث حسب الطلب أو المطعم أو النقل ID.",
+    "zh": "按订单、餐厅或接送服务ID 进行搜索。",
+    "ff": "Yiylo e yamiroore, restoraa, walla jolngo ID."
+  },
+  "Search country…": {
+    "fr": "Rechercher un pays…",
+    "es": "Buscar país…",
+    "ar": "بحث عن الدولة...",
+    "zh": "搜索国家...",
+    "ff": "Yiylo leydi..."
+  },
+  "Search labels…": {
+    "fr": "Rechercher des étiquettes…",
+    "es": "Buscar etiquetas…",
+    "ar": "تسميات البحث...",
+    "zh": "搜索标签...",
+    "ff": "Yiylo leppi..."
+  },
+  "Search name, email, phone": {
+    "fr": "Rechercher le nom, l'e-mail, le téléphone",
+    "es": "Buscar nombre, correo electrónico, teléfono",
+    "ar": "البحث عن الاسم والبريد الإلكتروني والهاتف",
+    "zh": "搜索姓名、电子邮件、电话",
+    "ff": "Innde njiylawu, imeel, telefoŋ"
+  },
+  "Search, filter, sort, export and inspect payout health order by order.": {
+    "fr": "Recherchez, filtrez, triez, exportez et inspectez l’état des paiements ordre par ordre.",
+    "es": "Busque, filtre, clasifique, exporte e inspeccione el estado de los pagos orden por orden.",
+    "ar": "بحث وتصفية وفرز وتصدير وفحص أمر صحة الدفع حسب الطلب.",
+    "zh": "按订单搜索、过滤、排序、导出和检查支付健康状况。",
+    "ff": "Yiylo, filto, renndinde, yaltin e ƴeewtaade yoɓde cellal yamiroore e yamiroore."
+  },
+  "Searching Driver": {
+    "fr": "Recherche de pilote",
+    "es": "Buscando controlador",
+    "ar": "سائق البحث",
+    "zh": "寻找司机",
+    "ff": "Yiylaade Sofer"
+  },
+  "Segments": {
+    "fr": "Segments",
+    "es": "Segmentos",
+    "ar": "شرائح",
+    "zh": "段",
+    "ff": "Taƴe"
+  },
+  "Sélectionnez une vérification": {
+    "fr": "Sélectionnez une vérification",
+    "es": "Seleccione un cheque",
+    "ar": "حدد الشيك",
+    "zh": "选择支票",
+    "ff": "Suɓo ƴeewndo"
+  },
+  "Selfie de vérification vs photo identité / KYC": {
+    "fr": "Selfie de vérification vs photo identité / KYC",
+    "es": "Verificación de selfie versus identificación con foto / KYC",
+    "ar": "التحقق من الصورة الذاتية مقابل معرف الصورة / KYC",
+    "zh": "自拍验证与照片 ID / KYC",
+    "ff": "Hoolkiso selfi e ID foto / KYC"
+  },
+  "Seller payouts": {
+    "fr": "Paiements du vendeur",
+    "es": "Pagos de la vendedora",
+    "ar": "مدفوعات البائع",
+    "zh": "卖家付款",
+    "ff": "Yoɓde yeeyoowo"
+  },
+  "Send login link": {
+    "fr": "Envoyer le lien de connexion",
+    "es": "Enviar enlace de inicio de sesión",
+    "ar": "إرسال رابط تسجيل الدخول",
+    "zh": "发送登录链接",
+    "ff": "Neldu jokkorde naatgol"
+  },
+  "Send voice": {
+    "fr": "Envoyer la voix",
+    "es": "enviar voz",
+    "ar": "إرسال صوت",
+    "zh": "发送语音",
+    "ff": "Neldu daande"
+  },
+  "Sens": {
+    "fr": "Sens",
+    "es": "sentidos",
+    "ar": "سينس",
+    "zh": "桑斯",
+    "ff": "Sens"
+  },
+  "Service fee": {
+    "fr": "Frais de service",
+    "es": "Tarifa de servicio",
+    "ar": "رسوم الخدمة",
+    "zh": "服务费",
+    "ff": "Njoɓdi sarwiis"
+  },
+  "Service Fee": {
+    "fr": "Frais de service",
+    "es": "Tarifa de servicio",
+    "ar": "رسوم الخدمة",
+    "zh": "服务费",
+    "ff": "Feere gollal"
+  },
+  "Service fee %": {
+    "fr": "Frais de service %",
+    "es": "% de tarifa de servicio",
+    "ar": "رسوم الخدمة %",
+    "zh": "服务费%",
+    "ff": "Njoɓdi gollal %"
+  },
+  "Service fee % / Frais de service %": {
+    "fr": "Service fee % / Frais de service %",
+    "es": "Tarifa de servicio % / Tarifas de servicio %",
+    "ar": "رسوم الخدمة % / رسوم الخدمة %",
+    "zh": "服务费% / 服务费%",
+    "ff": "Njoɓdi gollal % / Njoɓdi gollal %"
+  },
+  "Session": {
+    "fr": "Session",
+    "es": "Sesión",
+    "ar": "حصة",
+    "zh": "会议",
+    "ff": "Mofturde"
+  },
+  "Seuil 200 m": {
+    "fr": "Seuil 200 m",
+    "es": "Umbral 200 m",
+    "ar": "عتبة 200 م",
+    "zh": "门槛 200 m",
+    "ff": "Damal 200 m"
+  },
+  "Seuil 500 m": {
+    "fr": "Seuil 500 m",
+    "es": "Umbral 500 m",
+    "ar": "عتبة 500 م",
+    "zh": "门槛 500 m",
+    "ff": "Damal 500 m"
+  },
+  "Seuil revue manuelle (score risque)": {
+    "fr": "Seuil revue manuelle (score risque)",
+    "es": "Umbral de revisión manual (puntuación de riesgo)",
+    "ar": "عتبة المراجعة اليدوية (درجة المخاطر)",
+    "zh": "人工审核阈值（风险评分）",
+    "ff": "Damal ƴeewndo junngo (toɓɓe riis)"
+  },
+  "Shared discount": {
+    "fr": "Remise partagée",
+    "es": "Descuento compartido",
+    "ar": "خصم مشترك",
+    "zh": "共享折扣",
+    "ff": "Diskon renndinaaɗo"
+  },
+  "Shared rides": {
+    "fr": "Promenades partagées",
+    "es": "Paseos compartidos",
+    "ar": "الرحلات المشتركة",
+    "zh": "共享游乐设施",
+    "ff": "Rideeji renndini"
+  },
+  "Siège enfant": {
+    "fr": "Siège enfant",
+    "es": "Asiento para niños",
+    "ar": "مقعد الطفل",
+    "zh": "儿童座椅",
+    "ff": "Joɗnde cukalel"
+  },
+  "Signup date": {
+    "fr": "Date d'inscription",
+    "es": "Fecha de registro",
+    "ar": "تاريخ الاشتراك",
+    "zh": "报名日期",
+    "ff": "Ñalngu winnditaade"
+  },
+  "Simulate delivered": {
+    "fr": "Simuler livré",
+    "es": "Simular entregado",
+    "ar": "محاكاة تسليمها",
+    "zh": "模拟交付",
+    "ff": "Simulaasiyoŋ yettinaama"
+  },
+  "Simulate delivered job → driver payout": {
+    "fr": "Simuler le travail livré → paiement du conducteur",
+    "es": "Simular trabajo entregado → pago al conductor",
+    "ar": "محاكاة المهمة المسلمة → دفع تعويضات السائق",
+    "zh": "模拟交付的工作 → 司机付款",
+    "ff": "Simulate golle yettinaaɗe → yoɓde sofereeɓe"
+  },
+  "Site settings": {
+    "fr": "Paramètres du site",
+    "es": "Configuración del sitio",
+    "ar": "إعدادات الموقع",
+    "zh": "站点设置",
+    "ff": "Cuɓe lowre ndee"
+  },
+  "Site web :": {
+    "fr": "Site internet :",
+    "es": "Sitio web:",
+    "ar": "موقع الويب:",
+    "zh": "网站网址：",
+    "ff": "Lowre web :"
+  },
+  "Snapshot commande (montants historiques)": {
+    "fr": "Snapshot commande (montants historiques)",
+    "es": "Instantánea del pedido (cantidades históricas)",
+    "ar": "لقطة الطلب (الكميات التاريخية)",
+    "zh": "订单快照（历史金额）",
+    "ff": "Foto yamiroore (limre daartol)"
+  },
+  "Snapshots historiques par commande, contrats, overrides, et aperçu des taux actuels (preview uniquement).": {
+    "fr": "Snapshots historiques par commande, contrats, overrides, et aperçu des taux actuels (preview uniquement).",
+    "es": "Instantáneas históricas por orden, contratos, anulaciones y descripción general de las tarifas actuales (solo vista previa).",
+    "ar": "لقطات تاريخية حسب الطلب والعقود والتجاوزات ونظرة عامة على الأسعار الحالية (معاينة فقط).",
+    "zh": "按订单、合同、覆盖和当前汇率概述（仅限预览）的历史快照。",
+    "ff": "Nate daartol e yamiroore, nanondiral, ƴeewndo, e ƴeewndo tolnooji jooni ɗii (yiyngo tan)."
+  },
+  "Something went wrong": {
+    "fr": "Quelque chose s'est mal passé",
+    "es": "algo salió mal",
+    "ar": "حدث خطأ ما",
+    "zh": "出了点问题",
+    "ff": "Won ko ŋakki"
+  },
+  "Somme ≤ 100%. Appliqué au subtotal (hors tax &amp; service fee) par": {
+    "fr": "Somme ≤ 100%. Appliqué au sous-total (hors taxe &amp; service fee) par",
+    "es": "Algunos ≤ 100%. Apliques en el subtotal (impuestos fuera de la tarifa y cargo por servicio) par",
+    "ar": "السوم ≥ 100%. تطبيق على المجموع الفرعي (ضريبة الحصان ورسوم الخدمة) على قدم المساواة",
+    "zh": "索姆河≤100%。 Appliqué au subtotal（餐税和服务费）标准",
+    "ff": "Won heen ≤ 100%. Ɗaɓɓaande au subtotal (taƴre pucci &amp; njoɓdi gollal) par"
+  },
+  "Somme des parts plateforme persistées": {
+    "fr": "Somme des parts plateforme persistées",
+    "es": "Suma de acciones de plataforma persistentes",
+    "ar": "مجموع حصص المنصة المستمرة",
+    "zh": "持续平台份额总和",
+    "ff": "Sum e jokkere enɗam platform"
+  },
+  "Sort by": {
+    "fr": "Trier par",
+    "es": "Ordenar por",
+    "ar": "الترتيب حسب",
+    "zh": "排序方式",
+    "ff": "Sortu e"
+  },
+  "Sous-titre": {
+    "fr": "Sous-titre",
+    "es": "Subtitular",
+    "ar": "الترجمة",
+    "zh": "字幕",
+    "ff": "Tiitoonde lesre"
+  },
+  "Staff accounts cannot be created here. Contact a MMD administrator.": {
+    "fr": "Les comptes du personnel ne peuvent pas être créés ici. Contactez un administrateur MMD.",
+    "es": "Las cuentas de personal no se pueden crear aquí. Póngase en contacto con un administrador MMD.",
+    "ar": "لا يمكن إنشاء حسابات الموظفين هنا. اتصل بمسؤول MMD.",
+    "zh": "此处无法创建员工帐户。 请联系 MMD 管理员。",
+    "ff": "Konte gollotooɓe mbaawaa soseede ɗoo. Jokkondir e MMD gardiiɗo."
+  },
+  "Staff Sign In": {
+    "fr": "Connexion du personnel",
+    "es": "Iniciar sesión del personal",
+    "ar": "تسجيل دخول الموظفين",
+    "zh": "员工登录",
+    "ff": "Gollotooɓe Naatde"
+  },
+  "Stale assigned jobs": {
+    "fr": "Travaux attribués obsolètes",
+    "es": "Trabajos asignados obsoletos",
+    "ar": "الوظائف المعينة التي لا معنى لها",
+    "zh": "分配的作业过时",
+    "ff": "Stale toɗɗaaɗi golle"
+  },
+  "Standard": {
+    "fr": "Standard",
+    "es": "Estándar",
+    "ar": "معيار",
+    "zh": "标准",
+    "ff": "Je aandin"
+  },
+  "Starts at": {
+    "fr": "Commence à",
+    "es": "Comienza en",
+    "ar": "يبدأ في",
+    "zh": "开始于",
+    "ff": "Fuɗɗotoo ko e..."
+  },
+  "State is OFF — enable": {
+    "fr": "L'état est OFF — activer",
+    "es": "El estado es OFF — habilitar",
+    "ar": "الحالة هي OFF — تمكين",
+    "zh": "状态为 OFF — 启用",
+    "ff": "Dowla ko OFF — softina"
+  },
+  "Statistiques d&apos;utilisation": {
+    "fr": "Statistiques d&apos;utilisation",
+    "es": "Estadísticas de uso",
+    "ar": "إحصائيات الاستخدام",
+    "zh": "使用统计",
+    "ff": "Limlebbi kuutoragol"
+  },
+  "Statistiques Ops (30 jours)": {
+    "fr": "Statistiques Ops (30 jours)",
+    "es": "Estadísticas de operaciones (30 días)",
+    "ar": "إحصائيات العمليات (30 يومًا)",
+    "zh": "运营统计（30 天）",
+    "ff": "Limle Ops (balɗe 30)"
+  },
+  "Statut launch": {
+    "fr": "Lancement du statut",
+    "es": "Lanzamiento de estado",
+    "ar": "إطلاق الحالة",
+    "zh": "状态启动",
+    "ff": "Udditgol ngonka"
+  },
+  "Stop": {
+    "fr": "Arrêt",
+    "es": "Detener",
+    "ar": "قف",
+    "zh": "停止",
+    "ff": "Darnugo"
+  },
+  "STOP": {
+    "fr": "STOP",
+    "es": "STOP",
+    "ar": "STOP",
+    "zh": "STOP",
+    "ff": "STOP"
+  },
+  "Stripe event": {
+    "fr": "Événement Stripe",
+    "es": "Stripe evento",
+    "ar": "حدث Stripe",
+    "zh": "Stripe 事件",
+    "ff": "Stripe kewu nguu"
+  },
+  "Stripe Fee (est.)": {
+    "fr": "Stripe Frais (est.)",
+    "es": "Stripe Tarifa (est.)",
+    "ar": "Stripe الرسوم (المقدرة)",
+    "zh": "Stripe 费用（预计）",
+    "ff": "Stripe Njoɓdi (fotde)"
+  },
+  "Stripe fee (estimé)": {
+    "fr": "Stripe fee (estimé)",
+    "es": "Tarifa Stripe (estimada)",
+    "ar": "رسوم Stripe (تقديرية)",
+    "zh": "Stripe 费用（估计）",
+    "ff": "Stripe njoɓdi (ko limtaa)"
+  },
+  "Stripe Identity": {
+    "fr": "Stripe Identité",
+    "es": "Stripe Identidad",
+    "ar": "Stripe الهوية",
+    "zh": "Stripe 身份",
+    "ff": "Stripe Anndinde"
+  },
+  "Stripe Identity — sessions, statuses, and re-verification (no document storage).": {
+    "fr": "Stripe Identité — sessions, statuts et revérification (pas de stockage de documents).",
+    "es": "Stripe Identidad: sesiones, estados y reverificación (sin almacenamiento de documentos).",
+    "ar": "Stripe الهوية - الجلسات والحالات وإعادة التحقق (لا يوجد تخزين للمستندات).",
+    "zh": "Stripe 身份 — 会话、状态和重新验证（无文档存储）。",
+    "ff": "Stripe Anndinde — joɗle, ngonkaaji, e hoolkiso (alaa deftordu binndanɗe)."
+  },
+  "Stripe Monitoring": {
+    "fr": "Stripe Surveillance",
+    "es": "Stripe Monitoreo",
+    "ar": "Stripe المراقبة",
+    "zh": "Stripe 监控",
+    "ff": "Stripe Yiylaade"
+  },
+  "Stripe PI": {
+    "fr": "Stripe PI",
+    "es": "Stripe PI",
+    "ar": "Stripe PI",
+    "zh": "Stripe PI",
+    "ff": "Stripe PI"
+  },
+  "Stripe Session": {
+    "fr": "Stripe Séance",
+    "es": "Stripe Sesión",
+    "ar": "Stripe الجلسة",
+    "zh": "Stripe 会话",
+    "ff": "Stripe Joɗnde"
+  },
+  "Stripe Session ID": {
+    "fr": "Stripe Séance ID",
+    "es": "Stripe Sesión ID",
+    "ar": "Stripe الجلسة ID",
+    "zh": "Stripe 会话 ID",
+    "ff": "Stripe Joɗnde ID"
+  },
+  "STRIPE_ENABLED_GN:": {
+    "fr": "STRIPE_ENABLED_GN :",
+    "es": "STRIPE_ENABLED_GN:",
+    "ar": "STRIPE_ENABLED_GN:",
+    "zh": "STRIPE_ENABLED_GN：",
+    "ff": "STRIPE_ENABLED_GN:"
+  },
+  "STRIPE_ENABLED_GN=true": {
+    "fr": "STRIPE_ENABLED_GN=vrai",
+    "es": "__MMDPH_0 __ = verdadera",
+    "ar": "STRIPE_ENABLED_GN=صحيح",
+    "zh": "STRIPE_ENABLED_GN=真",
+    "ff": "STRIPE_ENABLED_GN=goonga"
+  },
+  "Subtitle (optional)": {
+    "fr": "Sous-titre (facultatif)",
+    "es": "Subtítulo (opcional)",
+    "ar": "العنوان الفرعي (اختياري)",
+    "zh": "副标题（可选）",
+    "ff": "Tiitoonde (cuɓagol)"
+  },
+  "Subtotal": {
+    "fr": "Total",
+    "es": "Total parcial",
+    "ar": "المجموع الفرعي",
+    "zh": "小计",
+    "ff": "Ko famɗi fof"
+  },
+  "Success": {
+    "fr": "Succès",
+    "es": "Éxito",
+    "ar": "نجاح",
+    "zh": "成功",
+    "ff": "Jallorgal"
+  },
+  "Suggested": {
+    "fr": "Suggéré",
+    "es": "Sugerida",
+    "ar": "مقترح",
+    "zh": "建议",
+    "ff": "Wasiyaama"
+  },
+  "Suis tous les chats liés aux commandes et réponds rapidement au client, au chauffeur ou au restaurant.": {
+    "fr": "Suis tous les chats liés aux commandes et réponds rapidement au client, au chauffeur ou au restaurant.",
+    "es": "Siga todos los chats relacionados con pedidos y responda rápidamente al cliente, conductor o restaurante.",
+    "ar": "متابعة جميع الدردشات المتعلقة بالطلب والرد بسرعة على العميل أو السائق أو المطعم.",
+    "zh": "关注所有与订单相关的聊天并快速回复顾客、司机或餐厅。",
+    "ff": "Rewta denndaangal jeewte jowitiiɗe e yamiroore e jaabtaade ko yaawi e soodoowo, sofereeɓe walla restora."
+  },
+  "Sujet email": {
+    "fr": "Sujet email",
+    "es": "Asunto del correo electrónico",
+    "ar": "موضوع البريد الإلكتروني",
+    "zh": "电子邮件主题",
+    "ff": "Tiitoonde imeel"
+  },
+  "Super Admin — assigner à un agent Ops": {
+    "fr": "Super Admin — assigner à un agent Ops",
+    "es": "Superadministrador: asignar a un agente de operaciones",
+    "ar": "المشرف المتميز — تعيين وكيل العمليات",
+    "zh": "超级管理员 — 分配给 Ops 代理",
+    "ff": "Admin mawɗo — rokka golloowo Ops"
+  },
+  "Supervision": {
+    "fr": "Surveillance",
+    "es": "Supervisión",
+    "ar": "الإشراف",
+    "zh": "监督",
+    "ff": "Yiylaade"
+  },
+  "Supprimer": {
+    "fr": "Supprimer",
+    "es": "BORRAR",
+    "ar": "يمسح",
+    "zh": "删除",
+    "ff": "WILUGO"
+  },
+  "Supprimer cette publicité ?": {
+    "fr": "Supprimer cette publicité ?",
+    "es": "¿Quitar este anuncio?",
+    "ar": "هل تريد إزالة هذا الإعلان؟",
+    "zh": "删除这个广告吗？",
+    "ff": "Ittu ndee yeeyirde?"
+  },
+  "Suspendu": {
+    "fr": "Suspendu",
+    "es": "Suspendido",
+    "ar": "معلق",
+    "zh": "暂停",
+    "ff": "Darni"
+  },
+  "Synthèse de la demande et des scores": {
+    "fr": "Synthèse de la demande et des scores",
+    "es": "Resumen de demanda y puntuaciones",
+    "ar": "ملخص الطلب والنتائج",
+    "zh": "需求和分数摘要",
+    "ff": "Ciimtol naamne e limlebbi"
+  },
+  "Tag": {
+    "fr": "Étiqueter",
+    "es": "Etiqueta",
+    "ar": "علامة",
+    "zh": "标签",
+    "ff": "Matinugo"
+  },
+  "Tags (comma)": {
+    "fr": "Balises (virgule)",
+    "es": "Etiquetas (coma)",
+    "ar": "العلامات (فاصلة)",
+    "zh": "标签（逗号）",
+    "ff": "Taguuji (komma)"
+  },
+  "Target ID": {
+    "fr": "Cible ID",
+    "es": "Objetivo ID",
+    "ar": "الهدف ID",
+    "zh": "目标 ID",
+    "ff": "Faandaare ID"
+  },
+  "Target type": {
+    "fr": "Type de cible",
+    "es": "Tipo de objetivo",
+    "ar": "نوع الهدف",
+    "zh": "目标类型",
+    "ff": "Sifaa paandaale"
+  },
+  "Tarif": {
+    "fr": "Tarifs",
+    "es": "Tarifas",
+    "ar": "الأسعار",
+    "zh": "价格",
+    "ff": "Toɓɓe"
+  },
+  "Task title": {
+    "fr": "Titre de la tâche",
+    "es": "Título de la tarea",
+    "ar": "عنوان المهمة",
+    "zh": "任务标题",
+    "ff": "Tiitoonde gollal"
+  },
+  "Tasks": {
+    "fr": "Tâches",
+    "es": "Tareas",
+    "ar": "المهام",
+    "zh": "任务",
+    "ff": "Golle"
+  },
+  "Taux (%)": {
+    "fr": "Taux (%)",
+    "es": "Tasa (%)",
+    "ar": "معدل (٪)",
+    "zh": "速度 （％）",
+    "ff": "Ceede (%)"
+  },
+  "Taux MMD (sur plats)": {
+    "fr": "Taux MMD (sur plats)",
+    "es": "Tarifa MMD (en platos)",
+    "ar": "السعر MMD (على الأطباق)",
+    "zh": "评分 MMD（针对菜肴）",
+    "ff": "Toɓɓere MMD (e dow diƴƴe)"
+  },
+  "Taux plateforme": {
+    "fr": "Taux plateforme",
+    "es": "Tarifa de plataforma",
+    "ar": "معدل المنصة",
+    "zh": "平台费率",
+    "ff": "Njoɓdi plateau"
+  },
+  "Taux plateforme (%)": {
+    "fr": "Taux plateforme (%)",
+    "es": "Tasa de plataforma (%)",
+    "ar": "معدل المنصة (٪)",
+    "zh": "平台率(%)",
+    "ff": "Njoɓdi laylaytol (%)"
+  },
+  "Tax % / Taxe %": {
+    "fr": "% de taxe / % de taxe",
+    "es": "% de impuestos / % de impuestos",
+    "ar": "نسبة الضريبة / نسبة الضريبة",
+    "zh": "税% / 税%",
+    "ff": "Jawdi % / Jawdi %"
+  },
+  "Tax enabled": {
+    "fr": "Taxe activée",
+    "es": "Impuesto habilitado",
+    "ar": "تم تفعيل الضريبة",
+    "zh": "启用税收",
+    "ff": "Tax ena softi"
+  },
+  "Tax ID (EIN) :": {
+    "fr": "Taxe ID (EIN) :",
+    "es": "Impuesto ID (EIN) :",
+    "ar": "الضريبة ID (EIN) :",
+    "zh": "税金 ID (EIN) ：",
+    "ff": "Tax ID (EIN) :"
+  },
+  "Tax label / Libell?? taxe": {
+    "fr": "Etiquette fiscale / Libellé ?? taxe",
+    "es": "¿Etiqueta fiscal / difamación? impuesto",
+    "ar": "التسمية الضريبية / التشهير؟؟ ضريبة",
+    "zh": "税务标签/诽谤？ 税",
+    "ff": "Leppi taksi / Libell?? taksi"
+  },
+  "Taxes par pays (placeholders MVP).": {
+    "fr": "Taxes paritaires (espaces réservés MVP).",
+    "es": "Impuestos a la par paga (marcadores de posición MVP).",
+    "ar": "الضرائب على أساس القيمة المدفوعة (العناصر النائبة MVP).",
+    "zh": "平价税（占位符 MVP）。",
+    "ff": "Jawdi par yoɓata (joom en nokkuuji MVP)."
+  },
+  "Taxi": {
+    "fr": "Taxi",
+    "es": "Taxi",
+    "ar": "تاكسي",
+    "zh": "出租车",
+    "ff": "Taksi"
+  },
+  "taxi | food | delivery | marketplace | rewards | https://...": {
+    "fr": "taxis | nourriture | livraison | marché | récompenses | https://...",
+    "es": "taxis | comida | entrega | mercado | recompensas | https://...",
+    "ar": "تاكسي | طعام | تسليم | السوق | مكافآت | https://...",
+    "zh": "出租车 | 食品| 交货| 市场| 奖励 | https://...",
+    "ff": "taksi | nyaamdu | yettinde | luumo | njeenaaje | https://..."
+  },
+  "Taxi Business Accounts": {
+    "fr": "Comptes d'entreprise de taxi",
+    "es": "Cuentas comerciales de taxi",
+    "ar": "حسابات أعمال سيارات الأجرة",
+    "zh": "的士业务账户",
+    "ff": "Konte njulaagu taksiiji"
+  },
+  "Taxi Countries": {
+    "fr": "Pays de taxi",
+    "es": "Países de taxi",
+    "ar": "دول التاكسي",
+    "zh": "出租车国家",
+    "ff": "Leyɗeele Taksi"
+  },
+  "Taxi Countries →": {
+    "fr": "Pays de taxi →",
+    "es": "Países de taxi →",
+    "ar": "دول سيارات الأجرة →",
+    "zh": "出租车国家 →",
+    "ff": "Leyɗeele taksi →"
+  },
+  "Taxi Disabled": {
+    "fr": "Taxi désactivé",
+    "es": "Taxi discapacitada",
+    "ar": "سيارات الأجرة معطلة",
+    "zh": "出租车残疾人",
+    "ff": "Taksi ina ŋakki"
+  },
+  "Taxi Dispatch Preferences": {
+    "fr": "Préférences de répartition des taxis",
+    "es": "Preferencias de despacho de taxis",
+    "ar": "تفضيلات إرسال سيارات الأجرة",
+    "zh": "出租车调度偏好",
+    "ff": "Cuɓagol Neldugol Taksi"
+  },
+  "Taxi Driver Quality": {
+    "fr": "Qualité des chauffeurs de taxi",
+    "es": "Calidad del taxista",
+    "ar": "جودة سائق سيارة الأجرة",
+    "zh": "出租车司机素质",
+    "ff": "Kalite Sofereeɓe Taksi"
+  },
+  "Taxi Drivers": {
+    "fr": "Chauffeurs de taxi",
+    "es": "Taxistas",
+    "ar": "سائقي سيارات الأجرة",
+    "zh": "出租车司机",
+    "ff": "Sofereeɓe Taksiiji"
+  },
+  "Taxi Exchange Rates": {
+    "fr": "Taux de change des taxis",
+    "es": "Tasas de cambio de taxis",
+    "ar": "أسعار صرف سيارات الأجرة",
+    "zh": "出租车汇率",
+    "ff": "Taksiiji mbaylaandi"
+  },
+  "Taxi Launch →": {
+    "fr": "Lancement des taxis →",
+    "es": "Lanzamiento de taxis →",
+    "ar": "إطلاق سيارة أجرة →",
+    "zh": "出租车推出 →",
+    "ff": "Taksi udditgol →"
+  },
+  "Taxi Launch Control": {
+    "fr": "Contrôle de lancement de taxi",
+    "es": "Control de lanzamiento de taxis",
+    "ar": "التحكم في إطلاق سيارات الأجرة",
+    "zh": "出租车发射控制",
+    "ff": "Konngol udditgol taksiiji"
+  },
+  "Taxi Loyalty & Favorites": {
+    "fr": "Fidélité et favoris des taxis",
+    "es": "Fidelización y favoritos de taxis",
+    "ar": "ولاء سيارات الأجرة والمفضلة",
+    "zh": "出租车忠诚度和最爱",
+    "ff": "Taksi Loyal & Yiɗdeeji"
+  },
+  "Taxi Loyalty Rewards": {
+    "fr": "Récompenses de fidélité aux taxis",
+    "es": "Recompensas por fidelidad en taxis",
+    "ar": "مكافآت الولاء لسيارات الأجرة",
+    "zh": "出租车忠诚奖励",
+    "ff": "Njeenaaje Loyal Taxi"
+  },
+  "Taxi Monitoring": {
+    "fr": "Surveillance des taxis",
+    "es": "Monitoreo de taxis",
+    "ar": "مراقبة سيارات الأجرة",
+    "zh": "出租车监控",
+    "ff": "Monitorgol taksiiji"
+  },
+  "Taxi operations KPIs": {
+    "fr": "KPI des opérations de taxi",
+    "es": "KPI de operaciones de taxi",
+    "ar": "مؤشرات الأداء الرئيسية لعمليات سيارات الأجرة",
+    "zh": "出租车运营关键绩效指标",
+    "ff": "KPIs golle taksiiji"
+  },
+  "Taxi Pricing": {
+    "fr": "Tarifs des taxis",
+    "es": "Precios de taxis",
+    "ar": "تسعير سيارات الأجرة",
+    "zh": "出租车定价",
+    "ff": "Coodgu Taksi"
+  },
+  "Taxi Promotions": {
+    "fr": "Promotions sur les taxis",
+    "es": "Promociones de taxis",
+    "ar": "عروض سيارات الأجرة",
+    "zh": "出租车促销",
+    "ff": "Taksiiji ƴellitgol"
+  },
+  "Taxi Rides": {
+    "fr": "Trajets en taxi",
+    "es": "Paseos en taxi",
+    "ar": "ركوب سيارات الأجرة",
+    "zh": "乘坐出租车",
+    "ff": "Taksiiji"
+  },
+  "Taxi Scheduled Rides": {
+    "fr": "Trajets programmés en taxi",
+    "es": "Viajes programados en taxi",
+    "ar": "رحلات سيارات الأجرة المجدولة",
+    "zh": "出租车预定行程",
+    "ff": "Taxiiji Ƴeewndorɗe"
+  },
+  "Taxi Shared Rides": {
+    "fr": "Taxis partagés",
+    "es": "Viajes compartidos en taxi",
+    "ar": "ركوب سيارات الأجرة المشتركة",
+    "zh": "出租车拼车",
+    "ff": "Taxiiji Renndini"
+  },
+  "Taxi Taxes": {
+    "fr": "Taxes sur les taxis",
+    "es": "Impuestos de taxi",
+    "ar": "ضرائب سيارات الأجرة",
+    "zh": "出租车税",
+    "ff": "Taksiiji"
+  },
+  "Teams & Organization": {
+    "fr": "Équipes & Organisation",
+    "es": "Equipos y organización",
+    "ar": "الفرق والتنظيم",
+    "zh": "团队与组织",
+    "ff": "Kippuuji & Yuɓɓo"
+  },
+  "Télécharger": {
+    "fr": "Télécharger",
+    "es": "Descargar",
+    "ar": "تحميل",
+    "zh": "下载",
+    "ff": "Hoosugo do internaati"
+  },
+  "Téléphone": {
+    "fr": "Téléphone",
+    "es": "Teléfono",
+    "ar": "هاتف",
+    "zh": "电话",
+    "ff": "Noɗɗirgel"
+  },
+  "Téléphone :": {
+    "fr": "Téléphone :",
+    "es": "Teléfono :",
+    "ar": "هاتف :",
+    "zh": "电话 ：",
+    "ff": "Noɗɗirgel :"
+  },
+  "Template": {
+    "fr": "Modèle",
+    "es": "Plantilla",
+    "ar": "نموذج",
+    "zh": "模板",
+    "ff": "Template"
+  },
+  "Temps estimé": {
+    "fr": "Temps estimé",
+    "es": "Tiempo estimado",
+    "ar": "الوقت المقدر",
+    "zh": "预计时间",
+    "ff": "Waktuuji limtaaɗi"
+  },
+  "Tentatives récentes": {
+    "fr": "Tentatives récentes",
+    "es": "Intentos recientes",
+    "ar": "المحاولات الأخيرة",
+    "zh": "最近的尝试",
+    "ff": "Enndude ko ɓooyaani"
+  },
+  "Tentatives, planification et commandes actives.": {
+    "fr": "Tentatives, planification et commandes actives.",
+    "es": "Intentos, planificación y órdenes activas.",
+    "ar": "المحاولات والتخطيط والأوامر النشطة.",
+    "zh": "尝试、计划和活动订单。",
+    "ff": "Eɓɓooje, peewnugol e jamirooje kuuɓtodinɗe."
+  },
+  "Terminer": {
+    "fr": "Terminer",
+    "es": "para terminar",
+    "ar": "حتى النهاية",
+    "zh": "结束",
+    "ff": "Ngam joofnude"
+  },
+  "Texte bouton": {
+    "fr": "Texte bouton",
+    "es": "Texto del botón",
+    "ar": "نص الزر",
+    "zh": "按钮文字",
+    "ff": "Binndol butoŋ"
+  },
+  "This page writes directly to": {
+    "fr": "Cette page écrit directement à",
+    "es": "Esta página escribe directamente a",
+    "ar": "هذه الصفحة تكتب مباشرة إلى",
+    "zh": "该页面直接写入",
+    "ff": "Ngolɗoo hello ina winnda to..."
+  },
+  "Tier": {
+    "fr": "Étage",
+    "es": "Nivel",
+    "ar": "الطبقة",
+    "zh": "等级",
+    "ff": "Tier"
+  },
+  "Time": {
+    "fr": "Temps",
+    "es": "Tiempo",
+    "ar": "وقت",
+    "zh": "时间",
+    "ff": "Wakati"
+  },
+  "Timeline de commande": {
+    "fr": "Timeline de commande",
+    "es": "Cronograma del pedido",
+    "ar": "ترتيب الجدول الزمني",
+    "zh": "订单时间表",
+    "ff": "Jaɓɓungal waktuuji"
+  },
+  "Timeline taxi_events": {
+    "fr": "Chronologie taxi_events",
+    "es": "Cronología taxi_eventos",
+    "ar": "الجدول الزمني لأحداث سيارات الأجرة",
+    "zh": "时间线出租车_事件",
+    "ff": "Wakkati taksi_kewuuji"
+  },
+  "Titre": {
+    "fr": "Titre",
+    "es": "Título",
+    "ar": "عنوان",
+    "zh": "蒂特雷",
+    "ff": "Titre"
+  },
+  "Titre notification": {
+    "fr": "Titre notification",
+    "es": "Notificación de título",
+    "ar": "إشعار العنوان",
+    "zh": "标题通知",
+    "ff": "Notifikaasiyoŋ tiitoonde"
+  },
+  "Today": {
+    "fr": "Aujourd'hui",
+    "es": "Hoy",
+    "ar": "اليوم",
+    "zh": "今天",
+    "ff": "Hande"
+  },
+  "Top drivers": {
+    "fr": "Meilleurs pilotes",
+    "es": "Mejores conductoras",
+    "ar": "كبار السائقين",
+    "zh": "顶级车手",
+    "ff": "Sofereeɓe toowɓe"
+  },
+  "Top events (7 days)": {
+    "fr": "Top événements (7 jours)",
+    "es": "Eventos principales (7 días)",
+    "ar": "أهم الأحداث (7 أيام)",
+    "zh": "热门活动（7 天）",
+    "ff": "Kewuuji ɓurɗi mawnude (balɗe 7)"
+  },
+  "Top intents": {
+    "fr": "Principales intentions",
+    "es": "Principales intenciones",
+    "ar": "النوايا العليا",
+    "zh": "主要意图",
+    "ff": "Anniyaaji toowɗi"
+  },
+  "Top performers": {
+    "fr": "Les plus performants",
+    "es": "Mejores artistas",
+    "ar": "أفضل الفنانين أداءً",
+    "zh": "表现最佳者",
+    "ff": "Top waɗooɓe"
+  },
+  "Total anomalies": {
+    "fr": "Anomalies totales",
+    "es": "Anomalías totales",
+    "ar": "مجموع الشذوذات",
+    "zh": "异常总数",
+    "ff": "Anomaliiji keewɗi"
+  },
+  "Total appels": {
+    "fr": "Total des appels",
+    "es": "Apelaciones totales",
+    "ar": "إجمالي الاستئنافات",
+    "zh": "上诉总数",
+    "ff": "Total appilikaasiyoŋaaji"
+  },
+  "Total cents (charge)": {
+    "fr": "Total des centimes (frais)",
+    "es": "Total de centavos (cargo)",
+    "ar": "إجمالي السنتات (الرسوم)",
+    "zh": "总分（收费）",
+    "ff": "Tolno santimeeteer (njoɓdi)"
+  },
+  "Total client (persisté)": {
+    "fr": "Total client (persisté)",
+    "es": "Cliente total (persistente)",
+    "ar": "إجمالي العملاء (المستمر)",
+    "zh": "客户总数（持续）",
+    "ff": "Total soodoowo (jokkii)"
+  },
+  "Total client payé": {
+    "fr": "Total client payé",
+    "es": "Cliente total pagado",
+    "ar": "إجمالي العملاء المدفوعين",
+    "zh": "客户支付总额",
+    "ff": "Total soodoowo yoɓaama"
+  },
+  "Total money collected from paid customer orders.": {
+    "fr": "Argent total collecté sur les commandes client payées.",
+    "es": "Dinero total recaudado de los pedidos pagados de los clientes.",
+    "ar": "إجمالي الأموال التي تم جمعها من طلبات العملاء المدفوعة.",
+    "zh": "从付费客户订单中收取的总金额。",
+    "ff": "Total kaalis mooftaa e yamiroore soodooɓe yoɓaaɓe."
+  },
+  "Total orders": {
+    "fr": "Total des commandes",
+    "es": "Pedidos totales",
+    "ar": "إجمالي الطلبات",
+    "zh": "订单总数",
+    "ff": "Total jamirooje"
+  },
+  "Total part plateforme MMD": {
+    "fr": "Total part plateforme MMD",
+    "es": "Cuota total de plataforma MMD",
+    "ar": "إجمالي حصة النظام الأساسي MMD",
+    "zh": "平台总份额MMD",
+    "ff": "Hakke feccere e laylaytol MMD"
+  },
+  "Total restaurants": {
+    "fr": "Total des restaurants",
+    "es": "Restaurantes totales",
+    "ar": "إجمالي المطاعم",
+    "zh": "餐厅总数",
+    "ff": "Total restoraaji"
+  },
+  "Totaux figés après paiement — recalculate ne réécrit pas cette course.": {
+    "fr": "Totaux figés après paiement — recalculate ne réécrit pas cette course.",
+    "es": "Totales congelados después del pago: volver a calcular no reescribe esta carrera.",
+    "ar": "المجاميع المجمدة بعد الدفع - إعادة الحساب لا تعيد كتابة هذا السباق.",
+    "zh": "付款后总数冻结——重新计算不会重写本场比赛。",
+    "ff": "Totalji ɓuuɓɗi caggal yoɓde — recalculate winndataa ndeeɗoo fijo."
+  },
+  "Tous les appels": {
+    "fr": "Tous les appels",
+    "es": "todas las llamadas",
+    "ar": "جميع المكالمات",
+    "zh": "所有通话",
+    "ff": "Noddaango fof"
+  },
+  "Tous les pays": {
+    "fr": "Tous les pays",
+    "es": "Todos los paises",
+    "ar": "جميع البلدان",
+    "zh": "所有国家",
+    "ff": "Leyɗeele ɗee kala"
+  },
+  "Tous les rôles": {
+    "fr": "Tous les rôles",
+    "es": "Todos los roles",
+    "ar": "جميع الأدوار",
+    "zh": "所有角色",
+    "ff": "Darndeeji ɗii fof"
+  },
+  "Toutes (pays sélectionné)": {
+    "fr": "Toutes (pays sélectionné)",
+    "es": "Todos (país seleccionado)",
+    "ar": "الكل (البلد المحدد)",
+    "zh": "全部（所选国家/地区）",
+    "ff": "Fof (leydi cuɓaandi)"
+  },
+  "Toutes les modifications et restaurations de versions pr??c??dentes.": {
+    "fr": "Toutes les modifications et restaurations de versions pr??c??dentes.",
+    "es": "Todos los cambios y reversiones de versiones anteriores.",
+    "ar": "جميع التغييرات والتراجعات عن الإصدارات السابقة.",
+    "zh": "先前版本的所有更改和回滚。",
+    "ff": "Denndaangal waylooji e rollbacks ummoraade e mbaydiiji ɓennuɗi."
+  },
+  "Trace les actions sensibles des administrateurs sur les drivers, restaurants, payouts et autres opérations.": {
+    "fr": "Trace les actions sensibles des administrateurs sur les drivers, restaurants, payouts et autres opérations.",
+    "es": "Rastrea acciones sensibles de administradores sobre conductores, restaurantes, pagos y otras operaciones.",
+    "ar": "يتتبع الإجراءات الحساسة للمسؤولين بشأن السائقين والمطاعم والمدفوعات والعمليات الأخرى.",
+    "zh": "追踪管理员对司机、餐厅、付款和其他操作的敏感行为。",
+    "ff": "Rewindaade golle sensible njuɓɓudi e dow sofereeɓe, restoraaji, yoɓde e golle goɗɗe."
+  },
+  "Trace sensitive payout retry activity across admin operations.": {
+    "fr": "Suivez les nouvelles tentatives de paiement sensibles dans les opérations d’administration.",
+    "es": "Realice un seguimiento de la actividad confidencial de reintentos de pago en todas las operaciones administrativas.",
+    "ar": "تتبع نشاط إعادة محاولة الدفع الحساس عبر عمليات الإدارة.",
+    "zh": "跟踪管理操作中的敏感支付重试活动。",
+    "ff": "Rewindaade golle ƴeewndo yoɓde sensible e nder golle admin."
+  },
+  "Traitement en cours…": {
+    "fr": "Traitement en cours…",
+    "es": "Procesamiento en curso…",
+    "ar": "جاري المعالجة…",
+    "zh": "处理中...",
+    "ff": "Golle ina njokki..."
+  },
+  "Traiter événements": {
+    "fr": "Traiter événements",
+    "es": "Eventos de proceso",
+    "ar": "أحداث العملية",
+    "zh": "处理事件",
+    "ff": "Kewuuji njuɓɓudi"
+  },
+  "Traiter objectifs chauffeurs": {
+    "fr": "Traiter objectifs chauffeurs",
+    "es": "Abordar los objetivos del conductor",
+    "ar": "معالجة أهداف السائق",
+    "zh": "解决驾驶员目标",
+    "ff": "Adresse paandaale difooje"
+  },
+  "TRANSFER": {
+    "fr": "TRANSFER",
+    "es": "TRANSFER",
+    "ar": "TRANSFER",
+    "zh": "TRANSFER",
+    "ff": "TRANSFER"
+  },
+  "Transfer destination": {
+    "fr": "Destination du transfert",
+    "es": "Destino de transferencia",
+    "ar": "وجهة النقل",
+    "zh": "转乘目的地",
+    "ff": "Joɗnde jolngo"
+  },
+  "Transfer missing": {
+    "fr": "Transfert manquant",
+    "es": "Falta transferencia",
+    "ar": "النقل مفقود",
+    "zh": "转移失踪",
+    "ff": "Transfer ina ŋakki"
+  },
+  "Transfers": {
+    "fr": "Transferts",
+    "es": "Transferencias",
+    "ar": "التحويلات",
+    "zh": "接送服务",
+    "ff": "Jaltugol"
+  },
+  "Transferts": {
+    "fr": "Transferts",
+    "es": "Transferencias",
+    "ar": "التحويلات",
+    "zh": "接送服务",
+    "ff": "Jaltugol"
+  },
+  "Trend chart": {
+    "fr": "Graphique de tendance",
+    "es": "Gráfico de tendencias",
+    "ar": "مخطط الاتجاه",
+    "zh": "趋势图",
+    "ff": "Taggal mbaydi"
+  },
+  "Trip locations": {
+    "fr": "Lieux de voyage",
+    "es": "Lugares de viaje",
+    "ar": "مواقع الرحلة",
+    "zh": "旅行地点",
+    "ff": "Nokkuuji yah-ngartaa"
+  },
+  "Twilio SID:": {
+    "fr": "Twilio SID :",
+    "es": "Twilio SID:",
+    "ar": "Twilio SID:",
+    "zh": "Twilio SID：",
+    "ff": "TwilioSID:"
+  },
+  "Typing…": {
+    "fr": "Dactylographie…",
+    "es": "Mecanografía…",
+    "ar": "كتابة…",
+    "zh": "正在打字……",
+    "ff": "Winndude..."
+  },
+  "TZ": {
+    "fr": "TZ",
+    "es": "TZ",
+    "ar": "TZ",
+    "zh": "TZ",
+    "ff": "TZ"
+  },
+  "Unable to load clients": {
+    "fr": "Impossible de charger les clients",
+    "es": "No se pueden cargar clientes",
+    "ar": "غير قادر على تحميل العملاء",
+    "zh": "无法加载客户端",
+    "ff": "Waawaa loowde kiliyaneeɓe"
+  },
+  "Unique users": {
+    "fr": "Utilisateurs uniques",
+    "es": "Usuarios únicas",
+    "ar": "المستخدمين الفريدين",
+    "zh": "独特用户",
+    "ff": "Huutortooɓe keertiiɗi"
+  },
+  "Unsuspend": {
+    "fr": "Annuler la suspension",
+    "es": "suspender",
+    "ar": "إلغاء التعليق",
+    "zh": "取消暂停",
+    "ff": "Dartina"
+  },
+  "Upload": {
+    "fr": "Télécharger",
+    "es": "Subir",
+    "ar": "رفع",
+    "zh": "上传",
+    "ff": "Neldu"
+  },
+  "Usages": {
+    "fr": "Utilisations",
+    "es": "Usos",
+    "ar": "الأعراف",
+    "zh": "用法",
+    "ff": "Kuutoragol"
+  },
+  "Use your staff account to access the Control Center.": {
+    "fr": "Utilisez votre compte personnel pour accéder au Control Center.",
+    "es": "Utilice su cuenta de personal para acceder al Centro de control.",
+    "ar": "استخدم حساب الموظفين الخاص بك للوصول إلى مركز التحكم.",
+    "zh": "使用您的员工帐户访问控制中心。",
+    "ff": "Huutoro konte gollotooɓe maa ngam naatde e nokku ɗowgol."
+  },
+  "Used": {
+    "fr": "Utilisée",
+    "es": "Usada",
+    "ar": "مستخدم",
+    "zh": "用过的",
+    "ff": "Hiɗi"
+  },
+  "Useful ops references": {
+    "fr": "Références opérationnelles utiles",
+    "es": "Referencias de operaciones útiles",
+    "ar": "مراجع العمليات المفيدة",
+    "zh": "有用的操作参考",
+    "ff": "Tuugnorgal ops nafoore"
+  },
+  "User id / session id": {
+    "fr": "Identifiant utilisateur/identifiant de session",
+    "es": "ID de usuario/ID de sesión",
+    "ar": "معرف المستخدم / معرف الجلسة",
+    "zh": "用户 ID / 会话 ID",
+    "ff": "Id kuutortooɗo / id jonnde"
+  },
+  "User ID UUID Supabase (obligatoire pour push)": {
+    "fr": "User ID UUID Supabase (obligatoire pour push)",
+    "es": "Usuario ID UUID Supabase (requerido para push)",
+    "ar": "المستخدم ID UUID Supabase (مطلوب للدفع)",
+    "zh": "用户 ID UUID Supabase（推送所需）",
+    "ff": "Huutortooɗo ID UUID Supabase (ina haani ngam pusgol)"
+  },
+  "Utilisations max (vide = illimité)": {
+    "fr": "Utilisations max (vide = illimité)",
+    "es": "Usos máximos (vacío = ilimitado)",
+    "ar": "الحد الأقصى للاستخدامات (فارغ = غير محدود)",
+    "zh": "最大使用次数（空=无限制）",
+    "ff": "Max huutortoo (meere = alaa keerol)"
+  },
+  "UUID de l": {
+    "fr": "UUID de l",
+    "es": "UUID del",
+    "ar": "UUID من",
+    "zh": "UUID 的",
+    "ff": "UUID ko..."
+  },
+  "uuid de la commande": {
+    "fr": "uuid de la commande",
+    "es": "comando uuid",
+    "ar": "uuid الأمر",
+    "zh": "命令uuid",
+    "ff": "yamiroore uuid"
+  },
+  "uuid du restaurant ou vendeur": {
+    "fr": "uuid du restaurant ou vendeur",
+    "es": "UUID del restaurante o vendedor.",
+    "ar": "uuid من مطعم أو البائع",
+    "zh": "餐厅或卖家的 uuid",
+    "ff": "uuid e restoraan walla yeeyoowo"
+  },
+  "Vague": {
+    "fr": "Vague",
+    "es": "Imprecisa",
+    "ar": "غامض",
+    "zh": "模糊的",
+    "ff": "Laɓay"
+  },
+  "Validité du Crédit MMD": {
+    "fr": "Validité du Crédit MMD",
+    "es": "Validez del crédito MMD",
+    "ar": "صلاحية الرصيد MMD",
+    "zh": "信用证的有效性MMD",
+    "ff": "Sifaa ñamaale MMD"
+  },
+  "Value": {
+    "fr": "Valeur",
+    "es": "Valor",
+    "ar": "قيمة",
+    "zh": "价值",
+    "ff": "Daraja"
+  },
+  "Vehicle class": {
+    "fr": "Classe de véhicule",
+    "es": "Clase de vehículo",
+    "ar": "فئة السيارة",
+    "zh": "车辆类别",
+    "ff": "Kalaas otooji"
+  },
+  "Véhicules chauffeurs & catégories taxi": {
+    "fr": "Véhicules chauffeurs & catégories taxi",
+    "es": "Vehículos de conductor y categorías de taxis.",
+    "ar": "سائق المركبات وفئات سيارات الأجرة",
+    "zh": "驾驶车辆和出租车类别",
+    "ff": "Otooji diwooje & cate taksiiji"
+  },
+  "Vendeur Marketplace": {
+    "fr": "Vendeur Marketplace",
+    "es": "Vendedor del mercado",
+    "ar": "بائع السوق",
+    "zh": "市场卖家",
+    "ff": "Yeeyoowo nokku luumo"
+  },
+  "Vérification": {
+    "fr": "Vérification",
+    "es": "Verificación",
+    "ar": "تَحَقّق",
+    "zh": "确认",
+    "ff": "Hoolkiso"
+  },
+  "Vérifications recommandées": {
+    "fr": "Vérifications recommandées",
+    "es": "Controles recomendados",
+    "ar": "الشيكات الموصى بها",
+    "zh": "建议检查",
+    "ff": "Ƴeewte wasiyaaji"
+  },
+  "Vérifie les profils restaurants, leurs documents et approuve ou refuse les demandes.": {
+    "fr": "Vérifie les profils restaurants, leurs documents et approuve ou refuse les demandes.",
+    "es": "Verifica los perfiles de los restaurantes, sus documentos y aprueba o rechaza solicitudes.",
+    "ar": "التحقق من ملفات تعريف المطاعم ووثائقها والموافقة على الطلبات أو رفضها.",
+    "zh": "验证餐厅简介、文件并批准或拒绝请求。",
+    "ff": "Hoolkiso nate restoraaji, kaayitaaji mum en e jaɓde walla salaade ɗaɓɓaande."
+  },
+  "Verified": {
+    "fr": "Vérifié",
+    "es": "Verificada",
+    "ar": "تم التحقق منه",
+    "zh": "已验证",
+    "ff": "Hoolkisaama"
+  },
+  "Video call": {
+    "fr": "Appel vidéo",
+    "es": "Videollamada",
+    "ar": "مكالمة فيديو",
+    "zh": "视频电话",
+    "ff": "Noddaango wideyoo"
+  },
+  "View all": {
+    "fr": "Voir tout",
+    "es": "Ver todo",
+    "ar": "عرض الكل",
+    "zh": "查看全部",
+    "ff": "Yiytu fof"
+  },
+  "View details": {
+    "fr": "Afficher les détails",
+    "es": "Ver detalles",
+    "ar": "عرض التفاصيل",
+    "zh": "查看详情",
+    "ff": "Yiylo detaayuuji"
+  },
+  "Ville (optionnel — règle ville)": {
+    "fr": "Ville (optionnel — règle ville)",
+    "es": "Ciudad (opcional: regla de ciudad)",
+    "ar": "المدينة (اختياري — قاعدة المدينة)",
+    "zh": "城市（可选 — 城市规则）",
+    "ff": "Wuro (ko cuɓaa — laamu wuro)"
+  },
+  "Vocal": {
+    "fr": "Vocale",
+    "es": "Vocal",
+    "ar": "صوتي",
+    "zh": "声乐",
+    "ff": "Daande"
+  },
+  "Voice": {
+    "fr": "Voix",
+    "es": "Voz",
+    "ar": "صوت",
+    "zh": "嗓音",
+    "ff": "Daande"
+  },
+  "Voir commande": {
+    "fr": "Voir commande",
+    "es": "Ver pedido",
+    "ar": "انظر النظام",
+    "zh": "查看订单",
+    "ff": "Ƴeew yamiroore"
+  },
+  "Voir les détails": {
+    "fr": "Voir les détails",
+    "es": "Ver detalles",
+    "ar": "عرض التفاصيل",
+    "zh": "查看详情",
+    "ff": "Yiylo detaayuuji"
+  },
+  "Vue opérationnelle temps réel de la plateforme.": {
+    "fr": "Vue opérationnelle temps réel de la plateforme.",
+    "es": "Vista operativa en tiempo real de la plataforma.",
+    "ar": "عرض التشغيل في الوقت الحقيقي للمنصة.",
+    "zh": "平台实时运行视图。",
+    "ff": "Yiyngo gollal e sahaa goonga e laylaytol ngol."
+  },
+  "Wallet": {
+    "fr": "Portefeuille",
+    "es": "Billetera",
+    "ar": "محفظة",
+    "zh": "钱包",
+    "ff": "Jiba"
+  },
+  "Webhook URL:": {
+    "fr": "Webhook URL :",
+    "es": "Webhook URL:",
+    "ar": "الرد التلقائي على الويب URL:",
+    "zh": "网络钩子 URL：",
+    "ff": "Jokkorde web URL:"
+  },
+  "Webhooks reçus, statuts de traitement et erreurs.": {
+    "fr": "Webhooks reçus, statuts de traitement et erreurs.",
+    "es": "Webhooks recibidos, estados de procesamiento y errores.",
+    "ar": "تم تلقي خطافات الويب ومعالجة الحالات والأخطاء.",
+    "zh": "收到的 Webhooks、处理状态和错误。",
+    "ff": "Webhooks keɓaaɗo, golloraade ngonkaaji e majjere."
+  },
+  "Week": {
+    "fr": "Semaine",
+    "es": "Semana",
+    "ar": "أسبوع",
+    "zh": "星期",
+    "ff": "Asawere"
+  },
+  "When": {
+    "fr": "Quand",
+    "es": "Cuando",
+    "ar": "متى",
+    "zh": "什么时候",
+    "ff": "Ndey"
+  },
+  "Window": {
+    "fr": "Fenêtre",
+    "es": "Ventana",
+    "ar": "نافذة",
+    "zh": "窗户",
+    "ff": "Dammugal"
+  },
+  "Work queue": {
+    "fr": "File d'attente de travail",
+    "es": "Cola de trabajo",
+    "ar": "طابور العمل",
+    "zh": "工作队列",
+    "ff": "Laabi golle"
+  },
+  "Workload": {
+    "fr": "Charge de travail",
+    "es": "Carga de trabajo",
+    "ar": "عبء العمل",
+    "zh": "工作量",
+    "ff": "Golle"
+  },
+  "XL": {
+    "fr": "XL",
+    "es": "XL",
+    "ar": "XL",
+    "zh": "XL",
+    "ff": "XL"
+  },
+  "XL drivers": {
+    "fr": "Pilotes XL",
+    "es": "XL controladores",
+    "ar": "XL السائقين",
+    "zh": "XL 驱动程序",
+    "ff": "XL difooɓe"
+  },
+  "Year": {
+    "fr": "Année",
+    "es": "Año",
+    "ar": "سنة",
+    "zh": "年",
+    "ff": "Hittande"
+  },
+  "Zone scolaire": {
+    "fr": "Zone scolaire",
+    "es": "Zona escolar",
+    "ar": "منطقة المدرسة",
+    "zh": "学区",
+    "ff": "Zone duɗal"
+  }
+}

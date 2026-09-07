@@ -5,7 +5,7 @@ import {
   getAdminSupportPhone,
   resolveIncomingVoiceRoute,
 } from "@/lib/adminVoiceTransfer";
-import { buildIvrGatherTwiml } from "@/lib/adminVoiceIvr";
+import { buildIvrLanguageGatherTwiml } from "@/lib/adminVoiceIvr";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getTwilioPhoneNumber } from "@/lib/twilioPhone";
 import {
@@ -83,7 +83,7 @@ async function publicSupportStartIvr(params: {
     });
   }
 
-  return twilioVoiceTwiml(buildIvrGatherTwiml({ attempt: 0 }));
+  return twilioVoiceTwiml(buildIvrLanguageGatherTwiml({ attempt: 0 }));
 }
 
 export async function handleTwilioVoiceIncoming(req: NextRequest) {

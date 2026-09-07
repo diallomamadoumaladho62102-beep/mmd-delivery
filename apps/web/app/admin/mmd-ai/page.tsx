@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -51,6 +53,8 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 }
 
 export default function AdminMmdAiPage() {
+  const { t } = useAdminT();
+
   const [period, setPeriod] = useState<"today" | "7d" | "30d">("today");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,13 +108,13 @@ export default function AdminMmdAiPage() {
         <div className="mx-auto max-w-6xl space-y-6 p-6">
           <header className="space-y-3">
             <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-              MMD Delivery · MMD AI
+              {t("MMD Delivery · MMD AI")}
             </div>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">MMD AI</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">{t("MMD AI")}</h1>
                 <p className="mt-2 max-w-3xl text-sm text-slate-600">
-                  Monitoring, coût estimé OpenAI, escalations et launch control par marché.
+                  {t("Monitoring, coût estimé OpenAI, escalations et launch control par marché.")}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -118,13 +122,13 @@ export default function AdminMmdAiPage() {
                   href="/admin/mmd-ai/launch"
                   className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                 >
-                  Launch Control
+                  {t("Launch Control")}
                 </Link>
                 <Link
                   href="/admin"
                   className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                 >
-                  Control Center
+                  {t("Control Center")}
                 </Link>
               </div>
             </div>
@@ -138,30 +142,30 @@ export default function AdminMmdAiPage() {
 
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
             <MetricCard
-              label="Global Enabled"
+              label={t("Global Enabled")}
               value={control?.globalEnabled ? "ON" : "OFF"}
             />
             <MetricCard
-              label="Emergency Stop"
-              value={control?.emergencyStop ? "ACTIVE" : "Off"}
+              label={t("Emergency Stop")}
+              value={control?.emergencyStop ? "ACTIVE" : t("Off")}
             />
-            <MetricCard label="Cost Today" value={formatUsd(control?.costTodayUsd)} />
+            <MetricCard label={t("Cost Today")} value={formatUsd(control?.costTodayUsd)} />
             <MetricCard
-              label="Cost Cap"
+              label={t("Cost Cap")}
               value={control?.costCapUsd != null ? formatUsd(control.costCapUsd) : "None"}
             />
-            <MetricCard label="Active Regions" value={formatInt(control?.activeRegions)} />
+            <MetricCard label={t("Active Regions")} value={formatInt(control?.activeRegions)} />
             <MetricCard
-              label="Internal Beta Users"
+              label={t("Internal Beta Users")}
               value={formatInt(control?.internalBetaUserCount)}
             />
           </section>
 
           {canEdit ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-base font-semibold text-slate-900">Ops controls</h2>
+              <h2 className="text-base font-semibold text-slate-900">{t("Ops controls")}</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Emergency stop via Admin (env `AI_EMERGENCY_STOP` overrides and locks UI).
+                {t("Emergency stop via Admin (env `AI_EMERGENCY_STOP` overrides and locks UI).")}
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
@@ -170,7 +174,7 @@ export default function AdminMmdAiPage() {
                   onClick={() => void toggleEmergencyStop(true)}
                   className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
                 >
-                  Activate Emergency Stop
+                  {t("Activate Emergency Stop")}
                 </button>
                 <button
                   type="button"
@@ -178,7 +182,7 @@ export default function AdminMmdAiPage() {
                   onClick={() => void toggleEmergencyStop(false)}
                   className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 disabled:opacity-50"
                 >
-                  Release Admin Stop
+                  {t("Release Admin Stop")}
                 </button>
               </div>
             </section>
@@ -196,38 +200,38 @@ export default function AdminMmdAiPage() {
                     : "border border-slate-200 bg-white text-slate-700"
                 }`}
               >
-                {item === "today" ? "Today" : item === "7d" ? "Last 7 days" : "Last 30 days"}
+                {item === "today" ? t("Today") : item === "7d" ? "Last 7 days" : "Last 30 days"}
               </button>
             ))}
           </section>
 
           {loading ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">
-              Loading metrics…
+              {t("Loading metrics…")}
             </div>
           ) : (
             <>
               <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 <MetricCard
-                  label="Conversations"
+                  label={t("Conversations")}
                   value={formatInt(metrics.ai_conversations_count)}
                 />
-                <MetricCard label="Messages" value={formatInt(metrics.ai_messages_count)} />
-                <MetricCard label="Unique users" value={formatInt(metrics.ai_unique_users)} />
-                <MetricCard label="Escalations" value={formatInt(metrics.ai_escalation_count)} />
-                <MetricCard label="Errors" value={formatInt(metrics.ai_error_count)} />
+                <MetricCard label={t("Messages")} value={formatInt(metrics.ai_messages_count)} />
+                <MetricCard label={t("Unique users")} value={formatInt(metrics.ai_unique_users)} />
+                <MetricCard label={t("Escalations")} value={formatInt(metrics.ai_escalation_count)} />
+                <MetricCard label={t("Errors")} value={formatInt(metrics.ai_error_count)} />
               </section>
 
               <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-base font-semibold text-slate-900">Estimated OpenAI cost</h2>
+                  <h2 className="text-base font-semibold text-slate-900">{t("Estimated OpenAI cost")}</h2>
                   <div className="mt-3 text-3xl font-black text-emerald-700">
                     {formatUsd(metrics.estimated_cost_usd)}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-base font-semibold text-slate-900">Top intents</h2>
+                  <h2 className="text-base font-semibold text-slate-900">{t("Top intents")}</h2>
                   <ul className="mt-3 space-y-2 text-sm">
                     {(payload?.topIntents ?? []).length ? (
                       (payload?.topIntents ?? []).map((row) => (
@@ -240,7 +244,7 @@ export default function AdminMmdAiPage() {
                         </li>
                       ))
                     ) : (
-                      <li className="text-slate-500">No intent data yet.</li>
+                      <li className="text-slate-500">{t("No intent data yet.")}</li>
                     )}
                   </ul>
                 </div>
@@ -248,13 +252,13 @@ export default function AdminMmdAiPage() {
 
               <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <GeoTable
-                  title="Conversations by country"
-                  subtitle="Estimated cost by country"
+                  title={t("Conversations by country")}
+                  subtitle={t("Estimated cost by country")}
                   rows={payload?.geo?.by_country ?? []}
                 />
                 <GeoTable
-                  title="Conversations by state / region"
-                  subtitle="Estimated cost by state"
+                  title={t("Conversations by state / region")}
+                  subtitle={t("Estimated cost by state")}
                   rows={payload?.geo?.by_state ?? []}
                   showState
                 />
@@ -278,6 +282,8 @@ function GeoTable({
   rows: Array<Record<string, unknown>>;
   showState?: boolean;
 }) {
+  const { t } = useAdminT();
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-base font-semibold text-slate-900">{title}</h2>
@@ -286,11 +292,11 @@ function GeoTable({
         <table className="min-w-full text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-slate-500">
-              <th className="py-2 pr-4">Country</th>
+              <th className="py-2 pr-4">{t("Country")}</th>
               {showState ? <th className="py-2 pr-4">State/Region</th> : null}
-              <th className="py-2 pr-4">Conv.</th>
-              <th className="py-2 pr-4">Msgs</th>
-              <th className="py-2">Cost</th>
+              <th className="py-2 pr-4">{t("Conv.")}</th>
+              <th className="py-2 pr-4">{t("Msgs")}</th>
+              <th className="py-2">{t("Cost")}</th>
             </tr>
           </thead>
           <tbody>
@@ -313,7 +319,7 @@ function GeoTable({
             ) : (
               <tr>
                 <td colSpan={showState ? 5 : 4} className="py-4 text-slate-500">
-                  No geo data yet.
+                  {t("No geo data yet.")}
                 </td>
               </tr>
             )}

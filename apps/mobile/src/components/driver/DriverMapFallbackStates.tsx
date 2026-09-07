@@ -7,6 +7,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { DriverBrandLoadingState } from "./DriverBrandLoadingState";
 import {
   MMD_BLUE,
@@ -41,19 +42,20 @@ export function DriverMapFallbackStates({
   onGoBack,
   onRetry,
 }: Props) {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const logoSize = Math.min(40, mmdLogoSizeCompact(width, height));
 
   if (variant === "loading") {
     return (
       <DriverBrandLoadingState
-        title="Preparing navigation…"
+        title={t("driver.map.preparingNavigation", "Preparing navigation…")}
         logoAtBottom={false}
       />
     );
   }
 
-  const content = getContent(variant, message);
+  const content = getContent(variant, message, t);
 
   return (
     <View style={styles.root}>
@@ -69,9 +71,9 @@ export function DriverMapFallbackStates({
               onPress={onGoBack}
               style={styles.btn}
               accessibilityRole="button"
-              accessibilityLabel="Back"
+              accessibilityLabel={t("common.a11y.back", "Back")}
             >
-              <Text style={styles.btnBackLabel}>Back</Text>
+              <Text style={styles.btnBackLabel}>{t("common.a11y.back", "Back")}</Text>
             </TouchableOpacity>
           ) : null}
           {onRetry ? (
@@ -79,9 +81,9 @@ export function DriverMapFallbackStates({
               onPress={onRetry}
               style={styles.btn}
               accessibilityRole="button"
-              accessibilityLabel="Retry"
+              accessibilityLabel={t("common.a11y.retry", "Retry")}
             >
-              <Text style={styles.btnRetryLabel}>Retry</Text>
+              <Text style={styles.btnRetryLabel}>{t("common.a11y.retry", "Retry")}</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -104,37 +106,69 @@ export function DriverMapFallbackStates({
   );
 }
 
-function getContent(variant: Props["variant"], message?: string) {
+function getContent(
+  variant: Props["variant"],
+  message: string | undefined,
+  t: (key: string, fallback: string) => string,
+) {
   switch (variant) {
     case "missing_token":
       return {
-        title: "Navigation unavailable",
-        body: "Mapbox token is missing. Contact MMD support before using driver navigation.",
+        title: t(
+          "driver.mapFallback.missingTokenTitle",
+          "Navigation unavailable",
+        ),
+        body: t(
+          "driver.mapFallback.missingTokenBody",
+          "Mapbox token is missing. Contact MMD support before using driver navigation.",
+        ),
       };
     case "missing_order":
       return {
-        title: "Order not found",
-        body: message || "Unable to load this trip.",
+        title: t("driver.mapFallback.missingOrderTitle", "Order not found"),
+        body:
+          message ||
+          t("driver.mapFallback.missingOrderBody", "Unable to load this trip."),
       };
     case "missing_coords":
       return {
-        title: "GPS coordinates missing",
-        body: "This trip has no valid coordinates yet. Return to order details.",
+        title: t(
+          "driver.mapFallback.missingCoordsTitle",
+          "GPS coordinates missing",
+        ),
+        body: t(
+          "driver.mapFallback.missingCoordsBody",
+          "This trip has no valid coordinates yet. Return to order details.",
+        ),
       };
     case "permission_denied":
       return {
-        title: "Location permission denied",
-        body: "Enable location access to use MMD navigation.",
+        title: t(
+          "driver.mapFallback.permissionTitle",
+          "Location permission denied",
+        ),
+        body: t(
+          "driver.mapFallback.permissionBody",
+          "Enable location access to use MMD navigation.",
+        ),
       };
     case "route_error":
       return {
-        title: "Route unavailable",
+        title: t("driver.mapFallback.routeErrorTitle", "Route unavailable"),
         body:
           message ||
-          "Unable to calculate the route at this time. You can retry or open an external app from the details.",
+          t(
+            "driver.mapFallback.routeErrorBody",
+            "Unable to calculate the route at this time. You can retry or open an external app from the details.",
+          ),
       };
     default:
-      return { title: "Error", body: message || "Something went wrong." };
+      return {
+        title: t("driver.mapFallback.errorTitle", "Error"),
+        body:
+          message ||
+          t("driver.mapFallback.errorBody", "Something went wrong."),
+      };
   }
 }
 

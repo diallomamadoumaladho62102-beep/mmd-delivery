@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
@@ -18,6 +20,8 @@ type LookupUser = {
 };
 
 export default function AdminCommunicationPanel() {
+  const { t } = useAdminT();
+
   const [channel, setChannel] = useState<Channel>("push");
   const [searchQuery, setSearchQuery] = useState("");
   const [lookupResults, setLookupResults] = useState<LookupUser[]>([]);
@@ -118,7 +122,7 @@ export default function AdminCommunicationPanel() {
 
       <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
         <p className="text-xs font-semibold text-slate-600">
-          Rechercher un destinataire (email, nom ou téléphone)
+          {t("Rechercher un destinataire (email, nom ou téléphone)")}
         </p>
         <div className="flex gap-2">
           <input
@@ -169,7 +173,7 @@ export default function AdminCommunicationPanel() {
           setUserId(e.target.value);
           setSelectedUser(null);
         }}
-        placeholder="User ID UUID Supabase (obligatoire pour push)"
+        placeholder={t("User ID UUID Supabase (obligatoire pour push)")}
         className="w-full rounded-lg border px-3 py-2 font-mono text-sm"
       />
 
@@ -197,7 +201,7 @@ export default function AdminCommunicationPanel() {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Titre notification"
+          placeholder={t("Titre notification")}
           className="w-full rounded-lg border px-3 py-2 text-sm"
         />
       )}
@@ -206,7 +210,7 @@ export default function AdminCommunicationPanel() {
         <input
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          placeholder="Sujet email"
+          placeholder={t("Sujet email")}
           className="w-full rounded-lg border px-3 py-2 text-sm"
         />
       )}
@@ -214,7 +218,7 @@ export default function AdminCommunicationPanel() {
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        placeholder="Message"
+        placeholder={t("Message")}
         rows={4}
         className="w-full rounded-lg border px-3 py-2 text-sm"
       />

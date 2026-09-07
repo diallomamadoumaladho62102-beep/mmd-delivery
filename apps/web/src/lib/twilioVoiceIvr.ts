@@ -8,13 +8,18 @@ import {
 import {
   buildIvrConferenceConnectTwiml,
   buildIvrConnectTwiml,
-  buildIvrGatherTwiml,
+  buildIvrLanguageGatherTwiml,
+  buildIvrServiceGatherTwiml,
   buildIvrUnavailableTwiml,
   decideIvrGather,
+  decideIvrLanguageGather,
   getSupportPhoneForService,
   parseIvrAttempt,
+  parseIvrLocale,
+  parseIvrStep,
   pickInboundSupportDestination,
   type AdminVoiceService,
+  type IvrVoiceLocale,
 } from "@/lib/adminVoiceIvr";
 import {
   fetchAdminVoiceStaffProfiles,
@@ -85,45 +90,16 @@ async function persistIvrProgress(params: {
   return inserted.data?.id ? String(inserted.data.id) : null;
 }
 
-export async function handleTwilioVoiceIvr(req: NextRequest) {
-  const formData = await req.formData();
-  const twilioParams = await formDataToParamRecord(formData);
-  const twilioAuth = await assertTwilioWebhookRequest(req, twilioParams);
-
-  if (twilioAuth.ok === false) {
-    return new Response(twilioAuth.message, { status: twilioAuth.status });
-  }
-
-  const callSid = String(formData.get("CallSid") || "").trim();
-  const fromPhone = normalizePhoneE164(String(formData.get("From") || "").trim());
-  const digits = String(formData.get("Digits") || "").trim();
-  const attempt = parseIvrAttempt(req.nextUrl.searchParams.get("attempt"));
-  const decision = decideIvrGather({ digits, attempt });
-
-  if (decision.action === "repeat") {
-    try {
-      await persistIvrProgress({
-        callSid,
-        fromPhone,
-        patch: {
-          ivr_attempts: decision.attempt,
-          status: "in_ivr",
-        },
-      });
-    } catch {
-      console.error("[twilio/voice/ivr] persist failed", {
-        path: "/api/twilio/voice/ivr",
-      });
-    }
-    return twilioVoiceTwiml(
-      buildIvrGatherTwiml({
-        attempt: decision.attempt,
-        invalid: decision.invalid,
-      }),
-    );
-  }
-
-  const service: AdminVoiceService = decision.service;
+async function connectSelectedService(params: {
+  callSid: string;
+  fromPhone: string | null;
+  attempt: number;
+  locale: IvrVoiceLocale;
+  decision:
+    | { action: "connect"; digit: string; service: AdminVoiceService }
+    | { action: "fallback"; digit: "0"; service: "general" };
+}) {
+  const service: AdminVoiceService = params.decision.service;
   let destPhone = getSupportPhoneForService(service);
   let assignedAdminUserId: string | null = null;
 
@@ -149,12 +125,12 @@ export async function handleTwilioVoiceIvr(req: NextRequest) {
   let callId: string | null = null;
   try {
     callId = await persistIvrProgress({
-      callSid,
-      fromPhone,
+      callSid: params.callSid,
+      fromPhone: params.fromPhone,
       patch: {
-        ivr_digit: decision.digit,
+        ivr_digit: params.decision.digit,
         service,
-        ivr_attempts: attempt,
+        ivr_attempts: params.attempt,
         status: destPhone ? "ringing" : "missed",
         current_admin_phone: destPhone || getAdminSupportPhone(),
         assigned_admin_user_id: assignedAdminUserId,
@@ -168,7 +144,7 @@ export async function handleTwilioVoiceIvr(req: NextRequest) {
   }
 
   if (!destPhone) {
-    return twilioVoiceTwiml(buildIvrUnavailableTwiml());
+    return twilioVoiceTwiml(buildIvrUnavailableTwiml(params.locale));
   }
 
   if (callId) {
@@ -209,7 +185,8 @@ export async function handleTwilioVoiceIvr(req: NextRequest) {
         return twilioVoiceTwiml(
           buildIvrConferenceConnectTwiml({
             conferenceName,
-            fallback: decision.action === "fallback",
+            locale: params.locale,
+            fallback: params.decision.action === "fallback",
           }),
         );
       }
@@ -225,7 +202,114 @@ export async function handleTwilioVoiceIvr(req: NextRequest) {
     buildIvrConnectTwiml({
       service,
       destPhone,
-      fallback: decision.action === "fallback",
+      locale: params.locale,
+      fallback: params.decision.action === "fallback",
     }),
   );
+}
+
+export async function handleTwilioVoiceIvr(req: NextRequest) {
+  const formData = await req.formData();
+  const twilioParams = await formDataToParamRecord(formData);
+  const twilioAuth = await assertTwilioWebhookRequest(req, twilioParams);
+
+  if (twilioAuth.ok === false) {
+    return new Response(twilioAuth.message, { status: twilioAuth.status });
+  }
+
+  const callSid = String(formData.get("CallSid") || "").trim();
+  const fromPhone = normalizePhoneE164(String(formData.get("From") || "").trim());
+  const digits = String(formData.get("Digits") || "").trim();
+  const attempt = parseIvrAttempt(req.nextUrl.searchParams.get("attempt"));
+  const step = parseIvrStep(req.nextUrl.searchParams.get("step"));
+  const localeFromQuery = parseIvrLocale(req.nextUrl.searchParams.get("locale"));
+
+  // Phase 1 — language must be chosen before any service menu.
+  if (step === "language" || !localeFromQuery) {
+    const languageDecision = decideIvrLanguageGather({ digits, attempt });
+
+    if (languageDecision.action === "repeat") {
+      try {
+        await persistIvrProgress({
+          callSid,
+          fromPhone,
+          patch: {
+            ivr_attempts: languageDecision.attempt,
+            status: "in_ivr",
+          },
+        });
+      } catch {
+        console.error("[twilio/voice/ivr] persist failed", {
+          path: "/api/twilio/voice/ivr",
+        });
+      }
+      return twilioVoiceTwiml(
+        buildIvrLanguageGatherTwiml({
+          attempt: languageDecision.attempt,
+          invalid: languageDecision.invalid,
+        }),
+      );
+    }
+
+    const locale = languageDecision.locale;
+    try {
+      await persistIvrProgress({
+        callSid,
+        fromPhone,
+        patch: {
+          ivr_digit: languageDecision.digit,
+          ivr_attempts: 0,
+          status: "in_ivr",
+        },
+      });
+    } catch {
+      console.error("[twilio/voice/ivr] persist failed", {
+        path: "/api/twilio/voice/ivr",
+      });
+    }
+
+    return twilioVoiceTwiml(
+      buildIvrServiceGatherTwiml({
+        locale,
+        attempt: 0,
+        invalid: false,
+      }),
+    );
+  }
+
+  // Phase 2 — service menu in the caller's chosen locale.
+  const locale = localeFromQuery;
+  const decision = decideIvrGather({ digits, attempt });
+
+  if (decision.action === "repeat") {
+    try {
+      await persistIvrProgress({
+        callSid,
+        fromPhone,
+        patch: {
+          ivr_attempts: decision.attempt,
+          status: "in_ivr",
+        },
+      });
+    } catch {
+      console.error("[twilio/voice/ivr] persist failed", {
+        path: "/api/twilio/voice/ivr",
+      });
+    }
+    return twilioVoiceTwiml(
+      buildIvrServiceGatherTwiml({
+        locale,
+        attempt: decision.attempt,
+        invalid: decision.invalid,
+      }),
+    );
+  }
+
+  return connectSelectedService({
+    callSid,
+    fromPhone,
+    attempt,
+    locale,
+    decision,
+  });
 }

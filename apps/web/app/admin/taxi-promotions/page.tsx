@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiPromotions } from "@/lib/adminAccess";
@@ -32,6 +34,8 @@ const EMPTY_FORM = {
 };
 
 export default function AdminTaxiPromotionsPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<PromoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,15 +119,15 @@ export default function AdminTaxiPromotionsPage() {
   return (
     <AdminGate requiredPermission="taxi_promotions.read">
       <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
-        <h1>Taxi Promotions</h1>
+        <h1>{t("Taxi Promotions")}</h1>
         {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
-        {loading ? <p>Chargement…</p> : null}
+        {loading ? <p>{t("Chargement…")}</p> : null}
 
         {canEdit ? (
           <form onSubmit={createPromo} style={{ display: "grid", gap: 8, marginBottom: 24 }}>
-            <h2>Nouvelle promotion</h2>
+            <h2>{t("Nouvelle promotion")}</h2>
             <input
-              placeholder="Code"
+              placeholder={t("Code")}
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
               required
@@ -132,37 +136,37 @@ export default function AdminTaxiPromotionsPage() {
               value={form.promotion_type}
               onChange={(e) => setForm({ ...form, promotion_type: e.target.value })}
             >
-              <option value="percent">Percent</option>
-              <option value="fixed">Fixed amount</option>
-              <option value="first_ride">First ride</option>
+              <option value="percent">{t("Percent")}</option>
+              <option value="fixed">{t("Fixed amount")}</option>
+              <option value="first_ride">{t("First ride")}</option>
             </select>
             {form.promotion_type !== "fixed" ? (
               <input
-                placeholder="Discount %"
+                placeholder={t("Discount %")}
                 value={form.discount_percent}
                 onChange={(e) => setForm({ ...form, discount_percent: e.target.value })}
               />
             ) : (
               <input
-                placeholder="Discount cents"
+                placeholder={t("Discount cents")}
                 value={form.discount_cents}
                 onChange={(e) => setForm({ ...form, discount_cents: e.target.value })}
               />
             )}
             <input
-              placeholder="Max redemptions (optional)"
+              placeholder={t("Max redemptions (optional)")}
               value={form.max_redemptions}
               onChange={(e) => setForm({ ...form, max_redemptions: e.target.value })}
             />
             <input
-              placeholder="Max per user"
+              placeholder={t("Max per user")}
               value={form.max_redemptions_per_user}
               onChange={(e) =>
                 setForm({ ...form, max_redemptions_per_user: e.target.value })
               }
             />
             <input
-              placeholder="Title"
+              placeholder={t("Title")}
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
@@ -175,11 +179,11 @@ export default function AdminTaxiPromotionsPage() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th align="left">Code</th>
-              <th align="left">Type</th>
-              <th align="left">Value</th>
-              <th align="left">Used</th>
-              <th align="left">Active</th>
+              <th align="left">{t("Code")}</th>
+              <th align="left">{t("Type")}</th>
+              <th align="left">{t("Value")}</th>
+              <th align="left">{t("Used")}</th>
+              <th align="left">{t("Active")}</th>
             </tr>
           </thead>
           <tbody>
@@ -201,7 +205,7 @@ export default function AdminTaxiPromotionsPage() {
                 <td>
                   {canEdit ? (
                     <button type="button" onClick={() => toggleActive(row)}>
-                      {row.active ? "Disable" : "Enable"}
+                      {row.active ? t("Disable") : t("Enable")}
                     </button>
                   ) : row.active ? (
                     "Yes"

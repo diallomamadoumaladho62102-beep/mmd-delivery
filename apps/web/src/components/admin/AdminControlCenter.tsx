@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
@@ -26,6 +28,8 @@ type OverviewMetrics = {
 };
 
 export default function AdminControlCenter() {
+  const { t } = useAdminT();
+
   const [role, setRole] = useState<UserRole>(null);
   const [metrics, setMetrics] = useState<OverviewMetrics | null>(null);
   const [metricsError, setMetricsError] = useState<string | null>(null);
@@ -105,12 +109,12 @@ export default function AdminControlCenter() {
         <div className="mx-auto max-w-6xl space-y-6 p-6">
           <header className="space-y-3">
             <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-              MMD Delivery · Control Center
+              {t("MMD Delivery · Control Center")}
             </div>
 
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-                Centre de contrôle opérationnel
+                {t("Centre de contrôle opérationnel")}
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-600">
                 Supervision nationale : utilisateurs, commandes, dispatch, paiements et
@@ -164,10 +168,10 @@ export default function AdminControlCenter() {
             <section className="space-y-4">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
-                  Launch, monitoring & MMD AI
+                  {t("Launch, monitoring & MMD AI")}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Regional rollout, taxi ops monitoring, platform launch, and MMD AI controls.
+                  {t("Regional rollout, taxi ops monitoring, platform launch, and MMD AI controls.")}
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -196,7 +200,7 @@ export default function AdminControlCenter() {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-base font-semibold text-slate-900">
-                    Commissions récentes
+                    {t("Commissions récentes")}
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Vue finance / super admin des commissions calculées.
@@ -206,14 +210,14 @@ export default function AdminControlCenter() {
                   href="/admin/commission-engine"
                   className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                 >
-                  Moteur de commissions
+                  {t("Moteur de commissions")}
                 </a>
                 {role && hasPermission(role, "analytics.read") ? (
                   <a
                     href="/admin/analytics"
                     className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                   >
-                    Analytics
+                    {t("Analytics")}
                   </a>
                 ) : null}
               </div>

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiLaunch } from "@/lib/adminAccess";
@@ -46,6 +48,8 @@ function scoreBadge(score: unknown) {
 }
 
 export default function AdminTaxiLaunchPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<LaunchRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
@@ -100,7 +104,7 @@ export default function AdminTaxiLaunchPage() {
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Taxi Launch Control</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t("Taxi Launch Control")}</h1>
               <p className="mt-1 text-sm text-slate-600">
                 Activer/désactiver les marchés et features sans redéploiement.
               </p>
@@ -109,12 +113,12 @@ export default function AdminTaxiLaunchPage() {
               href="/admin/taxi-monitoring"
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
             >
-              Monitoring →
+              {t("Monitoring →")}
             </a>
           </header>
 
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : (
             <div className="grid gap-4 xl:grid-cols-2">
               {rows.map((row) => (
@@ -143,16 +147,16 @@ export default function AdminTaxiLaunchPage() {
                   </div>
 
                   <label className="mb-3 block text-sm">
-                    Statut launch
+                    {t("Statut launch")}
                     <select
                       name="launch_status"
                       defaultValue={row.launch_status}
                       disabled={!canEdit}
                       className="mt-1 w-full rounded-lg border px-2 py-1"
                     >
-                      <option value="enabled">Enabled</option>
-                      <option value="disabled">Disabled</option>
-                      <option value="maintenance">Maintenance</option>
+                      <option value="enabled">{t("Enabled")}</option>
+                      <option value="disabled">{t("Disabled")}</option>
+                      <option value="maintenance">{t("Maintenance")}</option>
                     </select>
                   </label>
 
@@ -184,7 +188,7 @@ export default function AdminTaxiLaunchPage() {
                       disabled={savingCode === row.country_code}
                       className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                     >
-                      {savingCode === row.country_code ? "Saving…" : "Save"}
+                      {savingCode === row.country_code ? t("Saving…") : t("Save")}
                     </button>
                   ) : null}
                 </form>

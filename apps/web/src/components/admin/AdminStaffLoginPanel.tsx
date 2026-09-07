@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,6 +19,8 @@ import { ADMIN_LOGO } from "@/components/admin/adminUi";
 type ViewState = "idle" | "loading" | "success" | "error";
 
 export default function AdminStaffLoginPanel() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -252,21 +256,21 @@ export default function AdminStaffLoginPanel() {
             priority
             className="size-12 rounded-[14px] object-contain"
           />
-          <p className="text-[28px] font-extrabold text-[#FBBF24]">MMD Control</p>
+          <p className="text-[28px] font-extrabold text-[#FBBF24]">{t("MMD Control")}</p>
         </div>
 
         <div className="mt-6 text-center">
           <h1 className="text-[32px] font-extrabold text-white sm:text-[36px]">
-            Staff Sign In
+            {t("Staff Sign In")}
           </h1>
           <p className="mt-2 text-base text-white/70 sm:text-lg">
-            Use your staff account to access the Control Center.
+            {t("Use your staff account to access the Control Center.")}
           </p>
         </div>
 
         {isCheckingSession ? (
           <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 px-4 py-6 text-center text-white/80">
-            Loading…
+            {t("Loading…")}
           </div>
         ) : (
           <div className="mt-8 space-y-4">
@@ -275,7 +279,7 @@ export default function AdminStaffLoginPanel() {
                 htmlFor="admin-email"
                 className="mb-2 block text-base font-semibold text-white/70"
               >
-                Email
+                {t("Email")}
               </label>
               <input
                 id="admin-email"
@@ -302,7 +306,7 @@ export default function AdminStaffLoginPanel() {
                 htmlFor="admin-password"
                 className="mb-2 block text-base font-semibold text-white/70"
               >
-                Password
+                {t("Password")}
               </label>
               <div className="relative">
                 <input
@@ -349,7 +353,7 @@ export default function AdminStaffLoginPanel() {
                 disabled={state === "loading"}
                 className="font-medium text-white/80 underline-offset-2 hover:underline disabled:opacity-60"
               >
-                Forgot password?
+                {t("Forgot password?")}
               </button>
               <button
                 type="button"
@@ -364,7 +368,7 @@ export default function AdminStaffLoginPanel() {
             {showMagicLink ? (
               <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
                 <p className="text-sm text-white/70">
-                  Receive a login link by email. Staff accounts must already exist.
+                  {t("Receive a login link by email. Staff accounts must already exist.")}
                 </p>
                 <button
                   type="button"
@@ -372,7 +376,7 @@ export default function AdminStaffLoginPanel() {
                   disabled={state === "loading"}
                   className="mt-3 w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  Send login link
+                  {t("Send login link")}
                 </button>
               </div>
             ) : null}
@@ -394,7 +398,7 @@ export default function AdminStaffLoginPanel() {
         ) : null}
 
         <p className="mt-6 text-center text-xs leading-5 text-white/50">
-          Staff accounts cannot be created here. Contact a MMD administrator.
+          {t("Staff accounts cannot be created here. Contact a MMD administrator.")}
         </p>
 
         <div className="mt-4 text-center">
@@ -402,7 +406,7 @@ export default function AdminStaffLoginPanel() {
             href="/"
             className="text-sm font-medium text-white/70 underline-offset-2 hover:underline"
           >
-            Back to site
+            {t("Back to site")}
           </Link>
         </div>
       </div>

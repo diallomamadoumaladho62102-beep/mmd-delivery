@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch } from "@/lib/adminBrowserAuth";
@@ -41,6 +43,8 @@ function boolLabel(value: boolean | null | undefined): string {
 }
 
 function TestRecordsInner() {
+  const { t } = useAdminT();
+
   const [items, setItems] = useState<TestRecordRow[]>([]);
   const [count, setCount] = useState(0);
   const [source, setSource] = useState<string>("");
@@ -85,7 +89,7 @@ function TestRecordsInner() {
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-slate-600">
-            {loading ? "Chargement…" : `${count} record(s)`}
+            {loading ? t("Chargement…") : `${count} record(s)`}
             {source ? ` · source: ${source}` : null}
           </div>
           <button
@@ -94,7 +98,7 @@ function TestRecordsInner() {
             disabled={loading}
             className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
-            Actualiser
+            {t("Actualiser")}
           </button>
         </div>
 
@@ -102,24 +106,24 @@ function TestRecordsInner() {
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-2 py-2">Kind</th>
-                <th className="px-2 py-2">ID</th>
-                <th className="px-2 py-2">Status</th>
-                <th className="px-2 py-2">Payment</th>
-                <th className="px-2 py-2">Stripe PI</th>
-                <th className="px-2 py-2">Stripe Session</th>
-                <th className="px-2 py-2">Driver</th>
-                <th className="px-2 py-2">Total</th>
-                <th className="px-2 py-2">Created</th>
-                <th className="px-2 py-2">Archived</th>
-                <th className="px-2 py-2">Test</th>
+                <th className="px-2 py-2">{t("Kind")}</th>
+                <th className="px-2 py-2">{t("ID")}</th>
+                <th className="px-2 py-2">{t("Status")}</th>
+                <th className="px-2 py-2">{t("Payment")}</th>
+                <th className="px-2 py-2">{t("Stripe PI")}</th>
+                <th className="px-2 py-2">{t("Stripe Session")}</th>
+                <th className="px-2 py-2">{t("Driver")}</th>
+                <th className="px-2 py-2">{t("Total")}</th>
+                <th className="px-2 py-2">{t("Created")}</th>
+                <th className="px-2 py-2">{t("Archived")}</th>
+                <th className="px-2 py-2">{t("Test")}</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 && !loading ? (
                 <tr>
                   <td colSpan={11} className="px-2 py-6 text-center text-slate-500">
-                    Aucun enregistrement archivé ou test.
+                    {t("Aucun enregistrement archivé ou test.")}
                   </td>
                 </tr>
               ) : (
@@ -154,6 +158,8 @@ function TestRecordsInner() {
 }
 
 export default function AdminTestRecordsPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="test_records.read">
       <TestRecordsInner />

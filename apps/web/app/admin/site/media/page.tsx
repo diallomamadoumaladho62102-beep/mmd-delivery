@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -22,6 +24,8 @@ type MediaRow = {
 };
 
 function MediaInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [rows, setRows] = useState<MediaRow[]>([]);
   const [folder, setFolder] = useState("");
@@ -102,7 +106,7 @@ function MediaInner() {
 
   const rename = async (row: MediaRow) => {
     if (!canEdit) return;
-    const filename = window.prompt("Filename", row.filename)?.trim();
+    const filename = window.prompt(t("Filename"), row.filename)?.trim();
     if (!filename) return;
     const http = await adminFetch("/api/admin/site/media", {
       method: "PATCH",
@@ -118,7 +122,7 @@ function MediaInner() {
   };
 
   const onDelete = async (id: string) => {
-    if (!canEdit || !window.confirm("Delete media?")) return;
+    if (!canEdit || !window.confirm(t("Delete media?"))) return;
     const http = await adminFetch(`/api/admin/site/media?id=${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
@@ -136,7 +140,7 @@ function MediaInner() {
         <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Corporate Website
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Media library</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Media library")}</h1>
       </div>
 
       {error ? (
@@ -150,15 +154,15 @@ function MediaInner() {
 
       <div className={`${CARD} grid gap-3 md:grid-cols-4`}>
         <label className="block">
-          <span className={LABEL}>Folder filter</span>
+          <span className={LABEL}>{t("Folder filter")}</span>
           <input className={INPUT} value={folder} onChange={(e) => setFolder(e.target.value)} />
         </label>
         <label className="block">
-          <span className={LABEL}>Search</span>
+          <span className={LABEL}>{t("Search")}</span>
           <input className={INPUT} value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <label className="block">
-          <span className={LABEL}>Tag</span>
+          <span className={LABEL}>{t("Tag")}</span>
           <input className={INPUT} value={tag} onChange={(e) => setTag(e.target.value)} />
         </label>
         <div className="flex items-end">
@@ -167,16 +171,16 @@ function MediaInner() {
             onClick={() => void load()}
             className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold"
           >
-            Refresh
+            {t("Refresh")}
           </button>
         </div>
       </div>
 
       {canEdit ? (
         <div className={`${CARD} space-y-3`}>
-          <h2 className="font-semibold text-slate-900">Upload</h2>
+          <h2 className="font-semibold text-slate-900">{t("Upload")}</h2>
           <label className="block max-w-xs">
-            <span className={LABEL}>Folder</span>
+            <span className={LABEL}>{t("Folder")}</span>
             <input
               className={INPUT}
               value={uploadFolder}
@@ -212,10 +216,10 @@ function MediaInner() {
                 onClick={() => void rename(row)}
                 disabled={!canEdit}
               >
-                Rename
+                {t("Rename")}
               </button>
               <label className="cursor-pointer rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold">
-                Replace
+                {t("Replace")}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -230,18 +234,20 @@ function MediaInner() {
                 disabled={!canEdit}
                 onClick={() => void onDelete(row.id)}
               >
-                Delete
+                {t("Delete")}
               </button>
             </div>
           </div>
         ))}
       </div>
-      {rows.length === 0 ? <p className="text-sm text-slate-500">No media.</p> : null}
+      {rows.length === 0 ? <p className="text-sm text-slate-500">{t("No media.")}</p> : null}
     </div>
   );
 }
 
 export default function SiteMediaPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <MediaInner />

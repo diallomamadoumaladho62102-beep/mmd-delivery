@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { canManageDriverIdentitySettings } from "@/lib/adminAccess";
@@ -9,6 +11,8 @@ import { supabase } from "@/lib/supabaseBrowser";
 type Settings = Record<string, boolean | number | string>;
 
 export default function AdminDriverIdentitySettingsPage() {
+  const { t } = useAdminT();
+
   const [role, setRole] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
@@ -64,13 +68,13 @@ export default function AdminDriverIdentitySettingsPage() {
   if (!canEdit) {
     return (
       <main style={{ padding: 24 }}>
-        <h1>Paramètres vérification identité</h1>
-        <p>Accès refusé.</p>
+        <h1>{t("Paramètres vérification identité")}</h1>
+        <p>{t("Accès refusé.")}</p>
       </main>
     );
   }
 
-  if (!settings) return <main style={{ padding: 24 }}>Chargement…</main>;
+  if (!settings) return <main style={{ padding: 24 }}>{t("Chargement…")}</main>;
 
   const boolFields: Array<{ key: keyof Settings; label: string }> = [
     { key: "random_check_enabled", label: "Contrôles aléatoires" },
@@ -99,7 +103,7 @@ export default function AdminDriverIdentitySettingsPage() {
     <main style={{ padding: 24, display: "grid", gap: 16, maxWidth: 720 }}>
       <header>
         <Link href="/admin/driver-identity">← Retour vérifications</Link>
-        <h1 style={{ marginTop: 12 }}>Paramètres moteur de risque</h1>
+        <h1 style={{ marginTop: 12 }}>{t("Paramètres moteur de risque")}</h1>
       </header>
 
       <section style={{ display: "grid", gap: 10 }}>
@@ -135,7 +139,7 @@ export default function AdminDriverIdentitySettingsPage() {
         ))}
 
         <label style={{ display: "grid", gap: 4 }}>
-          Seuil revue manuelle (score risque)
+          {t("Seuil revue manuelle (score risque)")}
           <input
             type="number"
             step="0.01"
@@ -150,7 +154,7 @@ export default function AdminDriverIdentitySettingsPage() {
         </label>
 
         <label style={{ display: "grid", gap: 4 }}>
-          Provider par défaut (internal, facetec, onfido…)
+          {t("Provider par défaut (internal, facetec, onfido…)")}
           <input
             type="text"
             value={String(settings.default_provider ?? "internal")}
@@ -165,7 +169,7 @@ export default function AdminDriverIdentitySettingsPage() {
       </section>
 
       <button type="button" disabled={saving} onClick={() => void save()}>
-        {saving ? "Enregistrement…" : "Enregistrer"}
+        {saving ? t("Enregistrement…") : t("Enregistrer")}
       </button>
       {message ? <p>{message}</p> : null}
     </main>

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -21,6 +23,8 @@ type PostRow = {
 };
 
 function PostsListInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [rows, setRows] = useState<PostRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +86,7 @@ function PostsListInner() {
         <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Corporate Website
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Posts</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Posts")}</h1>
       </div>
 
       {error ? (
@@ -94,7 +98,7 @@ function PostsListInner() {
       {canEdit ? (
         <form onSubmit={createPost} className={`${CARD} grid gap-3 sm:grid-cols-4`}>
           <label className="block">
-            <span className={LABEL}>Type</span>
+            <span className={LABEL}>{t("Type")}</span>
             <select className={INPUT} value={postType} onChange={(e) => setPostType(e.target.value)}>
               <option value="blog">blog</option>
               <option value="news">news</option>
@@ -104,11 +108,11 @@ function PostsListInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Slug</span>
+            <span className={LABEL}>{t("Slug")}</span>
             <input className={INPUT} value={slug} onChange={(e) => setSlug(e.target.value)} required />
           </label>
           <label className="block">
-            <span className={LABEL}>Title</span>
+            <span className={LABEL}>{t("Title")}</span>
             <input className={INPUT} value={title} onChange={(e) => setTitle(e.target.value)} required />
           </label>
           <div className="flex items-end">
@@ -138,13 +142,15 @@ function PostsListInner() {
             </div>
           </Link>
         ))}
-        {rows.length === 0 ? <p className="text-sm text-slate-500">No posts.</p> : null}
+        {rows.length === 0 ? <p className="text-sm text-slate-500">{t("No posts.")}</p> : null}
       </div>
     </div>
   );
 }
 
 export default function SitePostsListPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <PostsListInner />

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import type { AdminFoodOrderListItem } from "@/lib/adminFoodOrderDisplay";
@@ -15,6 +17,8 @@ export default function FoodOrderActionsMenu({
   order: AdminFoodOrderListItem;
   canManageOrders: boolean;
 }) {
+  const { t } = useAdminT();
+
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -60,7 +64,7 @@ export default function FoodOrderActionsMenu({
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        aria-label="Order actions"
+        aria-label={t("Order actions")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
@@ -84,7 +88,7 @@ export default function FoodOrderActionsMenu({
             className={itemClass}
             onClick={() => setOpen(false)}
           >
-            View details
+            {t("View details")}
           </Link>
           <Link
             role="menuitem"
@@ -92,7 +96,7 @@ export default function FoodOrderActionsMenu({
             className={itemClass}
             onClick={() => setOpen(false)}
           >
-            Timeline
+            {t("Timeline")}
           </Link>
           <Link
             role="menuitem"
@@ -112,7 +116,7 @@ export default function FoodOrderActionsMenu({
               className={itemClass}
               onClick={() => setOpen(false)}
             >
-              Open client
+              {t("Open client")}
             </Link>
           ) : null}
           {driverId ? (
@@ -122,7 +126,7 @@ export default function FoodOrderActionsMenu({
               className={itemClass}
               onClick={() => setOpen(false)}
             >
-              Open drivers
+              {t("Open drivers")}
             </Link>
           ) : null}
           {restaurantId ? (
@@ -132,7 +136,7 @@ export default function FoodOrderActionsMenu({
               className={itemClass}
               onClick={() => setOpen(false)}
             >
-              Open restaurants
+              {t("Open restaurants")}
             </Link>
           ) : null}
           {canManageOrders ? (
@@ -142,7 +146,7 @@ export default function FoodOrderActionsMenu({
               className={itemClass}
               onClick={() => setOpen(false)}
             >
-              Refund (detail)
+              {t("Refund (detail)")}
             </Link>
           ) : null}
         </div>

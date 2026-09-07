@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canModifyPricing } from "@/lib/adminAccess";
@@ -37,22 +39,27 @@ const PROVIDER_LABELS: Record<PaymentProvider, string> = {
   cinetpay: "CinetPay",
 };
 
-function availabilityBadge(row: AdminPaymentMethodRow) {
+function availabilityBadge(
+  row: AdminPaymentMethodRow,
+  t: (english: string) => string,
+) {
   if (row.runtime_available) {
     return (
       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-        Available
+        {t("Available")}
       </span>
     );
   }
   return (
     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-      Unavailable
+      {t("Unavailable")}
     </span>
   );
 }
 
 export default function AdminPaymentMethodsPage() {
+  const { t } = useAdminT();
+
   const [items, setItems] = useState<AdminPaymentMethodRow[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [countryFilter, setCountryFilter] = useState("");
@@ -130,7 +137,7 @@ export default function AdminPaymentMethodsPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="space-y-2">
-            <h1 className="text-2xl font-bold text-slate-900">Payment Methods (Inbound)</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Payment Methods (Inbound)")}</h1>
             <p className="text-sm text-slate-600">
               Client → MMD payment routing for Stripe and local mobile money. Outbound payout
               methods for drivers and restaurants are managed separately.
@@ -138,10 +145,10 @@ export default function AdminPaymentMethodsPage() {
             {meta ? (
               <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
                 <div>
-                  <span className="font-semibold">Public base URL:</span> {meta.public_base_url}
+                  <span className="font-semibold">{t("Public base URL:")}</span> {meta.public_base_url}
                 </div>
                 <div className="mt-1">
-                  <span className="font-semibold">STRIPE_ENABLED_GN:</span>{" "}
+                  <span className="font-semibold">{t("STRIPE_ENABLED_GN:")}</span>{" "}
                   {meta.stripe_gn_env_enabled ? (
                     <span className="text-emerald-700">true</span>
                   ) : (
@@ -154,13 +161,13 @@ export default function AdminPaymentMethodsPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <label className="text-sm font-medium text-slate-700">
-              Country
+              {t("Country")}
               <select
                 className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 value={countryFilter}
                 onChange={(e) => setCountryFilter(e.target.value)}
               >
-                <option value="">All countries</option>
+                <option value="">{t("All countries")}</option>
                 {countryOptions.map((code) => (
                   <option key={code} value={code}>
                     {code}
@@ -173,26 +180,26 @@ export default function AdminPaymentMethodsPage() {
               onClick={() => void load()}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
             >
-              Refresh
+              {t("Refresh")}
             </button>
             <a
               href="/admin/pricing"
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
             >
-              Pricing →
+              {t("Pricing →")}
             </a>
             <a
               href="/admin/payout-methods"
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
             >
-              Outbound payout methods →
+              {t("Outbound payout methods →")}
             </a>
           </div>
 
           {loading ? (
-            <p className="text-sm text-slate-600">Loading payment methods…</p>
+            <p className="text-sm text-slate-600">{t("Loading payment methods…")}</p>
           ) : items.length === 0 ? (
-            <p className="text-sm text-slate-600">No payment methods found.</p>
+            <p className="text-sm text-slate-600">{t("No payment methods found.")}</p>
           ) : (
             <div className="space-y-4">
               {items.map((row) => (
@@ -207,19 +214,19 @@ export default function AdminPaymentMethodsPage() {
                         <h2 className="text-lg font-semibold text-slate-900">
                           {row.country_code} · {row.display_name}
                         </h2>
-                        {availabilityBadge(row)}
+                        {availabilityBadge(row, t)}
                         {row.enabled ? (
                           <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                            Enabled
+                            {t("Enabled")}
                           </span>
                         ) : (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                            Disabled
+                            {t("Disabled")}
                           </span>
                         )}
                       </div>
                       <p className="mt-1 text-sm text-slate-600">
-                        Method code: <code>{row.method_code}</code>
+                        {t("Method code:")} <code>{row.method_code}</code>
                       </p>
                     </div>
                     <button
@@ -227,13 +234,13 @@ export default function AdminPaymentMethodsPage() {
                       disabled={!canEdit || savingId === row.id}
                       className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                     >
-                      {savingId === row.id ? "Saving…" : "Save"}
+                      {savingId === row.id ? t("Saving…") : t("Save")}
                     </button>
                   </div>
 
                   <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Provider</span>
+                      <span className="font-medium text-slate-700">{t("Provider")}</span>
                       <select
                         name="provider"
                         defaultValue={row.provider}
@@ -249,7 +256,7 @@ export default function AdminPaymentMethodsPage() {
                     </label>
 
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Display name</span>
+                      <span className="font-medium text-slate-700">{t("Display name")}</span>
                       <input
                         name="display_name"
                         defaultValue={row.display_name}
@@ -259,7 +266,7 @@ export default function AdminPaymentMethodsPage() {
                     </label>
 
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Sort order</span>
+                      <span className="font-medium text-slate-700">{t("Sort order")}</span>
                       <input
                         name="sort_order"
                         type="number"
@@ -276,7 +283,7 @@ export default function AdminPaymentMethodsPage() {
                         defaultChecked={row.enabled}
                         disabled={!canEdit}
                       />
-                      <span className="font-medium text-slate-700">Enabled for clients</span>
+                      <span className="font-medium text-slate-700">{t("Enabled for clients")}</span>
                     </label>
 
                     <label className="flex items-center gap-2 text-sm md:col-span-2 xl:col-span-3">
@@ -286,11 +293,11 @@ export default function AdminPaymentMethodsPage() {
                         defaultChecked={row.test_mode}
                         disabled={!canEdit}
                       />
-                      <span className="font-medium text-slate-700">Test mode</span>
+                      <span className="font-medium text-slate-700">{t("Test mode")}</span>
                     </label>
 
                     <label className="block text-sm md:col-span-2 xl:col-span-3">
-                      <span className="font-medium text-slate-700">Description</span>
+                      <span className="font-medium text-slate-700">{t("Description")}</span>
                       <input
                         name="description"
                         defaultValue={row.description ?? ""}
@@ -302,24 +309,26 @@ export default function AdminPaymentMethodsPage() {
 
                   <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
                     <div>
-                      <span className="font-semibold">Runtime availability:</span>{" "}
-                      {row.runtime_available ? "Available" : row.unavailable_reason ?? "Unavailable"}
+                      <span className="font-semibold">{t("Runtime availability:")}</span>{" "}
+                      {row.runtime_available
+                        ? t("Available")
+                        : row.unavailable_reason ?? t("Unavailable")}
                     </div>
                     <div className="mt-1">
-                      <span className="font-semibold">Provider secrets:</span>{" "}
+                      <span className="font-semibold">{t("Provider secrets:")}</span>{" "}
                       {row.secrets_configured
-                        ? "Configured"
-                        : `Missing: ${row.secrets_missing.join(", ")}`}
+                        ? t("Configured")
+                        : `${t("Missing")}: ${row.secrets_missing.join(", ")}`}
                     </div>
                     {row.country_code === "GN" && row.provider === "stripe" ? (
                       <div className="mt-1 text-amber-800">
-                        Guinea Stripe requires server env <code>STRIPE_ENABLED_GN=true</code>{" "}
+                        {t("Guinea Stripe requires server env")} <code>{t("STRIPE_ENABLED_GN=true")}</code>{" "}
                         {row.stripe_gn_env_enabled ? "(currently ON)" : "(currently OFF)"}
                       </div>
                     ) : null}
                     {row.webhook_url ? (
                       <div className="mt-1 break-all">
-                        <span className="font-semibold">Webhook URL:</span> {row.webhook_url}
+                        <span className="font-semibold">{t("Webhook URL:")}</span> {row.webhook_url}
                       </div>
                     ) : null}
                   </div>

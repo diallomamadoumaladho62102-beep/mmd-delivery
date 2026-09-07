@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -20,6 +22,8 @@ type MenuItem = {
 };
 
 function MenusInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [key, setKey] = useState<"header" | "footer">("header");
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -97,7 +101,7 @@ function MenusInner() {
         <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Corporate Website
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Menus</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Menus")}</h1>
       </div>
 
       {error ? (
@@ -130,7 +134,7 @@ function MenusInner() {
         {items.map((item, index) => (
           <div key={`${item.id ?? "new"}-${index}`} className="grid gap-2 rounded-xl border border-slate-100 p-3 md:grid-cols-5">
             <label className="block md:col-span-2">
-              <span className={LABEL}>Label</span>
+              <span className={LABEL}>{t("Label")}</span>
               <input
                 className={INPUT}
                 value={item.label}
@@ -139,7 +143,7 @@ function MenusInner() {
               />
             </label>
             <label className="block md:col-span-2">
-              <span className={LABEL}>Href</span>
+              <span className={LABEL}>{t("Href")}</span>
               <input
                 className={INPUT}
                 value={item.href}
@@ -155,7 +159,7 @@ function MenusInner() {
                   onChange={(e) => updateItem(index, { visible: e.target.checked })}
                   disabled={!canEdit}
                 />
-                Visible
+                {t("Visible")}
               </label>
               <button
                 type="button"
@@ -163,7 +167,7 @@ function MenusInner() {
                 onClick={() => removeItem(index)}
                 className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600"
               >
-                Remove
+                {t("Remove")}
               </button>
             </div>
           </div>
@@ -175,7 +179,7 @@ function MenusInner() {
             onClick={addItem}
             className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold"
           >
-            Add item
+            {t("Add item")}
           </button>
           <button
             type="button"
@@ -192,6 +196,8 @@ function MenusInner() {
 }
 
 export default function SiteMenusPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <MenusInner />

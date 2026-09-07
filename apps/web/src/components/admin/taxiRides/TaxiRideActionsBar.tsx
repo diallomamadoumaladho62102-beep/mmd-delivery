@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import {
   rideStatusActions,
@@ -12,10 +14,12 @@ export default function TaxiRideActionsBar({
 }: {
   ride: AdminTaxiRideListItem;
 }) {
+  const { t } = useAdminT();
+
   const actions = rideStatusActions(ride).slice(0, 3);
 
   return (
-    <div className="flex flex-wrap gap-2" aria-label="Ride actions">
+    <div className="flex flex-wrap gap-2" aria-label={t("Ride actions")}>
       {actions.map((action) => (
         <Link
           key={action.key}

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import type { AdminTaxiRideListItem } from "@/lib/adminTaxiRideDisplay";
 import TaxiRideCardSkeleton from "./TaxiRideCardSkeleton";
 import TaxiRideOpsCard from "./TaxiRideOpsCard";
@@ -22,6 +24,8 @@ export default function TaxiRidesList({
   selectedIds?: Set<string>;
   onToggleSelect?: (rideId: string) => void;
 }) {
+  const { t } = useAdminT();
+
   void selectedIds;
   void onToggleSelect;
 
@@ -38,8 +42,8 @@ export default function TaxiRidesList({
   if (items.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm">
-        <p className="text-sm font-medium text-slate-800">No rides match</p>
-        <p className="mt-1 text-sm text-slate-500">Try clearing filters or refreshing.</p>
+        <p className="text-sm font-medium text-slate-800">{t("No rides match")}</p>
+        <p className="mt-1 text-sm text-slate-500">{t("Try clearing filters or refreshing.")}</p>
       </div>
     );
   }
@@ -58,7 +62,7 @@ export default function TaxiRidesList({
             onClick={onLoadMore}
             className="inline-flex h-11 items-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            Load more
+            {t("Load more")}
           </button>
         </div>
       ) : null}

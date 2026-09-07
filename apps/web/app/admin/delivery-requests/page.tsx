@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import AdminGate from "@/components/AdminGate";
 import AdminApiTable from "@/components/admin/AdminApiTable";
 
@@ -31,14 +33,16 @@ function formatDrTotal(r: DrRow): string {
 }
 
 export default function AdminDeliveryRequestsPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="delivery_requests.read">
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Delivery Requests</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Delivery Requests")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Demandes de livraison, statuts et chauffeurs assignés.
+              {t("Demandes de livraison, statuts et chauffeurs assignés.")}
             </p>
           </header>
           <AdminApiTable<DrRow>
@@ -51,7 +55,7 @@ export default function AdminDeliveryRequestsPage() {
                   <span className="font-mono text-xs">{r.id.slice(0, 8)}…</span>
                 ),
               },
-              { key: "status", label: "Statut" },
+              { key: "status", label: t("Statut") },
               { key: "payment_status", label: "Paiement" },
               {
                 key: "total_cents",
@@ -60,13 +64,13 @@ export default function AdminDeliveryRequestsPage() {
               },
               {
                 key: "driver_id",
-                label: "Chauffeur",
+                label: t("Chauffeur"),
                 render: (r) =>
                   r.driver_id ? `${r.driver_id.slice(0, 8)}…` : "—",
               },
               {
                 key: "pickup_address",
-                label: "Pickup",
+                label: t("Pickup"),
                 render: (r) => (
                   <span className="max-w-[200px] truncate block">
                     {r.pickup_address ?? "—"}

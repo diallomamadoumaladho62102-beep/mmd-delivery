@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -47,6 +49,8 @@ type Perf = {
 };
 
 export default function AdminStaffDetailPage() {
+  const { t } = useAdminT();
+
   const params = useParams<{ id: string }>();
   const id = String(params?.id ?? "");
   const [row, setRow] = useState<AdminRow | null>(null);
@@ -147,7 +151,7 @@ export default function AdminStaffDetailPage() {
             {error}
           </div>
         ) : !row ? (
-          <p className="text-sm text-[var(--cc-muted)]">Loading…</p>
+          <p className="text-sm text-[var(--cc-muted)]">{t("Loading…")}</p>
         ) : (
           <>
             <header className="cc-card flex flex-wrap items-center gap-4 p-6">
@@ -174,23 +178,23 @@ export default function AdminStaffDetailPage() {
             <div className="grid gap-6 lg:grid-cols-2">
               <section className="cc-card space-y-3 p-5">
                 <h2 className="text-sm font-semibold text-slate-900">
-                  Information
+                  {t("Information")}
                 </h2>
-                <Info label="Email" value={row.email} />
-                <Info label="Phone" value={row.phone} />
+                <Info label={t("Email")} value={row.email} />
+                <Info label={t("Phone")} value={row.phone} />
                 <Info
-                  label="Role"
+                  label={t("Role")}
                   value={roleDisplayName(row.role as never, {
                     isFounder: row.is_founder,
                   })}
                 />
-                <Info label="Title" value={row.staff_title} />
-                <Info label="Department" value={row.staff_department} />
+                <Info label={t("Title")} value={row.staff_title} />
+                <Info label={t("Department")} value={row.staff_department} />
               </section>
 
               <section className="cc-card space-y-3 p-5">
                 <h2 className="text-sm font-semibold text-slate-900">
-                  Performance
+                  {t("Performance")}
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -205,7 +209,7 @@ export default function AdminStaffDetailPage() {
                     ["Incidents", perf?.incidents_handled],
                     ["Support actions", perf?.support_tickets],
                     ["Success rate %", perf?.success_rate],
-                    ["Workload", perf?.workload],
+                    [t("Workload"), perf?.workload],
                     ["Activity 7d", perf?.activity_7d],
                     ["Activity 30d", perf?.activity_30d],
                   ].map(([label, value]) => (
@@ -225,18 +229,18 @@ export default function AdminStaffDetailPage() {
 
             <form onSubmit={(e) => void saveGeo(e)} className="cc-card grid gap-3 p-5 md:grid-cols-2">
               <h2 className="text-sm font-semibold text-slate-900 md:col-span-2">
-                Geographic assignment
+                {t("Geographic assignment")}
               </h2>
               {(
                 [
-                  ["staff_country_code", "Country"],
-                  ["staff_region_code", "State / Region"],
-                  ["staff_county_code", "County"],
-                  ["staff_city", "City"],
-                  ["staff_timezone", "Timezone"],
-                  ["staff_language", "Language"],
-                  ["staff_department", "Department"],
-                  ["staff_title", "Title"],
+                  ["staff_country_code", t("Country")],
+                  ["staff_region_code", t("State / Region")],
+                  ["staff_county_code", t("County")],
+                  ["staff_city", t("City")],
+                  ["staff_timezone", t("Timezone")],
+                  ["staff_language", t("Language")],
+                  ["staff_department", t("Department")],
+                  ["staff_title", t("Title")],
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="text-sm">
@@ -265,7 +269,7 @@ export default function AdminStaffDetailPage() {
               <div id="comms">
                 <StaffCommsPanel
                   peerAdminId={row.id}
-                  peerName={row.full_name || row.email || "Admin"}
+                  peerName={row.full_name || row.email || t("Admin")}
                   currentUserId={currentUserId}
                 />
               </div>
@@ -276,7 +280,7 @@ export default function AdminStaffDetailPage() {
                 href={`/admin/tasks?assignee=${row.id}`}
                 className="inline-flex text-sm font-semibold text-[var(--cc-info)] hover:underline"
               >
-                Assign a task →
+                {t("Assign a task →")}
               </Link>
               <Link
                 href={`/admin/audit?actor=${row.id}`}

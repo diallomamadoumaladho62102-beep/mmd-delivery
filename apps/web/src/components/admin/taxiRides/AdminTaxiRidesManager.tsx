@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -20,6 +22,8 @@ import TaxiRidesList from "./TaxiRidesList";
 import TaxiRidesToolbar from "./TaxiRidesToolbar";
 
 export default function AdminTaxiRidesManager() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -120,10 +124,10 @@ export default function AdminTaxiRidesManager() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-            MMD Delivery · Taxi Operations Center
+            {t("MMD Delivery · Taxi Operations Center")}
           </div>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
-            Taxi Rides
+            {t("Taxi Rides")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
             Prioritized ops view: client, driver, vehicle, payment, and trip progress.
@@ -134,7 +138,7 @@ export default function AdminTaxiRidesManager() {
               href="/admin/live-map"
               className="font-medium text-slate-700 underline-offset-2 hover:underline"
             >
-              Open Live Map
+              {t("Open Live Map")}
             </Link>
           </p>
         </div>
@@ -144,22 +148,22 @@ export default function AdminTaxiRidesManager() {
           disabled={refreshing || loading}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
-          {refreshing ? "Refreshing…" : "Refresh"}
+          {refreshing ? t("Refreshing…") : t("Refresh")}
         </button>
       </div>
 
       <section
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"
-        aria-label="Taxi operations KPIs"
+        aria-label={t("Taxi operations KPIs")}
       >
         {(
           [
             ["Total Rides", String(kpis.total)],
-            ["Active", String(kpis.active)],
-            ["Searching Driver", String(kpis.searching)],
-            ["Passenger On Board", String(kpis.onBoard)],
-            ["Completed", String(kpis.completed)],
-            ["Cancelled", String(kpis.canceled)],
+            [t("Active"), String(kpis.active)],
+            [t("Searching Driver"), String(kpis.searching)],
+            [t("Passenger On Board"), String(kpis.onBoard)],
+            [t("Completed"), String(kpis.completed)],
+            [t("Cancelled"), String(kpis.canceled)],
             [
               "Revenue Today",
               formatRideMoney(kpis.revenueTodayCents, items[0]?.currency ?? "USD"),

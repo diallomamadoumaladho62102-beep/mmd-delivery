@@ -168,13 +168,13 @@ export function DriverServicesScreen() {
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
         <ScreenHeader
-          title="Mes services"
-          subtitle="Gérez vos types de missions"
+          title={t("driver.services.title", "My services")}
+          subtitle={t("driver.services.subtitle", "Manage your mission types")}
           variant="dark"
           fallbackRoute="DriverTabs"
         />
         <DriverBrandLoadingState
-          title="Chargement de vos services..."
+          title={t("driver.services.loading", "Loading your services...")}
           logoAtBottom
         />
       </SafeAreaView>
@@ -185,8 +185,8 @@ export function DriverServicesScreen() {
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
-        title="Mes services"
-        subtitle="Gérez vos types de missions"
+        title={t("driver.services.title", "My services")}
+        subtitle={t("driver.services.subtitle", "Manage your mission types")}
         variant="dark"
         fallbackRoute="DriverTabs"
       />
@@ -194,45 +194,67 @@ export function DriverServicesScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.sectionTitle}>📋 Services disponibles</Text>
+        <Text style={styles.sectionTitle}>
+          📋 {t("driver.services.availableSection", "Available services")}
+        </Text>
 
         <ToggleRow
           emoji="🍔"
-          label="Food delivery"
-          description="Commandes restaurant et livraison repas"
+          label={t("driver.services.food", "Food delivery")}
+          description={t(
+            "driver.services.foodDesc",
+            "Restaurant orders and meal delivery",
+          )}
           value={prefs.food_delivery_enabled}
           onValueChange={(v) => patch("food_delivery_enabled", v)}
         />
         <ToggleRow
           emoji="📦"
-          label="Package delivery"
-          description="Livraison colis et courses"
+          label={t("driver.services.package", "Package delivery")}
+          description={t(
+            "driver.services.packageDesc",
+            "Package and errand delivery",
+          )}
           value={prefs.package_delivery_enabled}
           onValueChange={(v) => patch("package_delivery_enabled", v)}
         />
         <ToggleRow
           emoji="🚕"
-          label="Taxi rides"
-          description="Courses taxi selon les catégories autorisées de votre véhicule"
+          label={t("driver.services.taxi", "Taxi rides")}
+          description={t(
+            "driver.services.taxiDesc",
+            "Taxi rides for your authorized vehicle categories",
+          )}
           value={prefs.taxi_rides_enabled}
           onValueChange={(v) => patch("taxi_rides_enabled", v)}
         />
 
         <View style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>⚙️ Options avancées</Text>
+        <Text style={styles.sectionTitle}>
+          ⚙️ {t("driver.services.advancedSection", "Advanced options")}
+        </Text>
         {prefs.taxi_rides_enabled ? (
           <ToggleRow
             emoji="⚡"
-            label="Accepter aussi les courses Standard"
-            description="Comfort, XL ou Wheelchair peuvent recevoir des courses Standard"
+            label={t(
+              "driver.services.acceptStandard",
+              "Also accept Standard rides",
+            )}
+            description={t(
+              "driver.services.acceptStandardDesc",
+              "Comfort, XL or Wheelchair can also receive Standard rides",
+            )}
             value={prefs.accept_also_standard_rides}
             onValueChange={(v) => patch("accept_also_standard_rides", v)}
           />
         ) : (
           <View style={styles.rowMuted}>
             <Text style={styles.description}>
-              Activez Taxi rides pour gérer les options avancées.
+              {t(
+                "driver.services.enableTaxiForAdvanced",
+                "Enable Taxi rides to manage advanced options.",
+              )}
             </Text>
           </View>
         )}

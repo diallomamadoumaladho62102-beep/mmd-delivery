@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
@@ -21,6 +23,8 @@ type StaleItem = {
 };
 
 export default function AdminStaleDriverJobsPage() {
+  const { t } = useAdminT();
+
   const [items, setItems] = useState<StaleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +100,7 @@ export default function AdminStaleDriverJobsPage() {
       <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold text-slate-900">
-            Stale assigned jobs
+            {t("Stale assigned jobs")}
           </h1>
           <p className="text-sm text-slate-600">
             Abandoned Food/Delivery jobs older than 48h. Detect → Admin action →
@@ -108,7 +112,7 @@ export default function AdminStaleDriverJobsPage() {
             onClick={() => void load()}
             className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white"
           >
-            Refresh
+            {t("Refresh")}
           </button>
           {actionMsg ? (
             <p className="text-sm text-slate-700">{actionMsg}</p>
@@ -116,7 +120,7 @@ export default function AdminStaleDriverJobsPage() {
         </header>
 
         {loading ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-slate-500">{t("Loading…")}</p>
         ) : null}
         {error ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -125,7 +129,7 @@ export default function AdminStaleDriverJobsPage() {
         ) : null}
 
         {!loading && !error && items.length === 0 ? (
-          <p className="text-sm text-slate-500">No stale assigned jobs found.</p>
+          <p className="text-sm text-slate-500">{t("No stale assigned jobs found.")}</p>
         ) : null}
 
         <ul className="space-y-3">
@@ -156,7 +160,7 @@ export default function AdminStaleDriverJobsPage() {
                       href={href}
                       className="text-sm font-medium text-blue-700 underline"
                     >
-                      Open detail
+                      {t("Open detail")}
                     </Link>
                     <button
                       type="button"
@@ -170,11 +174,11 @@ export default function AdminStaleDriverJobsPage() {
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600 sm:grid-cols-4">
                   <div>
-                    <dt className="text-slate-400">Driver</dt>
+                    <dt className="text-slate-400">{t("Driver")}</dt>
                     <dd className="font-mono">{row.driver_id ?? "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-slate-400">Age (h)</dt>
+                    <dt className="text-slate-400">{t("Age (h)")}</dt>
                     <dd>
                       {row.age_hours != null
                         ? Math.round(row.age_hours)
@@ -182,19 +186,19 @@ export default function AdminStaleDriverJobsPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-slate-400">Payment</dt>
+                    <dt className="text-slate-400">{t("Payment")}</dt>
                     <dd>{row.payment_status ?? "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-slate-400">Suggested</dt>
+                    <dt className="text-slate-400">{t("Suggested")}</dt>
                     <dd>{row.suggested_action ?? "review"}</dd>
                   </div>
                   <div>
-                    <dt className="text-slate-400">Updated</dt>
+                    <dt className="text-slate-400">{t("Updated")}</dt>
                     <dd>{row.updated_at ?? "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-slate-400">Payout</dt>
+                    <dt className="text-slate-400">{t("Payout")}</dt>
                     <dd>{String(row.driver_delivery_payout ?? "—")}</dd>
                   </div>
                 </dl>

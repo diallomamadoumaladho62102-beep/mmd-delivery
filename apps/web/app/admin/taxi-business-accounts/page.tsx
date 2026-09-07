@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiBusiness } from "@/lib/adminAccess";
@@ -26,6 +28,8 @@ type BusinessRow = {
 };
 
 export default function AdminTaxiBusinessAccountsPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<BusinessRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,31 +87,31 @@ export default function AdminTaxiBusinessAccountsPage() {
         }}
       >
         <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
-          <h1>Taxi Business Accounts</h1>
+          <h1>{t("Taxi Business Accounts")}</h1>
           {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
           {canEdit ? (
             <form onSubmit={createAccount} style={{ marginBottom: 24, display: "flex", gap: 8 }}>
               <input
-                placeholder="Company name"
+                placeholder={t("Company name")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
               <input
-                placeholder="Billing email"
+                placeholder={t("Billing email")}
                 value={billingEmail}
                 onChange={(e) => setBillingEmail(e.target.value)}
               />
-              <button type="submit">Create account</button>
+              <button type="submit">{t("Create account")}</button>
             </form>
           ) : null}
-          {loading ? <p>Loading…</p> : null}
+          {loading ? <p>{t("Loading…")}</p> : null}
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                <th align="left">Name</th>
-                <th align="left">Members</th>
-                <th align="left">Policy</th>
-                <th align="left">Recent spend events</th>
+                <th align="left">{t("Name")}</th>
+                <th align="left">{t("Members")}</th>
+                <th align="left">{t("Policy")}</th>
+                <th align="left">{t("Recent spend events")}</th>
               </tr>
             </thead>
             <tbody>

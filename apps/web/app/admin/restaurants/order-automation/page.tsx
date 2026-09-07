@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { canReviewRestaurants } from "@/lib/adminAccess";
@@ -9,6 +11,8 @@ import { supabase } from "@/lib/supabaseBrowser";
 type Settings = Record<string, boolean | number | string>;
 
 export default function AdminRestaurantAutomationPage() {
+  const { t } = useAdminT();
+
   const [role, setRole] = useState<string | null>(null);
   const [userId, setUserId] = useState("");
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -67,8 +71,8 @@ export default function AdminRestaurantAutomationPage() {
   if (!canManage) {
     return (
       <main style={{ padding: 24 }}>
-        <h1>Automation restaurant</h1>
-        <p>Accès refusé.</p>
+        <h1>{t("Automation restaurant")}</h1>
+        <p>{t("Accès refusé.")}</p>
       </main>
     );
   }
@@ -76,13 +80,13 @@ export default function AdminRestaurantAutomationPage() {
   return (
     <main style={{ padding: 24, maxWidth: 760, display: "grid", gap: 16 }}>
       <Link href="/admin/restaurants">← Retour restaurants</Link>
-      <h1>Automation commandes & impression</h1>
+      <h1>{t("Automation commandes & impression")}</h1>
       <label style={{ display: "grid", gap: 6 }}>
-        Restaurant user ID
+        {t("Restaurant user ID")}
         <input value={userId} onChange={(e) => setUserId(e.target.value)} />
       </label>
       <button type="button" onClick={() => void load()}>
-        Charger
+        {t("Charger")}
       </button>
       {restaurantName ? <p>Restaurant: {restaurantName}</p> : null}
       {settings ? (
@@ -135,7 +139,7 @@ export default function AdminRestaurantAutomationPage() {
             />
           </label>
           <button type="button" onClick={() => void save()}>
-            Enregistrer
+            {t("Enregistrer")}
           </button>
         </>
       ) : null}

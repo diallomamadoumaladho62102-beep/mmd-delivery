@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canModifyPricing } from "@/lib/adminAccess";
@@ -50,30 +52,38 @@ const PROVIDER_LABELS: Record<PayoutProvider, string> = {
   free_money: "Free Money",
 };
 
-const RECIPIENT_LABELS: Record<PayoutRecipientType, string> = {
+function getRecipientLabels(t: (source: string) => string): Record<PayoutRecipientType, string> {
+  return {
   driver: "Driver / livreur",
-  restaurant: "Restaurant",
+  restaurant: t("Restaurant"),
   seller: "Marketplace seller",
   partner: "Partner",
   business: "Business account",
-};
+  };
+}
 
-function availabilityBadge(row: AdminPayoutMethodRow) {
+function availabilityBadge(
+  row: AdminPayoutMethodRow,
+  t: (english: string) => string,
+) {
   if (row.runtime_available) {
     return (
       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-        Available
+        {t("Available")}
       </span>
     );
   }
   return (
     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-      Unavailable
+      {t("Unavailable")}
     </span>
   );
 }
 
 export default function AdminPayoutMethodsPage() {
+  const { t } = useAdminT();
+  const recipientLabels = getRecipientLabels(t);
+
   const [items, setItems] = useState<AdminPayoutMethodRow[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [countryFilter, setCountryFilter] = useState("");
@@ -161,7 +171,7 @@ export default function AdminPayoutMethodsPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="space-y-2">
-            <h1 className="text-2xl font-bold text-slate-900">Payout Methods (Outbound)</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Payout Methods (Outbound)")}</h1>
             <p className="text-sm text-slate-600">
               Configure how MMD pays drivers, restaurants, marketplace sellers and partners per
               country. Inbound client payment methods are managed separately.
@@ -169,7 +179,7 @@ export default function AdminPayoutMethodsPage() {
             {meta ? (
               <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
                 <div>
-                  <span className="font-semibold">Payout statuses:</span>{" "}
+                  <span className="font-semibold">{t("Payout statuses:")}</span>{" "}
                   {meta.payout_statuses.join(", ")}
                 </div>
               </div>
@@ -178,13 +188,13 @@ export default function AdminPayoutMethodsPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <label className="text-sm font-medium text-slate-700">
-              Country
+              {t("Country")}
               <select
                 className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 value={countryFilter}
                 onChange={(e) => setCountryFilter(e.target.value)}
               >
-                <option value="">All countries</option>
+                <option value="">{t("All countries")}</option>
                 {countryOptions.map((code) => (
                   <option key={code} value={code}>
                     {code}
@@ -193,17 +203,17 @@ export default function AdminPayoutMethodsPage() {
               </select>
             </label>
             <label className="text-sm font-medium text-slate-700">
-              Recipient
+              {t("Recipient")}
               <select
                 className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 value={recipientFilter}
                 onChange={(e) => setRecipientFilter(e.target.value)}
               >
-                <option value="">All recipients</option>
+                <option value="">{t("All recipients")}</option>
                 {(meta?.recipient_types ?? ["driver", "restaurant", "seller", "partner"]).map(
                   (type) => (
                     <option key={type} value={type}>
-                      {RECIPIENT_LABELS[type as PayoutRecipientType] ?? type}
+                      {recipientLabels[type as PayoutRecipientType] ?? type}
                     </option>
                   )
                 )}
@@ -214,20 +224,20 @@ export default function AdminPayoutMethodsPage() {
               onClick={() => void load()}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
             >
-              Refresh
+              {t("Refresh")}
             </button>
             <a
               href="/admin/payment-methods"
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
             >
-              Inbound payment methods →
+              {t("Inbound payment methods →")}
             </a>
           </div>
 
           {loading ? (
-            <p className="text-sm text-slate-600">Loading payout methods…</p>
+            <p className="text-sm text-slate-600">{t("Loading payout methods…")}</p>
           ) : items.length === 0 ? (
-            <p className="text-sm text-slate-600">No payout methods found.</p>
+            <p className="text-sm text-slate-600">{t("No payout methods found.")}</p>
           ) : (
             <div className="space-y-4">
               {items.map((row) => (
@@ -240,27 +250,27 @@ export default function AdminPayoutMethodsPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="text-lg font-semibold text-slate-900">
-                          {row.country_code} · {RECIPIENT_LABELS[row.recipient_type]} ·{" "}
+                          {row.country_code} · {recipientLabels[row.recipient_type]} ·{" "}
                           {row.display_name}
                         </h2>
-                        {availabilityBadge(row)}
+                        {availabilityBadge(row, t)}
                         {row.enabled ? (
                           <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                            Enabled
+                            {t("Enabled")}
                           </span>
                         ) : (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                            Disabled
+                            {t("Disabled")}
                           </span>
                         )}
                         {row.auto_payout_enabled ? (
                           <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
-                            Auto payout
+                            {t("Auto payout")}
                           </span>
                         ) : null}
                       </div>
                       <p className="mt-1 text-sm text-slate-600">
-                        Method code: <code>{row.method_code}</code>
+                        {t("Method code:")} <code>{row.method_code}</code>
                       </p>
                     </div>
                     <button
@@ -268,13 +278,13 @@ export default function AdminPayoutMethodsPage() {
                       disabled={!canEdit || savingId === row.id}
                       className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                     >
-                      {savingId === row.id ? "Saving…" : "Save"}
+                      {savingId === row.id ? t("Saving…") : t("Save")}
                     </button>
                   </div>
 
                   <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Provider</span>
+                      <span className="font-medium text-slate-700">{t("Provider")}</span>
                       <select
                         name="provider"
                         defaultValue={row.provider}
@@ -290,7 +300,7 @@ export default function AdminPayoutMethodsPage() {
                     </label>
 
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Display name</span>
+                      <span className="font-medium text-slate-700">{t("Display name")}</span>
                       <input
                         name="display_name"
                         defaultValue={row.display_name}
@@ -300,7 +310,7 @@ export default function AdminPayoutMethodsPage() {
                     </label>
 
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Sort order</span>
+                      <span className="font-medium text-slate-700">{t("Sort order")}</span>
                       <input
                         name="sort_order"
                         type="number"
@@ -311,7 +321,7 @@ export default function AdminPayoutMethodsPage() {
                     </label>
 
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Payout frequency</span>
+                      <span className="font-medium text-slate-700">{t("Payout frequency")}</span>
                       <select
                         name="payout_frequency"
                         defaultValue={row.payout_frequency}
@@ -329,7 +339,7 @@ export default function AdminPayoutMethodsPage() {
                     </label>
 
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Minimum payout (cents)</span>
+                      <span className="font-medium text-slate-700">{t("Minimum payout (cents)")}</span>
                       <input
                         name="minimum_payout_cents"
                         type="number"
@@ -341,7 +351,7 @@ export default function AdminPayoutMethodsPage() {
                     </label>
 
                     <label className="block text-sm">
-                      <span className="font-medium text-slate-700">Platform commission (%)</span>
+                      <span className="font-medium text-slate-700">{t("Platform commission (%)")}</span>
                       <input
                         name="platform_commission_pct"
                         type="number"
@@ -361,7 +371,7 @@ export default function AdminPayoutMethodsPage() {
                         defaultChecked={row.enabled}
                         disabled={!canEdit}
                       />
-                      <span className="font-medium text-slate-700">Enabled for payouts</span>
+                      <span className="font-medium text-slate-700">{t("Enabled for payouts")}</span>
                     </label>
 
                     <label className="flex items-center gap-2 text-sm md:col-span-2 xl:col-span-3">
@@ -371,7 +381,7 @@ export default function AdminPayoutMethodsPage() {
                         defaultChecked={row.test_mode}
                         disabled={!canEdit}
                       />
-                      <span className="font-medium text-slate-700">Test mode</span>
+                      <span className="font-medium text-slate-700">{t("Test mode")}</span>
                     </label>
 
                     <label className="flex items-center gap-2 text-sm md:col-span-2 xl:col-span-3">
@@ -381,11 +391,11 @@ export default function AdminPayoutMethodsPage() {
                         defaultChecked={row.auto_payout_enabled}
                         disabled={!canEdit}
                       />
-                      <span className="font-medium text-slate-700">Automatic payout (vs manual approval)</span>
+                      <span className="font-medium text-slate-700">{t("Automatic payout (vs manual approval)")}</span>
                     </label>
 
                     <label className="block text-sm md:col-span-2 xl:col-span-3">
-                      <span className="font-medium text-slate-700">Description</span>
+                      <span className="font-medium text-slate-700">{t("Description")}</span>
                       <input
                         name="description"
                         defaultValue={row.description ?? ""}
@@ -397,14 +407,16 @@ export default function AdminPayoutMethodsPage() {
 
                   <div className="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
                     <div>
-                      <span className="font-semibold">Runtime availability:</span>{" "}
-                      {row.runtime_available ? "Available" : row.unavailable_reason ?? "Unavailable"}
+                      <span className="font-semibold">{t("Runtime availability:")}</span>{" "}
+                      {row.runtime_available
+                        ? t("Available")
+                        : row.unavailable_reason ?? t("Unavailable")}
                     </div>
                     <div className="mt-1">
-                      <span className="font-semibold">Provider secrets:</span>{" "}
+                      <span className="font-semibold">{t("Provider secrets:")}</span>{" "}
                       {row.secrets_configured
-                        ? "Configured"
-                        : `Missing: ${row.secrets_missing.join(", ")}`}
+                        ? t("Configured")
+                        : `${t("Missing")}: ${row.secrets_missing.join(", ")}`}
                     </div>
                   </div>
                 </form>

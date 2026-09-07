@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 import { formatIdentityDateTime } from "@/lib/driverIdentityDisplay";
@@ -106,6 +108,8 @@ function InvestigationSectionCard({
   error: string | null;
   children: React.ReactNode;
 }) {
+  const { t } = useAdminT();
+
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
       <button
@@ -118,13 +122,13 @@ function InvestigationSectionCard({
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
         </div>
         <span className="mt-1 text-xs font-semibold text-blue-700 dark:text-blue-400">
-          {open ? "Masquer" : "Afficher"}
+          {open ? t("Masquer") : t("Afficher")}
         </span>
       </button>
       {open ? (
         <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
           {loading ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">Chargement…</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t("Chargement…")}</p>
           ) : error ? (
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           ) : (
@@ -156,7 +160,11 @@ function MetricGrid({ items }: { items: Array<{ label: string; value: string }> 
   );
 }
 
-function renderSectionContent(section: InvestigationSectionId, data: unknown) {
+function renderSectionContent(
+  section: InvestigationSectionId,
+  data: unknown,
+  t: (english: string) => string,
+) {
   const record = asRecord(data);
 
   switch (section) {
@@ -191,7 +199,7 @@ function renderSectionContent(section: InvestigationSectionId, data: unknown) {
       if (changes.length === 0) {
         return (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Aucun changement de sécurité enregistré.
+            {t("Aucun changement de sécurité enregistré.")}
           </p>
         );
       }
@@ -228,8 +236,8 @@ function renderSectionContent(section: InvestigationSectionId, data: unknown) {
         <div className="space-y-4">
           <MetricGrid
             items={[
-              { label: "Ville", value: num(record.city) },
-              { label: "Pays", value: num(record.country) },
+              { label: t("Ville"), value: num(record.city) },
+              { label: t("Pays"), value: num(record.country) },
               { label: "Zone", value: num(record.zone) },
             ]}
           />
@@ -248,13 +256,13 @@ function renderSectionContent(section: InvestigationSectionId, data: unknown) {
                   rel="noreferrer"
                   className="mt-3 inline-flex text-sm font-semibold text-blue-700 hover:underline dark:text-blue-400"
                 >
-                  Ouvrir sur OpenStreetMap
+                  {t("Ouvrir sur OpenStreetMap")}
                 </a>
               ) : null}
             </div>
           ) : (
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Aucune position récente enregistrée.
+              {t("Aucune position récente enregistrée.")}
             </p>
           )}
         </div>
@@ -310,7 +318,7 @@ function renderSectionContent(section: InvestigationSectionId, data: unknown) {
           </p>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Pourquoi le risque peut être élevé
+              {t("Pourquoi le risque peut être élevé")}
             </h4>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
               {asArray(record.riskExplanation).map((line, index) => (
@@ -320,10 +328,10 @@ function renderSectionContent(section: InvestigationSectionId, data: unknown) {
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Éléments inhabituels
+              {t("Éléments inhabituels")}
             </h4>
             {asArray(record.unusualSignals).length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Aucun signal notable.</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t("Aucun signal notable.")}</p>
             ) : (
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
                 {asArray(record.unusualSignals).map((line, index) => (
@@ -334,7 +342,7 @@ function renderSectionContent(section: InvestigationSectionId, data: unknown) {
           </div>
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Vérifications recommandées
+              {t("Vérifications recommandées")}
             </h4>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
               {asArray(record.recommendedChecks).map((line, index) => (
@@ -351,7 +359,7 @@ function renderSectionContent(section: InvestigationSectionId, data: unknown) {
       if (entries.length === 0) {
         return (
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Aucune consultation enregistrée pour ce dossier.
+            {t("Aucune consultation enregistrée pour ce dossier.")}
           </p>
         );
       }
@@ -389,6 +397,8 @@ function renderSectionContent(section: InvestigationSectionId, data: unknown) {
 }
 
 export default function DriverIdentityInvestigationPanel({ checkId, enabled }: Props) {
+  const { t } = useAdminT();
+
   const [exportBusy, setExportBusy] = useState<"json" | "pdf" | null>(null);
   const [sections, setSections] = useState<Record<InvestigationSectionId, SectionState>>(() =>
     Object.fromEntries(
@@ -540,10 +550,10 @@ export default function DriverIdentityInvestigationPanel({ checkId, enabled }: P
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
-            Investigation complète
+            {t("Investigation complète")}
           </p>
           <h2 className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-50">
-            Centre d&apos;opérations international
+            {t("Centre d&apos;opérations international")}
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
             Historique chauffeur, sécurité, géographie, score de confiance et analyse IA —
@@ -588,7 +598,7 @@ export default function DriverIdentityInvestigationPanel({ checkId, enabled }: P
               error={state.error}
               onToggle={() => toggleSection(section.id)}
             >
-              {renderSectionContent(section.id, state.data)}
+              {renderSectionContent(section.id, state.data, t)}
             </InvestigationSectionCard>
           );
         })}

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminCancelRefundPanel from "@/components/AdminCancelRefundPanel";
 import AdminPricingHistory from "@/components/admin/AdminPricingHistory";
@@ -258,6 +260,8 @@ function SplitSummary({
 
 
 export default function AdminPricingView() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<PricingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -371,7 +375,7 @@ export default function AdminPricingView() {
   }
 
   if (loading) {
-    return <div className="p-6 text-sm text-slate-500">Chargement pricing…</div>;
+    return <div className="p-6 text-sm text-slate-500">{t("Chargement pricing…")}</div>;
   }
 
   return (
@@ -390,22 +394,22 @@ export default function AdminPricingView() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-2">
             <div className="inline-flex rounded-full bg-black px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
-              MMD Delivery Admin
+              {t("MMD Delivery Admin")}
             </div>
             <h1 className="text-2xl font-black tracking-tight">
               Pricing Configuration / Configuration des prix
             </h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-600">
-              Edit commissions, promotions, delivery pricing and payout splits from
-              <span className="font-semibold text-slate-900"> Supabase pricing_config</span>{" "}
+              {t("Edit commissions, promotions, delivery pricing and payout splits from")}
+              <span className="font-semibold text-slate-900"> {t("Supabase pricing_config")}</span>{" "}
               without changing the mobile app code. / Modifie les commissions,
               promotions, frais et partages depuis{" "}
-              <span className="font-semibold text-slate-900">Supabase pricing_config</span>{" "}
+              <span className="font-semibold text-slate-900">{t("Supabase pricing_config")}</span>{" "}
               sans toucher au code mobile.
             </p>
             {!canWrite ? (
               <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-                Mode lecture seule ??? seul le Super Admin peut modifier le pricing.
+                {t("Mode lecture seule ??? seul le Super Admin peut modifier le pricing.")}
               </div>
             ) : null}
           </div>
@@ -470,7 +474,7 @@ export default function AdminPricingView() {
                     </div>
 
                     <div className="mt-2 text-xs text-slate-500">
-                      Key: <span className="font-semibold">{row.config_key}</span>{" "}
+                      {t("Key:")} <span className="font-semibold">{row.config_key}</span>{" "}
                       ??? Last update / Derni??re mise ?? jour:{" "}
                       {formatDateTime(row.updated_at)}
                     </div>
@@ -505,7 +509,7 @@ export default function AdminPricingView() {
 
                   <TextInputField
                     name="currency"
-                    label="Currency / Devise"
+                    label={t("Currency / Devise")}
                     value={row.currency ?? "USD"}
                     placeholder="USD"
                     help="3-letter currency code. / Code devise ?? 3 lettres."
@@ -513,10 +517,10 @@ export default function AdminPricingView() {
                 </div>
 
                 <SplitSummary
-                  title="Core split / Partage principal"
+                  title={t("Core split / Partage principal")}
                   status={coreStatus}
                   items={[
-                    { label: "Restaurant", value: row.restaurant_pct },
+                    { label: t("Restaurant"), value: row.restaurant_pct },
                     { label: "Platform", value: row.platform_pct },
                   ]}
                 />
@@ -529,25 +533,25 @@ export default function AdminPricingView() {
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                     <label className="space-y-1">
                       <div className="text-sm font-medium text-slate-800">
-                        Service fee enabled
+                        {t("Service fee enabled")}
                       </div>
                       <select
                         name="service_fee_enabled"
                         defaultValue={row.service_fee_enabled ? "true" : "false"}
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                       >
-                        <option value="false">OFF</option>
-                        <option value="true">ON</option>
+                        <option value="false">{t("OFF")}</option>
+                        <option value="true">{t("ON")}</option>
                       </select>
                     </label>
                     <PercentInput
                       name="service_fee_pct"
-                      label="Service fee % / Frais de service %"
+                      label={t("Service fee % / Frais de service %")}
                       value={row.service_fee_pct ?? row.client_pct}
                     />
                     <MoneyInput
                       name="service_fee_fixed"
-                      label="Minimum fixed fee / Minimum fixe"
+                      label={t("Minimum fixed fee / Minimum fixe")}
                       value={serviceFeeFixed}
                     />
                   </div>
@@ -575,12 +579,12 @@ export default function AdminPricingView() {
                     </div>
                     <PercentInput
                       name="restaurant_pct"
-                      label="Restaurant %"
+                      label={t("Restaurant %")}
                       value={row.restaurant_pct}
                     />
                     <PercentInput
                       name="platform_pct"
-                      label="Platform % / Plateforme %"
+                      label={t("Platform % / Plateforme %")}
                       value={row.platform_pct}
                     />
                   </div>
@@ -590,32 +594,36 @@ export default function AdminPricingView() {
                 {!isMarketplace ? (
                 <>
                 <SplitSummary
-                  title="Delivery split / Partage livraison"
+                  title={t("Delivery split / Partage livraison")}
                   status={deliveryStatus}
                   items={[
-                    { label: "Driver / Chauffeur", value: row.delivery_driver_pct },
-                    { label: "Platform / Plateforme", value: row.delivery_platform_pct },
+                    { label: t("Driver / Chauffeur"), value: row.delivery_driver_pct },
+                    { label: t("Platform / Plateforme"), value: row.delivery_platform_pct },
                   ]}
                 />
 
                 <div className="rounded-2xl border border-slate-200 p-4">
                   {sectionTitle(
-                    "Delivery split / Partage livraison",
+                    t("Delivery split / Partage livraison"),
                     isErrand
-                      ? "Pickup/dropoff: used by Supabase triggers for driver_delivery_payout and platform_delivery_fee. / Pickup/dropoff : utilis?? par les triggers Supabase."
-                      : "Food delivery: splits only the delivery fee, not the food subtotal. / Food delivery : partage seulement les frais de livraison."
+                      ? t(
+                          "Pickup/dropoff: used by Supabase triggers for driver_delivery_payout and platform_delivery_fee. / Pickup/dropoff : utilis?? par les triggers Supabase."
+                        )
+                      : t(
+                          "Food delivery: splits only the delivery fee, not the food subtotal. / Food delivery : partage seulement les frais de livraison."
+                        )
                   )}
 
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <PercentInput
                       name="delivery_platform_pct"
-                      label="Delivery platform % / Plateforme livraison %"
+                      label={t("Delivery platform % / Plateforme livraison %")}
                       value={row.delivery_platform_pct}
                       help="Platform share on delivery fee. / Part plateforme sur les frais de livraison."
                     />
                     <PercentInput
                       name="delivery_driver_pct"
-                      label="Delivery driver % / Chauffeur livraison %"
+                      label={t("Delivery driver % / Chauffeur livraison %")}
                       value={row.delivery_driver_pct}
                       help="Driver payout shown in the driver app. / Gain chauffeur affich?? dans l???app."
                     />
@@ -631,17 +639,17 @@ export default function AdminPricingView() {
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                     <MoneyInput
                       name="delivery_fee_base"
-                      label="Delivery fee base / Base livraison"
+                      label={t("Delivery fee base / Base livraison")}
                       value={row.delivery_fee_base}
                     />
                     <MoneyInput
                       name="delivery_fee_per_mile"
-                      label="Per mile / Par mile"
+                      label={t("Per mile / Par mile")}
                       value={row.delivery_fee_per_mile}
                     />
                     <MoneyInput
                       name="delivery_fee_per_minute"
-                      label="Per minute / Par minute"
+                      label={t("Per minute / Par minute")}
                       value={row.delivery_fee_per_minute}
                     />
                   </div>
@@ -656,7 +664,7 @@ export default function AdminPricingView() {
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <MoneyInput
                       name="minimum_order_amount"
-                      label="Minimum order amount / Montant minimum"
+                      label={t("Minimum order amount / Montant minimum")}
                       value={row.minimum_order_amount}
                     />
 
@@ -696,30 +704,30 @@ export default function AdminPricingView() {
 
                     <MoneyInput
                       name="promo_value"
-                      label="Promo value / Valeur promo"
+                      label={t("Promo value / Valeur promo")}
                       value={row.promo_value}
                     />
 
                     <TextInputField
                       name="promo_code"
-                      label="Promo code / Code promo"
+                      label={t("Promo code / Code promo")}
                       value={row.promo_code}
-                      placeholder="SAVE10"
+                      placeholder={t("SAVE10")}
                     />
                   </div>
 
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <TextInputField
                       name="promo_starts_at"
-                      label="Promo starts (ISO) / D??but promo"
+                      label={t("Promo starts (ISO) / D??but promo")}
                       value={row.promo_starts_at}
-                      placeholder="2026-07-01T00:00:00Z"
+                      placeholder={t("2026-07-01T00:00:00Z")}
                     />
                     <TextInputField
                       name="promo_ends_at"
-                      label="Promo ends (ISO) / Fin promo"
+                      label={t("Promo ends (ISO) / Fin promo")}
                       value={row.promo_ends_at}
-                      placeholder="2026-12-31T23:59:59Z"
+                      placeholder={t("2026-12-31T23:59:59Z")}
                     />
                   </div>
                 </div>
@@ -747,7 +755,7 @@ export default function AdminPricingView() {
                   )}
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <label className="space-y-1">
-                      <div className="text-sm font-medium text-slate-800">Region</div>
+                      <div className="text-sm font-medium text-slate-800">{t("Region")}</div>
                       <select
                         name="region"
                         defaultValue={row.region ?? "global"}
@@ -759,7 +767,7 @@ export default function AdminPricingView() {
                       </select>
                     </label>
                     <label className="space-y-1">
-                      <div className="text-sm font-medium text-slate-800">Tax enabled</div>
+                      <div className="text-sm font-medium text-slate-800">{t("Tax enabled")}</div>
                       <select
                         name="tax_enabled"
                         defaultValue={row.tax_enabled ? "true" : "false"}
@@ -771,21 +779,21 @@ export default function AdminPricingView() {
                     </label>
                     <PercentInput
                       name="tax_pct"
-                      label="Tax % / Taxe %"
+                      label={t("Tax % / Taxe %")}
                       value={row.tax_pct}
                     />
                     <TextInputField
                       name="tax_label"
-                      label="Tax label / Libell?? taxe"
+                      label={t("Tax label / Libell?? taxe")}
                       value={row.tax_label}
-                      placeholder="Sales tax / TVA"
+                      placeholder={t("Sales tax / TVA")}
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 md:flex-row md:items-center md:justify-between">
                   <div className="text-xs leading-5 text-slate-500">
-                    This page writes directly to <b>pricing_config</b>. Supabase
+                    {t("This page writes directly to")} <b>pricing_config</b>. Supabase
                     triggers read these values for the next orders. / Cette page
                     ??crit directement dans <b>pricing_config</b>. Les triggers
                     Supabase lisent ces valeurs pour les prochaines commandes.
@@ -809,10 +817,10 @@ export default function AdminPricingView() {
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold text-slate-900">
-          Historique pricing & rollback
+          {t("Historique pricing & rollback")}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Toutes les modifications et restaurations de versions pr??c??dentes.
+          {t("Toutes les modifications et restaurations de versions pr??c??dentes.")}
         </p>
         <div className="mt-4">
           <AdminPricingHistory canRollback={canWrite} />

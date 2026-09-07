@@ -20,16 +20,20 @@ export function buildConferenceJoinTwiml(params: {
   endOnExit?: boolean;
   muted?: boolean;
   prefixSay?: string;
+  sayVoice?: string;
+  sayLanguage?: string;
 }): string {
   const name = String(params.conferenceName || "").trim();
   const startOnEnter = params.startOnEnter !== false;
   const endOnExit = params.endOnExit === true;
   const muted = params.muted === true;
   const prefix = String(params.prefixSay || "").trim();
+  const sayVoice = String(params.sayVoice || "alice").trim() || "alice";
+  const sayLanguage = String(params.sayLanguage || "en-US").trim() || "en-US";
   const statusCallbackUrl = getTwilioVoiceStatusCallbackUrl();
   const say = prefix
     ? `
-  <Say voice="alice" language="en-US">${escapeTwiml(prefix)}</Say>
+  <Say voice="${escapeTwiml(sayVoice)}" language="${escapeTwiml(sayLanguage)}">${escapeTwiml(prefix)}</Say>
 `
     : "";
 

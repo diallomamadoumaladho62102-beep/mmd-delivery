@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -16,6 +18,8 @@ export default function TaxiRideActionsMenu({
 }: {
   ride: AdminTaxiRideListItem;
 }) {
+  const { t } = useAdminT();
+
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -56,7 +60,7 @@ export default function TaxiRideActionsMenu({
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        aria-label="Ride actions"
+        aria-label={t("Ride actions")}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}

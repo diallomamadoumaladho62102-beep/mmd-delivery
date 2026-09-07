@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -14,6 +16,8 @@ const INPUT = "mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
 const LABEL = "text-xs font-semibold uppercase tracking-wide text-slate-500";
 
 function SettingsInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -75,7 +79,7 @@ function SettingsInner() {
         <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
           ← Corporate Website
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Site settings</h1>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Site settings")}</h1>
         <p className="mt-1 text-sm text-slate-600">
           Locale: en — brand, SEO, store links. Platform socials are centralized in{" "}
           <code className="rounded bg-slate-100 px-1">shared/socialLinks.ts</code>.
@@ -83,7 +87,7 @@ function SettingsInner() {
       </div>
 
       <div className={`${CARD} space-y-3`}>
-        <h2 className="text-sm font-semibold text-slate-900">Official social accounts</h2>
+        <h2 className="text-sm font-semibold text-slate-900">{t("Official social accounts")}</h2>
         <p className="text-sm text-slate-600">
           These links power the public footer, emails, download page, and mobile about screens.
           Edit{" "}
@@ -119,7 +123,7 @@ function SettingsInner() {
 
       <form onSubmit={onSave} className={`${CARD} space-y-4`}>
         <label className="block">
-          <span className={LABEL}>Payload JSON</span>
+          <span className={LABEL}>{t("Payload JSON")}</span>
           <textarea
             className={`${INPUT} min-h-[420px] font-mono text-xs`}
             value={jsonText}
@@ -140,6 +144,8 @@ function SettingsInner() {
 }
 
 export default function SiteSettingsPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <SettingsInner />

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
@@ -24,6 +26,8 @@ type Submission = {
 };
 
 function ContactInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [rows, setRows] = useState<Submission[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -98,14 +102,14 @@ function ContactInner() {
           <Link href="/admin/site" className="text-sm font-semibold text-slate-500 hover:text-slate-800">
             ← Corporate Website
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">Contact inbox</h1>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">{t("Contact inbox")}</h1>
         </div>
         <button
           type="button"
           onClick={() => void exportCsv()}
           className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold"
         >
-          Export CSV
+          {t("Export CSV")}
         </button>
       </div>
 
@@ -138,18 +142,18 @@ function ContactInner() {
             </div>
           </button>
         ))}
-        {rows.length === 0 ? <p className="text-sm text-slate-500">No submissions.</p> : null}
+        {rows.length === 0 ? <p className="text-sm text-slate-500">{t("No submissions.")}</p> : null}
       </div>
 
       {selected ? (
         <div className={`${CARD} space-y-3`}>
-          <h2 className="font-semibold text-slate-900">Edit submission</h2>
+          <h2 className="font-semibold text-slate-900">{t("Edit submission")}</h2>
           <p className="text-sm text-slate-600">
             {selected.name} &lt;{selected.email}&gt;
           </p>
           <p className="whitespace-pre-wrap text-sm text-slate-800">{selected.message}</p>
           <label className="block">
-            <span className={LABEL}>Status</span>
+            <span className={LABEL}>{t("Status")}</span>
             <select
               className={INPUT}
               value={status}
@@ -162,7 +166,7 @@ function ContactInner() {
             </select>
           </label>
           <label className="block">
-            <span className={LABEL}>Internal notes</span>
+            <span className={LABEL}>{t("Internal notes")}</span>
             <textarea
               className={`${INPUT} min-h-[100px]`}
               value={notes}
@@ -177,27 +181,29 @@ function ContactInner() {
               onClick={() => void save()}
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              Save
+              {t("Save")}
             </button>
             <button
               type="button"
               onClick={() => setSelected(null)}
               className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold"
             >
-              Close
+              {t("Close")}
             </button>
           </div>
         </div>
       ) : null}
 
       <p className="text-xs text-slate-400">
-        CSV: use Export CSV (authenticated via staff session).
+        {t("CSV: use Export CSV (authenticated via staff session).")}
       </p>
     </div>
   );
 }
 
 export default function SiteContactPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="marketing.read">
       <ContactInner />

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch } from "@/lib/adminBrowserAuth";
@@ -15,6 +17,8 @@ type DispatchData = {
 };
 
 export default function AdminDispatchPage() {
+  const { t } = useAdminT();
+
   const [data, setData] = useState<DispatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,9 +74,9 @@ export default function AdminDispatchPage() {
         <div className="mx-auto max-w-6xl space-y-6">
           <header className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Dispatch</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t("Dispatch")}</h1>
               <p className="mt-1 text-sm text-slate-600">
-                Tentatives, planification et commandes actives.
+                {t("Tentatives, planification et commandes actives.")}
               </p>
             </div>
             <button
@@ -80,12 +84,12 @@ export default function AdminDispatchPage() {
               onClick={() => void load()}
               className="h-10 rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm text-white"
             >
-              Actualiser
+              {t("Actualiser")}
             </button>
           </header>
 
           {loading ? (
-            <div className="text-sm text-slate-500">Chargement…</div>
+            <div className="text-sm text-slate-500">{t("Chargement…")}</div>
           ) : error ? (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
@@ -93,7 +97,7 @@ export default function AdminDispatchPage() {
           ) : data ? (
             <div className="space-y-8">
               <section>
-                <h2 className="mb-3 text-lg font-semibold">Commandes actives</h2>
+                <h2 className="mb-3 text-lg font-semibold">{t("Commandes actives")}</h2>
                 <div className="space-y-2">
                   {(data.active_orders ?? []).map((o) => {
                     const id = String(o.id ?? "");
@@ -114,7 +118,7 @@ export default function AdminDispatchPage() {
                             onClick={() => void triggerDispatch(id)}
                             className="rounded-lg bg-black px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
                           >
-                            Relancer dispatch
+                            {t("Relancer dispatch")}
                           </button>
                         ) : null}
                       </div>
@@ -124,14 +128,14 @@ export default function AdminDispatchPage() {
               </section>
 
               <section>
-                <h2 className="mb-3 text-lg font-semibold">Tentatives récentes</h2>
+                <h2 className="mb-3 text-lg font-semibold">{t("Tentatives récentes")}</h2>
                 <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 text-xs">
                   {JSON.stringify(data.attempts, null, 2)}
                 </pre>
               </section>
 
               <section>
-                <h2 className="mb-3 text-lg font-semibold">Planification vagues</h2>
+                <h2 className="mb-3 text-lg font-semibold">{t("Planification vagues")}</h2>
                 <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 text-xs">
                   {JSON.stringify(data.schedules, null, 2)}
                 </pre>

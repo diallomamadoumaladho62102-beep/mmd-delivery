@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import {
   useCallback,
@@ -281,6 +283,7 @@ function IdentityPhotoComparePanel({
   selfieUrl: string;
   profilePhotoUrl: string | null;
 }) {
+  const { t } = useAdminT();
   const [zoom, setZoom] = useState(100);
   const [expandedUrl, setExpandedUrl] = useState<string | null>(null);
   const scale = zoom / 100;
@@ -311,14 +314,14 @@ function IdentityPhotoComparePanel({
           onClick={() => setExpandedUrl(url)}
           className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
         >
-          Agrandir
+          {t("Agrandir")}
         </button>
         <a
           href={url}
           download
           className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
         >
-          Télécharger
+          {t("Télécharger")}
         </a>
         <a
           href={url}
@@ -326,7 +329,7 @@ function IdentityPhotoComparePanel({
           rel="noopener noreferrer"
           className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
         >
-          Ouvrir
+          {t("Ouvrir")}
         </a>
       </div>
     </div>
@@ -337,7 +340,7 @@ function IdentityPhotoComparePanel({
       <div className="py-3">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
           <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Zoom comparatif
+            {t("Zoom comparatif")}
           </div>
           <div className="flex min-w-[220px] flex-1 items-center gap-3 sm:max-w-xs">
             <span className="text-xs text-slate-500">50%</span>
@@ -349,7 +352,7 @@ function IdentityPhotoComparePanel({
               value={zoom}
               onChange={(event) => setZoom(Number(event.target.value))}
               className="w-full accent-blue-600"
-              aria-label="Zoom comparatif"
+              aria-label={t("Zoom comparatif")}
             />
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
               {zoom}%
@@ -379,7 +382,7 @@ function IdentityPhotoComparePanel({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={expandedUrl}
-              alt="Photo agrandie"
+              alt={t("Photo agrandie")}
               className="max-h-[92vh] w-full rounded-2xl object-contain"
             />
             <button
@@ -387,7 +390,7 @@ function IdentityPhotoComparePanel({
               onClick={() => setExpandedUrl(null)}
               className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-sm font-semibold text-white"
             >
-              Fermer
+              {t("Fermer")}
             </button>
           </div>
         </div>
@@ -397,6 +400,7 @@ function IdentityPhotoComparePanel({
 }
 
 function EventTimeline({ events }: { events: IdentityEventRow[] }) {
+  const { t } = useAdminT();
   const sorted = useMemo(
     () => sortIdentityEventsChronologically(events),
     [events],
@@ -405,7 +409,7 @@ function EventTimeline({ events }: { events: IdentityEventRow[] }) {
   if (sorted.length === 0) {
     return (
       <p className="py-4 text-sm text-slate-500 dark:text-slate-400">
-        Aucun événement enregistré.
+        {t("Aucun événement enregistré.")}
       </p>
     );
   }
@@ -451,6 +455,8 @@ function EventTimeline({ events }: { events: IdentityEventRow[] }) {
 }
 
 export default function DriverIdentityControlCenter(props: Props) {
+  const { t } = useAdminT();
+
   const {
     checks,
     loading,
@@ -583,29 +589,28 @@ export default function DriverIdentityControlCenter(props: Props) {
         <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-blue-700 dark:text-blue-400">
-              Control Center
+              {t("Control Center")}
             </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50 md:text-3xl">
-              Vérification identité chauffeur
+              {t("Vérification identité chauffeur")}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
-              Revue manuelle, selfies, historique et audit — interface ops premium
-              pour une décision rapide et traçable.
+              {t("Revue manuelle, selfies, historique et audit — interface ops premium pour une décision rapide et traçable.")}
             </p>
           </div>
           <Link
             href="/admin/driver-identity/settings"
             className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            Paramètres moteur de risque
+            {t("Paramètres moteur de risque")}
           </Link>
         </header>
 
         {metrics ? (
           <section className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             {[
-              { label: "En attente", value: metrics.waiting, tone: "text-blue-700 dark:text-blue-300" },
-              { label: "Revue manuelle", value: metrics.manual_review, tone: "text-amber-700 dark:text-amber-300" },
+              { label: t("En attente"), value: metrics.waiting, tone: "text-blue-700 dark:text-blue-300" },
+              { label: t("Revue manuelle"), value: metrics.manual_review, tone: "text-amber-700 dark:text-amber-300" },
               { label: "Risque élevé", value: metrics.high_risk, tone: "text-red-700 dark:text-red-300" },
               { label: "Traités aujourd'hui", value: metrics.processed_today, tone: "text-emerald-700 dark:text-emerald-300" },
             ].map((item) => (
@@ -625,7 +630,7 @@ export default function DriverIdentityControlCenter(props: Props) {
         {stats ? (
           <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Statistiques Ops (30 jours)
+              {t("Statistiques Ops (30 jours)")}
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
               {[
@@ -654,7 +659,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                 onOpsPrefsChange({ autoAdvanceNext: event.target.checked })
               }
             />
-            Ouvrir le dossier suivant après décision
+            {t("Ouvrir le dossier suivant après décision")}
           </label>
           <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
             <input
@@ -664,7 +669,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                 onOpsPrefsChange({ fastProcessingMode: event.target.checked })
               }
             />
-            Mode traitement rapide
+            {t("Mode traitement rapide")}
           </label>
         </section>
 
@@ -702,7 +707,7 @@ export default function DriverIdentityControlCenter(props: Props) {
               ))}
             </select>
             <input
-              placeholder="Rechercher chauffeur, ville, ID…"
+              placeholder={t("Rechercher chauffeur, ville, ID…")}
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
               className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
@@ -712,7 +717,7 @@ export default function DriverIdentityControlCenter(props: Props) {
               onClick={onFilter}
               className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
             >
-              Filtrer
+              {t("Filtrer")}
             </button>
           </div>
         </section>
@@ -721,16 +726,16 @@ export default function DriverIdentityControlCenter(props: Props) {
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                File d&apos;attente
+                {t("File d&apos;attente")}
               </h2>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                {loading ? "Chargement…" : `${checks.length} vérification(s)`}
+                {loading ? t("Chargement…") : `${checks.length} vérification(s)`}
               </p>
             </div>
             <div className="max-h-[72vh] space-y-2 overflow-y-auto p-3">
               {checks.length === 0 && !loading ? (
                 <p className="px-2 py-6 text-sm text-slate-500 dark:text-slate-400">
-                  Aucune vérification trouvée.
+                  {t("Aucune vérification trouvée.")}
                 </p>
               ) : null}
               {checks.map((item) => {
@@ -788,7 +793,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                           </Badge>
                         {item.requires_manual_review ? (
                           <Badge className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
-                            Revue manuelle
+                            {t("Revue manuelle")}
                           </Badge>
                         ) : null}
                         {item.assigned_to_name ? (
@@ -826,10 +831,10 @@ export default function DriverIdentityControlCenter(props: Props) {
                 <div>
                   <div className="text-4xl">🪪</div>
                   <p className="mt-3 text-base font-medium text-slate-900 dark:text-slate-100">
-                    Sélectionnez une vérification
+                    {t("Sélectionnez une vérification")}
                   </p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Les détails, le selfie et l&apos;historique s&apos;afficheront ici.
+                    {t("Les détails, le selfie et l&apos;historique s&apos;afficheront ici.")}
                   </p>
                 </div>
               </div>
@@ -866,7 +871,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                       onClick={() => onNavigateCheck("next")}
                       className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                     >
-                      Dossier suivant →
+                      {t("Dossier suivant →")}
                     </button>
                   </div>
                 </div>
@@ -878,7 +883,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                 ) : null}
 
                 {canAssign && check.id ? (
-                  <DetailCard title="Attribution" subtitle="Super Admin — assigner à un agent Ops">
+                  <DetailCard title={t("Attribution")} subtitle={t("Super Admin — assigner à un agent Ops")}>
                     <div className="flex flex-wrap items-center gap-3 py-3">
                       <select
                         defaultValue={String(check.assigned_to ?? "")}
@@ -888,7 +893,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                         }}
                         className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
                       >
-                        <option value="">Non assigné</option>
+                        <option value="">{t("Non assigné")}</option>
                         {staffOptions.map((staff) => (
                           <option key={staff.id} value={staff.id}>
                             {staff.full_name ?? staff.email ?? staff.id} ({staff.role})
@@ -904,16 +909,16 @@ export default function DriverIdentityControlCenter(props: Props) {
                   </DetailCard>
                 ) : null}
 
-                <DetailCard title="Informations du chauffeur">
-                  <InfoRow label="Nom" value={driverProfile?.full_name ?? "—"} />
-                  <InfoRow label="Téléphone" value={driverProfile?.phone ?? "—"} />
+                <DetailCard title={t("Informations du chauffeur")}>
+                  <InfoRow label={t("Nom")} value={driverProfile?.full_name ?? "—"} />
+                  <InfoRow label={t("Téléphone")} value={driverProfile?.phone ?? "—"} />
                   <InfoRow
-                    label="Ville"
+                    label={t("Ville")}
                     value={driverProfile?.city ?? check.city ?? "—"}
                   />
-                  <InfoRow label="État" value={driverProfile?.state ?? "—"} />
+                  <InfoRow label={t("État")} value={driverProfile?.state ?? "—"} />
                   <InfoRow
-                    label="Statut"
+                    label={t("Statut")}
                     value={
                       <Badge
                         className={driverProfileStatusBadgeClass(
@@ -925,25 +930,25 @@ export default function DriverIdentityControlCenter(props: Props) {
                     }
                   />
                   <InfoRow
-                    label="En ligne"
+                    label={t("En ligne")}
                     value={
                       driverProfile?.is_online ? (
                         <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                          Oui
+                          {t("Oui")}
                         </span>
                       ) : (
-                        <span className="text-slate-600 dark:text-slate-400">Non</span>
+                        <span className="text-slate-600 dark:text-slate-400">{t("Non")}</span>
                       )
                     }
                   />
                 </DetailCard>
 
                 <DetailCard
-                  title="Vérification"
-                  subtitle="Synthèse de la demande et des scores"
+                  title={t("Vérification")}
+                  subtitle={t("Synthèse de la demande et des scores")}
                 >
                   <InfoRow
-                    label="Statut"
+                    label={t("Statut")}
                     value={
                       <Badge className={identityStatusBadgeClass(String(check.status ?? ""))}>
                         {identityStatusLabel(String(check.status ?? ""))}
@@ -951,11 +956,11 @@ export default function DriverIdentityControlCenter(props: Props) {
                     }
                   />
                   <InfoRow
-                    label="Déclencheur"
+                    label={t("Déclencheur")}
                     value={identityTriggerLabel(String(check.trigger_type ?? ""))}
                   />
                   <InfoRow
-                    label="Niveau de risque"
+                    label={t("Niveau de risque")}
                     value={
                       <Badge className={riskScoreBadgeClass(Number(check.risk_score ?? 0))}>
                         {check.risk_score ?? 0} / 100
@@ -963,7 +968,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                     }
                   />
                   <InfoRow
-                    label="Raisons du risque"
+                    label={t("Raisons du risque")}
                     value={
                       riskReasonBadges.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
@@ -979,7 +984,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                     }
                   />
                   <InfoRow
-                    label="Score de confiance"
+                    label={t("Score de confiance")}
                     value={
                       <Badge
                         className={confidenceScoreBadgeClass(
@@ -994,9 +999,9 @@ export default function DriverIdentityControlCenter(props: Props) {
                       </Badge>
                     }
                   />
-                  <InfoRow label="Fournisseur" value={check.provider ?? "—"} />
+                  <InfoRow label={t("Fournisseur")} value={check.provider ?? "—"} />
                   <InfoRow
-                    label="Date de création"
+                    label={t("Date de création")}
                     value={formatIdentityDateTime(String(check.created_at ?? ""))}
                   />
                   <InfoRow
@@ -1004,21 +1009,21 @@ export default function DriverIdentityControlCenter(props: Props) {
                     value={formatIdentityDateTime(check.submitted_at ?? null)}
                   />
                   <InfoRow
-                    label="Date de validation"
+                    label={t("Date de validation")}
                     value={formatIdentityDateTime(check.verified_at ?? null)}
                   />
                   <InfoRow
-                    label="Expiration"
+                    label={t("Expiration")}
                     value={formatIdentityDateTime(check.expires_at ?? null)}
                   />
                   {check.reason ? (
-                    <InfoRow label="Motif" value={check.reason} />
+                    <InfoRow label={t("Motif")} value={check.reason} />
                   ) : null}
                 </DetailCard>
 
                 <DetailCard
-                  title="Comparaison identité"
-                  subtitle="Selfie de vérification vs photo identité / KYC"
+                  title={t("Comparaison identité")}
+                  subtitle={t("Selfie de vérification vs photo identité / KYC")}
                 >
                   {selfieUrl ? (
                     <IdentityPhotoComparePanel
@@ -1027,17 +1032,17 @@ export default function DriverIdentityControlCenter(props: Props) {
                     />
                   ) : (
                     <p className="py-4 text-sm text-slate-500 dark:text-slate-400">
-                      Aucun selfie disponible pour cette vérification.
+                      {t("Aucun selfie disponible pour cette vérification.")}
                     </p>
                   )}
                 </DetailCard>
 
                 <DetailCard
-                  title="Informations techniques"
-                  subtitle="Contexte appareil et réseau"
+                  title={t("Informations techniques")}
+                  subtitle={t("Contexte appareil et réseau")}
                 >
                   <InfoRow
-                    label="Device ID"
+                    label={t("Device ID")}
                     value={
                       <span className="font-mono text-xs break-all">
                         {check.device_id_hash ?? "—"}
@@ -1045,15 +1050,15 @@ export default function DriverIdentityControlCenter(props: Props) {
                     }
                   />
                   <InfoRow
-                    label="IP Hash"
+                    label={t("IP Hash")}
                     value={
                       <span className="font-mono text-xs break-all">
                         {check.ip_hash ?? "—"}
                       </span>
                     }
                   />
-                  <InfoRow label="Pays" value={check.country ?? "—"} />
-                  <InfoRow label="Ville" value={check.city ?? "—"} />
+                  <InfoRow label={t("Pays")} value={check.country ?? "—"} />
+                  <InfoRow label={t("Ville")} value={check.city ?? "—"} />
                 </DetailCard>
 
                 {canAssign && check.id ? (
@@ -1065,8 +1070,8 @@ export default function DriverIdentityControlCenter(props: Props) {
 
                 {canManage ? (
                   <DetailCard
-                    title="Actions de revue"
-                    subtitle="Décision ops avec note interne optionnelle"
+                    title={t("Actions de revue")}
+                    subtitle={t("Décision ops avec note interne optionnelle")}
                   >
                     <textarea
                       placeholder="Note interne (visible dans l'historique)"
@@ -1078,7 +1083,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                     />
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       <ActionButton
-                        label="Approuver"
+                        label={t("Approuver")}
                         tone="approve"
                         disabled={busy || Boolean(lockError)}
                         onClick={() => onReview("approve")}
@@ -1089,7 +1094,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                         }
                       />
                       <ActionButton
-                        label="Refuser"
+                        label={t("Refuser")}
                         tone="reject"
                         disabled={busy || Boolean(lockError)}
                         onClick={() => onReview("reject")}
@@ -1100,7 +1105,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                         }
                       />
                       <ActionButton
-                        label="Nouvelle photo"
+                        label={t("Nouvelle photo")}
                         tone="photo"
                         disabled={busy || Boolean(lockError)}
                         onClick={() => onReview("request_new_photo")}
@@ -1112,7 +1117,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                         }
                       />
                       <ActionButton
-                        label="Suspendre"
+                        label={t("Suspendre")}
                         tone="suspend"
                         disabled={busy || Boolean(lockError)}
                         onClick={handleSuspend}
@@ -1123,7 +1128,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                         }
                       />
                       <ActionButton
-                        label="Historique"
+                        label={t("Historique")}
                         tone="history"
                         disabled={busy || Boolean(lockError)}
                         onClick={scrollToHistory}
@@ -1136,7 +1141,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                     </div>
                     {busy ? (
                       <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                        Traitement en cours…
+                        {t("Traitement en cours…")}
                       </p>
                     ) : null}
                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
@@ -1147,17 +1152,17 @@ export default function DriverIdentityControlCenter(props: Props) {
                 ) : null}
 
                 <DetailCard
-                  title="Historique des décisions"
-                  subtitle="Qui a décidé, combien de temps, changements de décision"
+                  title={t("Historique des décisions")}
+                  subtitle={t("Qui a décidé, combien de temps, changements de décision")}
                 >
                   {decisions.length === 0 ? (
                     <p className="py-4 text-sm text-slate-500 dark:text-slate-400">
-                      Aucune décision enregistrée.
+                      {t("Aucune décision enregistrée.")}
                     </p>
                   ) : (
                     <div className="space-y-3 py-2">
                       <InfoRow
-                        label="Changements de décision"
+                        label={t("Changements de décision")}
                         value={String(check.decision_change_count ?? decisions[0]?.decision_change_index ?? 0)}
                       />
                       {decisions.map((decision) => (
@@ -1191,8 +1196,8 @@ export default function DriverIdentityControlCenter(props: Props) {
 
                 <DetailCard
                   id="driver-identity-history"
-                  title="Historique"
-                  subtitle="Chronologie des événements de vérification"
+                  title={t("Historique")}
+                  subtitle={t("Chronologie des événements de vérification")}
                 >
                   <EventTimeline events={events} />
                 </DetailCard>

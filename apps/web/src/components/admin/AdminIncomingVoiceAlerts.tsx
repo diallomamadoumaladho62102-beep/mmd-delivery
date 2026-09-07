@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adminFetch, type ResolvedStaffSession } from "@/lib/adminBrowserAuth";
 import {
@@ -44,6 +46,8 @@ export default function AdminIncomingVoiceAlerts({
 }: {
   session: ResolvedStaffSession | null;
 }) {
+  const { t } = useAdminT();
+
   const canListen = Boolean(
     session &&
       sessionHasPermission(
@@ -221,13 +225,13 @@ export default function AdminIncomingVoiceAlerts({
           onClick={() => void unlockAudio()}
           className="pointer-events-auto w-full rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-900 shadow-lg"
         >
-          Activer les notifications sonores des appels. L’alerte visuelle reste active.
+          {t("Activer les notifications sonores des appels. L’alerte visuelle reste active.")}
         </button>
       ) : null}
 
       {realtimeDegraded ? (
         <p className="pointer-events-auto rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
-          Realtime indisponible — les appels sont synchronisés par sonde automatique.
+          {t("Realtime indisponible — les appels sont synchronisés par sonde automatique.")}
         </p>
       ) : null}
 
@@ -287,19 +291,19 @@ export default function AdminIncomingVoiceAlerts({
                   type="button"
                   disabled={actingId === call.id}
                   onClick={() => void runAction(call.id, "decline")}
-                  aria-label="Decline call"
+                  aria-label={t("Decline call")}
                   className="min-h-14 rounded-2xl bg-red-600 px-4 py-4 text-lg font-extrabold text-white shadow-sm disabled:opacity-60"
                 >
-                  Decline
+                  {t("Decline")}
                 </button>
                 <button
                   type="button"
                   disabled={actingId === call.id}
                   onClick={() => void runAction(call.id, "accept")}
-                  aria-label="Accept call"
+                  aria-label={t("Accept call")}
                   className="min-h-14 rounded-2xl bg-emerald-600 px-4 py-4 text-lg font-extrabold text-white shadow-sm disabled:opacity-60"
                 >
-                  Accept
+                  {t("Accept")}
                 </button>
               </div>
             ) : (
@@ -312,7 +316,7 @@ export default function AdminIncomingVoiceAlerts({
                     aria-label={onHold ? "Resume call" : "Hold call"}
                     className="min-h-14 w-full rounded-2xl border-2 border-slate-800 bg-white px-4 py-4 text-lg font-extrabold text-slate-900 shadow-sm disabled:opacity-60"
                   >
-                    {onHold ? "Resume" : "Hold"}
+                    {onHold ? t("Resume") : t("Hold")}
                   </button>
                 ) : (
                   <p className="text-xs text-slate-500">
@@ -324,10 +328,10 @@ export default function AdminIncomingVoiceAlerts({
                   type="button"
                   disabled={actingId === call.id}
                   onClick={() => void runAction(call.id, "end")}
-                  aria-label="End call"
+                  aria-label={t("End call")}
                   className="min-h-14 w-full rounded-2xl bg-red-600 px-4 py-4 text-lg font-extrabold text-white shadow-sm disabled:opacity-60"
                 >
-                  End Call
+                  {t("End Call")}
                 </button>
               </div>
             )}
@@ -343,9 +347,9 @@ export default function AdminIncomingVoiceAlerts({
                     }))
                   }
                   className="min-h-11 min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                  aria-label="Transfer destination"
+                  aria-label={t("Transfer destination")}
                 >
-                  <option value="">Choose an admin…</option>
+                  <option value="">{t("Choose an admin…")}</option>
                   {destinations.map((destination) => (
                     <option key={destination.userId} value={destination.userId}>
                       {destination.fullName}
@@ -358,7 +362,7 @@ export default function AdminIncomingVoiceAlerts({
                   onClick={() => void transferCall(call.id)}
                   className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold disabled:opacity-50"
                 >
-                  TRANSFER
+                  {t("TRANSFER")}
                 </button>
               </div>
             ) : (

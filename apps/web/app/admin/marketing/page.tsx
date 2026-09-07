@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
@@ -23,6 +25,8 @@ const CARD = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 const INPUT = "mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm";
 
 function MarketingAdminInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [canFinance, setCanFinance] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -66,7 +70,7 @@ function MarketingAdminInner() {
   const runOps = useCallback(
     async (action: string, extra?: Record<string, unknown>) => {
       if (!canFinance) return;
-      const reason = window.prompt("Motif (audit)")?.trim();
+      const reason = window.prompt(t("Motif (audit)"))?.trim();
       if (!reason) return;
       const http = await adminFetch("/api/admin/marketing/ops", {
         method: "POST",
@@ -117,7 +121,7 @@ function MarketingAdminInner() {
   const setStatus = useCallback(
     async (campaignId: string, status: string) => {
       if (!canEdit) return;
-      const reason = window.prompt("Motif")?.trim();
+      const reason = window.prompt(t("Motif"))?.trim();
       if (!reason) return;
       const http = await adminFetch("/api/admin/marketing/campaigns", {
         method: "POST",
@@ -162,7 +166,7 @@ function MarketingAdminInner() {
     <div className="space-y-6 p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Marketing</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">{t("Marketing")}</h1>
           <p className="mt-1 text-sm text-slate-600">
             Campagnes, codes promo, coupons — moteur central Food / Delivery / Taxi / Marketplace.
           </p>
@@ -171,7 +175,7 @@ function MarketingAdminInner() {
           href="/admin/advertisements"
           className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
         >
-          Publicités apps →
+          {t("Publicités apps →")}
         </Link>
       </div>
 
@@ -188,18 +192,18 @@ function MarketingAdminInner() {
 
       {canEdit && (
         <section className={CARD}>
-          <h2 className="text-lg font-semibold">Nouvelle campagne</h2>
+          <h2 className="text-lg font-semibold">{t("Nouvelle campagne")}</h2>
           <form onSubmit={createCampaign} className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="text-sm">
-              Code
+              {t("Code")}
               <input className={INPUT} value={code} onChange={(e) => setCode(e.target.value)} required />
             </label>
             <label className="text-sm">
-              Nom
+              {t("Nom")}
               <input className={INPUT} value={name} onChange={(e) => setName(e.target.value)} required />
             </label>
             <label className="text-sm">
-              Type
+              {t("Type")}
               <select className={INPUT} value={type} onChange={(e) => setType(e.target.value)}>
                 <option value="percentage_discount">percentage_discount</option>
                 <option value="fixed_discount">fixed_discount</option>
@@ -215,7 +219,7 @@ function MarketingAdminInner() {
               <input className={INPUT} value={percent} onChange={(e) => setPercent(e.target.value)} />
             </label>
             <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              Créer
+              {t("Créer")}
             </button>
           </form>
         </section>
@@ -223,21 +227,21 @@ function MarketingAdminInner() {
 
       {canEdit && (
         <section className={CARD}>
-          <h2 className="text-lg font-semibold">Attribuer un coupon</h2>
+          <h2 className="text-lg font-semibold">{t("Attribuer un coupon")}</h2>
           <form onSubmit={grantCoupon} className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="text-sm">
-              Client user_id
+              {t("Client user_id")}
               <input className={INPUT} value={grantUserId} onChange={(e) => setGrantUserId(e.target.value)} required />
             </label>
             <label className="text-sm">
-              Campagne
+              {t("Campagne")}
               <select
                 className={INPUT}
                 value={grantCampaignId}
                 onChange={(e) => setGrantCampaignId(e.target.value)}
                 required
               >
-                <option value="">Sélectionner</option>
+                <option value="">{t("Sélectionner")}</option>
                 {campaigns.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.code})
@@ -246,18 +250,18 @@ function MarketingAdminInner() {
               </select>
             </label>
             <label className="text-sm md:col-span-2">
-              Motif
+              {t("Motif")}
               <input className={INPUT} value={grantReason} onChange={(e) => setGrantReason(e.target.value)} required />
             </label>
             <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              Attribuer
+              {t("Attribuer")}
             </button>
           </form>
         </section>
       )}
 
       <section className={CARD}>
-        <h2 className="text-lg font-semibold">Campagnes</h2>
+        <h2 className="text-lg font-semibold">{t("Campagnes")}</h2>
         <ul className="mt-3 divide-y divide-slate-100">
           {campaigns.map((c) => (
             <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
@@ -273,26 +277,26 @@ function MarketingAdminInner() {
               {canEdit && (
                 <div className="flex flex-wrap gap-2">
                   <button className="rounded-lg border px-2 py-1" onClick={() => void setStatus(c.id, "active")}>
-                    Activer
+                    {t("Activer")}
                   </button>
                   <button className="rounded-lg border px-2 py-1" onClick={() => void setStatus(c.id, "suspended")}>
-                    Suspendre
+                    {t("Suspendre")}
                   </button>
                   <button className="rounded-lg border px-2 py-1" onClick={() => void setStatus(c.id, "ended")}>
-                    Terminer
+                    {t("Terminer")}
                   </button>
                 </div>
               )}
             </li>
           ))}
-          {campaigns.length === 0 && <li className="py-2 text-slate-500">Aucune campagne.</li>}
+          {campaigns.length === 0 && <li className="py-2 text-slate-500">{t("Aucune campagne.")}</li>}
         </ul>
       </section>
 
       <section className={CARD}>
-        <h2 className="text-lg font-semibold">Opérations Phase 7.1</h2>
+        <h2 className="text-lg font-semibold">{t("Opérations Phase 7.1")}</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Réservations, cashback → Crédit MMD, bonus chauffeurs, pont taxi legacy.
+          {t("Réservations, cashback → Crédit MMD, bonus chauffeurs, pont taxi legacy.")}
         </p>
         {opsSummary && (
           <dl className="mt-3 grid gap-2 text-sm md:grid-cols-3">
@@ -311,28 +315,28 @@ function MarketingAdminInner() {
               className="rounded-lg border px-3 py-1.5 text-sm"
               onClick={() => void runOps("credit_cashback_batch")}
             >
-              Créditer cashback
+              {t("Créditer cashback")}
             </button>
             <button
               type="button"
               className="rounded-lg border px-3 py-1.5 text-sm"
               onClick={() => void runOps("process_driver_batch")}
             >
-              Traiter objectifs chauffeurs
+              {t("Traiter objectifs chauffeurs")}
             </button>
             <button
               type="button"
               className="rounded-lg border px-3 py-1.5 text-sm"
               onClick={() => void runOps("bridge_taxi_legacy", { dry_run: true })}
             >
-              Pont taxi (dry-run)
+              {t("Pont taxi (dry-run)")}
             </button>
             <button
               type="button"
               className="rounded-lg border px-3 py-1.5 text-sm"
               onClick={() => void runOps("bridge_taxi_legacy", { dry_run: false })}
             >
-              Migrer taxi legacy
+              {t("Migrer taxi legacy")}
             </button>
           </div>
         )}
@@ -342,6 +346,8 @@ function MarketingAdminInner() {
 }
 
 export default function AdminMarketingPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate>
       <MarketingAdminInner />

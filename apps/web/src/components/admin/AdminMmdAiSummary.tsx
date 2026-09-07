@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
@@ -30,6 +32,8 @@ function formatInt(value: unknown) {
 }
 
 export default function AdminMmdAiSummary({ role }: { role: UserRole }) {
+  const { t } = useAdminT();
+
   const [control, setControl] = useState<ControlSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,9 +84,9 @@ export default function AdminMmdAiSummary({ role }: { role: UserRole }) {
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">MMD AI</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t("MMD AI")}</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Compact monitoring for usage, safety controls, and launch status.
+            {t("Compact monitoring for usage, safety controls, and launch status.")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -90,13 +94,13 @@ export default function AdminMmdAiSummary({ role }: { role: UserRole }) {
             href="/admin/mmd-ai"
             className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
           >
-            Dashboard
+            {t("Dashboard")}
           </Link>
           <Link
             href="/admin/mmd-ai/launch"
             className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
           >
-            Launch Control
+            {t("Launch Control")}
           </Link>
         </div>
       </div>
@@ -107,23 +111,23 @@ export default function AdminMmdAiSummary({ role }: { role: UserRole }) {
         </div>
       ) : control ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
-          <SummaryCard label="Global Enabled" value={control.globalEnabled ? "ON" : "OFF"} />
+          <SummaryCard label={t("Global Enabled")} value={control.globalEnabled ? "ON" : "OFF"} />
           <SummaryCard
-            label="Emergency Stop"
-            value={control.emergencyStop ? "ACTIVE" : "Off"}
+            label={t("Emergency Stop")}
+            value={control.emergencyStop ? "ACTIVE" : t("Off")}
             alert={control.emergencyStop}
           />
-          <SummaryCard label="Cost Today" value={formatUsd(control.costTodayUsd)} />
+          <SummaryCard label={t("Cost Today")} value={formatUsd(control.costTodayUsd)} />
           <SummaryCard
-            label="Cost Cap"
+            label={t("Cost Cap")}
             value={control.costCapUsd != null ? formatUsd(control.costCapUsd) : "None"}
           />
-          <SummaryCard label="Active Regions" value={formatInt(control.activeRegions)} />
-          <SummaryCard label="Messages Today" value={formatInt(metrics.ai_messages_count)} />
-          <SummaryCard label="Errors Today" value={formatInt(metrics.ai_error_count)} />
+          <SummaryCard label={t("Active Regions")} value={formatInt(control.activeRegions)} />
+          <SummaryCard label={t("Messages Today")} value={formatInt(metrics.ai_messages_count)} />
+          <SummaryCard label={t("Errors Today")} value={formatInt(metrics.ai_error_count)} />
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Loading MMD AI summary…</p>
+        <p className="text-sm text-slate-500">{t("Loading MMD AI summary…")}</p>
       )}
     </section>
   );

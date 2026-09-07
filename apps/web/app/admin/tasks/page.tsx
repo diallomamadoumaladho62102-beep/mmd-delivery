@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AdminGate from "@/components/AdminGate";
@@ -19,16 +21,18 @@ type Task = {
 
 type AdminRow = { id: string; full_name: string | null; email: string | null };
 
-const STATUSES = [
-  { value: "todo", label: "To do" },
-  { value: "in_progress", label: "In progress" },
-  { value: "waiting", label: "Waiting" },
-  { value: "blocked", label: "Blocked" },
-  { value: "done", label: "Done" },
-  { value: "cancelled", label: "Cancelled" },
-] as const;
 
 function AdminTasksInner() {
+  const { t } = useAdminT();
+  const statuses = [
+    { value: "todo", label: t("To do") },
+    { value: "in_progress", label: t("In progress") },
+    { value: "waiting", label: t("Waiting") },
+    { value: "blocked", label: t("Blocked") },
+    { value: "done", label: t("Done") },
+    { value: "cancelled", label: t("Cancelled") },
+  ] as const;
+
   const searchParams = useSearchParams();
   const presetAssignee = searchParams.get("assignee") ?? "";
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -84,7 +88,7 @@ function AdminTasksInner() {
   }, [tasks, statusFilter]);
 
   const grouped = useMemo(() => {
-    return STATUSES.map((status) => ({
+    return statuses.map((status) => ({
       ...status,
       items: visibleTasks.filter((t) => t.status === status.value),
     }));
@@ -175,7 +179,7 @@ function AdminTasksInner() {
 
   async function removeTask(id: string) {
     if (busyId) return;
-    if (!window.confirm("Delete this task permanently?")) return;
+    if (!window.confirm(t("Delete this task permanently?"))) return;
     setBusyId(id);
     setError(null);
     try {
@@ -202,13 +206,13 @@ function AdminTasksInner() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cc-muted)]">
-            Work queue
+            {t("Work queue")}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            Tasks
+            {t("Tasks")}
           </h1>
           <p className="mt-1 text-sm text-[var(--cc-muted)]">
-            Assign, track, and close internal Control Center work
+            {t("Assign, track, and close internal Control Center work")}
           </p>
         </div>
         <select
@@ -216,8 +220,8 @@ function AdminTasksInner() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
         >
-          <option value="all">All statuses</option>
-          {STATUSES.map((s) => (
+          <option value="all">{t("All statuses")}</option>
+          {statuses.map((s) => (
             <option key={s.value} value={s.value}>
               {s.label}
             </option>
@@ -246,14 +250,14 @@ function AdminTasksInner() {
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Task title"
+          placeholder={t("Task title")}
           disabled={creating || pendingMigration}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm md:col-span-2"
         />
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Description"
+          placeholder={t("Description")}
           rows={2}
           disabled={creating || pendingMigration}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm md:col-span-2"
@@ -264,10 +268,10 @@ function AdminTasksInner() {
           disabled={creating || pendingMigration}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
         >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="critical">Critical</option>
+          <option value="low">{t("Low")}</option>
+          <option value="medium">{t("Medium")}</option>
+          <option value="high">{t("High")}</option>
+          <option value="critical">{t("Critical")}</option>
         </select>
         <input
           type="datetime-local"
@@ -282,7 +286,7 @@ function AdminTasksInner() {
           disabled={creating || pendingMigration}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm md:col-span-2"
         >
-          <option value="">Unassigned</option>
+          <option value="">{t("Unassigned")}</option>
           {admins.map((admin) => (
             <option key={admin.id} value={admin.id}>
               {admin.full_name || admin.email}
@@ -304,7 +308,7 @@ function AdminTasksInner() {
 
       {!pendingMigration && tasks.length === 0 && !error ? (
         <div className="cc-card px-5 py-10 text-center text-sm text-[var(--cc-muted)]">
-          No tasks yet. Create the first work item above.
+          {t("No tasks yet. Create the first work item above.")}
         </div>
       ) : null}
 
@@ -317,7 +321,7 @@ function AdminTasksInner() {
             <div className="space-y-2">
               {column.items.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-[var(--cc-border)] px-3 py-6 text-center text-xs text-[var(--cc-muted)]">
-                  Empty
+                  {t("Empty")}
                 </div>
               ) : (
                 column.items.map((task) => (
@@ -335,7 +339,7 @@ function AdminTasksInner() {
                       onChange={(e) => void setStatus(task.id, e.target.value)}
                       className="w-full rounded-lg border border-[var(--cc-border)] px-2 py-1 text-xs"
                     >
-                      {STATUSES.map((s) => (
+                      {statuses.map((s) => (
                         <option key={s.value} value={s.value}>
                           {s.label}
                         </option>
@@ -347,7 +351,7 @@ function AdminTasksInner() {
                       onChange={(e) => void reassign(task.id, e.target.value)}
                       className="w-full rounded-lg border border-[var(--cc-border)] px-2 py-1 text-xs"
                     >
-                      <option value="">Unassigned</option>
+                      <option value="">{t("Unassigned")}</option>
                       {admins.map((admin) => (
                         <option key={admin.id} value={admin.id}>
                           {admin.full_name || admin.email}
@@ -360,7 +364,7 @@ function AdminTasksInner() {
                       onClick={() => void removeTask(task.id)}
                       className="w-full rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 disabled:opacity-50"
                     >
-                      Delete
+                      {t("Delete")}
                     </button>
                   </article>
                 ))
@@ -374,10 +378,12 @@ function AdminTasksInner() {
 }
 
 export default function AdminTasksPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="hub.access">
       <Suspense
-        fallback={<p className="text-sm text-[var(--cc-muted)]">Loading tasks…</p>}
+        fallback={<p className="text-sm text-[var(--cc-muted)]">{t("Loading tasks…")}</p>}
       >
         <AdminTasksInner />
       </Suspense>

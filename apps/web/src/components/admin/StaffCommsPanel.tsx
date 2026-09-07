@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { adminFetch, getAdminAccessToken } from "@/lib/adminBrowserAuth";
@@ -63,6 +65,8 @@ export default function StaffCommsPanel({
   peerName: string;
   currentUserId: string;
 }) {
+  const { t } = useAdminT();
+
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
@@ -610,7 +614,7 @@ export default function StaffCommsPanel({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-900">
-          Internal communication
+          {t("Internal communication")}
         </h2>
         <div className="flex items-center gap-2 text-xs text-[var(--cc-muted)]">
           {peerPresence ? (
@@ -633,7 +637,7 @@ export default function StaffCommsPanel({
           ) : null}
           {unreadHint ? (
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800">
-              New message
+              {t("New message")}
             </span>
           ) : null}
         </div>
@@ -666,14 +670,14 @@ export default function StaffCommsPanel({
                 setIncomingCall(null);
               }}
             >
-              Join
+              {t("Join")}
             </button>
             <button
               type="button"
               className="rounded-lg border border-sky-300 px-3 py-1.5 text-xs font-medium"
               onClick={() => setIncomingCall(null)}
             >
-              Dismiss
+              {t("Dismiss")}
             </button>
           </div>
         </div>
@@ -686,7 +690,7 @@ export default function StaffCommsPanel({
           onClick={() => void startCall("audio", true)}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
         >
-          Audio call
+          {t("Audio call")}
         </button>
         <button
           type="button"
@@ -694,7 +698,7 @@ export default function StaffCommsPanel({
           onClick={() => void startCall("video", true)}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
         >
-          Video call
+          {t("Video call")}
         </button>
         <button
           type="button"
@@ -702,7 +706,7 @@ export default function StaffCommsPanel({
           onClick={() => void startCall("meeting", false)}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
         >
-          Schedule meeting
+          {t("Schedule meeting")}
         </button>
       </div>
       {callCap && !callCap.canCreateLiveRoom ? (
@@ -715,7 +719,7 @@ export default function StaffCommsPanel({
 
       <div className="max-h-80 space-y-2 overflow-y-auto rounded-xl border border-[var(--cc-border)] bg-slate-50 p-3">
         {messages.length === 0 ? (
-          <p className="text-sm text-[var(--cc-muted)]">No messages yet.</p>
+          <p className="text-sm text-[var(--cc-muted)]">{t("No messages yet.")}</p>
         ) : (
           messages.map((m) => {
             const url = m.attachment_path
@@ -766,12 +770,12 @@ export default function StaffCommsPanel({
                     rel="noreferrer"
                     className="mt-2 block text-xs underline"
                   >
-                    Download document
+                    {t("Download document")}
                   </a>
                 ) : null}
                 {m.attachment_path && !url ? (
                   <p className="mt-1 text-[10px] opacity-70">
-                    Loading secure preview…
+                    {t("Loading secure preview…")}
                   </p>
                 ) : null}
                 <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] opacity-80">
@@ -803,7 +807,7 @@ export default function StaffCommsPanel({
                     className="text-[10px] underline opacity-70"
                     onClick={() => setReplyTo(m)}
                   >
-                    Reply
+                    {t("Reply")}
                   </button>
                   {m.sender_id === currentUserId && m.message_type === "text" ? (
                     <button
@@ -814,7 +818,7 @@ export default function StaffCommsPanel({
                         setText(m.body ?? "");
                       }}
                     >
-                      Edit
+                      {t("Edit")}
                     </button>
                   ) : null}
                   {m.sender_id === currentUserId ? (
@@ -823,7 +827,7 @@ export default function StaffCommsPanel({
                       className="text-[10px] underline opacity-70"
                       onClick={() => void softDelete(m.id)}
                     >
-                      Delete
+                      {t("Delete")}
                     </button>
                   ) : null}
                   {REACTIONS.map((emoji) => (
@@ -832,7 +836,7 @@ export default function StaffCommsPanel({
                       type="button"
                       className="text-[11px] opacity-80"
                       onClick={() => void react(m.id, emoji)}
-                      title="React"
+                      title={t("React")}
                     >
                       {emoji}
                     </button>
@@ -843,7 +847,7 @@ export default function StaffCommsPanel({
           })
         )}
         {typingPeer ? (
-          <p className="text-xs text-[var(--cc-muted)]">Typing…</p>
+          <p className="text-xs text-[var(--cc-muted)]">{t("Typing…")}</p>
         ) : null}
       </div>
 
@@ -853,13 +857,13 @@ export default function StaffCommsPanel({
             Replying to: {(replyTo.body || replyTo.message_type).slice(0, 60)}
           </span>
           <button type="button" onClick={() => setReplyTo(null)}>
-            Cancel
+            {t("Cancel")}
           </button>
         </div>
       ) : null}
       {editingId ? (
         <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <span>Editing message</span>
+          <span>{t("Editing message")}</span>
           <button
             type="button"
             onClick={() => {
@@ -867,7 +871,7 @@ export default function StaffCommsPanel({
               setText("");
             }}
           >
-            Cancel
+            {t("Cancel")}
           </button>
         </div>
       ) : null}
@@ -884,14 +888,14 @@ export default function StaffCommsPanel({
             disabled={sending}
             className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
           >
-            Send voice
+            {t("Send voice")}
           </button>
           <button
             type="button"
             onClick={discardVoiceNote}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs"
           >
-            Delete
+            {t("Delete")}
           </button>
         </div>
       ) : null}
@@ -907,7 +911,7 @@ export default function StaffCommsPanel({
               onClick={pauseVoiceNote}
               className="rounded border px-2 py-1"
             >
-              Pause
+              {t("Pause")}
             </button>
           ) : (
             <button
@@ -915,7 +919,7 @@ export default function StaffCommsPanel({
               onClick={resumeVoiceNote}
               className="rounded border px-2 py-1"
             >
-              Resume
+              {t("Resume")}
             </button>
           )}
           <button
@@ -923,7 +927,7 @@ export default function StaffCommsPanel({
             onClick={stopVoiceNote}
             className="rounded bg-red-600 px-2 py-1 text-white"
           >
-            Stop
+            {t("Stop")}
           </button>
         </div>
       ) : null}
@@ -973,7 +977,7 @@ export default function StaffCommsPanel({
           onClick={() => fileInputRef.current?.click()}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
         >
-          Attach
+          {t("Attach")}
         </button>
         {!recording ? (
           <button
@@ -982,7 +986,7 @@ export default function StaffCommsPanel({
             onClick={() => void startVoiceNote()}
             className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
           >
-            Voice
+            {t("Voice")}
           </button>
         ) : null}
         <button
@@ -990,12 +994,11 @@ export default function StaffCommsPanel({
           disabled={!conversationId || sending || !text.trim()}
           className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
-          {sending ? "Sending…" : editingId ? "Save" : "Send"}
+          {sending ? t("Sending…") : editingId ? t("Save") : t("Send")}
         </button>
       </form>
       <p className="text-xs text-[var(--cc-muted)]">
-        Private bucket + signed URLs. Drag-and-drop supported. Images 8MB ·
-        Audio 15MB · Video 50MB · Docs 20MB.
+        {t("Private bucket + signed URLs. Drag-and-drop supported. Images 8MB · Audio 15MB · Video 50MB · Docs 20MB.")}
       </p>
 
       {activeCallId ? (

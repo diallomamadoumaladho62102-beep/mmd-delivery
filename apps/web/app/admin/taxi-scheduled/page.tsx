@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiRides } from "@/lib/adminAccess";
@@ -18,6 +20,8 @@ type ScheduledRow = {
 };
 
 export default function AdminTaxiScheduledPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,16 +66,16 @@ export default function AdminTaxiScheduledPage() {
   return (
     <AdminGate requiredPermission="taxi_rides.read">
       <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
-        <h1>Taxi Scheduled Rides</h1>
+        <h1>{t("Taxi Scheduled Rides")}</h1>
         {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
-        {loading ? <p>Loading…</p> : null}
+        {loading ? <p>{t("Loading…")}</p> : null}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th align="left">Pickup</th>
-              <th align="left">Route</th>
-              <th align="left">Status</th>
-              <th align="left">Actions</th>
+              <th align="left">{t("Pickup")}</th>
+              <th align="left">{t("Route")}</th>
+              <th align="left">{t("Status")}</th>
+              <th align="left">{t("Actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -86,10 +90,10 @@ export default function AdminTaxiScheduledPage() {
                   {canEdit ? (
                     <>
                       <button type="button" onClick={() => runAction(row.id, "force_dispatch")}>
-                        Dispatch
+                        {t("Dispatch")}
                       </button>
                       <button type="button" onClick={() => runAction(row.id, "cancel")}>
-                        Cancel
+                        {t("Cancel")}
                       </button>
                     </>
                   ) : null}

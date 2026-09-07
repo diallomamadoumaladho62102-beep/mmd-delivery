@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -93,10 +95,10 @@ function formatOrderTotal(
   return formatMoney(order.total, order.currency || "USD");
 }
 
-function statusLabel(status: OrderStatus): string {
+function statusLabel(status: OrderStatus, t: (source: string) => string): string {
   switch (status) {
     case "pending":
-      return "En attente";
+      return t("En attente");
     case "accepted":
       return "Acceptée par le restaurant";
     case "prepared":
@@ -171,6 +173,8 @@ function InfoRow({
 }
 
 export default function AdminOrderPage() {
+  const { t } = useAdminT();
+
   const params = useParams<{ orderId: string }>();
   const router = useRouter();
   const orderId = typeof params?.orderId === "string" ? params.orderId : "";
@@ -358,7 +362,7 @@ export default function AdminOrderPage() {
       if (!order?.id || callingTarget) return;
 
       if (isFinalOrder) {
-        alert("Les appels sont désactivés pour une commande terminée ou annulée.");
+        alert(t("Les appels sont désactivés pour une commande terminée ou annulée."));
         return;
       }
 
@@ -424,7 +428,7 @@ export default function AdminOrderPage() {
       if (!order?.id) return;
 
       if (isFinalOrder) {
-        alert("Les messages sont désactivés pour une commande terminée ou annulée.");
+        alert(t("Les messages sont désactivés pour une commande terminée ou annulée."));
         return;
       }
 
@@ -444,7 +448,7 @@ export default function AdminOrderPage() {
       <main className="min-w-0">
         <div className="mx-auto max-w-5xl px-4 py-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="text-sm text-slate-600">Chargement de la commande…</p>
+            <p className="text-sm text-slate-600">{t("Chargement de la commande…")}</p>
           </div>
         </div>
       </main>
@@ -491,13 +495,13 @@ export default function AdminOrderPage() {
             disabled={refreshing}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {refreshing ? "Refreshing..." : "Refresh"}
+            {refreshing ? t("Refreshing...") : t("Refresh")}
           </button>
         </div>
 
         <header className="space-y-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-            MMD Delivery · Admin Order Detail
+            {t("MMD Delivery · Admin Order Detail")}
           </div>
 
           <h1 className="text-2xl font-bold text-slate-900">
@@ -505,8 +509,7 @@ export default function AdminOrderPage() {
           </h1>
 
           <p className="text-sm text-slate-600">
-            Détail complet de la commande pour l&apos;administration MMD
-            Delivery.
+            {t("Détail complet de la commande pour l&apos;administration MMD Delivery.")}
           </p>
 
           <div className="pt-1">
@@ -515,7 +518,7 @@ export default function AdminOrderPage() {
                 order.status
               )}`}
             >
-              Statut : {statusLabel(order.status)}
+              Statut : {statusLabel(order.status, t)}
             </span>
           </div>
 
@@ -530,30 +533,30 @@ export default function AdminOrderPage() {
           onCompleted={() => void loadPage("refresh")}
         />
 
-        <SectionCard title="Informations générales">
-          <InfoRow label="Type" value={order.kind || "—"} />
-          <InfoRow label="Client (client_id)" value={effectiveClientId || "—"} />
-          <InfoRow label="Ancien user_id" value={order.user_id || "—"} />
-          <InfoRow label="Chauffeur (driver_id)" value={order.driver_id || "—"} />
+        <SectionCard title={t("Informations générales")}>
+          <InfoRow label={t("Type")} value={order.kind || "—"} />
+          <InfoRow label={t("Client (client_id)")} value={effectiveClientId || "—"} />
+          <InfoRow label={t("Ancien user_id")} value={order.user_id || "—"} />
+          <InfoRow label={t("Chauffeur (driver_id)")} value={order.driver_id || "—"} />
           <InfoRow
-            label="Restaurant (restaurant_id)"
+            label={t("Restaurant (restaurant_id)")}
             value={order.restaurant_id || "—"}
           />
           <InfoRow
-            label="Nom du restaurant"
+            label={t("Nom du restaurant")}
             value={order.restaurant_name || "—"}
           />
         </SectionCard>
 
         <SectionCard
-          title="Communication admin"
-          subtitle="Appeler ou ouvrir une discussion ciblée avec le client, le chauffeur ou le restaurant."
+          title={t("Communication admin")}
+          subtitle={t("Appeler ou ouvrir une discussion ciblée avec le client, le chauffeur ou le restaurant.")}
         >
           <div className="grid gap-3 md:grid-cols-3">
             {([
-              ["client", "Client", effectiveClientId],
-              ["driver", "Chauffeur", order.driver_id],
-              ["restaurant", "Restaurant", order.restaurant_id],
+              ["client", t("Client"), effectiveClientId],
+              ["driver", t("Chauffeur"), order.driver_id],
+              ["restaurant", t("Restaurant"), order.restaurant_id],
             ] as const).map(([targetRole, label, targetId]) => {
               const disabled = communicationDisabled || !targetId;
               const isCalling = callingTarget === targetRole;
@@ -586,7 +589,7 @@ export default function AdminOrderPage() {
                       onClick={() => openAdminChat(targetRole)}
                       className="inline-flex h-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Message
+                      {t("Message")}
                     </button>
                   </div>
                 </div>
@@ -596,12 +599,12 @@ export default function AdminOrderPage() {
 
           {isFinalOrder ? (
             <p className="mt-3 text-[11px] text-slate-500">
-              Communication désactivée parce que cette commande est terminée ou annulée.
+              {t("Communication désactivée parce que cette commande est terminée ou annulée.")}
             </p>
           ) : null}
         </SectionCard>
 
-        <SectionCard title="Récapitulatif de la commande (plats)">
+        <SectionCard title={t("Récapitulatif de la commande (plats)")}>
           {order.items_json && order.items_json.length > 0 ? (
             <div className="space-y-2">
               {order.items_json.map((item, idx) => (
@@ -629,47 +632,47 @@ export default function AdminOrderPage() {
             </div>
           ) : (
             <p className="text-xs text-slate-500">
-              Aucun détail de plats enregistré.
+              {t("Aucun détail de plats enregistré.")}
             </p>
           )}
 
           <div className="mt-3 space-y-1 border-t border-slate-200 pt-3">
             <InfoRow
-              label="Montant (plats)"
+              label={t("Montant (plats)")}
               value={formatMoney(order.subtotal, currency)}
             />
-            <InfoRow label="Taxes" value={formatMoney(order.tax, currency)} />
+            <InfoRow label={t("Taxes")} value={formatMoney(order.tax, currency)} />
             <InfoRow
-              label="Total client (persisté)"
+              label={t("Total client (persisté)")}
               value={formatOrderTotal(order)}
             />
             {order.payment_status ? (
-              <InfoRow label="Statut paiement" value={order.payment_status} />
+              <InfoRow label={t("Statut paiement")} value={order.payment_status} />
             ) : null}
             {order.total_cents != null ? (
               <InfoRow
-                label="Total cents (charge)"
+                label={t("Total cents (charge)")}
                 value={`${order.total_cents} ¢`}
               />
             ) : null}
           </div>
         </SectionCard>
 
-        <SectionCard title="Livraison (distance / temps / frais)">
-          <InfoRow label="Distance estimée" value={distanceLabel} />
-          <InfoRow label="Temps estimé" value={etaLabel} />
+        <SectionCard title={t("Livraison (distance / temps / frais)")}>
+          <InfoRow label={t("Distance estimée")} value={distanceLabel} />
+          <InfoRow label={t("Temps estimé")} value={etaLabel} />
           <InfoRow
-            label="Frais de livraison facturés"
+            label={t("Frais de livraison facturés")}
             value={formatMoney(order.delivery_fee, currency)}
           />
         </SectionCard>
 
         <SectionCard
-          title="Commission restaurant (plats)"
-          subtitle="Montants et taux persistés sur la commande (pas de recalcul)"
+          title={t("Commission restaurant (plats)")}
+          subtitle={t("Montants et taux persistés sur la commande (pas de recalcul)")}
         >
           <InfoRow
-            label="Taux MMD (sur plats)"
+            label={t("Taux MMD (sur plats)")}
             value={
               restaurantRatePct != null
                 ? `${restaurantRatePct.toFixed(2)} %`
@@ -677,11 +680,11 @@ export default function AdminOrderPage() {
             }
           />
           <InfoRow
-            label="Commission MMD"
+            label={t("Commission MMD")}
             value={formatMoney(order.restaurant_commission_amount, currency)}
           />
           <InfoRow
-            label="Montant net restaurant"
+            label={t("Montant net restaurant")}
             value={formatMoney(order.restaurant_net_amount, currency)}
           />
 
@@ -695,19 +698,19 @@ export default function AdminOrderPage() {
         </SectionCard>
 
         <SectionCard
-          title="Commission MMD & rémunération chauffeur"
-          subtitle="Répartition persistée des frais de livraison"
+          title={t("Commission MMD & rémunération chauffeur")}
+          subtitle={t("Répartition persistée des frais de livraison")}
         >
           <InfoRow
-            label="Frais de livraison (client)"
+            label={t("Frais de livraison (client)")}
             value={formatMoney(order.delivery_fee, currency)}
           />
           <InfoRow
-            label="Part chauffeur"
+            label={t("Part chauffeur")}
             value={formatMoney(order.driver_delivery_payout, currency)}
           />
           <InfoRow
-            label="Part MMD (plateforme)"
+            label={t("Part MMD (plateforme)")}
             value={formatMoney(order.platform_delivery_fee, currency)}
           />
 
@@ -721,23 +724,23 @@ export default function AdminOrderPage() {
         </SectionCard>
 
         <SectionCard
-          title="Résumé financier MMD (par commande)"
-          subtitle="Somme des parts plateforme persistées"
+          title={t("Résumé financier MMD (par commande)")}
+          subtitle={t("Somme des parts plateforme persistées")}
         >
           <InfoRow
-            label="Commission MMD sur plats"
+            label={t("Commission MMD sur plats")}
             value={formatMoney(restaurantCommission, currency)}
           />
           <InfoRow
-            label="Commission MMD sur livraison"
+            label={t("Commission MMD sur livraison")}
             value={formatMoney(deliveryPlatformFee, currency)}
           />
           <InfoRow
-            label="Total part plateforme MMD"
+            label={t("Total part plateforme MMD")}
             value={formatMoney(mmdPlatformTake, currency)}
           />
           <InfoRow
-            label="Rémunération chauffeur (persistée)"
+            label={t("Rémunération chauffeur (persistée)")}
             value={formatMoney(driverPayout, currency)}
           />
 
@@ -749,7 +752,7 @@ export default function AdminOrderPage() {
         </SectionCard>
 
         <div id="timeline" className="scroll-mt-24">
-          <SectionCard title="Timeline de commande">
+          <SectionCard title={t("Timeline de commande")}>
             <OrderTimeline orderId={order.id} />
           </SectionCard>
         </div>
@@ -759,7 +762,7 @@ export default function AdminOrderPage() {
             href={`/admin/payouts/${order.id}`}
             className="text-sm font-medium text-blue-600 underline underline-offset-2 hover:text-blue-800"
           >
-            Ouvrir aussi la vue payout de cette commande
+            {t("Ouvrir aussi la vue payout de cette commande")}
           </Link>
         </div>
       </div>

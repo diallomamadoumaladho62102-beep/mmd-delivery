@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -82,6 +84,8 @@ export default function AdminOpsLiveMap({
   heightClass?: string;
   showHeaderLink?: boolean;
 }) {
+  const { t } = useAdminT();
+
   const token = getPublicMapboxToken() ?? "";
   const [rawFeatures, setRawFeatures] = useState<OpsMapFeature[]>([]);
   const [displayFeatures, setDisplayFeatures] = useState<OpsMapFeature[]>([]);
@@ -226,10 +230,10 @@ export default function AdminOpsLiveMap({
     return (
       <div className="cc-card p-6">
         <h2 className="text-base font-semibold text-slate-900">
-          Live operations map
+          {t("Live operations map")}
         </h2>
         <p className="mt-2 text-sm text-[var(--cc-muted)]">
-          Disabled — set <code>NEXT_PUBLIC_MAPBOX_TOKEN</code> to enable Mapbox
+          {t("Disabled — set")} <code>{t("NEXT_PUBLIC_MAPBOX_TOKEN")}</code> to enable Mapbox
           live supervision. No simulated map is shown.
         </p>
       </div>
@@ -241,7 +245,7 @@ export default function AdminOpsLiveMap({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cc-border)] px-5 py-4">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
-            Live operations map
+            {t("Live operations map")}
           </h2>
           <p className="text-sm text-[var(--cc-muted)]">
             Realtime fleet · clients · orders · taxi · partners · routes · ETA
@@ -256,13 +260,13 @@ export default function AdminOpsLiveMap({
               href="/admin/live-map"
               className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
             >
-              Full screen
+              {t("Full screen")}
             </Link>
             <Link
               href="/admin/supervision"
               className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
             >
-              Metrics
+              {t("Metrics")}
             </Link>
           </div>
         ) : null}
@@ -272,7 +276,7 @@ export default function AdminOpsLiveMap({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search labels…"
+          placeholder={t("Search labels…")}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
         />
         <select
@@ -283,7 +287,7 @@ export default function AdminOpsLiveMap({
           }}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
         >
-          <option value="">All countries</option>
+          <option value="">{t("All countries")}</option>
           {countries.map((c) => (
             <option key={c.country_code} value={c.country_code}>
               {c.country_name || c.country_code}
@@ -308,7 +312,7 @@ export default function AdminOpsLiveMap({
         <input
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          placeholder="City filter"
+          placeholder={t("City filter")}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
         />
         <button
@@ -316,7 +320,7 @@ export default function AdminOpsLiveMap({
           onClick={() => void load()}
           className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white"
         >
-          Refresh now
+          {t("Refresh now")}
         </button>
       </div>
 
@@ -534,14 +538,14 @@ export default function AdminOpsLiveMap({
                 href={selected.properties.href}
                 className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
               >
-                Open record →
+                {t("Open record →")}
               </Link>
               {selected.properties.driver_id ? (
                 <Link
                   href={`/admin/drivers?focus=${selected.properties.driver_id}`}
                   className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
                 >
-                  Driver
+                  {t("Driver")}
                 </Link>
               ) : null}
               {selected.properties.client_id ? (
@@ -549,7 +553,7 @@ export default function AdminOpsLiveMap({
                   href={`/admin/clients?focus=${selected.properties.client_id}`}
                   className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
                 >
-                  Client
+                  {t("Client")}
                 </Link>
               ) : null}
             </div>

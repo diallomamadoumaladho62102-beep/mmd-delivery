@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -28,6 +30,8 @@ function timeLabel(iso: string | null | undefined): string | null {
 }
 
 function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
+  const { t } = useAdminT();
+
   const status = rideStatusBadge(ride.status);
   const payment = paymentStatusBadge(ride.payment_status);
   const refund = ride.refund_status
@@ -37,10 +41,10 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
   const hasClient = Boolean(ride.client?.id || ride.client_user_id);
   const hasDriver = Boolean(ride.driver?.id || ride.driver_id);
   const clientName = hasClient
-    ? partyDisplayName(ride.client, ride.client_user_id?.slice(0, 8) || "Client")
+    ? partyDisplayName(ride.client, ride.client_user_id?.slice(0, 8) || t("Client"))
     : null;
   const driverName = hasDriver
-    ? partyDisplayName(ride.driver, ride.driver_id?.slice(0, 8) || "Driver")
+    ? partyDisplayName(ride.driver, ride.driver_id?.slice(0, 8) || t("Driver"))
     : null;
   const online = hasDriver ? driverOnlineBadge(ride.driver_is_online) : null;
 
@@ -62,13 +66,13 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
 
   const lifecycle = (
     [
-      ["Created", timeLabel(ride.created_at)],
+      [t("Created"), timeLabel(ride.created_at)],
       ["Accepted", timeLabel(ride.accepted_at)],
       ["Arrived", timeLabel(ride.driver_arrived_at)],
       ["Picked up", timeLabel(ride.started_at)],
-      ["Completed", timeLabel(ride.completed_at)],
+      [t("Completed"), timeLabel(ride.completed_at)],
     ] as const
-  ).filter(([, v]) => Boolean(v));
+  ).filter(([, value]) => Boolean(value));
 
   return (
     <article
@@ -123,7 +127,7 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
 
       <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-xs text-slate-700">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-slate-900">Payment</span>
+          <span className="font-semibold text-slate-900">{t("Payment")}</span>
           <TaxiRideBadge
             label={payment.label}
             tone={(payment.tone === "orange" ? "yellow" : payment.tone) as TaxiBadgeTone}
@@ -149,7 +153,7 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
           <TaxiRideAvatar name={clientName ?? "?"} src={ride.client?.avatar_url} size={44} />
           <div className="min-w-0">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Client
+              {t("Client")}
             </div>
             {clientName ? (
               <>
@@ -162,7 +166,7 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
                 ) : null}
               </>
             ) : (
-              <div className="text-sm text-slate-500">No client data</div>
+              <div className="text-sm text-slate-500">{t("No client data")}</div>
             )}
           </div>
         </div>
@@ -171,7 +175,7 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                Driver
+                {t("Driver")}
               </div>
               {online ? <TaxiRideBadge label={online.label} tone={online.tone} /> : null}
             </div>
@@ -183,7 +187,7 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
                 ) : null}
               </>
             ) : (
-              <div className="text-sm text-slate-500">No driver assigned</div>
+              <div className="text-sm text-slate-500">{t("No driver assigned")}</div>
             )}
           </div>
         </div>
@@ -192,12 +196,12 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
       {(pickupAddress || dropoffAddress) && (
         <div
           className="mt-4 space-y-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm text-slate-800"
-          aria-label="Trip locations"
+          aria-label={t("Trip locations")}
         >
           {pickupAddress ? (
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Pickup
+                {t("Pickup")}
               </div>
               <div className="mt-0.5 font-medium leading-snug text-slate-900">
                 {pickupAddress}
@@ -215,7 +219,7 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
           {dropoffAddress ? (
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Destination
+                {t("Destination")}
               </div>
               <div className="mt-0.5 font-medium leading-snug text-slate-900">
                 {dropoffAddress}
@@ -239,17 +243,17 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
                 />
               ) : (
                 <div className="flex h-full min-h-[6.5rem] items-center justify-center text-[11px] text-slate-400">
-                  Vehicle
+                  {t("Vehicle")}
                 </div>
               )}
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 p-3 text-xs">
               {(
                 [
-                  ["Type", vehicle.vehicle_type],
+                  [t("Type"), vehicle.vehicle_type],
                   ["Make", vehicle.make],
                   ["Model", vehicle.model],
-                  ["Year", vehicle.year != null ? String(vehicle.year) : null],
+                  [t("Year"), vehicle.year != null ? String(vehicle.year) : null],
                   ["Color", vehicle.color],
                   ["Plate", vehicle.plate],
                 ] as const

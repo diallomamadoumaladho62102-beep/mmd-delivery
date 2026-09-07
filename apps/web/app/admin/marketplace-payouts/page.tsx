@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -40,6 +42,8 @@ function formatMoney(cents: number | null | undefined, currency = "USD") {
 }
 
 export default function AdminMarketplacePayoutsPage() {
+  const { t } = useAdminT();
+
   const [sellerPayouts, setSellerPayouts] = useState<SellerPayoutRow[]>([]);
   const [driverPayouts, setDriverPayouts] = useState<DriverPayoutRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +86,7 @@ export default function AdminMarketplacePayoutsPage() {
   return (
     <AdminGate requiredPermission="users.sellers.read">
       <div style={{ padding: 24, color: "#E2E8F0" }}>
-        <h1 style={{ fontSize: 28, marginBottom: 8 }}>Marketplace Payouts</h1>
+        <h1 style={{ fontSize: 28, marginBottom: 8 }}>{t("Marketplace Payouts")}</h1>
         <p style={{ color: "#94A3B8", marginBottom: 20 }}>
           Seller and driver payout ledgers — prepared only, no live Stripe transfers (
           MARKETPLACE_PAYOUTS_LIVE_ENABLED={String(platformFlag)}).
@@ -95,15 +99,15 @@ export default function AdminMarketplacePayoutsPage() {
         ) : null}
 
         {!canView ? (
-          <p>Read-only access required.</p>
+          <p>{t("Read-only access required.")}</p>
         ) : loading ? (
-          <p>Loading…</p>
+          <p>{t("Loading…")}</p>
         ) : (
           <>
             <section style={{ marginBottom: 32 }}>
-              <h2 style={{ fontSize: 20, marginBottom: 12 }}>Seller payouts</h2>
+              <h2 style={{ fontSize: 20, marginBottom: 12 }}>{t("Seller payouts")}</h2>
               {sellerPayouts.length === 0 ? (
-                <p style={{ color: "#94A3B8" }}>No seller payouts yet.</p>
+                <p style={{ color: "#94A3B8" }}>{t("No seller payouts yet.")}</p>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
                   {sellerPayouts.map((row) => (
@@ -118,7 +122,7 @@ export default function AdminMarketplacePayoutsPage() {
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                         <div>
-                          <strong>{row.sellers?.business_name ?? "Seller"}</strong>
+                          <strong>{row.sellers?.business_name ?? t("Seller")}</strong>
                           <div style={{ color: "#94A3B8", fontSize: 13 }}>
                             {row.seller_order_id} · {row.status ?? "—"}
                           </div>
@@ -150,7 +154,7 @@ export default function AdminMarketplacePayoutsPage() {
                             }
                             style={btnStyle}
                           >
-                            Approve
+                            {t("Approve")}
                           </button>
                           <button
                             type="button"
@@ -163,7 +167,7 @@ export default function AdminMarketplacePayoutsPage() {
                             }
                             style={btnSecondary}
                           >
-                            Cancel
+                            {t("Cancel")}
                           </button>
                           <button
                             type="button"
@@ -175,7 +179,7 @@ export default function AdminMarketplacePayoutsPage() {
                             }
                             style={btnSecondary}
                           >
-                            Simulate
+                            {t("Simulate")}
                           </button>
                         </div>
                       ) : null}
@@ -186,9 +190,9 @@ export default function AdminMarketplacePayoutsPage() {
             </section>
 
             <section>
-              <h2 style={{ fontSize: 20, marginBottom: 12 }}>Driver payouts</h2>
+              <h2 style={{ fontSize: 20, marginBottom: 12 }}>{t("Driver payouts")}</h2>
               {driverPayouts.length === 0 ? (
-                <p style={{ color: "#94A3B8" }}>No driver payouts yet.</p>
+                <p style={{ color: "#94A3B8" }}>{t("No driver payouts yet.")}</p>
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
                   {driverPayouts.map((row) => (
@@ -235,7 +239,7 @@ export default function AdminMarketplacePayoutsPage() {
                             }
                             style={btnStyle}
                           >
-                            Approve
+                            {t("Approve")}
                           </button>
                           <button
                             type="button"
@@ -248,7 +252,7 @@ export default function AdminMarketplacePayoutsPage() {
                             }
                             style={btnSecondary}
                           >
-                            Cancel
+                            {t("Cancel")}
                           </button>
                           <button
                             type="button"
@@ -260,7 +264,7 @@ export default function AdminMarketplacePayoutsPage() {
                             }
                             style={btnSecondary}
                           >
-                            Simulate
+                            {t("Simulate")}
                           </button>
                         </div>
                       ) : null}
@@ -271,7 +275,7 @@ export default function AdminMarketplacePayoutsPage() {
             </section>
 
             <section style={{ marginTop: 32, paddingTop: 16, borderTop: "1px solid #334155" }}>
-              <h3 style={{ fontSize: 16, marginBottom: 8 }}>Simulate delivered job → driver payout</h3>
+              <h3 style={{ fontSize: 16, marginBottom: 8 }}>{t("Simulate delivered job → driver payout")}</h3>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <input
                   value={simulateJobId}
@@ -303,7 +307,7 @@ export default function AdminMarketplacePayoutsPage() {
                   }
                   style={btnStyle}
                 >
-                  Simulate delivered
+                  {t("Simulate delivered")}
                 </button>
               </div>
             </section>

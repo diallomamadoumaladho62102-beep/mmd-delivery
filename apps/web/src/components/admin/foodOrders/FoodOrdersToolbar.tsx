@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import type {
   FoodOrderListFilters,
   FoodOrderSortDir,
@@ -8,39 +10,39 @@ import type {
 
 type Option = { value: string; label: string };
 
-const STATUS_OPTIONS: Option[] = [
-  { value: "", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "accepted", label: "Accepted" },
-  { value: "prepared", label: "Preparing" },
-  { value: "ready", label: "Ready" },
-  { value: "dispatched", label: "On the way" },
-  { value: "delivered", label: "Delivered" },
-  { value: "canceled", label: "Cancelled" },
-];
-
-const PAYMENT_OPTIONS: Option[] = [
-  { value: "", label: "All payments" },
-  { value: "paid", label: "Paid" },
-  { value: "pending", label: "Pending" },
-  { value: "failed", label: "Failed" },
-  { value: "refunded", label: "Refunded" },
-];
-
-const KIND_OPTIONS: Option[] = [
-  { value: "", label: "All kinds" },
-  { value: "food", label: "Food" },
-  { value: "package", label: "Package" },
-  { value: "delivery", label: "Delivery" },
-];
-
-const SORT_OPTIONS: Array<{ value: FoodOrderSortKey; label: string }> = [
-  { value: "date", label: "Date" },
-  { value: "amount", label: "Amount" },
-  { value: "client", label: "Client" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "status", label: "Status" },
-];
+function toolbarOptions(t: (source: string) => string) {
+  const statusOptions: Option[] = [
+    { value: "", label: t("All statuses") },
+    { value: "pending", label: t("Pending") },
+    { value: "accepted", label: t("Accepted") },
+    { value: "prepared", label: t("Preparing") },
+    { value: "ready", label: t("Ready") },
+    { value: "dispatched", label: t("On the way") },
+    { value: "delivered", label: t("Delivered") },
+    { value: "canceled", label: t("Cancelled") },
+  ];
+  const paymentOptions: Option[] = [
+    { value: "", label: t("All payments") },
+    { value: "paid", label: t("Paid") },
+    { value: "pending", label: t("Pending") },
+    { value: "failed", label: t("Failed") },
+    { value: "refunded", label: t("Refunded") },
+  ];
+  const kindOptions: Option[] = [
+    { value: "", label: t("All kinds") },
+    { value: "food", label: t("Food") },
+    { value: "package", label: t("Package") },
+    { value: "delivery", label: t("Delivery") },
+  ];
+  const sortOptions: Array<{ value: FoodOrderSortKey; label: string }> = [
+    { value: "date", label: t("Date") },
+    { value: "amount", label: t("Amount") },
+    { value: "client", label: t("Client") },
+    { value: "restaurant", label: t("Restaurant") },
+    { value: "status", label: t("Status") },
+  ];
+  return { statusOptions, paymentOptions, kindOptions, sortOptions };
+}
 
 export default function FoodOrdersToolbar({
   filters,
@@ -61,6 +63,9 @@ export default function FoodOrdersToolbar({
   resultCount: number;
   totalCount: number;
 }) {
+  const { t } = useAdminT();
+  const { statusOptions, paymentOptions, kindOptions, sortOptions } = toolbarOptions(t);
+
   const field =
     "h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900";
 
@@ -69,32 +74,32 @@ export default function FoodOrdersToolbar({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex-1">
           <label htmlFor="food-orders-search" className="mb-1.5 block text-sm font-medium text-slate-700">
-            Search
+            {t("Search")}
           </label>
           <input
             id="food-orders-search"
             type="search"
             value={filters.q}
             onChange={(e) => onChange({ q: e.target.value })}
-            placeholder="Order ID, client, restaurant, phone, address…"
+            placeholder={t("Order ID, client, restaurant, phone, address…")}
             className={field}
           />
         </div>
         <div className="text-sm text-slate-600 lg:pb-2">
-          Showing <span className="font-semibold text-slate-900">{resultCount}</span> of{" "}
+          {t("Showing")} <span className="font-semibold text-slate-900">{resultCount}</span> of{" "}
           <span className="font-semibold text-slate-900">{totalCount}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Status</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Status")}</label>
           <select
             className={field}
             value={filters.status}
             onChange={(e) => onChange({ status: e.target.value })}
           >
-            {STATUS_OPTIONS.map((opt) => (
+            {statusOptions.map((opt) => (
               <option key={opt.value || "all"} value={opt.value}>
                 {opt.label}
               </option>
@@ -102,13 +107,13 @@ export default function FoodOrdersToolbar({
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Payment</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Payment")}</label>
           <select
             className={field}
             value={filters.payment}
             onChange={(e) => onChange({ payment: e.target.value })}
           >
-            {PAYMENT_OPTIONS.map((opt) => (
+            {paymentOptions.map((opt) => (
               <option key={opt.value || "all"} value={opt.value}>
                 {opt.label}
               </option>
@@ -116,13 +121,13 @@ export default function FoodOrdersToolbar({
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Kind</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Kind")}</label>
           <select
             className={field}
             value={filters.kind}
             onChange={(e) => onChange({ kind: e.target.value })}
           >
-            {KIND_OPTIONS.map((opt) => (
+            {kindOptions.map((opt) => (
               <option key={opt.value || "all-kinds"} value={opt.value}>
                 {opt.label}
               </option>
@@ -130,13 +135,13 @@ export default function FoodOrdersToolbar({
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Restaurant</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Restaurant")}</label>
           <select
             className={field}
             value={filters.restaurantId}
             onChange={(e) => onChange({ restaurantId: e.target.value })}
           >
-            <option value="">All restaurants</option>
+            <option value="">{t("All restaurants")}</option>
             {restaurantOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -145,13 +150,13 @@ export default function FoodOrdersToolbar({
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Client</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Client")}</label>
           <select
             className={field}
             value={filters.clientId}
             onChange={(e) => onChange({ clientId: e.target.value })}
           >
-            <option value="">All clients</option>
+            <option value="">{t("All clients")}</option>
             {clientOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -160,13 +165,13 @@ export default function FoodOrdersToolbar({
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">Driver</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Driver")}</label>
           <select
             className={field}
             value={filters.driverId}
             onChange={(e) => onChange({ driverId: e.target.value })}
           >
-            <option value="">All drivers</option>
+            <option value="">{t("All drivers")}</option>
             {driverOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -175,7 +180,7 @@ export default function FoodOrdersToolbar({
           </select>
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">From</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("From")}</label>
           <input
             type="date"
             className={field}
@@ -184,7 +189,7 @@ export default function FoodOrdersToolbar({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700">To</label>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("To")}</label>
           <input
             type="date"
             className={field}
@@ -194,7 +199,7 @@ export default function FoodOrdersToolbar({
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Min $</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Min $")}</label>
             <input
               type="number"
               min={0}
@@ -205,7 +210,7 @@ export default function FoodOrdersToolbar({
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Max $</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Max $")}</label>
             <input
               type="number"
               min={0}
@@ -221,13 +226,13 @@ export default function FoodOrdersToolbar({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="grid grid-cols-2 gap-3 sm:w-[28rem]">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Sort by</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Sort by")}</label>
             <select
               className={field}
               value={filters.sort}
               onChange={(e) => onChange({ sort: e.target.value as FoodOrderSortKey })}
             >
-              {SORT_OPTIONS.map((opt) => (
+              {sortOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -235,14 +240,14 @@ export default function FoodOrdersToolbar({
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Direction</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">{t("Direction")}</label>
             <select
               className={field}
               value={filters.dir}
               onChange={(e) => onChange({ dir: e.target.value as FoodOrderSortDir })}
             >
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
+              <option value="desc">{t("Descending")}</option>
+              <option value="asc">{t("Ascending")}</option>
             </select>
           </div>
         </div>
@@ -251,7 +256,7 @@ export default function FoodOrdersToolbar({
           onClick={onReset}
           className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
-          Reset filters
+          {t("Reset filters")}
         </button>
       </div>
     </section>

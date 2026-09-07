@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { memo, useState } from "react";
 import Link from "next/link";
 import {
@@ -24,13 +26,15 @@ function FoodOrderCard({
   order: AdminFoodOrderListItem;
   canManageOrders: boolean;
 }) {
+  const { t } = useAdminT();
+
   const [copied, setCopied] = useState(false);
   const status = orderStatusBadge(order.status);
   const payment = paymentStatusBadge(order.payment_status);
   const { date, time } = formatOrderDateParts(order.created_at);
-  const restaurantName = order.restaurant?.name || order.restaurant_name || "Restaurant";
-  const clientName = partyDisplayName(order.client, "Unknown client");
-  const driverName = partyDisplayName(order.driver, "Unknown driver");
+  const restaurantName = order.restaurant?.name || order.restaurant_name || t("Restaurant");
+  const clientName = partyDisplayName(order.client, t("Unknown client"));
+  const driverName = partyDisplayName(order.driver, t("Unknown driver"));
   const clientKind = String(order.client?.account_kind ?? "").toLowerCase();
   const dropoff = summarizeAddress(order.dropoff_address);
   const paidParts = order.paid_at ? formatOrderDateParts(order.paid_at) : null;
@@ -62,7 +66,7 @@ function FoodOrderCard({
             <button
               type="button"
               onClick={() => void copyId()}
-              aria-label="Copy full order ID"
+              aria-label={t("Copy full order ID")}
               className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 px-2 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
               {copied ? "Copied" : "Copy"}
@@ -104,7 +108,7 @@ function FoodOrderCard({
             <div className="truncate text-sm font-medium text-slate-900">
               {restaurantName}
             </div>
-            <div className="text-[11px] text-slate-500">Restaurant</div>
+            <div className="text-[11px] text-slate-500">{t("Restaurant")}</div>
           </div>
         </div>
         <div className="flex min-w-0 items-center gap-2.5">
@@ -143,7 +147,7 @@ function FoodOrderCard({
           <span className="truncate">Driver · {driverName}</span>
         </div>
       ) : (
-        <div className="mt-3 text-xs text-slate-500">No driver assigned</div>
+        <div className="mt-3 text-xs text-slate-500">{t("No driver assigned")}</div>
       )}
 
       {(order.distance_miles != null || order.eta_minutes != null || dropoff) && (
@@ -178,13 +182,13 @@ function FoodOrderCard({
           href={`/admin/orders/${order.id}`}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
-          Open order
+          {t("Open order")}
         </Link>
         <Link
           href={`/admin/orders/${order.id}#timeline`}
           className="inline-flex h-11 items-center text-sm font-medium text-slate-600 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
-          Timeline
+          {t("Timeline")}
         </Link>
       </div>
     </article>

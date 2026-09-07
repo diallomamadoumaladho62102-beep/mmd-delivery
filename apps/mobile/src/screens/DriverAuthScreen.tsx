@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { rowDirection, textAlignStart } from "../i18n/rtl";
 import * as Linking from "expo-linking";
 import { supabase } from "../lib/supabase";
 import { validatePassword } from "../lib/authValidation";
@@ -137,7 +138,9 @@ function Input({
 }) {
   return (
     <View style={authStyles.fieldBlock}>
-      <Text style={authStyles.label}>{label}</Text>
+      <Text style={[authStyles.label, { textAlign: textAlignStart() }]}>
+        {label}
+      </Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -147,7 +150,7 @@ function Input({
         autoCapitalize={autoCapitalize}
         keyboardType={keyboardType}
         autoCorrect={false}
-        style={authStyles.field}
+        style={[authStyles.field, { textAlign: textAlignStart() }]}
       />
     </View>
   );
@@ -1083,7 +1086,9 @@ export function DriverAuthScreen() {
                   style={{ paddingHorizontal: 4 }}
                 >
                   <Text style={authStyles.showPwd}>
-                    {showPassword ? "Hide" : "Show"}
+                    {showPassword
+                      ? t("client.auth.hidePassword", "Hide")
+                      : t("client.auth.showPassword", "Show")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1092,7 +1097,7 @@ export function DriverAuthScreen() {
             {mode === "login" ? (
               <View style={authStyles.forgotRow}>
                 <LinkButton
-                  label="Forgot password ?"
+                  label={t("client.auth.forgotPassword", "Forgot password?")}
                   onPress={() => void onForgotPassword()}
                 />
               </View>
@@ -1153,60 +1158,78 @@ export function DriverAuthScreen() {
                 />
 
                 <Input
-                  label="Emergency phone"
+                  label={t("driver.auth.fields.emergencyPhone", "Emergency phone")}
                   value={emergencyPhone}
                   onChangeText={setEmergencyPhone}
-                  placeholder="Ex: 9297408722"
+                  placeholder={t(
+                    "driver.auth.fields.emergencyPhonePlaceholder",
+                    "Ex: 9297408722",
+                  )}
                   autoCapitalize="none"
                   keyboardType="phone-pad"
                 />
 
                 <Input
-                  label="Address"
+                  label={t("driver.auth.fields.address", "Address")}
                   value={address}
                   onChangeText={setAddress}
-                  placeholder="Ex: 1112 Flatbush Ave"
+                  placeholder={t(
+                    "driver.auth.fields.addressPlaceholder",
+                    "Ex: 1112 Flatbush Ave",
+                  )}
                   autoCapitalize="words"
                 />
 
-                <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flexDirection: rowDirection(), gap: 10 }}>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="City"
+                      label={t("driver.auth.fields.city", "City")}
                       value={city}
                       onChangeText={setCity}
-                      placeholder="New York"
+                      placeholder={t(
+                        "driver.auth.fields.cityPlaceholder",
+                        "New York",
+                      )}
                       autoCapitalize="words"
                     />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="State"
+                      label={t("driver.auth.fields.state", "State")}
                       value={stateValue}
                       onChangeText={setStateValue}
-                      placeholder="NY"
+                      placeholder={t(
+                        "driver.auth.fields.statePlaceholder",
+                        "NY",
+                      )}
                       autoCapitalize="characters"
                     />
                   </View>
                 </View>
 
-                <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flexDirection: rowDirection(), gap: 10 }}>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="Zip code"
+                      label={t("driver.auth.fields.zipCode", "Zip code")}
                       value={zipCode}
                       onChangeText={setZipCode}
-                      placeholder="11226"
+                      placeholder={t(
+                        "driver.auth.fields.zipPlaceholder",
+                        "11226",
+                      )}
                       autoCapitalize="none"
                       keyboardType="number-pad"
                     />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="Date of birth"
+                      label={t("driver.auth.fields.dateOfBirth", "Date of birth")}
                       value={dateOfBirth}
                       onChangeText={setDateOfBirth}
-                      placeholder="YYYY-MM-DD"
+                      placeholder={t(
+                        "driver.auth.fields.dateOfBirthPlaceholder",
+                        "YYYY-MM-DD",
+                      )}
                       autoCapitalize="none"
                     />
                   </View>
@@ -1214,7 +1237,10 @@ export function DriverAuthScreen() {
 
                 {dateOfBirth.trim() && !isValidDateYYYYMMDD(dateOfBirth) ? (
                   <Text style={authStyles.errorText}>
-                    Date format required: YYYY-MM-DD
+                    {t(
+                      "driver.auth.fields.dateFormatError",
+                      "Date format required: YYYY-MM-DD",
+                    )}
                   </Text>
                 ) : null}
 
@@ -1223,7 +1249,7 @@ export function DriverAuthScreen() {
                 </Text>
                 <View style={{ height: 8 }} />
 
-                <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flexDirection: rowDirection(), gap: 10 }}>
                   <TransportPill
                     label={t("driver.auth.transport.bike")}
                     active={transportMode === "bike"}
@@ -1267,20 +1293,29 @@ export function DriverAuthScreen() {
                     />
 
                     <Input
-                      label="License number"
+                      label={t(
+                        "driver.auth.fields.licenseNumber",
+                        "License number",
+                      )}
                       value={licenseNumber}
                       onChangeText={setLicenseNumber}
-                      placeholder="Driver license number"
+                      placeholder={t(
+                        "driver.auth.fields.licenseNumberPlaceholder",
+                        "Driver license number",
+                      )}
                       autoCapitalize="characters"
                     />
 
-                    <View style={{ flexDirection: "row", gap: 10 }}>
+                    <View style={{ flexDirection: rowDirection(), gap: 10 }}>
                       <View style={{ flex: 1 }}>
                         <Input
                           label={t("driver.auth.vehicle.yearOptional")}
                           value={vehicleYear}
                           onChangeText={setVehicleYear}
-                          placeholder="2020"
+                          placeholder={t(
+                            "driver.auth.vehicle.yearPlaceholder",
+                            "2020",
+                          )}
                           autoCapitalize="none"
                           keyboardType="number-pad"
                         />
@@ -1290,7 +1325,10 @@ export function DriverAuthScreen() {
                           label={t("driver.auth.vehicle.colorOptional")}
                           value={vehicleColor}
                           onChangeText={setVehicleColor}
-                          placeholder="Black"
+                          placeholder={t(
+                            "driver.auth.vehicle.colorPlaceholder",
+                            "Black",
+                          )}
                           autoCapitalize="words"
                         />
                       </View>
@@ -1300,7 +1338,10 @@ export function DriverAuthScreen() {
                       label={t("driver.auth.vehicle.plate")}
                       value={plateNumber}
                       onChangeText={setPlateNumber}
-                      placeholder="ABC123"
+                      placeholder={t(
+                        "driver.auth.vehicle.platePlaceholder",
+                        "ABC123",
+                      )}
                       autoCapitalize="characters"
                     />
 

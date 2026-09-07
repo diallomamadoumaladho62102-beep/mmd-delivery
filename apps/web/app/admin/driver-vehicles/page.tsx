@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiDrivers } from "@/lib/adminAccess";
@@ -27,6 +29,8 @@ type VehicleRow = {
 };
 
 export default function AdminDriverVehiclesPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<VehicleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +86,7 @@ export default function AdminDriverVehiclesPage() {
   return (
     <AdminGate requiredPermission="taxi_drivers.read">
       <div className="mx-auto max-w-6xl p-6">
-        <h1 className="text-2xl font-semibold">Véhicules chauffeurs & catégories taxi</h1>
+        <h1 className="text-2xl font-semibold">{t("Véhicules chauffeurs & catégories taxi")}</h1>
         <p className="mt-2 text-sm text-slate-600">
           Approuver véhicules, catégories Standard / Comfort / XL / Wheelchair, documents et règles d&apos;âge.
         </p>
@@ -90,16 +94,16 @@ export default function AdminDriverVehiclesPage() {
         <form onSubmit={onSearch} className="mt-4 flex gap-2">
           <input
             className="flex-1 rounded border px-3 py-2"
-            placeholder="Rechercher nom ou plaque"
+            placeholder={t("Rechercher nom ou plaque")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           <button type="submit" className="rounded bg-orange-500 px-4 py-2 text-white">
-            Rechercher
+            {t("Rechercher")}
           </button>
         </form>
 
-        {loading && <p className="mt-6">Chargement…</p>}
+        {loading && <p className="mt-6">{t("Chargement…")}</p>}
         {error && <p className="mt-6 text-red-600">{error}</p>}
 
         <div className="mt-6 space-y-4">
@@ -129,7 +133,7 @@ export default function AdminDriverVehiclesPage() {
                         })
                       }
                     >
-                      Approuver véhicule
+                      {t("Approuver véhicule")}
                     </button>
                     <button
                       disabled={savingId === row.id}
@@ -142,7 +146,7 @@ export default function AdminDriverVehiclesPage() {
                         })
                       }
                     >
-                      Refuser
+                      {t("Refuser")}
                     </button>
                   </div>
                 )}
@@ -168,7 +172,7 @@ export default function AdminDriverVehiclesPage() {
                             })
                           }
                         >
-                          Approuver catégorie
+                          {t("Approuver catégorie")}
                         </button>
                         <button
                           className="rounded bg-amber-600 px-2 py-1 text-xs text-white"
@@ -180,7 +184,7 @@ export default function AdminDriverVehiclesPage() {
                             })
                           }
                         >
-                          Suspendre
+                          {t("Suspendre")}
                         </button>
                       </div>
                     )}

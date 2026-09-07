@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageMmdPlus } from "@/lib/adminAccess";
@@ -39,6 +41,8 @@ const INPUT = "mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
 const CARD = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 
 function MmdPlusAdminInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subs, setSubs] = useState<Sub[]>([]);
@@ -113,7 +117,7 @@ function MmdPlusAdminInner() {
   const runSubAction = useCallback(
     async (action: string, subscriptionId: string, extra?: Record<string, unknown>) => {
       if (!canEdit) return;
-      const reason = window.prompt("Motif (obligatoire)")?.trim();
+      const reason = window.prompt(t("Motif (obligatoire)"))?.trim();
       if (!reason) return;
       const http = await adminFetch("/api/admin/mmd-plus/accounts", {
         method: "POST",
@@ -133,9 +137,9 @@ function MmdPlusAdminInner() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">MMD+ (clients)</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{t("MMD+ (clients)")}</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Catalogue, abonnements clients et facturation — indépendant des abonnements partenaires.
+          {t("Catalogue, abonnements clients et facturation — indépendant des abonnements partenaires.")}
         </p>
       </div>
 
@@ -151,7 +155,7 @@ function MmdPlusAdminInner() {
       )}
 
       <section className={CARD}>
-        <h2 className="text-lg font-semibold">Plans</h2>
+        <h2 className="text-lg font-semibold">{t("Plans")}</h2>
         <ul className="mt-3 divide-y divide-slate-100">
           {plans.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
@@ -169,16 +173,16 @@ function MmdPlusAdminInner() {
 
       {canEdit && (
         <section className={CARD}>
-          <h2 className="text-lg font-semibold">Offrir un abonnement</h2>
+          <h2 className="text-lg font-semibold">{t("Offrir un abonnement")}</h2>
           <form onSubmit={offer} className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="text-sm">
-              Client user_id
+              {t("Client user_id")}
               <input className={INPUT} value={offerUserId} onChange={(e) => setOfferUserId(e.target.value)} required />
             </label>
             <label className="text-sm">
-              Plan
+              {t("Plan")}
               <select className={INPUT} value={offerPlanId} onChange={(e) => setOfferPlanId(e.target.value)} required>
-                <option value="">Sélectionner</option>
+                <option value="">{t("Sélectionner")}</option>
                 {plans.filter((p) => p.status === "active").map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} ({p.billing_period})
@@ -187,11 +191,11 @@ function MmdPlusAdminInner() {
               </select>
             </label>
             <label className="text-sm md:col-span-2">
-              Motif
+              {t("Motif")}
               <input className={INPUT} value={offerReason} onChange={(e) => setOfferReason(e.target.value)} required />
             </label>
             <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              Offrir
+              {t("Offrir")}
             </button>
           </form>
         </section>
@@ -200,7 +204,7 @@ function MmdPlusAdminInner() {
       <section className={CARD}>
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm">
-            Rechercher client (user_id)
+            {t("Rechercher client (user_id)")}
             <input
               className={INPUT}
               value={searchUserId}
@@ -213,10 +217,10 @@ function MmdPlusAdminInner() {
             onClick={() => void load()}
             className="rounded-xl border border-slate-300 px-4 py-2 text-sm"
           >
-            Actualiser
+            {t("Actualiser")}
           </button>
         </div>
-        <h2 className="mt-4 text-lg font-semibold">Abonnements</h2>
+        <h2 className="mt-4 text-lg font-semibold">{t("Abonnements")}</h2>
         <ul className="mt-3 divide-y divide-slate-100">
           {subs.map((s) => (
             <li key={s.id} className="py-3 text-sm">
@@ -242,26 +246,26 @@ function MmdPlusAdminInner() {
                       className="rounded-lg border px-2 py-1"
                       onClick={() => void runSubAction("suspend", s.id)}
                     >
-                      Suspendre
+                      {t("Suspendre")}
                     </button>
                     <button
                       className="rounded-lg border px-2 py-1"
                       onClick={() => void runSubAction("resume", s.id)}
                     >
-                      Reprendre
+                      {t("Reprendre")}
                     </button>
                     <button
                       className="rounded-lg border px-2 py-1"
                       onClick={() => void runSubAction("cancel", s.id)}
                     >
-                      Résilier
+                      {t("Résilier")}
                     </button>
                   </div>
                 )}
               </div>
             </li>
           ))}
-          {subs.length === 0 && <li className="py-2 text-slate-500">Aucun abonnement.</li>}
+          {subs.length === 0 && <li className="py-2 text-slate-500">{t("Aucun abonnement.")}</li>}
         </ul>
       </section>
 
@@ -278,7 +282,7 @@ function MmdPlusAdminInner() {
               </span>
             </li>
           ))}
-          {invoices.length === 0 && <li className="py-2 text-slate-500">Aucune facture.</li>}
+          {invoices.length === 0 && <li className="py-2 text-slate-500">{t("Aucune facture.")}</li>}
         </ul>
       </section>
     </div>
@@ -286,6 +290,8 @@ function MmdPlusAdminInner() {
 }
 
 export default function AdminMmdPlusPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate>
       <MmdPlusAdminInner />

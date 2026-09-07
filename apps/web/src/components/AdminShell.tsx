@@ -24,6 +24,16 @@ import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import { supabase } from "@/lib/supabaseBrowser";
 import { ADMIN_LOGO, CC_BTN_SECONDARY, CC_INPUT, CC_ROLE_BADGE, CC_SIDEBAR_LINK, CC_SIDEBAR_LINK_ACTIVE, navIcon } from "@/components/admin/adminUi";
 import AdminIncomingVoiceAlerts from "@/components/admin/AdminIncomingVoiceAlerts";
+import { useWebI18n } from "@/components/WebI18nProvider";
+import {
+  adminNavLabel,
+  adminShellT,
+} from "@/i18n/adminNavI18n";
+import {
+  WEB_LOCALE_LABELS,
+  WEB_LOCALES,
+  type WebLocale,
+} from "@/i18n/locales";
 
 type ShellProps = {
   title?: string;
@@ -45,6 +55,7 @@ export default function AdminShell({
 }: ShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { locale, dir } = useWebI18n();
   const [session, setSession] = useState<ResolvedStaffSession | null>(null);
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -122,8 +133,17 @@ export default function AdminShell({
     if (!q) return;
     const hit = groups
       .flatMap((g) => g.items)
-      .find((item) => item.label.toLowerCase().includes(q));
+      .find((item) => {
+        const en = item.label.toLowerCase();
+        const localized = adminNavLabel(item.label, locale).toLowerCase();
+        return en.includes(q) || localized.includes(q);
+      });
     if (hit) router.push(hit.href);
+  }
+
+  function changeAdminLocale(next: WebLocale) {
+    document.cookie = `mmd_web_locale=${next}; path=/; max-age=31536000; samesite=lax`;
+    router.refresh();
   }
 
   const displayRole = roleDisplayName(session?.role ?? null, {
@@ -136,7 +156,12 @@ export default function AdminShell({
         "flex h-full flex-col border-r border-white/12 bg-white/[0.04] text-white backdrop-blur-[20px] shadow-[10px_10px_24px_rgba(0,0,0,0.25)]",
         railCollapsed ? "w-[88px]" : "w-[260px]",
       ].join(" ")}
-      aria-label="Control Center navigation"
+      aria-label={adminShellT(
+        "admin.shell.navLabel",
+        locale,
+        "Control Center navigation",
+      )}
+      dir={dir}
     >
       <div className="flex items-center gap-3 px-6 py-7">
         <Link href="/admin" className="flex min-w-0 items-center gap-3">
@@ -150,52 +175,69 @@ export default function AdminShell({
           />
           {!railCollapsed ? (
             <span className="truncate text-[22px] font-bold tracking-tight text-[var(--cc-gold)]">
-              MMD Control
+              {adminShellT("admin.shell.controlTitle", locale, "MMD Control")}
             </span>
           ) : null}
         </Link>
         <button
           type="button"
-          className="ml-auto hidden rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white lg:inline-flex"
+          className="ms-auto hidden rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white lg:inline-flex"
           onClick={() => setRailCollapsed((v) => !v)}
-          aria-label={railCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={
+            railCollapsed
+              ? adminShellT("admin.shell.expandSidebar", locale, "Expand sidebar")
+              : adminShellT(
+                  "admin.shell.collapseSidebar",
+                  locale,
+                  "Collapse sidebar",
+                )
+          }
         >
           <ChevronIcon direction={railCollapsed ? "right" : "left"} />
         </button>
       </div>
 
-      <nav className="flex-1 space-y-4 overflow-y-auto px-4 pb-4" aria-label="Admin sections">
+      <nav
+        className="flex-1 space-y-4 overflow-y-auto px-4 pb-4"
+        aria-label={adminShellT(
+          "admin.shell.sectionsLabel",
+          locale,
+          "Admin sections",
+        )}
+      >
         {groups.map((group) => {
           const collapsed = collapsedGroups[group.id] === true;
+          const groupLabel = adminNavLabel(group.label, locale);
           return (
             <div key={group.id}>
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
                 className={[
-                  "flex w-full items-center gap-2 px-2 py-1 text-left text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--cc-gold)]",
+                  "flex w-full items-center gap-2 px-2 py-1 text-start text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--cc-gold)]",
                   railCollapsed ? "justify-center" : "",
                 ].join(" ")}
-                title={group.label}
+                title={groupLabel}
               >
                 {!railCollapsed ? (
                   <>
-                    <span className="flex-1 truncate">{group.label}</span>
+                    <span className="flex-1 truncate">{groupLabel}</span>
                     <ChevronIcon direction={collapsed ? "right" : "down"} />
                   </>
                 ) : (
-                  <span>{group.label.slice(0, 1)}</span>
+                  <span>{groupLabel.slice(0, 1)}</span>
                 )}
               </button>
               {!collapsed ? (
                 <ul className="mt-2 space-y-1">
                   {group.items.map((item) => {
                     const active = isActivePath(pathname, item.href);
+                    const itemLabel = adminNavLabel(item.label, locale);
                     return (
                       <li key={item.href}>
                         <Link
                           href={item.href}
-                          title={item.label}
+                          title={itemLabel}
                           className={[
                             railCollapsed ? "justify-center" : "gap-3",
                             active ? CC_SIDEBAR_LINK_ACTIVE : CC_SIDEBAR_LINK,
@@ -206,7 +248,7 @@ export default function AdminShell({
                             {navIcon(item.href)}
                           </span>
                           {!railCollapsed ? (
-                            <span className="truncate">{item.label}</span>
+                            <span className="truncate">{itemLabel}</span>
                           ) : null}
                         </Link>
                       </li>
@@ -221,11 +263,29 @@ export default function AdminShell({
 
       <div className="border-t border-white/10 p-4">
         {!railCollapsed ? (
-          <div className="rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-2.5">
-            <p className="truncate text-xs text-white/60">Signed in</p>
-            <p className="truncate text-sm font-semibold text-[var(--cc-gold)]">
-              {displayRole}
-            </p>
+          <div className="space-y-2">
+            <label className="block text-xs text-white/60">
+              {adminShellT("admin.shell.language", locale, "Language")}
+              <select
+                className="mt-1 w-full rounded-lg border border-white/15 bg-[#001a66] px-2 py-1.5 text-sm text-white"
+                value={locale}
+                onChange={(e) => changeAdminLocale(e.target.value as WebLocale)}
+              >
+                {WEB_LOCALES.map((code) => (
+                  <option key={code} value={code}>
+                    {WEB_LOCALE_LABELS[code]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-2.5">
+              <p className="truncate text-xs text-white/60">
+                {adminShellT("admin.shell.signedIn", locale, "Signed in")}
+              </p>
+              <p className="truncate text-sm font-semibold text-[var(--cc-gold)]">
+                {displayRole}
+              </p>
+            </div>
           </div>
         ) : null}
       </div>
@@ -233,7 +293,7 @@ export default function AdminShell({
   );
 
   return (
-    <div className="admin-figma min-h-screen">
+    <div className="admin-figma min-h-screen" dir={dir}>
       <div className="mx-auto flex min-h-screen max-w-[1280px]">
         <div className="hidden md:sticky md:top-0 md:flex md:h-screen md:shrink-0">
           {sidebar}
@@ -244,10 +304,14 @@ export default function AdminShell({
             <button
               type="button"
               className="absolute inset-0 bg-[#001a66]/70"
-              aria-label="Close menu"
+              aria-label={adminShellT(
+                "admin.shell.closeMenu",
+                locale,
+                "Close menu",
+              )}
               onClick={() => setSidebarOpen(false)}
             />
-            <div className="absolute inset-y-0 left-0 z-50 shadow-2xl">{sidebar}</div>
+            <div className="absolute inset-y-0 start-0 z-50 shadow-2xl">{sidebar}</div>
           </div>
         ) : null}
 
@@ -258,7 +322,11 @@ export default function AdminShell({
                 type="button"
                 className={`inline-flex h-10 w-10 items-center justify-center md:hidden ${CC_BTN_SECONDARY}`}
                 onClick={() => setSidebarOpen(true)}
-                aria-label="Open menu"
+                aria-label={adminShellT(
+                  "admin.shell.openMenu",
+                  locale,
+                  "Open menu",
+                )}
               >
                 <MenuIcon />
               </button>
@@ -278,18 +346,26 @@ export default function AdminShell({
 
               <form onSubmit={onSearchSubmit} className="min-w-0 flex-1 max-w-xl">
                 <label className="sr-only" htmlFor="cc-search">
-                  Search modules
+                  {adminShellT(
+                    "admin.shell.searchLabel",
+                    locale,
+                    "Search modules",
+                  )}
                 </label>
                 <input
                   id="cc-search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search modules…"
+                  placeholder={adminShellT(
+                    "admin.shell.search",
+                    locale,
+                    "Search modules…",
+                  )}
                   className={`${CC_INPUT} max-w-xl`}
                 />
               </form>
 
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ms-auto flex items-center gap-2">
                 {actions}
                 <div className={`hidden sm:flex ${CC_ROLE_BADGE}`}>
                   <span aria-hidden>🛡️</span>
@@ -302,7 +378,7 @@ export default function AdminShell({
                   onClick={() => void signOut()}
                   className={`h-10 px-3 text-xs ${CC_BTN_SECONDARY}`}
                 >
-                  Sign out
+                  {adminShellT("admin.shell.signOut", locale, "Sign out")}
                 </button>
               </div>
             </div>

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import {
@@ -39,6 +41,8 @@ type IdentityEvent = {
 };
 
 export default function AdminIdentityPage() {
+  const { t } = useAdminT();
+
   const [items, setItems] = useState<IdentityRow[]>([]);
   const [events, setEvents] = useState<IdentityEvent[]>([]);
   const [status, setStatus] = useState("");
@@ -105,10 +109,9 @@ export default function AdminIdentityPage() {
     <AdminGate requiredPermission="drivers.identity.read">
       <div className="space-y-6">
         <header className="space-y-1">
-          <h1 className={CC_PAGE_TITLE}>Identity Verification</h1>
+          <h1 className={CC_PAGE_TITLE}>{t("Identity Verification")}</h1>
           <p className={CC_PAGE_SUBTITLE}>
-            Stripe Identity — sessions, statuses, and re-verification (no document
-            storage).
+            {t("Stripe Identity — sessions, statuses, and re-verification (no document storage).")}
           </p>
         </header>
 
@@ -118,19 +121,19 @@ export default function AdminIdentityPage() {
             value={subjectType}
             onChange={(e) => setSubjectType(e.target.value)}
           >
-            <option value="">All roles</option>
-            <option value="driver">Driver</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="seller">Seller</option>
-            <option value="business">Business</option>
-            <option value="client">Client</option>
+            <option value="">{t("All roles")}</option>
+            <option value="driver">{t("Driver")}</option>
+            <option value="restaurant">{t("Restaurant")}</option>
+            <option value="seller">{t("Seller")}</option>
+            <option value="business">{t("Business")}</option>
+            <option value="client">{t("Client")}</option>
           </select>
           <select
             className={`${CC_INPUT} w-auto min-w-[140px]`}
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
-            <option value="">All statuses</option>
+            <option value="">{t("All statuses")}</option>
             <option value="not_started">not_started</option>
             <option value="pending">pending</option>
             <option value="processing">processing</option>
@@ -141,31 +144,31 @@ export default function AdminIdentityPage() {
           </select>
           <input
             className={`${CC_INPUT} max-w-xs`}
-            placeholder="User id / session id"
+            placeholder={t("User id / session id")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
           <button type="button" className={CC_BTN_PRIMARY} onClick={() => void load()}>
-            Refresh
+            {t("Refresh")}
           </button>
         </div>
 
         {error ? <p className="text-sm text-red-700">{error}</p> : null}
-        {loading ? <p className="text-sm text-[var(--cc-muted)]">Loading…</p> : null}
+        {loading ? <p className="text-sm text-[var(--cc-muted)]">{t("Loading…")}</p> : null}
 
         <div className={CC_TABLE_WRAP}>
           <table className={CC_TABLE}>
             <thead>
               <tr>
-                <th>User</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Provider</th>
-                <th>Attempts</th>
-                <th>Session</th>
-                <th>Failure</th>
-                <th>Updated</th>
-                <th>Actions</th>
+                <th>{t("User")}</th>
+                <th>{t("Role")}</th>
+                <th>{t("Status")}</th>
+                <th>{t("Provider")}</th>
+                <th>{t("Attempts")}</th>
+                <th>{t("Session")}</th>
+                <th>{t("Failure")}</th>
+                <th>{t("Updated")}</th>
+                <th>{t("Actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -200,7 +203,7 @@ export default function AdminIdentityPage() {
               {!loading && items.length === 0 ? (
                 <tr>
                   <td className="text-[var(--cc-muted)]" colSpan={9}>
-                    No identity verifications found.
+                    {t("No identity verifications found.")}
                   </td>
                 </tr>
               ) : null}
@@ -208,16 +211,16 @@ export default function AdminIdentityPage() {
           </table>
         </div>
 
-        <h2 className="text-sm font-semibold text-white">Audit log</h2>
+        <h2 className="text-sm font-semibold text-white">{t("Audit log")}</h2>
         <div className={CC_TABLE_WRAP}>
           <table className={CC_TABLE}>
             <thead>
               <tr>
-                <th>When</th>
-                <th>Source</th>
-                <th>Event</th>
-                <th>User</th>
-                <th>Stripe event</th>
+                <th>{t("When")}</th>
+                <th>{t("Source")}</th>
+                <th>{t("Event")}</th>
+                <th>{t("User")}</th>
+                <th>{t("Stripe event")}</th>
               </tr>
             </thead>
             <tbody>
@@ -241,7 +244,7 @@ export default function AdminIdentityPage() {
               {!loading && events.length === 0 ? (
                 <tr>
                   <td className="text-[var(--cc-muted)]" colSpan={5}>
-                    No identity audit events yet.
+                    {t("No identity audit events yet.")}
                   </td>
                 </tr>
               ) : null}

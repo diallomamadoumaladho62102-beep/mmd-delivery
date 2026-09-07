@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch } from "@/lib/adminBrowserAuth";
@@ -67,6 +69,8 @@ function statusBadgeClass(status: string): string {
 }
 
 export default function AdminDriverOpportunitiesPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<OpportunityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -199,14 +203,13 @@ export default function AdminDriverOpportunitiesPage() {
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cc-muted)]">
-                Operations
+                {t("Operations")}
               </p>
               <h1 className="text-2xl font-bold text-slate-900">
-                Driver Opportunities
+                {t("Driver Opportunities")}
               </h1>
               <p className="mt-1 text-sm text-[var(--cc-muted)]">
-                Create and publish shift opportunities shown in the driver mobile
-                feed.
+                {t("Create and publish shift opportunities shown in the driver mobile feed.")}
               </p>
             </div>
             <button
@@ -214,7 +217,7 @@ export default function AdminDriverOpportunitiesPage() {
               onClick={() => void load()}
               className="h-10 rounded-xl border border-[var(--cc-border)] bg-white px-4 text-sm font-medium text-slate-700"
             >
-              Refresh
+              {t("Refresh")}
             </button>
           </header>
 
@@ -239,7 +242,7 @@ export default function AdminDriverOpportunitiesPage() {
             >
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Category
+                  {t("Category")}
                 </span>
                 <select
                   className="mt-1 w-full rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
@@ -259,7 +262,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Status
+                  {t("Status")}
                 </span>
                 <select
                   className="mt-1 w-full rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
@@ -271,15 +274,15 @@ export default function AdminDriverOpportunitiesPage() {
                     })
                   }
                 >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
+                  <option value="draft">{t("Draft")}</option>
+                  <option value="published">{t("Published")}</option>
+                  <option value="archived">{t("Archived")}</option>
                 </select>
               </label>
 
               <label className="block text-sm md:col-span-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Title
+                  {t("Title")}
                 </span>
                 <input
                   className="mt-1 w-full rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
@@ -291,7 +294,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm md:col-span-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Subtitle (optional)
+                  {t("Subtitle (optional)")}
                 </span>
                 <input
                   className="mt-1 w-full rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
@@ -304,7 +307,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Starts at
+                  {t("Starts at")}
                 </span>
                 <input
                   type="datetime-local"
@@ -318,7 +321,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Ends at
+                  {t("Ends at")}
                 </span>
                 <input
                   type="datetime-local"
@@ -332,7 +335,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Bonus (cents)
+                  {t("Bonus (cents)")}
                 </span>
                 <input
                   type="number"
@@ -347,7 +350,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Currency
+                  {t("Currency")}
                 </span>
                 <input
                   className="mt-1 w-full rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
@@ -360,7 +363,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Capacity (optional)
+                  {t("Capacity (optional)")}
                 </span>
                 <input
                   type="number"
@@ -375,7 +378,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Latitude
+                  {t("Latitude")}
                 </span>
                 <input
                   type="number"
@@ -388,7 +391,7 @@ export default function AdminDriverOpportunitiesPage() {
 
               <label className="block text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
-                  Longitude
+                  {t("Longitude")}
                 </span>
                 <input
                   type="number"
@@ -417,7 +420,7 @@ export default function AdminDriverOpportunitiesPage() {
                     onClick={resetForm}
                     className="h-10 rounded-xl border border-[var(--cc-border)] bg-white px-4 text-sm font-medium text-slate-700"
                   >
-                    Cancel edit
+                    {t("Cancel edit")}
                   </button>
                 ) : null}
               </div>
@@ -426,26 +429,26 @@ export default function AdminDriverOpportunitiesPage() {
 
           <section className="cc-card overflow-x-auto">
             <h2 className="border-b border-[var(--cc-border)] px-5 py-4 text-lg font-semibold text-slate-900">
-              Catalog
+              {t("Catalog")}
             </h2>
             {loading ? (
               <p className="px-5 py-6 text-sm text-[var(--cc-muted)]">
-                Loading…
+                {t("Loading…")}
               </p>
             ) : rows.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-[var(--cc-muted)]">
-                No opportunities yet. Create one above to publish to drivers.
+                {t("No opportunities yet. Create one above to publish to drivers.")}
               </p>
             ) : (
               <table className="min-w-full text-left text-sm">
                 <thead className="border-b border-[var(--cc-border)] bg-slate-50 text-xs uppercase text-[var(--cc-muted)]">
                   <tr>
-                    <th className="px-4 py-3">Title</th>
-                    <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Schedule</th>
-                    <th className="px-4 py-3">Bonus</th>
-                    <th className="px-4 py-3">Actions</th>
+                    <th className="px-4 py-3">{t("Title")}</th>
+                    <th className="px-4 py-3">{t("Category")}</th>
+                    <th className="px-4 py-3">{t("Status")}</th>
+                    <th className="px-4 py-3">{t("Schedule")}</th>
+                    <th className="px-4 py-3">{t("Bonus")}</th>
+                    <th className="px-4 py-3">{t("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -495,7 +498,7 @@ export default function AdminDriverOpportunitiesPage() {
                             onClick={() => editRow(row)}
                             className="rounded-lg border border-[var(--cc-border)] px-2 py-1 text-xs font-medium text-slate-700"
                           >
-                            Edit
+                            {t("Edit")}
                           </button>
                           {row.status === "draft" ? (
                             <button
@@ -503,7 +506,7 @@ export default function AdminDriverOpportunitiesPage() {
                               onClick={() => void publishRow(row)}
                               className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-medium text-white"
                             >
-                              Publish
+                              {t("Publish")}
                             </button>
                           ) : null}
                           {row.status !== "archived" ? (
@@ -512,7 +515,7 @@ export default function AdminDriverOpportunitiesPage() {
                               onClick={() => void archiveRow(row)}
                               className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600"
                             >
-                              Archive
+                              {t("Archive")}
                             </button>
                           ) : null}
                         </div>

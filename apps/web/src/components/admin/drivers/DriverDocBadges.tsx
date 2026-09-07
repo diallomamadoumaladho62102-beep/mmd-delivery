@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import {
   aggregateDocGroupBadge,
   stripeIdentityBadge,
@@ -8,6 +10,8 @@ import {
 import DriverBadge from "./DriverBadge";
 
 export default function DriverDocBadges({ driver }: { driver: AdminDriverListItem }) {
+  const { t } = useAdminT();
+
   const license = aggregateDocGroupBadge(
     driver.documents,
     ["license_front", "license_back", "driver_license"],
@@ -28,11 +32,11 @@ export default function DriverDocBadges({ driver }: { driver: AdminDriverListIte
     { name: "Insurance", ...insurance },
     { name: "Registration", ...registration },
     { name: "Identity", ...identity },
-    { name: "Stripe Identity", ...stripe },
+    { name: t("Stripe Identity"), ...stripe },
   ];
 
   return (
-    <div className="flex flex-wrap gap-1.5" aria-label="Document status">
+    <div className="flex flex-wrap gap-1.5" aria-label={t("Document status")}>
       {groups.map((g) => (
         <span key={g.name} className="inline-flex items-center gap-1">
           <span className="text-[10px] font-medium text-slate-500">{g.name}</span>

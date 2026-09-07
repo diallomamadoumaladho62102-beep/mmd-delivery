@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch } from "@/lib/adminBrowserAuth";
@@ -16,6 +18,8 @@ type OfferRow = {
 };
 
 export default function AdminDriverOffersPage() {
+  const { t } = useAdminT();
+
   const [foodOffers, setFoodOffers] = useState<OfferRow[]>([]);
   const [drOffers, setDrOffers] = useState<OfferRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,19 +53,19 @@ export default function AdminDriverOffersPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">Cible</th>
-                <th className="px-4 py-3">Chauffeur</th>
-                <th className="px-4 py-3">Statut</th>
-                <th className="px-4 py-3">Vague</th>
-                <th className="px-4 py-3">Expire</th>
+                <th className="px-4 py-3">{t("ID")}</th>
+                <th className="px-4 py-3">{t("Cible")}</th>
+                <th className="px-4 py-3">{t("Chauffeur")}</th>
+                <th className="px-4 py-3">{t("Statut")}</th>
+                <th className="px-4 py-3">{t("Vague")}</th>
+                <th className="px-4 py-3">{t("Expire")}</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
-                    Aucune offre
+                    {t("Aucune offre")}
                   </td>
                 </tr>
               ) : (
@@ -99,9 +103,9 @@ export default function AdminDriverOffersPage() {
         <div className="mx-auto max-w-6xl space-y-8">
           <header className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Driver Offers</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t("Driver Offers")}</h1>
               <p className="mt-1 text-sm text-slate-600">
-                Offres envoyées aux chauffeurs (food orders + delivery requests).
+                {t("Offres envoyées aux chauffeurs (food orders + delivery requests).")}
               </p>
             </div>
             <button
@@ -109,20 +113,20 @@ export default function AdminDriverOffersPage() {
               onClick={() => void load()}
               className="h-10 rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white"
             >
-              Actualiser
+              {t("Actualiser")}
             </button>
           </header>
 
           {loading ? (
-            <div className="text-sm text-slate-500">Chargement…</div>
+            <div className="text-sm text-slate-500">{t("Chargement…")}</div>
           ) : error ? (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
             </div>
           ) : (
             <>
-              <OfferTable title="Food orders" rows={foodOffers} />
-              <OfferTable title="Delivery requests" rows={drOffers} />
+              <OfferTable title={t("Food orders")} rows={foodOffers} />
+              <OfferTable title={t("Delivery requests")} rows={drOffers} />
             </>
           )}
         </div>

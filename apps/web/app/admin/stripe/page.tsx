@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import AdminGate from "@/components/AdminGate";
 import AdminApiTable from "@/components/admin/AdminApiTable";
 
@@ -14,14 +16,16 @@ type StripeEventRow = {
 };
 
 export default function AdminStripePage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="payments.read">
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Stripe Monitoring</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Stripe Monitoring")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Webhooks reçus, statuts de traitement et erreurs.
+              {t("Webhooks reçus, statuts de traitement et erreurs.")}
             </p>
           </header>
           <AdminApiTable<StripeEventRow>
@@ -34,15 +38,15 @@ export default function AdminStripePage() {
                   <span className="font-mono text-xs">{r.stripe_event_id}</span>
                 ),
               },
-              { key: "event_type", label: "Type" },
+              { key: "event_type", label: t("Type") },
               {
                 key: "livemode",
-                label: "Mode",
+                label: t("Mode"),
                 render: (r) => (r.livemode ? "live" : "test"),
               },
               {
                 key: "order_id",
-                label: "Order",
+                label: t("Order"),
                 render: (r) =>
                   r.order_id ? (
                     <span className="font-mono text-xs">{r.order_id.slice(0, 8)}…</span>

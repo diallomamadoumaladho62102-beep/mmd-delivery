@@ -197,7 +197,23 @@
       "title": "إذن",
       "camera": "اسمح بالوصول للكاميرا لالتقاط صورة."
     },
-    "backShort": "رجوع"
+    "backShort": "رجوع",
+    "a11y": {
+      "close": "إغلاق",
+      "closeFilter": "إغلاق عامل التصفية",
+      "closeMenu": "إغلاق القائمة",
+      "retry": "إعادة المحاولة",
+      "back": "رجوع"
+    },
+    "close": "إغلاق",
+    "retry": "إعادة المحاولة",
+    "backAction": "رجوع",
+    "saving": "جاري الحفظ…",
+    "settings": "الإعدادات",
+    "no": "لا",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "view": "عرض"
   },
   "shared": {
     "common": {
@@ -400,7 +416,10 @@
         "createMyAccount": "إنشاء حسابي",
         "files": "الملفات",
         "haveAccountLogin": "لدي حساب بالفعل",
-        "login": "تسجيل الدخول"
+        "login": "تسجيل الدخول",
+        "showPassword": "إظهار",
+        "hidePassword": "إخفاء",
+        "forgotPassword": "نسيت كلمة المرور؟"
       },
       "alert": {
         "cameraPermission": "اسمح بالوصول للكاميرا.",
@@ -438,7 +457,22 @@
         "password": "كلمة المرور",
         "passwordPlaceholder": "كلمة المرور",
         "phone": "الهاتف",
-        "phonePlaceholder": "مثال: +1 555 123 4567"
+        "phonePlaceholder": "مثال: +1 555 123 4567",
+        "emergencyPhone": "هاتف الطوارئ",
+        "emergencyPhonePlaceholder": "مثال: 9297408722",
+        "address": "العنوان",
+        "addressPlaceholder": "مثال: 1112 Flatbush Ave",
+        "city": "المدينة",
+        "cityPlaceholder": "New York",
+        "state": "الولاية",
+        "statePlaceholder": "NY",
+        "zipCode": "الرمز البريدي",
+        "zipPlaceholder": "11226",
+        "dateOfBirth": "تاريخ الميلاد",
+        "dateOfBirthPlaceholder": "YYYY-MM-DD",
+        "dateFormatError": "صيغة التاريخ المطلوبة: YYYY-MM-DD",
+        "licenseNumber": "رقم الرخصة",
+        "licenseNumberPlaceholder": "رقم رخصة القيادة"
       },
       "footer": "بالمتابعة، أنت توافق على شروط الخدمة.",
       "header": {
@@ -473,7 +507,10 @@
         "modelPlaceholder": "مثال: Corolla",
         "plate": "اللوحة",
         "title": "المركبة",
-        "yearOptional": "السنة (اختياري)"
+        "yearOptional": "السنة (اختياري)",
+        "yearPlaceholder": "2020",
+        "colorPlaceholder": "أسود",
+        "platePlaceholder": "ABC123"
       }
     },
     "payments": {
@@ -669,7 +706,8 @@
       },
       "debug": {
         "testIncomingOrder": "اختبار طلب وارد"
-      }
+      },
+      "preparingNavigation": "جارٍ تجهيز التنقل…"
     },
     "revenue": {
       "title": "الأرباح",
@@ -1216,6 +1254,126 @@
         "title": "Stripe"
       },
       "title": "الأرباح"
+    },
+    "identity": {
+      "screenTitle": "التحقق من الهوية",
+      "loading": "جاري التحميل...",
+      "waitHint": "يرجى الانتظار بينما نتحقق من هويتك.\nقد يستغرق ذلك بضع لحظات."
+    },
+    "vehicles": {
+      "title": "مركباتي",
+      "subtitleManage": "إدارة أسطول مركباتك",
+      "subtitleActive": "مركبة نشطة واحدة فقط في كل مرة",
+      "loading": "جاري تحميل مركباتك..."
+    },
+    "services": {
+      "title": "خدماتي",
+      "subtitle": "إدارة أنواع مهامك",
+      "loading": "جاري تحميل خدماتك...",
+      "food": "توصيل الطعام",
+      "package": "توصيل الطرود",
+      "taxi": "رحلات التاكسي",
+      "availableSection": "الخدمات المتاحة",
+      "advancedSection": "خيارات متقدمة",
+      "foodDesc": "طلبات المطاعم وتوصيل الوجبات",
+      "packageDesc": "توصيل الطرود والمهام",
+      "taxiDesc": "رحلات تاكسي حسب فئات مركبتك المصرح بها",
+      "acceptStandard": "قبول رحلات Standard أيضاً",
+      "acceptStandardDesc": "Comfort و XL و Wheelchair يمكنها أيضاً استلام رحلات Standard"
+    },
+    "vehicle": {
+      "screenTitle": "المركبة",
+      "detailsSubtitle": "تفاصيل المركبة",
+      "loading": "جاري تحميل المركبة...",
+      "addTitle": "إضافة مركبة",
+      "chooseType": "اختر النوع أولاً",
+      "mode": {
+        "car": "سيارة",
+        "carHint": "سيارة - طعام، طرود، تاكسي",
+        "moto": "دراجة نارية",
+        "motoHint": "دراجة نارية - توصيل سريع",
+        "bike": "دراجة هوائية",
+        "bikeHint": "دراجة هوائية - لا يلزم أسطول بمحرك"
+      },
+      "categorySynced": "تتم مزامنة الفئة تلقائيًا",
+      "bikeTitle": "دراجة هوائية",
+      "bikeSubtitle": "لا يلزم مركبة بمحرك",
+      "changeType": "تغيير النوع",
+      "changeTypeHint": "العودة لاختيار سيارة / دراجة نارية / دراجة",
+      "confirmBike": "تأكيد وضع الدراجة",
+      "confirmBikeHint": "أكد للمزامنة مع التوزيع",
+      "changeVehicleType": "تغيير نوع المركبة",
+      "photoTitle": "صورة المركبة",
+      "photoPreview": "معاينة صورة المركبة",
+      "noPhoto": "لا توجد صورة بعد",
+      "camera": "الكاميرا",
+      "gallery": "المعرض",
+      "remove": "إزالة",
+      "seats": "مقاعد الركاب",
+      "taxiCategories": "فئات التاكسي (الخادم)",
+      "taxiCategoriesHint": "يحسب الخادم فئات التاكسي.",
+      "amenity": {
+        "ac": "تكييف",
+        "accessible": "مخصص لذوي الاحتياجات",
+        "babySeat": "مقعد أطفال",
+        "luggage": "أمتعة كبيرة",
+        "pets": "حيوانات أليفة",
+        "charger": "شاحن هاتف",
+        "quiet": "مركبة هادئة",
+        "nonsmoking": "غير مدخنين",
+        "largeLuggage": "أمتعة كبيرة",
+        "phoneCharger": "شاحن هاتف",
+        "nonSmoking": "ممنوع التدخين"
+      },
+      "save": "حفظ",
+      "addAction": "إضافة",
+      "photoHelp": "ارفع صورة واضحة للمركبة",
+      "field": {
+        "make": "الشركة",
+        "model": "الطراز",
+        "year": "السنة",
+        "color": "اللون",
+        "plate": "اللوحة",
+        "type": "النوع (سيدان، SUV، فان، ميني فان)",
+        "fuel": "المحرك (بنزين، ديزل، هجين، كهربائي، هجين قابل للشحن)",
+        "nickname": "لقب (اختياري)",
+        "seats": "مقاعد الركاب",
+        "vehicleType": "النوع (sedan, suv, van, minivan)",
+        "fuelType": "المحرك (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
+        "dashPlaceholder": "—"
+      },
+      "createSubtitle": "النوع: {{type}}. يحسب الخادم فئات التاكسي.",
+      "errorTitle": "خطأ",
+      "loadFailed": "تعذر تحميل معلومات المركبة.",
+      "cameraTitle": "الكاميرا",
+      "cameraPermission": "اسمح بالوصول إلى الكاميرا.",
+      "photosTitle": "الصور",
+      "photosPermission": "اسمح بالوصول إلى مكتبة الصور.",
+      "photoUploadedTitle": "صورة المركبة",
+      "photoUploadedBody": "تم رفع الصورة بنجاح.",
+      "uploadFailed": "تعذر رفع الصورة.",
+      "removePhotoTitle": "إزالة الصورة",
+      "removePhotoBody": "حذف صورة هذه المركبة؟",
+      "cancel": "إلغاء",
+      "delete": "حذف",
+      "deletePhotoFailed": "تعذر حذف الصورة.",
+      "typeRequiredTitle": "نوع المركبة",
+      "typeRequiredBody": "اختر أولاً سيارة أو دراجة نارية أو دراجة هوائية.",
+      "bikeModeTitle": "وضع الدراجة",
+      "bikeModeBody": "فئتك الآن دراجة هوائية. لا يلزم مركبة بمحرك للاتصال.",
+      "formIncompleteTitle": "نموذج غير مكتمل",
+      "formIncompleteBody": "الشركة والطراز ولوحة الترخيص مطلوبة.",
+      "savedTitle": "المركبة",
+      "savedCreateBody": "تمت إضافة المركبة. بانتظار التحقق من فريق MMD.",
+      "savedUpdateBody": "تم الحفظ. إذا تغيّرت حقول مهمة، تعود المركبة للتحقق الإداري.",
+      "saveFailed": "تعذر حفظ المركبة الآن.",
+      "subtitleCreateCar": "النوع: سيارة. فئات التاكسي يحسبها الخادم.",
+      "subtitleCreateMoto": "النوع: دراجة نارية. فئات التاكسي يحسبها الخادم.",
+      "subtitleEdit": "فئات التاكسي يحسبها الخادم.",
+      "photoPreviewA11y": "معاينة صورة المركبة",
+      "noPhotoYet": "لا توجد صورة بعد",
+      "taxiCategoriesTitle": "فئات التاكسي (الخادم)",
+      "add": "إضافة"
     }
   },
   "restaurant": {
@@ -1310,7 +1468,10 @@
         "signIn": "تسجيل الدخول",
         "signUp": "إنشاء حساب",
         "switchToLogin": "لدي حساب بالفعل",
-        "switchToSignup": "إنشاء حساب"
+        "switchToSignup": "إنشاء حساب",
+        "hidePassword": "إخفاء",
+        "showPassword": "إظهار",
+        "forgotPassword": "نسيت كلمة المرور؟"
       },
       "debug": {
         "help": "إذا لديك مشكلة، تواصل مع الدعم.",
@@ -1383,11 +1544,112 @@
         "pending": "قيد الانتظار",
         "accepted": "مقبول",
         "prepared": "قيد التحضير",
-        "ready": "جاهز"
+        "ready": "جاهز",
+        "close": "إغلاق التصفية"
       },
       "account": {
         "setup": "ملف المطعم"
+      },
+      "close": "إغلاق",
+      "closeMenu": "إغلاق القائمة",
+      "menu": "القائمة"
+    },
+    "automation": {
+      "title": "أتمتة الطلبات",
+      "subtitle": "الإعدادات",
+      "loadingTitle": "جاري تحميل الإعدادات...",
+      "loadingSubtitle": "جلب تفضيلات الأتمتة",
+      "infoTitle": "قبول تلقائي وطباعة المطبخ",
+      "infoBody": "تحكم في كيفية قبول الطلبات الجديدة وطباعتها.",
+      "autoAccept": "قبول الطلبات الجديدة تلقائياً",
+      "autoPrint": "طباعة تلقائية عند القبول",
+      "soundAlert": "تنبيه صوتي",
+      "defaultPrep": "وقت التحضير الافتراضي",
+      "saving": "Saving…",
+      "saveSettings": "Save Settings",
+      "testPrint": "Test print",
+      "prepMinutes": "{{mins}} min"
+    },
+    "orders": {
+      "accept": "قبول",
+      "prepared": "جاهز للتحضير",
+      "ready": "جاهز"
+    },
+    "orderDetails": {
+      "title": "الطلب",
+      "loading": "جاري تحميل الطلب...",
+      "loadingSubtitle": "جلب تفاصيل الطلب",
+      "notFoundTitle": "الطلب غير موجود",
+      "notFoundBody": "تعذر العثور على هذا الطلب.",
+      "showToDriver": "أظهر للسائق",
+      "noItems": "لا توجد عناصر.",
+      "orderLabel": "طلب #{{id}}",
+      "customer": "العميل",
+      "clientId": "عميل {{id}}",
+      "items": "العناصر",
+      "notes": "ملاحظات",
+      "leaveAtDoor": "اترك عند الباب",
+      "actions": {
+        "print": "طباعة",
+        "printing": "جاري الطباعة…",
+        "refuse": "رفض",
+        "cancel": "إلغاء",
+        "accept": "قبول",
+        "prepared": "تم التحضير",
+        "ready": "جاهز"
+      },
+      "confirm": {
+        "refuseTitle": "رفض الطلب",
+        "cancelTitle": "إلغاء الطلب",
+        "body": "تأكيد هذا الإجراء؟",
+        "no": "لا",
+        "confirm": "تأكيد"
+      },
+      "status": {
+        "pending": "قيد الانتظار",
+        "accepted": "مقبول",
+        "prepared": "قيد التحضير",
+        "ready": "جاهز",
+        "dispatched": "أُرسل",
+        "delivered": "تم التسليم",
+        "canceled": "ملغى"
       }
+    },
+    "orderPrint": {
+      "title": "طباعة",
+      "reprintQueued": "أُعيدت الطباعة إلى الطابور.",
+      "ticketQueued": "أُضيف التذكرة إلى طابور الطباعة.",
+      "printFailed": "تعذر بدء الطباعة."
+    }
+  },
+  "promotions": {
+    "screenTitle": "العروض"
+  },
+  "brand": {
+    "name": "MMD Delivery"
+  },
+  "location": {
+    "picker": {
+      "streetNumber": "رقم الشارع *",
+      "streetNumberPh": "123",
+      "city": "المدينة *",
+      "cityPh": "نيويورك",
+      "postal": "الرمز البريدي *",
+      "postalPh": "10001",
+      "streetOptional": "الشارع / اسم المكان (اختياري)",
+      "streetOptionalPh": "الشارع الرئيسي / اسم المبنى",
+      "commune": "البلدية",
+      "communePh": "Matoto",
+      "quartier": "الحي",
+      "quartierPh": "Lambanyi",
+      "landmark": "البحث عن معلم",
+      "landmarkRequired": "البحث عن معلم *",
+      "landmarkPh": "محطة Total، مسجد، سوق...",
+      "formattedOptional": "العنوان المنسق (اختياري)",
+      "formattedOptionalPh": "الشارع أو المكان إن عُرف",
+      "directions": "صف موقعك بالضبط *",
+      "directionsPh": "بعد محطة Total، الشارع الثاني يميناً، منزل أصفر ببوابة زرقاء...",
+      "directionsMin": "يلزم 8 أحرف على الأقل."
     }
   }
 }

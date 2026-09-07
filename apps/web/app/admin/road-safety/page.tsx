@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiDrivers } from "@/lib/adminAccess";
@@ -37,6 +39,8 @@ type EventRow = {
 const LEGAL = ["allowed", "restricted", "unknown", "disabled"] as const;
 
 export default function AdminRoadSafetyPage() {
+  const { t } = useAdminT();
+
   const [configs, setConfigs] = useState<ConfigRow[]>([]);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,7 +146,7 @@ export default function AdminRoadSafetyPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Road Safety</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Road Safety")}</h1>
             <p className="mt-1 text-sm text-slate-600">
               Configuration par pays des alertes de sécurité routière (radars, STOP, zones
               scolaires, limitations, vocal, seuils, tolérance, corridor, confiance) et gestion
@@ -152,11 +156,11 @@ export default function AdminRoadSafetyPage() {
           </header>
 
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : (
             <>
               <section className="space-y-4">
-                <h2 className="text-lg font-semibold text-slate-800">Configuration par pays</h2>
+                <h2 className="text-lg font-semibold text-slate-800">{t("Configuration par pays")}</h2>
                 {configs.map((cfg) => (
                   <form
                     key={cfg.country_code}
@@ -166,7 +170,7 @@ export default function AdminRoadSafetyPage() {
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-slate-800">{cfg.country_code}</p>
                       <label className="text-xs text-slate-600">
-                        État légal (radars)
+                        {t("État légal (radars)")}
                         <select
                           name="legal_status"
                           defaultValue={cfg.legal_status}
@@ -183,21 +187,21 @@ export default function AdminRoadSafetyPage() {
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-700">
-                      <label><input className={chk} type="checkbox" name="enable_speed_camera" defaultChecked={cfg.enable_speed_camera} disabled={!canEdit} />Radar vitesse</label>
-                      <label><input className={chk} type="checkbox" name="enable_red_light_camera" defaultChecked={cfg.enable_red_light_camera} disabled={!canEdit} />Radar feu rouge</label>
-                      <label><input className={chk} type="checkbox" name="enable_stop_sign" defaultChecked={cfg.enable_stop_sign} disabled={!canEdit} />STOP</label>
-                      <label><input className={chk} type="checkbox" name="enable_school_zone" defaultChecked={cfg.enable_school_zone} disabled={!canEdit} />Zone scolaire</label>
-                      <label><input className={chk} type="checkbox" name="enable_speed_limit" defaultChecked={cfg.enable_speed_limit} disabled={!canEdit} />Limitations</label>
-                      <label><input className={chk} type="checkbox" name="enable_voice" defaultChecked={cfg.enable_voice} disabled={!canEdit} />Vocal</label>
-                      <label><input className={chk} type="checkbox" name="is_active" defaultChecked={cfg.is_active} disabled={!canEdit} />Actif</label>
+                      <label><input className={chk} type="checkbox" name="enable_speed_camera" defaultChecked={cfg.enable_speed_camera} disabled={!canEdit} />{t("Radar vitesse")}</label>
+                      <label><input className={chk} type="checkbox" name="enable_red_light_camera" defaultChecked={cfg.enable_red_light_camera} disabled={!canEdit} />{t("Radar feu rouge")}</label>
+                      <label><input className={chk} type="checkbox" name="enable_stop_sign" defaultChecked={cfg.enable_stop_sign} disabled={!canEdit} />{t("STOP")}</label>
+                      <label><input className={chk} type="checkbox" name="enable_school_zone" defaultChecked={cfg.enable_school_zone} disabled={!canEdit} />{t("Zone scolaire")}</label>
+                      <label><input className={chk} type="checkbox" name="enable_speed_limit" defaultChecked={cfg.enable_speed_limit} disabled={!canEdit} />{t("Limitations")}</label>
+                      <label><input className={chk} type="checkbox" name="enable_voice" defaultChecked={cfg.enable_voice} disabled={!canEdit} />{t("Vocal")}</label>
+                      <label><input className={chk} type="checkbox" name="is_active" defaultChecked={cfg.is_active} disabled={!canEdit} />{t("Actif")}</label>
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-4">
-                      <label className="text-xs text-slate-600">Seuil 500 m<input name="announce_far_meters" type="number" defaultValue={cfg.announce_far_meters} disabled={!canEdit} className={numCls} /></label>
-                      <label className="text-xs text-slate-600">Seuil 200 m<input name="announce_near_meters" type="number" defaultValue={cfg.announce_near_meters} disabled={!canEdit} className={numCls} /></label>
+                      <label className="text-xs text-slate-600">{t("Seuil 500 m")}<input name="announce_far_meters" type="number" defaultValue={cfg.announce_far_meters} disabled={!canEdit} className={numCls} /></label>
+                      <label className="text-xs text-slate-600">{t("Seuil 200 m")}<input name="announce_near_meters" type="number" defaultValue={cfg.announce_near_meters} disabled={!canEdit} className={numCls} /></label>
                       <label className="text-xs text-slate-600">Tolérance km/h<input name="overspeed_tolerance_kmh" type="number" defaultValue={cfg.overspeed_tolerance_kmh} disabled={!canEdit} className={numCls} /></label>
-                      <label className="text-xs text-slate-600">Corridor m<input name="corridor_radius_meters" type="number" defaultValue={cfg.corridor_radius_meters} disabled={!canEdit} className={numCls} /></label>
-                      <label className="text-xs text-slate-600">Confiance min<input name="min_confidence" type="number" step="0.05" min="0" max="1" defaultValue={cfg.min_confidence} disabled={!canEdit} className={numCls} /></label>
+                      <label className="text-xs text-slate-600">{t("Corridor m")}<input name="corridor_radius_meters" type="number" defaultValue={cfg.corridor_radius_meters} disabled={!canEdit} className={numCls} /></label>
+                      <label className="text-xs text-slate-600">{t("Confiance min")}<input name="min_confidence" type="number" step="0.05" min="0" max="1" defaultValue={cfg.min_confidence} disabled={!canEdit} className={numCls} /></label>
                     </div>
 
                     {canEdit ? (
@@ -206,7 +210,7 @@ export default function AdminRoadSafetyPage() {
                         disabled={savingCode === cfg.country_code}
                         className="mt-3 rounded bg-slate-900 px-4 py-2 text-sm text-white"
                       >
-                        Enregistrer
+                        {t("Enregistrer")}
                       </button>
                     ) : null}
                   </form>
@@ -214,9 +218,9 @@ export default function AdminRoadSafetyPage() {
               </section>
 
               <section className="space-y-3">
-                <h2 className="text-lg font-semibold text-slate-800">Événements curés</h2>
+                <h2 className="text-lg font-semibold text-slate-800">{t("Événements curés")}</h2>
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-slate-600">Pays</label>
+                  <label className="text-sm text-slate-600">{t("Pays")}</label>
                   <input
                     value={eventCountry}
                     onChange={(e) => setEventCountry(e.target.value.toUpperCase())}
@@ -227,7 +231,7 @@ export default function AdminRoadSafetyPage() {
                     onClick={() => void loadEvents(eventCountry)}
                     className="rounded bg-slate-200 px-3 py-1 text-sm"
                   >
-                    Filtrer
+                    {t("Filtrer")}
                   </button>
                 </div>
 
@@ -236,7 +240,7 @@ export default function AdminRoadSafetyPage() {
                     onSubmit={(e) => void createEvent(e)}
                     className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                   >
-                    <label className="text-xs text-slate-600">Type
+                    <label className="text-xs text-slate-600">{t("Type")}
                       <select name="type" className="mt-1 block rounded border px-2 py-1 text-sm">
                         <option value="speed_camera">speed_camera</option>
                         <option value="red_light_camera">red_light_camera</option>
@@ -245,10 +249,10 @@ export default function AdminRoadSafetyPage() {
                         <option value="speed_limit">speed_limit</option>
                       </select>
                     </label>
-                    <label className="text-xs text-slate-600">Latitude<input name="latitude" type="number" step="any" required className={numCls} /></label>
-                    <label className="text-xs text-slate-600">Longitude<input name="longitude" type="number" step="any" required className={numCls} /></label>
-                    <label className="text-xs text-slate-600">Pays<input name="country_code" defaultValue={eventCountry} className="mt-1 block w-20 rounded border px-2 py-1 text-sm" /></label>
-                    <label className="text-xs text-slate-600">Sens
+                    <label className="text-xs text-slate-600">{t("Latitude")}<input name="latitude" type="number" step="any" required className={numCls} /></label>
+                    <label className="text-xs text-slate-600">{t("Longitude")}<input name="longitude" type="number" step="any" required className={numCls} /></label>
+                    <label className="text-xs text-slate-600">{t("Pays")}<input name="country_code" defaultValue={eventCountry} className="mt-1 block w-20 rounded border px-2 py-1 text-sm" /></label>
+                    <label className="text-xs text-slate-600">{t("Sens")}
                       <select name="direction" className="mt-1 block rounded border px-2 py-1 text-sm">
                         <option value="unknown">unknown</option>
                         <option value="forward">forward</option>
@@ -257,7 +261,7 @@ export default function AdminRoadSafetyPage() {
                       </select>
                     </label>
                     <label className="text-xs text-slate-600">Limite km/h<input name="speed_limit_kmh" type="number" className={numCls} /></label>
-                    <button type="submit" className="rounded bg-slate-900 px-4 py-2 text-sm text-white">Ajouter</button>
+                    <button type="submit" className="rounded bg-slate-900 px-4 py-2 text-sm text-white">{t("Ajouter")}</button>
                   </form>
                 ) : null}
 
@@ -265,12 +269,12 @@ export default function AdminRoadSafetyPage() {
                   <table className="min-w-full text-sm">
                     <thead className="bg-slate-100 text-left text-xs text-slate-600">
                       <tr>
-                        <th className="px-3 py-2">Type</th>
-                        <th className="px-3 py-2">Coord.</th>
-                        <th className="px-3 py-2">Source</th>
-                        <th className="px-3 py-2">Conf.</th>
-                        <th className="px-3 py-2">Actif</th>
-                        <th className="px-3 py-2">MAJ</th>
+                        <th className="px-3 py-2">{t("Type")}</th>
+                        <th className="px-3 py-2">{t("Coord.")}</th>
+                        <th className="px-3 py-2">{t("Source")}</th>
+                        <th className="px-3 py-2">{t("Conf.")}</th>
+                        <th className="px-3 py-2">{t("Actif")}</th>
+                        <th className="px-3 py-2">{t("MAJ")}</th>
                         <th className="px-3 py-2" />
                       </tr>
                     </thead>
@@ -294,7 +298,7 @@ export default function AdminRoadSafetyPage() {
                                 onClick={() => void toggleEvent(ev)}
                                 className="rounded bg-slate-200 px-2 py-1 text-xs"
                               >
-                                {ev.is_active ? "Désactiver" : "Activer"}
+                                {ev.is_active ? t("Désactiver") : t("Activer")}
                               </button>
                             ) : null}
                           </td>
@@ -303,7 +307,7 @@ export default function AdminRoadSafetyPage() {
                       {events.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-3 py-6 text-center text-sm text-slate-400">
-                            Aucun événement pour ce pays.
+                            {t("Aucun événement pour ce pays.")}
                           </td>
                         </tr>
                       ) : null}

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { canReviewDrivers, canViewDrivers } from "@/lib/adminAccess";
@@ -49,6 +51,8 @@ function buildProfileDraft(row: AdminDriverListItem): DriverProfileDraft {
 }
 
 export default function AdminDriversManager() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -395,7 +399,7 @@ export default function AdminDriversManager() {
   }
 
   async function deleteDocument(userId: string, documentId: string) {
-    if (!window.confirm("Delete this document record?")) return;
+    if (!window.confirm(t("Delete this document record?"))) return;
     setUpdatingDocumentId(documentId);
     setError(null);
     try {
@@ -441,14 +445,13 @@ export default function AdminDriversManager() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-            MMD Delivery · Driver Operations Center
+            {t("MMD Delivery · Driver Operations Center")}
           </div>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
-            Drivers
+            {t("Drivers")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Prioritized ops view: identity, documents, vehicle, and status-aware actions.
-            Approval rules are unchanged.
+            {t("Prioritized ops view: identity, documents, vehicle, and status-aware actions. Approval rules are unchanged.")}
           </p>
         </div>
         <button
@@ -457,23 +460,23 @@ export default function AdminDriversManager() {
           disabled={refreshing || loading}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white disabled:opacity-60"
         >
-          {refreshing ? "Refreshing…" : "Refresh"}
+          {refreshing ? t("Refreshing…") : t("Refresh")}
         </button>
       </div>
 
       <section
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"
-        aria-label="Driver operations KPIs"
+        aria-label={t("Driver operations KPIs")}
       >
         {(
           [
             ["Total Drivers", kpis.total],
             ["Pending Review", kpis.pending],
-            ["Approved", kpis.approved],
-            ["Online", kpis.online],
-            ["Suspended", kpis.suspended],
-            ["Disabled", kpis.disabled],
-            ["Incomplete", kpis.incompleteDocs],
+            [t("Approved"), kpis.approved],
+            [t("Online"), kpis.online],
+            [t("Suspended"), kpis.suspended],
+            [t("Disabled"), kpis.disabled],
+            [t("Incomplete"), kpis.incompleteDocs],
           ] as const
         ).map(([label, value]) => (
           <div

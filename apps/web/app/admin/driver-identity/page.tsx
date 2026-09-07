@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DriverIdentityControlCenter, {
   type IdentityCheckDetail,
@@ -23,6 +25,8 @@ import type { UserRole } from "@/lib/roles";
 const AUTO_ADVANCE_ACTIONS = new Set(["approve", "reject", "request_new_photo"]);
 
 export default function AdminDriverIdentityPage() {
+  const { t } = useAdminT();
+
   const [role, setRole] = useState<UserRole>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [checks, setChecks] = useState<IdentityCheckListItem[]>([]);
@@ -292,10 +296,10 @@ export default function AdminDriverIdentityPage() {
       <main className="mx-auto max-w-xl p-6">
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 dark:border-red-900 dark:bg-red-950/40">
           <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            Vérification identité chauffeur
+            {t("Vérification identité chauffeur")}
           </h1>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-            Accès refusé.
+            {t("Accès refusé.")}
           </p>
         </div>
       </main>

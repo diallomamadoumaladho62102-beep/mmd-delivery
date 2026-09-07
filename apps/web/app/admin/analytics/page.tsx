@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import {
@@ -15,21 +17,23 @@ import {
   type AnalyticsModule,
 } from "@/lib/analytics/analyticsTypes";
 
-const MODULE_LABELS: Record<AnalyticsModule, string> = {
-  global: "Global",
-  food: "Food",
-  delivery: "Delivery",
-  taxi: "Taxi",
-  marketplace: "Marketplace",
-  loyalty: "Fidélité",
-  mmd_plus: "MMD+",
-  marketing: "Marketing",
-  finance: "Finance",
-  drivers: "Chauffeurs",
-  restaurants: "Restaurants",
-  sellers: "Vendeurs",
-  fraud: "Fraude",
-};
+function getModuleLabels(t: (source: string) => string): Record<AnalyticsModule, string> {
+  return {
+  global: t("Global"),
+  food: t("Food"),
+  delivery: t("Delivery"),
+  taxi: t("Taxi"),
+  marketplace: t("Marketplace"),
+  loyalty: t("Fidélité"),
+  mmd_plus: t("MMD+"),
+  marketing: t("Marketing"),
+  finance: t("Finance"),
+  drivers: t("Chauffeurs"),
+  restaurants: t("Restaurants"),
+  sellers: t("Vendeurs"),
+  fraud: t("Fraude"),
+  };
+}
 
 function formatValue(card: AnalyticsCard): string {
   const v = card.value;
@@ -53,6 +57,9 @@ function formatValue(card: AnalyticsCard): string {
 }
 
 function AnalyticsInner() {
+  const { t } = useAdminT();
+  const moduleLabels = getModuleLabels(t);
+
   const [canRead, setCanRead] = useState(false);
   const [canExport, setCanExport] = useState(false);
   const [canFinance, setCanFinance] = useState(false);
@@ -202,7 +209,7 @@ function AnalyticsInner() {
   if (!canRead) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        Permission <code>analytics.read</code> requise.
+        {t("Permission")} <code>analytics.read</code> requise.
       </div>
     );
   }
@@ -210,7 +217,7 @@ function AnalyticsInner() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Analytics</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{t("Analytics")}</h1>
         <p className="mt-1 text-sm text-slate-600">
           Centre BI — lecture seule sur les moteurs existants. Actualisation auto toutes les{" "}
           {refreshSeconds}s.
@@ -228,7 +235,7 @@ function AnalyticsInner() {
         </div>
       )}
 
-      <nav className="flex flex-wrap gap-1" aria-label="Modules analytics">
+      <nav className="flex flex-wrap gap-1" aria-label={t("Modules analytics")}>
         {availableModules.map((m) => (
           <button
             key={m}
@@ -241,7 +248,7 @@ function AnalyticsInner() {
                 : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50",
             ].join(" ")}
           >
-            {MODULE_LABELS[m]}
+            {moduleLabels[m]}
           </button>
         ))}
       </nav>
@@ -249,7 +256,7 @@ function AnalyticsInner() {
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-5">
           <label className="text-sm">
-            Du
+            {t("Du")}
             <input
               type="date"
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
@@ -258,7 +265,7 @@ function AnalyticsInner() {
             />
           </label>
           <label className="text-sm">
-            Au
+            {t("Au")}
             <input
               type="date"
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
@@ -267,16 +274,16 @@ function AnalyticsInner() {
             />
           </label>
           <label className="text-sm">
-            Pays
+            {t("Pays")}
             <input
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
-              placeholder="US"
+              placeholder={t("US")}
               value={country}
               onChange={(e) => setCountry(e.target.value)}
             />
           </label>
           <label className="text-sm">
-            Ville
+            {t("Ville")}
             <input
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
               value={city}
@@ -284,7 +291,7 @@ function AnalyticsInner() {
             />
           </label>
           <label className="text-sm">
-            Refresh (s)
+            {t("Refresh (s)")}
             <input
               type="number"
               min={15}
@@ -302,7 +309,7 @@ function AnalyticsInner() {
             onClick={() => void load()}
             disabled={loading}
           >
-            {loading ? "Chargement…" : "Actualiser"}
+            {loading ? t("Chargement…") : t("Actualiser")}
           </button>
           {canExport && (
             <>
@@ -311,21 +318,21 @@ function AnalyticsInner() {
                 className="rounded-xl border px-3 py-2 text-sm"
                 onClick={() => void exportData("csv")}
               >
-                CSV
+                {t("CSV")}
               </button>
               <button
                 type="button"
                 className="rounded-xl border px-3 py-2 text-sm"
                 onClick={() => void exportData("excel")}
               >
-                Excel
+                {t("Excel")}
               </button>
               <button
                 type="button"
                 className="rounded-xl border px-3 py-2 text-sm"
                 onClick={() => void exportData("pdf")}
               >
-                PDF
+                {t("PDF")}
               </button>
             </>
           )}
@@ -335,7 +342,7 @@ function AnalyticsInner() {
               className="rounded-xl border px-3 py-2 text-sm"
               onClick={() => void savePrefs()}
             >
-              Sauver cartes
+              {t("Sauver cartes")}
             </button>
           )}
         </div>
@@ -360,9 +367,9 @@ function AnalyticsInner() {
                     type="button"
                     className="text-xs text-slate-400 hover:text-slate-700"
                     onClick={() => toggleCard(card.key)}
-                    title="Masquer"
+                    title={t("Masquer")}
                   >
-                    Masquer
+                    {t("Masquer")}
                   </button>
                 )}
               </div>
@@ -372,13 +379,13 @@ function AnalyticsInner() {
             </article>
           ))}
         {cards.filter((c) => c.visible).length === 0 && (
-          <p className="text-sm text-slate-500">Aucune carte visible.</p>
+          <p className="text-sm text-slate-500">{t("Aucune carte visible.")}</p>
         )}
       </section>
 
       {canManage && cards.some((c) => !c.visible) && (
         <section className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
-          <h2 className="text-sm font-semibold text-slate-800">Cartes masquées</h2>
+          <h2 className="text-sm font-semibold text-slate-800">{t("Cartes masquées")}</h2>
           <div className="mt-2 flex flex-wrap gap-2">
             {cards
               .filter((c) => !c.visible)

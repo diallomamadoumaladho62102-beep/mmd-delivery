@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiDrivers } from "@/lib/adminAccess";
@@ -25,6 +27,8 @@ type TaxiDriverRow = {
 };
 
 export default function AdminTaxiDriversPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<TaxiDriverRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +107,7 @@ export default function AdminTaxiDriversPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Taxi Drivers</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Taxi Drivers")}</h1>
             <p className="mt-1 text-sm text-slate-600">
               Activation taxi, classes véhicule et éligibilité XL / premium.
             </p>
@@ -113,7 +117,7 @@ export default function AdminTaxiDriversPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher nom / téléphone…"
+              placeholder={t("Rechercher nom / téléphone…")}
               className="h-10 max-w-md flex-1 rounded-xl border border-slate-300 px-3 text-sm"
             />
             <button
@@ -121,19 +125,19 @@ export default function AdminTaxiDriversPage() {
               onClick={() => void load()}
               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
             >
-              Actualiser
+              {t("Actualiser")}
             </button>
           </div>
 
           {loading ? (
-            <div className="text-sm text-slate-500">Chargement…</div>
+            <div className="text-sm text-slate-500">{t("Chargement…")}</div>
           ) : error ? (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-              Aucun chauffeur taxi configuré.
+              {t("Aucun chauffeur taxi configuré.")}
             </div>
           ) : (
             <div className="space-y-4">
@@ -186,7 +190,7 @@ export default function AdminTaxiDriversPage() {
 
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
                     <label>
-                      Classe
+                      {t("Classe")}
                       <select
                         name="vehicle_class"
                         defaultValue={row.vehicle_class}
@@ -199,7 +203,7 @@ export default function AdminTaxiDriversPage() {
                       </select>
                     </label>
                     <label>
-                      Capacité
+                      {t("Capacité")}
                       <input
                         name="passenger_capacity"
                         type="number"
@@ -209,7 +213,7 @@ export default function AdminTaxiDriversPage() {
                       />
                     </label>
                     <label>
-                      Marque
+                      {t("Marque")}
                       <input
                         name="vehicle_make"
                         defaultValue={row.vehicle_make ?? ""}
@@ -218,7 +222,7 @@ export default function AdminTaxiDriversPage() {
                       />
                     </label>
                     <label>
-                      Modèle
+                      {t("Modèle")}
                       <input
                         name="vehicle_model"
                         defaultValue={row.vehicle_model ?? ""}
@@ -227,7 +231,7 @@ export default function AdminTaxiDriversPage() {
                       />
                     </label>
                     <label>
-                      Année
+                      {t("Année")}
                       <input
                         name="vehicle_year"
                         type="number"
@@ -237,7 +241,7 @@ export default function AdminTaxiDriversPage() {
                       />
                     </label>
                     <label>
-                      Plaque
+                      {t("Plaque")}
                       <input
                         name="vehicle_plate"
                         defaultValue={row.vehicle_plate ?? ""}
@@ -246,7 +250,7 @@ export default function AdminTaxiDriversPage() {
                       />
                     </label>
                     <label>
-                      Couleur
+                      {t("Couleur")}
                       <input
                         name="vehicle_color"
                         defaultValue={row.vehicle_color ?? ""}
@@ -262,7 +266,7 @@ export default function AdminTaxiDriversPage() {
                       disabled={savingId === row.user_id}
                       className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                     >
-                      {savingId === row.user_id ? "Enregistrement…" : "Enregistrer"}
+                      {savingId === row.user_id ? t("Enregistrement…") : t("Enregistrer")}
                     </button>
                   ) : null}
                 </form>

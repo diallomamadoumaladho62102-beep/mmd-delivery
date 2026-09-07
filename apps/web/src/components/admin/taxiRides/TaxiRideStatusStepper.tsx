@@ -1,34 +1,38 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import {
   taxiRideStepperIndex,
   type AdminTaxiRideListItem,
 } from "@/lib/adminTaxiRideDisplay";
 
-const STEPS = [
-  "Created",
-  "Searching",
-  "Accepted",
-  "En route",
-  "Picked up",
-  "Destination",
-  "Completed",
-] as const;
 
 export default function TaxiRideStatusStepper({
   ride,
 }: {
   ride: AdminTaxiRideListItem;
 }) {
+  const { t } = useAdminT();
+  const steps = [
+    t("Created"),
+    t("Searching"),
+    t("Accepted"),
+    t("En route"),
+    t("Picked up"),
+    t("Destination"),
+    t("Completed"),
+  ];
+
   const idx = taxiRideStepperIndex(ride);
   const canceled = idx < 0;
 
   return (
-    <ol className="flex flex-wrap items-center gap-1" aria-label="Ride progress">
+    <ol className="flex flex-wrap items-center gap-1" aria-label={t("Ride progress")}>
       {canceled ? (
-        <li className="text-[11px] font-semibold text-red-700">Cancelled</li>
+        <li className="text-[11px] font-semibold text-red-700">{t("Cancelled")}</li>
       ) : (
-        STEPS.map((label, i) => {
+        steps.map((label, i) => {
           const done = i <= idx;
           const current = i === idx;
           return (

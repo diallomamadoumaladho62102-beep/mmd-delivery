@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -63,6 +65,8 @@ function formatMoney(cents: number | null | undefined, currency = "USD") {
 }
 
 export default function AdminTaxiRideDetailPage() {
+  const { t } = useAdminT();
+
   const params = useParams<{ rideId: string }>();
   const rideId = typeof params?.rideId === "string" ? params.rideId : "";
 
@@ -141,12 +145,12 @@ export default function AdminTaxiRideDetailPage() {
             <Link href="/admin/taxi-rides" className="text-sm text-blue-700 underline">
               ← Retour aux courses taxi
             </Link>
-            <h1 className="text-2xl font-bold text-slate-900">Course taxi</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Course taxi")}</h1>
             <p className="font-mono text-xs text-slate-500">{rideId}</p>
           </header>
 
           {loading ? (
-            <div className="text-sm text-slate-500">Chargement…</div>
+            <div className="text-sm text-slate-500">{t("Chargement…")}</div>
           ) : error ? (
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
@@ -159,54 +163,54 @@ export default function AdminTaxiRideDetailPage() {
                 return (
                   <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <h2 className="text-sm font-semibold text-slate-900">
-                      Breakdown financier
+                      {t("Breakdown financier")}
                     </h2>
                     <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                       <div className="flex justify-between gap-3">
-                        <dt className="text-slate-600">Prix course (fare)</dt>
+                        <dt className="text-slate-600">{t("Prix course (fare)")}</dt>
                         <dd>{formatTaxiMoney(fin.customer_fare_cents, cur)}</dd>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <dt className="text-slate-600">Taxes</dt>
+                        <dt className="text-slate-600">{t("Taxes")}</dt>
                         <dd>{formatTaxiMoney(fin.tax_cents, cur)}</dd>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <dt className="text-slate-600">Service fee</dt>
+                        <dt className="text-slate-600">{t("Service fee")}</dt>
                         <dd>{formatTaxiMoney(fin.service_fee_cents, cur)}</dd>
                       </div>
                       {fin.discount_total_cents > 0 ? (
                         <div className="flex justify-between gap-3">
-                          <dt className="text-slate-600">Remises</dt>
+                          <dt className="text-slate-600">{t("Remises")}</dt>
                           <dd>-{formatTaxiMoney(fin.discount_total_cents, cur)}</dd>
                         </div>
                       ) : null}
                       <div className="flex justify-between gap-3 font-semibold">
-                        <dt>Total client payé</dt>
+                        <dt>{t("Total client payé")}</dt>
                         <dd>{formatTaxiMoney(fin.customer_total_cents, cur)}</dd>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <dt className="text-slate-600">Part chauffeur</dt>
+                        <dt className="text-slate-600">{t("Part chauffeur")}</dt>
                         <dd>{formatTaxiMoney(fin.driver_earnings_cents, cur)}</dd>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <dt className="text-slate-600">Part MMD (split interne)</dt>
+                        <dt className="text-slate-600">{t("Part MMD (split interne)")}</dt>
                         <dd>{formatTaxiMoney(fin.platform_share_cents, cur)}</dd>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <dt className="text-slate-600">Revenu MMD (share + SF)</dt>
+                        <dt className="text-slate-600">{t("Revenu MMD (share + SF)")}</dt>
                         <dd>{formatTaxiMoney(fin.mmd_platform_revenue_cents, cur)}</dd>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <dt className="text-slate-600">Stripe fee (estimé)</dt>
+                        <dt className="text-slate-600">{t("Stripe fee (estimé)")}</dt>
                         <dd>{formatTaxiMoney(fin.stripe_fee_estimate_cents, cur)}</dd>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <dt className="text-slate-600">MMD net (estimé)</dt>
+                        <dt className="text-slate-600">{t("MMD net (estimé)")}</dt>
                         <dd>{formatTaxiMoney(fin.mmd_net_estimate_cents, cur)}</dd>
                       </div>
                       {fin.tip_cents > 0 ? (
                         <div className="flex justify-between gap-3">
-                          <dt className="text-slate-600">Tip</dt>
+                          <dt className="text-slate-600">{t("Tip")}</dt>
                           <dd>
                             {formatTaxiMoney(fin.tip_cents, cur)}
                             {fin.tip_paid_out ? " · transféré" : " · en attente"}
@@ -214,18 +218,18 @@ export default function AdminTaxiRideDetailPage() {
                         </div>
                       ) : null}
                       <div className="flex justify-between gap-3 sm:col-span-2">
-                        <dt className="text-slate-600">Statut paiement</dt>
+                        <dt className="text-slate-600">{t("Statut paiement")}</dt>
                         <dd>{fin.payment_status || "—"}</dd>
                       </div>
                       {fin.stripe_payment_intent_id ? (
                         <div className="flex justify-between gap-3 sm:col-span-2 font-mono text-xs">
-                          <dt className="text-slate-600">PaymentIntent</dt>
+                          <dt className="text-slate-600">{t("PaymentIntent")}</dt>
                           <dd>{fin.stripe_payment_intent_id}</dd>
                         </div>
                       ) : null}
                       {fin.settlement_frozen ? (
                         <div className="sm:col-span-2 text-xs text-emerald-700">
-                          Totaux figés après paiement — recalculate ne réécrit pas cette course.
+                          {t("Totaux figés après paiement — recalculate ne réécrit pas cette course.")}
                         </div>
                       ) : null}
                     </dl>
@@ -234,7 +238,7 @@ export default function AdminTaxiRideDetailPage() {
               })()}
 
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="text-sm font-semibold text-slate-900">Résumé</h2>
+                <h2 className="text-sm font-semibold text-slate-900">{t("Résumé")}</h2>
                 <div className="mt-3 space-y-1 text-sm">
                   <div>Statut : {ride.status ?? "—"}</div>
                   <div>Classe : {ride.vehicle_class ?? "—"}</div>
@@ -253,17 +257,17 @@ export default function AdminTaxiRideDetailPage() {
               </section>
 
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="text-sm font-semibold text-slate-900">Participants</h2>
+                <h2 className="text-sm font-semibold text-slate-900">{t("Participants")}</h2>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2 text-sm">
                   <div>
-                    <div className="font-medium text-slate-700">Client</div>
+                    <div className="font-medium text-slate-700">{t("Client")}</div>
                     <div>{client?.full_name ?? "—"}</div>
                     <div className="font-mono text-xs text-slate-500">
                       {ride.client_user_id ?? "—"}
                     </div>
                   </div>
                   <div>
-                    <div className="font-medium text-slate-700">Chauffeur</div>
+                    <div className="font-medium text-slate-700">{t("Chauffeur")}</div>
                     <div>{driver?.full_name ?? "—"}</div>
                     <div className="font-mono text-xs text-slate-500">
                       {ride.driver_id ?? "—"}
@@ -274,7 +278,7 @@ export default function AdminTaxiRideDetailPage() {
 
               {commission ? (
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-sm font-semibold text-slate-900">Commission taxi</h2>
+                  <h2 className="text-sm font-semibold text-slate-900">{t("Commission taxi")}</h2>
                   <div className="mt-3 space-y-1 text-sm">
                     <div>Driver : {formatMoney(commission.driver_cents, ride.currency as string)}</div>
                     <div>
@@ -297,7 +301,7 @@ export default function AdminTaxiRideDetailPage() {
                         onClick={() => void runPayout(true)}
                         className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                       >
-                        Dry-run payout
+                        {t("Dry-run payout")}
                       </button>
                       <button
                         type="button"
@@ -325,9 +329,9 @@ export default function AdminTaxiRideDetailPage() {
                 id="timeline"
                 className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
               >
-                <h2 className="text-sm font-semibold text-slate-900">Timeline taxi_events</h2>
+                <h2 className="text-sm font-semibold text-slate-900">{t("Timeline taxi_events")}</h2>
                 {events.length === 0 ? (
-                  <p className="mt-3 text-sm text-slate-500">Aucun événement.</p>
+                  <p className="mt-3 text-sm text-slate-500">{t("Aucun événement.")}</p>
                 ) : (
                   <ol className="mt-4 space-y-3">
                     {events.map((ev) => (

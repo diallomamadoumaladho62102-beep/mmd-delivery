@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageCommissions } from "@/lib/adminAccess";
@@ -28,6 +30,8 @@ const INPUT =
 const CARD = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 
 function CommissionEngineInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -169,21 +173,21 @@ function CommissionEngineInner() {
     <div className="space-y-6">
       <section className={CARD}>
         <h2 className="text-lg font-semibold">
-          Snapshot commande (montants historiques)
+          {t("Snapshot commande (montants historiques)")}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Affiche les commissions <strong>enregistrées</strong> pour une commande
+          {t("Affiche les commissions")} <strong>enregistrées</strong> pour une commande
           (snapshot / <code>order_commissions</code>). Ce n’est pas un recalcul
           avec les taux actuels.
         </p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="text-sm flex-1">
-            Order ID
+            {t("Order ID")}
             <input
               className={INPUT}
               value={orderIdLookup}
               onChange={(e) => setOrderIdLookup(e.target.value)}
-              placeholder="uuid de la commande"
+              placeholder={t("uuid de la commande")}
             />
           </label>
           <button
@@ -192,7 +196,7 @@ function CommissionEngineInner() {
             disabled={!orderIdLookup.trim() || loading}
             className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            Charger le snapshot
+            {t("Charger le snapshot")}
           </button>
         </div>
         {orderLookupError && (
@@ -253,20 +257,20 @@ function CommissionEngineInner() {
 
       <section className={CARD}>
         <h2 className="text-lg font-semibold">
-          Aperçu des taux actuels (preview)
+          {t("Aperçu des taux actuels (preview)")}
         </h2>
         <p className="mt-1 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-          <strong>Attention :</strong> cet aperçu résout les taux{" "}
+          <strong>{t("Attention :")}</strong> cet aperçu résout les taux{" "}
           <em>actuels</em> (fidélité → override → contrat → campagne → tarifs).
           Il ne remplace pas le snapshot d’une commande déjà facturée. Pour
           l’historique, utilisez la section Snapshot ci-dessus.
         </p>
         <p className="mt-2 text-sm text-slate-600">
-          Consulter la règle gagnante pour un partenaire (configuration live).
+          {t("Consulter la règle gagnante pour un partenaire (configuration live).")}
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <label className="text-sm">
-            Type
+            {t("Type")}
             <select
               className={INPUT}
               value={partnerType}
@@ -276,17 +280,17 @@ function CommissionEngineInner() {
                 setService(v === "restaurant" ? "food" : "marketplace");
               }}
             >
-              <option value="restaurant">Restaurant</option>
-              <option value="seller">Vendeur Marketplace</option>
+              <option value="restaurant">{t("Restaurant")}</option>
+              <option value="seller">{t("Vendeur Marketplace")}</option>
             </select>
           </label>
           <label className="text-sm sm:col-span-2">
-            Partner user ID
+            {t("Partner user ID")}
             <input
               className={INPUT}
               value={partnerUserId}
               onChange={(e) => setPartnerUserId(e.target.value)}
-              placeholder="uuid du restaurant ou vendeur"
+              placeholder={t("uuid du restaurant ou vendeur")}
             />
           </label>
         </div>
@@ -296,7 +300,7 @@ function CommissionEngineInner() {
           disabled={!partnerUserId.trim() || loading}
           className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
         >
-          {loading ? "Chargement…" : "Consulter"}
+          {loading ? t("Chargement…") : t("Consulter")}
         </button>
       </section>
 
@@ -318,24 +322,23 @@ function CommissionEngineInner() {
             {partnerLabel ? ` — ${partnerLabel}` : ""}
           </h2>
           <p className="text-xs text-amber-700 mb-2">
-            Non historique — ne pas utiliser comme montant facturé d’une
-            commande passée.
+            {t("Non historique — ne pas utiliser comme montant facturé d’une commande passée.")}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
-              <div className="text-xs uppercase text-slate-500">Taux plateforme</div>
+              <div className="text-xs uppercase text-slate-500">{t("Taux plateforme")}</div>
               <div className="text-2xl font-bold">{resolved.rate_pct}%</div>
             </div>
             <div>
-              <div className="text-xs uppercase text-slate-500">Frais fixes</div>
+              <div className="text-xs uppercase text-slate-500">{t("Frais fixes")}</div>
               <div className="text-2xl font-bold">{resolved.fixed_fee_cents}¢</div>
             </div>
             <div>
-              <div className="text-xs uppercase text-slate-500">Crédit frais</div>
+              <div className="text-xs uppercase text-slate-500">{t("Crédit frais")}</div>
               <div className="text-2xl font-bold">{resolved.fee_credit_cents}¢</div>
             </div>
             <div>
-              <div className="text-xs uppercase text-slate-500">Règle</div>
+              <div className="text-xs uppercase text-slate-500">{t("Règle")}</div>
               <div className="text-sm font-semibold">{resolved.rule_type}</div>
               <div className="text-xs text-slate-500">{resolved.rule_label}</div>
             </div>
@@ -347,7 +350,7 @@ function CommissionEngineInner() {
           )}
           {loyaltyBenefits.length > 0 && (
             <div className="mt-4">
-              <h3 className="text-sm font-semibold">Avantages fidélité actifs</h3>
+              <h3 className="text-sm font-semibold">{t("Avantages fidélité actifs")}</h3>
               <ul className="mt-2 space-y-1 text-sm text-slate-700">
                 {loyaltyBenefits.map((b) => (
                   <li key={b.id}>
@@ -365,14 +368,14 @@ function CommissionEngineInner() {
 
       {canEdit && partnerUserId.trim() && (
         <section className={CARD}>
-          <h2 className="text-lg font-semibold">Créer une commission personnalisée</h2>
+          <h2 className="text-lg font-semibold">{t("Créer une commission personnalisée")}</h2>
           <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={(e) => void createOverride(e)}>
             <label className="text-sm">
-              Taux plateforme (%)
+              {t("Taux plateforme (%)")}
               <input className={INPUT} value={ratePct} onChange={(e) => setRatePct(e.target.value)} />
             </label>
             <label className="text-sm">
-              Frais fixes (cents)
+              {t("Frais fixes (cents)")}
               <input
                 className={INPUT}
                 value={fixedFee}
@@ -380,20 +383,20 @@ function CommissionEngineInner() {
               />
             </label>
             <label className="text-sm">
-              Statut
+              {t("Statut")}
               <select
                 className={INPUT}
                 value={overrideStatus}
                 onChange={(e) => setOverrideStatus(e.target.value)}
               >
-                <option value="draft">Brouillon</option>
-                <option value="scheduled">Programmé</option>
-                <option value="active">Actif</option>
-                <option value="suspended">Suspendu</option>
+                <option value="draft">{t("Brouillon")}</option>
+                <option value="scheduled">{t("Programmé")}</option>
+                <option value="active">{t("Actif")}</option>
+                <option value="suspended">{t("Suspendu")}</option>
               </select>
             </label>
             <label className="text-sm sm:col-span-2">
-              Motif (obligatoire)
+              {t("Motif (obligatoire)")}
               <input
                 className={INPUT}
                 value={reason}
@@ -405,7 +408,7 @@ function CommissionEngineInner() {
               type="submit"
               className="rounded-xl bg-violet-700 px-4 py-2 text-sm font-medium text-white sm:col-span-2"
             >
-              Enregistrer
+              {t("Enregistrer")}
             </button>
           </form>
         </section>
@@ -413,7 +416,7 @@ function CommissionEngineInner() {
 
       {audit.length > 0 && (
         <section className={CARD}>
-          <h2 className="text-lg font-semibold">Historique</h2>
+          <h2 className="text-lg font-semibold">{t("Historique")}</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {audit.map((row) => (
               <li key={String(row.id)} className="rounded-lg border border-slate-100 px-3 py-2">
@@ -433,13 +436,14 @@ function CommissionEngineInner() {
 }
 
 export default function CommissionEngineAdminPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="commissions.read">
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="text-2xl font-bold">Moteur de commissions</h1>
+        <h1 className="text-2xl font-bold">{t("Moteur de commissions")}</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Snapshots historiques par commande, contrats, overrides, et aperçu des
-          taux actuels (preview uniquement).
+          {t("Snapshots historiques par commande, contrats, overrides, et aperçu des taux actuels (preview uniquement).")}
         </p>
         <div className="mt-6">
           <CommissionEngineInner />

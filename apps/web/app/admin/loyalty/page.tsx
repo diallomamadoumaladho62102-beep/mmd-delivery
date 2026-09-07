@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageLoyalty } from "@/lib/adminAccess";
@@ -45,6 +47,8 @@ const INPUT_CLASS =
 const CARD_CLASS = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 
 function LoyaltyAdminInner() {
+  const { t } = useAdminT();
+
   const [canEdit, setCanEdit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -217,16 +221,16 @@ function LoyaltyAdminInner() {
   };
 
   if (loading) {
-    return <div className="p-6 text-slate-600">Chargement…</div>;
+    return <div className="p-6 text-slate-600">{t("Chargement…")}</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="mx-auto max-w-5xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Fidélité MMD</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t("Fidélité MMD")}</h1>
           <p className="text-sm text-slate-600">
-            Programme unifié Delivery + Taxi — points, Crédit MMD, campagnes et parrainage.
+            {t("Programme unifié Delivery + Taxi — points, Crédit MMD, campagnes et parrainage.")}
           </p>
         </div>
 
@@ -244,7 +248,7 @@ function LoyaltyAdminInner() {
         {settings && (
           <form className={CARD_CLASS} onSubmit={saveSettings}>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Configuration</h2>
+              <h2 className="text-lg font-semibold text-slate-900">{t("Configuration")}</h2>
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                 <input
                   type="checkbox"
@@ -252,7 +256,7 @@ function LoyaltyAdminInner() {
                   disabled={!canEdit}
                   onChange={(e) => updateSetting("enabled", e.target.checked)}
                 />
-                Programme actif
+                {t("Programme actif")}
               </label>
             </div>
 
@@ -280,7 +284,7 @@ function LoyaltyAdminInner() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Points pour conversion
+                {t("Points pour conversion")}
                 <input
                   type="number"
                   min={1}
@@ -291,7 +295,7 @@ function LoyaltyAdminInner() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Crédit MMD par conversion (cents)
+                {t("Crédit MMD par conversion (cents)")}
                 <input
                   type="number"
                   min={1}
@@ -304,7 +308,7 @@ function LoyaltyAdminInner() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Validité du Crédit MMD
+                {t("Validité du Crédit MMD")}
                 <select
                   className={INPUT_CLASS}
                   value={settings.credit_validity_months}
@@ -313,13 +317,13 @@ function LoyaltyAdminInner() {
                     updateSetting("credit_validity_months", Number(e.target.value))
                   }
                 >
-                  <option value={0}>Aucune expiration</option>
+                  <option value={0}>{t("Aucune expiration")}</option>
                   <option value={6}>6 mois</option>
                   <option value={12}>12 mois</option>
                 </select>
               </label>
               <label className="text-sm text-slate-700">
-                Points parrainage (client)
+                {t("Points parrainage (client)")}
                 <input
                   type="number"
                   min={0}
@@ -332,7 +336,7 @@ function LoyaltyAdminInner() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Points parrainage (chauffeur)
+                {t("Points parrainage (chauffeur)")}
                 <input
                   type="number"
                   min={0}
@@ -351,14 +355,14 @@ function LoyaltyAdminInner() {
                 type="submit"
                 className="mt-4 rounded-xl bg-mmd-accent-strong px-4 py-2 text-sm font-semibold text-white"
               >
-                Enregistrer la configuration
+                {t("Enregistrer la configuration")}
               </button>
             )}
           </form>
         )}
 
         <div className={CARD_CLASS}>
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Campagnes & bonus</h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">{t("Campagnes & bonus")}</h2>
 
           {canEdit && (
             <form
@@ -366,7 +370,7 @@ function LoyaltyAdminInner() {
               onSubmit={createCampaign}
             >
               <label className="text-sm text-slate-700 lg:col-span-2">
-                Nom
+                {t("Nom")}
                 <input
                   className={INPUT_CLASS}
                   value={newCampaign.name}
@@ -375,44 +379,44 @@ function LoyaltyAdminInner() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Audience
+                {t("Audience")}
                 <select
                   className={INPUT_CLASS}
                   value={newCampaign.audience}
                   onChange={(e) => setNewCampaign((c) => ({ ...c, audience: e.target.value }))}
                 >
-                  <option value="client">Client</option>
-                  <option value="driver">Chauffeur</option>
-                  <option value="both">Les deux</option>
+                  <option value="client">{t("Client")}</option>
+                  <option value="driver">{t("Chauffeur")}</option>
+                  <option value="both">{t("Les deux")}</option>
                 </select>
               </label>
               <label className="text-sm text-slate-700">
-                Service
+                {t("Service")}
                 <select
                   className={INPUT_CLASS}
                   value={newCampaign.vertical}
                   onChange={(e) => setNewCampaign((c) => ({ ...c, vertical: e.target.value }))}
                 >
-                  <option value="any">Tous</option>
-                  <option value="food">Food</option>
-                  <option value="taxi">Taxi</option>
-                  <option value="marketplace">Marketplace</option>
-                  <option value="delivery">Delivery</option>
+                  <option value="any">{t("Tous")}</option>
+                  <option value="food">{t("Food")}</option>
+                  <option value="taxi">{t("Taxi")}</option>
+                  <option value="marketplace">{t("Marketplace")}</option>
+                  <option value="delivery">{t("Delivery")}</option>
                 </select>
               </label>
               <label className="text-sm text-slate-700">
-                Type
+                {t("Type")}
                 <select
                   className={INPUT_CLASS}
                   value={newCampaign.bonus_type}
                   onChange={(e) => setNewCampaign((c) => ({ ...c, bonus_type: e.target.value }))}
                 >
-                  <option value="flat">Bonus fixe</option>
-                  <option value="multiplier">Multiplicateur</option>
+                  <option value="flat">{t("Bonus fixe")}</option>
+                  <option value="multiplier">{t("Multiplicateur")}</option>
                 </select>
               </label>
               <label className="text-sm text-slate-700">
-                Bonus points
+                {t("Bonus points")}
                 <input
                   type="number"
                   min={0}
@@ -424,7 +428,7 @@ function LoyaltyAdminInner() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Multiplicateur
+                {t("Multiplicateur")}
                 <input
                   type="number"
                   min={0}
@@ -435,7 +439,7 @@ function LoyaltyAdminInner() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Utilisations max (vide = illimité)
+                {t("Utilisations max (vide = illimité)")}
                 <input
                   type="number"
                   min={0}
@@ -449,7 +453,7 @@ function LoyaltyAdminInner() {
                   type="submit"
                   className="rounded-xl bg-mmd-accent-strong px-4 py-2 text-sm font-semibold text-white"
                 >
-                  Créer la campagne
+                  {t("Créer la campagne")}
                 </button>
               </div>
             </form>
@@ -459,12 +463,12 @@ function LoyaltyAdminInner() {
             <table className="min-w-full text-left text-sm">
               <thead className="text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-3 py-2">Nom</th>
-                  <th className="px-3 py-2">Audience</th>
-                  <th className="px-3 py-2">Service</th>
-                  <th className="px-3 py-2">Bonus</th>
-                  <th className="px-3 py-2">Usages</th>
-                  <th className="px-3 py-2">Statut</th>
+                  <th className="px-3 py-2">{t("Nom")}</th>
+                  <th className="px-3 py-2">{t("Audience")}</th>
+                  <th className="px-3 py-2">{t("Service")}</th>
+                  <th className="px-3 py-2">{t("Bonus")}</th>
+                  <th className="px-3 py-2">{t("Usages")}</th>
+                  <th className="px-3 py-2">{t("Statut")}</th>
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
@@ -472,7 +476,7 @@ function LoyaltyAdminInner() {
                 {campaigns.length === 0 && (
                   <tr>
                     <td className="px-3 py-4 text-slate-500" colSpan={7}>
-                      Aucune campagne.
+                      {t("Aucune campagne.")}
                     </td>
                   </tr>
                 )}
@@ -498,7 +502,7 @@ function LoyaltyAdminInner() {
                             : "rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500"
                         }
                       >
-                        {c.active ? "Active" : "Inactive"}
+                        {c.active ? t("Active") : t("Inactive")}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -508,7 +512,7 @@ function LoyaltyAdminInner() {
                           className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
                           onClick={() => toggleCampaign(c)}
                         >
-                          {c.active ? "Désactiver" : "Activer"}
+                          {c.active ? t("Désactiver") : t("Activer")}
                         </button>
                       )}
                     </td>
@@ -521,7 +525,7 @@ function LoyaltyAdminInner() {
 
         <div className={CARD_CLASS}>
           <h2 className="mb-4 text-lg font-semibold text-slate-900">
-            Ajustement compte utilisateur
+            {t("Ajustement compte utilisateur")}
           </h2>
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm text-slate-700">
@@ -538,26 +542,26 @@ function LoyaltyAdminInner() {
               className="rounded-xl border border-slate-300 px-4 py-2 text-sm"
               onClick={lookupUser}
             >
-              Consulter
+              {t("Consulter")}
             </button>
           </div>
 
           {adjustSummary && (
             <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div>
-                <div className="text-xs text-slate-500">Points</div>
+                <div className="text-xs text-slate-500">{t("Points")}</div>
                 <div className="text-lg font-semibold">{adjustSummary.points_balance}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Cumul</div>
+                <div className="text-xs text-slate-500">{t("Cumul")}</div>
                 <div className="text-lg font-semibold">{adjustSummary.lifetime_points}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Niveau</div>
+                <div className="text-xs text-slate-500">{t("Niveau")}</div>
                 <div className="text-lg font-semibold">{adjustSummary.tier_label}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Crédit MMD</div>
+                <div className="text-xs text-slate-500">{t("Crédit MMD")}</div>
                 <div className="text-lg font-semibold">
                   {(adjustSummary.credit_cents / 100).toFixed(2)} {adjustSummary.currency}
                 </div>
@@ -580,7 +584,7 @@ function LoyaltyAdminInner() {
                   className="mt-2 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white"
                   onClick={() => submitAdjust("points")}
                 >
-                  Appliquer points
+                  {t("Appliquer points")}
                 </button>
               </label>
               <label className="text-sm text-slate-700">
@@ -596,11 +600,11 @@ function LoyaltyAdminInner() {
                   className="mt-2 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white"
                   onClick={() => submitAdjust("credit")}
                 >
-                  Appliquer crédit
+                  {t("Appliquer crédit")}
                 </button>
               </label>
               <label className="text-sm text-slate-700">
-                Motif (audit)
+                {t("Motif (audit)")}
                 <input
                   className={INPUT_CLASS}
                   value={adjustReason}
@@ -617,6 +621,8 @@ function LoyaltyAdminInner() {
 }
 
 export default function AdminLoyaltyPage() {
+  const { t } = useAdminT();
+
   return (
     <AdminGate requiredPermission="loyalty.read">
       <LoyaltyAdminInner />

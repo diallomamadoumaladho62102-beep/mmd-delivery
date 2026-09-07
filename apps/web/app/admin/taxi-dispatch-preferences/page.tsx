@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiDrivers } from "@/lib/adminAccess";
@@ -53,6 +55,8 @@ function enabledPreferencesFromForm(form: FormData): Record<string, boolean> {
 }
 
 export default function AdminTaxiDispatchPreferencesPage() {
+  const { t } = useAdminT();
+
   const [rules, setRules] = useState<RuleRow[]>([]);
   const [stats, setStats] = useState<StatRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +154,7 @@ export default function AdminTaxiDispatchPreferencesPage() {
       <main className="space-y-6">
         <div className="mx-auto max-w-6xl space-y-8">
           <header>
-            <h1 className="text-2xl font-bold text-slate-900">Taxi Dispatch Preferences</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t("Taxi Dispatch Preferences")}</h1>
             <p className="mt-1 text-sm text-slate-600">
               Configuration sans code — priorité Ville → Pays → Global. Préférences client,
               délais d&apos;élargissement et statistiques.
@@ -158,32 +162,32 @@ export default function AdminTaxiDispatchPreferencesPage() {
           </header>
 
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : (
             <>
               {canEdit ? (
                 <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-800">Créer une règle</h2>
+                  <h2 className="text-lg font-semibold text-slate-800">{t("Créer une règle")}</h2>
                   <p className="mt-1 text-sm text-slate-600">
-                    Laissez pays et ville vides pour une règle globale (déjà présente par défaut).
+                    {t("Laissez pays et ville vides pour une règle globale (déjà présente par défaut).")}
                   </p>
                   <div className="mt-4 grid gap-3 md:grid-cols-3">
                     <label className="block text-sm">
-                      <span className="text-slate-600">Code pays (ex. FR, US)</span>
+                      <span className="text-slate-600">{t("Code pays (ex. FR, US)")}</span>
                       <input
                         value={newCountry}
                         onChange={(e) => setNewCountry(e.target.value.toUpperCase())}
                         className="mt-1 w-full rounded border border-slate-300 px-3 py-2 uppercase"
-                        placeholder="FR"
+                        placeholder={t("FR")}
                       />
                     </label>
                     <label className="block text-sm md:col-span-2">
-                      <span className="text-slate-600">Ville (optionnel — règle ville)</span>
+                      <span className="text-slate-600">{t("Ville (optionnel — règle ville)")}</span>
                       <input
                         value={newCity}
                         onChange={(e) => setNewCity(e.target.value)}
                         className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
-                        placeholder="Paris"
+                        placeholder={t("Paris")}
                       />
                     </label>
                   </div>
@@ -194,7 +198,7 @@ export default function AdminTaxiDispatchPreferencesPage() {
                       onClick={() => void createRule("country")}
                       className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                     >
-                      Créer règle pays
+                      {t("Créer règle pays")}
                     </button>
                     <button
                       type="button"
@@ -202,16 +206,16 @@ export default function AdminTaxiDispatchPreferencesPage() {
                       onClick={() => void createRule("city")}
                       className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 disabled:opacity-50"
                     >
-                      Créer règle ville
+                      {t("Créer règle ville")}
                     </button>
                   </div>
                 </section>
               ) : null}
 
               <section className="space-y-4">
-                <h2 className="text-lg font-semibold text-slate-800">Règles dispatch</h2>
+                <h2 className="text-lg font-semibold text-slate-800">{t("Règles dispatch")}</h2>
                 {sortedRules.length === 0 ? (
-                  <p className="text-sm text-slate-500">Aucune règle.</p>
+                  <p className="text-sm text-slate-500">{t("Aucune règle.")}</p>
                 ) : (
                   sortedRules.map((rule) => (
                     <form
@@ -230,13 +234,13 @@ export default function AdminTaxiDispatchPreferencesPage() {
                             defaultChecked={rule.is_active}
                             disabled={!canEdit}
                           />
-                          Active
+                          {t("Active")}
                         </label>
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2">
                         <label className="block text-sm">
-                          <span className="text-slate-600">Délai élargissement (secondes)</span>
+                          <span className="text-slate-600">{t("Délai élargissement (secondes)")}</span>
                           <input
                             name="widen_delay_seconds"
                             type="number"
@@ -248,7 +252,7 @@ export default function AdminTaxiDispatchPreferencesPage() {
                         </label>
                         <label className="block text-sm md:col-span-2">
                           <span className="text-slate-600">
-                            Ordre suppression (clés séparées par virgule)
+                            {t("Ordre suppression (clés séparées par virgule)")}
                           </span>
                           <textarea
                             name="preference_drop_order"
@@ -261,7 +265,7 @@ export default function AdminTaxiDispatchPreferencesPage() {
                       </div>
 
                       <div className="mt-4">
-                        <p className="text-sm font-medium text-slate-700">Préférences disponibles</p>
+                        <p className="text-sm font-medium text-slate-700">{t("Préférences disponibles")}</p>
                         <div className="mt-2 grid gap-2 md:grid-cols-2">
                           {TAXI_CLIENT_PREFERENCE_KEYS.map((key: TaxiClientPreferenceKey) => (
                             <label
@@ -289,7 +293,7 @@ export default function AdminTaxiDispatchPreferencesPage() {
                           disabled={savingId === rule.id}
                           className="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                         >
-                          {savingId === rule.id ? "Enregistrement…" : "Enregistrer"}
+                          {savingId === rule.id ? t("Enregistrement…") : t("Enregistrer")}
                         </button>
                       ) : null}
                     </form>
@@ -298,22 +302,22 @@ export default function AdminTaxiDispatchPreferencesPage() {
               </section>
 
               <section className="space-y-3">
-                <h2 className="text-lg font-semibold text-slate-800">Statistiques d&apos;utilisation</h2>
+                <h2 className="text-lg font-semibold text-slate-800">{t("Statistiques d&apos;utilisation")}</h2>
                 <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                   <table className="min-w-full text-left text-sm">
                     <thead className="border-b bg-slate-50 text-slate-600">
                       <tr>
-                        <th className="px-3 py-2">Date</th>
-                        <th className="px-3 py-2">Pays</th>
-                        <th className="px-3 py-2">Ville</th>
-                        <th className="px-3 py-2">Courses</th>
-                        <th className="px-3 py-2">Électrique</th>
-                        <th className="px-3 py-2">Hybride</th>
-                        <th className="px-3 py-2">Siège enfant</th>
-                        <th className="px-3 py-2">Non-fumeur</th>
-                        <th className="px-3 py-2">Calme</th>
-                        <th className="px-3 py-2">Musique</th>
-                        <th className="px-3 py-2">Discussion</th>
+                        <th className="px-3 py-2">{t("Date")}</th>
+                        <th className="px-3 py-2">{t("Pays")}</th>
+                        <th className="px-3 py-2">{t("Ville")}</th>
+                        <th className="px-3 py-2">{t("Courses")}</th>
+                        <th className="px-3 py-2">{t("Électrique")}</th>
+                        <th className="px-3 py-2">{t("Hybride")}</th>
+                        <th className="px-3 py-2">{t("Siège enfant")}</th>
+                        <th className="px-3 py-2">{t("Non-fumeur")}</th>
+                        <th className="px-3 py-2">{t("Calme")}</th>
+                        <th className="px-3 py-2">{t("Musique")}</th>
+                        <th className="px-3 py-2">{t("Discussion")}</th>
                       </tr>
                     </thead>
                     <tbody>

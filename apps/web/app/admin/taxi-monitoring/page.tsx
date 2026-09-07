@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import {
@@ -51,6 +53,8 @@ function scoreBadge(score: unknown) {
 }
 
 export default function AdminTaxiMonitoringPage() {
+  const { t } = useAdminT();
+
   const [data, setData] = useState<MonitoringPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [canResolve, setCanResolve] = useState(false);
@@ -103,21 +107,21 @@ export default function AdminTaxiMonitoringPage() {
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Taxi Monitoring</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t("Taxi Monitoring")}</h1>
               <p className="mt-1 text-sm text-slate-600">
-                Santé système, KPI business, alertes opérationnelles.
+                {t("Santé système, KPI business, alertes opérationnelles.")}
               </p>
             </div>
             <a
               href="/admin/taxi-launch"
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
             >
-              Launch Control →
+              {t("Launch Control →")}
             </a>
           </header>
 
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : (
             <>
               <section className="grid gap-4 md:grid-cols-4">
@@ -154,52 +158,52 @@ export default function AdminTaxiMonitoringPage() {
 
               <section className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="font-semibold text-slate-900">Revenue</h2>
+                  <h2 className="font-semibold text-slate-900">{t("Revenue")}</h2>
                   <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <dt className="text-slate-500">Today</dt>
+                      <dt className="text-slate-500">{t("Today")}</dt>
                       <dd className="font-medium">{fmtMoney(health?.revenue_today_cents)}</dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">Week</dt>
+                      <dt className="text-slate-500">{t("Week")}</dt>
                       <dd className="font-medium">{fmtMoney(health?.revenue_week_cents)}</dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">Month</dt>
+                      <dt className="text-slate-500">{t("Month")}</dt>
                       <dd className="font-medium">{fmtMoney(health?.revenue_month_cents)}</dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">Year</dt>
+                      <dt className="text-slate-500">{t("Year")}</dt>
                       <dd className="font-medium">{fmtMoney(health?.revenue_year_cents)}</dd>
                     </div>
                   </dl>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="font-semibold text-slate-900">Business KPI (30d)</h2>
+                  <h2 className="font-semibold text-slate-900">{t("Business KPI (30d)")}</h2>
                   <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <dt className="text-slate-500">Premium drivers</dt>
+                      <dt className="text-slate-500">{t("Premium drivers")}</dt>
                       <dd>{String(health?.drivers_premium ?? 0)}</dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">XL drivers</dt>
+                      <dt className="text-slate-500">{t("XL drivers")}</dt>
                       <dd>{String(health?.drivers_xl ?? 0)}</dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">Shared rides</dt>
+                      <dt className="text-slate-500">{t("Shared rides")}</dt>
                       <dd>{String(health?.shared_rides_count_30d ?? 0)}</dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">Shared discount</dt>
+                      <dt className="text-slate-500">{t("Shared discount")}</dt>
                       <dd>{fmtMoney(health?.shared_discount_cents_30d)}</dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">Loyalty earned</dt>
+                      <dt className="text-slate-500">{t("Loyalty earned")}</dt>
                       <dd>{String(health?.loyalty_points_earned_30d ?? 0)} pts</dd>
                     </div>
                     <div>
-                      <dt className="text-slate-500">Promo redemptions</dt>
+                      <dt className="text-slate-500">{t("Promo redemptions")}</dt>
                       <dd>{String(health?.promo_redemptions_30d ?? 0)}</dd>
                     </div>
                   </dl>
@@ -207,17 +211,17 @@ export default function AdminTaxiMonitoringPage() {
               </section>
 
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="font-semibold text-slate-900">Market readiness</h2>
+                <h2 className="font-semibold text-slate-900">{t("Market readiness")}</h2>
                 <div className="mt-4 overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="border-b text-left text-slate-500">
-                        <th className="py-2 pr-4">Pays</th>
-                        <th className="py-2 pr-4">Score</th>
-                        <th className="py-2 pr-4">Dispatch</th>
-                        <th className="py-2 pr-4">Payment</th>
-                        <th className="py-2 pr-4">Payout</th>
-                        <th className="py-2 pr-4">Drivers</th>
+                        <th className="py-2 pr-4">{t("Pays")}</th>
+                        <th className="py-2 pr-4">{t("Score")}</th>
+                        <th className="py-2 pr-4">{t("Dispatch")}</th>
+                        <th className="py-2 pr-4">{t("Payment")}</th>
+                        <th className="py-2 pr-4">{t("Payout")}</th>
+                        <th className="py-2 pr-4">{t("Drivers")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -246,7 +250,7 @@ export default function AdminTaxiMonitoringPage() {
                   </h2>
                   <ul className="mt-3 space-y-2">
                     {(alerts[kind] ?? []).length === 0 ? (
-                      <li className="text-sm text-slate-500">Aucune alerte ouverte</li>
+                      <li className="text-sm text-slate-500">{t("Aucune alerte ouverte")}</li>
                     ) : (
                       (alerts[kind] ?? []).map((alertRow) => (
                         <li
@@ -267,7 +271,7 @@ export default function AdminTaxiMonitoringPage() {
                               onClick={() => void resolveAlert(kind, alertRow)}
                               className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
                             >
-                              Resolve
+                              {t("Resolve")}
                             </button>
                           ) : null}
                         </li>

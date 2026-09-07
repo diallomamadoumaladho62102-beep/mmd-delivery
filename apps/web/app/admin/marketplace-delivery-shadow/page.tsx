@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -32,6 +34,8 @@ function formatMoney(cents: number | null | undefined, currency = "USD") {
 }
 
 export default function AdminMarketplaceDeliveryShadowPage() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<ShadowRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [canView, setCanView] = useState(false);
@@ -54,7 +58,7 @@ export default function AdminMarketplaceDeliveryShadowPage() {
     <AdminGate requiredPermission="users.sellers.read">
       <div style={{ padding: 24, color: "#E2E8F0" }}>
         <h1 style={{ fontSize: 28, marginBottom: 8 }}>
-          Marketplace Delivery Shadow (simulation)
+          {t("Marketplace Delivery Shadow (simulation)")}
         </h1>
         <div
           style={{
@@ -68,7 +72,7 @@ export default function AdminMarketplaceDeliveryShadowPage() {
             lineHeight: 1.45,
           }}
         >
-          <strong>Ce n’est pas le flux Stripe facturé.</strong> Les montants
+          <strong>{t("Ce n’est pas le flux Stripe facturé.")}</strong> Les montants
           « shadow » sont des simulations de livraison / dispatch readiness
           uniquement — pas le total client encaissé, pas un PaymentIntent, pas un
           payout. Pour les montants réels, utilisez Marketplace Orders /
@@ -80,9 +84,9 @@ export default function AdminMarketplaceDeliveryShadowPage() {
         </p>
 
         {!canView ? (
-          <p>Read-only access required.</p>
+          <p>{t("Read-only access required.")}</p>
         ) : loading ? (
-          <p>Loading…</p>
+          <p>{t("Loading…")}</p>
         ) : rows.length === 0 ? (
           <p>No marketplace delivery shadow rows yet. Enable MARKETPLACE_DELIVERY_SHADOW_ENABLED in staging and save a draft with locations.</p>
         ) : (
@@ -99,7 +103,7 @@ export default function AdminMarketplaceDeliveryShadowPage() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                   <div>
-                    <strong>{row.seller?.business_name ?? "Seller"}</strong>
+                    <strong>{row.seller?.business_name ?? t("Seller")}</strong>
                     <div style={{ color: "#94A3B8", fontSize: 13 }}>
                       {row.seller_order_id} · {row.delivery_status_shadow ?? "—"}
                     </div>
@@ -113,11 +117,11 @@ export default function AdminMarketplaceDeliveryShadowPage() {
 
                 <div style={{ marginTop: 12, display: "grid", gap: 6, fontSize: 13 }}>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Pickup: </span>
+                    <span style={{ color: "#94A3B8" }}>{t("Pickup:")} </span>
                     {row.pickup?.formatted_address ?? row.seller_pickup_address ?? row.pickup_location_id ?? "—"}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Dropoff: </span>
+                    <span style={{ color: "#94A3B8" }}>{t("Dropoff:")} </span>
                     {row.dropoff?.formatted_address ?? row.dropoff_location_id ?? "—"}
                   </div>
                   <div>
@@ -139,7 +143,7 @@ export default function AdminMarketplaceDeliveryShadowPage() {
                     {formatMoney(row.platform_margin_shadow_cents)}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Dispatch readiness: </span>
+                    <span style={{ color: "#94A3B8" }}>{t("Dispatch readiness:")} </span>
                     {row.dispatch_readiness ?? "—"}
                   </div>
                   <div style={{ color: "#64748B" }}>

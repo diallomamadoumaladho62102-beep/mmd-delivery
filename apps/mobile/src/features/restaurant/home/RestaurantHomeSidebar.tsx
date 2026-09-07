@@ -148,7 +148,7 @@ export function RestaurantHomeSidebar({
           <Text style={styles.drawerTitle} numberOfLines={1}>
             {t("restaurant.home.menu", "Menu")}
           </Text>
-          <Pressable onPress={onClose} style={styles.closeBtn} accessibilityLabel="Close">
+          <Pressable onPress={onClose} style={styles.closeBtn} accessibilityLabel={t("common.a11y.close", "Close")}>
             <Ionicons name="close" size={22} color={RH.text} />
           </Pressable>
         </View>
@@ -196,7 +196,7 @@ export function RestaurantHomeSidebar({
           <Pressable
             style={styles.backdrop}
             onPress={onClose}
-            accessibilityLabel="Close menu"
+            accessibilityLabel={t("common.a11y.closeMenu", "Close menu")}
           />
           <View style={styles.drawerWrap}>{body}</View>
         </View>

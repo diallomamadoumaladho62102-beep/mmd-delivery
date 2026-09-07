@@ -125,17 +125,21 @@ function itemPriceLabel(item: OrderItem): string | null {
   return `$${Number(raw).toFixed(2)}`;
 }
 
-function statusLabel(status: OrderStatus) {
-  const labels: Record<OrderStatus, string> = {
-    pending: "Pending",
-    accepted: "Accepted",
-    prepared: "Prepared",
-    ready: "Ready",
-    dispatched: "Dispatched",
-    delivered: "Delivered",
-    canceled: "Canceled",
+function statusLabel(
+  status: OrderStatus,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+) {
+  const keys: Record<OrderStatus, [string, string]> = {
+    pending: ["restaurant.orderDetails.status.pending", "Pending"],
+    accepted: ["restaurant.orderDetails.status.accepted", "Accepted"],
+    prepared: ["restaurant.orderDetails.status.prepared", "Prepared"],
+    ready: ["restaurant.orderDetails.status.ready", "Ready"],
+    dispatched: ["restaurant.orderDetails.status.dispatched", "Dispatched"],
+    delivered: ["restaurant.orderDetails.status.delivered", "Delivered"],
+    canceled: ["restaurant.orderDetails.status.canceled", "Canceled"],
   };
-  return labels[status];
+  const [key, fallback] = keys[status];
+  return t(key, { defaultValue: fallback });
 }
 
 function statusPillColor(status: OrderStatus) {
@@ -393,14 +397,23 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
   const confirmCancel = useCallback(() => {
     if (!order) return;
     Alert.alert(
-      order.status === "pending" ? "Refuse order" : "Cancel order",
-      "Confirm this action?",
+      order.status === "pending"
+        ? t("restaurant.orderDetails.confirm.refuseTitle", "Refuse order")
+        : t("restaurant.orderDetails.confirm.cancelTitle", "Cancel order"),
+      t("restaurant.orderDetails.confirm.body", "Confirm this action?"),
       [
-        { text: "No", style: "cancel" },
-        { text: "Confirm", style: "destructive", onPress: () => void cancelOrder() },
-      ]
+        {
+          text: t("restaurant.orderDetails.confirm.no", "No"),
+          style: "cancel",
+        },
+        {
+          text: t("restaurant.orderDetails.confirm.confirm", "Confirm"),
+          style: "destructive",
+          onPress: () => void cancelOrder(),
+        },
+      ],
     );
-  }, [cancelOrder, order]);
+  }, [cancelOrder, order, t]);
 
   const handlePrint = useCallback(
     async (source: "manual" | "reprint") => {
@@ -481,7 +494,12 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
   const clientId = order.client_user_id ?? order.client_id;
   const clientName =
     client?.full_name?.trim() ||
-    (clientId ? `Client ${clientId.slice(0, 8)}` : "Customer");
+    (clientId
+      ? t("restaurant.orderDetails.clientId", {
+          defaultValue: "Client {{id}}",
+          id: clientId.slice(0, 8),
+        })
+      : t("restaurant.orderDetails.customer", "Customer"));
   const canPrint = ["accepted", "prepared", "ready", "dispatched"].includes(
     order.status
   );
@@ -497,7 +515,13 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
       />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.statusRow}>
-          <Text style={styles.orderTitle}>📋 Order #{shortId}</Text>
+          <Text style={styles.orderTitle}>
+            📋{" "}
+            {t("restaurant.orderDetails.orderLabel", {
+              defaultValue: "Order #{{id}}",
+              id: shortId,
+            })}
+          </Text>
           <View style={styles.statusRule} />
           <View
             style={[
@@ -505,12 +529,16 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
               { backgroundColor: statusPillColor(order.status) },
             ]}
           >
-            <Text style={styles.statusPillText}>{statusLabel(order.status)}</Text>
+            <Text style={styles.statusPillText}>
+              {statusLabel(order.status, t)}
+            </Text>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>👤 Customer</Text>
+          <Text style={styles.cardLabel}>
+            👤 {t("restaurant.orderDetails.customer", "Customer")}
+          </Text>
           <Text style={styles.cardValue}>{clientName}</Text>
         </View>
 
@@ -522,7 +550,9 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>🛒 Items</Text>
+          <Text style={styles.sectionTitle}>
+            🛒 {t("restaurant.orderDetails.items", "Items")}
+          </Text>
           {items.length ? (
             items.map((item, index) => {
               const price = itemPriceLabel(item);
@@ -547,11 +577,15 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
 
         {kitchenNotes.length || order.leave_at_door ? (
           <View style={styles.card}>
-            <Text style={styles.cardLabel}>📝 Notes</Text>
+            <Text style={styles.cardLabel}>
+              📝 {t("restaurant.orderDetails.notes", "Notes")}
+            </Text>
             <Text style={styles.notesBody}>
               {[
                 ...kitchenNotes,
-                order.leave_at_door ? "Leave at door" : null,
+                order.leave_at_door
+                  ? t("restaurant.orderDetails.leaveAtDoor", "Leave at door")
+                  : null,
               ]
                 .filter(Boolean)
                 .join(" • ")}
@@ -562,7 +596,7 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
         <View style={styles.workflow}>
           {order.status === "pending" ? (
             <WorkflowButton
-              label="Accept"
+              label={t("restaurant.orders.accept", "Accept")}
               tone="green"
               onPress={() => void updateStatus("accepted")}
               disabled={updating}
@@ -570,7 +604,7 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
           ) : null}
           {order.status === "accepted" || order.status === "prepared" ? (
             <WorkflowButton
-              label="Prepared"
+              label={t("restaurant.orders.prepared", "Prepared")}
               tone="yellow"
               onPress={() => void updateStatus("prepared")}
               disabled={updating || order.status !== "accepted"}
@@ -578,7 +612,7 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
           ) : null}
           {order.status === "accepted" || order.status === "prepared" ? (
             <WorkflowButton
-              label="Ready"
+              label={t("restaurant.orders.ready", "Ready")}
               tone="green"
               onPress={() => void updateStatus("ready")}
               disabled={updating || order.status !== "prepared"}
@@ -586,7 +620,14 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
           ) : null}
           {canPrint ? (
             <WorkflowButton
-              label={printing ? "Printing…" : "Print"}
+              label={
+                printing
+                  ? t(
+                      "restaurant.orderDetails.actions.printing",
+                      "Printing…",
+                    )
+                  : t("restaurant.orderDetails.actions.print", "Print")
+              }
               tone="ghost"
               onPress={() => void handlePrint("manual")}
               disabled={printing || updating}
@@ -594,7 +635,11 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
           ) : null}
           {canRestaurantCancel(order.status) ? (
             <WorkflowButton
-              label={order.status === "pending" ? "Refuse" : "Cancel"}
+              label={
+                order.status === "pending"
+                  ? t("restaurant.orderDetails.actions.refuse", "Refuse")
+                  : t("restaurant.orderDetails.actions.cancel", "Cancel")
+              }
               tone="danger"
               onPress={confirmCancel}
               disabled={updating}

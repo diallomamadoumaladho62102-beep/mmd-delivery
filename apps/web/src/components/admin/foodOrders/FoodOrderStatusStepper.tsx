@@ -1,37 +1,41 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import {
   FOOD_ORDER_STATUS_STEPS,
   statusStepperIndex,
 } from "@/lib/adminFoodOrderDisplay";
 
-const STEP_LABELS: Record<(typeof FOOD_ORDER_STATUS_STEPS)[number], string> = {
-  pending: "Pending",
-  accepted: "Accepted",
-  prepared: "Prep",
-  ready: "Ready",
-  dispatched: "En route",
-  delivered: "Done",
-};
 
 export default function FoodOrderStatusStepper({
   status,
 }: {
   status: string | null | undefined;
 }) {
+  const { t } = useAdminT();
+  const stepLabels: Record<(typeof FOOD_ORDER_STATUS_STEPS)[number], string> = {
+    pending: t("Pending"),
+    accepted: t("Accepted"),
+    prepared: t("Prep"),
+    ready: t("Ready"),
+    dispatched: t("En route"),
+    delivered: t("Done"),
+  };
+
   const current = statusStepperIndex(status);
   const canceled = current < 0;
 
   if (canceled) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] font-medium text-red-700">
-        Order cancelled — pipeline stopped
+        {t("Order cancelled — pipeline stopped")}
       </div>
     );
   }
 
   return (
-    <ol className="flex items-center gap-1" aria-label="Order status progress">
+    <ol className="flex items-center gap-1" aria-label={t("Order status progress")}>
       {FOOD_ORDER_STATUS_STEPS.map((step, index) => {
         const done = index <= current;
         const active = index === current;
@@ -51,7 +55,7 @@ export default function FoodOrderStatusStepper({
                   done ? "text-slate-700" : "text-slate-400",
                 ].join(" ")}
               >
-                {STEP_LABELS[step]}
+                {stepLabels[step]}
               </span>
             </div>
             {index < FOOD_ORDER_STATUS_STEPS.length - 1 ? (

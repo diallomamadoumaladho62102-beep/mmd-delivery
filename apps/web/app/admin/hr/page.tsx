@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
@@ -59,6 +61,8 @@ type Person = {
 };
 
 export default function AdminHrDashboardPage() {
+  const { t } = useAdminT();
+
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [hr, setHr] = useState<HrPayload | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
@@ -93,9 +97,9 @@ export default function AdminHrDashboardPage() {
     return (
       <AdminGate requiredPermission="users.admins.manage">
         <div className="cc-card mx-auto max-w-lg p-6">
-          <h1 className="text-lg font-semibold text-slate-900">Founder only</h1>
+          <h1 className="text-lg font-semibold text-slate-900">{t("Founder only")}</h1>
           <p className="mt-2 text-sm text-[var(--cc-muted)]">
-            People Ops is reserved for the Founder and Super Admin.
+            {t("People Ops is reserved for the Founder and Super Admin.")}
           </p>
         </div>
       </AdminGate>
@@ -112,20 +116,20 @@ export default function AdminHrDashboardPage() {
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cc-ai)]">
-              Founder
+              {t("Founder")}
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-              People Ops
+              {t("People Ops")}
             </h1>
             <p className="mt-1 text-sm text-[var(--cc-muted)]">
-              Live performance from tasks + admin audit logs
+              {t("Live performance from tasks + admin audit logs")}
             </p>
           </div>
           <Link
             href="/admin/staff"
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
           >
-            Manage staff
+            {t("Manage staff")}
           </Link>
         </header>
 
@@ -137,7 +141,7 @@ export default function AdminHrDashboardPage() {
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Administrators", hr?.totals.admins],
+            [t("Administrators"), hr?.totals.admins],
             ["Online now", hr?.totals.online],
             ["Overdue tasks", hr?.totals.overdue_tasks],
             ["Activity 7d", hr?.totals.activity_7d],
@@ -150,15 +154,15 @@ export default function AdminHrDashboardPage() {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-3">
-          <AggCard title="By department" rows={hr?.by_department ?? []} />
-          <AggCard title="By country" rows={hr?.by_country ?? []} />
-          <AggCard title="By region" rows={hr?.by_region ?? []} />
+          <AggCard title={t("By department")} rows={hr?.by_department ?? []} />
+          <AggCard title={t("By country")} rows={hr?.by_country ?? []} />
+          <AggCard title={t("By region")} rows={hr?.by_region ?? []} />
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="cc-card p-5">
             <h2 className="text-sm font-semibold text-slate-900">
-              Top performers
+              {t("Top performers")}
             </h2>
             <ul className="mt-3 divide-y divide-[var(--cc-border)]">
               {(hr?.top_performers ?? []).map((row) => (
@@ -178,7 +182,7 @@ export default function AdminHrDashboardPage() {
           </div>
           <div className="cc-card p-5">
             <h2 className="text-sm font-semibold text-slate-900">
-              Needs attention
+              {t("Needs attention")}
             </h2>
             <ul className="mt-3 divide-y divide-[var(--cc-border)]">
               {(hr?.needs_attention ?? []).map((row) => (
@@ -202,12 +206,12 @@ export default function AdminHrDashboardPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-[var(--cc-border)] bg-slate-50 text-xs uppercase text-[var(--cc-muted)]">
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Country</th>
-                <th className="px-4 py-3">Presence</th>
-                <th className="px-4 py-3">Workload</th>
-                <th className="px-4 py-3">Success</th>
+                <th className="px-4 py-3">{t("Name")}</th>
+                <th className="px-4 py-3">{t("Role")}</th>
+                <th className="px-4 py-3">{t("Country")}</th>
+                <th className="px-4 py-3">{t("Presence")}</th>
+                <th className="px-4 py-3">{t("Workload")}</th>
+                <th className="px-4 py-3">{t("Success")}</th>
               </tr>
             </thead>
             <tbody>
@@ -249,6 +253,8 @@ function AggCard({
   title: string;
   rows: Array<{ key: string; people: number; activity_7d?: number }>;
 }) {
+  const { t } = useAdminT();
+
   return (
     <div className="cc-card p-5">
       <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
@@ -263,7 +269,7 @@ function AggCard({
           </li>
         ))}
         {!rows.length ? (
-          <li className="text-[var(--cc-muted)]">No data yet</li>
+          <li className="text-[var(--cc-muted)]">{t("No data yet")}</li>
         ) : null}
       </ul>
     </div>

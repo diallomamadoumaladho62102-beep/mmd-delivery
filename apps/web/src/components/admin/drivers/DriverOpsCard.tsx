@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { memo, useState } from "react";
 import Image from "next/image";
 import {
@@ -75,6 +77,8 @@ function DriverOpsCard({
   onDeleteDocument: (docId: string) => void;
   updatingDocumentId: string | null;
 }) {
+  const { t } = useAdminT();
+
   const name = partyDisplayName(driver.full_name, driver.email);
   const status = driverStatusBadge(driver.status);
   const online = onlineBadge(driver.is_online);
@@ -147,7 +151,7 @@ function DriverOpsCard({
 
       <div className="mt-3">
         <div className="mb-1 flex items-center justify-between text-xs text-slate-600">
-          <span>Completeness</span>
+          <span>{t("Completeness")}</span>
           <span className="font-semibold text-slate-900">{driver.completeness_percent}%</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-slate-100">
@@ -180,21 +184,21 @@ function DriverOpsCard({
                 />
               ) : (
                 <div className="flex h-full min-h-[7.5rem] items-center justify-center px-3 text-center text-[11px] text-slate-400">
-                  Vehicle
+                  {t("Vehicle")}
                 </div>
               )}
             </div>
             <div className="space-y-2 p-3">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Vehicle
+                {t("Vehicle")}
               </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                 {(
                   [
-                    ["Type", vehicleType],
+                    [t("Type"), vehicleType],
                     ["Make", vehicleMake],
                     ["Model", vehicleModel],
-                    ["Year", vehicleYear != null ? String(vehicleYear) : null],
+                    [t("Year"), vehicleYear != null ? String(vehicleYear) : null],
                     ["Color", vehicleColor],
                     ["Plate", vehiclePlate],
                   ] as const
@@ -252,13 +256,13 @@ function DriverOpsCard({
         {canManage ? (
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-600">
-              Review note
+              {t("Review note")}
             </label>
             <input
               className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm"
               value={noteDraft}
               onChange={(e) => onNoteChange(e.target.value)}
-              placeholder="Optional note for approve / reject…"
+              placeholder={t("Optional note for approve / reject…")}
             />
           </div>
         ) : null}
@@ -284,15 +288,15 @@ function DriverOpsCard({
         <div className="mt-3 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
           {profileDraft && canManage ? (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-slate-900">Edit profile</h3>
+              <h3 className="text-sm font-semibold text-slate-900">{t("Edit profile")}</h3>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {(
                   [
-                    ["full_name", "Full name"],
-                    ["phone", "Phone"],
+                    ["full_name", t("Full name")],
+                    ["phone", t("Phone")],
                     ["emergency_phone", "Emergency phone"],
-                    ["city", "City"],
-                    ["state", "State"],
+                    ["city", t("City")],
+                    ["state", t("State")],
                     ["plate_number", "Plate"],
                   ] as const
                 ).map(([key, label]) => (
@@ -312,15 +316,15 @@ function DriverOpsCard({
                 onClick={onSaveProfile}
                 className="inline-flex h-11 items-center rounded-xl bg-slate-900 px-3 text-sm font-medium text-white disabled:opacity-50"
               >
-                Save profile
+                {t("Save profile")}
               </button>
             </div>
           ) : null}
 
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-900">Documents</h3>
+            <h3 className="text-sm font-semibold text-slate-900">{t("Documents")}</h3>
             {driver.documents.length === 0 ? (
-              <p className="text-xs text-slate-500">No documents uploaded.</p>
+              <p className="text-xs text-slate-500">{t("No documents uploaded.")}</p>
             ) : (
               driver.documents.map((doc) => (
                 <div
@@ -349,7 +353,7 @@ function DriverOpsCard({
                       rel="noreferrer"
                       className="mt-1 inline-block text-blue-600 underline"
                     >
-                      Open file
+                      {t("Open file")}
                     </a>
                   ) : null}
                   {canManage ? (
@@ -373,7 +377,7 @@ function DriverOpsCard({
                         className="h-10 min-w-[10rem] flex-1 rounded-lg border border-slate-300 px-2"
                         value={documentNoteDrafts[doc.id] ?? doc.review_notes ?? ""}
                         onChange={(e) => onDocumentNoteChange(doc.id, e.target.value)}
-                        placeholder="Note"
+                        placeholder={t("Note")}
                       />
                       <button
                         type="button"
@@ -381,7 +385,7 @@ function DriverOpsCard({
                         onClick={() => onSaveDocument(doc.id)}
                         className="h-10 rounded-lg border border-slate-300 px-2 font-medium"
                       >
-                        Save
+                        {t("Save")}
                       </button>
                       <button
                         type="button"
@@ -389,7 +393,7 @@ function DriverOpsCard({
                         onClick={() => onDeleteDocument(doc.id)}
                         className="h-10 rounded-lg border border-red-300 px-2 font-medium text-red-700"
                       >
-                        Delete
+                        {t("Delete")}
                       </button>
                     </div>
                   ) : null}

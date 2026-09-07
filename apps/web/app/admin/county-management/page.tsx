@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManagePlatformLaunch } from "@/lib/adminAccess";
@@ -48,15 +50,17 @@ type CountyDraft = {
 
 type ServiceToggleKey = Exclude<keyof CountyDraft, "platform_enabled" | "maintenance_mode">;
 
-const SERVICE_TOGGLE_LABELS: Record<ServiceToggleKey, string> = {
-  taxi_enabled: "Taxi",
-  delivery_enabled: "Delivery",
-  restaurant_enabled: "Food",
-  marketplace_enabled: "Marketplace",
-  seller_enabled: "Seller",
-  checkout_enabled: "Paiement",
-  payout_enabled: "Payout",
-};
+function getServiceToggleLabels(t: (source: string) => string): Record<ServiceToggleKey, string> {
+  return {
+    taxi_enabled: t("Taxi"),
+    delivery_enabled: t("Delivery"),
+    restaurant_enabled: t("Food"),
+    marketplace_enabled: t("Marketplace"),
+    seller_enabled: t("Seller"),
+    checkout_enabled: t("Paiement"),
+    payout_enabled: t("Payout"),
+  };
+}
 
 function countyKey(row: Pick<CountyRow, "country_code" | "region_code" | "county_code">) {
   return `${row.country_code}/${row.region_code}/${row.county_code}`;
@@ -76,29 +80,35 @@ function rowToDraft(row: CountyRow): CountyDraft {
   };
 }
 
-function statusBadge(row: Pick<CountyRow, "platform_enabled" | "launch_status" | "maintenance_mode">) {
+function statusBadge(
+  row: Pick<CountyRow, "platform_enabled" | "launch_status" | "maintenance_mode">,
+  t: (english: string) => string,
+) {
   if (row.maintenance_mode || row.launch_status === "maintenance") {
     return (
       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-        Maintenance
+        {t("Maintenance")}
       </span>
     );
   }
   if (row.platform_enabled && row.launch_status === "enabled") {
     return (
       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-        Live
+        {t("Live")}
       </span>
     );
   }
   return (
     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-      Off
+      {t("Off")}
     </span>
   );
 }
 
 export default function AdminCountyManagementPage() {
+  const { t } = useAdminT();
+  const serviceToggleLabels = getServiceToggleLabels(t);
+
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [counties, setCounties] = useState<CountyRow[]>([]);
   const [drafts, setDrafts] = useState<Record<string, CountyDraft>>({});
@@ -246,7 +256,7 @@ export default function AdminCountyManagementPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">County Management</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t("County Management")}</h1>
               <p className="mt-1 text-sm text-slate-600">
                 Activation par county sous chaque State existant — Taxi, Delivery, Food,
                 Marketplace. Activez d&apos;abord le State, puis le County, puis les services.
@@ -264,7 +274,7 @@ export default function AdminCountyManagementPage() {
 
           <div className="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <label className="flex min-w-[120px] flex-col text-sm">
-              Pays
+              {t("Pays")}
               <select
                 value={countryFilter}
                 onChange={(e) => {
@@ -273,7 +283,7 @@ export default function AdminCountyManagementPage() {
                 }}
                 className="mt-1 rounded-lg border px-3 py-2"
               >
-                <option value="US">US</option>
+                <option value="US">{t("US")}</option>
               </select>
             </label>
             <label className="flex min-w-[200px] flex-1 flex-col text-sm">
@@ -304,9 +314,9 @@ export default function AdminCountyManagementPage() {
 
           {stateOff ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              State is OFF — enable <strong>{stateName}</strong> first in{" "}
+              {t("State is OFF — enable")} <strong>{stateName}</strong> first in{" "}
               <a href="/admin/platform-launch" className="underline font-medium">
-                Platform Launch
+                {t("Platform Launch")}
               </a>
               . Service switches stay disabled until the State is ON.
             </div>
@@ -314,13 +324,13 @@ export default function AdminCountyManagementPage() {
 
           {!canEdit ? (
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-              Lecture seule — permission <code>platform_launch.manage</code> requise pour
+              {t("Lecture seule — permission")} <code>platform_launch.manage</code> requise pour
               modifier les counties.
             </div>
           ) : null}
 
           {loading ? (
-            <p className="text-sm text-slate-500">Chargement…</p>
+            <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : counties.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">
               Aucun county configuré pour {countryFilter}/{regionFilter.toUpperCase()}. Les
@@ -334,11 +344,11 @@ export default function AdminCountyManagementPage() {
                 const countyOn = draft.platform_enabled;
                 const servicesEnabled = canEdit && stateOn && countyOn;
                 const taxiLabel =
-                  row.county_code === "nyc" ? "Taxi / TLC" : SERVICE_TOGGLE_LABELS.taxi_enabled;
+                  row.county_code === "nyc" ? "Taxi / TLC" : serviceToggleLabels.taxi_enabled;
                 const serviceTitle = !stateOn
                   ? `State is OFF — enable ${stateName} first`
                   : !countyOn
-                    ? "Enable county first"
+                    ? t("Enable county first")
                     : undefined;
 
                 return (
@@ -361,7 +371,7 @@ export default function AdminCountyManagementPage() {
                             : "enabled"
                           : "disabled",
                         maintenance_mode: draft.maintenance_mode,
-                      })}
+                      }, t)}
                     </div>
 
                     <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
@@ -385,7 +395,7 @@ export default function AdminCountyManagementPage() {
                             updateDraft(key, { platform_enabled: e.target.checked })
                           }
                         />
-                        County
+                        {t("County")}
                       </label>
                       <label
                         className={`flex items-center gap-2 rounded-lg border px-2 py-2 ${
@@ -402,12 +412,12 @@ export default function AdminCountyManagementPage() {
                             updateDraft(key, { maintenance_mode: e.target.checked })
                           }
                         />
-                        Maintenance
+                        {t("Maintenance")}
                       </label>
                     </div>
 
                     {!countyOn && stateOn ? (
-                      <p className="mb-2 text-xs text-slate-500">Enable county first</p>
+                      <p className="mb-2 text-xs text-slate-500">{t("Enable county first")}</p>
                     ) : null}
 
                     <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
@@ -423,25 +433,25 @@ export default function AdminCountyManagementPage() {
                         <ul className="mt-2 space-y-1">
                           {!draft.taxi_enabled ? (
                             <li>
-                              <strong>Taxi Disabled</strong> — Customers cannot request taxi
+                              <strong>{t("Taxi Disabled")}</strong> — Customers cannot request taxi
                               rides. Drivers cannot receive taxi trips.
                             </li>
                           ) : null}
                           {!draft.delivery_enabled ? (
                             <li>
-                              <strong>Delivery Disabled</strong> — Parcel and courier requests
+                              <strong>{t("Delivery Disabled")}</strong> — Parcel and courier requests
                               are unavailable.
                             </li>
                           ) : null}
                           {!draft.restaurant_enabled ? (
                             <li>
-                              <strong>Food Disabled</strong> — Restaurants are hidden. Customers
+                              <strong>{t("Food Disabled")}</strong> — Restaurants are hidden. Customers
                               cannot order food.
                             </li>
                           ) : null}
                           {!draft.marketplace_enabled ? (
                             <li>
-                              <strong>Marketplace Disabled</strong> — Stores are hidden.
+                              <strong>{t("Marketplace Disabled")}</strong> — Stores are hidden.
                               Customers cannot purchase products.
                             </li>
                           ) : null}
@@ -450,7 +460,7 @@ export default function AdminCountyManagementPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      {(Object.keys(SERVICE_TOGGLE_LABELS) as ServiceToggleKey[]).map(
+                      {(Object.keys(serviceToggleLabels) as ServiceToggleKey[]).map(
                         (toggleKey) => (
                           <label
                             key={toggleKey}
@@ -471,7 +481,7 @@ export default function AdminCountyManagementPage() {
                             />
                             {toggleKey === "taxi_enabled"
                               ? taxiLabel
-                              : SERVICE_TOGGLE_LABELS[toggleKey]}
+                              : serviceToggleLabels[toggleKey]}
                           </label>
                         )
                       )}

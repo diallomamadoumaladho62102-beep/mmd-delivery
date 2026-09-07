@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManageTaxiDriverQuality } from "@/lib/adminAccess";
@@ -19,6 +21,8 @@ type ScoreRow = {
 };
 
 export default function AdminTaxiDriverQualityPage() {
+  const { t } = useAdminT();
+
   const [scores, setScores] = useState<ScoreRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,18 +78,18 @@ export default function AdminTaxiDriverQualityPage() {
   return (
     <AdminGate requiredPermission="taxi_driver_quality.read">
       <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
-        <h1>Taxi Driver Quality</h1>
+        <h1>{t("Taxi Driver Quality")}</h1>
         {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
-        {loading ? <p>Loading…</p> : null}
+        {loading ? <p>{t("Loading…")}</p> : null}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th align="left">Driver</th>
-              <th align="left">Score</th>
-              <th align="left">Rides</th>
-              <th align="left">Cancel rate</th>
-              <th align="left">Premium</th>
-              <th align="left">Actions</th>
+              <th align="left">{t("Driver")}</th>
+              <th align="left">{t("Score")}</th>
+              <th align="left">{t("Rides")}</th>
+              <th align="left">{t("Cancel rate")}</th>
+              <th align="left">{t("Premium")}</th>
+              <th align="left">{t("Actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -96,7 +100,7 @@ export default function AdminTaxiDriverQualityPage() {
                 <td>{row.completed_rides}</td>
                 <td>{(Number(row.cancel_rate) * 100).toFixed(1)}%</td>
                 <td>
-                  {row.premium_active ? "⭐ Premium" : "Standard"}
+                  {row.premium_active ? "⭐ Premium" : t("Standard")}
                   {row.taxi_driver_features?.premium_eligible ? " (eligible)" : ""}
                 </td>
                 <td style={{ display: "flex", gap: 8 }}>
@@ -107,21 +111,21 @@ export default function AdminTaxiDriverQualityPage() {
                         disabled={actionId === row.user_id}
                         onClick={() => runAction(row.user_id, "refresh")}
                       >
-                        Refresh
+                        {t("Refresh")}
                       </button>
                       <button
                         type="button"
                         disabled={actionId === row.user_id}
                         onClick={() => runAction(row.user_id, "set_premium", true)}
                       >
-                        Promote
+                        {t("Promote")}
                       </button>
                       <button
                         type="button"
                         disabled={actionId === row.user_id}
                         onClick={() => runAction(row.user_id, "set_premium", false)}
                       >
-                        Demote
+                        {t("Demote")}
                       </button>
                     </>
                   ) : null}

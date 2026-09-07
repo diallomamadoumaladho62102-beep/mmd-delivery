@@ -126,15 +126,17 @@ function payoutStatusColor(status: string) {
 }
 
 function BrandFooter({ stacked }: { stacked?: boolean }) {
+  const { t } = useTranslation();
+  const brand = t("brand.name", "MMD Delivery");
   return (
     <View style={[styles.footer, stacked && styles.footerStacked]}>
       <Image
         source={MMD_LOGO}
         style={styles.footerLogo}
         resizeMode="contain"
-        accessibilityLabel="MMD Delivery"
+        accessibilityLabel={brand}
       />
-      <Text style={styles.footerBrand}>MMD Delivery</Text>
+      <Text style={styles.footerBrand}>{brand}</Text>
     </View>
   );
 }
