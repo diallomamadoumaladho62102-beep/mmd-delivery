@@ -1,0 +1,14 @@
+{
+  "name": "decode-uri-component",
+  "version": "0.5.0",
+  "description": "CJS backport of decode-uri-component@0.5.0 for query-string@7 / React Navigation (CVE-2026-45822).",
+  "license": "MIT",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "LICENSE"
+  ]
+}
