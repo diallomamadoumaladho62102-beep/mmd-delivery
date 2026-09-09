@@ -11,7 +11,8 @@ function read(rel: string) {
 // Responsive / a11y web chrome — Admin Figma Desktop 1280
 {
   const shell = read("src/components/AdminShell.tsx");
-  assert.match(shell, /aria-label="Admin sections"/);
+  assert.match(shell, /admin\.shell\.sectionsLabel/);
+  assert.match(shell, /Admin sections/);
   assert.match(shell, /admin-figma/);
   assert.match(shell, /overflow-x-auto/);
   assert.match(shell, /MMD Control/);
@@ -34,6 +35,23 @@ function read(rel: string) {
   assert.match(css, /:focus-visible/);
   assert.match(css, /\.admin-figma/);
   assert.match(css, /#0033cc/i);
+  assert.match(css, /overflow-x:\s*clip/);
+  assert.match(css, /safe-area-inset-top/);
+  assert.match(css, /safe-area-inset-bottom/);
+  assert.doesNotMatch(css, /html[\s\S]{0,80}overflow-x:\s*auto/);
+
+  const uploader = read("src/components/ChatImageUploader.tsx");
+  assert.match(uploader, /t\("Envoi\.\.\."\)/);
+  assert.match(uploader, /t\("Envoyer l'image"\)/);
+  assert.match(uploader, /aria-label=\{t\("Choose an image"\)\}/);
+
+  const pay = read("src/components/checkout/PayButton.tsx");
+  assert.match(pay, /t\("Payer avec Stripe"\)/);
+  assert.match(pay, /t\("Paiement\.\.\."\)/);
+
+  const rootLayout = read("app/layout.tsx");
+  assert.match(rootLayout, /viewportFit:\s*"cover"/);
+  assert.match(rootLayout, /width:\s*"device-width"/);
 }
 
 // Layout uses AdminShell for non-login routes

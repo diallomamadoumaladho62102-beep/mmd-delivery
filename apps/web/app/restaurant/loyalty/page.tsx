@@ -113,7 +113,7 @@ export default function RestaurantLoyaltyPage() {
     async (reward: Reward) => {
       if (redeeming) return;
       const ok = window.confirm(
-        `Échanger ${reward.points_cost} points contre « ${reward.name} » ? Cette action est définitive.`
+        `${t("Échanger {n} points contre cette récompense ? Cette action est définitive.").replace("{n}", String(reward.points_cost))}\n${reward.name}`
       );
       if (!ok) return;
       setRedeeming(reward.id);
@@ -125,9 +125,9 @@ export default function RestaurantLoyaltyPage() {
         });
         if (res.summary) setSummary(res.summary as Summary);
         await load();
-        window.alert("Échange réussi. Votre avantage est actif.");
+        window.alert(t("Échange réussi. Votre avantage est actif."));
       } catch (e) {
-        window.alert(e instanceof Error ? e.message : "Échange impossible.");
+        window.alert(e instanceof Error ? e.message : t("Échange impossible."));
       } finally {
         setRedeeming(null);
       }

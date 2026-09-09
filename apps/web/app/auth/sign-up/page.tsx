@@ -20,7 +20,7 @@ export default function SignUp() {
     setErr(null);
     setOk(false);
     if (!email || !password) {
-      setErr("Email et mot de passe requis.");
+      setErr(t("Email et mot de passe requis."));
       return;
     }
     const passwordError = validatePassword(password);

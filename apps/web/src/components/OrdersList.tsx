@@ -56,7 +56,7 @@ export default function OrdersList() {
 
       if (userError || !userData.user) {
         if (!cancelled) {
-          setErr("Tu dois être connecté pour voir tes commandes.");
+          setErr(t("Tu dois être connecté pour voir tes commandes."));
           setLoading(false);
         }
         return;

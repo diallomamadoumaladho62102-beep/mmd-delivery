@@ -1,36 +1,65 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 export default function ChatImageUploader({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleUpload() {
     if (!file) return;
     setUploading(true);
-    const safeName = (file.name || "upload").replace(/[^\w.\-]+/g, "-"); const path = `${orderId}/${Date.now()}-${safeName}`;
-    const { data, error } = await supabase.storage.from("chat-uploads").upload(path, file);
-    if (error) alert("Erreur upload: " + error.message);
-    else {
+    setError(null);
+    const safeName = (file.name || "upload").replace(/[^\w.\-]+/g, "-");
+    const path = `${orderId}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from("chat-uploads")
+      .upload(path, file);
+    if (uploadError) {
+      setError(`${t("Erreur upload:")} ${uploadError.message}`);
+    } else {
       const { data: signed } = await supabase.storage
         .from("chat-uploads")
-        .createSignedUrl(path, 300); // 5 min
+        .createSignedUrl(path, 300);
       setUrl(signed?.signedUrl || null);
     }
     setUploading(false);
   }
 
   return (
-    <div className="flex flex-col gap-2 border rounded-lg p-3">
-      <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-      <button disabled={!file || uploading} onClick={handleUpload} className="bg-blue-600 text-white px-3 py-1 rounded">
-        {uploading ? "Envoi..." : "Envoyer l'image"}
+    <div className="flex max-w-full flex-col gap-2 rounded-lg border p-3">
+      <input
+        type="file"
+        accept="image/*"
+        aria-label={t("Choose an image")}
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      />
+      <button
+        type="button"
+        disabled={!file || uploading}
+        onClick={() => void handleUpload()}
+        aria-busy={uploading}
+        className="min-h-11 rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-50"
+      >
+        {uploading ? t("Envoi...") : t("Envoyer l'image")}
       </button>
-      {url && <img src={url} alt="aperçu" className="w-40 h-40 object-cover rounded-lg border" />}
+      {error ? (
+        <p className="text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {url ? (
+        <img
+          src={url}
+          alt={t("aperçu")}
+          className="h-40 w-40 max-w-full rounded-lg border object-cover"
+        />
+      ) : null}
     </div>
   );
 }
-
-

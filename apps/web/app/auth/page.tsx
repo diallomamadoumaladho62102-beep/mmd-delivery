@@ -56,13 +56,13 @@ export default function AuthPage() {
   const sendMagicLink = async () => {
     if (!trimmedEmail) {
       setState("error");
-      setMessage("Entre ton adresse email.");
+      setMessage(t("Entre ton adresse email."));
       return;
     }
 
     if (!emailIsValid) {
       setState("error");
-      setMessage("Entre une adresse email valide.");
+      setMessage(t("Entre une adresse email valide."));
       return;
     }
 
@@ -83,12 +83,12 @@ export default function AuthPage() {
 
     if (error) {
       setState("error");
-      setMessage(`Erreur: ${error.message}`);
+      setMessage(`${t("Erreur:")} ${error.message}`);
       return;
     }
 
     setState("success");
-    setMessage("Lien magique envoyé. Vérifie ton email.");
+    setMessage(t("Lien magique envoyé. Vérifie ton email."));
   };
 
   return (

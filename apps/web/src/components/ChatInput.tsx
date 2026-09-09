@@ -46,7 +46,11 @@ export default function ChatInput({
 
   return (
     <div className="border rounded-xl p-3 space-y-2">
-      {err && <div className="text-red-600 text-sm">Erreur: {err}</div>}
+      {err && (
+        <div className="text-red-600 text-sm" role="alert">
+          {t("Erreur:")} {err}
+        </div>
+      )}
 
       <textarea
         className="w-full border rounded px-3 py-2 h-20"
@@ -65,15 +69,17 @@ export default function ChatInput({
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          aria-label={t("Choose an image")}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
 
         <button
+          type="button"
           onClick={() => void send()}
           disabled={pending || (!text.trim() && !file)}
           className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
         >
-          {pending ? "Envoi…" : t("Envoyer")}
+          {pending ? t("Sending…") : t("Envoyer")}
         </button>
       </div>
     </div>

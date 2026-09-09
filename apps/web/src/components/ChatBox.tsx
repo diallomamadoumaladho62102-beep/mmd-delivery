@@ -136,7 +136,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
       setInput("");
       setFile(null);
     } catch (e: any) {
-      alert(e?.message ?? "Erreur inconnue");
+      alert(e?.message ?? t("Erreur inconnue"));
     } finally {
       setSending(false);
     }
@@ -164,7 +164,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
           {msgs.map((m) => {
             const isMine = !!m.user_id && !!me && m.user_id === me;
             const fallbackId = (m.user_id ?? "").slice(0, 6) || "??????";
-            const name = m.profiles?.full_name ?? (isMine ? "Moi" : fallbackId);
+            const name = m.profiles?.full_name ?? (isMine ? t("Moi") : fallbackId);
             const time = new Date(m.created_at).toLocaleTimeString();
             const img = publicUrl(m.image_path);
 
@@ -192,7 +192,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
                     <div className="mt-2">
                       <img
                         src={img}
-                        alt="Pièce jointe"
+                        alt={t("Pièce jointe")}
                         className="max-w-xs max-h-72 rounded border"
                       />
                     </div>
@@ -217,6 +217,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
             <input
               type="file"
               accept="image/*"
+              aria-label={t("Choose an image")}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="border rounded px-2 py-2"
             />
@@ -226,11 +227,11 @@ export default function ChatBox({ orderId }: { orderId: string }) {
               disabled={(input.trim() === "" && !file) || sending}
               className="px-4 py-2 rounded-xl bg-black text-white disabled:opacity-40"
             >
-              {sending ? "Envoi…" : t("Envoyer")}
+              {sending ? t("Sending…") : t("Envoyer")}
             </button>
           </div>
 
-          {file && <div className="text-xs text-gray-600">Fichier: {file.name}</div>}
+          {file && <div className="text-xs text-gray-600">{t("Fichier:")} {file.name}</div>}
         </div>
       </div>
     </div>

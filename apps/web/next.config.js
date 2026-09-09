@@ -14,6 +14,8 @@ const MMD_SECURITY_HEADERS = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
   {
     key: "Content-Security-Policy",
     value: [
@@ -22,10 +24,10 @@ const MMD_SECURITY_HEADERS = [
       "object-src 'none'",
       "frame-ancestors 'none'",
       "form-action 'self'",
-      "img-src 'self' data: blob: https:",
-      "media-src 'self' blob: https:",
-      "font-src 'self' data: https:",
-      "style-src 'self' 'unsafe-inline' https:",
+      "img-src 'self' data: blob: https://*.supabase.co https://*.mapbox.com https://api.mapbox.com https://images.unsplash.com https://lh3.googleusercontent.com https://*.stripe.com",
+      "media-src 'self' blob: https://*.supabase.co https://media.twiliocdn.com https://*.twilio.com",
+      "font-src 'self' data: https://api.mapbox.com",
+      "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.sentry.io",
       "connect-src 'self' https: wss:",
       "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",

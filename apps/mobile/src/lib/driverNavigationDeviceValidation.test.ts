@@ -28,8 +28,12 @@ const DEVICES: DeviceSpec[] = [
   { platform: "android", name: "Pixel 8 Pro", width: 1344, height: 2992 },
   { platform: "android", name: "Small Android", width: 720, height: 1280 },
   { platform: "ios", name: "iPhone SE", width: 375, height: 667 },
+  { platform: "ios", name: "iPhone 14", width: 390, height: 844 },
+  { platform: "android", name: "Android CSS 412", width: 412, height: 915 },
   { platform: "ios", name: "iPhone 15", width: 393, height: 852 },
   { platform: "ios", name: "iPhone 15 Pro Max", width: 430, height: 932 },
+  { platform: "ios", name: "iPad Mini", width: 768, height: 1024 },
+  { platform: "ios", name: "iPad Air", width: 820, height: 1180 },
   { platform: "ios", name: "iPad 11", width: 834, height: 1194 },
   { platform: "ios", name: "iPad 12.9", width: 1024, height: 1366 },
 ];

@@ -26,15 +26,19 @@ function toISODate(d: Date) { const d2 = new Date(d); d2.setHours(0,0,0,0); retu
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate()-n); return d; }
 
 // --- Backfill commissions via RPC
-async function backfillCommissions(fromISO: string, toISO: string) {
+async function backfillCommissions(
+  fromISO: string,
+  toISO: string,
+  t: (key: string) => string,
+) {
   const p_from = new Date(fromISO + "T00:00:00").toISOString();
   const p_to   = new Date(toISO   + "T23:59:59.999").toISOString();
   const { data, error } = await supabase.rpc("refresh_order_commissions_for_range", { p_from, p_to });
   if (error) {
     console.error(error);
-    alert("Erreur backfill: " + error.message);
+    alert(`${t("Erreur backfill:")} ${error.message}`);
   } else {
-    alert(`Recalcul terminé: ${data ?? 0} commandes traitées`);
+    alert(`${t("Recalcul terminé:")} ${data ?? 0} ${t("commandes traitées")}`);
   }
 }
 
@@ -142,7 +146,7 @@ export default function RevenueSummary() {
         </div>
         <button onClick={exportCSV} className="ml-auto px-3 py-2 border rounded bg-white shadow-sm">{t("Export CSV")}</button>
         <button
-          onClick={async () => { await backfillCommissions(from, to); await load(); }}
+          onClick={async () => { await backfillCommissions(from, to, t); await load(); }}
           className="px-3 py-2 border rounded bg-white shadow-sm"
           title="Recalcule les commissions pour toutes les commandes de l’intervalle"
         >

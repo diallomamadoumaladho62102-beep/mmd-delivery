@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
         });
 
         if (error) {
-          setMessage("Lien invalide ou expiré. Demande un nouveau lien par email.");
+          setMessage(t("Lien invalide ou expiré. Demande un nouveau lien par email."));
           return;
         }
       }
@@ -83,11 +83,11 @@ export default function ResetPasswordPage() {
       const { data, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !data.session) {
         setMessage(
-          "Session de réinitialisation introuvable. Ouvre le lien depuis l’email récent."
+          t("Session de réinitialisation introuvable. Ouvre le lien depuis l’email récent.")
         );
       }
     } catch {
-      setMessage("Impossible de préparer la réinitialisation.");
+      setMessage(t("Impossible de préparer la réinitialisation."));
     } finally {
       setCheckingSession(false);
     }
@@ -105,7 +105,7 @@ export default function ResetPasswordPage() {
     }
 
     if (password !== confirm) {
-      setMessage("Les mots de passe ne correspondent pas.");
+      setMessage(t("Les mots de passe ne correspondent pas."));
       return;
     }
 
@@ -133,7 +133,7 @@ export default function ResetPasswordPage() {
         ? checked.url
         : null;
 
-    setMessage("Mot de passe mis à jour avec succès ✅");
+    setMessage(t("Mot de passe mis à jour avec succès ✅"));
     if (safeNext) {
       window.setTimeout(() => {
         window.location.assign(safeNext);
@@ -210,7 +210,7 @@ export default function ResetPasswordPage() {
               fontSize: 12,
             }}
           >
-            {showPassword ? t("Masquer") : "Afficher"}
+            {showPassword ? t("Masquer") : t("Afficher")}
           </button>
         </div>
 
@@ -247,7 +247,7 @@ export default function ResetPasswordPage() {
               fontSize: 12,
             }}
           >
-            {showConfirmPassword ? t("Masquer") : "Afficher"}
+            {showConfirmPassword ? t("Masquer") : t("Afficher")}
           </button>
         </div>
 
@@ -267,7 +267,7 @@ export default function ResetPasswordPage() {
             opacity: loading || checkingSession ? 0.6 : 1,
           }}
         >
-          {loading ? "Mise à jour…" : "Mettre à jour"}
+          {loading ? t("Mise à jour…") : t("Mettre à jour")}
         </button>
 
         {message ? (

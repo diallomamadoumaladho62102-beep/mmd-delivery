@@ -24,10 +24,10 @@ export default function CreateOrderForm() {
         })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok || json?.error) alert(json?.error ?? "Échec de la création de la commande");
-      else alert("Commande créée");
+      if (!res.ok || json?.error) alert(json?.error ?? t("Échec de la création de la commande"));
+      else alert(t("Commande créée"));
     } catch {
-      alert("Réseau indisponible. Veuillez réessayer.");
+      alert(t("Réseau indisponible. Veuillez réessayer."));
     }
   }
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
 import { Sora } from "next/font/google";
 import "./globals.css";
@@ -14,6 +14,13 @@ const sora = Sora({
   variable: "--font-sora",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();

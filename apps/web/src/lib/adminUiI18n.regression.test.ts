@@ -59,6 +59,11 @@ test("French source keys resolve to English when locale=en", () => {
   assert.equal(adminT("Restaurants partenaires", "en"), "Partner restaurants");
   assert.equal(adminT("Liste des restaurants", "en"), "List of restaurants");
   assert.equal(adminT("Connexion", "en"), "Log in");
+  assert.equal(adminT("Envoi...", "en"), "Sending…");
+  assert.equal(adminT("Envoyer", "en"), "Send");
+  assert.equal(adminT("Envoyer l'image", "en"), "Send the image");
+  assert.equal(adminT("Envoyer l'image", "fr"), "Envoyer l'image");
+  assert.equal(adminT("Payer avec Stripe", "en"), "Pay with Stripe");
 });
 
 test("nav labels remain covered for all locales", () => {

@@ -51,14 +51,14 @@ export default function AdminCommunicationPanel() {
     setSearching(false);
 
     if (!res.ok || !body.ok) {
-      setResult(String(body.error ?? "Recherche échouée"));
+      setResult(String(body.error ?? t("Recherche échouée")));
       setLookupResults([]);
       return;
     }
 
     setLookupResults((body.items ?? []) as LookupUser[]);
     if ((body.items ?? []).length === 0) {
-      setResult("Aucun utilisateur trouvé.");
+      setResult(t("Aucun utilisateur trouvé."));
     }
   }
 
@@ -94,12 +94,12 @@ export default function AdminCommunicationPanel() {
       setErrorCode(body.code ? String(body.code) : null);
       setResult(
         body.error ??
-          (body.code ? String(body.code) : "Échec envoi")
+          (body.code ? String(body.code) : t("Échec envoi"))
       );
       return;
     }
 
-    setResult(`Envoyé via ${channel}`);
+    setResult(`${t("Envoyé via")} ${channel}`);
     setMessage("");
   }
 
@@ -137,7 +137,7 @@ export default function AdminCommunicationPanel() {
             onClick={() => void searchUsers()}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
           >
-            {searching ? "…" : "Chercher"}
+            {searching ? "…" : t("Chercher")}
           </button>
         </div>
 
@@ -156,9 +156,9 @@ export default function AdminCommunicationPanel() {
                   <div className="text-xs text-slate-500">{user.email ?? "—"}</div>
                   <div className="font-mono text-xs text-slate-500">{user.id}</div>
                   <div className="mt-1 text-xs text-slate-500">
-                    Push: {user.has_push_token ? `oui (${user.push_token_count})` : "non"} ·
-                    Email: {user.has_email ? "oui" : "non"} · Tél:{" "}
-                    {user.has_phone ? "oui" : "non"}
+                    Push: {user.has_push_token ? `${t("oui")} (${user.push_token_count})` : t("non")} ·
+                    Email: {user.has_email ? t("oui") : t("non")} · {t("Tél:")}{" "}
+                    {user.has_phone ? t("oui") : t("non")}
                   </div>
                 </button>
               </li>
@@ -179,12 +179,12 @@ export default function AdminCommunicationPanel() {
 
       {selectedUser ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-          Sélectionné : {selectedUser.full_name ?? selectedUser.email ?? selectedUser.id}
+          {t("Sélectionné :")} {selectedUser.full_name ?? selectedUser.email ?? selectedUser.id}
           {channel === "push" && !selectedUser.has_push_token
-            ? " — aucun expo_push_token"
+            ? ` — ${t("aucun expo_push_token")}`
             : null}
-          {channel === "email" && !selectedUser.has_email ? " — email manquant" : null}
-          {channel === "sms" && !selectedUser.has_phone ? " — téléphone manquant" : null}
+          {channel === "email" && !selectedUser.has_email ? ` — ${t("email manquant")}` : null}
+          {channel === "sms" && !selectedUser.has_phone ? ` — ${t("téléphone manquant")}` : null}
         </div>
       ) : null}
 
@@ -192,7 +192,7 @@ export default function AdminCommunicationPanel() {
         <input
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          placeholder={channel === "sms" ? "Téléphone +1…" : "email@…"}
+          placeholder={channel === "sms" ? t("Téléphone +1…") : "email@…"}
           className="w-full rounded-lg border px-3 py-2 text-sm"
         />
       )}
@@ -229,7 +229,7 @@ export default function AdminCommunicationPanel() {
         onClick={() => void send()}
         className="rounded-lg bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
       >
-        {sending ? "Envoi…" : "Envoyer"}
+        {sending ? t("Sending…") : t("Envoyer")}
       </button>
 
       {result ? (
@@ -244,9 +244,9 @@ export default function AdminCommunicationPanel() {
       ) : null}
 
       <p className="text-xs text-slate-500">
-        Chaque envoi est journalisé dans admin_communication_logs et
-        admin_audit_logs. Le push nécessite un UUID Supabase et un
-        expo_push_token enregistré.
+        {t(
+          "Chaque envoi est journalisé dans admin_communication_logs et admin_audit_logs. Le push nécessite un UUID Supabase et un expo_push_token enregistré.",
+        )}
       </p>
     </div>
   );

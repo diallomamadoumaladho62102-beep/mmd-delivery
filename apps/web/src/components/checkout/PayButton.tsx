@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export default function PayButton({ orderId, disabled, className }: Props) {
+  const { t } = useAdminT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +24,7 @@ export default function PayButton({ orderId, disabled, className }: Props) {
         await supabase.auth.getSession();
 
       if (sessionError || !sessionData.session?.access_token) {
-        throw new Error("Tu dois être connecté pour payer.");
+        throw new Error(t("Tu dois être connecté pour payer."));
       }
 
       const res = await fetch("/api/stripe/client/checkout", {
@@ -42,25 +44,25 @@ export default function PayButton({ orderId, disabled, className }: Props) {
       if (!res.ok) {
         if (data?.error === "payment_already_succeeded") {
           throw new Error(
-            "Paiement déjà reçu. Actualise la page dans quelques secondes."
+            t("Paiement déjà reçu. Actualise la page dans quelques secondes."),
           );
         }
         if (data?.error === "payment_intent_in_progress") {
           throw new Error(
-            "Un paiement est déjà en cours. Attends quelques secondes puis actualise."
+            t("Un paiement est déjà en cours. Attends quelques secondes puis actualise."),
           );
         }
-        throw new Error(data?.error || `Checkout failed (${res.status})`);
+        throw new Error(data?.error || t("Erreur lors du paiement"));
       }
 
       if (!data?.url) {
-        throw new Error("Checkout URL missing");
+        throw new Error(t("Erreur lors du paiement"));
       }
 
       window.location.href = data.url;
     } catch (e: unknown) {
       const message =
-        e instanceof Error ? e.message : "Erreur lors du paiement";
+        e instanceof Error ? e.message : t("Erreur lors du paiement");
       setError(message);
       setLoading(false);
     }
@@ -72,19 +74,14 @@ export default function PayButton({ orderId, disabled, className }: Props) {
         type="button"
         onClick={handlePay}
         disabled={disabled || loading || !orderId}
-        style={{
-          padding: "10px 14px",
-          borderRadius: 10,
-          border: "1px solid #ddd",
-          cursor: disabled || loading ? "not-allowed" : "pointer",
-          opacity: disabled || loading ? 0.6 : 1,
-        }}
+        aria-busy={loading}
+        className="min-h-11 rounded-[10px] border border-[#ddd] px-3.5 py-2.5 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "Paiement..." : "Payer avec Stripe"}
+        {loading ? t("Paiement...") : t("Payer avec Stripe")}
       </button>
 
       {error ? (
-        <div style={{ marginTop: 8, color: "crimson", fontSize: 13 }}>
+        <div role="alert" className="mt-2 text-[13px] text-red-700">
           {error}
         </div>
       ) : null}

@@ -492,7 +492,7 @@ export default function DriverOrdersDashboardPage() {
   async function acceptOrder(orderId: string) {
     if (!canAccessDriverWork) {
       alert(
-        "Ton compte chauffeur n'est pas encore autorisé à recevoir des courses. Merci de compléter ton profil chauffeur.",
+        t("Ton compte chauffeur n'est pas encore autorisé à recevoir des courses. Merci de compléter ton profil chauffeur."),
       );
       return;
     }
@@ -502,7 +502,7 @@ export default function DriverOrdersDashboardPage() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        alert("Tu dois être connecté pour accepter une course.");
+        alert(t("Tu dois être connecté pour accepter une course."));
         return;
       }
 
@@ -525,17 +525,17 @@ export default function DriverOrdersDashboardPage() {
   async function rejectOrder(orderId: string) {
     if (!canAccessDriverWork) {
       alert(
-        "Ton compte chauffeur n'est pas encore autorisé à traiter des courses.",
+        t("Ton compte chauffeur n'est pas encore autorisé à traiter des courses."),
       );
       return;
     }
 
     const ok = window.confirm(
-      "Tu ne veux pas effectuer cette course ? Elle restera disponible pour d'autres chauffeurs.",
+      t("Tu ne veux pas effectuer cette course ? Elle restera disponible pour d'autres chauffeurs."),
     );
     if (!ok) return;
 
-    alert("Course refusée. Tu peux en choisir une autre.");
+    alert(t("Course refusée. Tu peux en choisir une autre."));
   }
 
   return (
@@ -544,9 +544,9 @@ export default function DriverOrdersDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold">{t("Tableau de bord chauffeur")}</h1>
           <p className="text-sm text-gray-600">
-            Connecté en tant que{" "}
+            {t("Connecté en tant que")}{" "}
             <span className="font-medium">
-              {me?.full_name || "Ton compte chauffeur"}
+              {me?.full_name || t("Ton compte chauffeur")}
             </span>
             .
           </p>

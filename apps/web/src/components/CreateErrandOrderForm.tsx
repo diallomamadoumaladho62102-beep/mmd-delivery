@@ -28,18 +28,18 @@ export default function CreateErrandOrderForm() {
         }),
       });
       if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        alert("Erreur: " + (t || `HTTP ${res.status}`));
+        const bodyText = await res.text().catch(() => "");
+        alert(`${t("Erreur:")} ${bodyText || `HTTP ${res.status}`}`);
         return;
       }
       const data = await res.json().catch(() => null);
       if (data?.id) {
         window.location.href = `/orders/${data.id}/chat`;
       } else {
-        alert("Commande créée, mais ID introuvable.");
+        alert(t("Commande créée, mais ID introuvable."));
       }
     } catch {
-      alert("Réseau indisponible. Veuillez réessayer.");
+      alert(t("Réseau indisponible. Veuillez réessayer."));
     } finally {
       setLoading(false);
     }
@@ -86,7 +86,7 @@ export default function CreateErrandOrderForm() {
         disabled={loading}
         className="px-4 py-2 rounded bg-black text-white"
       >
-        {loading ? "Création…" : t("Créer")}
+        {loading ? t("Création…") : t("Créer")}
       </button>
     </div>
   );
