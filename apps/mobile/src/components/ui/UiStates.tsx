@@ -2,6 +2,7 @@ import React from "react";
 import { ActivityIndicator, StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { APP_COLORS, APP_SPACE, APP_TYPO } from "../../theme/appTheme";
 import UiButton from "./UiButton";
+import { useTranslation } from "react-i18next";
 
 type CommonProps = {
   title: string;
@@ -10,16 +11,18 @@ type CommonProps = {
 };
 
 export function UiLoadingState({
-  label = "Loading…",
+  label,
   style,
 }: {
   label?: string;
   style?: ViewStyle;
 }) {
+  const { t } = useTranslation();
+  const text = label ?? t("common.loading");
   return (
-    <View style={[styles.wrap, style]} accessibilityRole="progressbar" accessibilityLabel={label}>
+    <View style={[styles.wrap, style]} accessibilityRole="progressbar" accessibilityLabel={text}>
       <ActivityIndicator color={APP_COLORS.accent} />
-      <Text style={styles.message}>{label}</Text>
+      <Text style={styles.message}>{text}</Text>
     </View>
   );
 }
@@ -78,6 +81,7 @@ export function UiSkeleton({
   height?: number;
   style?: ViewStyle;
 }) {
+  const { t } = useTranslation();
   return (
     <View
       style={[
@@ -85,7 +89,7 @@ export function UiSkeleton({
         { height },
         style,
       ]}
-      accessibilityLabel="Loading placeholder"
+      accessibilityLabel={t("ui.loadingPlaceholder")}
     />
   );
 }

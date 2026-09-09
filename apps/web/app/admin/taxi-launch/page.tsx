@@ -106,7 +106,7 @@ export default function AdminTaxiLaunchPage() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900">{t("Taxi Launch Control")}</h1>
               <p className="mt-1 text-sm text-slate-600">
-                Activer/désactiver les marchés et features sans redéploiement.
+                {t("Activer/désactiver les marchés et features sans redéploiement.")}
               </p>
             </div>
             <a

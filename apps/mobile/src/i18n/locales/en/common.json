@@ -213,7 +213,8 @@
       "closeMenu": "Close menu",
       "retry": "Retry",
       "back": "Back"
-    }
+    },
+    "save": "Save"
   },
   "shared": {
     "common": {
@@ -330,6 +331,20 @@
       "showPassword": "Show",
       "hidePassword": "Hide",
       "forgotPassword": "Forgot password?"
+    },
+    "home": {
+      "tabs": {
+        "home": "Home",
+        "orders": "Orders"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "Track"
+      }
+    },
+    "profile": {
+      "titleShort": "Profile"
     }
   },
   "driver": {
@@ -1550,7 +1565,8 @@
       },
       "account": {
         "setup": "Restaurant profile"
-      }
+      },
+      "live": "Live"
     },
     "automation": {
       "title": "Order Automation",
@@ -1571,7 +1587,11 @@
     "orders": {
       "accept": "Accept",
       "prepared": "Prepared",
-      "ready": "Ready"
+      "ready": "Ready",
+      "status": {
+        "order": "Order",
+        "prepared": "Prepared"
+      }
     },
     "orderDetails": {
       "title": "Order",
@@ -1646,5 +1666,12 @@
       "directionsPh": "After Total station, second road on the right, yellow house with blue gate...",
       "directionsMin": "Minimum 8 characters required."
     }
+  },
+  "boot": {
+    "loadingMmd": "Loading MMD…",
+    "nativeUnavailable": "Native module / navigation unavailable",
+    "errorTitle": "MMD Delivery — an error occurred",
+    "errorBody": "You can retry. If the problem persists, share this with support.",
+    "screenUnavailable": "This screen could not be displayed."
   }
 }

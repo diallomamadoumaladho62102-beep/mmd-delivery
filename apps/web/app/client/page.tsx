@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useWebI18n } from "@/components/WebI18nProvider";
@@ -38,6 +40,7 @@ type ClientPlatformFeatures = {
 };
 
 export default function ClientHomePage() {
+  const { t: ui } = useAdminT();
   const { t } = useWebI18n();
   const { state: accessState, message: accessMessage } = useAccountAccessGuard();
   const [loading, setLoading] = useState(false);
@@ -144,7 +147,7 @@ export default function ClientHomePage() {
   if (accessState === "loading") {
     return (
       <main className="mx-auto max-w-3xl p-6 text-sm text-slate-500">
-        Vérification du compte…
+        {ui("Vérification du compte…")}
       </main>
     );
   }
@@ -152,7 +155,7 @@ export default function ClientHomePage() {
   if (accessState === "blocked") {
     return (
       <main className="mx-auto max-w-3xl p-6 text-sm text-red-700">
-        {accessMessage ?? "Compte suspendu ou désactivé."}
+        {accessMessage ? ui(accessMessage) : ui("Compte suspendu ou désactivé.")}
       </main>
     );
   }
@@ -169,19 +172,19 @@ export default function ClientHomePage() {
   function formatStatus(status: OrderStatus) {
     switch (status) {
       case "pending":
-        return "En attente";
+        return ui("En attente");
       case "accepted":
-        return "Acceptée";
+        return ui("Acceptée");
       case "prepared":
-        return "En préparation";
+        return ui("En préparation");
       case "ready":
-        return "Prête";
+        return ui("Prête");
       case "dispatched":
-        return "En livraison";
+        return ui("En livraison");
       case "delivered":
-        return "Livrée";
+        return ui("Livrée");
       case "canceled":
-        return "Annulée";
+        return ui("Annulée");
       default:
         return status;
     }
@@ -216,7 +219,7 @@ export default function ClientHomePage() {
             </Link>
           ) : (
             <div className="inline-flex w-full items-center justify-center rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-400">
-              Delivery — bientôt disponible dans votre zone
+              {ui("Delivery — bientôt disponible dans votre zone")}
             </div>
           )}
 
@@ -225,11 +228,11 @@ export default function ClientHomePage() {
               href="/orders/new"
               className="inline-flex w-full items-center justify-center rounded-full bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition"
             >
-              Commander dans un restaurant (menus)
+              {ui("Commander dans un restaurant (menus)")}
             </Link>
           ) : (
             <div className="inline-flex w-full items-center justify-center rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-400">
-              Restaurant — bientôt disponible dans votre zone
+              {ui("Restaurant — bientôt disponible dans votre zone")}
             </div>
           )}
 
@@ -243,11 +246,11 @@ export default function ClientHomePage() {
               }
               className="inline-flex w-full items-center justify-center rounded-full bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700 transition"
             >
-              Marketplace MMD (aperçu)
+              {ui("Marketplace MMD (aperçu)")}
             </button>
           ) : (
             <div className="inline-flex w-full items-center justify-center rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-400">
-              Marketplace — bientôt disponible dans votre zone
+              {ui("Marketplace — bientôt disponible dans votre zone")}
             </div>
           )}
 
@@ -255,21 +258,21 @@ export default function ClientHomePage() {
             href="/mmd-plus"
             className="inline-flex w-full items-center justify-center rounded-full bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-400 transition"
           >
-            MMD+ — Abonnement Premium
+            {ui("MMD+ — Abonnement Premium")}
           </Link>
 
           <Link
             href="/promotions"
             className="inline-flex w-full items-center justify-center rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-400 transition"
           >
-            Promotions & coupons
+            {ui("Promotions & coupons")}
           </Link>
         </div>
 
         {/* TITRE HISTORIQUE */}
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-100">
-            Mes dernières commandes
+            {ui("Mes dernières commandes")}
           </h2>
 
           <button
@@ -277,7 +280,7 @@ export default function ClientHomePage() {
             onClick={() => void fetchOrders()}
             className="text-xs font-medium text-blue-400 hover:text-blue-300"
           >
-            Rafraîchir
+            {ui("Rafraîchir")}
           </button>
         </div>
 
@@ -285,7 +288,7 @@ export default function ClientHomePage() {
         {loading && (
           <div className="mb-3 flex items-center gap-2 text-xs text-slate-400">
             <span className="inline-block h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-transparent" />
-            <span>Chargement de tes commandes...</span>
+            <span>{ui("Chargement de tes commandes...")}</span>
           </div>
         )}
 
@@ -295,7 +298,7 @@ export default function ClientHomePage() {
         {orders.length === 0 && !loading ? (
           <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-6 text-center">
             <p className="text-sm text-slate-400">
-              Tu n’as pas encore de commande MMD enregistrée avec ce compte.
+              {ui("Tu n’as pas encore de commande MMD enregistrée avec ce compte.")}
             </p>
             <p className="mt-2 text-xs text-slate-500">
               Crée une première commande pickup / dropoff ou via un restaurant

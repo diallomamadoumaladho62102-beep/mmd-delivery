@@ -213,7 +213,8 @@
     "no": "否",
     "edit": "编辑",
     "delete": "删除",
-    "view": "查看"
+    "view": "查看",
+    "save": "保存"
   },
   "shared": {
     "common": {
@@ -328,6 +329,20 @@
       "showPassword": "显示",
       "hidePassword": "隐藏",
       "forgotPassword": "忘记密码？"
+    },
+    "home": {
+      "tabs": {
+        "home": "首页",
+        "orders": "订单"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "跟踪"
+      }
+    },
+    "profile": {
+      "titleShort": "我的"
     }
   },
   "driver": {
@@ -1367,7 +1382,8 @@
       },
       "close": "关闭",
       "closeMenu": "关闭菜单",
-      "menu": "菜单"
+      "menu": "菜单",
+      "live": "实时"
     },
     "automation": {
       "title": "订单自动化",
@@ -1388,7 +1404,11 @@
     "orders": {
       "accept": "接受",
       "prepared": "已备好",
-      "ready": "就绪"
+      "ready": "就绪",
+      "status": {
+        "order": "订单",
+        "prepared": "备餐中"
+      }
     },
     "orderDetails": {
       "title": "订单",
@@ -1466,5 +1486,12 @@
       "directionsPh": "过 Total 加油站后，右侧第二条路，黄房子蓝门…",
       "directionsMin": "至少需要 8 个字符。"
     }
+  },
+  "boot": {
+    "loadingMmd": "正在加载 MMD…",
+    "nativeUnavailable": "原生模块 / 导航不可用",
+    "errorTitle": "MMD Delivery — 发生错误",
+    "errorBody": "你可以重试。如果问题仍然存在，请将此信息提供给支持团队。",
+    "screenUnavailable": "无法显示此屏幕。"
   }
 }

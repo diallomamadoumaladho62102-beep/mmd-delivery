@@ -1,0 +1,2002 @@
+{
+  "Action / lien": {
+    "en": "Action / link",
+    "fr": "Action / lien",
+    "es": "Acción/enlace",
+    "ar": "الإجراء/الارتباط",
+    "zh": "动作/链接",
+    "ff": "Kuulal/jokkondiral"
+  },
+  "Toutes / non ciblée": {
+    "en": "All / untargeted",
+    "fr": "Toutes / non ciblée",
+    "es": "Todos/no dirigidos",
+    "ar": "الكل / غير مستهدف",
+    "zh": "全部/非目标",
+    "ff": "Fof / ko tardaaka"
+  },
+  "Expirés/échoués": {
+    "en": "Expired/failed",
+    "fr": "Expirés/échoués",
+    "es": "Caducado/fallido",
+    "ar": "انتهت صلاحيتها/فشلت",
+    "zh": "过期/失败",
+    "ff": "Timmi/waɗii"
+  },
+  "Aucun snapshot / commission persistée pour cet ID (ou pas encore chargé).": {
+    "en": "No snapshot/commission persisted for this ID (or not yet loaded).",
+    "fr": "Aucun snapshot / commission persistée pour cet ID (ou pas encore chargé).",
+    "es": "No persistió ninguna instantánea/comisión para este ID (o aún no se cargó).",
+    "ar": "لم تستمر أي لقطة/عمولة لهذا المعرف (أو لم يتم تحميلها بعد).",
+    "zh": "此 ID 没有持久的快照/委托（或尚未加载）。",
+    "ff": "Alaa foto/komisiyoŋ jokki ngam ndee ID (walla jolnaaka tawo)."
+  },
+  "State / Région": {
+    "en": "State / Region",
+    "fr": "État / Région",
+    "es": "Estado/Región",
+    "ar": "الولاية/المنطقة",
+    "zh": "州/地区",
+    "ff": "Dowla/Diiwaan"
+  },
+  "Litiges / chargebacks": {
+    "en": "Disputes / chargebacks",
+    "fr": "Litiges / rétrofacturations",
+    "es": "Litigios/devoluciones de cargo",
+    "ar": "الدعاوى القضائية/رد المبالغ المدفوعة",
+    "zh": "诉讼/退款",
+    "ff": "Litiiji / njoɓdiiji"
+  },
+  "Points / livraison": {
+    "en": "Points / delivery",
+    "fr": "Points / livraison",
+    "es": "Puntos / entrega",
+    "ar": "النقاط / التسليم",
+    "zh": "积分/配送",
+    "ff": "Toɓɓe / jokkondire"
+  },
+  "Points / course taxi": {
+    "en": "Points / taxi ride",
+    "fr": "Points / course taxi",
+    "es": "Puntos/curso taxi",
+    "ar": "النقاط / دورة التاكسي",
+    "zh": "积分/路线出租车",
+    "ff": "Toɓɓe / kursus taksi"
+  },
+  "Ajuster points (+/-)": {
+    "en": "Adjust points (+/-)",
+    "fr": "Ajuster points (+/-)",
+    "es": "Ajustar puntos (+/-)",
+    "ar": "ضبط النقاط (+/-)",
+    "zh": "调整点 (+/-)",
+    "ff": "Toɓɓe toɓɓe (+/-)"
+  },
+  "Ajuster crédit (cents, +/-)": {
+    "en": "Adjust credit (cents, +/-)",
+    "fr": "Ajuster crédit (cents, +/-)",
+    "es": "Ajustar crédito (centavos, +/-)",
+    "ar": "ضبط الرصيد (سنت، +/-)",
+    "zh": "调整信用（分，+/-）",
+    "ff": "Toɗɗito njoɓdi (santimuuji, +/-)"
+  },
+  "Campagnes, codes promo, coupons — moteur central Food / Delivery / Taxi / Marketplace.": {
+    "en": "Campaigns, promo codes, coupons — central engine Food / Delivery / Taxi / Marketplace.",
+    "fr": "Campagnes, codes promo, coupons — moteur central Food / Delivery / Taxi / Marketplace.",
+    "es": "Campañas, códigos promocionales, cupones: motor central Comida / Entrega / Taxi / Mercado.",
+    "ar": "الحملات والرموز الترويجية والكوبونات - المحرك المركزي الطعام / التوصيل / التاكسي / السوق.",
+    "zh": "活动、促销代码、优惠券——中央引擎食品/送货/出租车/市场。",
+    "ff": "Kampaañiji, kode promo, kupon — moteri hakkundeejo Nguura / Jolngo / Taksi / Lugge."
+  },
+  "Marketplace Orders (Draft / Checkout)": {
+    "en": "Marketplace Orders (Draft / Checkout)",
+    "fr": "Commandes Marketplace (Brouillon / Paiement)",
+    "es": "Órdenes de Marketplace (borrador/pago)",
+    "ar": "أوامر السوق (مسودة / الخروج)",
+    "zh": "市场订单（草稿/结账）",
+    "ff": "Yamirooje luumo (Eɓɓoore / Ƴeewndo)"
+  },
+  "Regions / States": {
+    "en": "Regions / States",
+    "fr": "Régions / États",
+    "es": "Regiones / Estados",
+    "ar": "المناطق / الولايات",
+    "zh": "地区/州",
+    "ff": "Diiwanuuji / Dowlaaji"
+  },
+  "State/Region": {
+    "en": "State/Region",
+    "fr": "État/Région",
+    "es": "Estado/Región",
+    "ar": "الولاية/المنطقة",
+    "zh": "州/地区",
+    "ff": "Dowla/Diiwaan"
+  },
+  "Factures / paiements": {
+    "en": "Invoices / payments",
+    "fr": "Factures / paiements",
+    "es": "Facturas/pagos",
+    "ar": "الفواتير/المدفوعات",
+    "zh": "发票/付款",
+    "ff": "Faktirgal/yoɓde"
+  },
+  "Reconciliation / Anomaly Center": {
+    "en": "Reconciliation / Anomaly Center",
+    "fr": "Centre de rapprochement / anomalies",
+    "es": "Centro de Reconciliación / Anomalías",
+    "ar": "مركز المصالحة / الشذوذ",
+    "zh": "协调/异常中心",
+    "ff": "Nokkuure jokkere enɗam / Anomaali"
+  },
+  "Régions / States": {
+    "en": "Regions / States",
+    "fr": "Régions / États",
+    "es": "Regiones / Estados",
+    "ar": "المناطق / الولايات",
+    "zh": "地区/州",
+    "ff": "Diiwanuuji / Dowlaaji"
+  },
+  "Pricing Configuration / Configuration des prix": {
+    "en": "Pricing Configuration",
+    "fr": "Configuration des prix",
+    "es": "Configuración de precios",
+    "ar": "تكوين الأسعار",
+    "zh": "定价配置",
+    "ff": "Teeltol cogguuji"
+  },
+  "Production rule / R??gle production": {
+    "en": "Production rule",
+    "fr": "Règle de production",
+    "es": "Regla de producción",
+    "ar": "قاعدة الإنتاج",
+    "zh": "生产规则",
+    "ff": "Kuulal peewnugol"
+  },
+  "Active / Actif": {
+    "en": "Active",
+    "fr": "Actif",
+    "es": "Activo",
+    "ar": "نشط",
+    "zh": "启用",
+    "ff": "Gollotooɗo"
+  },
+  "Driver order % / Chauffeur commande %": {
+    "en": "Driver order %",
+    "fr": "% commande chauffeur",
+    "es": "% de pedido del conductor",
+    "ar": "نسبة طلب السائق",
+    "zh": "司机订单百分比",
+    "ff": "Yamiroore dogoowo %"
+  },
+  "Promo enabled / Promo active": {
+    "en": "Promo enabled",
+    "fr": "Promo active",
+    "es": "Promoción activa",
+    "ar": "العرض الترويجي مفعّل",
+    "zh": "促销已启用",
+    "ff": "Promo ena hurmi"
+  },
+  "Promo type / Type promo": {
+    "en": "Promo type",
+    "fr": "Type de promo",
+    "es": "Tipo de promoción",
+    "ar": "نوع العرض الترويجي",
+    "zh": "促销类型",
+    "ff": "Fannu promo"
+  },
+  "Save changes / Enregistrer": {
+    "en": "Save changes",
+    "fr": "Enregistrer",
+    "es": "Guardar cambios",
+    "ar": "حفظ التغييرات",
+    "zh": "保存更改",
+    "ff": "Danndu baylooji"
+  },
+  "Conformité audio/vidéo par pays, état ou ville. Conservation 14 jours par défaut.": {
+    "en": "Audio/video compliance by country, state or city. Shelf life 14 days by default.",
+    "fr": "Conformité audio/vidéo par pays, état ou ville. Conservation 14 jours par défaut.",
+    "es": "Cumplimiento de audio/vídeo por país, estado o ciudad. Vida útil 14 días por defecto.",
+    "ar": "الامتثال للصوت/الفيديو حسب البلد أو الولاية أو المدينة. مدة الصلاحية 14 يومًا افتراضيًا.",
+    "zh": "按国家、州或城市划分的音频/视频合规性。 保质期默认14天。",
+    "ff": "Ɗooftagol odiyo/wideyoo e leydi, diiwaan walla wuro. Nguurndam balɗe 14 e dow mbaydi."
+  },
+  "Tolérance km/h": {
+    "en": "Tolerance km/h",
+    "fr": "Tolérance km/h",
+    "es": "Tolerancia km/h",
+    "ar": "التسامح كم/ساعة",
+    "zh": "公差公里/小时",
+    "ff": "Muñal km/h"
+  },
+  "Limite km/h": {
+    "en": "Speed limit (km/h)",
+    "fr": "Limite km/h",
+    "es": "Límite de velocidad (km/h)",
+    "ar": "حد السرعة (كم/ساعة)",
+    "zh": "速度限制（公里/小时）",
+    "ff": "Keerol yaawde (km/h)"
+  },
+  "No Support and/or Finance administrators currently exist in the database. Use": {
+    "en": "No Support and/or Finance administrators currently exist in the database. Use",
+    "fr": "Aucun administrateur de support et/ou financier n'existe actuellement dans la base de données. Utiliser",
+    "es": "Actualmente no existen administradores de soporte y/o finanzas en la base de datos. Usar",
+    "ar": "لا يوجد حاليًا مسؤولو الدعم و/أو الشؤون المالية في قاعدة البيانات. يستخدم",
+    "zh": "数据库中当前不存在支持和/或财务管理员。 使用",
+    "ff": "Alaa njuɓɓudi Ballal e/walla Kaalis gonndi hannde e nder lowre ndee. Huwugo be"
+  },
+  "All states / regions": {
+    "en": "All states / regions",
+    "fr": "Tous les États / régions",
+    "es": "Todos los estados/regiones",
+    "ar": "جميع الولايات/المناطق",
+    "zh": "所有州/地区",
+    "ff": "Denndaangal dowlaaji / diiwanuuji"
+  },
+  "Chat / Call": {
+    "en": "Chat / Call",
+    "fr": "Chat / Appel",
+    "es": "Chatear / Llamar",
+    "ar": "الدردشة / الاتصال",
+    "zh": "聊天/通话",
+    "ff": "Yeewtere / Noddaango"
+  },
+  "Activity / audit →": {
+    "en": "Activity / audit →",
+    "fr": "Activité / audit →",
+    "es": "Actividad/auditoría →",
+    "ar": "النشاط / التدقيق →",
+    "zh": "活动/审核 →",
+    "ff": "Golle / ƴeewndo →"
+  },
+  "Activation taxi, classes véhicule et éligibilité XL / premium.": {
+    "en": "Taxi activation, vehicle classes and XL / premium eligibility.",
+    "fr": "Activation taxi, classes véhicule et éligibilité XL / premium.",
+    "es": "Activación de taxi, clases de vehículos y XL/elegibilidad premium.",
+    "ar": "تفعيل سيارات الأجرة، وفئات المركبات وXL / الأهلية المتميزة.",
+    "zh": "出租车激活、车辆类别和 XL/高级资格。",
+    "ff": "Koolkisagol taksi, kalasuuji otooji e XL / jojjanɗe premium."
+  },
+  "Taux de référence pour analytics/display — pas de conversion Stripe checkout.": {
+    "en": "Reference rate for analytics/display — no conversion Stripe checkout.",
+    "fr": "Taux de référence pour analytics/display — pas de conversion Stripe checkout.",
+    "es": "Tasa de referencia para análisis/visualización: sin conversión Stripe pago.",
+    "ar": "المعدل المرجعي للتحليلات/العرض - لا يوجد تحويل Stripe.",
+    "zh": "分析/显示的参考率 — 无转化 Stripe 结账。",
+    "ff": "Hakindo tuugnorgal ngam analitik/hollirde — alaa waylo Stripe ƴeewndo."
+  },
+  "Activer/désactiver les marchés et features sans redéploiement.": {
+    "en": "Activate/deactivate markets and features without redeployment.",
+    "fr": "Activer/désactiver les marchés et features sans redéploiement.",
+    "es": "Activar/desactivar mercados y funciones sin redistribución.",
+    "ar": "تنشيط/إلغاء تنشيط الأسواق والميزات دون إعادة التوزيع.",
+    "zh": "激活/停用市场和功能，无需重新部署。",
+    "ff": "Softinde/softinde luumooji e mbaadiiji tawa aɗa rewna heen."
+  },
+  "Archived / Test Data": {
+    "en": "Archived / Test Data",
+    "fr": "Archives / Données de test",
+    "es": "Datos archivados/de prueba",
+    "ar": "البيانات المؤرشفة / الاختبارية",
+    "zh": "存档/测试数据",
+    "ff": "Arsiif / Dowlaaji jarriborɗi"
+  },
+  "Blog": {
+    "en": "Blog",
+    "fr": "Blogue",
+    "es": "Blog",
+    "ar": "مدونة",
+    "zh": "博客",
+    "ff": "Blog"
+  },
+  "News and product updates from MMD Delivery.": {
+    "en": "News and product updates from MMD Delivery.",
+    "fr": "Nouvelles et mises à jour de produits de MMD Delivery.",
+    "es": "Noticias y actualizaciones de productos de MMD Delivery.",
+    "ar": "الأخبار وتحديثات المنتج من MMD Delivery.",
+    "zh": "来自 MMD Delivery 的新闻和产品更新。",
+    "ff": "Kabaaru e kesɗitingol geɗe ummoraade e MMD Delivery."
+  },
+  "No posts published yet.": {
+    "en": "No posts published yet.",
+    "fr": "Aucun article publié pour l'instant.",
+    "es": "Aún no hay publicaciones publicadas.",
+    "ar": "لم يتم نشر أية مشاركات حتى الآن.",
+    "zh": "尚未发布帖子。",
+    "ff": "Alaa binndanɗe njaltinaa tawo."
+  },
+  "Marketing kit": {
+    "en": "Marketing kit",
+    "fr": "Trousse de commercialisation",
+    "es": "kit de marketing",
+    "ar": "عدة التسويق",
+    "zh": "营销套件",
+    "ff": "Kit yeeyirde"
+  },
+  "Official social links &amp; QR codes": {
+    "en": "Official social links & QR codes",
+    "fr": "Liens sociaux officiels et codes QR",
+    "es": "Enlaces sociales oficiales y códigos QR",
+    "ar": "الروابط الاجتماعية الرسمية ورموز QR",
+    "zh": "官方社交链接和 QR 代码",
+    "ff": "Jokkondire renndo laawɗuɗe & kode QR"
+  },
+  "Follow MMD Delivery": {
+    "en": "Follow MMD Delivery",
+    "fr": "Suivre MMD Delivery",
+    "es": "Seguir MMD Delivery",
+    "ar": "اتبع MMD Delivery",
+    "zh": "关注 MMD Delivery",
+    "ff": "Rewrude e MMD Delivery"
+  },
+  "Printable QR codes": {
+    "en": "Printable QR codes",
+    "fr": "Codes QR imprimables",
+    "es": "Códigos QR imprimibles",
+    "ar": "رموز QR القابلة للطباعة",
+    "zh": "可打印 QR 代码",
+    "ff": "Kode QR ɗe mbaawi tappirde"
+  },
+  "Recommended kits": {
+    "en": "Recommended kits",
+    "fr": "Kits recommandés",
+    "es": "Kits recomendados",
+    "ar": "مجموعات الموصى بها",
+    "zh": "推荐套件",
+    "ff": "Kits wasiyaaji"
+  },
+  "Paiement test": {
+    "en": "Test payment",
+    "fr": "Paiement test",
+    "es": "Pago de prueba",
+    "ar": "الدفع التجريبي",
+    "zh": "测试付款",
+    "ff": "Yoɓde jarribo"
+  },
+  "Order ID": {
+    "en": "Order ID",
+    "fr": "Numéro de commande",
+    "es": "ID de pedido",
+    "ar": "معرف الطلب",
+    "zh": "订单号",
+    "ff": "ID yamiroore"
+  },
+  "Activer accès chat": {
+    "en": "Enable chat access",
+    "fr": "Activer accès chat",
+    "es": "Habilitar el acceso al chat",
+    "ar": "تمكين الوصول إلى الدردشة",
+    "zh": "启用聊天访问",
+    "ff": "Softina jokkondire yeewtere"
+  },
+  "Loading…": {
+    "en": "Loading…",
+    "fr": "Chargement…",
+    "es": "Cargando…",
+    "ar": "تحميل…",
+    "zh": "加载中…",
+    "ff": "Ina loowa..."
+  },
+  "Welcome": {
+    "en": "Welcome",
+    "fr": "Bienvenue",
+    "es": "Bienvenida",
+    "ar": "مرحباً",
+    "zh": "欢迎",
+    "ff": "Jabbama"
+  },
+  "Revenus plateforme": {
+    "en": "Platform revenue",
+    "fr": "Revenus plateforme",
+    "es": "Ingresos de la plataforma",
+    "ar": "إيرادات المنصة",
+    "zh": "平台收入",
+    "ff": "Njoɓdi plateau"
+  },
+  "Total des commissions (client + driver + restaurant) selon notre modèle 25%.": {
+    "en": "Total commissions (customer + driver + restaurant) according to our model 25%.",
+    "fr": "Total des commissions (client + driver + restaurant) selon notre modèle 25%.",
+    "es": "Comisiones totales (cliente + conductor + restaurante) según nuestro modelo 25%.",
+    "ar": "إجمالي العمولات (العميل + السائق + المطعم) حسب نموذجنا 25%.",
+    "zh": "根据我们的模型，总佣金（顾客+司机+餐厅）为25%。",
+    "ff": "Total komisoŋ (sosiyatee + sofer + restoraan) fawaade e mbaadi men 25%."
+  },
+  "Error 500": {
+    "en": "Error 500",
+    "fr": "Erreur 500",
+    "es": "error 500",
+    "ar": "خطأ 500",
+    "zh": "错误500",
+    "ff": "Juumre 500"
+  },
+  "Something went wrong": {
+    "en": "Something went wrong",
+    "fr": "Quelque chose s'est mal passé",
+    "es": "algo salió mal",
+    "ar": "حدث خطأ ما",
+    "zh": "出了点问题",
+    "ff": "Won ko ŋakki"
+  },
+  "Please try again. If the issue continues, contact MMD Delivery support.": {
+    "en": "Please try again. If the issue continues, contact MMD Delivery support.",
+    "fr": "Veuillez réessayer. Si le problème persiste, contactez l'assistance MMD Delivery.",
+    "es": "Por favor inténtalo de nuevo. Si el problema continúa, comuníquese con el soporte técnico de MMD Delivery.",
+    "ar": "يرجى المحاولة مرة أخرى. إذا استمرت المشكلة، فاتصل بدعم MMD Delivery.",
+    "zh": "请再试一次。 如果问题仍然存在，请联系 MMD Delivery 支持。",
+    "ff": "Tiiɗno enndu kadi. So tawii caɗeele ɗee ina njokki, jokkondir e ballal MMD Delivery."
+  },
+  "Try again": {
+    "en": "Try again",
+    "fr": "Essayer à nouveau",
+    "es": "Intentar otra vez",
+    "ar": "حاول ثانية",
+    "zh": "再试一次",
+    "ff": "Enndu kadi"
+  },
+  "Return home": {
+    "en": "Return home",
+    "fr": "Retour à la maison",
+    "es": "volver a casa",
+    "ar": "العودة إلى المنزل",
+    "zh": "回家",
+    "ff": "Hoto ngartu e galle"
+  },
+  "Une erreur inattendue est survenue": {
+    "en": "An unexpected error has occurred",
+    "fr": "Une erreur inattendue est survenue",
+    "es": "Ha ocurrido un error inesperado",
+    "ar": "لقد حدث خطأ غير متوقع",
+    "zh": "发生意外错误",
+    "ff": "Juumre nde sikkaano waɗii"
+  },
+  "L’application a rencontré un problème. Vous pouvez recharger la page.": {
+    "en": "The application encountered a problem. You can reload the page.",
+    "fr": "L’application a rencontré un problème. Vous pouvez recharger la page.",
+    "es": "La aplicación encontró un problema. Puedes recargar la página.",
+    "ar": "واجه التطبيق مشكلة. يمكنك إعادة تحميل الصفحة.",
+    "zh": "应用程序遇到问题。 您可以重新加载页面。",
+    "ff": "Application oo hawri ko e caɗeele. Aɗa waawi loowde hello ngoo."
+  },
+  "Recharger": {
+    "en": "Reload",
+    "fr": "Recharger",
+    "es": "Recargar",
+    "ar": "إعادة تحميل",
+    "zh": "重新加载",
+    "ff": "Lowre kadi"
+  },
+  "Chat de la commande": {
+    "en": "Order chat",
+    "fr": "Chat de la commande",
+    "es": "Ordenar chat",
+    "ar": "طلب الدردشة",
+    "zh": "订单聊天",
+    "ff": "Yamirde yeewtere"
+  },
+  "Aucun message pour l’instant…": {
+    "en": "No messages yet...",
+    "fr": "Aucun message pour l’instant…",
+    "es": "Aún no hay mensajes...",
+    "ar": "لا توجد رسائل بعد...",
+    "zh": "还没有消息...",
+    "ff": "Alaa mesaas tawo..."
+  },
+  "Envoyer": {
+    "en": "Send",
+    "fr": "Envoyer",
+    "es": "Enviar",
+    "ar": "يرسل",
+    "zh": "发送",
+    "ff": "Neldugo"
+  },
+  "Écrire un message…": {
+    "en": "Write a message…",
+    "fr": "Écrire un message…",
+    "es": "Escribe un mensaje…",
+    "ar": "اكتب رسالة…",
+    "zh": "写留言...",
+    "ff": "Winndu mesaas..."
+  },
+  "Connexion": {
+    "en": "Log in",
+    "fr": "Connexion",
+    "es": "Iniciar sesión",
+    "ar": "تسجيل الدخول",
+    "zh": "登录",
+    "ff": "Naatgol"
+  },
+  "Entre ton email pour recevoir un lien magique de connexion MMD Delivery.": {
+    "en": "Enter your email to receive a magical MMD Delivery connection link.",
+    "fr": "Entre ton email pour recevoir un lien magique de connexion MMD Delivery.",
+    "es": "Ingrese su correo electrónico para recibir un enlace de conexión mágico MMD Delivery.",
+    "ar": "أدخل بريدك الإلكتروني لتلقي رابط اتصال MMD Delivery السحري.",
+    "zh": "输入您的电子邮件以接收神奇的 MMD Delivery 连接链接。",
+    "ff": "Naatnu imeel maa ngam heɓde jokkorde jokkorde MMD Delivery maagiyaŋkoore."
+  },
+  "Le lien de connexion a été envoyé à": {
+    "en": "The login link has been sent to",
+    "fr": "Le lien de connexion a été envoyé à",
+    "es": "El enlace de inicio de sesión ha sido enviado a",
+    "ar": "تم إرسال رابط الدخول إلى",
+    "zh": "登录链接已发送至",
+    "ff": "Jokkorde naatirde ndee neldaama to..."
+  },
+  "Email": {
+    "en": "Email",
+    "fr": "E-mail",
+    "es": "Correo electrónico",
+    "ar": "بريد إلكتروني",
+    "zh": "电子邮件",
+    "ff": "Imeel"
+  },
+  "Legacy order page": {
+    "en": "Legacy order page",
+    "fr": "Ancienne page de commande",
+    "es": "Página de pedidos heredada",
+    "ar": "صفحة الطلب القديم",
+    "zh": "旧版订单页面",
+    "ff": "Hello yamiroore legacy"
+  },
+  "Error 404": {
+    "en": "Error 404",
+    "fr": "Erreur 404",
+    "es": "error 404",
+    "ar": "خطأ 404",
+    "zh": "错误404",
+    "ff": "Juumre 404"
+  },
+  "Page not found": {
+    "en": "Page not found",
+    "fr": "Page introuvable",
+    "es": "Página no encontrada",
+    "ar": "لم يتم العثور على الصفحة",
+    "zh": "找不到页面",
+    "ff": "Hello ngoo tawaaka"
+  },
+  "The page you requested does not exist or is no longer available.": {
+    "en": "The page you requested does not exist or is no longer available.",
+    "fr": "La page que vous avez demandée n'existe pas ou n'est plus disponible.",
+    "es": "La página que usted solicitó no existe o ya no está disponible.",
+    "ar": "الصفحة التي طلبتها غير موجودة أو لم تعد متوفرة.",
+    "zh": "您请求的页面不存在或不再可用。",
+    "ff": "Hello ɗaɓɓu-ɗaa ngoo woodaani walla nattii woodde."
+  },
+  "Opening the application…": {
+    "en": "Opening the application…",
+    "fr": "Ouverture de l'application…",
+    "es": "Abriendo la aplicación…",
+    "ar": "جارٍ فتح التطبيق…",
+    "zh": "打开应用程序...",
+    "ff": "Udditgol kuutorgal ngal..."
+  },
+  "Referral Code": {
+    "en": "Referral Code",
+    "fr": "Code de référence",
+    "es": "Código de referencia",
+    "ar": "رمز الإحالة",
+    "zh": "推荐码",
+    "ff": "Kod jokkorgal"
+  },
+  "If the app did not open automatically, download MMD Delivery below.": {
+    "en": "If the app did not open automatically, download MMD Delivery below.",
+    "fr": "Si l'application ne s'ouvre pas automatiquement, téléchargez MMD Delivery ci-dessous.",
+    "es": "Si la aplicación no se abrió automáticamente, descargue MMD Delivery a continuación.",
+    "ar": "إذا لم يتم فتح التطبيق تلقائيًا، فقم بتنزيل MMD Delivery أدناه.",
+    "zh": "如果应用程序没有自动打开，请下载下面的 MMD Delivery。",
+    "ff": "So tawii app oo udditaaki e hoore mum, ƴettu MMD Delivery les ɗoo."
+  },
+  "Download on the App Store": {
+    "en": "Download on the App Store",
+    "fr": "Télécharger sur le App Store",
+    "es": "Descargar en el App Store",
+    "ar": "قم بالتنزيل على App Store",
+    "zh": "在App Store上下载",
+    "ff": "Sokkit e dow App Store"
+  },
+  "Get it on Google Play": {
+    "en": "Get it on Google Play",
+    "fr": "Obtenez-le sur Google Play",
+    "es": "Consíguelo en Google Play",
+    "ar": "احصل عليه على Google Play",
+    "zh": "在 Google Play 上获取",
+    "ff": "Heɓde ɗum e Google Play"
+  },
+  "Connecting to MMD Delivery...": {
+    "en": "Connecting to MMD Delivery...",
+    "fr": "Connexion à MMD Delivery...",
+    "es": "Conectando a MMD Delivery...",
+    "ar": "جارٍ الاتصال بـ MMD Delivery...",
+    "zh": "正在连接到 MMD Delivery...",
+    "ff": "Jokkondirde e MMD Delivery..."
+  },
+  "Espace client": {
+    "en": "Customer area",
+    "fr": "Espace client",
+    "es": "Área de clientes",
+    "ar": "منطقة العملاء",
+    "zh": "客户区",
+    "ff": "Nokku soodooɓe"
+  },
+  "Restaurants partenaires": {
+    "en": "Partner restaurants",
+    "fr": "Restaurants partenaires",
+    "es": "Restaurantes asociados",
+    "ar": "المطاعم الشريكة",
+    "zh": "合作餐厅",
+    "ff": "Restoranuuji gollodiiɓe"
+  },
+  "Choisis un restaurant pour voir son menu et ajouter des plats à ta commande MMD.": {
+    "en": "Choose a restaurant to view its menu and add dishes to your MMD order.",
+    "fr": "Choisis un restaurant pour voir son menu et ajouter des plats à ta commande MMD.",
+    "es": "Elija un restaurante para ver su menú y agregar platos a su pedido MMD.",
+    "ar": "اختر مطعمًا لعرض قائمته وإضافة الأطباق إلى طلب MMD الخاص بك.",
+    "zh": "选择一家餐厅查看其菜单并将菜肴添加到您的 MMD 订单中。",
+    "ff": "Suɓo restoraa ngam yiyde menyu mum e ɓeydude ñameele e yamiroore maa MMD."
+  },
+  "Liste des restaurants": {
+    "en": "List of restaurants",
+    "fr": "Liste des restaurants",
+    "es": "Lista de restaurantes",
+    "ar": "قائمة المطاعم",
+    "zh": "餐厅一览",
+    "ff": "Doggol restoraaji"
+  },
+  "Chargement des restaurants…": {
+    "en": "Loading restaurants…",
+    "fr": "Chargement des restaurants…",
+    "es": "Cargando restaurantes…",
+    "ar": "جارٍ تحميل المطاعم…",
+    "zh": "正在加载餐厅...",
+    "ff": "Lowde restoraaji..."
+  },
+  "Aucun restaurant disponible": {
+    "en": "No restaurant available",
+    "fr": "Aucun restaurant disponible",
+    "es": "No hay restaurante disponible",
+    "ar": "لا يوجد مطعم متاح",
+    "zh": "没有餐厅可供选择",
+    "ff": "Alaa restoraan mo woodi"
+  },
+  "Pour l’instant aucun restaurant n’est encore configuré dans MMD Delivery.": {
+    "en": "Currently no restaurant is yet configured in MMD Delivery.",
+    "fr": "Pour l’instant aucun restaurant n’est encore configuré dans MMD Delivery.",
+    "es": "Actualmente no hay ningún restaurante configurado en MMD Delivery.",
+    "ar": "لم يتم حاليًا تكوين أي مطعم في MMD Delivery.",
+    "zh": "目前 MMD Delivery 中尚未配置餐厅。",
+    "ff": "Jooni noon alaa restoraan gooto gonɗo e MMD Delivery."
+  },
+  "Voir le menu →": {
+    "en": "View menu →",
+    "fr": "Voir le menu →",
+    "es": "Ver menú →",
+    "ar": "عرض القائمة →",
+    "zh": "查看菜单 →",
+    "ff": "Yiylo menyu →"
+  },
+  "Chargement du menu…": {
+    "en": "Loading menu…",
+    "fr": "Chargement du menu…",
+    "es": "Cargando menú…",
+    "ar": "جارٍ تحميل القائمة…",
+    "zh": "加载菜单...",
+    "ff": "Lowre menyu..."
+  },
+  "Aucun plat configuré pour ce restaurant.": {
+    "en": "No dishes configured for this restaurant.",
+    "fr": "Aucun plat configuré pour ce restaurant.",
+    "es": "No hay platos configurados para este restaurante.",
+    "ar": "لم يتم إعداد أي أطباق لهذا المطعم.",
+    "zh": "这家餐厅没有配置任何菜肴。",
+    "ff": "Alaa diƴƴe peewnaaɗe ngam ndeeɗoo restora."
+  },
+  "Indisponible pour le moment.": {
+    "en": "Unavailable at the moment.",
+    "fr": "Indisponible pour le moment.",
+    "es": "No disponible por el momento.",
+    "ar": "غير متوفر في الوقت الراهن.",
+    "zh": "目前不可用。",
+    "ff": "Alaa e oo sahaa."
+  },
+  "Récapitulatif de ta commande": {
+    "en": "Summary of your order",
+    "fr": "Récapitulatif de ta commande",
+    "es": "Resumen de su pedido",
+    "ar": "ملخص طلبك",
+    "zh": "您的订单摘要",
+    "ff": "Ciimtol yamiroore maa"
+  },
+  "Ajoute au moins un plat pour pouvoir valider ta commande.": {
+    "en": "Add at least one dish to be able to validate your order.",
+    "fr": "Ajoute au moins un plat pour pouvoir valider ta commande.",
+    "es": "Añade al menos un plato para poder validar tu pedido.",
+    "ar": "أضف طبقًا واحدًا على الأقل لتتمكن من التحقق من صحة طلبك.",
+    "zh": "至少添加一道菜才能验证您的订单。",
+    "ff": "Ɓeydu heen ko famɗi fof diɗɗal gootal ngam waawde tabitinde yamiroore maa."
+  },
+  "Search": {
+    "en": "Search",
+    "fr": "Recherche",
+    "es": "Buscar",
+    "ar": "يبحث",
+    "zh": "搜索",
+    "ff": "Teffol"
+  },
+  "Search query": {
+    "en": "Search query",
+    "fr": "Requête de recherche",
+    "es": "Consulta de búsqueda",
+    "ar": "استعلام البحث",
+    "zh": "搜索查询",
+    "ff": "Ɗaɓɓaande njiylawu"
+  },
+  "Enter at least 2 characters.": {
+    "en": "Enter at least 2 characters.",
+    "fr": "Saisissez au moins 2 caractères.",
+    "es": "Introduzca al menos 2 caracteres.",
+    "ar": "أدخل حرفين على الأقل.",
+    "zh": "输入至少 2 个字符。",
+    "ff": "Naatde ko famɗi fof alkule 2."
+  },
+  "No results.": {
+    "en": "No results.",
+    "fr": "Aucun résultat.",
+    "es": "Sin resultados.",
+    "ar": "لا توجد نتائج.",
+    "zh": "没有结果。",
+    "ff": "Alaa njeñtudi."
+  },
+  "Search pages, posts, FAQ…": {
+    "en": "Search pages, posts, FAQ…",
+    "fr": "Pages de recherche, articles, FAQ…",
+    "es": "Buscar páginas, publicaciones, FAQ…",
+    "ar": "صفحات البحث والمشاركات وFAQ...",
+    "zh": "搜索页面、帖子、FAQ…",
+    "ff": "Yiylo kelle, binndanɗe, FAQ..."
+  },
+  "Rue, numéro": {
+    "en": "Street, number",
+    "fr": "Rue, numéro",
+    "es": "calle, numero",
+    "ar": "الشارع، رقم",
+    "zh": "街道、门牌号",
+    "ff": "Laabi, limoore"
+  },
+  "Le paiement a été annulé.": {
+    "en": "The payment has been canceled.",
+    "fr": "Le paiement a été annulé.",
+    "es": "El pago ha sido cancelado.",
+    "ar": "تم إلغاء الدفع.",
+    "zh": "付款已被取消。",
+    "ff": "Yoɓde ndee dartinaama."
+  },
+  "Vous pouvez réessayer à tout moment.": {
+    "en": "You can try again at any time.",
+    "fr": "Vous pouvez réessayer à tout moment.",
+    "es": "Puedes volver a intentarlo en cualquier momento.",
+    "ar": "يمكنك المحاولة مرة أخرى في أي وقت.",
+    "zh": "您可以随时重试。",
+    "ff": "Aɗa waawi ƴeewtaade kadi kala sahaa."
+  },
+  "Lien Stripe expiré": {
+    "en": "Link Stripe expired",
+    "fr": "Lien Stripe expiré",
+    "es": "Enlace Stripe caducado",
+    "ar": "انتهت صلاحية الرابط Stripe",
+    "zh": "链接 Stripe 已过期",
+    "ff": "Jokkorde Stripe timmi"
+  },
+  "Ouvrir l&apos;application": {
+    "en": "Open the app",
+    "fr": "Ouvrir l'application",
+    "es": "Abre la aplicación",
+    "ar": "افتح التطبيق",
+    "zh": "打开应用程序",
+    "ff": "Uddit app oo"
+  },
+  "Accueil web": {
+    "en": "Home web",
+    "fr": "Accueil web",
+    "es": "Página de inicio",
+    "ar": "شبكة المنزل",
+    "zh": "主页",
+    "ff": "Web galle"
+  },
+  "Stripe Connect": {
+    "en": "Stripe Connect",
+    "fr": "Stripe Connect",
+    "es": "Stripe Connect",
+    "ar": "Stripe Connect",
+    "zh": "Stripe Connect",
+    "ff": "Stripe Connect"
+  },
+  "Merci pour votre commande.": {
+    "en": "Thank you for your order.",
+    "fr": "Merci pour votre commande.",
+    "es": "Gracias por tu pedido.",
+    "ar": "شكرا لطلبك.",
+    "zh": "感谢您的订单。",
+    "ff": "On njaaraama e yamiroore mon."
+  },
+  "Votre paiement a bien été confirmé.": {
+    "en": "Your payment has been confirmed.",
+    "fr": "Votre paiement a bien été confirmé.",
+    "es": "Su pago ha sido confirmado.",
+    "ar": "لقد تم تأكيد الدفع الخاص بك.",
+    "zh": "您的付款已确认。",
+    "ff": "Yoɓde maa tabitinaama."
+  },
+  "Redirecting to Business Wallet…": {
+    "en": "Redirecting to Business Wallet…",
+    "fr": "Redirection vers Business Wallet…",
+    "es": "Redirigiendo a Business Wallet…",
+    "ar": "إعادة التوجيه إلى Business Wallet...",
+    "zh": "正在重定向至 Business Wallet...",
+    "ff": "Rewrude e Business Wallet..."
+  },
+  "View / Manage": {
+    "en": "View / Manage",
+    "fr": "Voir / Gérer",
+    "es": "Ver / Administrar",
+    "ar": "عرض / إدارة",
+    "zh": "查看/管理",
+    "ff": "Yiylo / Njuɓɓudi"
+  },
+  "History / Audit": {
+    "en": "History / Audit",
+    "fr": "Historique / Audit",
+    "es": "Historia / Auditoría",
+    "ar": "التاريخ / التدقيق",
+    "zh": "历史/审计",
+    "ff": "Daartol / Ƴeewndo"
+  },
+  "email@exemple.com ou +1… ou nom": {
+    "en": "email@example.com or +1… or name",
+    "fr": "email@exemple.com ou +1… ou nom",
+    "es": "email@example.com o +1… o nombre",
+    "ar": "email@example.com أو +1... أو الاسم",
+    "zh": "email@example.com 或 +1...或姓名",
+    "ff": "imeel@yeru.com walla +1... walla innde"
+  },
+  "Vue finance / super admin des commissions calculées.": {
+    "en": "Finance / super admin view of calculated commissions.",
+    "fr": "Vue finance / super admin des commissions calculées.",
+    "es": "Vista de finanzas/superadministrador de las comisiones calculadas.",
+    "ar": "المالية / عرض المشرف المتميز للعمولات المحسوبة.",
+    "zh": "计算佣金的财务/超级管理视图。",
+    "ff": "Kaalis / super admin yiyngo komisoŋuuji hiisaaɗi."
+  },
+  "Aucune photo identité / KYC disponible.": {
+    "en": "No photo ID / KYC available.",
+    "fr": "Aucune photo identité / KYC disponible.",
+    "es": "No hay identificación con fotografía / KYC disponible.",
+    "ar": "لا تتوفر بطاقة هوية تحتوي على صورة / KYC.",
+    "zh": "没有带照片的身份证件/KYC。",
+    "ff": "Alaa ID foto / KYC ina woodi."
+  },
+  "Moto / Scooter": {
+    "en": "Motorcycle / Scooter",
+    "fr": "Moto / Scooter",
+    "es": "Motocicleta / Vespa",
+    "ar": "دراجة نارية / سكوتر",
+    "zh": "摩托车/踏板车",
+    "ff": "Moto / Skuter"
+  },
+  "Cancel/refund actions are available on each order detail page.": {
+    "en": "Cancel/refund actions are available on each order detail page.",
+    "fr": "Les actions d'annulation/remboursement sont disponibles sur chaque page de détail de commande.",
+    "es": "Las acciones de cancelación/reembolso están disponibles en cada página de detalles del pedido.",
+    "ar": "تتوفر إجراءات الإلغاء/استرداد الأموال في كل صفحة تفاصيل الطلب.",
+    "zh": "每个订单详细信息页面上都提供取消/退款操作。",
+    "ff": "Golle ustude/yoɓde ina tawee e kala hello detal yamiroore."
+  },
+  "Receipt / payout": {
+    "en": "Receipt / payout",
+    "fr": "Reçu / versement",
+    "es": "Recibo/pago",
+    "ar": "استلام / دفع تعويضات",
+    "zh": "收据/付款",
+    "ff": "Jaɓde / yoɓde"
+  },
+  "Action admin puissante : annule une commande et rembourse Stripe si elle est payée.": {
+    "en": "Powerful admin action: Cancels an order and refunds Stripe if paid.",
+    "fr": "Action admin puissante : annule une commande et rembourse Stripe si elle est payée.",
+    "es": "Potente acción administrativa: cancela un pedido y reembolsa Stripe si se paga.",
+    "ar": "إجراء إداري قوي: إلغاء الطلب واسترداد أموال Stripe إذا تم الدفع.",
+    "zh": "强大的管理操作：取消订单并退款 Stripe（如果已付款）。",
+    "ff": "Kuulal admin doole: Haɗata yamiroore e yoɓde Stripe so yoɓaama."
+  },
+  "Reason": {
+    "en": "Reason",
+    "fr": "Raison",
+    "es": "Razón",
+    "ar": "سبب",
+    "zh": "原因",
+    "ff": "Uja"
+  },
+  "Chargement commissions…": {
+    "en": "Loading commissions…",
+    "fr": "Chargement commissions…",
+    "es": "Cargando comisiones…",
+    "ar": "جارٍ تحميل العمولات…",
+    "zh": "正在加载佣金...",
+    "ff": "Lowde komisiyoŋaaji..."
+  },
+  "Pas de données de commission.": {
+    "en": "No commission data.",
+    "fr": "Pas de données de commission.",
+    "es": "Sin datos de comisiones.",
+    "ar": "لا توجد بيانات عمولة.",
+    "zh": "没有佣金数据。",
+    "ff": "Alaa dokke komisoŋ."
+  },
+  "Commissions (admin)": {
+    "en": "Commissions (admin)",
+    "fr": "Commissions (administrateur)",
+    "es": "Comisiones (admin)",
+    "ar": "العمولات (الإدارية)",
+    "zh": "佣金（管理）",
+    "ff": "Komisoŋuuji (njuɓɓudi)"
+  },
+  "Sous-total": {
+    "en": "Subtotal",
+    "fr": "Sous-total",
+    "es": "Subtotal",
+    "ar": "المجموع الفرعي",
+    "zh": "小计",
+    "ff": "Hawrondiral les"
+  },
+  "Client (5%)": {
+    "en": "Client (5%)",
+    "fr": "Client (5%)",
+    "es": "Cliente (5%)",
+    "ar": "العميل (5%)",
+    "zh": "客户 (5%)",
+    "ff": "Kiliyaan (5%)"
+  },
+  "Driver (5%)": {
+    "en": "Driver (5%)",
+    "fr": "Chauffeur (5%)",
+    "es": "Conductora (5%)",
+    "ar": "سائق (5%)",
+    "zh": "司机 (5%)",
+    "ff": "Sofer (5%)"
+  },
+  "Restaurant (15%)": {
+    "en": "Restaurant (15%)",
+    "fr": "Restaurant (15%)",
+    "es": "Restaurante (15%)",
+    "ar": "مطعم (15%)",
+    "zh": "餐厅 (15%)",
+    "ff": "Suudu nyaamdu (15%)"
+  },
+  "Plateforme (total 25%)": {
+    "en": "Platform (total 25%)",
+    "fr": "Plateforme (total 25%)",
+    "es": "Plataforma (total 25%)",
+    "ar": "المنصة (إجمالي 25%)",
+    "zh": "平台（合计25%）",
+    "ff": "Plateau (fotde 25%)"
+  },
+  "Chargement des commissions…": {
+    "en": "Loading commissions…",
+    "fr": "Chargement des commissions…",
+    "es": "Cargando comisiones…",
+    "ar": "جارٍ تحميل العمولات…",
+    "zh": "正在加载佣金...",
+    "ff": "Lowde komisiyoŋaaji..."
+  },
+  "Errand": {
+    "en": "Errand",
+    "fr": "Course",
+    "es": "Recado",
+    "ar": "مأمورية",
+    "zh": "差事",
+    "ff": "Kuulal"
+  },
+  "Plateforme": {
+    "en": "Platform",
+    "fr": "Plateforme",
+    "es": "Plataforma",
+    "ar": "منصة",
+    "zh": "平台",
+    "ff": "Daaldal"
+  },
+  "Aucune commission pour ce filtre.": {
+    "en": "No commission for this filter.",
+    "fr": "Aucune commission pour ce filtre.",
+    "es": "No hay comisión por este filtro.",
+    "ar": "لا توجد عمولة لهذا الفلتر.",
+    "zh": "该过滤器不收取佣金。",
+    "ff": "Alaa komisoŋ wonande ooɗoo filtirde."
+  },
+  "Chargement Control Center…": {
+    "en": "Loading Control Center…",
+    "fr": "Chargement Control Center…",
+    "es": "Cargando Control Center…",
+    "ar": "جارٍ تحميل Control Center...",
+    "zh": "正在加载Control Center…",
+    "ff": "Lowre Control Center..."
+  },
+  "Control Center indisponible": {
+    "en": "Control Center unavailable",
+    "fr": "Control Center indisponible",
+    "es": "Control Center no disponible",
+    "ar": "Control Center غير متاح",
+    "zh": "Control Center 不可用",
+    "ff": "Control Center alaa ko heɓaa"
+  },
+  "Connexion requise": {
+    "en": "Login required",
+    "fr": "Connexion requise",
+    "es": "Iniciar sesión requerido",
+    "ar": "تسجيل الدخول مطلوب",
+    "zh": "需要登录",
+    "ff": "Naatde ina ɗaɓɓiree"
+  },
+  "Accès refusé": {
+    "en": "Access denied",
+    "fr": "Accès refusé",
+    "es": "Acceso denegado",
+    "ar": "تم الرفض",
+    "zh": "拒绝访问",
+    "ff": "Heɓde haɗaama"
+  },
+  "Retour au Dashboard": {
+    "en": "Return to Dashboard",
+    "fr": "Retour au Dashboard",
+    "es": "Volver al panel",
+    "ar": "العودة إلى لوحة القيادة",
+    "zh": "返回仪表板",
+    "ff": "Hoto ngartu e Daasbord"
+  },
+  "Outil admin pour vérifier et rembourser les anciennes commandes déjà annulées.": {
+    "en": "Admin tool to check and refund old orders that have already been canceled.",
+    "fr": "Outil admin pour vérifier et rembourser les anciennes commandes déjà annulées.",
+    "es": "Herramienta de administración para verificar y reembolsar pedidos antiguos que ya han sido cancelados.",
+    "ar": "أداة إدارية لفحص واسترداد الطلبات القديمة التي تم إلغاؤها بالفعل.",
+    "zh": "用于检查和退款已取消的旧订单的管理工具。",
+    "ff": "Kuutorgal Admin ngam ƴeewtaade e yoɓde yamiroore ɓooynde nde ustanaaka."
+  },
+  "Admin — Annuler & rembourser (Taxi)": {
+    "en": "Admin — Cancel & refund (Taxi)",
+    "fr": "Admin — Annuler & rembourser (Taxi)",
+    "es": "Administrador — Cancelar y reembolsar (Taxi)",
+    "ar": "المشرف - الإلغاء واسترداد الأموال (تاكسي)",
+    "zh": "管理员 — 取消和退款（出租车）",
+    "ff": "Admin — Woppude & yoɓde (Taksi)"
+  },
+  "Annule la course taxi et rembourse Stripe si elle est payée.": {
+    "en": "Cancels the taxi fare and reimburses Stripe if it is paid.",
+    "fr": "Annule la course taxi et rembourse Stripe si elle est payée.",
+    "es": "Cancela la tarifa del taxi y reembolsa Stripe si se paga.",
+    "ar": "يلغي أجرة التاكسي ويعوض Stripe إذا تم دفعها.",
+    "zh": "取消出租车费并退还Stripe（如果已支付）。",
+    "ff": "Woppita njoɓdi taksi, yoɓa Stripe so yoɓaama."
+  },
+  "Taxi Ride ID": {
+    "en": "Taxi Ride ID",
+    "fr": "ID de trajet en taxi",
+    "es": "ID de viaje en taxi",
+    "ar": "معرف ركوب سيارة أجرة",
+    "zh": "出租车乘车 ID",
+    "ff": "ID jolngo taksi"
+  },
+  "Admin — Force Complete Ride": {
+    "en": "Admin — Force Complete Ride",
+    "fr": "Administrateur – Forcer le trajet complet",
+    "es": "Administrador: Forzar viaje completo",
+    "ar": "المشرف - فرض الرحلة الكاملة",
+    "zh": "管理员 — 强制完成骑行",
+    "ff": "Admin — Doole timmuɗe Ride"
+  },
+  "Alias @/ OK ✅": {
+    "en": "Aka @/ OK ✅",
+    "fr": "Autrement dit @/ OK ✅",
+    "es": "También conocido como @/OK ✅",
+    "ar": "ويعرف أيضًا باسم @/ موافق ✅",
+    "zh": "又名@/ 好的 ✅",
+    "ff": "Aka @/ Ko moƴƴi ✅"
+  },
+  "Tu n’es pas connecté. Connecte-toi pour rejoindre le chat et changer le statut.": {
+    "en": "You are not connected. Log in to join the chat and change the status.",
+    "fr": "Tu n’es pas connecté. Connecte-toi pour rejoindre le chat et changer le statut.",
+    "es": "No estás conectado. Inicie sesión para unirse al chat y cambiar el estado.",
+    "ar": "أنت غير متصل. قم بتسجيل الدخول للانضمام إلى الدردشة وتغيير الحالة.",
+    "zh": "您尚未连接。 登录加入聊天并更改状态。",
+    "ff": "On njokkondirtaa. Naat ngam naatde e yeewtere ndee e waylude ngonka."
+  },
+  "MMD Business": {
+    "en": "MMD Business",
+    "fr": "MMD Business",
+    "es": "MMD Business",
+    "ar": "MMD Business",
+    "zh": "MMD Business",
+    "ff": "MMD Business"
+  },
+  "Aucun message pour le moment.": {
+    "en": "No messages yet.",
+    "fr": "Aucun message pour le moment.",
+    "es": "Aún no hay mensajes.",
+    "ar": "لا توجد رسائل حتى الآن.",
+    "zh": "还没有消息。",
+    "ff": "Alaa mesasuuji tawo."
+  },
+  "Créer une course (Errand)": {
+    "en": "Create a race (Errand)",
+    "fr": "Créer une course (Errand)",
+    "es": "Crear una carrera (Recado)",
+    "ar": "إنشاء سباق (مهمة)",
+    "zh": "创建比赛（任务）",
+    "ff": "Sosde leñol (Errand)"
+  },
+  "Le tarif est calculé côté serveur selon la configuration plateforme.": {
+    "en": "The price is calculated on the server side according to the platform configuration.",
+    "fr": "Le tarif est calculé côté serveur selon la configuration plateforme.",
+    "es": "El precio se calcula en el lado del servidor según la configuración de la plataforma.",
+    "ar": "يتم حساب السعر على جانب الخادم وفقًا لتكوين النظام الأساسي.",
+    "zh": "价格是根据平台配置在服务器端计算的。",
+    "ff": "Coodgu nguu hiisaama e bannge serwer fawaade e njuɓɓudi platform."
+  },
+  "Adresse de prise": {
+    "en": "Plug address",
+    "fr": "Adresse de prise",
+    "es": "Dirección del enchufe",
+    "ar": "عنوان التوصيل",
+    "zh": "插头地址",
+    "ff": "Adres plug"
+  },
+  "Adresse de dépôt": {
+    "en": "Filing address",
+    "fr": "Adresse de dépôt",
+    "es": "Dirección de presentación",
+    "ar": "عنوان الايداع",
+    "zh": "备案地址",
+    "ff": "Adres fiilngo"
+  },
+  "Contact prise (nom/tel)": {
+    "en": "Contact made (name/tel)",
+    "fr": "Contact prise (nom/tel)",
+    "es": "Contacto realizado (nombre/tel)",
+    "ar": "تم الاتصال (الاسم/الهاتف)",
+    "zh": "已联系（姓名/电话）",
+    "ff": "Jokkondiral waɗii (innde/tel)"
+  },
+  "Contact dépôt (nom/tel)": {
+    "en": "Depot contact (name/tel)",
+    "fr": "Contact dépôt (nom/tel)",
+    "es": "Contacto del depósito (nombre/tel)",
+    "ar": "جهة اتصال المستودع (الاسم/الهاتف)",
+    "zh": "仓库联系人（姓名/电话）",
+    "ff": "Jokkondirde e depot (innde/tel)"
+  },
+  "Description / consignes": {
+    "en": "Description / instructions",
+    "fr": "Description / consignes",
+    "es": "Descripción / instrucciones",
+    "ar": "الوصف / التعليمات",
+    "zh": "描述/说明",
+    "ff": "Sifaa / jamirooje"
+  },
+  "Type de course": {
+    "en": "Type of race",
+    "fr": "Type de course",
+    "es": "tipo de carrera",
+    "ar": "نوع السباق",
+    "zh": "比赛类型",
+    "ff": "Sifaa leñol"
+  },
+  "Livraison nourriture": {
+    "en": "Food delivery",
+    "fr": "Livraison nourriture",
+    "es": "entrega de comida",
+    "ar": "توصيل الطعام",
+    "zh": "送餐",
+    "ff": "Jolngo nguura"
+  },
+  "Récupérer un objet (maison / magasin)": {
+    "en": "Recover an object (house / store)",
+    "fr": "Récupérer un objet (maison / magasin)",
+    "es": "Recuperar un objeto (casa/tienda)",
+    "ar": "استعادة كائن (منزل / متجر)",
+    "zh": "恢复物体（房屋/商店）",
+    "ff": "Resndo huunde (galle / defterdu)"
+  },
+  "Lieu de prise": {
+    "en": "Taken location",
+    "fr": "Lieu de prise",
+    "es": "Ubicación tomada",
+    "ar": "الموقع الملتقط",
+    "zh": "拍摄地点",
+    "ff": "Nokku ƴettaaɗo"
+  },
+  "Maison": {
+    "en": "Home",
+    "fr": "Maison",
+    "es": "Casa",
+    "ar": "المنزل",
+    "zh": "家",
+    "ff": "Galle"
+  },
+  "Magasin": {
+    "en": "Store",
+    "fr": "Magasin",
+    "es": "Almacenar",
+    "ar": "محل",
+    "zh": "店铺",
+    "ff": "Sigorde"
+  },
+  "Mapbox n&apos;est pas configuré (NEXT_PUBLIC_MAPBOX_TOKEN manquant).": {
+    "en": "Mapbox is not configured (NEXT_PUBLIC_MAPBOX_TOKEN missing).",
+    "fr": "Mapbox n'est pas configuré (NEXT_PUBLIC_MAPBOX_TOKEN manquant).",
+    "es": "Mapbox no está configurado (falta NEXT_PUBLIC_MAPBOX_TOKEN).",
+    "ar": "لم يتم تكوين Mapbox (NEXT_PUBLIC_MAPBOX_TOKEN مفقود).",
+    "zh": "Mapbox 未配置（NEXT_PUBLIC_MAPBOX_TOKEN 缺失）。",
+    "ff": "Mapbox alaa ɗo haaɗi (NEXT_PUBLIC_MAPBOX_TOKEN ina ŋakki)."
+  },
+  "Aucun chauffeur n&apos;est encore assigné à cette commande.": {
+    "en": "No driver is yet assigned to this order.",
+    "fr": "Aucun chauffeur n'est encore assigné à cette commande.",
+    "es": "Aún no hay ningún conductor asignado a este pedido.",
+    "ar": "لم يتم تعيين أي سائق لهذا الطلب حتى الآن.",
+    "zh": "尚未为该订单分配任何驱动程序。",
+    "ff": "Alaa sofereeɓe toɗɗaaɓe e ndee yamiroore tawo."
+  },
+  "Récupération de la position du chauffeur…": {
+    "en": "Recovery of the driver’s position…",
+    "fr": "Récupération de la position du chauffeur…",
+    "es": "Recuperación del puesto de conductor…",
+    "ar": "استعادة وضعية السائق...",
+    "zh": "恢复驾驶员位置...",
+    "ff": "Heɓtude darnde sofereeɓe..."
+  },
+  "Deviens membre de la commande :": {
+    "en": "Become a member of the order:",
+    "fr": "Deviens membre de la commande :",
+    "es": "Hazte miembro de la orden:",
+    "ar": "كن عضوا في النظام:",
+    "zh": "成为订单会员：",
+    "ff": "Wontude tergal e yamiroore ndee:"
+  },
+  "Rejoindre (driver)": {
+    "en": "Join (driver)",
+    "fr": "Rejoindre (driver)",
+    "es": "Unirse (conductor)",
+    "ar": "انضم (سائق)",
+    "zh": "加入（司机）",
+    "ff": "Jokku (sofer)"
+  },
+  "Rejoindre (client)": {
+    "en": "Join (customer)",
+    "fr": "Rejoindre (client)",
+    "es": "Unirse (cliente)",
+    "ar": "انضم (العميل)",
+    "zh": "加入（客户）",
+    "ff": "Jokku (sosiyatee)"
+  },
+  "Rejoindre (restaurant)": {
+    "en": "Join (restaurant)",
+    "fr": "Rejoindre (restaurant)",
+    "es": "Unirse (restaurante)",
+    "ar": "انضم (مطعم)",
+    "zh": "加盟（餐厅）",
+    "ff": "Jokku (restora)"
+  },
+  "Membres": {
+    "en": "Members",
+    "fr": "Membres",
+    "es": "Miembros",
+    "ar": "أعضاء",
+    "zh": "会员",
+    "ff": "Terɗe"
+  },
+  "Rejoindre": {
+    "en": "Join",
+    "fr": "Rejoindre",
+    "es": "Unirse",
+    "ar": "ينضم",
+    "zh": "加入",
+    "ff": "Nastugo"
+  },
+  "Aucun membre.": {
+    "en": "No members.",
+    "fr": "Aucun membre.",
+    "es": "Sin miembros.",
+    "ar": "لا أعضاء.",
+    "zh": "没有会员。",
+    "ff": "Alaa terɗe."
+  },
+  "Tu dois": {
+    "en": "You must",
+    "fr": "Tu dois",
+    "es": "Usted debe",
+    "ar": "يجب عليك أن",
+    "zh": "你必须",
+    "ff": "Aɗa foti"
+  },
+  "Aucun message pour cette commande.": {
+    "en": "No message for this order.",
+    "fr": "Aucun message pour cette commande.",
+    "es": "No hay mensajes para este pedido.",
+    "ar": "لا توجد رسالة لهذا الطلب.",
+    "zh": "没有关于此订单的消息。",
+    "ff": "Alaa mesaas ngam ndee yamiroore."
+  },
+  "Chargement de MMD+…": {
+    "en": "Loading MMD+…",
+    "fr": "Chargement de MMD+…",
+    "es": "Cargando MMD+…",
+    "ar": "جارٍ تحميل MMD+...",
+    "zh": "正在加载MMD+…",
+    "ff": "Lowre MMD+..."
+  },
+  "Abonnement Premium client": {
+    "en": "Premium customer subscription",
+    "fr": "Abonnement Premium client",
+    "es": "Suscripción de cliente premium",
+    "ar": "اشتراك العميل المتميز",
+    "zh": "高级客户订阅",
+    "ff": "Abonaade soodoowo ɓurɗo moƴƴude"
+  },
+  "Abonnement actuel": {
+    "en": "Current subscription",
+    "fr": "Abonnement actuel",
+    "es": "Suscripción actual",
+    "ar": "الاشتراك الحالي",
+    "zh": "当前订阅",
+    "ff": "Abonaade jooni"
+  },
+  "Gérer le paiement": {
+    "en": "Manage payment",
+    "fr": "Gérer le paiement",
+    "es": "Gestionar pago",
+    "ar": "إدارة الدفع",
+    "zh": "管理付款",
+    "ff": "Njuɓɓudi yoɓde"
+  },
+  "Aucun abonnement actif": {
+    "en": "No active subscription",
+    "fr": "Aucun abonnement actif",
+    "es": "Sin suscripción activa",
+    "ar": "لا يوجد اشتراك نشط",
+    "zh": "没有有效订阅",
+    "ff": "Alaa abonmaaji gollotooɗi"
+  },
+  "Comparez les plans ci-dessous et souscrivez pour débloquer vos avantages.": {
+    "en": "Compare plans below and subscribe to unlock your benefits.",
+    "fr": "Comparez les plans ci-dessous et souscrivez pour débloquer vos avantages.",
+    "es": "Compare los planes a continuación y suscríbase para desbloquear sus beneficios.",
+    "ar": "قارن الخطط أدناه واشترك للحصول على مزاياك.",
+    "zh": "比较以下计划并订阅以释放您的优势。",
+    "ff": "Yero peeje les ɗee e aboneede ngam udditde nafooje maa."
+  },
+  "Comparer les plans": {
+    "en": "Compare plans",
+    "fr": "Comparer les plans",
+    "es": "Comparar planes",
+    "ar": "قارن الخطط",
+    "zh": "比较计划",
+    "ff": "Yero peeje"
+  },
+  "Aucun plan disponible pour le moment.": {
+    "en": "No plans available at this time.",
+    "fr": "Aucun plan disponible pour le moment.",
+    "es": "No hay planes disponibles en este momento.",
+    "ar": "لا توجد خطط متاحة في هذا الوقت.",
+    "zh": "目前没有可用的计划。",
+    "ff": "Alaa peeje keɓaaɗe e oo sahaa."
+  },
+  "Historique de facturation": {
+    "en": "Billing history",
+    "fr": "Historique de facturation",
+    "es": "Historial de facturación",
+    "ar": "تاريخ الفواتير",
+    "zh": "账单历史记录",
+    "ff": "Daartol billingol"
+  },
+  "Aucune facture pour le moment.": {
+    "en": "No invoice yet.",
+    "fr": "Aucune facture pour le moment.",
+    "es": "Aún no hay factura.",
+    "ar": "لا يوجد فاتورة بعد.",
+    "zh": "还没有发票。",
+    "ff": "Alaa faktiir tawo."
+  },
+  "Retour à l&apos;espace client": {
+    "en": "Return to customer area",
+    "fr": "Retour à l'espace client",
+    "es": "Volver al área de clientes",
+    "ar": "العودة إلى منطقة العملاء",
+    "zh": "返回客户区",
+    "ff": "Hoto ngartu e nokku soodoowo"
+  },
+  "Ouvrir dans Maps": {
+    "en": "Open in Maps",
+    "fr": "Ouvrir dans Maps",
+    "es": "Abrir en mapas",
+    "ar": "افتح في الخرائط",
+    "zh": "在地图中打开",
+    "ff": "Uddit e nder Karte"
+  },
+  "Dropoff": {
+    "en": "Dropoff",
+    "fr": "Dépôt",
+    "es": "Dejar",
+    "ar": "الإنزال",
+    "zh": "下车",
+    "ff": "Jippinde"
+  },
+  "Son ON/OFF": {
+    "en": "Sound ON/OFF",
+    "fr": "Son ON/OFF",
+    "es": "Sonido ON/OFF",
+    "ar": "الصوت تشغيل/إيقاف",
+    "zh": "声音开/关",
+    "ff": "Daande ON/OFF"
+  },
+  "Volume": {
+    "en": "Volume",
+    "fr": "Volume",
+    "es": "Volumen",
+    "ar": "مقدار",
+    "zh": "体积",
+    "ff": "Maunugo"
+  },
+  "Test son premium": {
+    "en": "Test premium sound",
+    "fr": "Test son premium",
+    "es": "Probar sonido premium",
+    "ar": "اختبار الصوت المميز",
+    "zh": "测试高级提示音",
+    "ff": "Ƴeewndo daande premium"
+  },
+  "Créée": {
+    "en": "Created",
+    "fr": "Créée",
+    "es": "Creado",
+    "ar": "مخلوق",
+    "zh": "已创建",
+    "ff": "Tagaaɗo"
+  },
+  "Chat — commande": {
+    "en": "Chat — command",
+    "fr": "Chat — commande",
+    "es": "Chat - comando",
+    "ar": "الدردشة - الأمر",
+    "zh": "聊天——命令",
+    "ff": "Chat — yamiroore"
+  },
+  "Ton rôle :": {
+    "en": "Your role:",
+    "fr": "Ton rôle :",
+    "es": "Tu papel:",
+    "ar": "دورك:",
+    "zh": "你的角色：",
+    "ff": "Darnde maa:"
+  },
+  "Type :": {
+    "en": "Type:",
+    "fr": "Type :",
+    "es": "Tipo:",
+    "ar": "النوع:",
+    "zh": "类型：",
+    "ff": "Fannu:"
+  },
+  "Créée le :": {
+    "en": "Created on:",
+    "fr": "Créée le :",
+    "es": "Creado el:",
+    "ar": "تم الإنشاء بتاريخ:",
+    "zh": "创建于：",
+    "ff": "Sosaa ko ñalnde:"
+  },
+  "Chargement des détails…": {
+    "en": "Loading details…",
+    "fr": "Chargement des détails…",
+    "es": "Cargando detalles…",
+    "ar": "جارٍ تحميل التفاصيل…",
+    "zh": "正在加载详细信息...",
+    "ff": "Lowre detaayuuji..."
+  },
+  "Aucun article enregistré.": {
+    "en": "No items saved.",
+    "fr": "Aucun article enregistré.",
+    "es": "No se guardaron elementos.",
+    "ar": "لم يتم حفظ أي عناصر.",
+    "zh": "没有保存任何项目。",
+    "ff": "Alaa geɗe hisnaaɗe."
+  },
+  "Article": {
+    "en": "Item",
+    "fr": "Article",
+    "es": "Artículo",
+    "ar": "الصنف",
+    "zh": "商品",
+    "ff": "Geɗel"
+  },
+  "Qté": {
+    "en": "Qty",
+    "fr": "Qté",
+    "es": "Cantidad",
+    "ar": "الكمية",
+    "zh": "数量",
+    "ff": "Limngal"
+  },
+  "Paiement": {
+    "en": "Payment",
+    "fr": "Paiement",
+    "es": "Pago",
+    "ar": "قسط",
+    "zh": "支付",
+    "ff": "Yoɓɓol"
+  },
+  "Pourboire": {
+    "en": "Tip",
+    "fr": "Pourboire",
+    "es": "Consejo",
+    "ar": "نصيحة",
+    "zh": "提示",
+    "ff": "Feelore"
+  },
+  "Mise à jour": {
+    "en": "Update",
+    "fr": "Mise à jour",
+    "es": "Actualizar",
+    "ar": "تحديث",
+    "zh": "更新",
+    "ff": "Lartol"
+  },
+  "Stripe webhook": {
+    "en": "Stripe webhook",
+    "fr": "Webhook Stripe",
+    "es": "Gancho web Stripe",
+    "ar": "خطاف الويب Stripe",
+    "zh": "Stripe 网络钩子",
+    "ff": "Stripe lowre web"
+  },
+  "Auto • pas de changement manuel": {
+    "en": "Auto • no manual change",
+    "fr": "Auto • pas de changement manuel",
+    "es": "Automático • sin cambio manual",
+    "ar": "تلقائي • لا يوجد تغيير يدوي",
+    "zh": "自动 • 无需手动更改",
+    "ff": "Auto • alaa waylo waylo junngo"
+  },
+  "Chargement de l&apos;historique…": {
+    "en": "Loading history…",
+    "fr": "Chargement de l'historique…",
+    "es": "Cargando historial…",
+    "ar": "جارٍ تحميل السجل…",
+    "zh": "加载历史记录...",
+    "ff": "Taariindi loowdi..."
+  },
+  "Aucun événement enregistré pour cette commande pour le moment.": {
+    "en": "No events recorded for this command at this time.",
+    "fr": "Aucun événement enregistré pour cette commande pour le moment.",
+    "es": "No se registraron eventos para este comando en este momento.",
+    "ar": "لم يتم تسجيل أي أحداث لهذا الأمر في هذا الوقت.",
+    "zh": "目前没有为此命令记录任何事件。",
+    "ff": "Alaa kewuuji winndaaɗi ngam ndee yamiroore e oo sahaa."
+  },
+  "Chargement de tes commandes…": {
+    "en": "Loading your orders…",
+    "fr": "Chargement de tes commandes…",
+    "es": "Cargando tus pedidos...",
+    "ar": "جارٍ تحميل طلباتك…",
+    "zh": "正在加载您的订单...",
+    "ff": "Lowde yamiroore maa..."
+  },
+  "Tu n&apos;as encore aucune commande.": {
+    "en": "You don't have any orders yet.",
+    "fr": "Tu n'as encore aucune commande.",
+    "es": "Aún no tienes ningún pedido.",
+    "ar": "ليس لديك أي أوامر حتى الآن.",
+    "zh": "您还没有任何订单。",
+    "ff": "A alaa yamiroore tawo."
+  },
+  "Crée ta première commande →": {
+    "en": "Create your first order →",
+    "fr": "Crée ta première commande →",
+    "es": "Crea tu primer pedido →",
+    "ar": "أنشئ طلبك الأول →",
+    "zh": "创建您的第一个订单 →",
+    "ff": "Sos yamiroore maa adannde →"
+  },
+  "Toutes (en cours)": {
+    "en": "All (in progress)",
+    "fr": "Toutes (en cours)",
+    "es": "Todo (en progreso)",
+    "ar": "الكل (قيد التنفيذ)",
+    "zh": "全部（进行中）",
+    "ff": "Fof (ina jokki)"
+  },
+  "En cours": {
+    "en": "In progress",
+    "fr": "En cours",
+    "es": "En curso",
+    "ar": "في تَقَدم",
+    "zh": "进行中",
+    "ff": "E nder golle"
+  },
+  "Terminées / annulées": {
+    "en": "Completed / canceled",
+    "fr": "Terminées / annulées",
+    "es": "Completado / cancelado",
+    "ar": "مكتمل / ملغى",
+    "zh": "已完成/已取消",
+    "ff": "Timminii / ustaama"
+  },
+  "Aucune commande en cours à afficher.": {
+    "en": "No current orders to display.",
+    "fr": "Aucune commande en cours à afficher.",
+    "es": "No hay pedidos actuales para mostrar.",
+    "ar": "لا توجد أوامر الحالية لعرضها.",
+    "zh": "没有可显示的当前订单。",
+    "ff": "Alaa yamiroore jooni ngam hollirde."
+  },
+  "Sélectionne une commande": {
+    "en": "Select an order",
+    "fr": "Sélectionne une commande",
+    "es": "Seleccione un pedido",
+    "ar": "حدد الطلب",
+    "zh": "选择订单",
+    "ff": "Suɓo yamiroore"
+  },
+  "Statut actuel:": {
+    "en": "Current status:",
+    "fr": "Statut actuel:",
+    "es": "Estado actual:",
+    "ar": "الوضع الحالي:",
+    "zh": "目前状态：",
+    "ff": "Ngonka jooni:"
+  },
+  "Statut de la commande": {
+    "en": "Order Status",
+    "fr": "Statut de la commande",
+    "es": "Estado del pedido",
+    "ar": "حالة الطلب",
+    "zh": "订单状态",
+    "ff": "Darnde yamiroore"
+  },
+  "Statuts protégés": {
+    "en": "Protected statuses",
+    "fr": "Statuts protégés",
+    "es": "Estados protegidos",
+    "ar": "الحالات المحمية",
+    "zh": "受保护状态",
+    "ff": "Darndeeji reenaaɗi"
+  },
+  "Aucun historique disponible.": {
+    "en": "No history available.",
+    "fr": "Aucun historique disponible.",
+    "es": "No hay historial disponible.",
+    "ar": "لا يوجد تاريخ متاح.",
+    "zh": "无可用历史记录。",
+    "ff": "Alaa daartol ina woodi."
+  },
+  "Simuler statut :": {
+    "en": "Simulate status:",
+    "fr": "Simuler statut :",
+    "es": "Simular estado:",
+    "ar": "محاكاة الحالة:",
+    "zh": "模拟状态：",
+    "ff": "Simulaasi ngonka:"
+  },
+  "Aujourd’hui": {
+    "en": "Today",
+    "fr": "Aujourd’hui",
+    "es": "Hoy",
+    "ar": "اليوم",
+    "zh": "今天",
+    "ff": "Hande"
+  },
+  "Tout": {
+    "en": "All",
+    "fr": "Tout",
+    "es": "Todo",
+    "ar": "الجميع",
+    "zh": "全部",
+    "ff": "Fu"
+  },
+  "Aucun article dans cette commande.": {
+    "en": "No items in this order.",
+    "fr": "Aucun article dans cette commande.",
+    "es": "No hay artículos en este orden.",
+    "ar": "لا توجد عناصر في هذا الترتيب.",
+    "zh": "此订单中没有商品。",
+    "ff": "Alaa geɗe e nder ndee ɗoo doggol."
+  },
+  "Chargement des détails de la commande…": {
+    "en": "Loading order details…",
+    "fr": "Chargement des détails de la commande…",
+    "es": "Cargando detalles del pedido...",
+    "ar": "جارٍ تحميل تفاصيل الطلب…",
+    "zh": "正在加载订单详细信息...",
+    "ff": "Lowre detaayuuji yamiroore..."
+  },
+  "Votre commission (restaurant)": {
+    "en": "Your commission (restaurant)",
+    "fr": "Votre commission (restaurant)",
+    "es": "Tu comisión (restaurante)",
+    "ar": "عمولتك (المطعم)",
+    "zh": "您的佣金（餐厅）",
+    "ff": "Komisoŋ maa (restoraan)"
+  },
+  "Commission (15%)": {
+    "en": "Commission (15%)",
+    "fr": "Commissions (15%)",
+    "es": "Comisión (15%)",
+    "ar": "العمولة (15%)",
+    "zh": "佣金 (15%)",
+    "ff": "Komisoŋ (15%)"
+  },
+  "Net restaurant": {
+    "en": "Net restaurant",
+    "fr": "Restaurant en ligne",
+    "es": "restaurante neto",
+    "ar": "مطعم نت",
+    "zh": "网络餐厅",
+    "ff": "Restoran Net"
+  },
+  "Chargement du graphique…": {
+    "en": "Loading the chart…",
+    "fr": "Chargement du graphique…",
+    "es": "Cargando el gráfico…",
+    "ar": "جارٍ تحميل الرسم البياني…",
+    "zh": "正在加载图表...",
+    "ff": "Lowde kartal ngal..."
+  },
+  "Aucune donnée à afficher.": {
+    "en": "No data to display.",
+    "fr": "Aucune donnée à afficher.",
+    "es": "No hay datos para mostrar.",
+    "ar": "لا توجد بيانات لعرضها.",
+    "zh": "没有数据可显示。",
+    "ff": "Alaa dokke ɗe kollirtee."
+  },
+  "Total plateforme par jour (NYC) • Max jour:": {
+    "en": "Total platform per day (NYC) • Max day:",
+    "fr": "Total plateforme par jour (NYC) • Max jour:",
+    "es": "Plataforma total por día (NYC) • Día máximo:",
+    "ar": "إجمالي المنصة في اليوم (NYC) • الحد الأقصى لليوم:",
+    "zh": "每天平台总数 (NYC) • 最大天数：",
+    "ff": "Hakke plateau e ñalawma (NYC) • Ñalawma ɓurɗo heewde:"
+  },
+  "Appliquer": {
+    "en": "Apply",
+    "fr": "Appliquer",
+    "es": "Aplicar",
+    "ar": "يتقدم",
+    "zh": "申请",
+    "ff": "Emmugo"
+  },
+  "Raccourcis:": {
+    "en": "Shortcuts:",
+    "fr": "Raccourcis:",
+    "es": "Atajos:",
+    "ar": "الاختصارات:",
+    "zh": "快捷键：",
+    "ff": "Laabi juutɗi:"
+  },
+  "Recalculer les commissions": {
+    "en": "Recalculate commissions",
+    "fr": "Recalculer les commissions",
+    "es": "Recalcular comisiones",
+    "ar": "إعادة حساب العمولات",
+    "zh": "重新计算佣金",
+    "ff": "Hiisaade komisoŋuuji"
+  },
+  "GMV (subtotal)": {
+    "en": "GMV (subtotal)",
+    "fr": "GMV (sous-total)",
+    "es": "GMV (subtotal)",
+    "ar": "GMV (المجموع الفرعي)",
+    "zh": "GMV（小计）",
+    "ff": "GMV (ko famɗi fof)"
+  },
+  "Commission plateforme": {
+    "en": "Platform commission",
+    "fr": "Commission plateforme",
+    "es": "Comisión de plataforma",
+    "ar": "عمولة المنصة",
+    "zh": "平台佣金",
+    "ff": "Komisoŋ plateau"
+  },
+  "Take rate": {
+    "en": "Take rate",
+    "fr": "Prendre le taux",
+    "es": "tomar tasa",
+    "ar": "خذ المعدل",
+    "zh": "采取率",
+    "ff": "Ƴettu tolno"
+  },
+  "Commandes dans l’intervalle": {
+    "en": "Orders in the meantime",
+    "fr": "Commandes dans l’intervalle",
+    "es": "Pedidos mientras tanto",
+    "ar": "أوامر في هذه الأثناء",
+    "zh": "期间订单",
+    "ff": "Yamirooje e nder heen"
+  },
+  "GMV": {
+    "en": "GMV",
+    "fr": "GMV",
+    "es": "GMV",
+    "ar": "GMV",
+    "zh": "GMV",
+    "ff": "GMV"
+  },
+  "Commission": {
+    "en": "Commission",
+    "fr": "Commission",
+    "es": "Comisión",
+    "ar": "عمولة",
+    "zh": "委员会",
+    "ff": "Kugal"
+  },
+  "Take": {
+    "en": "Take",
+    "fr": "Prendre",
+    "es": "Llevar",
+    "ar": "يأخذ",
+    "zh": "拿",
+    "ff": "Hoosugo"
+  },
+  "Détail": {
+    "en": "Detail",
+    "fr": "Détail",
+    "es": "Detalle",
+    "ar": "التفاصيل",
+    "zh": "细节",
+    "ff": "Matinol"
+  },
+  "Aucune commande.": {
+    "en": "No orders.",
+    "fr": "Aucune commande.",
+    "es": "Sin pedidos.",
+    "ar": "لا أوامر.",
+    "zh": "没有订单。",
+    "ff": "Alaa yamiroore."
+  },
+  "Rôle": {
+    "en": "Role",
+    "fr": "Rôle",
+    "es": "Role",
+    "ar": "دور",
+    "zh": "角色",
+    "ff": "Kugal"
+  },
+  "Vérifie ta boîte mail ✉️": {
+    "en": "Check your mailbox ✉️",
+    "fr": "Vérifie ta boîte mail ✉️",
+    "es": "Revisa tu buzón ✉️",
+    "ar": "تحقق من صندوق البريد الخاص بك ✉️",
+    "zh": "检查您的邮箱✉️",
+    "ff": "Ƴeewto kees maa ✉️"
+  },
+  "View all posts": {
+    "en": "View all posts",
+    "fr": "Afficher tous les messages",
+    "es": "Ver todas las publicaciones",
+    "ar": "عرض جميع المشاركات",
+    "zh": "查看所有帖子",
+    "ff": "Yiylo binndanɗe ɗee kala"
+  },
+  "Back to Home": {
+    "en": "Back to Home",
+    "fr": "Retour à la maison",
+    "es": "Volver a Inicio",
+    "ar": "العودة إلى المنزل",
+    "zh": "返回首页",
+    "ff": "Hootde to Galle"
+  },
+  "Contact us": {
+    "en": "Contact us",
+    "fr": "Contactez-nous",
+    "es": "Contacta con nosotras",
+    "ar": "اتصل بنا",
+    "zh": "联系我们",
+    "ff": "Jokkondir e amen"
+  },
+  "Platform": {
+    "en": "Platform",
+    "fr": "Plate-forme",
+    "es": "Plataforma",
+    "ar": "منصة",
+    "zh": "平台",
+    "ff": "Daaldal"
+  },
+  "Five services. One app.": {
+    "en": "Five services. One app.",
+    "fr": "Cinq prestations. Une application.",
+    "es": "Cinco servicios. Una aplicación.",
+    "ar": "خمس خدمات. تطبيق واحد.",
+    "zh": "五项服务。 一个应用程序。",
+    "ff": "Sarwisaaji joy. App gooto."
+  },
+  "Live GPS · Stripe · Dispatch": {
+    "en": "Live GPS · Stripe · Dispatch",
+    "fr": "En direct GPS · Stripe · Expédition",
+    "es": "En vivo GPS · Stripe · Despacho",
+    "ar": "مباشر GPS · Stripe · إرسال",
+    "zh": "直播 GPS · Stripe · 调度",
+    "ff": "Wuurde GPS · Stripe · Neldude"
+  },
+  "Download the app": {
+    "en": "Download the app",
+    "fr": "Téléchargez l'application",
+    "es": "Descarga la aplicación",
+    "ar": "قم بتنزيل التطبيق",
+    "zh": "下载应用程序",
+    "ff": "Sokkit app oo"
+  },
+  "Available in the MMD Delivery app": {
+    "en": "Available in the MMD Delivery app",
+    "fr": "Disponible dans l'application MMD Delivery",
+    "es": "Disponible en la aplicación MMD Delivery",
+    "ar": "متوفر في تطبيق MMD Delivery",
+    "zh": "可在 MMD Delivery 应用程序中使用",
+    "ff": "Ina tawee e app MMD Delivery"
+  },
+  "Simuler un statut (bip)": {
+    "en": "Simulate a status (beep)",
+    "fr": "Simuler un statut (bip)",
+    "es": "Simular un estado (bip)",
+    "ar": "محاكاة الحالة (الصافرة)",
+    "zh": "模拟状态（蜂鸣声）",
+    "ff": "Simu ngonka (bip)"
+  },
+  "Chargement des abonnements…": {
+    "en": "Loading subscriptions…",
+    "fr": "Chargement des abonnements…",
+    "es": "Cargando suscripciones…",
+    "ar": "جارٍ تحميل الاشتراكات…",
+    "zh": "正在加载订阅...",
+    "ff": "Lowde abonmaaji..."
+  },
+  "Plan actuel": {
+    "en": "Current plan",
+    "fr": "Plan actuel",
+    "es": "Plan actual",
+    "ar": "الخطة الحالية",
+    "zh": "目前计划",
+    "ff": "Feere jooni"
+  },
+  "Portail de facturation": {
+    "en": "Billing portal",
+    "fr": "Portail de facturation",
+    "es": "Portal de facturación",
+    "ar": "بوابة الفواتير",
+    "zh": "计费门户",
+    "ff": "Portal faggudu"
+  },
+  "Aucun abonnement actif. Choisissez un plan ci-dessous.": {
+    "en": "No active subscription. Choose a plan below.",
+    "fr": "Aucun abonnement actif. Choisissez un plan ci-dessous.",
+    "es": "Sin suscripción activa. Elija un plan a continuación.",
+    "ar": "لا يوجد اشتراك نشط. اختر خطة أدناه.",
+    "zh": "没有活跃的订阅。 选择下面的计划。",
+    "ff": "Alaa abonmaaji gollotooɗi. Suɓo peeje les ɗee."
+  },
+  "Actuel": {
+    "en": "Current",
+    "fr": "Actuel",
+    "es": "Actual",
+    "ar": "حاضِر",
+    "zh": "当前的",
+    "ff": "Jonta"
+  },
+  "Show Access Token": {
+    "en": "Show Access Token",
+    "fr": "Afficher le jeton d'accès",
+    "es": "Mostrar token de acceso",
+    "ar": "إظهار رمز الوصول",
+    "zh": "显示访问令牌",
+    "ff": "Hollit Token Naatgol"
+  },
+  "Tax PDF": {
+    "en": "Tax PDF",
+    "fr": "Taxe PDF",
+    "es": "Impuesto PDF",
+    "ar": "ضريبة PDF",
+    "zh": "税费 PDF",
+    "ff": "Taƴre PDF"
+  }
+}

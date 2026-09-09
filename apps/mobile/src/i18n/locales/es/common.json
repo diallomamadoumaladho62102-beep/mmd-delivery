@@ -213,7 +213,8 @@
     "no": "No",
     "edit": "Editar",
     "delete": "Eliminar",
-    "view": "Ver"
+    "view": "Ver",
+    "save": "Guardar"
   },
   "shared": {
     "common": {
@@ -328,6 +329,20 @@
       "showPassword": "Mostrar",
       "hidePassword": "Ocultar",
       "forgotPassword": "¿Olvidaste la contraseña?"
+    },
+    "home": {
+      "tabs": {
+        "home": "Inicio",
+        "orders": "Pedidos"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "Seguimiento"
+      }
+    },
+    "profile": {
+      "titleShort": "Perfil"
     }
   },
   "driver": {
@@ -1552,7 +1567,8 @@
       },
       "close": "Cerrar",
       "closeMenu": "Cerrar menú",
-      "menu": "Menú"
+      "menu": "Menú",
+      "live": "En vivo"
     },
     "automation": {
       "title": "Automatización de pedidos",
@@ -1573,7 +1589,11 @@
     "orders": {
       "accept": "Aceptar",
       "prepared": "Preparado",
-      "ready": "Listo"
+      "ready": "Listo",
+      "status": {
+        "order": "Pedido",
+        "prepared": "Preparada"
+      }
     },
     "orderDetails": {
       "title": "Pedido",
@@ -1651,5 +1671,12 @@
       "directionsPh": "Después de la estación Total, segunda calle a la derecha, casa amarilla con portón azul...",
       "directionsMin": "Se requieren al menos 8 caracteres."
     }
+  },
+  "boot": {
+    "loadingMmd": "Cargando MMD…",
+    "nativeUnavailable": "Módulo nativo / navegación no disponible",
+    "errorTitle": "MMD Delivery — se produjo un error",
+    "errorBody": "Puedes reintentar. Si el problema continúa, comparte este mensaje con soporte.",
+    "screenUnavailable": "Esta pantalla no se pudo mostrar."
   }
 }

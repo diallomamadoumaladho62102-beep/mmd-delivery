@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,6 +29,8 @@ type ActivityItem = {
 };
 
 export default function BusinessOverviewPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,8 +165,8 @@ export default function BusinessOverviewPage() {
   if (accounts.length === 0 && !error) {
     return (
       <BusinessEmptyCard
-        title="Business Portal"
-        description="Manage corporate accounts, team members, and approvals."
+        title={t("Business Portal")}
+        description={t("Manage corporate accounts, team members, and approvals.")}
         actionLabel="Get Started"
         href="/contact"
       />
@@ -173,10 +177,10 @@ export default function BusinessOverviewPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-[28px] font-bold text-white sm:text-[32px]">
-          Business Portal
+          {t("Business Portal")}
         </h1>
         <p className="text-base text-white/60 sm:text-lg">
-          Manage corporate accounts, team members, and approvals.
+          {t("Manage corporate accounts, team members, and approvals.")}
         </p>
         {primaryAccount?.account?.name ? (
           <p className="text-sm text-white/70">
@@ -190,31 +194,31 @@ export default function BusinessOverviewPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className={`${bizCard} flex flex-col gap-2.5 p-6`}>
           <p className="text-4xl font-bold text-white">{memberCount}</p>
-          <p className="text-sm text-white/70">Team Members</p>
+          <p className="text-sm text-white/70">{t("Team Members")}</p>
         </div>
         <div className={`${bizCard} flex flex-col gap-2.5 p-6`}>
           <p className="text-4xl font-bold text-white">{pendingCount}</p>
-          <p className="text-sm text-white/70">Pending Approvals</p>
+          <p className="text-sm text-white/70">{t("Pending Approvals")}</p>
         </div>
         <div className={`${bizCard} flex flex-col gap-2.5 p-6`}>
           <p className="text-4xl font-bold text-white">{balanceLabel}</p>
-          <p className="text-sm text-white/70">Total Balance</p>
+          <p className="text-sm text-white/70">{t("Total Balance")}</p>
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
         <section className={`${bizCard} flex flex-col gap-4 p-6`}>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-white">Recent Activity</h2>
+            <h2 className="text-lg font-bold text-white">{t("Recent Activity")}</h2>
             <Link
               href="/business/wallet"
               className="text-[13px] font-bold text-white/70 hover:text-white"
             >
-              View all
+              {t("View all")}
             </Link>
           </div>
           {activity.length === 0 ? (
-            <p className="text-sm text-white/60">No recent activity yet.</p>
+            <p className="text-sm text-white/60">{t("No recent activity yet.")}</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {activity.map((item) => (
@@ -244,7 +248,7 @@ export default function BusinessOverviewPage() {
         </section>
 
         <aside className={`${bizCard} flex flex-col gap-4 p-6`}>
-          <h2 className="text-lg font-bold text-white">Quick Actions</h2>
+          <h2 className="text-lg font-bold text-white">{t("Quick Actions")}</h2>
           <div className="flex flex-col gap-3">
             <QuickAction href="/business/members" label="Invite member" />
             <QuickAction href="/business/wallet" label="Fund wallet" />

@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import {
@@ -7,6 +9,8 @@ import {
 } from "@/lib/authValidation";
 
 export default function SignInPassword() {
+  const { t } = useAdminT();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +36,7 @@ export default function SignInPassword() {
 
   return (
     <div className="max-w-md mx-auto p-6 border rounded-xl mt-10 space-y-4">
-      <h1 className="text-xl font-bold">Connexion (email + mot de passe)</h1>
+      <h1 className="text-xl font-bold">{t("Connexion (email + mot de passe)")}</h1>
       <input
         className="w-full border rounded px-3 py-2"
         type="email"
@@ -44,7 +48,7 @@ export default function SignInPassword() {
         <input
           className="w-full border rounded px-3 py-2 pr-20"
           type={showPassword ? "text" : "password"}
-          placeholder="Mot de passe"
+          placeholder={t("Mot de passe")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -60,13 +64,13 @@ export default function SignInPassword() {
         onClick={submit}
         className="w-full px-4 py-2 rounded bg-black text-white"
       >
-        Se connecter
+        {t("Se connecter")}
       </button>
       {err && <div className="text-red-600 text-sm">{err}</div>}
       <div className="text-sm text-gray-600">
         Pas de compte ?{" "}
         <a className="underline" href="/auth/sign-up">
-          Créer un compte
+          {t("Créer un compte")}
         </a>
       </div>
     </div>

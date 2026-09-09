@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -47,6 +49,8 @@ async function authFetch(path: string, init?: RequestInit) {
 }
 
 export default function MarketingPortalPage() {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -100,7 +104,7 @@ export default function MarketingPortalPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-10">
-        <p className="text-sm text-slate-500">Chargement des promotions…</p>
+        <p className="text-sm text-slate-500">{t("Chargement des promotions…")}</p>
       </main>
     );
   }
@@ -110,7 +114,7 @@ export default function MarketingPortalPage() {
       <main className="mx-auto max-w-3xl px-4 py-10">
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>
         <button onClick={() => void load()} className="mt-4 rounded-md bg-slate-900 px-4 py-2 text-sm text-white">
-          Réessayer
+          {t("Réessayer")}
         </button>
       </main>
     );
@@ -118,14 +122,14 @@ export default function MarketingPortalPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-3xl font-semibold text-slate-900">Promotions & coupons</h1>
+      <h1 className="text-3xl font-semibold text-slate-900">{t("Promotions & coupons")}</h1>
       <p className="mt-2 text-sm text-slate-600">
         Offres automatiques, codes promo et portefeuille de coupons — cumulables avec MMD+ et le Crédit MMD selon
         les règles configurées.
       </p>
 
       <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="font-semibold text-slate-900">Saisir un code</h2>
+        <h2 className="font-semibold text-slate-900">{t("Saisir un code")}</h2>
         <div className="mt-3 flex gap-2">
           <input
             className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm"
@@ -137,16 +141,16 @@ export default function MarketingPortalPage() {
             onClick={() => void validate()}
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
           >
-            Vérifier
+            {t("Vérifier")}
           </button>
         </div>
         {validateMsg && <p className="mt-2 text-sm text-slate-600">{validateMsg}</p>}
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Mes coupons</h2>
+        <h2 className="text-lg font-semibold">{t("Mes coupons")}</h2>
         {coupons.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">Aucun coupon disponible.</p>
+          <p className="mt-2 text-sm text-slate-500">{t("Aucun coupon disponible.")}</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {coupons.map((c) => (
@@ -164,9 +168,9 @@ export default function MarketingPortalPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Offres disponibles</h2>
+        <h2 className="text-lg font-semibold">{t("Offres disponibles")}</h2>
         {offers.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">Aucune offre visible pour le moment.</p>
+          <p className="mt-2 text-sm text-slate-500">{t("Aucune offre visible pour le moment.")}</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {offers.map((o) => (
@@ -184,7 +188,7 @@ export default function MarketingPortalPage() {
 
       <p className="mt-8 text-sm text-slate-500">
         <Link href="/client" className="underline">
-          Retour client
+          {t("Retour client")}
         </Link>
       </p>
     </main>

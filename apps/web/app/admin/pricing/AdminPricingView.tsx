@@ -73,7 +73,10 @@ function pctValue(value: number | null | undefined) {
   return Number(numberValue(value)).toFixed(2).replace(/\.00$/, "");
 }
 
-function splitStatus(parts: Array<number | null | undefined>): SplitStatus {
+function splitStatus(
+  parts: Array<number | null | undefined>,
+  t: (source: string) => string,
+): SplitStatus {
   const total = parts.reduce((sum, value) => sum + numberValue(value), 0);
   const rounded = round2(total);
   const isExact = Math.abs(rounded - 100) < 0.01;
@@ -84,7 +87,7 @@ function splitStatus(parts: Array<number | null | undefined>): SplitStatus {
       total: rounded,
       isExact,
       isOver,
-      label: "Balanced at 100% / ??quilibr?? ?? 100%",
+      label: t("Balanced at 100%"),
       tone: "ok",
     };
   }
@@ -94,7 +97,7 @@ function splitStatus(parts: Array<number | null | undefined>): SplitStatus {
       total: rounded,
       isExact,
       isOver,
-      label: `Over by ${(rounded - 100).toFixed(2)}% / D??passe de ${(rounded - 100).toFixed(2)}%`,
+      label: `${t("Over by")} ${(rounded - 100).toFixed(2)}%`,
       tone: "danger",
     };
   }
@@ -103,7 +106,7 @@ function splitStatus(parts: Array<number | null | undefined>): SplitStatus {
     total: rounded,
     isExact,
     isOver,
-    label: `Remaining ${(100 - rounded).toFixed(2)}% / Reste ${(100 - rounded).toFixed(2)}%`,
+    label: `${t("Remaining")} ${(100 - rounded).toFixed(2)}%`,
     tone: "warn",
   };
 }
@@ -230,6 +233,7 @@ function SplitSummary({
   status: SplitStatus;
   items: Array<{ label: string; value: number | null | undefined }>;
 }) {
+  const { t } = useAdminT();
   return (
     <div className={`rounded-2xl border px-4 py-3 ${toneClasses(status.tone)}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -240,7 +244,7 @@ function SplitSummary({
           <div className="mt-1 text-sm font-semibold">{status.label}</div>
         </div>
         <div className="rounded-full bg-white/70 px-3 py-1 text-sm font-black">
-          Total {pctValue(status.total)}%
+          {t("Total")} {pctValue(status.total)}%
         </div>
       </div>
 
@@ -397,7 +401,7 @@ export default function AdminPricingView() {
               {t("MMD Delivery Admin")}
             </div>
             <h1 className="text-2xl font-black tracking-tight">
-              Pricing Configuration / Configuration des prix
+              {t("Pricing Configuration / Configuration des prix")}
             </h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-600">
               {t("Edit commissions, promotions, delivery pricing and payout splits from")}
@@ -415,7 +419,7 @@ export default function AdminPricingView() {
           </div>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <div className="font-bold">Production rule / R??gle production</div>
+            <div className="font-bold">{t("Production rule / R??gle production")}</div>
             <div className="mt-1 text-xs leading-5">
               Delivery driver % + delivery platform % must equal 100. The driver gets paid only from transport/delivery, not from the order subtotal. / La part chauffeur livraison + la part plateforme livraison doit faire 100. Le chauffeur est pay?? seulement sur le transport/livraison, pas sur le montant de la commande.
             </div>
@@ -427,12 +431,12 @@ export default function AdminPricingView() {
 
       <div className="grid gap-6">
         {rows.map((row) => {
-          const coreStatus = splitStatus([row.restaurant_pct, row.platform_pct]);
+          const coreStatus = splitStatus([row.restaurant_pct, row.platform_pct], t);
 
           const deliveryStatus = splitStatus([
             row.delivery_driver_pct,
             row.delivery_platform_pct,
-          ]);
+          ], t);
 
           const isFood = row.order_type === "food";
           const isErrand = row.order_type === "errand";
@@ -485,7 +489,7 @@ export default function AdminPricingView() {
                       type="submit"
                       className="rounded-2xl bg-black px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800"
                     >
-                      {savingId === row.id ? "Saving… / Enregistrement…" : "Save changes / Enregistrer"}
+                      {savingId === row.id ? "Saving… / Enregistrement…" : t("Save changes / Enregistrer")}
                     </button>
                   ) : null}
                 </div>
@@ -495,7 +499,7 @@ export default function AdminPricingView() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <label className="space-y-1">
                     <div className="text-sm font-medium text-slate-800">
-                      Active / Actif
+                      {t("Active / Actif")}
                     </div>
                     <select
                       name="active"
@@ -521,7 +525,7 @@ export default function AdminPricingView() {
                   status={coreStatus}
                   items={[
                     { label: t("Restaurant"), value: row.restaurant_pct },
-                    { label: "Platform", value: row.platform_pct },
+                    { label: t("Platform"), value: row.platform_pct },
                   ]}
                 />
 
@@ -570,7 +574,7 @@ export default function AdminPricingView() {
                     <input type="hidden" name="driver_pct" value="0" />
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 md:col-span-3">
                       <div className="text-sm font-medium text-slate-800">
-                        Driver order % / Chauffeur commande %
+                        {t("Driver order % / Chauffeur commande %")}
                       </div>
                       <div className="mt-2 text-lg font-black text-slate-900">0%</div>
                       <div className="mt-1 text-[11px] leading-4 text-slate-500">
@@ -670,7 +674,7 @@ export default function AdminPricingView() {
 
                     <label className="space-y-1">
                       <div className="text-sm font-medium text-slate-800">
-                        Promo enabled / Promo active
+                        {t("Promo enabled / Promo active")}
                       </div>
                       <select
                         name="promo_enabled"
@@ -686,7 +690,7 @@ export default function AdminPricingView() {
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                     <label className="space-y-1">
                       <div className="text-sm font-medium text-slate-800">
-                        Promo type / Type promo
+                        {t("Promo type / Type promo")}
                       </div>
                       <select
                         name="promo_type"
@@ -804,7 +808,7 @@ export default function AdminPricingView() {
                       type="submit"
                       className="rounded-2xl bg-black px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800"
                     >
-                      Save changes / Enregistrer
+                      {t("Save changes / Enregistrer")}
                     </button>
                   ) : null}
                 </div>

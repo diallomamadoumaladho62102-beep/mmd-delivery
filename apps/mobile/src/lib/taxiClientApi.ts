@@ -1,3 +1,4 @@
+import i18n from "i18next";
 import { API_BASE_URL } from "./apiBase";
 import {
   AUTH_ACTION_TIMEOUT_MS,
@@ -8,6 +9,7 @@ import {
 import { supabase } from "./supabase";
 import { isExpectedTaxiPaymentPendingResponse } from "./taxiPaymentAbandonFlow";
 import { logTechnicalError, toUserFacingError } from "./userFacingError";
+import { formatMoneyFromCents } from "../i18n/formatters";
 
 async function getAuthHeaders() {
   const { data, error } = await withTimeout(
@@ -19,7 +21,13 @@ async function getAuthHeaders() {
 
   const token = data.session?.access_token;
   if (!token) {
-    throw new Error("Session expired. Please sign in again.");
+    throw new Error(
+      String(
+        i18n.t("errors.sessionExpired", {
+          defaultValue: "Session expired. Please sign in again.",
+        }),
+      ),
+    );
   }
 
   return {
@@ -85,12 +93,17 @@ async function taxiPost(path: string, body: Record<string, unknown>) {
       });
     }
     throw new Error(
-      toUserFacingError(
-        out,
-        expectedPending
-          ? "Payment was not completed. Please check your payment method and try again."
-          : "Une action temporairement impossible s'est produite. Veuillez réessayer.",
-      ),
+      expectedPending
+        ? toUserFacingError(
+            out,
+            String(
+              i18n.t("taxi.quote.paymentNotCompleted", {
+                defaultValue:
+                  "Payment was not completed. Please check your payment method and try again.",
+              }),
+            ),
+          )
+        : toUserFacingError(out),
     );
   }
   return out;
@@ -340,9 +353,6 @@ export async function confirmTaxiQuoteCheckoutPaid(
     ...(sessionId ? { session_id: sessionId } : {}),
   });
 }
-
-import i18n from "../i18n";
-import { formatMoneyFromCents } from "../i18n/formatters";
 
 export function formatTaxiCents(cents: unknown, currency = "USD") {
   return formatMoneyFromCents(Number(cents ?? 0), currency, i18n.language);

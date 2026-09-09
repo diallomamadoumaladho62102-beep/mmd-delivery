@@ -30,6 +30,10 @@ export function normalizeStripeConnectStatus(
   }
 }
 
+export function stripeConnectStatusLabelKey(code: StripeConnectStatusCode): string {
+  return `payments.stripeConnect.status.${code}`;
+}
+
 export function stripeConnectStatusLabel(code: StripeConnectStatusCode): string {
   switch (code) {
     case "setup_required":
@@ -47,6 +51,10 @@ export function stripeConnectStatusLabel(code: StripeConnectStatusCode): string 
     default:
       return "Setup required";
   }
+}
+
+export function stripeConnectUserMessageKey(code: StripeConnectStatusCode): string {
+  return `payments.stripeConnect.message.${code}`;
 }
 
 export function stripeConnectUserMessage(code: StripeConnectStatusCode): string {
@@ -105,22 +113,35 @@ export function restaurantStripeConnectCta(code: StripeConnectStatusCode): {
   title: string;
   body: string;
   action: string;
+  titleKey: string;
+  bodyKey: string;
+  actionKey: string;
 } {
+  const prefix = `restaurant.connect.cta.${code === "disabled" ? "restricted" : code}`;
   switch (code) {
     case "ready_for_payouts":
       return {
+        titleKey: `${prefix}.title`,
+        bodyKey: `${prefix}.body`,
+        actionKey: `${prefix}.action`,
         title: "Stripe Connected",
         body: "Your bank account is connected. Open Stripe to manage payouts or update bank details.",
         action: "Manage Payouts",
       };
     case "verification_in_progress":
       return {
+        titleKey: `${prefix}.title`,
+        bodyKey: `${prefix}.body`,
+        actionKey: `${prefix}.action`,
         title: "Stripe setup incomplete",
         body: "Stripe is reviewing your account. Continue setup if more bank or identity information is needed.",
         action: "Continue Stripe Setup",
       };
     case "verification_pending":
       return {
+        titleKey: `${prefix}.title`,
+        bodyKey: `${prefix}.body`,
+        actionKey: `${prefix}.action`,
         title: "Complete Stripe Setup",
         body: "You started Stripe Connect. Finish identity and bank account details in Stripe to receive payouts.",
         action: "Complete Stripe Setup",
@@ -128,6 +149,9 @@ export function restaurantStripeConnectCta(code: StripeConnectStatusCode): {
     case "restricted":
     case "disabled":
       return {
+        titleKey: "restaurant.connect.cta.restricted.title",
+        bodyKey: "restaurant.connect.cta.restricted.body",
+        actionKey: "restaurant.connect.cta.restricted.action",
         title: "Payout blocked",
         body: "Stripe cannot pay this restaurant yet. Open Stripe to fix the account, then payouts retry automatically.",
         action: "Fix Stripe Account",
@@ -135,6 +159,9 @@ export function restaurantStripeConnectCta(code: StripeConnectStatusCode): {
     case "setup_required":
     default:
       return {
+        titleKey: "restaurant.connect.cta.setup_required.title",
+        bodyKey: "restaurant.connect.cta.setup_required.body",
+        actionKey: "restaurant.connect.cta.setup_required.action",
         title: "Connect your bank account",
         body: "You must connect Stripe to receive restaurant payments. Stripe will ask for your legal name, identity, and bank account. MMD never collects bank details.",
         action: "Connect Stripe",

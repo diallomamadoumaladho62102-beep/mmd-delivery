@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
@@ -151,6 +153,8 @@ function getRestaurantNextActions(status: OrderStatus) {
 }
 
 export default function OrderPage() {
+  const { t } = useAdminT();
+
   const params = useParams<{ orderId: string }>();
   const searchParams = useSearchParams();
   const orderId = params.orderId;
@@ -700,7 +704,7 @@ export default function OrderPage() {
       return (
         <div className="border rounded-lg p-3 bg-orange-50 space-y-2">
           <p className="text-xs font-semibold text-orange-800">
-            Zone restaurant
+            {t("Zone restaurant")}
           </p>
 
           <p className="text-xs text-orange-900">
@@ -743,8 +747,7 @@ export default function OrderPage() {
     if (actions.length === 0 && !restaurantCanCancel) {
       return (
         <div className="border rounded-lg p-3 bg-orange-50 text-xs text-orange-700">
-          Aucune action requise pour le moment pour le restaurant sur cette
-          commande.
+          {t("Aucune action requise pour le moment pour le restaurant sur cette commande.")}
         </div>
       );
     }
@@ -752,7 +755,7 @@ export default function OrderPage() {
     return (
       <div className="border rounded-lg p-3 bg-orange-50 space-y-2">
         <p className="text-xs font-semibold text-orange-800">
-          Zone restaurant
+          {t("Zone restaurant")}
         </p>
 
         <p className="text-xs text-orange-900">
@@ -805,7 +808,7 @@ export default function OrderPage() {
     if (isDriver && !isAssignedDriver) {
       return (
         <div className="border rounded-lg p-3 bg-emerald-50 text-xs text-emerald-900">
-          Zone chauffeur : cette commande n’est pas assignée à ton compte.
+          {t("Zone chauffeur : cette commande n’est pas assignée à ton compte.")}
         </div>
       );
     }
@@ -820,10 +823,9 @@ export default function OrderPage() {
     if (!canDoPickup && !canDoDropoff && !isAdmin) {
       return (
         <div className="border rounded-lg p-3 bg-emerald-50 text-xs text-emerald-900">
-          Zone chauffeur : aucune action disponible maintenant.
+          {t("Zone chauffeur : aucune action disponible maintenant.")}
           <div className="mt-1 text-[11px] text-emerald-800">
-            Le pickup est disponible seulement quand le restaurant met la
-            commande en <b>READY</b>.
+            {t("Le pickup est disponible seulement quand le restaurant met la commande en")} <b>READY</b>.
           </div>
         </div>
       );
@@ -832,7 +834,7 @@ export default function OrderPage() {
     return (
       <div className="border rounded-lg p-3 bg-emerald-50 space-y-3">
         <p className="text-xs font-semibold text-emerald-800">
-          Zone chauffeur / livreur
+          {t("Zone chauffeur / livreur")}
         </p>
 
         <p className="text-xs text-emerald-900">
@@ -845,7 +847,7 @@ export default function OrderPage() {
         {canDoPickup && (
           <div className="space-y-2">
             <p className="text-[11px] text-emerald-900">
-              Demande le <span className="font-semibold">code pickup</span> au
+              {t("Demande le")} <span className="font-semibold">code pickup</span> au
               restaurant et saisis-le ici.
             </p>
 
@@ -854,7 +856,7 @@ export default function OrderPage() {
                 type="text"
                 value={pickupCodeInput}
                 onChange={(e) => setPickupCodeInput(e.target.value)}
-                placeholder="Code pickup"
+                placeholder={t("Code pickup")}
                 className="flex-1 border rounded-md px-2 py-1 text-xs"
               />
 
@@ -882,7 +884,7 @@ export default function OrderPage() {
                 type="text"
                 value={dropoffCodeInput}
                 onChange={(e) => setDropoffCodeInput(e.target.value)}
-                placeholder="Code de livraison"
+                placeholder={t("Code de livraison")}
                 className="flex-1 border rounded-md px-2 py-1 text-xs"
               />
 
@@ -906,16 +908,15 @@ export default function OrderPage() {
 
     return (
       <section className="border rounded-lg p-3 bg-sky-50 space-y-3">
-        <p className="text-xs font-semibold text-sky-800">Zone client</p>
+        <p className="text-xs font-semibold text-sky-800">{t("Zone client")}</p>
 
         <p className="text-xs text-sky-900">
-          Donne le code de confirmation uniquement quand tu as bien reçu ta
-          commande.
+          {t("Donne le code de confirmation uniquement quand tu as bien reçu ta commande.")}
         </p>
 
         <div className="space-y-1">
           <p className="text-[11px] text-sky-800 font-semibold">
-            Code de livraison :
+            {t("Code de livraison :")}
           </p>
 
           <div className="inline-flex px-4 py-2 rounded-md bg-white border border-sky-200">
@@ -926,8 +927,7 @@ export default function OrderPage() {
         </div>
 
         <p className="text-[11px] text-sky-900">
-          Tu peux suivre le chauffeur en temps réel plus bas si un driver est
-          assigné.
+          {t("Tu peux suivre le chauffeur en temps réel plus bas si un driver est assigné.")}
         </p>
 
         {isOrderUnpaid(order.payment_status) && order.status !== "canceled" ? (
@@ -950,9 +950,9 @@ export default function OrderPage() {
   if (loading) {
     return (
       <main className="max-w-3xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold">Commande</h1>
+        <h1 className="text-2xl font-bold">{t("Commande")}</h1>
         <p className="text-sm text-gray-600 mt-2">
-          Chargement des informations de la commande…
+          {t("Chargement des informations de la commande…")}
         </p>
       </main>
     );
@@ -961,7 +961,7 @@ export default function OrderPage() {
   if (err || !order) {
     return (
       <main className="max-w-3xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold">Commande</h1>
+        <h1 className="text-2xl font-bold">{t("Commande")}</h1>
 
         <p className="text-sm text-red-600 mt-2">
           {err ?? "Commande introuvable."}
@@ -1069,7 +1069,7 @@ export default function OrderPage() {
 
       <section className="grid gap-3 md:grid-cols-2">
         <div className="border rounded-lg p-3 bg-white space-y-1 text-sm">
-          <h2 className="text-sm font-semibold mb-1">Restaurant</h2>
+          <h2 className="text-sm font-semibold mb-1">{t("Restaurant")}</h2>
 
           <p className="text-sm font-medium">
             {order.restaurant_name ?? "Restaurant inconnu"}
@@ -1090,34 +1090,34 @@ export default function OrderPage() {
                 {order.pickup_code}
               </p>
               <p className="mt-1 text-[11px] text-slate-600">
-                Communiquez ce code uniquement au livreur.
+                {t("Communiquez ce code uniquement au livreur.")}
               </p>
             </div>
           )}
 
           {isDriver && (
             <p className="text-[11px] text-gray-500 mt-1">
-              Pour le ramassage : demande au restaurant le code/QR.
+              {t("Pour le ramassage : demande au restaurant le code/QR.")}
             </p>
           )}
         </div>
 
         {isRestaurant && !isAdmin ? (
           <div className="border rounded-lg p-3 bg-white space-y-2 text-sm">
-            <h2 className="text-sm font-semibold mb-1">Livraison</h2>
+            <h2 className="text-sm font-semibold mb-1">{t("Livraison")}</h2>
             {order.dropoff_address ? (
               <p className="text-xs text-gray-600">
                 Adresse de livraison : {order.dropoff_address}
               </p>
             ) : (
               <p className="text-xs text-gray-500">
-                Identifiez le livreur uniquement avec le code pickup.
+                {t("Identifiez le livreur uniquement avec le code pickup.")}
               </p>
             )}
           </div>
         ) : (
           <div className="border rounded-lg p-3 bg-white space-y-1 text-sm">
-            <h2 className="text-sm font-semibold mb-1">Livraison</h2>
+            <h2 className="text-sm font-semibold mb-1">{t("Livraison")}</h2>
 
             {(isClient || isDriver || isAdmin) && order.dropoff_address && (
               <p className="text-xs text-gray-600">
@@ -1161,10 +1161,10 @@ export default function OrderPage() {
 
       {(isClient || isAdmin) && (
         <section className="mt-2 border rounded-lg p-3 bg-white space-y-2">
-          <h2 className="text-sm font-semibold">Suivi du chauffeur live</h2>
+          <h2 className="text-sm font-semibold">{t("Suivi du chauffeur live")}</h2>
 
           <p className="text-xs text-gray-600">
-            Position temps réel du chauffeur.
+            {t("Position temps réel du chauffeur.")}
           </p>
 
           <DriverLiveMap driverId={driverId} />
@@ -1173,12 +1173,12 @@ export default function OrderPage() {
 
       <section className="border rounded-lg p-3 bg-white space-y-2">
         <h2 className="text-sm font-semibold mb-1">
-          Récapitulatif de la commande
+          {t("Récapitulatif de la commande")}
         </h2>
 
         {items.length === 0 ? (
           <p className="text-xs text-gray-500">
-            Aucun détail de plats enregistré pour cette commande.
+            {t("Aucun détail de plats enregistré pour cette commande.")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -1219,17 +1219,17 @@ export default function OrderPage() {
         {(!isRestaurant || isAdmin) && (
           <div className="pt-2 border-t mt-2 space-y-1 text-sm">
             <p>
-              <span className="font-medium">Montant plats :</span>{" "}
+              <span className="font-medium">{t("Montant plats :")}</span>{" "}
               {formatMoney(order.subtotal, currency)}
             </p>
 
             <p>
-              <span className="font-medium">Taxes :</span>{" "}
+              <span className="font-medium">{t("Taxes :")}</span>{" "}
               {formatMoney(order.tax ?? 0, currency)}
             </p>
 
             <p>
-              <span className="font-medium">Total :</span>{" "}
+              <span className="font-medium">{t("Total :")}</span>{" "}
               {formatMoney(
                 order.total ?? (order.subtotal ?? 0) + (order.tax ?? 0),
                 currency

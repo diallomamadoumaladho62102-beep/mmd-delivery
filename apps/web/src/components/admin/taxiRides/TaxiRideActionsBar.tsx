@@ -26,7 +26,7 @@ export default function TaxiRideActionsBar({
           href={action.href}
           className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
-          {action.label}
+          {t(action.label)}
         </Link>
       ))}
     </div>

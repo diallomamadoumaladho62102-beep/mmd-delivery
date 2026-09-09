@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
@@ -14,6 +16,8 @@ export default function AdminTaxiCancelRefundPanel({
   defaultReason = "admin_cancel_refund",
   onCompleted,
 }: AdminTaxiCancelRefundPanelProps) {
+  const { t } = useAdminT();
+
   const [rideId, setRideId] = useState(defaultRideId);
   const [reason, setReason] = useState(defaultReason);
   const [loading, setLoading] = useState(false);
@@ -64,10 +68,10 @@ export default function AdminTaxiCancelRefundPanel({
     <section className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-slate-900">
-          Admin — Annuler & rembourser (Taxi)
+          {t("Admin — Annuler & rembourser (Taxi)")}
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Annule la course taxi et rembourse Stripe si elle est payée.
+          {t("Annule la course taxi et rembourse Stripe si elle est payée.")}
         </p>
       </div>
 
@@ -75,14 +79,14 @@ export default function AdminTaxiCancelRefundPanel({
         <input
           value={rideId}
           onChange={(e) => setRideId(e.target.value)}
-          placeholder="Taxi Ride ID"
+          placeholder={t("Taxi Ride ID")}
           className="rounded-xl border px-3 py-2 text-sm"
         />
 
         <input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason"
+          placeholder={t("Reason")}
           className="rounded-xl border px-3 py-2 text-sm"
         />
       </div>

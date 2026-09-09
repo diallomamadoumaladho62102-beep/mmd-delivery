@@ -8,6 +8,8 @@ import NewsletterForm from "./NewsletterForm";
 import SiteImage from "./SiteImage";
 import SocialLinks from "./SocialLinks";
 import MobileAppComingSoonBanner from "./MobileAppComingSoonBanner";
+import WebLanguageSwitcher from "../WebLanguageSwitcher";
+import { useAdminT } from "@/i18n/useAdminT";
 import {
   resolveSiteLogo,
   siteContainerClass,
@@ -44,6 +46,7 @@ export default function SiteShell({
   children,
   overlays = [],
 }: SiteShellProps) {
+  const { t } = useAdminT();
   const brand = settings.brand_name || siteTheme.brandName;
   const logo = resolveSiteLogo(settings.logo_url);
   const slogan = settings.slogan || "We Deliver With Heart";
@@ -111,7 +114,7 @@ export default function SiteShell({
         href="#site-main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-slate-900"
       >
-        Skip to content
+        {t("Skip to content")}
       </a>
 
       {hideComingSoonBanner ? null : <MobileAppComingSoonBanner />}
@@ -120,7 +123,7 @@ export default function SiteShell({
         <div
           key={o.id}
           role="region"
-          aria-label={o.title || "Announcement"}
+          aria-label={o.title || t("Announcement")}
           className="border-b border-orange-400/20 bg-gradient-to-r from-orange-500/15 to-rose-500/15"
         >
           <div
@@ -144,9 +147,9 @@ export default function SiteShell({
                 type="button"
                 onClick={() => dismissOverlay(o.id)}
                 className="rounded-md px-2 py-1 text-slate-400 hover:text-white"
-                aria-label="Dismiss announcement"
+                aria-label={t("Dismiss announcement")}
               >
-                Close
+                {t("Close")}
               </button>
             ) : null}
           </div>
@@ -182,7 +185,7 @@ export default function SiteShell({
 
           <nav
             className="hidden items-center gap-1 lg:flex"
-            aria-label="Primary"
+            aria-label={t("Primary")}
           >
             {headerItems.map((item) => (
               <Link
@@ -200,8 +203,9 @@ export default function SiteShell({
               data-site-event="nav_download"
               className={`ml-2 ${sitePrimaryBtnClass}`}
             >
-              Download
+              {t("Download")}
             </Link>
+            <WebLanguageSwitcher className="ml-3 text-white" />
           </nav>
 
           <button
@@ -209,10 +213,10 @@ export default function SiteShell({
             className="inline-flex items-center justify-center rounded-lg border border-white/15 px-3 py-2 text-sm font-medium text-white lg:hidden"
             aria-expanded={navOpen}
             aria-controls={navId}
-            aria-label={navOpen ? "Close menu" : "Open menu"}
+            aria-label={navOpen ? t("Close menu") : t("Open menu")}
             onClick={() => setNavOpen((v) => !v)}
           >
-            {navOpen ? "Close" : "Menu"}
+            {navOpen ? t("Close") : t("Menu")}
           </button>
         </div>
 
@@ -220,7 +224,7 @@ export default function SiteShell({
           <nav
             id={navId}
             className="border-t border-white/10 bg-slate-950/95 lg:hidden"
-            aria-label="Mobile"
+            aria-label={t("Mobile")}
           >
             <div className={`${siteContainerClass} flex flex-col gap-1 py-3`}>
               {headerItems.map((item) => (
@@ -241,8 +245,9 @@ export default function SiteShell({
                 className={`${sitePrimaryBtnClass} mt-2`}
                 onClick={() => setNavOpen(false)}
               >
-                Download
+                {t("Download")}
               </Link>
+              <WebLanguageSwitcher className="mt-2 text-white" />
             </div>
           </nav>
         ) : null}
@@ -270,13 +275,13 @@ export default function SiteShell({
               <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
                 {settings.footer_blurb ||
                   settings.tagline ||
-                  "Modern delivery infrastructure for clients, drivers, restaurants, sellers, and businesses."}
+                  t("Modern delivery infrastructure for clients, drivers, restaurants, sellers, and businesses.")}
               </p>
             </div>
 
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-200">
-                Explore
+                {t("Explore")}
               </h2>
               <ul className="mt-4 space-y-2.5">
                 {footerItems.map((item) => (
@@ -298,7 +303,7 @@ export default function SiteShell({
 
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-200">
-                Contact
+                {t("Contact")}
               </h2>
               <ul className="mt-4 space-y-2.5 text-sm text-slate-400">
                 {settings.support_email ? (
@@ -335,23 +340,23 @@ export default function SiteShell({
 
           <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>
-              © {year} {brand}. All rights reserved.
+              © {year} {brand}. {t("All rights reserved.")}
             </p>
             <p className="flex flex-wrap gap-x-3 gap-y-1 text-slate-400">
               <Link href="/legal/privacy" className="hover:text-orange-300">
-                Privacy
+                {t("Privacy")}
               </Link>
               <Link href="/legal/terms" className="hover:text-orange-300">
-                Terms
+                {t("Terms")}
               </Link>
               <Link href="/legal/sms" className="hover:text-orange-300">
                 SMS
               </Link>
               <Link href="/legal/support" className="hover:text-orange-300">
-                Support
+                {t("Support")}
               </Link>
               <Link href="/legal/account-deletion" className="hover:text-orange-300">
-                Delete account
+                {t("Delete account")}
               </Link>
             </p>
           </div>
@@ -393,7 +398,7 @@ export default function SiteShell({
                   className="rounded-xl border border-white/15 px-4 py-2 text-sm text-slate-300 hover:bg-white/5"
                   onClick={() => dismissOverlay(popupOverlays[0].id)}
                 >
-                  Dismiss
+                  {t("Dismiss")}
                 </button>
               ) : null}
             </div>

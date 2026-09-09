@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { PaymentMethodOption } from "../lib/paymentMethodsApi";
 
 type Props = {
@@ -20,22 +21,24 @@ type Props = {
 
 export function PaymentMethodPicker({
   visible,
-  title = "Choose payment method",
+  title,
   methods,
   loading = false,
   onClose,
   onSelect,
 }: Props) {
+  const { t } = useTranslation();
+  const heading = title ?? t("payments.picker.title");
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title}>{heading}</Text>
           {loading ? (
             <ActivityIndicator size="large" color="#111827" style={styles.loader} />
           ) : methods.length === 0 ? (
             <Text style={styles.empty}>
-              Payment method temporarily unavailable
+              {t("payments.picker.unavailable")}
             </Text>
           ) : (
             methods.map((method) => (
@@ -52,7 +55,7 @@ export function PaymentMethodPicker({
                   <Text style={styles.optionTitle}>{method.display_name}</Text>
                   {method.test_mode ? (
                     <View style={styles.testBadge}>
-                      <Text style={styles.testBadgeText}>Test</Text>
+                      <Text style={styles.testBadgeText}>{t("payments.picker.test")}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -61,14 +64,14 @@ export function PaymentMethodPicker({
                 ) : null}
                 {!method.available ? (
                   <Text style={styles.unavailable}>
-                    {method.unavailable_reason ?? "Payment method temporarily unavailable"}
+                    {method.unavailable_reason ?? t("payments.picker.unavailable")}
                   </Text>
                 ) : null}
               </TouchableOpacity>
             ))
           )}
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>{t("common.cancel")}</Text>
           </TouchableOpacity>
         </View>
       </View>

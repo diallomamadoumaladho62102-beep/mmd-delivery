@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -90,6 +92,8 @@ function getLogoPublicUrl(path: string): string | null {
 }
 
 export default function RestaurantProfilePage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -590,8 +594,8 @@ export default function RestaurantProfilePage() {
   if (loading || !profile) {
     return (
       <div className="mx-auto max-w-xl p-4">
-        <h1 className="mb-2 text-xl font-semibold">Profil restaurant</h1>
-        <p>Chargement…</p>
+        <h1 className="mb-2 text-xl font-semibold">{t("Profil restaurant")}</h1>
+        <p>{t("Chargement…")}</p>
       </div>
     );
   }
@@ -599,8 +603,8 @@ export default function RestaurantProfilePage() {
   if (!userId) {
     return (
       <div className="mx-auto max-w-xl p-4">
-        <h1 className="mb-2 text-xl font-semibold">Profil restaurant</h1>
-        <p>Tu dois être connecté pour voir cette page.</p>
+        <h1 className="mb-2 text-xl font-semibold">{t("Profil restaurant")}</h1>
+        <p>{t("Tu dois être connecté pour voir cette page.")}</p>
       </div>
     );
   }
@@ -609,11 +613,11 @@ export default function RestaurantProfilePage() {
     <div className="mx-auto max-w-4xl space-y-6 p-4">
       <div>
         <p className="text-sm font-black uppercase tracking-[0.22em] text-slate-500">
-          MMD Restaurant
+          {t("MMD Restaurant")}
         </p>
-        <h1 className="text-2xl font-black tracking-tight">Profil restaurant</h1>
+        <h1 className="text-2xl font-black tracking-tight">{t("Profil restaurant")}</h1>
         <p className="mt-2 text-sm font-semibold text-slate-500">
-          Configure ton restaurant, tes horaires, ton logo et tes documents de vérification.
+          {t("Configure ton restaurant, tes horaires, ton logo et tes documents de vérification.")}
         </p>
       </div>
 
@@ -622,10 +626,10 @@ export default function RestaurantProfilePage() {
 
       <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm">
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Compte & contact</h2>
+          <h2 className="text-lg font-semibold">{t("Compte & contact")}</h2>
 
           <label className="block text-sm font-medium">
-            Nom complet (propriétaire / contact)
+            {t("Nom complet (propriétaire / contact)")}
             <input
               type="text"
               className="mt-1 w-full rounded border px-3 py-2"
@@ -637,12 +641,12 @@ export default function RestaurantProfilePage() {
                     : { full_name: event.target.value, email: profile.email }
                 )
               }
-              placeholder="Nom du propriétaire ou contact principal"
+              placeholder={t("Nom du propriétaire ou contact principal")}
             />
           </label>
 
           <label className="block text-sm font-medium">
-            Email de contact
+            {t("Email de contact")}
             <input
               type="email"
               className="mt-1 w-full rounded border px-3 py-2"
@@ -653,7 +657,7 @@ export default function RestaurantProfilePage() {
           </label>
 
           <label className="block text-sm font-medium">
-            Téléphone du restaurant
+            {t("Téléphone du restaurant")}
             <input
               type="tel"
               className="mt-1 w-full rounded border px-3 py-2"
@@ -665,10 +669,10 @@ export default function RestaurantProfilePage() {
         </div>
 
         <div className="space-y-3 border-t pt-4">
-          <h2 className="text-lg font-semibold">Détails du restaurant</h2>
+          <h2 className="text-lg font-semibold">{t("Détails du restaurant")}</h2>
 
           <label className="block text-sm font-medium">
-            Nom du restaurant
+            {t("Nom du restaurant")}
             <input
               type="text"
               className="mt-1 w-full rounded border px-3 py-2"
@@ -679,7 +683,7 @@ export default function RestaurantProfilePage() {
           </label>
 
           <label className="block text-sm font-medium">
-            Adresse
+            {t("Adresse")}
             <input
               type="text"
               className="mt-1 w-full rounded border px-3 py-2"
@@ -691,7 +695,7 @@ export default function RestaurantProfilePage() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm font-medium">
-              Ville
+              {t("Ville")}
               <input
                 type="text"
                 className="mt-1 w-full rounded border px-3 py-2"
@@ -702,7 +706,7 @@ export default function RestaurantProfilePage() {
             </label>
 
             <label className="block text-sm font-medium">
-              Code postal
+              {t("Code postal")}
               <input
                 type="text"
                 className="mt-1 w-full rounded border px-3 py-2"
@@ -714,30 +718,30 @@ export default function RestaurantProfilePage() {
           </div>
 
           <label className="block text-sm font-medium">
-            Type de cuisine
+            {t("Type de cuisine")}
             <input
               type="text"
               className="mt-1 w-full rounded border px-3 py-2"
               value={profile.cuisine_type ?? ""}
               onChange={(event) => onChangeField("cuisine_type", event.target.value)}
-              placeholder="Africain, Italien, Fast-food…"
+              placeholder={t("Africain, Italien, Fast-food…")}
             />
           </label>
 
           <label className="block text-sm font-medium">
-            Description (optionnel)
+            {t("Description (optionnel)")}
             <textarea
               className="mt-1 w-full rounded border px-3 py-2"
               rows={3}
               value={profile.description ?? ""}
               onChange={(event) => onChangeField("description", event.target.value)}
-              placeholder="Description courte du restaurant, spécialités, etc."
+              placeholder={t("Description courte du restaurant, spécialités, etc.")}
             />
           </label>
         </div>
 
         <div className="space-y-3 border-t pt-4">
-          <h2 className="text-lg font-semibold">Logo du restaurant</h2>
+          <h2 className="text-lg font-semibold">{t("Logo du restaurant")}</h2>
           <p className="text-sm text-gray-600">
             Le logo est public et sera affiché aux clients dans MMD. Il est stocké dans le profil restaurant, pas comme document légal.
           </p>
@@ -763,11 +767,11 @@ export default function RestaurantProfilePage() {
               }
             />
           </div>
-          {uploadingDoc === "logo" && <p className="text-xs text-gray-500">Upload logo en cours…</p>}
+          {uploadingDoc === "logo" && <p className="text-xs text-gray-500">{t("Upload logo en cours…")}</p>}
         </div>
 
         <div className="space-y-3 border-t pt-4">
-          <h2 className="text-lg font-semibold">Image de couverture</h2>
+          <h2 className="text-lg font-semibold">{t("Image de couverture")}</h2>
           <p className="text-sm text-gray-600">
             Bannière affichée aux clients. Stockée sur le profil restaurant (`cover_image_url`).
           </p>
@@ -793,19 +797,19 @@ export default function RestaurantProfilePage() {
               }
             />
           </div>
-          {uploadingDoc === "cover" && <p className="text-xs text-gray-500">Upload couverture en cours…</p>}
+          {uploadingDoc === "cover" && <p className="text-xs text-gray-500">{t("Upload couverture en cours…")}</p>}
         </div>
 
         <div className="space-y-3 border-t pt-4">
-          <h2 className="text-lg font-semibold">Horaires d’ouverture</h2>
-          <p className="text-xs text-gray-600">Indique les heures d'ouverture et de fermeture pour chaque jour.</p>
+          <h2 className="text-lg font-semibold">{t("Horaires d’ouverture")}</h2>
+          <p className="text-xs text-gray-600">{t("Indique les heures d'ouverture et de fermeture pour chaque jour.")}</p>
 
           <div className="space-y-2">
             {(Object.keys(DAY_LABELS) as DayKey[]).map((day) => (
               <div key={day} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[120px,1fr,1fr]">
                 <div className="text-sm font-medium">{DAY_LABELS[day]}</div>
                 <div>
-                  <label className="text-xs text-gray-600">Ouverture</label>
+                  <label className="text-xs text-gray-600">{t("Ouverture")}</label>
                   <input
                     type="time"
                     className="mt-1 w-full rounded border px-2 py-1 text-sm"
@@ -814,7 +818,7 @@ export default function RestaurantProfilePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-600">Fermeture</label>
+                  <label className="text-xs text-gray-600">{t("Fermeture")}</label>
                   <input
                     type="time"
                     className="mt-1 w-full rounded border px-2 py-1 text-sm"
@@ -828,7 +832,7 @@ export default function RestaurantProfilePage() {
         </div>
 
         <div className="space-y-3 border-t pt-4">
-          <h2 className="text-lg font-semibold">Options de service</h2>
+          <h2 className="text-lg font-semibold">{t("Options de service")}</h2>
 
           <div className="flex flex-col gap-3 text-sm sm:flex-row">
             <label className="inline-flex items-center gap-2">
@@ -838,7 +842,7 @@ export default function RestaurantProfilePage() {
                 checked={profile.offers_delivery}
                 onChange={(event) => onChangeOption("offers_delivery", event.target.checked)}
               />
-              <span>Livraison</span>
+              <span>{t("Livraison")}</span>
             </label>
 
             <label className="inline-flex items-center gap-2">
@@ -848,7 +852,7 @@ export default function RestaurantProfilePage() {
                 checked={profile.offers_pickup}
                 onChange={(event) => onChangeOption("offers_pickup", event.target.checked)}
               />
-              <span>À emporter</span>
+              <span>{t("À emporter")}</span>
             </label>
 
             <label className="inline-flex items-center gap-2">
@@ -858,28 +862,28 @@ export default function RestaurantProfilePage() {
                 checked={profile.offers_dine_in}
                 onChange={(event) => onChangeOption("offers_dine_in", event.target.checked)}
               />
-              <span>Sur place</span>
+              <span>{t("Sur place")}</span>
             </label>
           </div>
         </div>
 
         <div className="space-y-3 border-t pt-4">
-          <h2 className="text-lg font-semibold">Infos business</h2>
+          <h2 className="text-lg font-semibold">{t("Infos business")}</h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm font-medium">
-              N° de licence
+              {t("N° de licence")}
               <input
                 type="text"
                 className="mt-1 w-full rounded border px-3 py-2"
                 value={profile.license_number ?? ""}
                 onChange={(event) => onChangeField("license_number", event.target.value)}
-                placeholder="Licence du restaurant"
+                placeholder={t("Licence du restaurant")}
               />
             </label>
 
             <label className="block text-sm font-medium">
-              N° de Tax ID (EIN)
+              {t("N° de Tax ID (EIN)")}
               <input
                 type="text"
                 className="mt-1 w-full rounded border px-3 py-2"
@@ -890,10 +894,10 @@ export default function RestaurantProfilePage() {
             </label>
           </div>
 
-          <h3 className="pt-2 text-sm font-semibold">Présence en ligne</h3>
+          <h3 className="pt-2 text-sm font-semibold">{t("Présence en ligne")}</h3>
 
           <label className="block text-sm font-medium">
-            Site web
+            {t("Site web")}
             <input
               type="url"
               className="mt-1 w-full rounded border px-3 py-2"
@@ -937,14 +941,14 @@ export default function RestaurantProfilePage() {
 
       <div className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm">
         <div>
-          <h2 className="text-lg font-semibold">Documents de vérification</h2>
+          <h2 className="text-lg font-semibold">{t("Documents de vérification")}</h2>
           <p className="text-sm text-gray-600">
             Ces documents servent à vérifier ton restaurant. Ils restent privés et suivent les mêmes types que le backend Supabase : license, tax, id.
           </p>
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium">Licence restaurant</label>
+          <label className="block text-sm font-medium">{t("Licence restaurant")}</label>
           <input
             type="file"
             accept="image/*,application/pdf"
@@ -953,11 +957,11 @@ export default function RestaurantProfilePage() {
           {docs.license && (
             <p className="text-xs text-gray-700">Déjà envoyée • statut : {docs.license.status ?? "pending"}</p>
           )}
-          {uploadingDoc === "license" && <p className="text-xs text-gray-500">Upload en cours…</p>}
+          {uploadingDoc === "license" && <p className="text-xs text-gray-500">{t("Upload en cours…")}</p>}
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium">Document fiscal / EIN</label>
+          <label className="block text-sm font-medium">{t("Document fiscal / EIN")}</label>
           <input
             type="file"
             accept="image/*,application/pdf"
@@ -966,11 +970,11 @@ export default function RestaurantProfilePage() {
           {docs.tax && (
             <p className="text-xs text-gray-700">Déjà envoyé • statut : {docs.tax.status ?? "pending"}</p>
           )}
-          {uploadingDoc === "tax" && <p className="text-xs text-gray-500">Upload en cours…</p>}
+          {uploadingDoc === "tax" && <p className="text-xs text-gray-500">{t("Upload en cours…")}</p>}
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium">Pièce d’identité propriétaire</label>
+          <label className="block text-sm font-medium">{t("Pièce d’identité propriétaire")}</label>
           <input
             type="file"
             accept="image/*,application/pdf"
@@ -979,7 +983,7 @@ export default function RestaurantProfilePage() {
           {docs.id && (
             <p className="text-xs text-gray-700">Déjà envoyée • statut : {docs.id.status ?? "pending"}</p>
           )}
-          {uploadingDoc === "id" && <p className="text-xs text-gray-500">Upload en cours…</p>}
+          {uploadingDoc === "id" && <p className="text-xs text-gray-500">{t("Upload en cours…")}</p>}
         </div>
       </div>
     </div>

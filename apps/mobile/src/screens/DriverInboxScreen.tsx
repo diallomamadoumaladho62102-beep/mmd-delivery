@@ -494,10 +494,11 @@ function SectionHeader({ title, count }: { title: string; count: number }) {
 }
 
 function EmptyState({ text, compact }: { text: string; compact?: boolean }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.emptyState, compact && styles.emptyStateCompact]}>
       {!compact ? (
-        <Text style={styles.emptyTitle}>Inbox empty</Text>
+        <Text style={styles.emptyTitle}>{t("driver.inbox.emptyTitle")}</Text>
       ) : null}
       <Text style={styles.emptyText}>{text}</Text>
     </View>

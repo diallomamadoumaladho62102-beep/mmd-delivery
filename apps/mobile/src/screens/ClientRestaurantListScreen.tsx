@@ -26,6 +26,7 @@ import {
   coordinatesMatchMarketCountry,
   resolveMarketScopeFromFeatures,
 } from "../lib/marketScope";
+import { localizedCuisineType } from "../lib/localizeCuisineType";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import {
   MMD_BLUE,
@@ -52,7 +53,7 @@ type Restaurant = {
   imageUrl: string | null;
 };
 
-const ALL_CUISINES = "Tous";
+const ALL_CUISINES = "__all__";
 const AVATARS_BUCKET = "avatars";
 
 function resolveRestaurantImageUrl(value: string | null | undefined): string | null {
@@ -226,10 +227,10 @@ export function ClientRestaurantListScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <ScreenHeader
-        title={t("client.restaurants.header.title", "Restaurants partenaires")}
+        title={t("client.restaurants.header.title", "Partner restaurants")}
         subtitle={t(
           "client.restaurants.header.subtitle",
-          "Choisis un restaurant par catégorie ou recherche ton plat préféré."
+          "Choose a restaurant by category or search for your favorite dish.",
         )}
         fallbackRoute="ClientHome"
         variant="brand"
@@ -250,7 +251,7 @@ export function ClientRestaurantListScreen() {
           onChangeText={setSearchText}
           placeholder={t(
             "client.restaurants.search.placeholder",
-            "Rechercher restaurant, adresse ou cuisine..."
+            "Search restaurant, address, or cuisine...",
           )}
           placeholderTextColor="#6B7280"
           autoCorrect={false}
@@ -299,7 +300,9 @@ export function ClientRestaurantListScreen() {
                     fontFamily: MMD_FONT.extrabold,
                   }}
                 >
-                  {cuisine}
+                  {cuisine === ALL_CUISINES
+                    ? t("client.restaurants.cuisineAll")
+                    : localizedCuisineType((key) => t(key), cuisine)}
                 </Text>
               </TouchableOpacity>
             );
@@ -355,7 +358,7 @@ export function ClientRestaurantListScreen() {
               textAlign: "center",
             }}
           >
-            {t("client.restaurants.loading", "Chargement des restaurants…")}
+            {t("client.restaurants.loading", "Loading restaurants…")}
           </Text>
         </View>
       ) : (
@@ -391,13 +394,13 @@ export function ClientRestaurantListScreen() {
                   marginBottom: 4,
                 }}
               >
-                {t("client.restaurants.empty.title", "Aucun restaurant disponible")}
+                {t("client.restaurants.empty.title", "No restaurants available")}
               </Text>
 
               <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
                 {t(
                   "client.restaurants.empty.body",
-                  "Aucun restaurant ne correspond à ce filtre pour le moment."
+                  "No restaurants match this filter right now.",
                 )}
               </Text>
             </View>
@@ -457,7 +460,7 @@ export function ClientRestaurantListScreen() {
                         fontFamily: MMD_FONT.semibold,
                       }}
                     >
-                      {restaurant.cuisineType}
+                      {localizedCuisineType((key) => t(key), restaurant.cuisineType)}
                     </Text>
                   </View>
                 </View>
@@ -468,7 +471,7 @@ export function ClientRestaurantListScreen() {
 
                 {restaurant.phone ? (
                   <Text style={{ color: MMD_MUTED, fontSize: 12, fontFamily: MMD_FONT.regular }}>
-                    Téléphone : {restaurant.phone}
+                    {t("client.restaurants.phoneLabel", "Phone:")} {restaurant.phone}
                   </Text>
                 ) : null}
 
@@ -481,7 +484,7 @@ export function ClientRestaurantListScreen() {
                     fontFamily: MMD_FONT.semibold,
                   }}
                 >
-                  {t("client.restaurants.viewMenu", "Voir le menu →")}
+                  {t("client.restaurants.viewMenu", "View menu →")}
                 </Text>
               </View>
             </TouchableOpacity>

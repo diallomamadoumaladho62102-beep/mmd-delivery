@@ -171,7 +171,7 @@ export function DriverOnboardingScreen() {
           fallbackRoute="DriverTabs"
           variant="dark"
         />
-        <DriverBrandLoadingState title="Driver Setup" logoAtBottom />
+        <DriverBrandLoadingState title={t("driver.onboarding.title")} logoAtBottom />
       </SafeAreaView>
     );
   }

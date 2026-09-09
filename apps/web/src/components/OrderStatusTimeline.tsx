@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -28,6 +30,8 @@ function startOf7dISO() {
 }
 
 export default function OrderStatusTimeline({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -85,7 +89,7 @@ export default function OrderStatusTimeline({ orderId }: { orderId: string }) {
             <button
               className={"px-2 py-1 rounded " + (range==="today" ? "bg-gray-200" : "")}
               onClick={() => setRange("today")}
-            >Aujourd’hui</button>
+            >{t("Aujourd’hui")}</button>
             <button
               className={"px-2 py-1 rounded " + (range==="7d" ? "bg-gray-200" : "")}
               onClick={() => setRange("7d")}
@@ -93,22 +97,22 @@ export default function OrderStatusTimeline({ orderId }: { orderId: string }) {
             <button
               className={"px-2 py-1 rounded " + (range==="all" ? "bg-gray-200" : "")}
               onClick={() => setRange("all")}
-            >Tout</button>
+            >{t("Tout")}</button>
           </div>
           <button
             onClick={() => startTransition(() => { void load(); })}
             className="text-xs px-2 py-1 border rounded hover:bg-gray-50"
             disabled={isPending}
           >
-            {isPending ? "Actualisation…" : "Actualiser"}
+            {isPending ? "Actualisation…" : t("Actualiser")}
           </button>
         </div>
       </div>
 
-      {loading && <div className="text-sm text-gray-500">Chargement…</div>}
+      {loading && <div className="text-sm text-gray-500">{t("Chargement…")}</div>}
       {err && <div className="text-sm text-red-600">Erreur: {err}</div>}
       {!loading && !err && rows.length === 0 && (
-        <div className="text-sm text-gray-500">Aucun historique.</div>
+        <div className="text-sm text-gray-500">{t("Aucun historique.")}</div>
       )}
 
       {!loading && !err && rows.length > 0 && (

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import OrderSummary from "./OrderSummary";
@@ -11,6 +13,8 @@ type OrderRow = {
 };
 
 export default function OrderSummaryPanel({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [order, setOrder] = useState<OrderRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -53,7 +57,7 @@ export default function OrderSummaryPanel({ orderId }: { orderId: string }) {
   if (loading) {
     return (
       <div className="border rounded-lg p-3 bg-white text-sm text-gray-500">
-        Chargement des détails de la commande…
+        {t("Chargement des détails de la commande…")}
       </div>
     );
   }

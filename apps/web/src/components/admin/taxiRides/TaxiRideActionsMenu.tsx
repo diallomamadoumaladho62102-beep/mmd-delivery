@@ -79,7 +79,7 @@ export default function TaxiRideActionsMenu({
           className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
         >
           <button type="button" role="menuitem" className={itemClass} onClick={() => void copyRideId()}>
-            {copied ? "ID copied" : "Copy ride ID"}
+            {copied ? t("ID copied") : t("Copy ride ID")}
           </button>
           {actions.map((action) => (
             <Link
@@ -89,7 +89,7 @@ export default function TaxiRideActionsMenu({
               className={itemClass}
               onClick={() => setOpen(false)}
             >
-              {action.label}
+              {t(action.label)}
             </Link>
           ))}
         </div>

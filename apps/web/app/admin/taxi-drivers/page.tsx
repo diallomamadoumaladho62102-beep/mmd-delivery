@@ -109,7 +109,7 @@ export default function AdminTaxiDriversPage() {
           <header>
             <h1 className="text-2xl font-bold text-slate-900">{t("Taxi Drivers")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Activation taxi, classes véhicule et éligibilité XL / premium.
+              {t("Activation taxi, classes véhicule et éligibilité XL / premium.")}
             </p>
           </header>
 

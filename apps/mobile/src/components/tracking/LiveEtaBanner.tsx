@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 
 export type LiveEtaBannerProps = {
   distanceMiles?: number | null;
@@ -31,8 +32,10 @@ export function LiveEtaBanner({
   offline = false,
   loading = false,
   updatedAt,
-  emptyMessage = "ETA unavailable",
+  emptyMessage,
 }: LiveEtaBannerProps) {
+  const { t } = useTranslation();
+  const empty = emptyMessage ?? t("tracking.etaUnavailable", "ETA unavailable");
   const hasEta =
     Number.isFinite(Number(etaMinutes)) && Number(etaMinutes) > 0;
   const hasDistance =
@@ -51,8 +54,8 @@ export function LiveEtaBanner({
   if (!hasEta && !hasDistance && !loading) {
     return (
       <View style={styles.card}>
-        <Text style={styles.muted}>{emptyMessage}</Text>
-        {offline ? <Text style={styles.warn}>Offline — waiting for connection</Text> : null}
+        <Text style={styles.muted}>{empty}</Text>
+        {offline ? <Text style={styles.warn}>{t("tracking.offlineWaiting")}</Text> : null}
       </View>
     );
   }
@@ -70,15 +73,15 @@ export function LiveEtaBanner({
           <Text style={styles.eta}>—</Text>
         )}
         {arrivalClock ? (
-          <Text style={styles.arrival}>Arrive ~{arrivalClock}</Text>
+          <Text style={styles.arrival}>{t("tracking.arriveApprox", { time: arrivalClock })}</Text>
         ) : null}
       </View>
 
       {hasDistance ? (
         <Text style={styles.meta}>
           {Number(distanceMiles) < 0.1
-            ? `${Math.round(Number(distanceMiles) * 1609)} m remaining`
-            : `${Number(distanceMiles).toFixed(1)} mi remaining`}
+            ? t("tracking.remainingMeters", { meters: Math.round(Number(distanceMiles) * 1609) })
+            : t("tracking.remainingMiles", { miles: Number(distanceMiles).toFixed(1) })}
         </Text>
       ) : null}
 
@@ -95,11 +98,11 @@ export function LiveEtaBanner({
       ) : null}
 
       <View style={styles.flags}>
-        {offline ? <Text style={styles.warn}>Offline</Text> : null}
-        {stale && !offline ? <Text style={styles.warn}>ETA may be approximate</Text> : null}
+        {offline ? <Text style={styles.warn}>{t("tracking.offline")}</Text> : null}
+        {stale && !offline ? <Text style={styles.warn}>{t("tracking.etaApproximate")}</Text> : null}
         {updatedAt ? (
           <Text style={styles.updated}>
-            Updated {new Date(updatedAt).toLocaleTimeString()}
+            {t("tracking.updatedAt", { time: new Date(updatedAt).toLocaleTimeString() })}
           </Text>
         ) : null}
       </View>

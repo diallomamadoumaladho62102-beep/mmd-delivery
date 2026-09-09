@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -13,6 +15,8 @@ type Row = {
 const PAY_STATUSES = ["unpaid", "authorized", "paid", "refunded", "failed"] as const;
 
 export default function OrderPayment({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [row, setRow] = useState<Row | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -88,29 +92,29 @@ export default function OrderPayment({ orderId }: { orderId: string }) {
 
   return (
     <div className="space-y-2">
-      <div className="text-xs text-gray-500">Paiement</div>
+      <div className="text-xs text-gray-500">{t("Paiement")}</div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="border rounded-2xl p-4">
-          <div className="text-xs text-gray-500">Sous-total</div>
+          <div className="text-xs text-gray-500">{t("Sous-total")}</div>
           <div className="font-semibold">{fmtMoney(row.subtotal, row.currency)}</div>
         </div>
 
         <div className="border rounded-2xl p-4">
-          <div className="text-xs text-gray-500">Pourboire</div>
+          <div className="text-xs text-gray-500">{t("Pourboire")}</div>
           <div className="font-semibold">{fmtMoney(row.tip, row.currency)}</div>
         </div>
 
         <div className="border rounded-2xl p-4">
-          <div className="text-xs text-gray-500">Statut paiement</div>
+          <div className="text-xs text-gray-500">{t("Statut paiement")}</div>
           <div className="uppercase tracking-wide">{payStatus}</div>
         </div>
 
         <div className="border rounded-2xl p-4">
-          <div className="text-xs text-gray-500">Mise à jour</div>
+          <div className="text-xs text-gray-500">{t("Mise à jour")}</div>
           <div className="text-sm">
-            <span className="font-semibold">Stripe webhook</span>
-            <div className="text-xs text-gray-500 mt-1">Auto • pas de changement manuel</div>
+            <span className="font-semibold">{t("Stripe webhook")}</span>
+            <div className="text-xs text-gray-500 mt-1">{t("Auto • pas de changement manuel")}</div>
           </div>
         </div>
       </div>
@@ -146,7 +150,7 @@ export default function OrderPayment({ orderId }: { orderId: string }) {
           disabled={loading}
           className="px-3 py-1.5 text-sm rounded border hover:bg-gray-50"
         >
-          {loading ? "..." : "Rafraîchir"}
+          {loading ? "..." : t("Rafraîchir")}
         </button>
       </div>
 

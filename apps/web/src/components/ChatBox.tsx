@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import RecalcOrderButton from "@/components/RecalcOrderButton";
@@ -23,6 +25,8 @@ type Msg = {
 };
 
 export default function ChatBox({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -155,7 +159,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
       <div className="rounded-xl border overflow-hidden">
         {/* Messages */}
         <div ref={listRef} className="p-3 space-y-3 h-80 overflow-y-auto bg-white">
-          {msgs.length === 0 && <p className="text-gray-500">Aucun message pour le moment.</p>}
+          {msgs.length === 0 && <p className="text-gray-500">{t("Aucun message pour le moment.")}</p>}
 
           {msgs.map((m) => {
             const isMine = !!m.user_id && !!me && m.user_id === me;
@@ -206,7 +210,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKey}
-              placeholder="Écrire un message…"
+              placeholder={t("Écrire un message…")}
               className="flex-1 border rounded-xl px-3 py-2"
             />
 
@@ -222,7 +226,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
               disabled={(input.trim() === "" && !file) || sending}
               className="px-4 py-2 rounded-xl bg-black text-white disabled:opacity-40"
             >
-              {sending ? "Envoi…" : "Envoyer"}
+              {sending ? "Envoi…" : t("Envoyer")}
             </button>
           </div>
 

@@ -1,9 +1,13 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 export default function LoginPage() {
+  const { t } = useAdminT();
+
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -44,14 +48,14 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-4">
-      <h1 className="text-xl font-semibold">Connexion</h1>
+      <h1 className="text-xl font-semibold">{t("Connexion")}</h1>
       <p className="text-sm text-gray-600">
-        Entre ton email pour recevoir un lien magique de connexion MMD Delivery.
+        {t("Entre ton email pour recevoir un lien magique de connexion MMD Delivery.")}
       </p>
 
       {sent ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-          Le lien de connexion a été envoyé à <strong>{email}</strong>.{" "}
+          {t("Le lien de connexion a été envoyé à")} <strong>{email}</strong>.{" "}
           Vérifie ta boîte mail et clique sur le lien pour te connecter.
         </div>
       ) : (
@@ -64,7 +68,7 @@ export default function LoginPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Email
+              {t("Email")}
             </label>
             <input
               type="email"
@@ -81,7 +85,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {loading ? "Envoi en cours…" : "Envoyer le lien magique"}
+            {loading ? "Envoi en cours…" : t("Envoyer le lien magique")}
           </button>
         </form>
       )}

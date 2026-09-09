@@ -71,16 +71,19 @@ export type SellerOrderRow = {
   created_at: string;
 };
 
-export function sellerStatusLabel(status: SellerStatus | string): string {
+export function sellerStatusLabel(
+  status: SellerStatus | string,
+  t: (key: string, defaultValue?: string) => string,
+): string {
   switch (status) {
     case "approved":
-      return "Approved";
+      return t("seller.dashboard.status.approved", "Approved");
     case "rejected":
-      return "Rejected";
+      return t("seller.dashboard.status.rejected", "Rejected");
     case "suspended":
-      return "Suspended";
+      return t("seller.dashboard.status.suspended", "Suspended");
     default:
-      return "Pending review";
+      return t("seller.dashboard.status.pending", "Pending review");
   }
 }
 

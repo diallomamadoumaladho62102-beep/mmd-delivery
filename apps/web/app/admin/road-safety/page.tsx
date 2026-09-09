@@ -199,7 +199,7 @@ export default function AdminRoadSafetyPage() {
                     <div className="mt-3 flex flex-wrap gap-4">
                       <label className="text-xs text-slate-600">{t("Seuil 500 m")}<input name="announce_far_meters" type="number" defaultValue={cfg.announce_far_meters} disabled={!canEdit} className={numCls} /></label>
                       <label className="text-xs text-slate-600">{t("Seuil 200 m")}<input name="announce_near_meters" type="number" defaultValue={cfg.announce_near_meters} disabled={!canEdit} className={numCls} /></label>
-                      <label className="text-xs text-slate-600">Tolérance km/h<input name="overspeed_tolerance_kmh" type="number" defaultValue={cfg.overspeed_tolerance_kmh} disabled={!canEdit} className={numCls} /></label>
+                      <label className="text-xs text-slate-600">{t("Tolérance km/h")}<input name="overspeed_tolerance_kmh" type="number" defaultValue={cfg.overspeed_tolerance_kmh} disabled={!canEdit} className={numCls} /></label>
                       <label className="text-xs text-slate-600">{t("Corridor m")}<input name="corridor_radius_meters" type="number" defaultValue={cfg.corridor_radius_meters} disabled={!canEdit} className={numCls} /></label>
                       <label className="text-xs text-slate-600">{t("Confiance min")}<input name="min_confidence" type="number" step="0.05" min="0" max="1" defaultValue={cfg.min_confidence} disabled={!canEdit} className={numCls} /></label>
                     </div>
@@ -260,7 +260,7 @@ export default function AdminRoadSafetyPage() {
                         <option value="both">both</option>
                       </select>
                     </label>
-                    <label className="text-xs text-slate-600">Limite km/h<input name="speed_limit_kmh" type="number" className={numCls} /></label>
+                    <label className="text-xs text-slate-600">{t("Limite km/h")}<input name="speed_limit_kmh" type="number" className={numCls} /></label>
                     <button type="submit" className="rounded bg-slate-900 px-4 py-2 text-sm text-white">{t("Ajouter")}</button>
                   </form>
                 ) : null}

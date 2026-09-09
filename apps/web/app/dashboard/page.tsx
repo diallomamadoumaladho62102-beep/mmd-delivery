@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -43,6 +45,8 @@ const PORTALS: PortalLink[] = [
 
 /** Post-login hub with links to live product surfaces only. */
 export default function DashboardHubPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -103,7 +107,7 @@ export default function DashboardHubPage() {
           priority
           className="h-auto w-44 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.5)]"
         />
-        <span>Loading…</span>
+        <span>{t("Loading…")}</span>
       </main>
     );
   }
@@ -122,7 +126,7 @@ export default function DashboardHubPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.14em] text-orange-300">
           MMD Delivery
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Welcome</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">{t("Welcome")}</h1>
         <p className="mt-2 text-slate-400">
           {email ? `Signed in as ${email}` : "Signed in"}
           {role ? ` · role: ${role}` : ""}

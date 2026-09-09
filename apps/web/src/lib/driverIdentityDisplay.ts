@@ -1,4 +1,5 @@
 import type { DriverIdentityCheckStatus, DriverIdentityTriggerType } from "./driverIdentityTypes";
+import { intlLocaleTag } from "@/i18n/formatters";
 
 export type IdentityEventRow = {
   id: string;
@@ -141,11 +142,14 @@ export function confidenceScoreBadgeClass(score: number | null | undefined): str
   return "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200";
 }
 
-export function formatIdentityDateTime(value: string | null | undefined): string {
+export function formatIdentityDateTime(
+  value: string | null | undefined,
+  locale?: string,
+): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("fr-FR", {
+  return date.toLocaleString(intlLocaleTag(locale), {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -154,22 +158,28 @@ export function formatIdentityDateTime(value: string | null | undefined): string
   });
 }
 
-export function formatIdentityDate(value: string | null | undefined): string {
+export function formatIdentityDate(
+  value: string | null | undefined,
+  locale?: string,
+): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("fr-FR", {
+  return date.toLocaleDateString(intlLocaleTag(locale), {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
 }
 
-export function formatIdentityTime(value: string | null | undefined): string {
+export function formatIdentityTime(
+  value: string | null | undefined,
+  locale?: string,
+): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleTimeString("fr-FR", {
+  return date.toLocaleTimeString(intlLocaleTag(locale), {
     hour: "2-digit",
     minute: "2-digit",
   });

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -36,6 +38,8 @@ function formatDate(iso: string) {
 }
 
 export default function OrderChatPage() {
+  const { t } = useAdminT();
+
   const params = useParams();
   const orderId = params.orderId as string;
 
@@ -225,7 +229,7 @@ export default function OrderChatPage() {
       </header>
 
       {loading && (
-        <p className="text-sm text-gray-600">Chargement des messages…</p>
+        <p className="text-sm text-gray-600">{t("Chargement des messages…")}</p>
       )}
 
       {err && <p className="text-sm text-red-600">Erreur : {err}</p>}
@@ -234,7 +238,7 @@ export default function OrderChatPage() {
       <div className="border rounded-lg bg-white p-3 h-80 overflow-y-auto flex flex-col gap-2">
         {messages.length === 0 && !loading && (
           <p className="text-xs text-gray-500">
-            Aucun message pour le moment. Commence la conversation.
+            {t("Aucun message pour le moment. Commence la conversation.")}
           </p>
         )}
 
@@ -277,11 +281,11 @@ export default function OrderChatPage() {
       {/* Formulaire d’envoi */}
       <form onSubmit={handleSend} className="flex flex-col gap-2">
         <label className="text-xs font-medium text-gray-600">
-          Écrire un message
+          {t("Écrire un message")}
         </label>
         <textarea
           className="border rounded-lg px-3 py-2 text-sm min-h-[60px]"
-          placeholder="Ton message ici…"
+          placeholder={t("Ton message ici…")}
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
         />
@@ -291,7 +295,7 @@ export default function OrderChatPage() {
             disabled={sending || !newMessage.trim()}
             className="px-4 py-1.5 rounded-lg bg-black text-white text-sm font-semibold disabled:opacity-50"
           >
-            {sending ? "Envoi…" : "Envoyer"}
+            {sending ? "Envoi…" : t("Envoyer")}
           </button>
         </div>
       </form>

@@ -27,6 +27,8 @@ import {
   siteTheme,
 } from "@/components/site/siteTheme";
 import Link from "next/link";
+import { adminT } from "@/i18n/adminUiI18n";
+import { getAdminWebLocale } from "@/i18n/getAdminWebLocale";
 
 export async function loadSiteChrome() {
   const supabase = buildSupabaseAdminClient();
@@ -96,7 +98,10 @@ export function buildPageMetadata(
 }
 
 /** Graceful static home when CMS home is missing — no fake stats. */
-export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
+export async function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
+  const locale = await getAdminWebLocale();
+  const t = (source: string) => adminT(source, locale);
+
   const brand = settings.brand_name || siteTheme.brandName;
   const slogan = settings.slogan || "We Deliver With Heart";
   const tagline =
@@ -130,7 +135,7 @@ export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
             <span className={siteGradientTextClass}>{slogan}</span>
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200">{tagline}</p>
-          <ul className="mt-7 flex flex-wrap gap-2.5" aria-label="Benefits">
+          <ul className="mt-7 flex flex-wrap gap-2.5" aria-label={t("Benefits")}>
             {[
               "Secure Stripe payments",
               "Live GPS tracking",
@@ -138,16 +143,16 @@ export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
               "Unified wallets",
             ].map((b) => (
               <li key={b} className={siteChipClass}>
-                {b}
+                {t(b)}
               </li>
             ))}
           </ul>
           <div className="mt-9 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Link href="/download" data-site-event="store_click_web" className={`${sitePrimaryBtnClass} w-full`}>
-              Download the app
+              {t("Download the app")}
             </Link>
             <Link href="/contact" className={`${siteSecondaryBtnClass} w-full`}>
-              Contact us
+              {t("Contact us")}
             </Link>
           </div>
         </div>

@@ -286,7 +286,7 @@ export default function AdminStaffDetailPage() {
                 href={`/admin/audit?actor=${row.id}`}
                 className="inline-flex text-sm font-semibold text-[var(--cc-info)] hover:underline"
               >
-                Activity / audit →
+                {t("Activity / audit →")}
               </Link>
             </div>
           </>

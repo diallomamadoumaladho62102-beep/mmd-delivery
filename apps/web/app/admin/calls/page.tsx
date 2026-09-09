@@ -861,7 +861,7 @@ export default function AdminCallsPage() {
           </div>
 
           <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-center shadow-sm">
-            <div className="text-sm font-medium text-red-700">Expirés/échoués</div>
+            <div className="text-sm font-medium text-red-700">{t("Expirés/échoués")}</div>
             <div className="mt-3 text-4xl font-extrabold text-red-900">
               {expiredCount}
             </div>
@@ -885,7 +885,7 @@ export default function AdminCallsPage() {
               <option value="all">{t("Tous les appels")}</option>
               <option value="active">{t("Actifs")}</option>
               <option value="ended">{t("Terminés")}</option>
-              <option value="expired">Expirés/échoués</option>
+              <option value="expired">{t("Expirés/échoués")}</option>
             </select>
 
             <button

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -194,9 +196,9 @@ function TaxPdfCard() {
     <section className="border rounded-xl bg-white p-4 space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Tax PDF</h2>
+          <h2 className="text-lg font-semibold">{t("Tax PDF")}</h2>
           <p className="text-sm text-gray-600">
-            Génère et télécharge ton résumé annuel (PDF) depuis le serveur.
+            {t("Génère et télécharge ton résumé annuel (PDF) depuis le serveur.")}
           </p>
           <p className="text-xs text-gray-500">
             “Download” incrémente <code>download_count</code> et met à jour{" "}
@@ -205,7 +207,7 @@ function TaxPdfCard() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Année</span>
+          <span className="text-sm text-gray-600">{t("Année")}</span>
           <select
             className="rounded-lg border px-2 py-1 text-sm bg-white"
             value={year}
@@ -227,7 +229,7 @@ function TaxPdfCard() {
           disabled={loading}
           className="px-3 py-2 rounded-lg bg-black text-white text-sm font-medium disabled:opacity-50"
         >
-          Download PDF
+          {t("Download PDF")}
         </button>
 
         <button
@@ -235,7 +237,7 @@ function TaxPdfCard() {
           disabled={loading}
           className="px-3 py-2 rounded-lg border bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
         >
-          Generate PDF + Download
+          {t("Generate PDF + Download")}
         </button>
       </div>
 
@@ -249,6 +251,8 @@ function TaxPdfCard() {
 }
 
 export default function DriverEarningsPage() {
+  const { t } = useAdminT();
+
   const [me, setMe] = useState<Me | null>(null);
   const [orders, setOrders] = useState<EarningsOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -397,9 +401,9 @@ export default function DriverEarningsPage() {
     <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Mes gains chauffeur</h1>
+          <h1 className="text-2xl font-bold">{t("Mes gains chauffeur")}</h1>
           <p className="text-sm text-gray-600">
-            Récapitulatif des courses livrées et de ta part estimée par course.
+            {t("Récapitulatif des courses livrées et de ta part estimée par course.")}
           </p>
           {me && (
             <p className="text-xs text-gray-500 mt-1">
@@ -420,7 +424,7 @@ export default function DriverEarningsPage() {
       {/* ✅ Tax PDF UI (Option 2) */}
       <TaxPdfCard />
 
-      {loading && <p className="text-sm text-gray-600">Chargement de tes gains…</p>}
+      {loading && <p className="text-sm text-gray-600">{t("Chargement de tes gains…")}</p>}
 
       {err && <p className="text-sm text-red-600">Erreur : {err}</p>}
 
@@ -428,19 +432,19 @@ export default function DriverEarningsPage() {
         <>
           {/* Résumé global */}
           <section className="border rounded-xl bg-white p-4 space-y-2">
-            <h2 className="text-lg font-semibold">Résumé</h2>
+            <h2 className="text-lg font-semibold">{t("Résumé")}</h2>
             {orders.length === 0 ? (
               <p className="text-sm text-gray-600">
-                Tu n&apos;as pas encore de course livrée enregistrée en tant que chauffeur.
+                {t("Tu n&apos;as pas encore de course livrée enregistrée en tant que chauffeur.")}
               </p>
             ) : (
               <>
                 <p className="text-sm">
-                  <span className="font-medium">Nombre de courses livrées :</span>{" "}
+                  <span className="font-medium">{t("Nombre de courses livrées :")}</span>{" "}
                   {orders.length}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">Gains estimés totaux :</span>{" "}
+                  <span className="font-medium">{t("Gains estimés totaux :")}</span>{" "}
                   {totalEarnings.toFixed(2)} {currency}
                 </p>
                 <p className="text-xs text-gray-500">
@@ -454,7 +458,7 @@ export default function DriverEarningsPage() {
           {/* Détail par course */}
           {orders.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold">Détail par course</h2>
+              <h2 className="text-lg font-semibold">{t("Détail par course")}</h2>
               <div className="space-y-3">
                 {orders.map((o) => {
                   const shortId = o.id.slice(0, 8);
@@ -473,34 +477,34 @@ export default function DriverEarningsPage() {
                           </p>
                         </div>
                         <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
-                          Statut : livrée
+                          {t("Statut : livrée")}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                         <div className="space-y-1">
                           <p>
-                            <span className="font-medium">Distance :</span>{" "}
+                            <span className="font-medium">{t("Distance :")}</span>{" "}
                             {o.distance_miles != null
                               ? o.distance_miles.toFixed(1) + " mi"
                               : "—"}
                           </p>
                           <p>
-                            <span className="font-medium">Temps estimé :</span>{" "}
+                            <span className="font-medium">{t("Temps estimé :")}</span>{" "}
                             {o.eta_minutes != null ? o.eta_minutes + " min" : "—"}
                           </p>
                         </div>
                         <div className="space-y-1">
                           <p>
                             <span className="font-medium">
-                              Montant total (client) :
+                              {t("Montant total (client) :")}
                             </span>{" "}
                             {o.total != null
                               ? o.total.toFixed(2) + " " + (o.currency ?? "USD")
                               : "— " + (o.currency ?? "USD")}
                           </p>
                           <p>
-                            <span className="font-medium">Ta part (estimée) :</span>{" "}
+                            <span className="font-medium">{t("Ta part (estimée) :")}</span>{" "}
                             {earning != null
                               ? earning.toFixed(2) + " " + (o.currency ?? "USD")
                               : "—"}

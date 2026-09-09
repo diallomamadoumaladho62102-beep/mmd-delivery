@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getAvatarSrc } from "@/lib/avatarUrl";
@@ -13,6 +15,8 @@ type Member = {
 };
 
 export default function MembersList({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<Member[]>([]);
   const [role, setRole] = useState<Member["role"]>("driver");
   const [loading, setLoading] = useState(false);
@@ -71,12 +75,12 @@ export default function MembersList({ orderId }: { orderId: string }) {
           <option value="restaurant">restaurant</option>
           <option value="admin">admin</option>
         </select>
-        <button onClick={join} className="border rounded px-3">Rejoindre</button>
+        <button onClick={join} className="border rounded px-3">{t("Rejoindre")}</button>
       </div>
 
       {err ? <div className="text-sm text-red-600">{err}</div> : null}
       {rows.length === 0 && !loading ? (
-        <div className="text-sm text-gray-500">Aucun membre.</div>
+        <div className="text-sm text-gray-500">{t("Aucun membre.")}</div>
       ) : null}
 
       <ul className="space-y-2">

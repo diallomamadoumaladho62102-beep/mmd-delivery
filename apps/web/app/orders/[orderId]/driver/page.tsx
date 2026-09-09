@@ -1,9 +1,12 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { computeDriverPay } from "@/lib/deliveryPricing";
+import { formatDateTime } from "@/i18n/formatters";
 
 type OrderStatus =
   | "pending"
@@ -30,31 +33,34 @@ type MemberRow = {
   role: string;
 };
 
-function driverStatusLabel(s: OrderStatus): string {
+function driverStatusLabel(
+  s: OrderStatus,
+  t: (source: string) => string,
+): string {
   switch (s) {
     case "pending":
-      return "En attente (restaurant)";
+      return t("En attente (restaurant)");
     case "accepted":
-      return "Acceptée par le restaurant";
+      return t("Acceptée par le restaurant");
     case "prepared":
-      return "En préparation";
+      return t("En préparation");
     case "ready":
-      return "Prête (en attente du driver)";
+      return t("Prête (en attente du driver)");
     case "dispatched":
-      return "En livraison";
+      return t("En livraison");
     case "delivered":
-      return "Livrée";
+      return t("Livrée");
     case "canceled":
-      return "Annulée";
+      return t("Annulée");
     default:
       return s;
   }
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale?: string): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString();
+    return formatDateTime(iso, locale);
   } catch {
     return iso;
   }
@@ -73,6 +79,8 @@ const ORDER_SELECT = `
 `;
 
 export default function DriverOrderPage() {
+  const { t, locale } = useAdminT();
+
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
@@ -278,7 +286,7 @@ export default function DriverOrderPage() {
   if (loading) {
     return (
       <main className="max-w-3xl mx-auto px-4 py-6">
-        <p className="text-sm text-gray-600">Chargement de la course…</p>
+        <p className="text-sm text-gray-600">{t("Chargement de la course…")}</p>
       </main>
     );
   }
@@ -308,7 +316,7 @@ export default function DriverOrderPage() {
         >
           ← Retour au tableau de bord chauffeur
         </button>
-        <p className="text-sm text-gray-600">Commande introuvable.</p>
+        <p className="text-sm text-gray-600">{t("Commande introuvable.")}</p>
       </main>
     );
   }
@@ -352,18 +360,18 @@ export default function DriverOrderPage() {
           distance, temps estimé) et ta rémunération estimée.
         </p>
         <div className="inline-flex items-center rounded-full border bg-blue-50 border-blue-200 px-3 py-1 text-xs font-medium text-blue-700 mt-2">
-          Statut : {driverStatusLabel(order.status)}
+          {t("Statut :")} {driverStatusLabel(order.status, t)}
         </div>
       </header>
 
       <section className="border rounded-xl bg-white p-4 space-y-3">
         <h2 className="text-sm font-semibold text-gray-800">
-          Adresses de la course
+          {t("Adresses de la course")}
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div>
             <p className="text-xs font-semibold text-gray-500">
-              Retrait (pickup)
+              {t("Retrait (pickup)")}
             </p>
             <p className="text-sm text-gray-800">
               {order.pickup_address || "Adresse de retrait non renseignée"}
@@ -371,7 +379,7 @@ export default function DriverOrderPage() {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-500">
-              Livraison (dropoff)
+              {t("Livraison (dropoff)")}
             </p>
             <p className="text-sm text-gray-800">
               {order.dropoff_address || "Adresse de livraison non renseignée"}
@@ -381,21 +389,21 @@ export default function DriverOrderPage() {
       </section>
 
       <section className="border rounded-xl bg-white p-4 space-y-2 text-sm">
-        <h2 className="text-sm font-semibold text-gray-800">Course</h2>
+        <h2 className="text-sm font-semibold text-gray-800">{t("Course")}</h2>
         <p>
-          <span className="font-medium">Distance :</span> {distanceLabel}
+          <span className="font-medium">{t("Distance :")}</span> {distanceLabel}
         </p>
         <p>
-          <span className="font-medium">Temps estimé :</span> {etaLabel}
+          <span className="font-medium">{t("Temps estimé :")}</span> {etaLabel}
         </p>
         <p className="text-xs text-gray-500">
-          Commande créée le : {formatDate(order.created_at)}
+          {t("Commande créée le :")} {formatDate(order.created_at, locale)}
         </p>
       </section>
 
       <section className="border rounded-xl bg-white p-4 space-y-2 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">
-          Ta rémunération chauffeur (estimation)
+          {t("Ta rémunération chauffeur (estimation)")}
         </h2>
 
         {driverPay != null ? (
@@ -421,7 +429,7 @@ export default function DriverOrderPage() {
 
       <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">
-          Actions chauffeur (code de ramassage / livraison)
+          {t("Actions chauffeur (code de ramassage / livraison)")}
         </h2>
 
         <button
@@ -439,7 +447,7 @@ export default function DriverOrderPage() {
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
         >
-          Je récupère la commande (saisir le code de ramassage)
+          {t("Je récupère la commande (saisir le code de ramassage)")}
         </button>
 
         <button
@@ -457,13 +465,13 @@ export default function DriverOrderPage() {
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
         >
-          Je livre la commande (saisir le code de livraison)
+          {t("Je livre la commande (saisir le code de livraison)")}
         </button>
 
         {phase && (
           <div className="space-y-3 rounded-lg border p-3 mt-2">
             <h3 className="text-sm font-semibold">
-              {phase === "pickup" ? "Code de ramassage" : "Code de livraison"}
+              {phase === "pickup" ? "Code de ramassage" : t("Code de livraison")}
             </h3>
             <p className="text-xs text-gray-600">{phaseHelpText}</p>
             <input
@@ -506,7 +514,7 @@ export default function DriverOrderPage() {
           onClick={() => router.push(`/orders/${order.id}/chat`)}
           className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50 text-xs font-medium"
         >
-          Ouvrir le chat
+          {t("Ouvrir le chat")}
         </button>
       </div>
     </main>

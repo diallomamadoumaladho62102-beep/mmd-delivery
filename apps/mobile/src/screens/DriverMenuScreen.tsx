@@ -533,8 +533,8 @@ export function DriverMenuScreen() {
             <View style={styles.quickIcon}>
               <MenuIcon name="spark" />
             </View>
-            <Text style={styles.quickTitle}>Mes services</Text>
-            <Text style={styles.quickSub}>Food, colis, taxi</Text>
+            <Text style={styles.quickTitle}>{t("driver.menu.servicesTitle", "My services")}</Text>
+            <Text style={styles.quickSub}>{t("driver.menu.servicesSub", "Food, packages, taxi")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -545,8 +545,8 @@ export function DriverMenuScreen() {
             <View style={styles.quickIcon}>
               <MenuIcon name="shield" />
             </View>
-            <Text style={styles.quickTitle}>Mon véhicule</Text>
-            <Text style={styles.quickSub}>Catégories taxi</Text>
+            <Text style={styles.quickTitle}>{t("driver.menu.vehicleTitle", "My vehicle")}</Text>
+            <Text style={styles.quickSub}>{t("driver.menu.vehicleSub", "Taxi categories")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

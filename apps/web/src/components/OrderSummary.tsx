@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 type OrderItem = {
   menu_item_id: string;
   name: string;
@@ -16,15 +18,17 @@ export default function OrderSummary({
   items: OrderItem[];
   subtotal: number;
 }) {
+  const { t } = useAdminT();
+
   const total = Number(subtotal) || 0;
 
   return (
     <div className="border rounded-lg p-3 space-y-3 bg-white shadow-sm">
-      <h2 className="text-lg font-semibold">Détails de la commande</h2>
+      <h2 className="text-lg font-semibold">{t("Détails de la commande")}</h2>
 
       {(!items || items.length === 0) && (
         <p className="text-sm text-gray-500">
-          Aucun article dans cette commande.
+          {t("Aucun article dans cette commande.")}
         </p>
       )}
 
@@ -51,7 +55,7 @@ export default function OrderSummary({
       )}
 
       <div className="border-t pt-2 mt-2 flex justify-between font-semibold">
-        <span>Total</span>
+        <span>{t("Total")}</span>
         <span>{total.toFixed(2)} $US</span>
       </div>
     </div>

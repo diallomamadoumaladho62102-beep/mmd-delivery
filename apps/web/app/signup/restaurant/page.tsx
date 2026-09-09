@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
@@ -69,6 +71,8 @@ async function ensureRestaurantAccount(params: {
 }
 
 export default function SignupRestaurantPage() {
+  const { t } = useAdminT();
+
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -235,7 +239,7 @@ export default function SignupRestaurantPage() {
     }
   }
 
-  const primaryLabel = mode === "login" ? "Se connecter" : "Créer un compte";
+  const primaryLabel = mode === "login" ? t("Se connecter") : t("Créer un compte");
 
   return (
     <main className="min-h-screen bg-slate-950 px-5 py-8 text-white">
@@ -243,11 +247,11 @@ export default function SignupRestaurantPage() {
         <div className="hidden lg:block">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-extrabold text-slate-300">
             <span>🍽️</span>
-            <span>MMD Restaurant Access</span>
+            <span>{t("MMD Restaurant Access")}</span>
           </div>
 
           <h1 className="mt-6 text-5xl font-black leading-tight tracking-tight xl:text-7xl">
-            Grow your restaurant with MMD Delivery.
+            {t("Grow your restaurant with MMD Delivery.")}
           </h1>
 
           <p className="mt-5 max-w-xl text-lg font-semibold leading-8 text-slate-400">
@@ -275,7 +279,7 @@ export default function SignupRestaurantPage() {
         <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/40 backdrop-blur md:p-8">
           <div className="mb-7 text-center">
             <p className="mb-3 text-xs font-black uppercase tracking-[0.25em] text-emerald-300">
-              Restaurant account
+              {t("Restaurant account")}
             </p>
             <h2 className="text-3xl font-black tracking-tight md:text-5xl">{title}</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-400 md:text-base">
@@ -298,7 +302,7 @@ export default function SignupRestaurantPage() {
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              Se connecter
+              {t("Se connecter")}
             </button>
             <button
               type="button"
@@ -314,13 +318,13 @@ export default function SignupRestaurantPage() {
                   : "text-slate-400 hover:text-white"
               }`}
             >
-              Créer un compte
+              {t("Créer un compte")}
             </button>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-bold text-slate-200">Email</label>
+              <label className="mb-2 block text-sm font-bold text-slate-200">{t("Email")}</label>
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -333,12 +337,12 @@ export default function SignupRestaurantPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-bold text-slate-200">Mot de passe</label>
+              <label className="mb-2 block text-sm font-bold text-slate-200">{t("Mot de passe")}</label>
               <div className="relative">
                 <input
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Mot de passe (min 6)"
+                  placeholder={t("Mot de passe (min 6)")}
                   type={showPassword ? "text" : "password"}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   disabled={loading}
@@ -364,7 +368,7 @@ export default function SignupRestaurantPage() {
                 disabled={loading}
                 className="text-sm font-extrabold text-sky-300 hover:text-sky-200 disabled:opacity-60"
               >
-                Mot de passe oublié ?
+                {t("Mot de passe oublié ?")}
               </button>
             </div>
           )}

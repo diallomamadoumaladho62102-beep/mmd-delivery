@@ -287,7 +287,7 @@ export default function AdminCountyManagementPage() {
               </select>
             </label>
             <label className="flex min-w-[200px] flex-1 flex-col text-sm">
-              State / Région
+              {t("State / Région")}
               <select
                 value={regionFilter}
                 onChange={(e) => setRegionFilter(e.target.value)}
@@ -422,7 +422,7 @@ export default function AdminCountyManagementPage() {
 
                     <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                       <p className="font-semibold text-slate-800">
-                        County Status · {countyOn && stateOn ? "ON" : "OFF"}
+                        County Status · {countyOn && stateOn ? t("ON") : t("OFF")}
                       </p>
                       <p className="mt-1">
                         {countyOn && stateOn

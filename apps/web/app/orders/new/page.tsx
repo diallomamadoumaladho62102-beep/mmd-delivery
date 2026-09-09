@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -126,6 +128,8 @@ async function getDistanceAndDuration(
 }
 
 export default function NewOrderPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -580,9 +584,9 @@ export default function NewOrderPage() {
   if (loading) {
     return (
       <main className="max-w-4xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold">Créer une nouvelle commande</h1>
+        <h1 className="text-2xl font-bold">{t("Créer une nouvelle commande")}</h1>
         <p className="text-sm text-gray-600 mt-2">
-          Chargement des restaurants et de ton profil…
+          {t("Chargement des restaurants et de ton profil…")}
         </p>
       </main>
     );
@@ -590,7 +594,7 @@ export default function NewOrderPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-      <h1 className="text-2xl font-bold">Créer une nouvelle commande</h1>
+      <h1 className="text-2xl font-bold">{t("Créer une nouvelle commande")}</h1>
 
       {profile && (
         <p className="text-xs text-gray-600 mb-2">
@@ -606,7 +610,7 @@ export default function NewOrderPage() {
         <section className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Restaurant
+              {t("Restaurant")}
             </label>
             <select
               className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -623,17 +627,17 @@ export default function NewOrderPage() {
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold mb-2">Menu du restaurant</h2>
+            <h2 className="text-sm font-semibold mb-2">{t("Menu du restaurant")}</h2>
 
             {!selectedRestaurantId && (
               <p className="text-xs text-gray-500">
-                Choisis un restaurant pour voir son menu.
+                {t("Choisis un restaurant pour voir son menu.")}
               </p>
             )}
 
             {selectedRestaurantId && menuItems.length === 0 && (
               <p className="text-xs text-gray-500">
-                Ce restaurant n&apos;a pas encore de menu configuré.
+                {t("Ce restaurant n&apos;a pas encore de menu configuré.")}
               </p>
             )}
 
@@ -666,7 +670,7 @@ export default function NewOrderPage() {
                       onClick={() => addToCart(item)}
                       className="px-3 py-1.5 rounded-lg bg-black text-white text-xs font-semibold"
                     >
-                      Ajouter
+                      {t("Ajouter")}
                     </button>
                   </div>
                 );
@@ -678,17 +682,17 @@ export default function NewOrderPage() {
         <section className="space-y-3">
           <div className="border rounded-lg p-3 bg-white space-y-2 text-sm">
             <h2 className="text-sm font-semibold mb-1">
-              Adresses pour la livraison
+              {t("Adresses pour la livraison")}
             </h2>
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Adresse pickup (restaurant / point de départ)
+                {t("Adresse pickup (restaurant / point de départ)")}
               </label>
               <input
                 type="text"
                 className="w-full border rounded-lg px-3 py-2 text-xs"
-                placeholder="Ex : 686 Vermont St, Brooklyn, NY 11207"
+                placeholder={`${t("Ex :")} 686 Vermont St, Brooklyn, NY 11207`}
                 value={pickupAddress}
                 onChange={(e) => setPickupAddress(e.target.value)}
               />
@@ -696,12 +700,12 @@ export default function NewOrderPage() {
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Adresse de livraison (client)
+                {t("Adresse de livraison (client)")}
               </label>
               <input
                 type="text"
                 className="w-full border rounded-lg px-3 py-2 text-xs"
-                placeholder="Ex : 1112 Flatbush Ave, Brooklyn, NY 11226"
+                placeholder={`${t("Ex :")} 1112 Flatbush Ave, Brooklyn, NY 11226`}
                 value={dropoffAddress}
                 onChange={(e) => setDropoffAddress(e.target.value)}
               />
@@ -709,18 +713,18 @@ export default function NewOrderPage() {
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Code promo
+                {t("Code promo")}
               </label>
               <input
                 type="text"
                 className="w-full border rounded-lg px-3 py-2 text-xs uppercase"
-                placeholder="Ex : SAVE10"
+                placeholder={`${t("Ex :")} SAVE10`}
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                 maxLength={32}
               />
               <p className="text-[11px] text-gray-500 mt-1">
-                La promo finale est validée côté serveur au moment de créer la commande.
+                {t("La promo finale est validée côté serveur au moment de créer la commande.")}
               </p>
             </div>
 
@@ -758,11 +762,11 @@ export default function NewOrderPage() {
           </div>
 
           <div className="border rounded-lg p-3 bg-white">
-            <h2 className="text-sm font-semibold mb-2">Panier</h2>
+            <h2 className="text-sm font-semibold mb-2">{t("Panier")}</h2>
 
             {cart.length === 0 ? (
               <p className="text-xs text-gray-500">
-                Ton panier est vide. Ajoute des plats depuis le menu.
+                {t("Ton panier est vide. Ajoute des plats depuis le menu.")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -799,7 +803,7 @@ export default function NewOrderPage() {
                         onClick={() => removeFromCart(item.id)}
                         className="text-xs text-red-600 hover:underline"
                       >
-                        Supprimer
+                        {t("Supprimer")}
                       </button>
                     </div>
                   </div>
@@ -810,36 +814,36 @@ export default function NewOrderPage() {
 
           <div className="border rounded-lg p-3 bg-white space-y-1 text-sm">
             <p>
-              <span className="font-medium">Sous-total :</span>{" "}
+              <span className="font-medium">{t("Sous-total :")}</span>{" "}
               {subtotal.toFixed(2)} {currency}
             </p>
             <p>
-              <span className="font-medium">Taxes (~8.88%) :</span>{" "}
+              <span className="font-medium">{t("Taxes (~8.88%) :")}</span>{" "}
               {tax.toFixed(2)} {currency}
             </p>
             <p>
-              <span className="font-medium">Total (hors livraison) :</span>{" "}
+              <span className="font-medium">{t("Total (hors livraison) :")}</span>{" "}
               {totalExcludingDelivery.toFixed(2)} {currency}
             </p>
           </div>
 
           <div className="border rounded-lg p-3 bg-white space-y-1 text-sm">
-            <h2 className="text-sm font-semibold mb-1">Livraison estimée</h2>
+            <h2 className="text-sm font-semibold mb-1">{t("Livraison estimée")}</h2>
 
             <p className="text-[11px] text-gray-500 mb-1">
-              Utilise le bouton ci-dessus pour estimer la distance et le prix.
+              {t("Utilise le bouton ci-dessus pour estimer la distance et le prix.")}
             </p>
 
             <p>
-              <span className="font-medium">Distance :</span>{" "}
+              <span className="font-medium">{t("Distance :")}</span>{" "}
               {distancePreview != null ? `${distancePreview.toFixed(2)} mi` : "—"}
             </p>
             <p>
-              <span className="font-medium">Temps estimé :</span>{" "}
+              <span className="font-medium">{t("Temps estimé :")}</span>{" "}
               {etaPreview != null ? `${etaPreview} min` : "—"}
             </p>
             <p>
-              <span className="font-medium">Frais de livraison :</span>{" "}
+              <span className="font-medium">{t("Frais de livraison :")}</span>{" "}
               {deliveryFeePreview != null
                 ? `${deliveryFeePreview.toFixed(2)} ${currency}`
                 : "—"}
@@ -860,7 +864,7 @@ export default function NewOrderPage() {
 
             {promoCode.trim() && (
               <p className="text-[11px] text-gray-500">
-                Le code promo <span className="font-medium">{promoCode.trim().toUpperCase()}</span>{" "}
+                {t("Le code promo")} <span className="font-medium">{promoCode.trim().toUpperCase()}</span>{" "}
                 sera validé côté serveur lors de la création.
               </p>
             )}

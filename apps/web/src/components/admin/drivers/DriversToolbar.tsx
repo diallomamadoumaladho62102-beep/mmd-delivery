@@ -75,7 +75,7 @@ export default function DriversToolbar({
             <option value="">{t("All modes")}</option>
             <option value="car">{t("Car")}</option>
             <option value="bike">{t("Bike")}</option>
-            <option value="moto">Moto / Scooter</option>
+            <option value="moto">{t("Moto / Scooter")}</option>
             <option value="other">{t("Other")}</option>
           </select>
         </div>

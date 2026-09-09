@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import SiteAnalytics from "./SiteAnalytics";
 import SiteShell from "./SiteShell";
@@ -29,7 +31,7 @@ export async function renderInAppServicePage(input: {
         <section className="border-b border-white/5">
           <div className={`${siteContainerClass} py-16 sm:py-24`}>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-orange-300">
-              Available in the MMD Delivery app
+              {t("Available in the MMD Delivery app")}
             </p>
             <h1 className={siteHeadingClass}>{input.title}</h1>
             <p className={siteSubheadingClass}>{input.description}</p>
@@ -38,7 +40,7 @@ export async function renderInAppServicePage(input: {
                 {input.primaryLabel ?? "Download"}
               </Link>
               <Link href="/contact" className={siteSecondaryBtnClass}>
-                Contact us
+                {t("Contact us")}
               </Link>
             </div>
           </div>

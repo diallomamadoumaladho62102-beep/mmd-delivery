@@ -288,7 +288,7 @@ export function DriverWorkAccountScreen() {
           fallbackRoute="DriverTabs"
           variant="dark"
         />
-        <DriverBrandLoadingState title="Account status" logoAtBottom />
+        <DriverBrandLoadingState title={t("driver.workAccount.loadingTitle")} logoAtBottom />
       </SafeAreaView>
     );
   }

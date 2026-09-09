@@ -72,7 +72,7 @@ export default function AdminRideSafetyRecordingRulesPage() {
           <header>
             <h1 className="text-2xl font-bold text-slate-900">{t("Ride Safety Recordings")}</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Conformité audio/vidéo par pays, état ou ville. Conservation 14 jours par défaut.
+              {t("Conformité audio/vidéo par pays, état ou ville. Conservation 14 jours par défaut.")}
             </p>
           </header>
           {loading ? (

@@ -118,19 +118,19 @@ export default function AdminStaffLoginPanel() {
   const signInWithPassword = async () => {
     if (!trimmedEmail) {
       setState("error");
-      setMessage("Entrez votre adresse email.");
+      setMessage("Enter your email address.");
       return;
     }
 
     if (!emailIsValid) {
       setState("error");
-      setMessage("Entrez une adresse email valide.");
+      setMessage("Enter a valid email address.");
       return;
     }
 
     if (!password.trim()) {
       setState("error");
-      setMessage("Entrez votre mot de passe.");
+      setMessage("Enter your password.");
       return;
     }
 
@@ -151,7 +151,7 @@ export default function AdminStaffLoginPanel() {
     const token = data.session?.access_token;
     if (!token) {
       setState("error");
-      setMessage("Connexion impossible. Réessayez.");
+      setMessage("Unable to sign in. Please try again.");
       return;
     }
 
@@ -164,20 +164,20 @@ export default function AdminStaffLoginPanel() {
     }
 
     setState("success");
-    setMessage("Connexion réussie. Redirection…");
+    setMessage("Signed in. Redirecting…");
     router.replace("/admin");
   };
 
   const sendMagicLink = async () => {
     if (!trimmedEmail) {
       setState("error");
-      setMessage("Entrez votre adresse email.");
+      setMessage("Enter your email address.");
       return;
     }
 
     if (!emailIsValid) {
       setState("error");
-      setMessage("Entrez une adresse email valide.");
+      setMessage("Enter a valid email address.");
       return;
     }
 
@@ -203,19 +203,19 @@ export default function AdminStaffLoginPanel() {
     }
 
     setState("success");
-    setMessage("Lien de connexion envoyé. Vérifiez votre boîte email.");
+    setMessage("Sign-in link sent. Check your email.");
   };
 
   const resetPassword = async () => {
     if (!trimmedEmail) {
       setState("error");
-      setMessage("Entrez votre adresse email pour réinitialiser le mot de passe.");
+      setMessage("Enter your email address to reset your password.");
       return;
     }
 
     if (!emailIsValid) {
       setState("error");
-      setMessage("Entrez une adresse email valide.");
+      setMessage("Enter a valid email address.");
       return;
     }
 
@@ -238,7 +238,7 @@ export default function AdminStaffLoginPanel() {
     }
 
     setState("success");
-    setMessage("Email de réinitialisation envoyé. Vérifiez votre boîte email.");
+    setMessage("Password reset email sent. Check your email.");
   };
 
   const fieldClass =
@@ -393,7 +393,7 @@ export default function AdminStaffLoginPanel() {
                   : "border-white/15 bg-white/10 text-white/80"
             }`}
           >
-            {message}
+            {t(message)}
           </div>
         ) : null}
 

@@ -11,8 +11,22 @@ export const WEB_LOCALE_LABELS: Record<WebLocale, string> = {
   ff: "Pulaar / Fulfulde",
 };
 
-import { TAXI_RECEIPT_EN, TAXI_RECEIPT_FR } from "./taxiReceiptMessages";
-import { ORDER_RECEIPT_EN, ORDER_RECEIPT_FR } from "./orderReceiptMessages";
+import {
+  TAXI_RECEIPT_AR,
+  TAXI_RECEIPT_EN,
+  TAXI_RECEIPT_ES,
+  TAXI_RECEIPT_FF,
+  TAXI_RECEIPT_FR,
+  TAXI_RECEIPT_ZH,
+} from "./taxiReceiptMessages";
+import {
+  ORDER_RECEIPT_AR,
+  ORDER_RECEIPT_EN,
+  ORDER_RECEIPT_ES,
+  ORDER_RECEIPT_FF,
+  ORDER_RECEIPT_FR,
+  ORDER_RECEIPT_ZH,
+} from "./orderReceiptMessages";
 
 type MessageTree = Record<string, string>;
 
@@ -132,6 +146,8 @@ const ES: MessageTree = {
   "restaurant.title": "Portal restaurante",
   "seller.title": "Portal vendedor",
   "marketplace.title": "Marketplace",
+  ...TAXI_RECEIPT_ES,
+  ...ORDER_RECEIPT_ES,
 };
 
 const AR: MessageTree = {
@@ -170,6 +186,8 @@ const AR: MessageTree = {
   "restaurant.title": "بوابة المطعم",
   "seller.title": "بوابة البائع",
   "marketplace.title": "السوق",
+  ...TAXI_RECEIPT_AR,
+  ...ORDER_RECEIPT_AR,
 };
 
 const ZH: MessageTree = {
@@ -208,6 +226,8 @@ const ZH: MessageTree = {
   "restaurant.title": "餐厅门户",
   "seller.title": "卖家门户",
   "marketplace.title": "商城",
+  ...TAXI_RECEIPT_ZH,
+  ...ORDER_RECEIPT_ZH,
 };
 
 const FF: MessageTree = {
@@ -246,6 +266,8 @@ const FF: MessageTree = {
   "restaurant.title": "Portal restoraŋ",
   "seller.title": "Portal jeeyoowo",
   "marketplace.title": "Suudu lataande",
+  ...TAXI_RECEIPT_FF,
+  ...ORDER_RECEIPT_FF,
 };
 
 export const WEB_MESSAGES: Record<WebLocale, MessageTree> = {

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -24,6 +26,8 @@ type AccountInfo = {
 };
 
 export default function ClientProfilePage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -296,8 +300,8 @@ export default function ClientProfilePage() {
   if (loading || !profile) {
     return (
       <main className="max-w-xl mx-auto p-4">
-        <h1 className="text-xl font-semibold mb-2">Mon profil client</h1>
-        <p>Chargement…</p>
+        <h1 className="text-xl font-semibold mb-2">{t("Mon profil client")}</h1>
+        <p>{t("Chargement…")}</p>
       </main>
     );
   }
@@ -305,28 +309,28 @@ export default function ClientProfilePage() {
   if (!userId) {
     return (
       <main className="max-w-xl mx-auto p-4">
-        <h1 className="text-xl font-semibold mb-2">Mon profil client</h1>
-        <p>Tu dois être connecté pour voir cette page.</p>
+        <h1 className="text-xl font-semibold mb-2">{t("Mon profil client")}</h1>
+        <p>{t("Tu dois être connecté pour voir cette page.")}</p>
       </main>
     );
   }
 
   return (
     <main className="max-w-2xl mx-auto p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Mon profil client</h1>
+      <h1 className="text-2xl font-bold">{t("Mon profil client")}</h1>
 
       <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
-        Complétude du profil : <strong>{completeness.percent}%</strong>
+        {t("Complétude du profil :")} <strong>{completeness.percent}%</strong>
         {completeness.missing.length ? (
           <span className="block text-xs mt-1">
             Manquant : {completeness.missing.join(", ")}
           </span>
         ) : (
-          <span className="block text-xs mt-1">Profil complet.</span>
+          <span className="block text-xs mt-1">{t("Profil complet.")}</span>
         )}
         {completeness.checks.address_verified ? (
           <span className="mt-1 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-            Adresse vérifiée
+            {t("Adresse vérifiée")}
           </span>
         ) : null}
       </div>
@@ -340,10 +344,10 @@ export default function ClientProfilePage() {
       >
         {/* COMPTE */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Informations du compte</h2>
+          <h2 className="text-lg font-semibold">{t("Informations du compte")}</h2>
 
           <label className="block text-sm font-medium">
-            Nom complet
+            {t("Nom complet")}
             <input
               type="text"
               className="mt-1 w-full border rounded px-3 py-2 text-sm"
@@ -354,7 +358,7 @@ export default function ClientProfilePage() {
           </label>
 
           <label className="block text-sm font-medium">
-            Adresse email (compte)
+            {t("Adresse email (compte)")}
             <input
               type="text"
               className="mt-1 w-full border rounded px-3 py-2 text-sm bg-gray-100"
@@ -366,10 +370,10 @@ export default function ClientProfilePage() {
 
         {/* CONTACT & ADRESSE */}
         <div className="space-y-3 border-t pt-4">
-          <h2 className="text-lg font-semibold">Adresse & contact</h2>
+          <h2 className="text-lg font-semibold">{t("Adresse & contact")}</h2>
 
           <label className="block text-sm font-medium">
-            Téléphone
+            {t("Téléphone")}
             <input
               type="tel"
               className="mt-1 w-full border rounded px-3 py-2 text-sm"
@@ -389,11 +393,11 @@ export default function ClientProfilePage() {
           />
 
           <label className="block text-sm font-medium">
-            Adresse principale
+            {t("Adresse principale")}
             <div className="mt-1">
               <MapboxAddressField
                 value={profile.default_address ?? ""}
-                placeholder="Rechercher une adresse…"
+                placeholder={t("Rechercher une adresse…")}
                 onChange={(next) => {
                   onChangeField("default_address", next.label);
                   setCoords({
@@ -407,7 +411,7 @@ export default function ClientProfilePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block text-sm font-medium">
-              Étage / Appartement
+              {t("Étage / Appartement")}
               <input
                 type="text"
                 className="mt-1 w-full border rounded px-3 py-2 text-sm"
@@ -418,7 +422,7 @@ export default function ClientProfilePage() {
             </label>
 
             <label className="block text-sm font-medium">
-              Code porte / Interphone
+              {t("Code porte / Interphone")}
               <input
                 type="text"
                 className="mt-1 w-full border rounded px-3 py-2 text-sm"
@@ -430,21 +434,21 @@ export default function ClientProfilePage() {
           </div>
 
           <label className="block text-sm font-medium">
-            Instructions pour la livraison
+            {t("Instructions pour la livraison")}
             <textarea
               className="mt-1 w-full border rounded px-3 py-2 text-sm min-h-[70px]"
               value={profile.delivery_notes ?? ""}
               onChange={(e) =>
                 onChangeField("delivery_notes", e.target.value)
               }
-              placeholder="Ex: Laissez devant la porte, appelez quand vous arrivez…"
+              placeholder={t("Ex: Laissez devant la porte, appelez quand vous arrivez…")}
             />
           </label>
         </div>
 
         {/* PREFERENCES */}
         <div className="space-y-3 border-t pt-4">
-          <h2 className="text-lg font-semibold">Préférences</h2>
+          <h2 className="text-lg font-semibold">{t("Préférences")}</h2>
 
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -461,7 +465,7 @@ export default function ClientProfilePage() {
               is not a condition of purchase. Reply STOP to cancel and HELP for
               help. Optional — not required to use the app.{" "}
               <a className="underline" href="/legal/sms">
-                SMS program
+                {t("SMS program")}
               </a>
             </span>
           </label>

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -37,6 +39,8 @@ function isActive(pathname: string, href: string, match: "exact" | "prefix") {
 }
 
 export function BusinessShell({ children, avatarInitials }: Props) {
+  const { t } = useAdminT();
+
   const pathname = usePathname();
   const initials = (avatarInitials || "MM").slice(0, 2).toUpperCase();
 
@@ -55,7 +59,7 @@ export function BusinessShell({ children, avatarInitials }: Props) {
             priority
           />
           <span className="text-lg font-extrabold text-[#D4AF37] sm:text-[18px]">
-            MMD Business
+            {t("MMD Business")}
           </span>
         </Link>
 
@@ -105,7 +109,7 @@ export function BusinessShell({ children, avatarInitials }: Props) {
       <footer
         className={`${bizGlass} mx-auto mb-0 flex h-[72px] w-full max-w-[1280px] items-center justify-between rounded-[20px] px-4 py-4 sm:px-8`}
       >
-        <p className="text-xs text-white/70 sm:text-[13px]">Follow MMD Delivery</p>
+        <p className="text-xs text-white/70 sm:text-[13px]">{t("Follow MMD Delivery")}</p>
         <SocialLinks
           variant="icons"
           showLabels={false}
@@ -119,7 +123,7 @@ export function BusinessShell({ children, avatarInitials }: Props) {
 
 export function BusinessLoadingState({
   title = "Loading business accounts...",
-  subtitle = "Please wait",
+  subtitle = {t("Please wait")},
 }: {
   title?: string;
   subtitle?: string;

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { validatePassword } from "@/lib/authValidation";
@@ -50,6 +52,8 @@ function getUrlParams(): Record<string, string> {
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useAdminT();
+
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -160,23 +164,23 @@ export default function ResetPasswordPage() {
         }}
       >
         <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 10 }}>
-          Nouveau mot de passe
+          {t("Nouveau mot de passe")}
         </h1>
 
         <p style={{ color: "#9CA3AF", marginBottom: 22 }}>
-          Entre ton nouveau mot de passe MMD Delivery.
+          {t("Entre ton nouveau mot de passe MMD Delivery.")}
         </p>
 
         {checkingSession ? (
           <p style={{ color: "#9CA3AF", marginBottom: 16 }}>
-            Vérification du lien de réinitialisation…
+            {t("Vérification du lien de réinitialisation…")}
           </p>
         ) : null}
 
         <div style={{ position: "relative", marginBottom: 12 }}>
           <input
             type={showPassword ? "text" : "password"}
-            placeholder="Nouveau mot de passe"
+            placeholder={t("Nouveau mot de passe")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={loading || checkingSession}
@@ -206,14 +210,14 @@ export default function ResetPasswordPage() {
               fontSize: 12,
             }}
           >
-            {showPassword ? "Masquer" : "Afficher"}
+            {showPassword ? t("Masquer") : "Afficher"}
           </button>
         </div>
 
         <div style={{ position: "relative", marginBottom: 12 }}>
           <input
             type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirmer le mot de passe"
+            placeholder={t("Confirmer le mot de passe")}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             disabled={loading || checkingSession}
@@ -243,7 +247,7 @@ export default function ResetPasswordPage() {
               fontSize: 12,
             }}
           >
-            {showConfirmPassword ? "Masquer" : "Afficher"}
+            {showConfirmPassword ? t("Masquer") : "Afficher"}
           </button>
         </div>
 

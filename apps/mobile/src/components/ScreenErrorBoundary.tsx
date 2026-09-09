@@ -1,6 +1,17 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { formatBootError, reportBootError } from "../lib/startupProbe";
+import i18n from "../i18n";
+
+function bootT(key: string, fallback: string): string {
+  try {
+    if (!i18n.isInitialized) return fallback;
+    const value = i18n.t(key);
+    return typeof value === "string" && value && value !== key ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 type Props = {
   children: React.ReactNode;
@@ -34,7 +45,8 @@ export class ScreenErrorBoundary extends React.Component<Props, State> {
     if (!this.state.error) return this.props.children;
 
     const title =
-      this.props.fallbackTitle ?? "This screen could not be displayed.";
+      this.props.fallbackTitle ??
+      bootT("boot.screenUnavailable", "This screen could not be displayed.");
     const message = formatBootError(this.state.error);
 
     return (
@@ -43,7 +55,10 @@ export class ScreenErrorBoundary extends React.Component<Props, State> {
           {title}
         </Text>
         <Text style={{ color: "#FECACA", lineHeight: 20 }}>
-          You can retry. If the problem persists, share this with support.
+          {bootT(
+            "boot.errorBody",
+            "You can retry. If the problem persists, share this with support.",
+          )}
         </Text>
         <Pressable
           onPress={this.reset}
@@ -55,7 +70,9 @@ export class ScreenErrorBoundary extends React.Component<Props, State> {
             alignSelf: "flex-start",
           }}
         >
-          <Text style={{ color: "#111827", fontWeight: "700" }}>Retry</Text>
+          <Text style={{ color: "#111827", fontWeight: "700" }}>
+            {bootT("common.retry", "Retry")}
+          </Text>
         </Pressable>
         {__DEV__ ? (
           <Text style={{ color: "#94A3B8", fontSize: 11 }}>{message}</Text>

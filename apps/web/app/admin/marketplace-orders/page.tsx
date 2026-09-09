@@ -61,7 +61,7 @@ export default function AdminMarketplaceOrdersPage() {
   return (
     <AdminGate requiredPermission="users.sellers.read">
       <div style={{ padding: 24, color: "#E2E8F0" }}>
-        <h1 style={{ fontSize: 28, marginBottom: 8 }}>Marketplace Orders (Draft / Checkout)</h1>
+        <h1 style={{ fontSize: 28, marginBottom: 8 }}>{t("Marketplace Orders (Draft / Checkout)")}</h1>
         <p style={{ color: "#94A3B8", marginBottom: 20 }}>
           {t("Draft, shadow checkout, and live payment preparation — payouts and marketplace dispatch remain off until go-live.")}
         </p>

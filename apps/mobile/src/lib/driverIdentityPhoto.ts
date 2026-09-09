@@ -1,6 +1,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
+import i18n from "i18next";
 import {
   prepareIdentitySelfieUpload,
   registerIdentitySelfieUpload,
@@ -9,6 +10,15 @@ import { supabase } from "./supabase";
 
 const MAX_SELFIE_BYTES = 8 * 1024 * 1024;
 const FILE_SYSTEM_CACHE_DIRECTORY = String((FileSystem as any).cacheDirectory || "");
+
+function tr(key: string, defaultValue: string): string {
+  try {
+    const value = i18n.t(key, { defaultValue });
+    return typeof value === "string" && value.trim() ? value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
 
 function sanitizeBase64(value: string) {
   return String(value || "")
@@ -128,15 +138,27 @@ async function prepareSelfieUri(sourceUri: string) {
 export function getDriverIdentityPhotoErrorMessage(error: unknown): string {
   const code = String((error as { message?: string })?.message ?? error ?? "").trim();
   if (code === "CAMERA_PERMISSION_DENIED") {
-    return "Autorisez l’accès à la caméra dans les réglages pour continuer.";
+    return tr(
+      "errors.photo.cameraDenied",
+      "Allow camera access in Settings to continue.",
+    );
   }
-  if (code === "PHOTO_EMPTY") return "La photo est vide.";
-  if (code === "PHOTO_TOO_LARGE") return "La photo est trop volumineuse (max 8 Mo).";
-  if (code === "PHOTO_URI_MISSING") return "Photo introuvable.";
+  if (code === "PHOTO_EMPTY") {
+    return tr("errors.photo.empty", "The photo is empty.");
+  }
+  if (code === "PHOTO_TOO_LARGE") {
+    return tr("errors.photo.tooLarge", "The photo is too large (max 8 MB).");
+  }
+  if (code === "PHOTO_URI_MISSING") {
+    return tr("errors.photo.missing", "Photo not found.");
+  }
   if (/network|fetch|timeout|failed/i.test(code)) {
-    return "Erreur réseau. Vérifiez votre connexion et réessayez.";
+    return tr(
+      "errors.photo.network",
+      "Network error. Check your connection and try again.",
+    );
   }
-  return code || "Impossible de traiter la photo.";
+  return code || tr("errors.photo.processFailed", "Unable to process the photo.");
 }
 
 export async function captureDriverIdentitySelfie(): Promise<string | null> {

@@ -1,9 +1,13 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
 export default function AdminRefundBackfillPanel() {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
@@ -37,7 +41,7 @@ export default function AdminRefundBackfillPanel() {
           🧾 Refunds anciens
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Outil admin pour vérifier et rembourser les anciennes commandes déjà annulées.
+          {t("Outil admin pour vérifier et rembourser les anciennes commandes déjà annulées.")}
         </p>
       </div>
 
@@ -62,7 +66,7 @@ export default function AdminRefundBackfillPanel() {
       </div>
 
       {loading ? (
-        <p className="mt-4 text-sm text-slate-500">Traitement en cours…</p>
+        <p className="mt-4 text-sm text-slate-500">{t("Traitement en cours…")}</p>
       ) : null}
 
       {result ? (

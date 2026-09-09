@@ -123,7 +123,7 @@ export default function MmdPlusScreen() {
       {loading ? (
         <View style={styles.stateWrap}>
           <ActivityIndicator color={MMD_GOLD_CLASSIC} />
-          <Text style={styles.muted}>Chargement…</Text>
+          <Text style={styles.muted}>{t("common.loading", "Loading…")}</Text>
           <View style={styles.stateSpacer} />
           <Image
             source={MMD_LOGO}
@@ -137,7 +137,7 @@ export default function MmdPlusScreen() {
         <View style={styles.stateWrap}>
           <Text style={styles.error}>{error}</Text>
           <TouchableOpacity style={styles.btn} onPress={() => void load()}>
-            <Text style={styles.btnText}>Réessayer</Text>
+            <Text style={styles.btnText}>{t("common.retry", "Retry")}</Text>
           </TouchableOpacity>
           <View style={styles.stateSpacer} />
           <Image
@@ -165,7 +165,9 @@ export default function MmdPlusScreen() {
           <View style={styles.hero} testID="mmd-plus-hero">
             {current ? (
               <>
-                <Text style={styles.heroLabel}>Current subscription</Text>
+                <Text style={styles.heroLabel}>
+                  {t("mmdPlus.currentSubscription", "Current subscription")}
+                </Text>
                 <Text style={styles.heroTitle}>
                   {current.plan?.name ?? "MMD+"} · {current.status}
                   {current.cancel_at_period_end ? " · canceling" : ""}
@@ -189,7 +191,9 @@ export default function MmdPlusScreen() {
                     onPress={() => void run("portal")}
                     testID="mmd-plus-manage"
                   >
-                    <Text style={styles.btnText}>Manage Subscription</Text>
+                    <Text style={styles.btnText}>
+                      {t("mmdPlus.manageSubscription", "Manage Subscription")}
+                    </Text>
                   </TouchableOpacity>
                   {current.cancel_at_period_end ? (
                     <TouchableOpacity
@@ -197,7 +201,7 @@ export default function MmdPlusScreen() {
                       disabled={!!busy}
                       onPress={() => void run("resume")}
                     >
-                      <Text style={styles.btnOutlineText}>Resume</Text>
+                      <Text style={styles.btnOutlineText}>{t("mmdPlus.resume", "Resume")}</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
@@ -205,7 +209,7 @@ export default function MmdPlusScreen() {
                       disabled={!!busy}
                       onPress={() => void run("cancel")}
                     >
-                      <Text style={styles.btnOutlineText}>Cancel</Text>
+                      <Text style={styles.btnOutlineText}>{t("common.cancel", "Cancel")}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -213,9 +217,14 @@ export default function MmdPlusScreen() {
             ) : (
               <>
                 <Text style={styles.heroLabel}>MMD+</Text>
-                <Text style={styles.heroTitle}>No active subscription</Text>
+                <Text style={styles.heroTitle}>
+                  {t("mmdPlus.noActive", "No active subscription")}
+                </Text>
                 <Text style={styles.muted}>
-                  One plan for Food, Delivery, Taxi and Marketplace benefits.
+                  {t(
+                    "mmdPlus.planBenefits",
+                    "One plan for Food, Delivery, Taxi and Marketplace benefits.",
+                  )}
                 </Text>
                 {plans[0] ? (
                   <TouchableOpacity
@@ -236,9 +245,9 @@ export default function MmdPlusScreen() {
             )}
           </View>
 
-          <Text style={styles.section}>Plans & benefits</Text>
+          <Text style={styles.section}>{t("mmdPlus.plansSection", "Plans & benefits")}</Text>
           {plans.length === 0 ? (
-            <Text style={styles.muted}>Aucun plan disponible.</Text>
+            <Text style={styles.muted}>{t("mmdPlus.noPlans", "No plans available.")}</Text>
           ) : (
             plans.map((plan) => {
               const isCurrent = current?.plan?.id === plan.id;
@@ -266,10 +275,10 @@ export default function MmdPlusScreen() {
                   >
                     <Text style={styles.btnText}>
                       {isCurrent
-                        ? "Current plan"
+                        ? t("mmdPlus.currentPlan", "Current plan")
                         : current
-                          ? "Change plan"
-                          : "Join"}
+                          ? t("mmdPlus.changePlan", "Change plan")
+                          : t("mmdPlus.join", "Join")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -277,9 +286,9 @@ export default function MmdPlusScreen() {
             })
           )}
 
-          <Text style={styles.section}>Billing</Text>
+          <Text style={styles.section}>{t("mmdPlus.billing", "Billing")}</Text>
           {invoices.length === 0 ? (
-            <Text style={styles.muted}>No invoices.</Text>
+            <Text style={styles.muted}>{t("mmdPlus.noInvoices", "No invoices.")}</Text>
           ) : (
             invoices.map((inv) => (
               <View key={inv.id} style={styles.invoiceRow}>

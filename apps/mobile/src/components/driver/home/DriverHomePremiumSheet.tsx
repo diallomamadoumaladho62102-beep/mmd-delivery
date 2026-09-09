@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import {
   MMD_WHITE,
 } from "../../../theme/mmdUi";
 import { formatHiddenEarningsLabel } from "../../../lib/driverActiveJobs";
+import { useTranslation } from "react-i18next";
 
 /** Figma Driver Home PremiumSheet — MMD_BLUE chrome (file m1YPra9RLUz38tGTPmYczj). */
 const C = {
@@ -85,10 +86,6 @@ export type PremiumSmartDispatch = {
   chips?: string[];
   status: "live" | "offline" | "quiet";
 };
-
-/** Fixed copy — live metrics live only in the intel strip below. */
-const SMART_DISPATCH_MESSAGE =
-  "MMD analyzes demand in real time to surface the best opportunities nearby.";
 
 type Props = {
   isOnline: boolean;
@@ -197,15 +194,16 @@ export function DriverHomePremiumSheet({
   radarPulseStyle,
   bottomPadding,
 }: Props) {
+  const { t } = useTranslation();
   const progressPct = Math.round(Math.max(0, Math.min(1, stats.levelProgress)) * 100);
-  const jobsTitle = useMemo(() => `Active jobs (${jobs.length})`, [jobs.length]);
+  const jobsTitle = t("driver.home.premium.activeJobs", { count: jobs.length });
 
   const summaryBlock = (
     <View style={styles.summaryBlock}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Today's summary</Text>
+        <Text style={styles.sectionTitle}>{t("driver.home.premium.todaySummary")}</Text>
         <TouchableOpacity onPress={onOpenEarnings} style={styles.linkRow} activeOpacity={0.85}>
-          <Text style={styles.linkText}>View details</Text>
+          <Text style={styles.linkText}>{t("driver.home.premium.viewDetails")}</Text>
           <Ionicons name="chevron-forward" size={13} color={C.link} />
         </TouchableOpacity>
       </View>
@@ -215,21 +213,21 @@ export function DriverHomePremiumSheet({
           <Text style={styles.statValue} numberOfLines={1}>
             {formatHiddenEarningsLabel(earningsHidden, stats.todayEarningsLabel)}
           </Text>
-          <Text style={styles.statLabel}>Earnings</Text>
+          <Text style={styles.statLabel}>{t("driver.home.premium.earnings")}</Text>
         </View>
         <View style={styles.statCol}>
           <Text style={styles.statValue}>{stats.tripsToday}</Text>
-          <Text style={styles.statLabel}>Trips</Text>
+          <Text style={styles.statLabel}>{t("driver.home.premium.trips")}</Text>
         </View>
         <View style={styles.statCol}>
           <Text style={styles.statValue}>{Math.round(stats.points).toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Points</Text>
+          <Text style={styles.statLabel}>{t("driver.home.premium.points")}</Text>
         </View>
         <View style={styles.statCol}>
           <Text style={styles.statValue} numberOfLines={1}>
             {stats.level}
           </Text>
-          <Text style={styles.statLabel}>Level</Text>
+          <Text style={styles.statLabel}>{t("driver.home.premium.level")}</Text>
         </View>
       </View>
 
@@ -244,7 +242,7 @@ export function DriverHomePremiumSheet({
       </View>
 
       <TouchableOpacity style={styles.nextRewardCard} activeOpacity={0.88} onPress={onOpenEarnings}>
-        <Text style={styles.nextRewardEyebrow}>Next reward</Text>
+        <Text style={styles.nextRewardEyebrow}>{t("driver.home.premium.nextReward")}</Text>
         <View style={styles.linkRow}>
           <Text style={styles.nextRewardValue} numberOfLines={1}>
             {stats.nextRewardLabel}
@@ -264,7 +262,9 @@ export function DriverHomePremiumSheet({
           style={styles.linkRow}
           activeOpacity={0.85}
         >
-          <Text style={styles.linkText}>{jobs.length > 0 ? "View all" : "Refresh"}</Text>
+          <Text style={styles.linkText}>
+            {jobs.length > 0 ? t("driver.home.premium.viewAll") : t("driver.home.premium.refresh")}
+          </Text>
           <Ionicons name="chevron-forward" size={13} color={C.link} />
         </TouchableOpacity>
       </View>
@@ -274,10 +274,8 @@ export function DriverHomePremiumSheet({
 
       {jobs.length === 0 && !jobsLoading ? (
         <View style={styles.emptyBox}>
-          <Text style={styles.emptyTitle}>No active mission yet</Text>
-          <Text style={styles.emptySub}>
-            Accepted Taxi, Food, and Delivery jobs appear here.
-          </Text>
+          <Text style={styles.emptyTitle}>{t("driver.home.premium.noMission")}</Text>
+          <Text style={styles.emptySub}>{t("driver.home.premium.noMissionBody")}</Text>
         </View>
       ) : (
         jobs.map((item) => {
@@ -295,10 +293,14 @@ export function DriverHomePremiumSheet({
               <View style={styles.jobBody}>
                 <Text style={styles.jobKind}>{item.kindLabel}</Text>
                 <Text style={styles.jobLine} numberOfLines={1}>
-                  {item.kind === "food" ? "Restaurant" : "Pickup"}: {item.pickup}
+                  {item.kind === "food"
+                    ? t("driver.home.premium.restaurantLine", { address: item.pickup })
+                    : t("driver.home.premium.pickupLine", { address: item.pickup })}
                 </Text>
                 <Text style={styles.jobLine} numberOfLines={1}>
-                  {item.kind === "food" ? "Customer" : "Destination"}: {item.dropoff}
+                  {item.kind === "food"
+                    ? t("driver.home.premium.customerLine", { address: item.dropoff })
+                    : t("driver.home.premium.destinationLine", { address: item.dropoff })}
                 </Text>
               </View>
               <View style={styles.jobRight}>
@@ -338,13 +340,10 @@ export function DriverHomePremiumSheet({
                 resizeMode="contain"
               />
             </TouchableOpacity>
-            <Text style={styles.offlineTitle}>You're offline</Text>
-            <Text style={styles.offlineSub}>
-              Go online to receive requests, see live demand hotspots, and unlock MMD Smart
-              Dispatch.
-            </Text>
+            <Text style={styles.offlineTitle}>{t("driver.home.premium.youreOffline")}</Text>
+            <Text style={styles.offlineSub}>{t("driver.home.premium.offlineBody")}</Text>
             <TouchableOpacity style={styles.offlineCta} activeOpacity={0.9} onPress={onGoOnline}>
-              <Text style={styles.offlineCtaText}>Go online</Text>
+              <Text style={styles.offlineCtaText}>{t("driver.home.premium.goOnline")}</Text>
             </TouchableOpacity>
           </View>
           {summaryBlock}
@@ -382,11 +381,11 @@ export function DriverHomePremiumSheet({
                     MMD Smart Dispatch
                   </Text>
                   <View style={styles.livePill}>
-                    <Text style={styles.liveText}>LIVE</Text>
+                    <Text style={styles.liveText}>{t("driver.home.premium.live")}</Text>
                   </View>
                 </View>
                 <Text style={styles.smartSubtitle} numberOfLines={2}>
-                  {SMART_DISPATCH_MESSAGE}
+                  {t("driver.home.premium.smartSubtitle")}
                 </Text>
               </View>
               <TouchableOpacity
@@ -394,7 +393,7 @@ export function DriverHomePremiumSheet({
                 activeOpacity={0.88}
                 style={styles.hotspotsBtn}
               >
-                <Text style={styles.hotspotsText}>View Hotspots</Text>
+                <Text style={styles.hotspotsText}>{t("driver.home.premium.viewHotspots")}</Text>
                 <Ionicons name="chevron-forward" size={12} color="#F8FAFC" />
               </TouchableOpacity>
             </View>
@@ -404,7 +403,7 @@ export function DriverHomePremiumSheet({
         <View style={styles.intelStrip}>
           <View style={styles.intelCell}>
             <Ionicons name="cellular" size={13} color={C.red} />
-            <Text style={styles.intelLabel}>High demand</Text>
+            <Text style={styles.intelLabel}>{t("driver.home.premium.highDemand")}</Text>
             <Text style={styles.intelValue} numberOfLines={2}>
               {zone.activityLabel}
             </Text>
@@ -415,9 +414,12 @@ export function DriverHomePremiumSheet({
           <View style={styles.intelDivider} />
           <View style={styles.intelCell}>
             <Ionicons name="person" size={13} color={C.green} />
-            <Text style={styles.intelLabel}>Drivers nearby</Text>
+            <Text style={styles.intelLabel}>{t("driver.home.premium.driversNearby")}</Text>
             <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.driversNearby} {zone.driversNearby === 1 ? "driver" : "drivers"}
+              {zone.driversNearby}{" "}
+              {zone.driversNearby === 1
+                ? t("driver.home.premium.driverOne")
+                : t("driver.home.premium.driverMany")}
             </Text>
             <Text style={styles.intelDetail} numberOfLines={1}>
               {zone.driversDetail}
@@ -426,7 +428,7 @@ export function DriverHomePremiumSheet({
           <View style={styles.intelDivider} />
           <View style={styles.intelCell}>
             <Ionicons name="time" size={13} color={C.purple} />
-            <Text style={styles.intelLabel}>Est. wait</Text>
+            <Text style={styles.intelLabel}>{t("driver.home.premium.estWait")}</Text>
             <Text style={styles.intelValue} numberOfLines={2}>
               {zone.waitRangeLabel}
             </Text>
@@ -437,10 +439,12 @@ export function DriverHomePremiumSheet({
           <View style={styles.intelDivider} />
           <View style={styles.intelCell}>
             <Ionicons name="chatbubble" size={13} color={C.blue} />
-            <Text style={styles.intelLabel}>Requests nearby</Text>
+            <Text style={styles.intelLabel}>{t("driver.home.premium.requestsNearby")}</Text>
             <Text style={styles.intelValue} numberOfLines={2}>
               {zone.requestsNearby}{" "}
-              {zone.requestsNearby === 1 ? "request" : "requests"}
+              {zone.requestsNearby === 1
+                ? t("driver.home.premium.requestOne")
+                : t("driver.home.premium.requestMany")}
             </Text>
             <Text style={styles.intelDetail} numberOfLines={1}>
               {zone.areaLabel}
@@ -454,14 +458,14 @@ export function DriverHomePremiumSheet({
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.primaryAction} activeOpacity={0.9} onPress={onGoBusyArea}>
             <View style={styles.actionTextCol}>
-              <Text style={styles.primaryActionTitle}>Go to busy area</Text>
-              <Text style={styles.primaryActionSub}>Navigate to high demand zone</Text>
+              <Text style={styles.primaryActionTitle}>{t("driver.home.premium.goBusyArea")}</Text>
+              <Text style={styles.primaryActionSub}>{t("driver.home.premium.goBusyAreaSub")}</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryAction} activeOpacity={0.9} onPress={onGoOffline}>
             <View style={styles.actionTextCol}>
-              <Text style={styles.secondaryActionTitle}>Go offline</Text>
-              <Text style={styles.secondaryActionSub}>You will stop receiving requests</Text>
+              <Text style={styles.secondaryActionTitle}>{t("driver.home.premium.goOffline")}</Text>
+              <Text style={styles.secondaryActionSub}>{t("driver.home.premium.goOfflineSub")}</Text>
             </View>
           </TouchableOpacity>
         </View>

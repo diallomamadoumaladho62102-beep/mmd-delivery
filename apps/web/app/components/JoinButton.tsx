@@ -1,11 +1,15 @@
 'use client';
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { supabase } from '@/lib/supabaseBrowser'; // ✅ chemin corrigé
 
 export default function JoinButton({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   async function join() {
     const { data: { user }, error: uerr } = await supabase.auth.getUser();
     if (uerr || !user) {
-      alert('Non connecté');
+      alert(t("Non connecté"));
       return;
     }
 
@@ -14,7 +18,7 @@ export default function JoinButton({ orderId }: { orderId: string }) {
       .insert({ order_id: orderId, user_id: user.id }); // policies OK
 
     if (error) alert(error.message);
-    else alert('Accès au chat activé ✅');
+    else alert(t("Accès au chat activé ✅"));
   }
 
   return (
@@ -22,7 +26,7 @@ export default function JoinButton({ orderId }: { orderId: string }) {
       onClick={join}
       className="px-3 py-2 rounded-lg bg-black text-white hover:bg-gray-800 transition"
     >
-      Activer accès chat
+      {t("Activer accès chat")}
     </button>
   );
 }

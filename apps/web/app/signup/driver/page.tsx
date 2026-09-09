@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -134,6 +136,8 @@ function buildLocalDoc(params: {
 }
 
 export default function SignupDriver() {
+  const { t } = useAdminT();
+
   const [err, setErr] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);
@@ -822,9 +826,9 @@ export default function SignupDriver() {
   if (!uid) {
     return (
       <div className="max-w-md mx-auto p-6 space-y-4">
-        <h1 className="text-xl font-semibold">Devenir chauffeur / livreur</h1>
+        <h1 className="text-xl font-semibold">{t("Devenir chauffeur / livreur")}</h1>
         <p className="text-sm text-gray-600">
-          Entre ton email pour créer ton compte et continuer l’inscription chauffeur.
+          {t("Entre ton email pour créer ton compte et continuer l’inscription chauffeur.")}
         </p>
 
         <input
@@ -841,7 +845,7 @@ export default function SignupDriver() {
             className="px-3 py-2 rounded bg-black text-white text-sm"
             disabled={!email.trim() || sent}
           >
-            {sent ? "Lien envoyé ✅" : "Envoyer le lien magique"}
+            {sent ? "Lien envoyé ✅" : t("Envoyer le lien magique")}
           </button>
 
           <button
@@ -849,7 +853,7 @@ export default function SignupDriver() {
             onClick={() => void loadConnectedUser()}
             className="text-xs underline"
           >
-            J’ai déjà un compte — recharger
+            {t("J’ai déjà un compte — recharger")}
           </button>
         </div>
 
@@ -862,7 +866,7 @@ export default function SignupDriver() {
   if (loadingProfile) {
     return (
       <div className="max-w-md mx-auto p-6">
-        <div className="text-sm text-gray-600">Chargement du profil chauffeur…</div>
+        <div className="text-sm text-gray-600">{t("Chargement du profil chauffeur…")}</div>
       </div>
     );
   }
@@ -870,7 +874,7 @@ export default function SignupDriver() {
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Ton profil — chauffeur / livreur</h1>
+        <h1 className="text-2xl font-semibold">{t("Ton profil — chauffeur / livreur")}</h1>
         <p className="text-sm text-gray-600 mt-1">
           Complète toutes les informations demandées. Pour vélo, seuls les documents
           d’identité sont exigés. Pour moto et voiture, le permis, l’assurance et la
@@ -880,7 +884,7 @@ export default function SignupDriver() {
 
       {authEmail && (
         <div className="space-y-1">
-          <label className="block text-sm font-medium">Email du compte</label>
+          <label className="block text-sm font-medium">{t("Email du compte")}</label>
           <input
             className="w-full border rounded px-3 py-2 bg-gray-100"
             value={authEmail}
@@ -890,45 +894,45 @@ export default function SignupDriver() {
       )}
 
       <div className="space-y-1">
-        <label className="block text-sm font-medium">Mode de transport</label>
+        <label className="block text-sm font-medium">{t("Mode de transport")}</label>
         <select
           className="w-full border rounded px-3 py-2"
           value={vehicleType}
           onChange={(e) => setVehicleType(e.target.value as VehicleType)}
         >
-          <option value="bike">Vélo</option>
-          <option value="moto">Moto / Scooter</option>
-          <option value="car">Voiture</option>
+          <option value="bike">{t("Vélo")}</option>
+          <option value="moto">{t("Moto / Scooter")}</option>
+          <option value="car">{t("Voiture")}</option>
         </select>
       </div>
 
       <div className="border rounded-lg p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Informations personnelles</h2>
+        <h2 className="text-sm font-semibold">{t("Informations personnelles")}</h2>
 
         <input
           className="w-full border rounded px-3 py-2"
-          placeholder="Nom complet"
+          placeholder={t("Nom complet")}
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
         />
 
         <input
           className="w-full border rounded px-3 py-2"
-          placeholder="Téléphone"
+          placeholder={t("Téléphone")}
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
 
         <input
           className="w-full border rounded px-3 py-2"
-          placeholder="Téléphone d’urgence"
+          placeholder={t("Téléphone d’urgence")}
           value={emergencyPhone}
           onChange={(e) => setEmergencyPhone(e.target.value)}
         />
 
         <input
           className="w-full border rounded px-3 py-2"
-          placeholder="Adresse"
+          placeholder={t("Adresse")}
           value={address}
           onChange={(e) => setAddress(e.target.value)}
         />
@@ -936,19 +940,19 @@ export default function SignupDriver() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input
             className="w-full border rounded px-3 py-2"
-            placeholder="Ville"
+            placeholder={t("Ville")}
             value={city}
             onChange={(e) => setCity(e.target.value)}
           />
           <input
             className="w-full border rounded px-3 py-2"
-            placeholder="État"
+            placeholder={t("État")}
             value={stateValue}
             onChange={(e) => setStateValue(e.target.value)}
           />
           <input
             className="w-full border rounded px-3 py-2"
-            placeholder="ZIP code"
+            placeholder={t("ZIP code")}
             value={zipCode}
             onChange={(e) => setZipCode(e.target.value)}
           />
@@ -963,7 +967,7 @@ export default function SignupDriver() {
       </div>
 
       <div className="border rounded-lg p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Photo personnelle</h2>
+        <h2 className="text-sm font-semibold">{t("Photo personnelle")}</h2>
 
         <input
           type="file"
@@ -980,34 +984,34 @@ export default function SignupDriver() {
       </div>
 
       <div className="border rounded-lg p-4 space-y-3">
-        <h2 className="text-sm font-semibold">Pièce d’identité</h2>
+        <h2 className="text-sm font-semibold">{t("Pièce d’identité")}</h2>
 
         <select
           className="w-full border rounded px-3 py-2"
           value={idType}
           onChange={(e) => setIdType(e.target.value)}
         >
-          <option value="id_card">Carte d’identité</option>
-          <option value="passport">Passeport</option>
-          <option value="driver_license">Permis de conduire</option>
+          <option value="id_card">{t("Carte d’identité")}</option>
+          <option value="passport">{t("Passeport")}</option>
+          <option value="driver_license">{t("Permis de conduire")}</option>
         </select>
 
         <input
           className="w-full border rounded px-3 py-2"
-          placeholder="Numéro de la pièce"
+          placeholder={t("Numéro de la pièce")}
           value={idNumber}
           onChange={(e) => setIdNumber(e.target.value)}
         />
 
         <input
           className="w-full border rounded px-3 py-2"
-          placeholder="Pays d’émission (ex: US)"
+          placeholder={t("Pays d’émission (ex: US)")}
           value={idCountry}
           onChange={(e) => setIdCountry(e.target.value)}
         />
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Photo recto</label>
+          <label className="block text-sm font-medium">{t("Photo recto")}</label>
           <input
             type="file"
             accept="image/*,.pdf"
@@ -1022,7 +1026,7 @@ export default function SignupDriver() {
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium">Photo verso</label>
+          <label className="block text-sm font-medium">{t("Photo verso")}</label>
           <input
             type="file"
             accept="image/*,.pdf"
@@ -1045,26 +1049,26 @@ export default function SignupDriver() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input
             className="w-full border rounded px-3 py-2"
-            placeholder="Marque"
+            placeholder={t("Marque")}
             value={vehicleBrand}
             onChange={(e) => setVehicleBrand(e.target.value)}
           />
           <input
             className="w-full border rounded px-3 py-2"
-            placeholder="Modèle"
+            placeholder={t("Modèle")}
             value={vehicleModel}
             onChange={(e) => setVehicleModel(e.target.value)}
           />
           <input
             className="w-full border rounded px-3 py-2"
-            placeholder="Année"
+            placeholder={t("Année")}
             type="number"
             value={vehicleYear}
             onChange={(e) => setVehicleYear(normalizeYearInput(e.target.value))}
           />
           <input
             className="w-full border rounded px-3 py-2"
-            placeholder="Couleur"
+            placeholder={t("Couleur")}
             value={vehicleColor}
             onChange={(e) => setVehicleColor(e.target.value)}
           />
@@ -1072,7 +1076,7 @@ export default function SignupDriver() {
 
         <input
           className="w-full border rounded px-3 py-2"
-          placeholder="Plaque d’immatriculation"
+          placeholder={t("Plaque d’immatriculation")}
           value={plateNumber}
           onChange={(e) => setPlateNumber(e.target.value)}
         />
@@ -1081,12 +1085,12 @@ export default function SignupDriver() {
       {requiresMotorDocs && (
         <>
           <div className="border rounded-lg p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Permis de conduire</h2>
+            <h2 className="text-sm font-semibold">{t("Permis de conduire")}</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input
                 className="w-full border rounded px-3 py-2"
-                placeholder="Numéro du permis"
+                placeholder={t("Numéro du permis")}
                 value={licenseNumber}
                 onChange={(e) => setLicenseNumber(e.target.value)}
               />
@@ -1099,7 +1103,7 @@ export default function SignupDriver() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium">Photo recto du permis</label>
+              <label className="block text-sm font-medium">{t("Photo recto du permis")}</label>
               <input
                 type="file"
                 accept="image/*,.pdf"
@@ -1114,7 +1118,7 @@ export default function SignupDriver() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium">Photo verso du permis</label>
+              <label className="block text-sm font-medium">{t("Photo verso du permis")}</label>
               <input
                 type="file"
                 accept="image/*,.pdf"
@@ -1130,10 +1134,10 @@ export default function SignupDriver() {
           </div>
 
           <div className="border rounded-lg p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Documents véhicule</h2>
+            <h2 className="text-sm font-semibold">{t("Documents véhicule")}</h2>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium">Assurance</label>
+              <label className="block text-sm font-medium">{t("Assurance")}</label>
               <input
                 type="file"
                 accept="image/*,.pdf"
@@ -1148,7 +1152,7 @@ export default function SignupDriver() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium">Registration</label>
+              <label className="block text-sm font-medium">{t("Registration")}</label>
               <input
                 type="file"
                 accept="image/*,.pdf"
@@ -1166,7 +1170,7 @@ export default function SignupDriver() {
       )}
 
       <div className="border rounded-lg p-4 space-y-2 bg-gray-50">
-        <h2 className="text-sm font-semibold">État du dossier</h2>
+        <h2 className="text-sm font-semibold">{t("État du dossier")}</h2>
         <div className="text-sm">
           Base profile:{" "}
           <span className={isBaseComplete ? "text-green-700" : "text-red-600"}>

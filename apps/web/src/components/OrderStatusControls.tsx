@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -7,6 +9,8 @@ const ALL = ["pending","accepted","prepared","ready","dispatched","delivered","c
 type S = typeof ALL[number];
 
 export default function OrderStatusControls({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [current, setCurrent] = useState<S | null>(null);
   const [next, setNext] = useState<S>("accepted");
   const [msg, setMsg] = useState<string | null>(null);
@@ -49,7 +53,7 @@ export default function OrderStatusControls({ orderId }: { orderId: string }) {
   return (
     <div className="border rounded p-3 space-y-2">
       <div className="flex items-center gap-2">
-        <div className="text-sm">Statut actuel:</div>
+        <div className="text-sm">{t("Statut actuel:")}</div>
         <div className="px-2 py-1 rounded bg-gray-100 text-sm">{current ?? "-"}</div>
       </div>
 
@@ -65,7 +69,7 @@ export default function OrderStatusControls({ orderId }: { orderId: string }) {
           {loading ? "Mise à jour…" : "Mettre à jour"}
         </button>
         <button onClick={fetchStatus} disabled={loading} className="text-sm underline">
-          Rafraîchir
+          {t("Rafraîchir")}
         </button>
       </div>
 

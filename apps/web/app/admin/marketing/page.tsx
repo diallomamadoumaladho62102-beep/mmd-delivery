@@ -168,7 +168,7 @@ function MarketingAdminInner() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">{t("Marketing")}</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Campagnes, codes promo, coupons — moteur central Food / Delivery / Taxi / Marketplace.
+            {t("Campagnes, codes promo, coupons — moteur central Food / Delivery / Taxi / Marketplace.")}
           </p>
         </div>
         <Link

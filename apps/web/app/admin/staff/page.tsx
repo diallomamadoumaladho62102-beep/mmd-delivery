@@ -354,8 +354,7 @@ export default function AdminStaffPage() {
         {(roleCounts.support_admin ?? 0) === 0 ||
         (roleCounts.finance_admin ?? 0) === 0 ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            No Support and/or Finance administrators currently exist in the
-            database. Use <strong>{t("Add administrator")}</strong> below to create
+            {t("No Support and/or Finance administrators currently exist in the database. Use")} <strong>{t("Add administrator")}</strong> below to create
             them — they are not hidden by RBAC for the Founder.
           </div>
         ) : null}
@@ -454,7 +453,7 @@ export default function AdminStaffPage() {
             onChange={(e) => setRegionFilter(e.target.value)}
             className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
           >
-            <option value="all">All states / regions</option>
+            <option value="all">{t("All states / regions")}</option>
             {regionOptions.map((r) => (
               <option key={r} value={r}>
                 {r}
@@ -623,7 +622,7 @@ export default function AdminStaffPage() {
                             href={`/admin/staff/${row.id}#comms`}
                             className="rounded-lg border border-sky-200 px-2 py-1 text-xs font-medium text-sky-800"
                           >
-                            Chat / Call
+                            {t("Chat / Call")}
                           </Link>
                           <Link
                             href={`/admin/tasks?assignee=${row.id}`}

@@ -1,10 +1,14 @@
 'use client';
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseBrowser';
 
 const STATUSES = ['assigned','accepted','prepared','ready','dispatched','delivered'];
 
 export default function StatusTester({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [s, setS] = useState<string>('prepared');
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -25,7 +29,7 @@ export default function StatusTester({ orderId }: { orderId: string }) {
 
   return (
     <div className="border rounded-lg p-3 space-y-2">
-      <div className="text-sm font-medium">Simuler un statut (bip)</div>
+      <div className="text-sm font-medium">{t("Simuler un statut (bip)")}</div>
       <div className="flex gap-2 items-center">
         <select className="border rounded px-2 py-1 text-sm" value={s} onChange={e => setS(e.target.value)}>
           {STATUSES.map(x => <option key={x} value={x}>{x}</option>)}

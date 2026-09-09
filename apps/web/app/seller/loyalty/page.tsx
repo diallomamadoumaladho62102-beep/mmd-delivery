@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -76,6 +78,8 @@ async function authFetch(path: string, init?: RequestInit) {
 }
 
 export default function SellerLoyaltyPage() {
+  const { t } = useAdminT();
+
   const [summary, setSummary] = useState<Summary | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [benefits, setBenefits] = useState<ActiveBenefit[]>([]);
@@ -143,7 +147,7 @@ export default function SellerLoyaltyPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <p className="text-sm text-gray-500">Chargement du programme de fidélité…</p>
+        <p className="text-sm text-gray-500">{t("Chargement du programme de fidélité…")}</p>
       </main>
     );
   }
@@ -156,7 +160,7 @@ export default function SellerLoyaltyPage() {
           onClick={() => void load()}
           className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white"
         >
-          Réessayer
+          {t("Réessayer")}
         </button>
       </main>
     );
@@ -165,9 +169,9 @@ export default function SellerLoyaltyPage() {
   if (!summary?.enabled) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="text-2xl font-bold">Fidélité Vendeur</h1>
+        <h1 className="text-2xl font-bold">{t("Fidélité Vendeur")}</h1>
         <p className="mt-4 text-sm text-gray-600">
-          Le programme de fidélité vendeur n&apos;est pas encore activé pour votre compte.
+          {t("Le programme de fidélité vendeur n&apos;est pas encore activé pour votre compte.")}
         </p>
       </main>
     );
@@ -176,7 +180,7 @@ export default function SellerLoyaltyPage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Fidélité Vendeur</h1>
+        <h1 className="text-2xl font-bold">{t("Fidélité Vendeur")}</h1>
         <Link href="/seller" className="text-sm text-gray-500 hover:underline">
           ← Tableau de bord
         </Link>
@@ -184,40 +188,40 @@ export default function SellerLoyaltyPage() {
 
       {summary.account_status === "suspended" && (
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Votre compte de fidélité est temporairement suspendu. Contactez le support MMD.
+          {t("Votre compte de fidélité est temporairement suspendu. Contactez le support MMD.")}
         </div>
       )}
 
       <section className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-gray-200 p-4">
-          <div className="text-xs uppercase text-gray-500">Points</div>
+          <div className="text-xs uppercase text-gray-500">{t("Points")}</div>
           <div className="mt-1 text-2xl font-bold">{summary.points_balance}</div>
         </div>
         <div className="rounded-xl border border-gray-200 p-4">
-          <div className="text-xs uppercase text-gray-500">Niveau</div>
+          <div className="text-xs uppercase text-gray-500">{t("Niveau")}</div>
           <div className="mt-1 text-2xl font-bold">{summary.tier_label}</div>
         </div>
         <div className="rounded-xl border border-gray-200 p-4">
-          <div className="text-xs uppercase text-gray-500">Ventes</div>
+          <div className="text-xs uppercase text-gray-500">{t("Ventes")}</div>
           <div className="mt-1 text-2xl font-bold">{summary.completed_sales}</div>
         </div>
         <div className="rounded-xl border border-gray-200 p-4">
-          <div className="text-xs uppercase text-gray-500">Avantages actifs</div>
+          <div className="text-xs uppercase text-gray-500">{t("Avantages actifs")}</div>
           <div className="mt-1 text-2xl font-bold">{summary.active_benefits_count}</div>
         </div>
       </section>
 
       {summary.next_tier && (
         <p className="mt-4 text-sm text-gray-600">
-          Prochain niveau : <strong>{summary.next_tier.label}</strong> — encore{" "}
+          {t("Prochain niveau :")} <strong>{summary.next_tier.label}</strong> — encore{" "}
           {Math.max(0, summary.next_tier.min_points - summary.lifetime_points)} points cumulés.
         </p>
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Récompenses disponibles</h2>
+        <h2 className="text-lg font-semibold">{t("Récompenses disponibles")}</h2>
         {rewards.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">Aucune récompense disponible pour le moment.</p>
+          <p className="mt-2 text-sm text-gray-500">{t("Aucune récompense disponible pour le moment.")}</p>
         ) : (
           <ul className="mt-3 space-y-3">
             {rewards.map((r) => {
@@ -255,7 +259,7 @@ export default function SellerLoyaltyPage() {
 
       {benefits.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-lg font-semibold">Avantages actifs</h2>
+          <h2 className="text-lg font-semibold">{t("Avantages actifs")}</h2>
           <ul className="mt-3 space-y-2">
             {benefits.map((b) => (
               <li key={b.id} className="rounded-lg border border-gray-200 p-3 text-sm">
@@ -273,10 +277,10 @@ export default function SellerLoyaltyPage() {
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Parrainage</h2>
+        <h2 className="text-lg font-semibold">{t("Parrainage")}</h2>
         {summary.referral_code ? (
           <div className="mt-3 rounded-xl border border-gray-200 p-4">
-            <div className="text-sm text-gray-600">Votre code vendeur</div>
+            <div className="text-sm text-gray-600">{t("Votre code vendeur")}</div>
             <div className="mt-1 text-xl font-bold tracking-wider">{summary.referral_code}</div>
             {summary.referral_link && (
               <button
@@ -288,7 +292,7 @@ export default function SellerLoyaltyPage() {
             )}
           </div>
         ) : (
-          <p className="mt-2 text-sm text-gray-500">Code de parrainage indisponible pour le moment.</p>
+          <p className="mt-2 text-sm text-gray-500">{t("Code de parrainage indisponible pour le moment.")}</p>
         )}
       </section>
     </main>

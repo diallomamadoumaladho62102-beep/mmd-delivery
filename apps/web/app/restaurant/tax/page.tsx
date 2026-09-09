@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -130,6 +132,8 @@ function StatCard({
 }
 
 export default function RestaurantTaxPage() {
+  const { t } = useAdminT();
+
   const now = new Date();
   const currentYear = now.getFullYear();
 
@@ -258,11 +262,11 @@ export default function RestaurantTaxPage() {
 
   const profileStatusBadge = profile?.isComplete ? (
     <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-      Ready for documents
+      {t("Ready for documents")}
     </span>
   ) : (
     <span className="inline-flex items-center rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-800">
-      Profile incomplete
+      {t("Profile incomplete")}
     </span>
   );
 
@@ -273,12 +277,12 @@ export default function RestaurantTaxPage() {
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div className="space-y-3">
               <div className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-gray-600">
-                Restaurant finance
+                {t("Restaurant finance")}
               </div>
 
               <div>
                 <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
-                  Restaurant Tax Center
+                  {t("Restaurant Tax Center")}
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm text-gray-600">
                   Review weekly, monthly and yearly restaurant earnings,
@@ -295,7 +299,7 @@ export default function RestaurantTaxPage() {
                 href="/restaurant/profile"
                 className="inline-flex items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Update restaurant profile
+                {t("Update restaurant profile")}
               </Link>
 
               <button
@@ -303,7 +307,7 @@ export default function RestaurantTaxPage() {
                 disabled={loading || downloading || !summary}
                 className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
               >
-                {downloading ? "Preparing PDF..." : "Download PDF"}
+                {downloading ? "Preparing PDF..." : t("Download PDF")}
               </button>
             </div>
           </div>
@@ -313,7 +317,7 @@ export default function RestaurantTaxPage() {
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">
-                Reporting period
+                {t("Reporting period")}
               </p>
               <p className="text-xs text-gray-500">
                 Select weekly, monthly or yearly reporting. PDF downloads follow
@@ -405,7 +409,7 @@ export default function RestaurantTaxPage() {
                 disabled={loading}
                 className="rounded-xl border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
               >
-                Refresh
+                {t("Refresh")}
               </button>
             </div>
           </div>
@@ -423,7 +427,7 @@ export default function RestaurantTaxPage() {
 
         {loading ? (
           <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">Loading tax center...</p>
+            <p className="text-sm text-gray-500">{t("Loading tax center...")}</p>
           </div>
         ) : summary ? (
           <>
@@ -444,7 +448,7 @@ export default function RestaurantTaxPage() {
                 subtitle="Estimated net after platform commission"
               />
               <StatCard
-                title="Total orders"
+                title={t("Total orders")}
                 value={String(totals?.totalOrders ?? 0)}
                 subtitle="Completed / included orders"
               />
@@ -455,10 +459,10 @@ export default function RestaurantTaxPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">
-                      Tax profile
+                      {t("Tax profile")}
                     </h2>
                     <p className="mt-1 text-sm text-gray-500">
-                      Restaurant tax identity and reporting information.
+                      {t("Restaurant tax identity and reporting information.")}
                     </p>
                   </div>
                   {profileStatusBadge}
@@ -467,35 +471,35 @@ export default function RestaurantTaxPage() {
                 {profile?.isComplete ? (
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <div className="rounded-xl bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">Restaurant name</p>
+                      <p className="text-xs text-gray-500">{t("Restaurant name")}</p>
                       <p className="mt-1 text-sm font-medium text-gray-900">
                         {profile.restaurantName ?? "—"}
                       </p>
                     </div>
 
                     <div className="rounded-xl bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">Email</p>
+                      <p className="text-xs text-gray-500">{t("Email")}</p>
                       <p className="mt-1 text-sm font-medium text-gray-900">
                         {profile.email ?? "—"}
                       </p>
                     </div>
 
                     <div className="rounded-xl bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">Tax ID / EIN</p>
+                      <p className="text-xs text-gray-500">{t("Tax ID / EIN")}</p>
                       <p className="mt-1 text-sm font-medium text-gray-900">
                         {profile.taxId ?? "—"}
                       </p>
                     </div>
 
                     <div className="rounded-xl bg-gray-50 p-4">
-                      <p className="text-xs text-gray-500">Phone</p>
+                      <p className="text-xs text-gray-500">{t("Phone")}</p>
                       <p className="mt-1 text-sm font-medium text-gray-900">
                         {profile.phone ?? "—"}
                       </p>
                     </div>
 
                     <div className="rounded-xl bg-gray-50 p-4 sm:col-span-2">
-                      <p className="text-xs text-gray-500">Address</p>
+                      <p className="text-xs text-gray-500">{t("Address")}</p>
                       <p className="mt-1 text-sm font-medium text-gray-900">
                         {[profile.address, profile.city, profile.postalCode]
                           .filter(Boolean)
@@ -506,7 +510,7 @@ export default function RestaurantTaxPage() {
                 ) : (
                   <div className="mt-5 rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
                     <p className="text-sm font-medium text-yellow-900">
-                      Your tax profile is not complete yet
+                      {t("Your tax profile is not complete yet")}
                     </p>
                     <p className="mt-1 text-sm text-yellow-800">
                       Complete your restaurant profile before generating official
@@ -515,7 +519,7 @@ export default function RestaurantTaxPage() {
 
                     <div className="mt-4">
                       <p className="text-xs font-medium uppercase tracking-wide text-yellow-900">
-                        Missing fields
+                        {t("Missing fields")}
                       </p>
 
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -535,7 +539,7 @@ export default function RestaurantTaxPage() {
                         href="/restaurant/profile"
                         className="inline-flex items-center rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:opacity-90"
                       >
-                        Complete profile
+                        {t("Complete profile")}
                       </Link>
                     </div>
                   </div>
@@ -544,10 +548,10 @@ export default function RestaurantTaxPage() {
 
               <section className="rounded-2xl border bg-white p-6 shadow-sm">
                 <h2 className="text-lg font-semibold text-gray-900">
-                  Tax documents
+                  {t("Tax documents")}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Download your restaurant summary PDF for the selected period.
+                  {t("Download your restaurant summary PDF for the selected period.")}
                 </p>
 
                 {hasOrders ? (
@@ -589,7 +593,7 @@ export default function RestaurantTaxPage() {
 
                 <div className="mt-5 rounded-2xl bg-blue-50 p-4">
                   <p className="text-sm font-medium text-blue-900">
-                    Connected to your Admin Pricing restaurant commission model
+                    {t("Connected to your Admin Pricing restaurant commission model")}
                   </p>
                   <p className="mt-1 text-sm text-blue-800">
                     This page uses the active restaurant commission configured in
@@ -602,7 +606,7 @@ export default function RestaurantTaxPage() {
           </>
         ) : (
           <div className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">No data available.</p>
+            <p className="text-sm text-gray-500">{t("No data available.")}</p>
           </div>
         )}
       </div>

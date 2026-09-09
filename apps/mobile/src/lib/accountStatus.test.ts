@@ -28,7 +28,7 @@ test("deleted is not active", () => {
 test("deleted block message is set", () => {
   const msg = accountStatusBlockMessage("deleted");
   assert.ok(msg);
-  assert.match(String(msg), /supprim/i);
+  assert.match(String(msg), /deleted/i);
 });
 
 test("active has no block message", () => {

@@ -74,7 +74,10 @@
     },
     "errors": {
       "unavailable": "السوق غير متاح في منطقتك."
-    }
+    },
+    "loadingLong": "جارٍ تحميل السوق...",
+    "emptyShops": "لا توجد متاجر معتمدة في منطقتك بعد.",
+    "loadFailed": "تعذر تحميل السوق"
   },
   "seller": {
     "gate": {
@@ -93,7 +96,13 @@
       "shopOpenOn": "يمكن للعملاء تصفح منتجاتك النشطة.",
       "shopOpenOff": "متجرك مغلق للطلبات الجديدة.",
       "toggleFailed": "تعذر تحديث حالة المتجر.",
-      "language": "اللغة"
+      "language": "اللغة",
+      "status": {
+        "approved": "موافق عليه",
+        "rejected": "مرفوض",
+        "suspended": "موقوف",
+        "pending": "قيد المراجعة"
+      }
     },
     "nav": {
       "home": "الرئيسية",
@@ -151,7 +160,13 @@
       "updateFailed": "فشل التحديث"
     },
     "wallet": {
-      "stripeFailed": "تعذر فتح Stripe."
+      "stripeFailed": "تعذر فتح Stripe.",
+      "cashOut": "سحب",
+      "cashoutFailed": "تعذر طلب السحب.",
+      "recentTransactions": "المعاملات الأخيرة",
+      "cashoutUnavailable": "السحب غير متاح",
+      "cashoutRequested": "تم طلب السحب",
+      "cashoutRules": "الحد الأدنى {{min}} • سحب واحد / يوم"
     }
   },
   "taxi": {
@@ -209,7 +224,30 @@
       "yourArea": "منطقتك",
       "currencyLabel": "العملة",
       "moreOptions": "المزيد من الخيارات",
-      "wallet": "المحفظة"
+      "wallet": "المحفظة",
+      "comfort": "مريح",
+      "wheelchair": "مخصص لذوي الاحتياجات",
+      "useMyGps": "استخدام GPS",
+      "optionalPreferences": "تفضيلات اختيارية",
+      "categoryUnavailable": "لا يوجد سائق متاح لهذه الفئة حاليًا.",
+      "categoryUnavailableShort": "غير متاح",
+      "ambiance": "أجواء الرحلة",
+      "ambianceNone": "بدون تفضيل",
+      "ambianceQuiet": "رحلة هادئة",
+      "ambianceMusic": "موسيقى",
+      "ambianceTalk": "محادثة",
+      "preferElectric": "أفضل مركبة كهربائية أو هجينة",
+      "preferElectricHint": "أولوية للمركبات الخضراء ثم التحويل تلقائيًا إن لم تتوفر.",
+      "pref": {
+        "nonSmoking": "سائق غير مدخن",
+        "childSeat": "مقعد أطفال متوفر",
+        "pets": "الحيوانات مسموحة",
+        "largeLuggage": "مساحة أمتعة كبيرة",
+        "airConditioning": "تكييف إلزامي",
+        "phoneCharger": "شاحن هاتف",
+        "quietVehicle": "مركبة هادئة"
+      },
+      "bookSubtitle": "احجز رحلة — منفصلة عن توصيل الطرود."
     },
     "quote": {
       "title": "التقدير",
@@ -550,7 +588,13 @@
         "incorrectCode": "رمز غير صحيح. اطلب من العميل وحاول مرة أخرى.",
         "verifyFailed": "تعذّر التحقق من الرمز. حاول مرة أخرى.",
         "arrivedPickup": "وصلت إلى نقطة الاستلام",
-        "verifyPickupCode": "التحقق من رمز الاستلام"
+        "verifyPickupCode": "التحقق من رمز الاستلام",
+        "clientPreferences": "تفضيلات العميل",
+        "arriveStop": "الوصول للمحطة",
+        "completeStop": "إكمال المحطة",
+        "verifyHint": "اطلب من العميل رمز الصعود المكوّن من 4 أرقام. تفتح لوحة المفاتيح تلقائيًا — لا حاجة لصورة.",
+        "verifying": "جارٍ التحقق…",
+        "stopLine": "محطة {{order}}: {{address}} ({{status}})"
       }
     },
     "tip": {
@@ -580,6 +624,11 @@
       "payFailed": "تعذر دفع الإكرامية.",
       "view": "عرض الإكرامية",
       "cta": "إكرامية للسائق"
+    },
+    "offer": {
+      "expired": "منتهية",
+      "secondsLeft": "تبقى {{count}} ث",
+      "minutesLeft": "تبقى {{minutes}} د {{seconds}} ث"
     }
   },
   "client": {
@@ -610,6 +659,10 @@
         },
         "maintenance": "MMD في صيانة في منطقتك. الطلبات الجديدة معطّلة مؤقتًا.",
         "comingSoon": "قريبًا في منطقتك"
+      },
+      "tabs": {
+        "home": "الرئيسية",
+        "orders": "الطلبات"
       }
     },
     "profile": {
@@ -626,6 +679,28 @@
         "verifiedNotice": "تم التحقق من الهاتف.",
         "sendFailed": "تعذّر إرسال الرمز",
         "invalidCode": "رمز غير صالح"
+      },
+      "title": "ملف العميل",
+      "titleShort": "الملف",
+      "subtitle": "أكمل ملفك (صورة، عنوان، هاتف) لإجراء الطلبات.",
+      "completeness": "اكتمال الملف",
+      "missing": "ناقص",
+      "complete": "الملف مكتمل.",
+      "openSettings": "الإعدادات",
+      "openSettingsHint": "اللغة والإشعارات والأمان والمزيد",
+      "smsConsent": "أوافق على تلقي رسائل نصية آلية إعلامية ومعاملات من MMD Delivery حول حسابي والتحقق والطلبات والتوصيل والطرود ورحلات التاكسي ودعم العملاء. يختلف تكرار الرسائل. قد تُطبق رسوم الرسائل والبيانات. الموافقة ليست شرطًا للشراء. أرسل STOP للإلغاء وHELP للمساعدة. اختياري.",
+      "changePhoto": "تغيير الصورة",
+      "missingFields": {
+        "first_name": "الاسم الأول",
+        "last_name": "اسم العائلة",
+        "email": "البريد الإلكتروني",
+        "email_verified": "تأكيد البريد",
+        "phone": "الهاتف",
+        "phone_verified": "تأكيد الهاتف",
+        "avatar": "صورة الملف",
+        "address": "العنوان",
+        "city": "المدينة",
+        "address_verified": "عنوان موثق"
       }
     },
     "deliveryRequest": {
@@ -710,11 +785,78 @@
       "resetEmailSentBody": "تحقق من بريدك الوارد. اضغط على الرابط الذي وصلك لإعادة تعيين كلمة المرور.",
       "cannotSendEmail": "تعذّر إرسال البريد الإلكتروني.",
       "addressOptional": "العنوان (اختياري)",
-      "addressOptionalHint": "يمكنك إضافة عنوان توصيل لاحقًا عند طلب طعام أو شحنة أو تاكسي."
+      "addressOptionalHint": "يمكنك إضافة عنوان توصيل لاحقًا عند طلب طعام أو شحنة أو تاكسي.",
+      "smsConsent": "أوافق على تلقي رسائل نصية آلية إعلامية ومعاملات من MMD Delivery حول حسابي والتحقق والطلبات والتوصيل والطرود ورحلات التاكسي ودعم العملاء. يختلف تكرار الرسائل. قد تُطبق رسوم الرسائل والبيانات. الموافقة ليست شرطًا للشراء. أرسل STOP للإلغاء وHELP للمساعدة. اختياري."
     },
     "restaurantMenu": {
       "pickupAddressLabel": "عنوان الاستلام (المطعم / نقطة البداية)",
       "deliveryAddressLabel": "عنوان التسليم (العميل)"
+    },
+    "restaurants": {
+      "header": {
+        "title": "المطاعم الشريكة",
+        "subtitle": "اختر مطعمًا حسب الفئة أو ابحث عن طبقك المفضل."
+      },
+      "search": {
+        "placeholder": "ابحث عن مطعم أو عنوان أو مطبخ..."
+      },
+      "cuisineAll": "الكل",
+      "loading": "جارٍ تحميل المطاعم…",
+      "empty": {
+        "title": "لا توجد مطاعم متاحة",
+        "body": "لا يوجد مطعم يطابق هذا التصفية حاليًا."
+      },
+      "phoneLabel": "الهاتف:",
+      "viewMenu": "عرض القائمة ←",
+      "cuisine": {
+        "african": "أفريقية",
+        "west_african": "غرب أفريقية",
+        "west_african_food": "مأكولات غرب أفريقيا",
+        "east_african": "شرق أفريقية",
+        "north_african": "شمال أفريقية",
+        "asian": "آسيوية",
+        "chinese": "صينية",
+        "indian": "هندية",
+        "italian": "إيطالية",
+        "american": "أمريكية",
+        "french": "فرنسية",
+        "mexican": "مكسيكية",
+        "mediterranean": "متوسطية",
+        "middle_eastern": "شرق أوسطية",
+        "caribbean": "كاريبية",
+        "european": "أوروبية",
+        "fast_food": "وجبات سريعة",
+        "pizza": "بيتزا",
+        "seafood": "مأكولات بحرية",
+        "vegetarian": "نباتية",
+        "grill": "مشاوي",
+        "barbecue": "باربكيو",
+        "bbq": "باربكيو",
+        "fusion": "فيوجن",
+        "local": "محلية",
+        "international": "عالمية",
+        "bakery": "مخبز",
+        "desserts": "حلويات",
+        "healthy": "صحية",
+        "sushi": "سوشي",
+        "thai": "تايلاندية",
+        "vietnamese": "فيتنامية",
+        "japanese": "يابانية",
+        "korean": "كورية",
+        "lebanese": "لبنانية",
+        "moroccan": "مغربية",
+        "ethiopian": "إثيوبية",
+        "nigerian": "نيجيرية",
+        "senegalese": "سنغالية",
+        "guinean": "غينية",
+        "malian": "مالية",
+        "ivorian": "إيفوارية"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "التتبع"
+      }
     }
   },
   "location": {
@@ -724,8 +866,21 @@
     "useLocation": "استخدم هذا الموقع",
     "back": "رجوع",
     "tripCard": {
-      "loadFailed": "تعذر تحميل الموقع."
-    }
+      "loadFailed": "تعذر تحميل الموقع.",
+      "defaultTitle": "تفاصيل موقع العميل",
+      "landmark": "مَعلم",
+      "clientDirections": "تعليمات العميل",
+      "unavailable": "الموقع غير متاح.",
+      "viewOnMap": "عرض على الخريطة",
+      "pin": "دبوس:"
+    },
+    "enterAddress": "أدخل العنوان",
+    "useGps": "استخدام GPS",
+    "servicesOff": "خدمات الموقع متوقفة",
+    "gpsTimeout": "انتهت مهلة GPS",
+    "permissionRequired": "يلزم إذن الموقع",
+    "gpsUnavailable": "تعذر قراءة GPS",
+    "noPlacesFound": "لم يتم العثور على أماكن"
   },
   "auth": {
     "resetPassword": {
@@ -836,10 +991,51 @@
         "insurance": "التأمين",
         "registration": "رخصة تسجيل المركبة"
       },
-      "toggleStatusFailed": "تعذّر تغيير الحالة الآن."
+      "toggleStatusFailed": "تعذّر تغيير الحالة الآن.",
+      "demand": "الطلب",
+      "miles": "أميال",
+      "ignore": "تجاهل",
+      "accepting": "جارٍ القبول...",
+      "premium": {
+        "todaySummary": "ملخص اليوم",
+        "viewDetails": "عرض التفاصيل",
+        "earnings": "الأرباح",
+        "trips": "الرحلات",
+        "points": "النقاط",
+        "level": "المستوى",
+        "nextReward": "المكافأة التالية",
+        "activeJobs": "مهام نشطة ({{count}})",
+        "viewAll": "عرض الكل",
+        "refresh": "تحديث",
+        "noMission": "لا توجد مهمة نشطة بعد",
+        "noMissionBody": "تظهر هنا مهام التاكسي والطعام والتوصيل المقبولة.",
+        "restaurantLine": "المطعم: {{address}}",
+        "pickupLine": "الاستلام: {{address}}",
+        "customerLine": "العميل: {{address}}",
+        "destinationLine": "الوجهة: {{address}}",
+        "youreOffline": "أنت غير متصل",
+        "offlineBody": "اتصل بالإنترنت لتلقي الطلبات ورؤية مناطق الطلب وتفعيل MMD Smart Dispatch.",
+        "goOnline": "الاتصال",
+        "live": "مباشر",
+        "smartSubtitle": "يحلل MMD الطلب في الوقت الفعلي لعرض أفضل الفرص القريبة.",
+        "viewHotspots": "عرض المناطق الساخنة",
+        "highDemand": "طلب مرتفع",
+        "driversNearby": "سائقون قريبون",
+        "driverOne": "سائق",
+        "driverMany": "سائقون",
+        "estWait": "انتظار تقديري",
+        "requestsNearby": "طلبات قريبة",
+        "requestOne": "طلب",
+        "requestMany": "طلبات",
+        "goBusyArea": "الذهاب إلى منطقة مزدحمة",
+        "goBusyAreaSub": "التوجه إلى منطقة طلب مرتفع",
+        "goOffline": "قطع الاتصال",
+        "goOfflineSub": "ستتوقف عن تلقي الطلبات"
+      }
     },
     "profile": {
-      "transportValidationRequired": "يتطلب هذا النوع من النقل التحقق من المستندات قبل تفعيله."
+      "transportValidationRequired": "يتطلب هذا النوع من النقل التحقق من المستندات قبل تفعيله.",
+      "activeFleet": "مركبة نشطة (الأسطول)"
     },
     "account": {
       "createProfileFailed": "تعذّر إنشاء ملف السائق الآن.",
@@ -1005,7 +1201,9 @@
       "acceptStandardDesc": "Comfort, XL or Wheelchair can also receive Standard rides",
       "availableSection": "Available services",
       "advancedSection": "Advanced options",
-      "enableTaxiForAdvanced": "Enable Taxi rides to manage advanced options."
+      "enableTaxiForAdvanced": "Enable Taxi rides to manage advanced options.",
+      "saving": "جارٍ الحفظ…",
+      "refreshPreferences": "تحديث التفضيلات"
     },
     "identity": {
       "cameraRequiredTitle": "الكاميرا مطلوبة",
@@ -1039,7 +1237,9 @@
       "refreshStatus": "Refresh Status",
       "successBody": "You can now go online.",
       "problemTitle": "Verification problem",
-      "selfieHint": "Selfie required — centered face, good lighting"
+      "selfieHint": "Selfie required — centered face, good lighting",
+      "submitForVerification": "إرسال للتحقق",
+      "cameraIssue": "مشكلة في الكاميرا؟"
     },
     "taxiPanel": {
       "title": "تاكسي",
@@ -1093,7 +1293,19 @@
       "sentTitle": "تم إرسال الإبلاغ",
       "sentBody": "تم الإبلاغ عن {{label}}. مرئي لمدة 25 دقيقة للسائقين القريبين.",
       "reportButton": "إبلاغ",
-      "nearbyAlerts": "{{count}} تنبيه نشط بالقرب منك"
+      "nearbyAlerts": "{{count}} تنبيه نشط بالقرب منك",
+      "title": "الإبلاغ عن مشكلة",
+      "nearbyHint": "سيظهر البلاغ للسائقين القريبين لمدة 25 دقيقة.",
+      "sending": "جارٍ الإرسال…",
+      "categories": {
+        "accident": "حادث",
+        "traffic_jam": "ازدحام مروري",
+        "road_closed": "طريق مغلق",
+        "hazard": "خطر",
+        "police": "الشرطة",
+        "bad_address": "عنوان خاطئ",
+        "other": "مشكلة أخرى"
+      }
     },
     "taxPdf": {
       "errorTitle": "خطأ PDF"
@@ -1153,6 +1365,16 @@
       },
       "success": {
         "title": "تم السحب بنجاح!"
+      },
+      "payouts": {
+        "status": {
+          "paid": "مدفوع",
+          "canceled": "ملغى",
+          "reversed": "معكوس",
+          "failed": "فشل",
+          "processing": "قيد المعالجة",
+          "unknown": "غير معروف"
+        }
       }
     },
     "mapFallback": {
@@ -1171,6 +1393,30 @@
       "routeErrorBody": "Unable to calculate the route at this time. You can retry or open an external app from the details.",
       "errorTitle": "Error",
       "errorBody": "Something went wrong."
+    },
+    "menu": {
+      "servicesTitle": "خدماتي",
+      "servicesSub": "طعام، طرود، تاكسي",
+      "vehicleTitle": "مركبتي",
+      "vehicleSub": "فئات التاكسي"
+    },
+    "inbox": {
+      "emptyTitle": "صندوق الوارد فارغ"
+    },
+    "workAccount": {
+      "loadingTitle": "حالة الحساب"
+    },
+    "trip": {
+      "clientPickup": "العميل · الاستلام",
+      "client": "العميل"
+    },
+    "referrals": {
+      "inviteStatus": {
+        "earned": "تم الحصول على المكافأة",
+        "active": "نشط",
+        "expired": "منتهي",
+        "pending": "قيد الانتظار"
+      }
     }
   },
   "restaurant": {
@@ -1300,7 +1546,13 @@
       "history": "السجل",
       "loadFailed": "تعذر تحميل المحفظة.",
       "emptyTitle": "لا توجد معاملات",
-      "emptyBody": "ستظهر الحركات هنا."
+      "emptyBody": "ستظهر الحركات هنا.",
+      "cashOut": "سحب",
+      "cashoutFailed": "تعذر طلب السحب.",
+      "recentTransactions": "المعاملات الأخيرة",
+      "cashoutUnavailable": "السحب غير متاح",
+      "cashoutRequested": "تم طلب السحب",
+      "cashoutRules": "الحد الأدنى {{min}} • سحب واحد / يوم"
     },
     "automation": {
       "errorTitle": "خطأ",
@@ -1312,11 +1564,11 @@
       "testPrintQueued": "تمت إضافة تذكرة الاختبار إلى قائمة الطباعة.",
       "testFailed": "فشل اختبار الطباعة",
       "title": "أتمتة الطلبات",
-      "subtitle": "Settings",
-      "loadingTitle": "Loading Settings...",
-      "loadingSubtitle": "Fetching your automation preferences",
-      "infoTitle": "Auto-accept & Kitchen Print",
-      "infoBody": "Control how new orders are accepted and printed.",
+      "subtitle": "الإعدادات",
+      "loadingTitle": "جارٍ تحميل الإعدادات…",
+      "loadingSubtitle": "جلب تفضيلات الأتمتة",
+      "infoTitle": "القبول التلقائي وطباعة المطبخ",
+      "infoBody": "تحكم في كيفية قبول الطلبات الجديدة وطباعتها.",
       "autoAccept": "Auto-accept new orders",
       "autoPrint": "Auto-print on accept",
       "soundAlert": "Sound alert",
@@ -1346,7 +1598,28 @@
     "menu": {
       "alerts": {
         "actionFailed": "هذا الإجراء غير متاح حاليًا."
-      }
+      },
+      "addCategory": "+ إضافة فئة",
+      "noCategories": "لا توجد فئات",
+      "noCategoriesBody": "لا توجد فئات بعد. أضف واحدة للبدء.",
+      "addCategoryTitle": "إضافة فئة",
+      "categoryNamePlaceholder": "اسم الفئة",
+      "changeImage": "تغيير الصورة",
+      "chooseImage": "اختيار صورة",
+      "noItems": "لا توجد أصناف",
+      "noItemsBody": "أضف منتجًا إلى هذه الفئة.",
+      "addItem": "+ إضافة صنف",
+      "addItemTitle": "إضافة صنف",
+      "editItemTitle": "تعديل الصنف",
+      "name": "الاسم",
+      "price": "السعر",
+      "description": "الوصف",
+      "available": "متاح",
+      "unavailable": "غير متاح",
+      "add": "إضافة",
+      "title": "القائمة",
+      "loadingTitle": "جارٍ تحميل القائمة...",
+      "loadingSubtitle": "جارٍ جلب أصناف قائمتك"
     },
     "dashboard": {
       "availabilityUpdateFailed": "تعذر تغيير حالة المطعم."
@@ -1354,6 +1627,44 @@
     "orders": {
       "statusUpdateFailed": "تعذر تحديث حالة الطلب ({{status}}).",
       "rejectFailed": "تعذر رفض الطلب ({{status}})."
+    },
+    "connect": {
+      "cta": {
+        "setup_required": {
+          "title": "اربط حسابك المصرفي",
+          "body": "يجب ربط Stripe لاستلام مدفوعات المطعم. سيطلب Stripe الاسم القانوني والهوية والحساب المصرفي. MMD لا تجمع بيانات البنك.",
+          "action": "ربط Stripe"
+        },
+        "verification_pending": {
+          "title": "أكمل إعداد Stripe",
+          "body": "بدأت Stripe Connect. أكمل الهوية والحساب المصرفي في Stripe لاستلام التحويلات.",
+          "action": "إكمال Stripe"
+        },
+        "verification_in_progress": {
+          "title": "إعداد Stripe غير مكتمل",
+          "body": "Stripe يراجع حسابك. تابع إذا لزم مزيد من بيانات البنك أو الهوية.",
+          "action": "متابعة Stripe"
+        },
+        "ready_for_payouts": {
+          "title": "Stripe متصل",
+          "body": "حسابك المصرفي متصل. افتح Stripe لإدارة التحويلات أو تحديث البيانات.",
+          "action": "إدارة التحويلات"
+        },
+        "restricted": {
+          "title": "التحويل محظور",
+          "body": "لا يمكن لـ Stripe الدفع لهذا المطعم بعد. افتح Stripe لإصلاح الحساب ثم تُعاد المحاولة تلقائيًا.",
+          "action": "إصلاح حساب Stripe"
+        }
+      }
+    },
+    "earnings": {
+      "stripe": {
+        "bankKicker": "تحويلات بنكية",
+        "moreInfoNeeded": "ما زال Stripe يحتاج معلومات الهوية أو البنك."
+      }
+    },
+    "ads": {
+      "loading": "جارٍ تحميل الإعلان"
     }
   },
   "roleSelect": {
@@ -1385,6 +1696,13 @@
     "footer": {
       "safe": "بياناتك آمنة معنا",
       "trusted": "موثوق من الآلاف"
+    },
+    "profileGate": {
+      "sessionExpired": "انتهت جلستك. سجّل الدخول مرة أخرى.",
+      "network": "خطأ في الشبكة أثناء التحقق من ملفك. تحقق من الاتصال وحاول مرة أخرى.",
+      "permission": "تعذر الوصول إلى ملفك. سجّل الخروج ثم الدخول أو تواصل مع الدعم.",
+      "server": "خدمة الملف غير متاحة مؤقتًا. حاول مرة أخرى بعد لحظات.",
+      "unknown": "تعذر التحقق من ملفك. حاول مرة أخرى."
     }
   },
   "finance": {
@@ -1477,12 +1795,33 @@
     "codeAcceptedWithDiscount": "تم قبول الرمز (−{{orderDiscount}} / −{{deliveryDiscount}} للتوصيل). يُطبَّق المبلغ الدقيق عند الدفع.",
     "codeAccepted": "تم قبول الرمز. يُطبَّق المبلغ الدقيق عند الدفع حسب سلتك.",
     "codeRejected": "تم رفض الرمز.",
-    "loadFailed": "تعذر تحميل العروض."
+    "loadFailed": "تعذر تحميل العروض.",
+    "verify": "تحقق",
+    "myCoupons": "قسائمي",
+    "emptyCoupons": "لا توجد قسائم.",
+    "offers": "العروض",
+    "emptyOffers": "لا توجد عروض.",
+    "retry": "إعادة المحاولة",
+    "promoCode": "رمز ترويجي",
+    "placeholder": "رمزالخصم",
+    "seeAlsoMmdPlus": "اطلع أيضًا على MMD+"
   },
   "mmdPlus": {
     "title": "MMD+",
     "actionFailed": "الإجراء غير متاح.",
-    "loadFailed": "تعذر تحميل MMD+."
+    "loadFailed": "تعذر تحميل MMD+.",
+    "currentSubscription": "الاشتراك الحالي",
+    "manageSubscription": "إدارة الاشتراك",
+    "resume": "استئناف",
+    "noActive": "لا يوجد اشتراك نشط",
+    "planBenefits": "خطة واحدة لمزايا الطعام والتوصيل والتاكسي والسوق.",
+    "plansSection": "الخطط والمزايا",
+    "noPlans": "لا توجد خطط متاحة.",
+    "billing": "الفوترة",
+    "noInvoices": "لا توجد فواتير.",
+    "currentPlan": "الخطة الحالية",
+    "changePlan": "تغيير الخطة",
+    "join": "انضمام"
   },
   "locationPicker": {
     "permissionTitle": "الإذن مطلوب",
@@ -1591,6 +1930,25 @@
       "cardDeclined": "تم رفض بطاقتك. تحقق من بياناتك أو استخدم بطاقة أخرى.",
       "networkFailed": "الاتصال غير مستقر. تحقق من الشبكة وحاول مرة أخرى.",
       "distanceTooFar": "المسافة طويلة جدًا لهذه الرحلة."
+    },
+    "sessionExpired": "انتهت الجلسة. سجّل الدخول مرة أخرى.",
+    "account": {
+      "deleted": "تم حذف هذا الحساب ولم يعد بالإمكان استخدامه.",
+      "banned": "هذا الحساب محظور. تواصل مع دعم MMD Delivery.",
+      "suspended": "حسابك معلّق. تواصل مع دعم MMD Delivery.",
+      "disabled": "حسابك معطّل. تواصل مع دعم MMD Delivery.",
+      "unknown": "تعذر التحقق من حالة الحساب. حاول مرة أخرى بعد لحظات."
+    },
+    "photo": {
+      "cameraDenied": "اسمح بالوصول إلى الكاميرا من الإعدادات للمتابعة.",
+      "empty": "الصورة فارغة.",
+      "tooLarge": "الصورة كبيرة جدًا (الحد 8 ميغابايت).",
+      "missing": "الصورة غير موجودة.",
+      "fileNotFound": "ملف الصورة غير موجود.",
+      "readFailed": "تعذر قراءة الصورة.",
+      "network": "خطأ في الشبكة. تحقق من الاتصال وحاول مرة أخرى.",
+      "networkShort": "خطأ في الشبكة. حاول مرة أخرى.",
+      "processFailed": "تعذر معالجة الصورة."
     }
   },
   "common": {
@@ -1661,7 +2019,26 @@
       "pinPickup": "تثبيت الاستلام",
       "pickupPinned": "تم تثبيت الاستلام",
       "pickupExactLocation": "موقع الاستلام الدقيق",
-      "usePickupLocation": "استخدام هذا الاستلام"
+      "usePickupLocation": "استخدام هذا الاستلام",
+      "title": "العنوان",
+      "titleRidePlaceholder": "مثال: رحلة إلى المطار",
+      "titlePackagePlaceholder": "مثال: مستندات مهمة",
+      "pickupAddress": "عنوان الاستلام",
+      "pickupPlaceholder": "أدخل عنوان الاستلام",
+      "dropoffAddress": "عنوان التسليم",
+      "dropoffPlaceholder": "أدخل عنوان التسليم",
+      "pinDropoff": "تثبيت التسليم الدقيق على الخريطة",
+      "dropoffPinned": "تم تثبيت التسليم على الخريطة",
+      "dropoffExactLocation": "موقع التسليم الدقيق",
+      "useDropoffLocation": "استخدام موقع التسليم",
+      "pickupContactName": "اسم جهة اتصال الاستلام",
+      "pickupPhone": "هاتف الاستلام",
+      "dropoffContactName": "اسم جهة اتصال التسليم",
+      "dropoffPhone": "هاتف التسليم",
+      "rideNotes": "ملاحظات الرحلة",
+      "packageDescription": "وصف الطرد",
+      "rideNotesPlaceholder": "ملاحظات اختيارية للرحلة",
+      "packageDescriptionPlaceholder": "صف الطرد"
     },
     "pricing": {
       "distance": "المسافة",
@@ -1669,7 +2046,84 @@
       "deliveryFee": "رسوم التوصيل",
       "tax": "الضريبة",
       "serviceFee": "رسوم الخدمة",
-      "total": "الإجمالي"
+      "total": "الإجمالي",
+      "title": "ملخص السعر",
+      "loading": "جارٍ تحميل الأسعار…",
+      "calculating": "جارٍ حساب التقدير…",
+      "ready": "التقدير جاهز",
+      "emptyHint": "احسب السعر لعرض التقدير."
+    },
+    "header": {
+      "title": "طلب توصيل",
+      "subtitle": "أنشئ توصيل طرد أو رحلة خاصة دون المرور بالمطعم."
+    },
+    "type": {
+      "title": "نوع الطلب",
+      "packageShort": "طرد",
+      "rideShort": "رحلة"
+    },
+    "details": {
+      "title": "تفاصيل التوصيل"
+    },
+    "leaveAtDoor": {
+      "title": "الترك عند الباب",
+      "hint": "يسمح للسائق بترك الطرد عند الباب بعد أقصى انتظار (صورة مطلوبة)."
+    },
+    "unavailable": {
+      "title": "التوصيل غير متاح"
+    },
+    "actions": {
+      "calculate": "حساب سعر التوصيل",
+      "create": "إنشاء طلب التوصيل",
+      "payNow": "ادفع الآن"
+    },
+    "created": {
+      "paidCardTitle": "طلب توصيل مدفوع",
+      "cardTitle": "تم إنشاء طلب التوصيل",
+      "payHint": "يمكنك المتابعة إلى الدفع الآمن."
+    },
+    "alerts": {
+      "scopeTitle": "السوق غير متاح",
+      "missingPickupTitle": "عنوان الاستلام ناقص",
+      "missingPickupBody": "أدخل عنوان الاستلام.",
+      "missingDropoffTitle": "عنوان التسليم ناقص",
+      "missingDropoffBody": "أدخل عنوان التسليم.",
+      "incompleteAddressTitle": "عنوان غير مكتمل",
+      "incompleteAddressBody": "أدخل عناوين استلام وتسليم كاملة.",
+      "missingDescriptionTitle": "الوصف ناقص",
+      "missingDescriptionBody": "صف ما يجب توصيله.",
+      "missingFieldsTitle": "حقول ناقصة",
+      "missingFieldsBody": "املأ عناوين الاستلام والتسليم أولًا.",
+      "missingConfigTitle": "الإعداد ناقص",
+      "missingConfigBody": "عنوان واجهة البرمجة غير مهيأ.",
+      "estimateFailedTitle": "فشل التقدير",
+      "createdTitle": "تم إنشاء الطلب",
+      "createdBody": "تم إنشاء طلب التوصيل. اضغط ادفع الآن لإكمال الدفع."
+    },
+    "errors": {
+      "estimateGeneric": "تعذر حساب تقدير التوصيل حاليًا.",
+      "networkEstimate": "خطأ في الشبكة أثناء حساب التقدير.",
+      "estimateTimeout": "استغرق طلب التقدير وقتًا طويلًا. أعد المحاولة.",
+      "distanceTooLarge": "المسافة كبيرة جدًا. تحقق من العنوانين.",
+      "distanceTooLargeOrImprecise": "المسافة كبيرة جدًا أو العنوان غير دقيق بما يكفي.",
+      "invalidDistanceTime": "استجابة مسافة/وقت غير صالحة من واجهة التقدير.",
+      "loginRequiredCreate": "يجب تسجيل الدخول لإنشاء طلب توصيل.",
+      "loginRequiredPay": "يجب تسجيل الدخول للدفع.",
+      "createFailed": "تعذر إنشاء الطلب.",
+      "missingCoords": "إحداثيات الاستلام والتسليم ناقصة.",
+      "quoteRequired": "احسب التقدير قبل إنشاء الطلب."
+    },
+    "payment": {
+      "title": "الدفع",
+      "notCompletedNoRequest": "لم يكتمل الدفع. لم يُنشأ أي طلب.",
+      "successTitle": "تم الدفع بنجاح",
+      "successOrderVisible": "تم تأكيد الدفع والطلب ظاهر الآن للسائقين.",
+      "successBody": "تم تأكيد الدفع.",
+      "createFirst": "أنشئ طلب التوصيل أولًا.",
+      "pendingTitle": "الدفع معلّق",
+      "pendingBody": "بدأ الدفع لكن التأكيد ما زال معلّقًا. لن يرى السائقون الطلب حتى تأكيد الدفع.",
+      "unableToStart": "تعذر بدء الدفع الآن.",
+      "errorTitle": "خطأ في الدفع"
     }
   },
   "mmd": {
@@ -1709,5 +2163,57 @@
         "banner": "يلزم التأكيد. MMD AI لا يأخذ أي دفعة. تابع في تاكسي أو قائمة المطعم."
       }
     }
+  },
+  "payments": {
+    "stripeConnect": {
+      "status": {
+        "setup_required": "يلزم الإعداد",
+        "verification_pending": "التحقق معلّق",
+        "verification_in_progress": "التحقق قيد التنفيذ",
+        "ready_for_payouts": "جاهز للتحويلات",
+        "restricted": "مقيّد",
+        "disabled": "معطّل"
+      },
+      "message": {
+        "setup_required": "أكمل إعداد Stripe لاستلام التحويلات. اضغط تفعيل للمتابعة.",
+        "verification_pending": "ما زال Stripe يحتاج معلومات منك. تابع التسجيل لإنهاء التحقق.",
+        "verification_in_progress": "Stripe يراجع حسابك. تُفتح التحويلات بعد اكتمال التحقق.",
+        "ready_for_payouts": "حساب Stripe جاهز. يمكنك السحب عندما يسمح الرصيد.",
+        "restricted": "حساب Stripe مقيّد. افتح إعداد Stripe لحل المتطلبات المتبقية.",
+        "disabled": "حساب Stripe معطّل. تواصل مع الدعم أو أعد فتح إعداد Stripe."
+      }
+    },
+    "picker": {
+      "title": "اختر طريقة الدفع",
+      "unavailable": "طريقة الدفع غير متاحة مؤقتًا",
+      "test": "اختبار"
+    }
+  },
+  "tracking": {
+    "offlineWaiting": "غير متصل — بانتظار الاتصال",
+    "offline": "غير متصل",
+    "etaApproximate": "قد يكون وقت الوصول تقريبيًا",
+    "mapUnavailable": "الخريطة غير متاحة",
+    "rezoom": "إعادة التكبير",
+    "recenter": "إعادة توسيط الخريطة",
+    "etaUnavailable": "وقت الوصول غير متاح",
+    "arriveApprox": "الوصول ~{{time}}",
+    "remainingMeters": "متبقي {{meters}} م",
+    "remainingMiles": "متبقي {{miles}} ميل",
+    "updatedAt": "حُدّث {{time}}",
+    "locationStale": "قد يكون الموقع غير محدّث"
+  },
+  "otp": {
+    "verified": "تم التحقق من الرمز",
+    "enterCode": "أدخل رمز التحقق"
+  },
+  "ui": {
+    "loadingPlaceholder": "عنصر نائب للتحميل"
+  },
+  "market": {
+    "scopeUnavailable": "نطاق السوق غير متاح. فعّل الموقع أو أعد المحاولة."
+  },
+  "social": {
+    "a11y": "وسائل التواصل الاجتماعي لـ MMD Delivery"
   }
 }

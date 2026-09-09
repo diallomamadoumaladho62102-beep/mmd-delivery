@@ -1,9 +1,13 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 export default function DriverMarketingPage() {
+  const { t } = useAdminT();
+
   const [objectives, setObjectives] = useState<Array<Record<string, unknown>>>([]);
   const [progress, setProgress] = useState<Array<Record<string, unknown>>>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -31,10 +35,10 @@ export default function DriverMarketingPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold">Bonus & objectifs</h1>
+      <h1 className="text-2xl font-semibold">{t("Bonus & objectifs")}</h1>
       {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
       <section className="mt-6">
-        <h2 className="font-medium">Campagnes disponibles</h2>
+        <h2 className="font-medium">{t("Campagnes disponibles")}</h2>
         <ul className="mt-2 space-y-2 text-sm">
           {objectives.map((o) => (
             <li key={String(o.id)} className="rounded-xl border p-3">
@@ -42,11 +46,11 @@ export default function DriverMarketingPage() {
               {((Number(o.reward_cents) || 0) / 100).toFixed(2)} $
             </li>
           ))}
-          {objectives.length === 0 && <li className="text-slate-500">Aucune campagne active.</li>}
+          {objectives.length === 0 && <li className="text-slate-500">{t("Aucune campagne active.")}</li>}
         </ul>
       </section>
       <section className="mt-6">
-        <h2 className="font-medium">Ma progression</h2>
+        <h2 className="font-medium">{t("Ma progression")}</h2>
         <ul className="mt-2 space-y-2 text-sm">
           {progress.map((p) => (
             <li key={String(p.id)} className="rounded-xl border p-3">

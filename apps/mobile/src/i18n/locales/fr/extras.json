@@ -74,7 +74,10 @@
     },
     "errors": {
       "unavailable": "Marketplace indisponible dans votre zone."
-    }
+    },
+    "loadingLong": "Chargement du marketplace...",
+    "emptyShops": "Aucune boutique approuvée dans votre zone pour le moment.",
+    "loadFailed": "Impossible de charger le marketplace"
   },
   "seller": {
     "gate": {
@@ -93,7 +96,13 @@
       "shopOpenOn": "Les clients peuvent parcourir vos produits actifs.",
       "shopOpenOff": "Votre boutique est fermée aux nouvelles commandes.",
       "toggleFailed": "Impossible de mettre à jour le statut boutique.",
-      "language": "Langue"
+      "language": "Langue",
+      "status": {
+        "approved": "Approuvé",
+        "rejected": "Refusé",
+        "suspended": "Suspendu",
+        "pending": "En revue"
+      }
     },
     "nav": {
       "home": "Accueil",
@@ -151,7 +160,13 @@
       "updateFailed": "Échec mise à jour"
     },
     "wallet": {
-      "stripeFailed": "Impossible d'ouvrir Stripe."
+      "stripeFailed": "Impossible d'ouvrir Stripe.",
+      "cashOut": "Retirer",
+      "cashoutFailed": "Impossible de demander le retrait.",
+      "recentTransactions": "Transactions récentes",
+      "cashoutUnavailable": "Retrait indisponible",
+      "cashoutRequested": "Retrait demandé",
+      "cashoutRules": "Minimum {{min}} • 1 retrait / jour"
     }
   },
   "taxi": {
@@ -209,7 +224,30 @@
       "yourArea": "Votre zone",
       "currencyLabel": "Devise",
       "moreOptions": "Plus d'options",
-      "wallet": "Portefeuille"
+      "wallet": "Portefeuille",
+      "bookSubtitle": "Réserver une course — séparé des livraisons colis.",
+      "comfort": "Confort",
+      "wheelchair": "Accessible",
+      "useMyGps": "Utiliser le GPS",
+      "optionalPreferences": "Préférences facultatives",
+      "categoryUnavailable": "Aucun chauffeur disponible pour cette catégorie actuellement.",
+      "categoryUnavailableShort": "Indisponible",
+      "ambiance": "Ambiance pendant le trajet",
+      "ambianceNone": "Aucune préférence",
+      "ambianceQuiet": "Trajet calme",
+      "ambianceMusic": "Musique",
+      "ambianceTalk": "Discussion",
+      "preferElectric": "Je préfère un véhicule électrique ou hybride",
+      "preferElectricHint": "Recherche prioritaire, puis bascule automatique si aucun véhicule vert n’est disponible.",
+      "pref": {
+        "nonSmoking": "Chauffeur non-fumeur",
+        "childSeat": "Siège enfant disponible",
+        "pets": "Animaux acceptés",
+        "largeLuggage": "Grand espace bagages",
+        "airConditioning": "Climatisation obligatoire",
+        "phoneCharger": "Chargeur téléphone",
+        "quietVehicle": "Véhicule silencieux"
+      }
     },
     "quote": {
       "title": "Estimation",
@@ -550,7 +588,13 @@
         "incorrectCode": "Code incorrect. Demandez au client et réessayez.",
         "verifyFailed": "Impossible de vérifier le code. Veuillez réessayer.",
         "arrivedPickup": "Arrivé au point de prise en charge",
-        "verifyPickupCode": "Vérifier le code de prise en charge"
+        "verifyPickupCode": "Vérifier le code de prise en charge",
+        "clientPreferences": "Préférences du client",
+        "arriveStop": "Arriver à l’arrêt",
+        "completeStop": "Terminer l’arrêt",
+        "verifyHint": "Demandez au client son code d’embarquement à 4 chiffres. Le clavier s’ouvre automatiquement — aucune photo n’est requise.",
+        "verifying": "Vérification…",
+        "stopLine": "Arrêt {{order}} : {{address}} ({{status}})"
       }
     },
     "tip": {
@@ -580,6 +624,11 @@
       "payFailed": "Impossible de payer le pourboire.",
       "view": "Voir le pourboire",
       "cta": "Donner un pourboire"
+    },
+    "offer": {
+      "expired": "Expirée",
+      "secondsLeft": "{{count}} s restantes",
+      "minutesLeft": "{{minutes}} min {{seconds}} s restantes"
     }
   },
   "finance": {
@@ -622,6 +671,10 @@
         },
         "maintenance": "MMD est en maintenance dans votre zone. Nouvelles commandes désactivées.",
         "comingSoon": "Bientôt disponible dans votre zone"
+      },
+      "tabs": {
+        "home": "Accueil",
+        "orders": "Commandes"
       }
     },
     "profile": {
@@ -638,6 +691,28 @@
         "verifiedNotice": "Téléphone vérifié.",
         "sendFailed": "Impossible d'envoyer le code",
         "invalidCode": "Code invalide"
+      },
+      "title": "Profil client",
+      "titleShort": "Profil",
+      "subtitle": "Complète ton profil (photo, adresse, téléphone) pour passer des commandes.",
+      "completeness": "Complétude du profil",
+      "missing": "Manquant",
+      "complete": "Profil complet.",
+      "openSettings": "Paramètres",
+      "openSettingsHint": "Langue, notifications, sécurité et plus",
+      "smsConsent": "J’accepte de recevoir des SMS automatisés d’information et de transaction de MMD Delivery concernant mon compte, la vérification, les commandes, les livraisons, les colis, les courses taxi et l’assistance. La fréquence des messages varie. Des frais de message et de données peuvent s’appliquer. Le consentement n’est pas une condition d’achat. Répondez STOP pour vous désinscrire et HELP pour obtenir de l’aide. Facultatif.",
+      "changePhoto": "Changer la photo",
+      "missingFields": {
+        "first_name": "prénom",
+        "last_name": "nom",
+        "email": "e-mail",
+        "email_verified": "vérification e-mail",
+        "phone": "téléphone",
+        "phone_verified": "vérification du téléphone",
+        "avatar": "photo de profil",
+        "address": "adresse",
+        "city": "ville",
+        "address_verified": "adresse vérifiée"
       }
     },
     "deliveryRequest": {
@@ -720,11 +795,78 @@
       "forgotPasswordEmailHint": "Saisissez votre e-mail, puis appuyez sur mot de passe oublié.",
       "resetEmailSentTitle": "E-mail envoyé",
       "resetEmailSentBody": "Consultez votre boîte de réception. Cliquez sur le lien reçu pour réinitialiser votre mot de passe.",
-      "cannotSendEmail": "Impossible d'envoyer l'e-mail."
+      "cannotSendEmail": "Impossible d'envoyer l'e-mail.",
+      "smsConsent": "J’accepte de recevoir des SMS automatisés d’information et de transaction de MMD Delivery concernant mon compte, la vérification, les commandes, les livraisons, les colis, les courses taxi et l’assistance. La fréquence des messages varie. Des frais de message et de données peuvent s’appliquer. Le consentement n’est pas une condition d’achat. Répondez STOP pour vous désinscrire et HELP pour obtenir de l’aide. Facultatif."
     },
     "restaurantMenu": {
       "pickupAddressLabel": "Adresse de retrait (restaurant / point de départ)",
       "deliveryAddressLabel": "Adresse de livraison (client)"
+    },
+    "restaurants": {
+      "header": {
+        "title": "Restaurants partenaires",
+        "subtitle": "Choisis un restaurant par catégorie ou recherche ton plat préféré."
+      },
+      "search": {
+        "placeholder": "Rechercher restaurant, adresse ou cuisine..."
+      },
+      "cuisineAll": "Tous",
+      "loading": "Chargement des restaurants…",
+      "empty": {
+        "title": "Aucun restaurant disponible",
+        "body": "Aucun restaurant ne correspond à ce filtre pour le moment."
+      },
+      "phoneLabel": "Téléphone :",
+      "viewMenu": "Voir le menu →",
+      "cuisine": {
+        "african": "Africaine",
+        "west_african": "Ouest-africaine",
+        "west_african_food": "Cuisine ouest-africaine",
+        "east_african": "Est-africaine",
+        "north_african": "Nord-africaine",
+        "asian": "Asiatique",
+        "chinese": "Chinoise",
+        "indian": "Indienne",
+        "italian": "Italienne",
+        "american": "Américaine",
+        "french": "Française",
+        "mexican": "Mexicaine",
+        "mediterranean": "Méditerranéenne",
+        "middle_eastern": "Moyen-Orient",
+        "caribbean": "Antillaise",
+        "european": "Européenne",
+        "fast_food": "Restauration rapide",
+        "pizza": "Pizza",
+        "seafood": "Fruits de mer",
+        "vegetarian": "Végétarienne",
+        "grill": "Grillades",
+        "barbecue": "Barbecue",
+        "bbq": "BBQ",
+        "fusion": "Fusion",
+        "local": "Locale",
+        "international": "Internationale",
+        "bakery": "Boulangerie",
+        "desserts": "Desserts",
+        "healthy": "Santé",
+        "sushi": "Sushi",
+        "thai": "Thaïlandaise",
+        "vietnamese": "Vietnamienne",
+        "japanese": "Japonaise",
+        "korean": "Coréenne",
+        "lebanese": "Libanaise",
+        "moroccan": "Marocaine",
+        "ethiopian": "Éthiopienne",
+        "nigerian": "Nigériane",
+        "senegalese": "Sénégalaise",
+        "guinean": "Guinéenne",
+        "malian": "Malienne",
+        "ivorian": "Ivoirienne"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "Suivi"
+      }
     }
   },
   "location": {
@@ -734,8 +876,21 @@
     "useLocation": "Utiliser cet emplacement",
     "back": "Retour",
     "tripCard": {
-      "loadFailed": "Impossible de charger l'emplacement."
-    }
+      "loadFailed": "Impossible de charger l'emplacement.",
+      "defaultTitle": "Détails du lieu client",
+      "landmark": "Point de repère",
+      "clientDirections": "Indications du client",
+      "unavailable": "Lieu indisponible.",
+      "viewOnMap": "Voir sur la carte",
+      "pin": "Repère :"
+    },
+    "enterAddress": "Saisir une adresse",
+    "useGps": "Utiliser le GPS",
+    "servicesOff": "Les services de localisation sont désactivés",
+    "gpsTimeout": "Le GPS a expiré",
+    "permissionRequired": "Autorisation de localisation requise",
+    "gpsUnavailable": "Impossible de lire le GPS",
+    "noPlacesFound": "Aucun lieu trouvé"
   },
   "auth": {
     "resetPassword": {
@@ -846,10 +1001,51 @@
         "insurance": "Assurance",
         "registration": "Carte grise"
       },
-      "toggleStatusFailed": "Impossible de changer le statut pour le moment."
+      "toggleStatusFailed": "Impossible de changer le statut pour le moment.",
+      "demand": "Demande",
+      "miles": "Miles",
+      "ignore": "Ignorer",
+      "accepting": "Acceptation...",
+      "premium": {
+        "todaySummary": "Résumé du jour",
+        "viewDetails": "Voir les détails",
+        "earnings": "Gains",
+        "trips": "Courses",
+        "points": "Points",
+        "level": "Niveau",
+        "nextReward": "Prochaine récompense",
+        "activeJobs": "Missions actives ({{count}})",
+        "viewAll": "Tout voir",
+        "refresh": "Actualiser",
+        "noMission": "Aucune mission active",
+        "noMissionBody": "Les courses taxi, repas et livraisons acceptées apparaissent ici.",
+        "restaurantLine": "Restaurant : {{address}}",
+        "pickupLine": "Prise en charge : {{address}}",
+        "customerLine": "Client : {{address}}",
+        "destinationLine": "Destination : {{address}}",
+        "youreOffline": "Vous êtes hors ligne",
+        "offlineBody": "Passez en ligne pour recevoir des demandes, voir les zones de demande et débloquer MMD Smart Dispatch.",
+        "goOnline": "Passer en ligne",
+        "live": "EN DIRECT",
+        "smartSubtitle": "MMD analyse la demande en temps réel pour afficher les meilleures opportunités à proximité.",
+        "viewHotspots": "Voir les zones chaudes",
+        "highDemand": "Forte demande",
+        "driversNearby": "Chauffeurs à proximité",
+        "driverOne": "chauffeur",
+        "driverMany": "chauffeurs",
+        "estWait": "Attente est.",
+        "requestsNearby": "Demandes à proximité",
+        "requestOne": "demande",
+        "requestMany": "demandes",
+        "goBusyArea": "Aller en zone occupée",
+        "goBusyAreaSub": "Naviguer vers une zone à forte demande",
+        "goOffline": "Passer hors ligne",
+        "goOfflineSub": "Vous ne recevrez plus de demandes"
+      }
     },
     "profile": {
-      "transportValidationRequired": "Ce mode de transport nécessite la validation des documents avant d'être activé."
+      "transportValidationRequired": "Ce mode de transport nécessite la validation des documents avant d'être activé.",
+      "activeFleet": "Véhicule actif (flotte)"
     },
     "account": {
       "createProfileFailed": "Impossible de créer le profil chauffeur pour le moment.",
@@ -1015,7 +1211,9 @@
       "acceptStandardDesc": "Comfort, XL ou Wheelchair peuvent recevoir des courses Standard",
       "availableSection": "Services disponibles",
       "advancedSection": "Options avancées",
-      "enableTaxiForAdvanced": "Activez Courses taxi pour gérer les options avancées."
+      "enableTaxiForAdvanced": "Activez Courses taxi pour gérer les options avancées.",
+      "saving": "Enregistrement…",
+      "refreshPreferences": "Actualiser les préférences"
     },
     "identity": {
       "cameraRequiredTitle": "Caméra requise",
@@ -1049,7 +1247,9 @@
       "refreshStatus": "Refresh Status",
       "successBody": "You can now go online.",
       "problemTitle": "Verification problem",
-      "selfieHint": "Selfie required — centered face, good lighting"
+      "selfieHint": "Selfie required — centered face, good lighting",
+      "submitForVerification": "Envoyer pour vérification",
+      "cameraIssue": "Problème de caméra ?"
     },
     "taxiPanel": {
       "title": "Taxi",
@@ -1103,7 +1303,19 @@
       "sentTitle": "Signalement envoyé",
       "sentBody": "{{label}} signalé. Visible 25 minutes par les chauffeurs à proximité.",
       "reportButton": "Signaler",
-      "nearbyAlerts": "{{count}} alerte(s) active(s) à proximité"
+      "nearbyAlerts": "{{count}} alerte(s) active(s) à proximité",
+      "title": "Signaler un problème",
+      "nearbyHint": "Le signalement sera visible aux autres chauffeurs pendant 25 minutes à proximité.",
+      "sending": "Envoi en cours…",
+      "categories": {
+        "accident": "Accident",
+        "traffic_jam": "Embouteillage",
+        "road_closed": "Route fermée",
+        "hazard": "Danger",
+        "police": "Police",
+        "bad_address": "Mauvaise adresse",
+        "other": "Autre problème"
+      }
     },
     "taxPdf": {
       "errorTitle": "Erreur PDF"
@@ -1264,6 +1476,16 @@
       },
       "success": {
         "title": "Cash out réussi !"
+      },
+      "payouts": {
+        "status": {
+          "paid": "Payé",
+          "canceled": "Annulé",
+          "reversed": "Annulé (reversed)",
+          "failed": "Échoué",
+          "processing": "En cours",
+          "unknown": "Inconnu"
+        }
       }
     },
     "mapFallback": {
@@ -1282,6 +1504,30 @@
       "routeErrorBody": "Unable to calculate the route at this time. You can retry or open an external app from the details.",
       "errorTitle": "Error",
       "errorBody": "Something went wrong."
+    },
+    "menu": {
+      "servicesTitle": "Mes services",
+      "servicesSub": "Repas, colis, taxi",
+      "vehicleTitle": "Mon véhicule",
+      "vehicleSub": "Catégories taxi"
+    },
+    "inbox": {
+      "emptyTitle": "Boîte de réception vide"
+    },
+    "workAccount": {
+      "loadingTitle": "Statut du compte"
+    },
+    "trip": {
+      "clientPickup": "CLIENT · PRISE EN CHARGE",
+      "client": "CLIENT"
+    },
+    "referrals": {
+      "inviteStatus": {
+        "earned": "Récompense obtenue",
+        "active": "Actif",
+        "expired": "Expiré",
+        "pending": "En attente"
+      }
     }
   },
   "restaurant": {
@@ -1411,7 +1657,13 @@
       "history": "Historique",
       "loadFailed": "Impossible de charger le portefeuille.",
       "emptyTitle": "Aucune transaction",
-      "emptyBody": "Les mouvements apparaîtront ici."
+      "emptyBody": "Les mouvements apparaîtront ici.",
+      "cashOut": "Retirer",
+      "cashoutFailed": "Impossible de demander le retrait.",
+      "recentTransactions": "Transactions récentes",
+      "cashoutUnavailable": "Retrait indisponible",
+      "cashoutRequested": "Retrait demandé",
+      "cashoutRules": "Minimum {{min}} • 1 retrait / jour"
     },
     "automation": {
       "errorTitle": "Erreur",
@@ -1423,11 +1675,11 @@
       "testPrintQueued": "Ticket de test ajouté à la file d'impression.",
       "testFailed": "Échec du test d'impression",
       "title": "Automatisation des commandes",
-      "subtitle": "Settings",
-      "loadingTitle": "Loading Settings...",
-      "loadingSubtitle": "Fetching your automation preferences",
-      "infoTitle": "Auto-accept & Kitchen Print",
-      "infoBody": "Control how new orders are accepted and printed.",
+      "subtitle": "Paramètres",
+      "loadingTitle": "Chargement des paramètres…",
+      "loadingSubtitle": "Récupération de vos préférences d’automatisation",
+      "infoTitle": "Acceptation auto et impression cuisine",
+      "infoBody": "Contrôlez comment les nouvelles commandes sont acceptées et imprimées.",
       "autoAccept": "Auto-accept new orders",
       "autoPrint": "Auto-print on accept",
       "soundAlert": "Sound alert",
@@ -1457,7 +1709,28 @@
     "menu": {
       "alerts": {
         "actionFailed": "Action impossible pour le moment."
-      }
+      },
+      "addCategory": "+ Ajouter une catégorie",
+      "noCategories": "Aucune catégorie",
+      "noCategoriesBody": "Pas encore de catégorie. Ajoute-en une pour commencer.",
+      "addCategoryTitle": "Ajouter une catégorie",
+      "categoryNamePlaceholder": "Nom de la catégorie",
+      "changeImage": "Changer l’image",
+      "chooseImage": "Choisir une image",
+      "noItems": "Aucun produit",
+      "noItemsBody": "Ajoute un produit à cette catégorie.",
+      "addItem": "+ Ajouter un produit",
+      "addItemTitle": "Ajouter un produit",
+      "editItemTitle": "Modifier le produit",
+      "name": "Nom",
+      "price": "Prix",
+      "description": "Description",
+      "available": "Disponible",
+      "unavailable": "Indisponible",
+      "add": "Ajouter",
+      "title": "Menu",
+      "loadingTitle": "Chargement du menu...",
+      "loadingSubtitle": "Récupération de tes produits"
     },
     "dashboard": {
       "availabilityUpdateFailed": "Impossible de modifier le statut du restaurant."
@@ -1465,6 +1738,44 @@
     "orders": {
       "statusUpdateFailed": "Impossible de mettre à jour le statut de la commande ({{status}}).",
       "rejectFailed": "Impossible de refuser la commande ({{status}})."
+    },
+    "connect": {
+      "cta": {
+        "setup_required": {
+          "title": "Connecter votre compte bancaire",
+          "body": "Vous devez connecter Stripe pour recevoir les paiements restaurant. Stripe demandera votre nom légal, votre identité et votre compte bancaire. MMD ne collecte jamais les coordonnées bancaires.",
+          "action": "Connecter Stripe"
+        },
+        "verification_pending": {
+          "title": "Terminer la configuration Stripe",
+          "body": "Vous avez commencé Stripe Connect. Terminez l’identité et le compte bancaire dans Stripe pour recevoir les virements.",
+          "action": "Terminer Stripe"
+        },
+        "verification_in_progress": {
+          "title": "Configuration Stripe incomplète",
+          "body": "Stripe examine votre compte. Poursuivez si des informations bancaires ou d’identité manquent.",
+          "action": "Continuer Stripe"
+        },
+        "ready_for_payouts": {
+          "title": "Stripe connecté",
+          "body": "Votre compte bancaire est connecté. Ouvrez Stripe pour gérer les virements ou mettre à jour vos coordonnées.",
+          "action": "Gérer les virements"
+        },
+        "restricted": {
+          "title": "Virement bloqué",
+          "body": "Stripe ne peut pas encore payer ce restaurant. Ouvrez Stripe pour corriger le compte ; les virements reprendront automatiquement.",
+          "action": "Corriger le compte Stripe"
+        }
+      }
+    },
+    "earnings": {
+      "stripe": {
+        "bankKicker": "Virements bancaires",
+        "moreInfoNeeded": "Stripe a encore besoin d’informations d’identité ou bancaires."
+      }
+    },
+    "ads": {
+      "loading": "Chargement de la publicité"
     }
   },
   "roleSelect": {
@@ -1496,6 +1807,13 @@
       "driver": "Chauffeur",
       "restaurant": "Restaurant",
       "seller": "Vendeur Marketplace"
+    },
+    "profileGate": {
+      "sessionExpired": "Votre session a expiré. Connectez-vous à nouveau.",
+      "network": "Erreur réseau lors de la vérification du profil. Vérifiez votre connexion et réessayez.",
+      "permission": "Impossible d’accéder à votre profil. Déconnectez-vous, reconnectez-vous ou contactez le support.",
+      "server": "Le service de profil est temporairement indisponible. Réessayez dans un instant.",
+      "unknown": "Impossible de vérifier votre profil. Réessayez."
     }
   },
   "clientRestaurantMenu": {
@@ -1576,12 +1894,33 @@
     "codeAcceptedWithDiscount": "Code accepté (−{{orderDiscount}} / −{{deliveryDiscount}} livraison). Le montant exact est appliqué au paiement.",
     "codeAccepted": "Code accepté. Le montant exact est appliqué au paiement selon votre panier.",
     "codeRejected": "Code refusé.",
-    "loadFailed": "Chargement des promotions impossible."
+    "loadFailed": "Chargement des promotions impossible.",
+    "verify": "Vérifier",
+    "myCoupons": "Mes coupons",
+    "emptyCoupons": "Aucun coupon.",
+    "offers": "Offres",
+    "emptyOffers": "Aucune offre.",
+    "retry": "Réessayer",
+    "promoCode": "Code promo",
+    "placeholder": "CODEPROMO",
+    "seeAlsoMmdPlus": "Voir aussi MMD+"
   },
   "mmdPlus": {
     "title": "MMD+",
     "actionFailed": "Action indisponible.",
-    "loadFailed": "Chargement MMD+ impossible."
+    "loadFailed": "Chargement MMD+ impossible.",
+    "currentSubscription": "Abonnement actuel",
+    "manageSubscription": "Gérer l’abonnement",
+    "resume": "Reprendre",
+    "noActive": "Aucun abonnement actif",
+    "planBenefits": "Un forfait pour les avantages Repas, Livraison, Taxi et Marketplace.",
+    "plansSection": "Forfaits et avantages",
+    "noPlans": "Aucun forfait disponible.",
+    "billing": "Facturation",
+    "noInvoices": "Aucune facture.",
+    "currentPlan": "Forfait actuel",
+    "changePlan": "Changer de forfait",
+    "join": "Rejoindre"
   },
   "locationPicker": {
     "permissionTitle": "Autorisation requise",
@@ -1748,6 +2087,25 @@
       "cardDeclined": "Votre carte a été refusée. Vérifiez vos informations ou utilisez une autre carte.",
       "networkFailed": "Connexion instable. Vérifiez votre réseau et réessayez.",
       "distanceTooFar": "La distance est trop importante pour cette course."
+    },
+    "sessionExpired": "Session expirée. Connecte-toi à nouveau.",
+    "account": {
+      "deleted": "Ce compte a été supprimé et ne peut plus être utilisé.",
+      "banned": "Ce compte est banni. Contacte le support MMD Delivery.",
+      "suspended": "Votre compte est suspendu. Contactez le support MMD Delivery.",
+      "disabled": "Votre compte est désactivé. Contactez le support MMD Delivery.",
+      "unknown": "Impossible de vérifier le statut du compte. Réessaie dans un instant."
+    },
+    "photo": {
+      "cameraDenied": "Autorisez l’accès à la caméra dans les réglages pour continuer.",
+      "empty": "La photo est vide.",
+      "tooLarge": "La photo est trop volumineuse (max 8 Mo).",
+      "missing": "Photo introuvable.",
+      "fileNotFound": "Fichier photo introuvable.",
+      "readFailed": "Impossible de lire la photo.",
+      "network": "Erreur réseau. Vérifiez votre connexion et réessayez.",
+      "networkShort": "Erreur réseau. Réessaie.",
+      "processFailed": "Impossible de traiter la photo."
     }
   },
   "notifications": {
@@ -1815,15 +2173,111 @@
       "pinPickup": "Épingler le départ",
       "pickupPinned": "Départ épinglé",
       "pickupExactLocation": "Lieu de départ exact",
-      "usePickupLocation": "Utiliser ce départ"
+      "usePickupLocation": "Utiliser ce départ",
+      "title": "Titre",
+      "titleRidePlaceholder": "Exemple : course aéroport",
+      "titlePackagePlaceholder": "Exemple : documents importants",
+      "pickupAddress": "Adresse de prise en charge",
+      "pickupPlaceholder": "Saisis l’adresse de prise en charge",
+      "dropoffAddress": "Adresse de destination",
+      "dropoffPlaceholder": "Saisis l’adresse de destination",
+      "pinDropoff": "Épingler la destination exacte sur la carte",
+      "dropoffPinned": "Destination épinglée sur la carte",
+      "dropoffExactLocation": "Point de destination exact",
+      "useDropoffLocation": "Utiliser cette destination",
+      "pickupContactName": "Nom du contact à la prise en charge",
+      "pickupPhone": "Téléphone de prise en charge",
+      "dropoffContactName": "Nom du contact à destination",
+      "dropoffPhone": "Téléphone de destination",
+      "rideNotes": "Notes pour la course",
+      "packageDescription": "Description du colis",
+      "rideNotesPlaceholder": "Notes optionnelles pour la course",
+      "packageDescriptionPlaceholder": "Décris le colis"
     },
     "pricing": {
       "distance": "Distance",
-      "eta": "ETA",
+      "eta": "Durée estimée",
       "deliveryFee": "Frais de livraison",
       "tax": "Taxe",
       "serviceFee": "Frais de service",
-      "total": "Total"
+      "total": "Total",
+      "title": "Récapitulatif du prix",
+      "loading": "Chargement des prix…",
+      "calculating": "Calcul de l’estimation…",
+      "ready": "Estimation prête",
+      "emptyHint": "Calcule le prix pour voir l’estimation."
+    },
+    "header": {
+      "title": "Demander une livraison",
+      "subtitle": "Crée une livraison de colis ou une course privée sans passer par le restaurant."
+    },
+    "type": {
+      "title": "Type de demande",
+      "packageShort": "Colis",
+      "rideShort": "Course"
+    },
+    "details": {
+      "title": "Détails de la livraison"
+    },
+    "leaveAtDoor": {
+      "title": "Laisser devant la porte",
+      "hint": "Autorise le livreur à déposer le colis devant la porte après l’attente maximale (photo obligatoire)."
+    },
+    "unavailable": {
+      "title": "Livraison indisponible"
+    },
+    "actions": {
+      "calculate": "Calculer le prix de livraison",
+      "create": "Créer la demande de livraison",
+      "payNow": "Payer maintenant"
+    },
+    "created": {
+      "paidCardTitle": "Demande de livraison payée",
+      "cardTitle": "Demande de livraison créée",
+      "payHint": "Tu peux maintenant continuer vers le paiement sécurisé."
+    },
+    "alerts": {
+      "scopeTitle": "Marché indisponible",
+      "missingPickupTitle": "Prise en charge manquante",
+      "missingPickupBody": "Saisis l’adresse de prise en charge.",
+      "missingDropoffTitle": "Destination manquante",
+      "missingDropoffBody": "Saisis l’adresse de destination.",
+      "incompleteAddressTitle": "Adresse incomplète",
+      "incompleteAddressBody": "Saisis des adresses de prise en charge et de destination complètes.",
+      "missingDescriptionTitle": "Description manquante",
+      "missingDescriptionBody": "Décris ce qui doit être livré.",
+      "missingFieldsTitle": "Champs manquants",
+      "missingFieldsBody": "Remplis d’abord les adresses de prise en charge et de destination.",
+      "missingConfigTitle": "Configuration manquante",
+      "missingConfigBody": "L’URL de l’API n’est pas configurée.",
+      "estimateFailedTitle": "Estimation échouée",
+      "createdTitle": "Demande créée",
+      "createdBody": "Demande de livraison créée. Appuie sur Payer maintenant pour finaliser le paiement."
+    },
+    "errors": {
+      "estimateGeneric": "Impossible de calculer l’estimation de livraison pour le moment.",
+      "networkEstimate": "Erreur réseau pendant le calcul de l’estimation.",
+      "estimateTimeout": "La demande d’estimation a pris trop de temps. Réessaie.",
+      "distanceTooLarge": "Distance trop grande. Vérifie les deux adresses.",
+      "distanceTooLargeOrImprecise": "Distance trop grande ou adresse pas assez précise. Vérifie la rue, le code postal, la ville et l’État.",
+      "invalidDistanceTime": "Réponse distance/temps invalide depuis l’API d’estimation.",
+      "loginRequiredCreate": "Tu dois être connecté pour créer une demande de livraison.",
+      "loginRequiredPay": "Tu dois être connecté pour payer.",
+      "createFailed": "Impossible de créer la demande.",
+      "missingCoords": "Les coordonnées de prise en charge et de destination manquent.",
+      "quoteRequired": "Calcule l’estimation avant de créer la demande."
+    },
+    "payment": {
+      "title": "Paiement",
+      "notCompletedNoRequest": "Le paiement n’a pas été finalisé. Aucune demande n’a été créée.",
+      "successTitle": "Paiement réussi",
+      "successOrderVisible": "Ton paiement est confirmé et la commande est maintenant visible pour les chauffeurs.",
+      "successBody": "Ton paiement est confirmé.",
+      "createFirst": "Crée d’abord la demande de livraison.",
+      "pendingTitle": "Paiement en attente",
+      "pendingBody": "Le paiement a commencé, mais la confirmation est encore en attente. Le chauffeur ne verra pas la commande tant que le paiement n’est pas confirmé.",
+      "unableToStart": "Impossible de démarrer le paiement pour le moment.",
+      "errorTitle": "Erreur de paiement"
     }
   },
   "mmd": {
@@ -1863,5 +2317,57 @@
         "banner": "Confirmation requise. MMD AI ne prélève aucun paiement. Continuez dans Taxi ou le menu restaurant."
       }
     }
+  },
+  "payments": {
+    "stripeConnect": {
+      "status": {
+        "setup_required": "Configuration requise",
+        "verification_pending": "Vérification en attente",
+        "verification_in_progress": "Vérification en cours",
+        "ready_for_payouts": "Prêt pour les virements",
+        "restricted": "Restreint",
+        "disabled": "Désactivé"
+      },
+      "message": {
+        "setup_required": "Terminez la configuration Stripe pour recevoir les virements. Appuyez sur Activer.",
+        "verification_pending": "Stripe a encore besoin d’informations. Poursuivez l’inscription pour terminer la vérification.",
+        "verification_in_progress": "Stripe examine votre compte. Les virements se débloquent à la fin de la vérification.",
+        "ready_for_payouts": "Votre compte Stripe est prêt. Vous pouvez retirer lorsque le solde le permet.",
+        "restricted": "Votre compte Stripe est restreint. Ouvrez Stripe pour résoudre les exigences restantes.",
+        "disabled": "Votre compte Stripe est désactivé. Contactez le support ou rouvrez Stripe."
+      }
+    },
+    "picker": {
+      "title": "Choisir un moyen de paiement",
+      "unavailable": "Moyen de paiement temporairement indisponible",
+      "test": "Test"
+    }
+  },
+  "tracking": {
+    "offlineWaiting": "Hors ligne — en attente de connexion",
+    "offline": "Hors ligne",
+    "etaApproximate": "L’heure d’arrivée peut être approximative",
+    "mapUnavailable": "Carte indisponible",
+    "rezoom": "Recadrer",
+    "recenter": "Recentrer la carte",
+    "etaUnavailable": "Heure d’arrivée indisponible",
+    "arriveApprox": "Arrivée ~{{time}}",
+    "remainingMeters": "{{meters}} m restants",
+    "remainingMiles": "{{miles}} mi restantes",
+    "updatedAt": "Mis à jour {{time}}",
+    "locationStale": "La position peut être obsolète"
+  },
+  "otp": {
+    "verified": "Code vérifié",
+    "enterCode": "Saisir le code de vérification"
+  },
+  "ui": {
+    "loadingPlaceholder": "Espace de chargement"
+  },
+  "market": {
+    "scopeUnavailable": "Zone de marché indisponible. Activez la localisation ou réessayez."
+  },
+  "social": {
+    "a11y": "Réseaux sociaux MMD Delivery"
   }
 }

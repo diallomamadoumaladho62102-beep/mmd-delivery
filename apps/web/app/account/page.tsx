@@ -1,8 +1,11 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
+import { missingRequirementLabel } from "@/i18n/missingRequirementLabel";
 
 type Profile = {
   id: string;
@@ -72,34 +75,37 @@ type DriverDocumentRow = {
   status: DriverDocumentStatus;
 };
 
-function roleLabel(role: string | null): string {
-  if (!role) return "Inconnu";
-  if (role === "client") return "Client";
-  if (role === "driver") return "Chauffeur / Livreur";
-  if (role === "restaurant") return "Restaurant";
-  if (role === "admin") return "Administrateur";
+function roleLabel(t: (s: string) => string, role: string | null): string {
+  if (!role) return t("Unknown");
+  if (role === "client") return t("Client");
+  if (role === "driver") return t("Driver / Courier");
+  if (role === "restaurant") return t("Restaurant");
+  if (role === "admin") return t("Administrator");
   return role;
 }
 
-function transportModeLabel(value: string | null | undefined): string {
-  if (value === "bike") return "Bike";
-  if (value === "moto") return "Moto";
-  if (value === "car") return "Car";
+function transportModeLabel(t: (s: string) => string, value: string | null | undefined): string {
+  if (value === "bike") return t("Bike");
+  if (value === "moto") return t("Moto");
+  if (value === "car") return t("Car");
   return "—";
 }
 
-function formatBirthDate(value: string | null | undefined): string {
+function formatBirthDate(value: string | null | undefined, locale: string): string {
   if (!value) return "—";
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
+  const tag = locale === "zh" ? "zh-CN" : locale === "ff" ? "ff" : locale;
 
-  return new Intl.DateTimeFormat("fr-FR", {
+  return new Intl.DateTimeFormat(tag, {
     dateStyle: "medium",
   }).format(date);
 }
 
 export default function AccountPage() {
+  const { t, locale } = useAdminT();
+
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -299,7 +305,7 @@ export default function AccountPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-sm text-gray-600">Chargement de ton compte…</div>
+        <div className="text-sm text-gray-600">{t("Chargement de ton compte…")}</div>
       </div>
     );
   }
@@ -308,15 +314,15 @@ export default function AccountPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow p-6 space-y-4">
-          <h1 className="text-xl font-semibold text-center">Mon compte</h1>
+          <h1 className="text-xl font-semibold text-center">{t("Mon compte")}</h1>
           <p className="text-sm text-gray-600 text-center">
-            Tu n&apos;es pas connecté. Connecte-toi ou crée un compte pour continuer.
+            {t("Tu n&apos;es pas connecté. Connecte-toi ou crée un compte pour continuer.")}
           </p>
           <button
             onClick={() => router.push("/signup")}
             className="w-full px-3 py-2 rounded bg-black text-white text-sm"
           >
-            Aller vers la création de compte
+            {t("Aller vers la création de compte")}
           </button>
           {err && <div className="text-red-600 text-xs text-center">{err}</div>}
         </div>
@@ -328,25 +334,25 @@ export default function AccountPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow p-6 space-y-4">
-          <h1 className="text-xl font-semibold text-center">Mon compte</h1>
+          <h1 className="text-xl font-semibold text-center">{t("Mon compte")}</h1>
           <p className="text-sm text-gray-600 text-center">
-            Tu es connecté avec <span className="font-mono">{userEmail}</span>, mais aucun
+            {t("Tu es connecté avec")} <span className="font-mono">{userEmail}</span>, mais aucun
             profil n&apos;a encore été créé.
           </p>
           <p className="text-xs text-gray-500 text-center">
-            Va sur la page d&apos;inscription et choisis ton type de compte.
+            {t("Va sur la page d&apos;inscription et choisis ton type de compte.")}
           </p>
           <button
             onClick={() => router.push("/signup")}
             className="w-full px-3 py-2 rounded bg-black text-white text-sm"
           >
-            Choisir mon type de compte
+            {t("Choisir mon type de compte")}
           </button>
           <button
             onClick={handleLogout}
             className="w-full px-3 py-2 rounded border text-sm mt-2"
           >
-            Se déconnecter
+            {t("Se déconnecter")}
           </button>
           {err && <div className="text-red-600 text-xs text-center">{err}</div>}
         </div>
@@ -376,7 +382,7 @@ export default function AccountPage() {
               </h1>
               <p className="text-xs text-gray-600">{userEmail}</p>
               <p className="text-xs text-gray-500">
-                Rôle : <span className="font-medium">{roleLabel(profile.role)}</span>
+                {t("Role:")} <span className="font-medium">{roleLabel(t, profile.role)}</span>
               </p>
             </div>
           </div>
@@ -385,28 +391,28 @@ export default function AccountPage() {
               onClick={() => router.push("/account/notifications")}
               className="px-3 py-1.5 rounded-full border text-xs"
             >
-              Notifications
+              {t("Notifications")}
             </button>
             <button
               onClick={handleLogout}
               className="px-3 py-1.5 rounded-full border text-xs"
             >
-              Se déconnecter
+              {t("Se déconnecter")}
             </button>
           </div>
         </div>
 
         <div className="border rounded-xl p-4 space-y-2">
-          <h2 className="text-sm font-semibold">Informations générales</h2>
+          <h2 className="text-sm font-semibold">{t("Informations générales")}</h2>
 
           <div className="text-sm">
-            <span className="text-gray-500">Téléphone : </span>
+            <span className="text-gray-500">{t("Téléphone :")} </span>
             <span>{profile.phone || "—"}</span>
           </div>
 
           {profile.role === "client" && (
             <div className="text-sm space-y-1">
-              <div className="text-gray-500 text-xs">Adresse principale :</div>
+              <div className="text-gray-500 text-xs">{t("Adresse principale :")}</div>
               <div>
                 {profile.client_address && <div>{profile.client_address}</div>}
                 {(profile.client_city || profile.client_state || profile.client_zip) && (
@@ -425,29 +431,29 @@ export default function AccountPage() {
           <div className="space-y-4">
             <div className="border rounded-xl p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold">Profil chauffeur / livreur</h2>
+                <h2 className="text-sm font-semibold">{t("Profil chauffeur / livreur")}</h2>
 
                 {driverProfile ? (
                   canGoOnline ? (
                     <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200">
-                      Dossier complet
+                      {t("Dossier complet")}
                     </span>
                   ) : mustCompleteDriverProfile ? (
                     <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-amber-50 text-amber-700 border-amber-200">
-                      Profil à compléter
+                      {t("Profil à compléter")}
                     </span>
                   ) : driverProfile.status === "approved" ? (
                     <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-gray-50 text-gray-700 border-gray-200">
-                      Accès limité
+                      {t("Accès limité")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">
-                      En attente d’approbation
+                      {t("En attente d’approbation")}
                     </span>
                   )
                 ) : (
                   <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-red-50 text-red-700 border-red-200">
-                    Fiche chauffeur introuvable
+                    {t("Fiche chauffeur introuvable")}
                   </span>
                 )}
               </div>
@@ -455,47 +461,47 @@ export default function AccountPage() {
               {!driverProfile ? (
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600">
-                    Ton rôle est chauffeur, mais aucune fiche n’a été trouvée dans
+                    {t("Ton rôle est chauffeur, mais aucune fiche n’a été trouvée dans")}
                     <code> driver_profiles </code>.
                   </p>
                   <button
                     onClick={() => router.push("/signup/driver")}
                     className="px-3 py-2 rounded bg-black text-white text-sm"
                   >
-                    Créer / compléter mon profil chauffeur
+                    {t("Créer / compléter mon profil chauffeur")}
                   </button>
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div>
-                      <span className="text-gray-500">Mode : </span>
-                      <span>{transportModeLabel(driverProfile.transport_mode)}</span>
+                      <span className="text-gray-500">{t("Mode :")} </span>
+                      <span>{transportModeLabel(t, driverProfile.transport_mode)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Statut : </span>
+                      <span className="text-gray-500">{t("Statut :")} </span>
                       <span>{driverProfile.status || "—"}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Téléphone d’urgence : </span>
+                      <span className="text-gray-500">{t("Téléphone d’urgence :")} </span>
                       <span>{driverProfile.emergency_phone || "—"}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Date de naissance : </span>
-                      <span>{formatBirthDate(driverProfile.date_of_birth)}</span>
+                      <span className="text-gray-500">{t("Date de naissance :")} </span>
+                      <span>{formatBirthDate(driverProfile.date_of_birth, locale)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Disponibilité : </span>
-                      <span>{driverProfile.is_online ? "En ligne" : "Hors ligne"}</span>
+                      <span className="text-gray-500">{t("Disponibilité :")} </span>
+                      <span>{driverProfile.is_online ? t("En ligne") : "Hors ligne"}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Documents requis : </span>
-                      <span>{missingRequirements.length > 0 ? "Oui" : "Non"}</span>
+                      <span className="text-gray-500">{t("Documents requis :")} </span>
+                      <span>{missingRequirements.length > 0 ? t("Oui") : t("Non")}</span>
                     </div>
                   </div>
 
                   <div className="text-sm space-y-1">
-                    <div className="text-gray-500 text-xs">Adresse :</div>
+                    <div className="text-gray-500 text-xs">{t("Adresse :")}</div>
                     <div>{driverProfile.address || "—"}</div>
                     <div className="text-xs text-gray-600">
                       {[driverProfile.city, driverProfile.state, driverProfile.zip_code]
@@ -505,7 +511,7 @@ export default function AccountPage() {
                   </div>
 
                   <div className="text-sm space-y-1">
-                    <div className="text-gray-500 text-xs">Véhicule :</div>
+                    <div className="text-gray-500 text-xs">{t("Véhicule :")}</div>
                     <div>
                       {[
                         driverProfile.vehicle_brand,
@@ -521,7 +527,7 @@ export default function AccountPage() {
                           ? `Couleur: ${driverProfile.vehicle_color}`
                           : null,
                         driverProfile.plate_number
-                          ? `Plaque: ${driverProfile.plate_number}`
+                          ? `${t("Plaque")}: ${driverProfile.plate_number}`
                           : null,
                       ]
                         .filter(Boolean)
@@ -530,11 +536,11 @@ export default function AccountPage() {
                   </div>
 
                   <div className="text-sm space-y-1">
-                    <div className="text-gray-500 text-xs">Permis :</div>
+                    <div className="text-gray-500 text-xs">{t("Permis :")}</div>
                     <div>
                       {driverProfile.license_number || "—"}
                       {driverProfile.license_expiry
-                        ? ` • Expire le ${driverProfile.license_expiry}`
+                        ? ` • ${t("Expire le")} ${driverProfile.license_expiry}`
                         : ""}
                     </div>
                   </div>
@@ -542,11 +548,10 @@ export default function AccountPage() {
                   {mustCompleteDriverProfile && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
                       <p className="text-sm font-semibold text-amber-800">
-                        Ton profil chauffeur est incomplet
+                        {t("Ton profil chauffeur est incomplet")}
                       </p>
                       <p className="text-sm text-amber-700">
-                        Merci de compléter les informations et documents manquants pour
-                        pouvoir continuer à recevoir des courses.
+                        {t("Merci de compléter les informations et documents manquants pour pouvoir continuer à recevoir des courses.")}
                       </p>
 
                       {missingRequirements.length > 0 && (
@@ -556,7 +561,7 @@ export default function AccountPage() {
                               key={item}
                               className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900"
                             >
-                              {item}
+                              {missingRequirementLabel(item, t)}
                             </li>
                           ))}
                         </ul>
@@ -566,7 +571,7 @@ export default function AccountPage() {
                         onClick={() => router.push("/signup/driver")}
                         className="px-3 py-2 rounded bg-black text-white text-sm"
                       >
-                        Compléter mon profil chauffeur
+                        {t("Compléter mon profil chauffeur")}
                       </button>
                     </div>
                   )}
@@ -577,14 +582,14 @@ export default function AccountPage() {
                         onClick={() => router.push("/signup/driver")}
                         className="px-3 py-2 rounded border text-sm"
                       >
-                        Mettre à jour mon profil chauffeur
+                        {t("Mettre à jour mon profil chauffeur")}
                       </button>
 
                       <button
                         onClick={() => router.push("/orders/driver")}
                         className="px-3 py-2 rounded bg-black text-white text-sm"
                       >
-                        Ouvrir mon tableau de bord chauffeur
+                        {t("Ouvrir mon tableau de bord chauffeur")}
                       </button>
                     </div>
                   )}
@@ -596,25 +601,25 @@ export default function AccountPage() {
 
         {profile.role === "restaurant" && (
           <div className="border rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Profil restaurant</h2>
+            <h2 className="text-sm font-semibold">{t("Profil restaurant")}</h2>
 
             {profile.restaurant_display_name && (
               <div className="text-sm">
-                <span className="text-gray-500">Nom affiché : </span>
+                <span className="text-gray-500">{t("Nom affiché :")} </span>
                 {profile.restaurant_display_name}
               </div>
             )}
 
             {profile.restaurant_legal_name && (
               <div className="text-sm">
-                <span className="text-gray-500">Nom légal : </span>
+                <span className="text-gray-500">{t("Nom légal :")} </span>
                 {profile.restaurant_legal_name}
               </div>
             )}
 
             {profile.restaurant_ein && (
               <div className="text-sm">
-                <span className="text-gray-500">EIN : </span>
+                <span className="text-gray-500">{t("EIN :")} </span>
                 {profile.restaurant_ein}
               </div>
             )}
@@ -624,7 +629,7 @@ export default function AccountPage() {
               profile.restaurant_state ||
               profile.restaurant_zip) && (
               <div className="text-sm space-y-1">
-                <div className="text-gray-500 text-xs">Adresse :</div>
+                <div className="text-gray-500 text-xs">{t("Adresse :")}</div>
                 {profile.restaurant_address && <div>{profile.restaurant_address}</div>}
                 {(profile.restaurant_city ||
                   profile.restaurant_state ||
@@ -644,14 +649,14 @@ export default function AccountPage() {
 
             {profile.restaurant_phone && (
               <div className="text-sm">
-                <span className="text-gray-500">Téléphone : </span>
+                <span className="text-gray-500">{t("Téléphone :")} </span>
                 {profile.restaurant_phone}
               </div>
             )}
 
             {profile.restaurant_contact_name && (
               <div className="text-sm">
-                <span className="text-gray-500">Contact principal : </span>
+                <span className="text-gray-500">{t("Contact principal :")} </span>
                 {profile.restaurant_contact_name}
               </div>
             )}
@@ -660,15 +665,15 @@ export default function AccountPage() {
 
         {profile.role === "client" && (
           <div className="border rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Tes actions</h2>
+            <h2 className="text-sm font-semibold">{t("Tes actions")}</h2>
             <p className="text-xs text-gray-600">
-              Depuis cette page, tu peux créer une nouvelle commande de livraison.
+              {t("Depuis cette page, tu peux créer une nouvelle commande de livraison.")}
             </p>
             <button
               onClick={() => router.push("/orders/new")}
               className="w-full px-3 py-2 rounded bg-black text-white text-sm"
             >
-              Créer une nouvelle commande
+              {t("Créer une nouvelle commande")}
             </button>
           </div>
         )}

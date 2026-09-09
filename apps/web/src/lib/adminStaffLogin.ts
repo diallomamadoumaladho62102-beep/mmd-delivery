@@ -4,7 +4,7 @@ import { effectiveStaffRole } from "@/lib/adminRbac";
 import type { UserRole } from "@/lib/roles";
 
 export const STAFF_LOGIN_DENIED_MESSAGE =
-  "Ce compte n'a pas accès à l'administration MMD Delivery.";
+  "This account does not have access to MMD Delivery administration.";
 
 export type StaffLoginAccessResult =
   | { allowed: true; role: UserRole }
@@ -18,15 +18,15 @@ export function mapSupabaseSignInError(message: string): string {
   const clean = String(message ?? "").trim();
   const lower = clean.toLowerCase();
 
-  if (!clean) return "Connexion impossible. Réessayez.";
+  if (!clean) return "Unable to sign in. Please try again.";
   if (lower.includes("invalid login credentials")) {
-    return "Email ou mot de passe incorrect.";
+    return "Incorrect email or password.";
   }
   if (lower.includes("email not confirmed")) {
-    return "Confirmez votre adresse email avant de vous connecter.";
+    return "Confirm your email address before signing in.";
   }
   if (lower.includes("too many requests")) {
-    return "Trop de tentatives. Patientez quelques minutes puis réessayez.";
+    return "Too many attempts. Wait a few minutes and try again.";
   }
 
   return clean;
@@ -52,7 +52,7 @@ export function evaluateStaffLoginAccess(params: {
   if (!isAccountActive(accountStatus)) {
     return {
       allowed: false,
-      message: statusMessage ?? "Votre compte staff est suspendu ou désactivé.",
+      message: statusMessage ?? "Your staff account is suspended or disabled.",
     };
   }
 

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -9,6 +11,8 @@ export default function OrdersLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
@@ -48,7 +52,7 @@ export default function OrdersLayout({
   }, [router, pathname]);
 
   if (checking) {
-    return <div className="p-6">Chargement…</div>;
+    return <div className="p-6">{t("Chargement…")}</div>;
   }
 
   return <>{children}</>;

@@ -322,7 +322,7 @@ export default function LoyaltyScreen() {
                   style={styles.card}
                   onPress={() => navigation.navigate("Promotions")}
                 >
-                  <Text style={styles.muted}>Promotions</Text>
+                  <Text style={styles.muted}>{t("promotions.title", "Promotions")}</Text>
                   <Text style={styles.soft}>
                     {t(
                       "loyalty.promotionsCta",

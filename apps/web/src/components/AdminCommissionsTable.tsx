@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
@@ -27,6 +29,8 @@ function getOrderType(orders: OrdersJoin): string | null {
 }
 
 export default function AdminCommissionsTable() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<Row[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,7 +87,7 @@ export default function AdminCommissionsTable() {
   }, [typeFilter]);
 
   if (err) return <div className="text-red-600">{err}</div>;
-  if (loading) return <div>Chargement des commissions…</div>;
+  if (loading) return <div>{t("Chargement des commissions…")}</div>;
 
   return (
     <div className="p-4">
@@ -99,17 +103,17 @@ export default function AdminCommissionsTable() {
           className="text-xs border rounded px-2 py-1"
           title="Filtrer par type de commande"
         >
-          <option value="all">Tous</option>
-          <option value="food">Food</option>
-          <option value="errand">Errand</option>
+          <option value="all">{t("Tous")}</option>
+          <option value="food">{t("Food")}</option>
+          <option value="errand">{t("Errand")}</option>
         </select>
 
         <button
           onClick={() => load()}
           className="ml-auto text-xs px-2 py-1 rounded bg-black text-white"
-          title="Rafraîchir"
+          title={t("Rafraîchir")}
         >
-          Rafraîchir
+          {t("Rafraîchir")}
         </button>
       </div>
 
@@ -117,11 +121,11 @@ export default function AdminCommissionsTable() {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-100">
             <tr>
-              <th className="px-2 py-1 text-left">Commande</th>
-              <th className="px-2 py-1 text-left">Type</th>
-              <th className="px-2 py-1 text-left">Plateforme</th>
-              <th className="px-2 py-1 text-left">Driver</th>
-              <th className="px-2 py-1 text-left">Restaurant</th>
+              <th className="px-2 py-1 text-left">{t("Commande")}</th>
+              <th className="px-2 py-1 text-left">{t("Type")}</th>
+              <th className="px-2 py-1 text-left">{t("Plateforme")}</th>
+              <th className="px-2 py-1 text-left">{t("Driver")}</th>
+              <th className="px-2 py-1 text-left">{t("Restaurant")}</th>
             </tr>
           </thead>
           <tbody>
@@ -155,7 +159,7 @@ export default function AdminCommissionsTable() {
             {!rows.length && (
               <tr>
                 <td colSpan={5} className="px-2 py-6 text-center text-gray-500">
-                  Aucune commission pour ce filtre.
+                  {t("Aucune commission pour ce filtre.")}
                 </td>
               </tr>
             )}

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
@@ -11,6 +13,8 @@ const PLAY_STORE_URL =
   "https://www.mmddelivery.com/download";
 
 export default function ReferralPage() {
+  const { t } = useAdminT();
+
   const params = useParams();
 
   const referralCode = useMemo(() => {
@@ -115,7 +119,7 @@ export default function ReferralPage() {
             lineHeight: 1.6,
           }}
         >
-          Opening the application…
+          {t("Opening the application…")}
         </p>
 
         <div
@@ -136,7 +140,7 @@ export default function ReferralPage() {
               textTransform: "uppercase",
             }}
           >
-            Referral Code
+            {t("Referral Code")}
           </div>
 
           <div
@@ -163,7 +167,7 @@ export default function ReferralPage() {
                 lineHeight: 1.6,
               }}
             >
-              If the app did not open automatically, download MMD Delivery below.
+              {t("If the app did not open automatically, download MMD Delivery below.")}
             </p>
 
             <div
@@ -194,7 +198,7 @@ export default function ReferralPage() {
                     cursor: "pointer",
                   }}
                 >
-                  Download on the App Store
+                  {t("Download on the App Store")}
                 </button>
               </a>
 
@@ -217,7 +221,7 @@ export default function ReferralPage() {
                     cursor: "pointer",
                   }}
                 >
-                  Get it on Google Play
+                  {t("Get it on Google Play")}
                 </button>
               </a>
             </div>
@@ -243,7 +247,7 @@ export default function ReferralPage() {
                 animation: "pulse 1s infinite",
               }}
             />
-            Connecting to MMD Delivery...
+            {t("Connecting to MMD Delivery...")}
           </div>
         )}
 

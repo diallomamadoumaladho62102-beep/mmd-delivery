@@ -16,6 +16,7 @@ import {
 import { MmdDriverLocationMarker } from "../driver/home/MmdDriverLocationMarker";
 import { MapFloatingButton } from "../driver/map/MapFloatingButton";
 import { ScreenErrorBoundary } from "../ScreenErrorBoundary";
+import { useTranslation } from "react-i18next";
 
 export type LiveTripStop = CoordinatePoint & {
   id?: string;
@@ -77,6 +78,7 @@ export function LiveTripMap({
   customerChrome = false,
   hideInternalBadge = false,
 }: LiveTripMapProps) {
+  const { t } = useTranslation();
   const Mapbox = getMapboxModule();
   const cameraRef = useRef<{
     setCamera: (config: Record<string, unknown>) => void;
@@ -141,7 +143,7 @@ export function LiveTripMap({
   if (!mapReady || !Mapbox) {
     return (
       <View style={[styles.fallback, fill ? styles.fill : { height }]}>
-        <Text style={styles.fallbackText}>Map unavailable</Text>
+        <Text style={styles.fallbackText}>{t("tracking.mapUnavailable")}</Text>
         {badgeText ? <Text style={styles.badgeText}>{badgeText}</Text> : null}
       </View>
     );
@@ -154,7 +156,7 @@ export function LiveTripMap({
   ];
 
   return (
-    <ScreenErrorBoundary fallbackTitle="Map unavailable">
+    <ScreenErrorBoundary fallbackTitle={t("tracking.mapUnavailable")}>
     <View style={wrapStyle}>
       <Mapbox.MapView
         style={StyleSheet.absoluteFill}
@@ -269,13 +271,13 @@ export function LiveTripMap({
               icon="locate"
               scheme="day"
               onPress={fitCamera}
-              accessibilityLabel="Recenter map"
+              accessibilityLabel={t("tracking.recenter")}
             />
           </View>
         ) : (
           <View style={styles.rezoomWrap}>
             <TouchableOpacity onPress={fitCamera} style={styles.rezoomBtn}>
-              <Text style={styles.rezoomText}>Re-zoom</Text>
+              <Text style={styles.rezoomText}>{t("tracking.rezoom")}</Text>
             </TouchableOpacity>
           </View>
         )
@@ -284,7 +286,7 @@ export function LiveTripMap({
       {!hideInternalBadge && (stale || badgeText) ? (
         <View style={styles.badgeWrap}>
           <Text style={styles.badgeText}>
-            {badgeText ?? (stale ? "Location may be stale" : "")}
+            {badgeText ?? (stale ? t("tracking.locationStale") : "")}
           </Text>
         </View>
       ) : null}

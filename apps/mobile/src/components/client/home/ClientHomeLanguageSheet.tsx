@@ -39,7 +39,7 @@ export function ClientHomeLanguageSheet({
       onRequestClose={onClose}
       testID="client-home-language-sheet"
     >
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close language sheet">
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={ts("common.close", "Close")}>
         <Pressable
           style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}
           onPress={(event) => event.stopPropagation()}

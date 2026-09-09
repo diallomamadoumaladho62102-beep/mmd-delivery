@@ -9,6 +9,7 @@ import {
   type TextInput as TextInputType,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   length?: number;
@@ -38,6 +39,7 @@ export function OtpDigitInput({
   success = false,
   mode = "numeric",
 }: Props) {
+  const { t } = useTranslation();
   const inputRef = useRef<TextInputType>(null);
   const shake = useRef(new Animated.Value(0)).current;
   const successScale = useRef(new Animated.Value(0)).current;
@@ -129,7 +131,7 @@ export function OtpDigitInput({
           if (!disabled && !success) inputRef.current?.focus();
         }}
         accessibilityRole="button"
-        accessibilityLabel="Enter verification code"
+        accessibilityLabel={t("otp.enterCode")}
       >
         <Animated.View
           style={[
@@ -195,7 +197,7 @@ export function OtpDigitInput({
           style={[styles.successRow, { transform: [{ scale: successScale }] }]}
         >
           <Ionicons name="checkmark-circle" size={22} color="#22C55E" />
-          <Text style={styles.successText}>Code verified</Text>
+          <Text style={styles.successText}>{t("otp.verified")}</Text>
         </Animated.View>
       ) : null}
 

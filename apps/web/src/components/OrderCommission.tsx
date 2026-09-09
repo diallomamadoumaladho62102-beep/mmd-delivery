@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import useSWR from "swr";
 import { resolveCommissionDisplayCents } from "@/lib/commissionDisplayCents";
 
@@ -11,6 +13,8 @@ const fmt = (cents: number) =>
   });
 
 export default function OrderCommission({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const { data, error, isLoading } = useSWR(
     `/api/orders/${orderId}/commission`,
     fetcher,
@@ -18,7 +22,7 @@ export default function OrderCommission({ orderId }: { orderId: string }) {
 
   if (isLoading) {
     return (
-      <div className="text-sm text-gray-600">Chargement des commissions…</div>
+      <div className="text-sm text-gray-600">{t("Chargement des commissions…")}</div>
     );
   }
   if (error) {

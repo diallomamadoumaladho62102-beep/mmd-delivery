@@ -38,10 +38,10 @@ export function accountStatusBlockMessage(
     return "This account is banned. Contact MMD Delivery support.";
   }
   if (normalized === "suspended") {
-    return "Votre compte est suspendu. Contactez le support MMD Delivery.";
+    return "Your account is suspended. Contact MMD Delivery support.";
   }
   if (normalized === "disabled") {
-    return "Votre compte est désactivé. Contactez le support MMD Delivery.";
+    return "Your account is disabled. Contact MMD Delivery support.";
   }
   if (String(status ?? "").trim().toLowerCase() === "unknown") {
     return "Unable to verify account status.";
@@ -79,13 +79,13 @@ export function driverOnlineBlockMessage(
 ): string | null {
   const normalized = String(status ?? "").trim().toLowerCase();
   if (normalized === "suspended") {
-    return "Votre compte chauffeur est suspendu. Contactez le support MMD Delivery.";
+    return "Your driver account is suspended. Contact MMD Delivery support.";
   }
   if (normalized === "disabled") {
-    return "Votre compte chauffeur est désactivé. Contactez le support MMD Delivery.";
+    return "Your driver account is disabled. Contact MMD Delivery support.";
   }
   if (normalized !== "approved") {
-    return "Votre profil chauffeur doit être approuvé avant de passer en ligne.";
+    return "Your driver profile must be approved before you can go online.";
   }
   return null;
 }

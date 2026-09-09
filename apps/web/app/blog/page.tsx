@@ -1,3 +1,5 @@
+import { getAdminWebLocale } from "@/i18n/getAdminWebLocale";
+import { adminT } from "@/i18n/adminUiI18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 import SiteAnalytics from "@/components/site/SiteAnalytics";
@@ -36,6 +38,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function BlogIndexPage() {
+  const locale = await getAdminWebLocale();
+  const t = (s: string) => adminT(s, locale);
+
   const { settings, headerItems, footerItems, overlays, supabase } =
     await loadSiteChrome();
   const posts = await listPublishedPosts(supabase, { limit: 24, postType: "blog" });
@@ -50,12 +55,12 @@ export default async function BlogIndexPage() {
       >
         <section className={siteSectionClass}>
           <div className={siteContainerClass}>
-            <h1 className={siteHeadingClass}>Blog</h1>
+            <h1 className={siteHeadingClass}>{t("Blog")}</h1>
             <p className="mt-3 max-w-2xl text-slate-300">
-              News and product updates from MMD Delivery.
+              {t("News and product updates from MMD Delivery.")}
             </p>
             {posts.length === 0 ? (
-              <p className="mt-10 text-slate-400">No posts published yet.</p>
+              <p className="mt-10 text-slate-400">{t("No posts published yet.")}</p>
             ) : (
               <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {posts.map((post) => (

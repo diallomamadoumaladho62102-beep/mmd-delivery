@@ -1,8 +1,12 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
+import { orderStatusUiLabel } from "@/i18n/orderStatusUi";
+import { formatDateTime } from "@/i18n/formatters";
 
 type OrderStatus =
   | "pending"
@@ -36,37 +40,17 @@ type OrderRow = {
   client_id?: string | null;
 };
 
-function statusLabelForRestaurant(s: OrderStatus): string {
-  switch (s) {
-    case "pending":
-      return "EN ATTENTE";
-    case "accepted":
-      return "ACCEPTÉE";
-    case "prepared":
-      return "EN PRÉPARATION";
-    case "ready":
-      return "PRÊTE";
-    case "dispatched":
-      return "EN LIVRAISON";
-    case "delivered":
-      return "LIVRÉE";
-    case "canceled":
-      return "ANNULÉE";
-    default:
-      return s;
-  }
+function statusLabelForRestaurant(
+  s: OrderStatus,
+  t: (source: string) => string,
+): string {
+  return orderStatusUiLabel(s, t);
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale?: string): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
+    return formatDateTime(iso, locale);
   } catch {
     return iso;
   }
@@ -94,6 +78,8 @@ function formatOptions(options: unknown): string[] {
 }
 
 export default function RestaurantOrderPage() {
+  const { t, locale } = useAdminT();
+
   const params = useParams();
   const router = useRouter();
   const orderId = params.orderId as string;
@@ -294,7 +280,7 @@ export default function RestaurantOrderPage() {
     return (
       <main className="min-h-screen bg-[#0B0F1A] text-white">
         <div className="max-w-3xl mx-auto px-4 py-8 text-sm text-slate-400">
-          Chargement de la commande…
+          {t("Chargement de la commande…")}
         </div>
       </main>
     );
@@ -328,7 +314,7 @@ export default function RestaurantOrderPage() {
           >
             ← Retour à la liste des commandes
           </button>
-          <p className="text-sm text-slate-400">Commande introuvable.</p>
+          <p className="text-sm text-slate-400">{t("Commande introuvable.")}</p>
         </div>
       </main>
     );
@@ -358,7 +344,7 @@ export default function RestaurantOrderPage() {
             ← Retour
           </button>
           <span className="rounded-full bg-[#F5C542] px-3 py-1 text-xs font-black uppercase tracking-wide text-black">
-            {statusLabelForRestaurant(order.status)}
+            {statusLabelForRestaurant(order.status, t)}
           </span>
         </div>
 
@@ -367,7 +353,7 @@ export default function RestaurantOrderPage() {
             MMD Delivery
           </p>
           <h1 className="text-2xl font-black">Commande #{shortId}</h1>
-          <p className="text-sm text-slate-400">{formatDate(order.created_at)}</p>
+          <p className="text-sm text-slate-400">{formatDate(order.created_at, locale)}</p>
         </header>
 
         {err ? <p className="text-sm text-red-400">{err}</p> : null}
@@ -385,7 +371,7 @@ export default function RestaurantOrderPage() {
                 {order.pickup_address || "—"}
               </p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Livraison
+                {t("Livraison")}
               </p>
             </div>
           </div>
@@ -399,18 +385,18 @@ export default function RestaurantOrderPage() {
             {order.pickup_code || "······"}
           </p>
           <p className="mt-3 text-sm text-slate-600">
-            Communiquez ce code uniquement au livreur.
+            {t("Communiquez ce code uniquement au livreur.")}
           </p>
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-[#020617] p-4 space-y-3">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Client
+            {t("Client")}
           </p>
           <p className="font-semibold">{clientLabel || "Client"}</p>
 
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pt-2">
-            Adresse de livraison
+            {t("Adresse de livraison")}
           </p>
           <p className="text-sm text-slate-200">
             {order.dropoff_address || "—"}
@@ -419,7 +405,7 @@ export default function RestaurantOrderPage() {
           {instructions ? (
             <>
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pt-2">
-                Instructions du client
+                {t("Instructions du client")}
               </p>
               <p className="text-sm text-slate-200">{instructions}</p>
             </>
@@ -428,10 +414,10 @@ export default function RestaurantOrderPage() {
 
         <section className="rounded-2xl border border-slate-800 bg-[#020617] p-4 space-y-3">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Détails de la commande
+            {t("Détails de la commande")}
           </p>
           {(order.items_json ?? []).length === 0 ? (
-            <p className="text-sm text-slate-400">Aucun article.</p>
+            <p className="text-sm text-slate-400">{t("Aucun article.")}</p>
           ) : (
             order.items_json!.map((item, idx) => {
               const options = formatOptions(item.options);
@@ -474,7 +460,7 @@ export default function RestaurantOrderPage() {
 
         <section className="rounded-2xl border border-slate-800 bg-[#020617] p-4 space-y-2">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Préparation
+            {t("Préparation")}
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <button
@@ -526,8 +512,8 @@ export default function RestaurantOrderPage() {
               {saving === "canceled"
                 ? "…"
                 : order.status === "pending"
-                  ? "Refuser"
-                  : "Annuler"}
+                  ? t("Refuser")
+                  : t("Annuler")}
             </button>
           </div>
         </section>

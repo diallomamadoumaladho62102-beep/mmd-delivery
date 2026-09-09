@@ -1,4 +1,6 @@
 'use client';
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseBrowser';
 
@@ -18,6 +20,8 @@ function toNumber(v: unknown): number {
 }
 
 export default function CommissionBreakdown({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [row, setRow] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -69,7 +73,7 @@ export default function CommissionBreakdown({ orderId }: { orderId: string }) {
   }, [orderId]);
 
   if (loading) {
-    return <div className="text-sm text-gray-500">Chargement des commissions…</div>;
+    return <div className="text-sm text-gray-500">{t("Chargement des commissions…")}</div>;
   }
 
   if (err) {
@@ -77,7 +81,7 @@ export default function CommissionBreakdown({ orderId }: { orderId: string }) {
   }
 
   if (!row) {
-    return <div className="text-sm text-gray-500">Pas de données de commission.</div>;
+    return <div className="text-sm text-gray-500">{t("Pas de données de commission.")}</div>;
   }
 
   const fmt = (n: number) => {
@@ -94,19 +98,19 @@ export default function CommissionBreakdown({ orderId }: { orderId: string }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div className="rounded-2xl p-4 shadow-sm border">
-        <div className="text-xs text-gray-500">Client</div>
+        <div className="text-xs text-gray-500">{t("Client")}</div>
         <div className="text-lg font-semibold">{fmt(row.client)}</div>
       </div>
       <div className="rounded-2xl p-4 shadow-sm border">
-        <div className="text-xs text-gray-500">Driver</div>
+        <div className="text-xs text-gray-500">{t("Driver")}</div>
         <div className="text-lg font-semibold">{fmt(row.driver)}</div>
       </div>
       <div className="rounded-2xl p-4 shadow-sm border">
-        <div className="text-xs text-gray-500">Restaurant</div>
+        <div className="text-xs text-gray-500">{t("Restaurant")}</div>
         <div className="text-lg font-semibold">{fmt(row.restaurant)}</div>
       </div>
       <div className="rounded-2xl p-4 shadow-sm border">
-        <div className="text-xs text-gray-500">Plateforme</div>
+        <div className="text-xs text-gray-500">{t("Plateforme")}</div>
         <div className="text-lg font-semibold">{fmt(row.platform)}</div>
       </div>
 

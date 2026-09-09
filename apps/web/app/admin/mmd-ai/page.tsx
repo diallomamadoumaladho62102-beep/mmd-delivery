@@ -143,7 +143,7 @@ export default function AdminMmdAiPage() {
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
             <MetricCard
               label={t("Global Enabled")}
-              value={control?.globalEnabled ? "ON" : "OFF"}
+              value={control?.globalEnabled ? t("ON") : t("OFF")}
             />
             <MetricCard
               label={t("Emergency Stop")}
@@ -293,7 +293,7 @@ function GeoTable({
           <thead>
             <tr className="border-b border-slate-200 text-slate-500">
               <th className="py-2 pr-4">{t("Country")}</th>
-              {showState ? <th className="py-2 pr-4">State/Region</th> : null}
+              {showState ? <th className="py-2 pr-4">{t("State/Region")}</th> : null}
               <th className="py-2 pr-4">{t("Conv.")}</th>
               <th className="py-2 pr-4">{t("Msgs")}</th>
               <th className="py-2">{t("Cost")}</th>

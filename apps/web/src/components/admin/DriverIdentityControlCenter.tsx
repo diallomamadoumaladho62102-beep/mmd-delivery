@@ -35,6 +35,7 @@ import {
   type IdentityQueueFilterId,
   IDENTITY_QUEUE_FILTERS,
 } from "@/lib/driverIdentityDisplay";
+import { localizeIdentityWaitSla } from "@/i18n/orderStatusUi";
 
 import type { UserRole } from "@/lib/roles";
 import DriverIdentityInvestigationPanel from "@/components/admin/DriverIdentityInvestigationPanel";
@@ -283,7 +284,7 @@ function IdentityPhotoComparePanel({
   selfieUrl: string;
   profilePhotoUrl: string | null;
 }) {
-  const { t } = useAdminT();
+  const { t, locale } = useAdminT();
   const [zoom, setZoom] = useState(100);
   const [expandedUrl, setExpandedUrl] = useState<string | null>(null);
   const scale = zoom / 100;
@@ -365,7 +366,7 @@ function IdentityPhotoComparePanel({
             renderPhoto(profilePhotoUrl, "Photo identité / KYC", "Photo identité chauffeur")
           ) : (
             <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
-              Aucune photo identité / KYC disponible.
+              {t("Aucune photo identité / KYC disponible.")}
             </div>
           )}
           {renderPhoto(selfieUrl, "Selfie de vérification", "Selfie chauffeur")}
@@ -400,7 +401,7 @@ function IdentityPhotoComparePanel({
 }
 
 function EventTimeline({ events }: { events: IdentityEventRow[] }) {
-  const { t } = useAdminT();
+  const { t, locale } = useAdminT();
   const sorted = useMemo(
     () => sortIdentityEventsChronologically(events),
     [events],
@@ -434,11 +435,11 @@ function EventTimeline({ events }: { events: IdentityEventRow[] }) {
             <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50/80 p-4 transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:border-slate-600">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {display.label}
+                  {t(display.label)}
                 </div>
                 <div className="text-right text-xs text-slate-500 dark:text-slate-400">
-                  <div>{formatIdentityTime(event.created_at)}</div>
-                  <div>{formatIdentityDate(event.created_at)}</div>
+                  <div>{formatIdentityTime(event.created_at, locale)}</div>
+                  <div>{formatIdentityDate(event.created_at, locale)}</div>
                 </div>
               </div>
               {notes ? (
@@ -455,7 +456,7 @@ function EventTimeline({ events }: { events: IdentityEventRow[] }) {
 }
 
 export default function DriverIdentityControlCenter(props: Props) {
-  const { t } = useAdminT();
+  const { t, locale } = useAdminT();
 
   const {
     checks,
@@ -702,7 +703,7 @@ export default function DriverIdentityControlCenter(props: Props) {
             >
               {statuses.map((status) => (
                 <option key={status || "all"} value={status}>
-                  {status ? identityStatusLabel(status) : "Tous les statuts"}
+                  {status ? t(identityStatusLabel(status)) : t("Tous les statuts")}
                 </option>
               ))}
             </select>
@@ -780,11 +781,11 @@ export default function DriverIdentityControlCenter(props: Props) {
                               {item.driver_profile?.full_name ?? item.driver_id}
                             </div>
                             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                              {identityTriggerLabel(item.trigger_type)}
+                              {t(identityTriggerLabel(item.trigger_type))}
                             </div>
                           </div>
                           <Badge className={identityStatusBadgeClass(item.status)}>
-                            {identityStatusLabel(item.status)}
+                            {t(identityStatusLabel(item.status))}
                           </Badge>
                         </div>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -805,7 +806,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                       {itemSla ? (
                         <div className="mt-2">
                           <Badge className={identitySlaBadgeClass(itemSla.tone)}>
-                            {itemSla.label}
+                            {localizeIdentityWaitSla(itemSla.label, t)}
                           </Badge>
                         </div>
                       ) : null}
@@ -815,7 +816,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                         </div>
                       ) : null}
                         <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          {formatIdentityDateTime(item.created_at)}
+                          {formatIdentityDateTime(item.created_at, locale)}
                         </div>
                       </div>
                     </div>
@@ -848,7 +849,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                     {waitSla ? (
                       <div className="mt-1">
                         <Badge className={identitySlaBadgeClass(waitSla.tone)}>
-                          {waitSla.label}
+                          {localizeIdentityWaitSla(waitSla.label, t)}
                         </Badge>
                       </div>
                     ) : null}
@@ -925,7 +926,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                           driverProfile?.status ?? null,
                         )}
                       >
-                        {driverProfileStatusLabel(driverProfile?.status ?? null)}
+                        {t(driverProfileStatusLabel(driverProfile?.status ?? null))}
                       </Badge>
                     }
                   />
@@ -951,13 +952,13 @@ export default function DriverIdentityControlCenter(props: Props) {
                     label={t("Statut")}
                     value={
                       <Badge className={identityStatusBadgeClass(String(check.status ?? ""))}>
-                        {identityStatusLabel(String(check.status ?? ""))}
+                        {t(identityStatusLabel(String(check.status ?? "")))}
                       </Badge>
                     }
                   />
                   <InfoRow
                     label={t("Déclencheur")}
-                    value={identityTriggerLabel(String(check.trigger_type ?? ""))}
+                    value={t(identityTriggerLabel(String(check.trigger_type ?? "")))}
                   />
                   <InfoRow
                     label={t("Niveau de risque")}
@@ -974,7 +975,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                         <div className="flex flex-wrap gap-2">
                           {riskReasonBadges.map((badge) => (
                             <Badge key={badge.key} className={badge.className}>
-                              {badge.label}
+                              {t(badge.label)}
                             </Badge>
                           ))}
                         </div>
@@ -1002,19 +1003,19 @@ export default function DriverIdentityControlCenter(props: Props) {
                   <InfoRow label={t("Fournisseur")} value={check.provider ?? "—"} />
                   <InfoRow
                     label={t("Date de création")}
-                    value={formatIdentityDateTime(String(check.created_at ?? ""))}
+                    value={formatIdentityDateTime(String(check.created_at ?? ""), locale)}
                   />
                   <InfoRow
                     label="Date d'envoi"
-                    value={formatIdentityDateTime(check.submitted_at ?? null)}
+                    value={formatIdentityDateTime(check.submitted_at ?? null, locale)}
                   />
                   <InfoRow
                     label={t("Date de validation")}
-                    value={formatIdentityDateTime(check.verified_at ?? null)}
+                    value={formatIdentityDateTime(check.verified_at ?? null, locale)}
                   />
                   <InfoRow
                     label={t("Expiration")}
-                    value={formatIdentityDateTime(check.expires_at ?? null)}
+                    value={formatIdentityDateTime(check.expires_at ?? null, locale)}
                   />
                   {check.reason ? (
                     <InfoRow label={t("Motif")} value={check.reason} />
@@ -1172,11 +1173,11 @@ export default function DriverIdentityControlCenter(props: Props) {
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {identityDecisionActionLabel(decision.action)} ·{" "}
+                              {t(identityDecisionActionLabel(decision.action))} ·{" "}
                               {decision.actor_name ?? "Système"}
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">
-                              {formatIdentityDateTime(decision.created_at)}
+                              {formatIdentityDateTime(decision.created_at, locale)}
                             </div>
                           </div>
                           <div className="mt-2 text-xs text-slate-600 dark:text-slate-300">

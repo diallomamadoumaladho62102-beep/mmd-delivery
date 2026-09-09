@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -27,6 +29,8 @@ type Order = {
 };
 
 export default function DriverOrderPage() {
+  const { t } = useAdminT();
+
   const params = useParams<{ orderId: string }>();
   const orderId = params.orderId;
 
@@ -199,7 +203,7 @@ export default function DriverOrderPage() {
     return (
       <main className="max-w-3xl mx-auto px-4 py-6">
         <p className="text-sm text-gray-600">
-          Chargement des informations de la course…
+          {t("Chargement des informations de la course…")}
         </p>
       </main>
     );
@@ -208,7 +212,7 @@ export default function DriverOrderPage() {
   if (err && !order) {
     return (
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-3">
-        <h1 className="text-xl font-bold">Course</h1>
+        <h1 className="text-xl font-bold">{t("Course")}</h1>
         <p className="text-sm text-red-600">{err}</p>
         <Link
           href="/orders/driver"
@@ -223,7 +227,7 @@ export default function DriverOrderPage() {
   if (!order) {
     return (
       <main className="max-w-3xl mx-auto px-4 py-6">
-        <p className="text-sm text-red-600">Course introuvable.</p>
+        <p className="text-sm text-red-600">{t("Course introuvable.")}</p>
       </main>
     );
   }
@@ -270,10 +274,10 @@ export default function DriverOrderPage() {
 
       {/* Adresses */}
       <section className="border rounded-lg p-3 bg-white space-y-2 text-sm">
-        <h2 className="text-sm font-semibold mb-1">Adresses de la course</h2>
+        <h2 className="text-sm font-semibold mb-1">{t("Adresses de la course")}</h2>
 
         <div>
-          <p className="text-xs font-semibold text-gray-700">Retrait (pickup)</p>
+          <p className="text-xs font-semibold text-gray-700">{t("Retrait (pickup)")}</p>
           <p className="text-xs text-gray-800">
             {order.pickup_address || "Adresse pickup non définie."}
           </p>
@@ -281,7 +285,7 @@ export default function DriverOrderPage() {
 
         <div>
           <p className="text-xs font-semibold text-gray-700">
-            Livraison (dropoff)
+            {t("Livraison (dropoff)")}
           </p>
           <p className="text-xs text-gray-800">
             {order.dropoff_address || "Adresse de livraison non définie."}
@@ -291,7 +295,7 @@ export default function DriverOrderPage() {
 
       {/* Infos course + rémunération */}
       <section className="border rounded-lg p-3 bg-white space-y-1 text-sm">
-        <h2 className="text-sm font-semibold mb-1">Course</h2>
+        <h2 className="text-sm font-semibold mb-1">{t("Course")}</h2>
         <p className="text-xs text-gray-700">
           Distance :{" "}
           {order.distance_miles != null
@@ -308,7 +312,7 @@ export default function DriverOrderPage() {
 
         <div className="mt-2 border-t pt-2">
           <p className="text-xs font-semibold text-gray-800">
-            Ta rémunération chauffeur (estimation)
+            {t("Ta rémunération chauffeur (estimation)")}
           </p>
           <p className="text-xs text-gray-700">
             La distance et le temps estimé ne sont pas encore renseignés pour
@@ -326,17 +330,16 @@ export default function DriverOrderPage() {
       {/* Actions chauffeur */}
       <section className="border rounded-lg p-3 bg-slate-50 space-y-3 text-sm">
         <h2 className="text-sm font-semibold mb-1">
-          Actions chauffeur (code de ramassage / livraison)
+          {t("Actions chauffeur (code de ramassage / livraison)")}
         </h2>
 
         {/* Pickup */}
         <div className="space-y-2">
           <p className="text-xs font-semibold text-gray-800">
-            Je récupère la commande (saisir le code de ramassage)
+            {t("Je récupère la commande (saisir le code de ramassage)")}
           </p>
           <p className="text-[11px] text-gray-700">
-            Demande au restaurant de te montrer le code ou le QR de ramassage,
-            puis tape-le exactement ici.
+            {t("Demande au restaurant de te montrer le code ou le QR de ramassage, puis tape-le exactement ici.")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-2">
@@ -361,7 +364,7 @@ export default function DriverOrderPage() {
         {/* Dropoff */}
         <div className="space-y-2 border-t pt-3 mt-2">
           <p className="text-xs font-semibold text-gray-800">
-            Je livre la commande (saisir le code de livraison)
+            {t("Je livre la commande (saisir le code de livraison)")}
           </p>
           <p className="text-[11px] text-gray-700">
             À la livraison, demande au client son code de confirmation (dropoff)
@@ -373,7 +376,7 @@ export default function DriverOrderPage() {
               type="text"
               value={dropoffCode}
               onChange={(e) => setDropoffCode(e.target.value)}
-              placeholder="Code de livraison"
+              placeholder={t("Code de livraison")}
               className="flex-1 border rounded-md px-2 py-1 text-xs"
             />
             <button

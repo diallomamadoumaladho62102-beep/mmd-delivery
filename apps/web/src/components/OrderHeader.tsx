@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -24,40 +26,45 @@ type Order = {
 
 type MemberRole = "client" | "driver" | "restaurant" | "admin" | string | null;
 
-function statusLabel(status: OrderStatus | null): string {
-  if (!status) return "Inconnu";
+function statusLabel(
+  status: OrderStatus | null,
+  t: (source: string) => string,
+): string {
+  if (!status) return t("Inconnu");
   switch (status) {
     case "pending":
-      return "En attente";
+      return t("En attente");
     case "assigned":
-      return "Assignée";
+      return t("Assignée");
     case "accepted":
-      return "Acceptée";
+      return t("Acceptée");
     case "prepared":
-      return "Préparée";
+      return t("Préparée");
     case "ready":
-      return "Prête";
+      return t("Prête");
     case "dispatched":
-      return "En livraison";
+      return t("En livraison");
     case "delivered":
-      return "Livrée";
+      return t("Livrée");
     case "cancelled":
-      return "Annulée";
+      return t("Annulée");
     default:
       return String(status);
   }
 }
 
-function roleLabel(role: MemberRole): string {
-  if (!role) return "Non membre";
-  if (role === "client") return "Client";
-  if (role === "driver") return "Chauffeur / Livreur";
-  if (role === "restaurant") return "Restaurant";
-  if (role === "admin") return "Administrateur";
+function roleLabel(role: MemberRole, t: (source: string) => string): string {
+  if (!role) return t("Non membre");
+  if (role === "client") return t("Client");
+  if (role === "driver") return t("Chauffeur / Livreur");
+  if (role === "restaurant") return t("Restaurant");
+  if (role === "admin") return t("Administrateur");
   return String(role);
 }
 
 export default function OrderHeader({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -137,7 +144,7 @@ export default function OrderHeader({ orderId }: { orderId: string }) {
     <div className="mb-4 border rounded-xl p-4 bg-white flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-xs text-gray-500">Chat — commande</div>
+          <div className="text-xs text-gray-500">{t("Chat — commande")}</div>
           <div className="text-lg font-semibold">
             #{shortId}
           </div>
@@ -153,31 +160,31 @@ export default function OrderHeader({ orderId }: { orderId: string }) {
 
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <div className="flex items-center gap-1">
-          <span className="text-gray-500">Statut :</span>
+          <span className="text-gray-500">{t("Statut :")}</span>
           {loading ? (
-            <span className="text-gray-400">Chargement…</span>
+            <span className="text-gray-400">{t("Chargement…")}</span>
           ) : (
             <span className="px-2 py-0.5 rounded-full bg-gray-100">
-              {statusLabel(order?.status ?? null)}
+              {statusLabel(order?.status ?? null, t)}
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="text-gray-500">Ton rôle :</span>
-          <span className="font-medium">{roleLabel(myRole)}</span>
+          <span className="text-gray-500">{t("Ton rôle :")}</span>
+          <span className="font-medium">{roleLabel(myRole, t)}</span>
         </div>
 
         {order?.kind && (
           <div className="flex items-center gap-1">
-            <span className="text-gray-500">Type :</span>
+            <span className="text-gray-500">{t("Type :")}</span>
             <span>{order.kind}</span>
           </div>
         )}
 
         {created && (
           <div className="flex items-center gap-1">
-            <span className="text-gray-500">Créée le :</span>
+            <span className="text-gray-500">{t("Créée le :")}</span>
             <span>{created}</span>
           </div>
         )}

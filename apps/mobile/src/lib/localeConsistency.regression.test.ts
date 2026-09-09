@@ -47,7 +47,21 @@ const REQUIRED: Array<{ file: "common" | "extras"; key: string }> = [
   { file: "extras", key: "driver.services.title" },
   { file: "extras", key: "driver.identity.screenTitle" },
   { file: "extras", key: "driver.map.preparingNavigation" },
-  { file: "extras", key: "promotions.title" },
+  { file: "extras", key: "taxi.home.comfort" },
+  { file: "extras", key: "taxi.home.useMyGps" },
+  { file: "extras", key: "taxi.home.optionalPreferences" },
+  { file: "extras", key: "client.profile.openSettings" },
+  { file: "extras", key: "client.profile.smsConsent" },
+  { file: "extras", key: "client.profile.missingFields.phone_verified" },
+  { file: "extras", key: "client.restaurants.cuisineAll" },
+  { file: "extras", key: "client.home.tabs.home" },
+  { file: "extras", key: "restaurant.earnings.stripe.bankKicker" },
+  { file: "extras", key: "restaurant.connect.cta.ready_for_payouts.title" },
+  { file: "extras", key: "restaurant.wallet.recentTransactions" },
+  { file: "extras", key: "deliveryRequest.type.title" },
+  { file: "extras", key: "payments.stripeConnect.status.ready_for_payouts" },
+  { file: "common", key: "client.home.tabs.orders" },
+  { file: "common", key: "client.delivery.tabs.track" },
 ];
 
 for (const lang of ["en", "fr", "es", "ar", "zh", "ff"]) {
@@ -99,6 +113,36 @@ for (const lang of ["fr", "es", "ar", "zh", "ff"] as const) {
   if (lang === "en") continue;
   const forgot = String(get(load(lang, "common"), "client.auth.forgotPassword") ?? "");
   assert.notEqual(forgot, "Forgot password?", `${lang} forgotPassword must be translated`);
+  assert.notEqual(
+    String(get(load(lang, "extras"), "taxi.home.comfort") ?? ""),
+    "Comfort",
+    `${lang} taxi.home.comfort must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "client.profile.openSettings") ?? ""),
+    "Settings",
+    `${lang} client.profile.openSettings must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "restaurant.earnings.stripe.bankKicker") ?? ""),
+    "Bank payouts",
+    `${lang} bankKicker must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "client.restaurants.cuisine.african") ?? ""),
+    "African",
+    `${lang} cuisine african must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "client.restaurants.cuisine.west_african_food") ?? ""),
+    "West African Food",
+    `${lang} cuisine west_african_food must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "restaurant.connect.cta.ready_for_payouts.action") ?? ""),
+    "Manage Payouts",
+    `${lang} Stripe manage payouts CTA must be translated`,
+  );
 }
 
 const header = fs.readFileSync(

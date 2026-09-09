@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useAdminT } from "@/i18n/useAdminT";
 import type { SiteBlockRow } from "@/lib/siteCms";
 import ContactForm from "./ContactForm";
 import HeroShowcase from "./HeroShowcase";
@@ -479,7 +482,7 @@ function BlogTeaserBlock({
       </div>
       <div className="mt-6">
         <Link href="/blog" className={siteSecondaryBtnClass}>
-          View all posts
+          {t("View all posts")}
         </Link>
       </div>
     </SectionWrap>
@@ -740,6 +743,8 @@ export default function BlockRenderer({
   faqItems,
   posts,
 }: BlockRendererProps) {
+  const { t } = useAdminT();
+
   return (
     <>
       {blocks.map((block) => {

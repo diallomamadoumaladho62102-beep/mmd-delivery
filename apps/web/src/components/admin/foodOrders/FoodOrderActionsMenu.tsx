@@ -104,7 +104,7 @@ export default function FoodOrderActionsMenu({
             className={itemClass}
             onClick={() => setOpen(false)}
           >
-            Receipt / payout
+            {t("Receipt / payout")}
           </Link>
           <button type="button" role="menuitem" className={itemClass} onClick={() => void copyOrderId()}>
             {copied ? "Copied!" : "Copy order ID"}

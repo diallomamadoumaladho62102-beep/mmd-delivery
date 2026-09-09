@@ -1,7 +1,11 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 
 export default function CreateErrandOrderForm() {
+  const { t } = useAdminT();
+
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
   const [pickupContact, setPickupContact] = useState("");
@@ -43,46 +47,46 @@ export default function CreateErrandOrderForm() {
 
   return (
     <div className="space-y-3 p-4 border rounded">
-      <h3 className="font-semibold text-lg">Créer une course (Errand)</h3>
+      <h3 className="font-semibold text-lg">{t("Créer une course (Errand)")}</h3>
       <input
         className="border rounded px-3 py-2 w-full"
-        placeholder="Adresse de prise"
+        placeholder={t("Adresse de prise")}
         value={pickupAddress}
         onChange={(e) => setPickupAddress(e.target.value)}
       />
       <input
         className="border rounded px-3 py-2 w-full"
-        placeholder="Adresse de dépôt"
+        placeholder={t("Adresse de dépôt")}
         value={dropoffAddress}
         onChange={(e) => setDropoffAddress(e.target.value)}
       />
       <input
         className="border rounded px-3 py-2 w-full"
-        placeholder="Contact prise (nom/tel)"
+        placeholder={t("Contact prise (nom/tel)")}
         value={pickupContact}
         onChange={(e) => setPickupContact(e.target.value)}
       />
       <input
         className="border rounded px-3 py-2 w-full"
-        placeholder="Contact dépôt (nom/tel)"
+        placeholder={t("Contact dépôt (nom/tel)")}
         value={dropoffContact}
         onChange={(e) => setDropoffContact(e.target.value)}
       />
       <textarea
         className="border rounded px-3 py-2 w-full"
-        placeholder="Description / consignes"
+        placeholder={t("Description / consignes")}
         value={desc}
         onChange={(e) => setDesc(e.target.value)}
       />
       <p className="text-sm text-gray-600">
-        Le tarif est calculé côté serveur selon la configuration plateforme.
+        {t("Le tarif est calculé côté serveur selon la configuration plateforme.")}
       </p>
       <button
         onClick={submit}
         disabled={loading}
         className="px-4 py-2 rounded bg-black text-white"
       >
-        {loading ? "Création…" : "Créer"}
+        {loading ? "Création…" : t("Créer")}
       </button>
     </div>
   );

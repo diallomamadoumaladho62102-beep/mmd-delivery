@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
@@ -14,6 +16,8 @@ export default function AdminCancelRefundPanel({
   defaultReason = "admin_cancel_refund",
   onCompleted,
 }: AdminCancelRefundPanelProps) {
+  const { t } = useAdminT();
+
   const [orderId, setOrderId] = useState(defaultOrderId);
   const [reason, setReason] = useState(defaultReason);
   const [loading, setLoading] = useState(false);
@@ -70,7 +74,7 @@ export default function AdminCancelRefundPanel({
           🛠️ Admin — Annuler & rembourser
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Action admin puissante : annule une commande et rembourse Stripe si elle est payée.
+          {t("Action admin puissante : annule une commande et rembourse Stripe si elle est payée.")}
         </p>
       </div>
 
@@ -78,14 +82,14 @@ export default function AdminCancelRefundPanel({
         <input
           value={orderId}
           onChange={(e) => setOrderId(e.target.value)}
-          placeholder="Order ID"
+          placeholder={t("Order ID")}
           className="rounded-xl border px-3 py-2 text-sm"
         />
 
         <input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason"
+          placeholder={t("Reason")}
           className="rounded-xl border px-3 py-2 text-sm"
         />
       </div>

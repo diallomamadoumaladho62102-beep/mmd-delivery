@@ -1,3 +1,7 @@
+"use client";
+
+
+import { useAdminT } from "@/i18n/useAdminT";
 // apps/web/src/app/orders/driver/earnings/TaxPdfCard.tsx
 "use client";
 
@@ -53,6 +57,8 @@ function formatApiError(e: any) {
 }
 
 export default function TaxPdfCard() {
+  const { t } = useAdminT();
+
   const years = useMemo(() => {
     const y = currentYearUTC();
     // Année courante + 3 ans en arrière (stable order)
@@ -190,14 +196,14 @@ export default function TaxPdfCard() {
     <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-base font-semibold">Tax PDF</div>
+          <div className="text-base font-semibold">{t("Tax PDF")}</div>
           <div className="text-sm text-neutral-600">
-            Génère et télécharge ton résumé annuel (PDF) depuis le serveur.
+            {t("Génère et télécharge ton résumé annuel (PDF) depuis le serveur.")}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-sm text-neutral-600">Year</label>
+          <label className="text-sm text-neutral-600">{t("Year")}</label>
           <select
             className="rounded-lg border border-neutral-300 bg-white px-2 py-1 text-sm"
             value={year}
@@ -219,7 +225,7 @@ export default function TaxPdfCard() {
           disabled={loading}
           className="rounded-lg bg-black px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {loading ? "Please wait..." : "Download PDF"}
+          {loading ? "Please wait..." : t("Download PDF")}
         </button>
 
         <button
@@ -227,7 +233,7 @@ export default function TaxPdfCard() {
           disabled={loading}
           className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-900 disabled:opacity-50"
         >
-          Generate PDF
+          {t("Generate PDF")}
         </button>
 
         <button
@@ -235,7 +241,7 @@ export default function TaxPdfCard() {
           disabled={loading}
           className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-900 disabled:opacity-50"
         >
-          Generate PDF + Download
+          {t("Generate PDF + Download")}
         </button>
       </div>
 
@@ -246,7 +252,7 @@ export default function TaxPdfCard() {
       ) : null}
 
       <div className="mt-3 text-xs text-neutral-500">
-        Note: “Download” incrémente <code>download_count</code> et met à jour{" "}
+        {t("Note: “Download” incrémente")} <code>download_count</code> et met à jour{" "}
         <code>last_downloaded_at</code>.
       </div>
     </div>

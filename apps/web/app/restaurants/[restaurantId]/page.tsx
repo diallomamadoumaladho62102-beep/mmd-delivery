@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -32,6 +34,8 @@ type CartItem = {
 };
 
 export default function RestaurantMenuPage() {
+  const { t } = useAdminT();
+
   const params = useParams<{ restaurantId: string }>();
   const router = useRouter();
   const restaurantId = params.restaurantId;
@@ -178,7 +182,7 @@ export default function RestaurantMenuPage() {
     <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">
       {/* HEADER */}
       <header className="space-y-1">
-        <p className="text-sm font-semibold text-emerald-500">Espace client</p>
+        <p className="text-sm font-semibold text-emerald-500">{t("Espace client")}</p>
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
         <p className="text-sm text-gray-600">
           Choisis tes plats, ajuste les quantités et valide ta commande en
@@ -222,7 +226,7 @@ export default function RestaurantMenuPage() {
       {loading && (
         <div className="flex flex-col items-center justify-center py-10 gap-2">
           <div className="h-5 w-5 animate-spin rounded-full border border-emerald-500 border-t-transparent" />
-          <p className="text-xs text-gray-500">Chargement du menu…</p>
+          <p className="text-xs text-gray-500">{t("Chargement du menu…")}</p>
         </div>
       )}
 
@@ -232,7 +236,7 @@ export default function RestaurantMenuPage() {
           {items.length === 0 ? (
             <div className="border rounded-xl px-4 py-3 bg-slate-950/90 text-sm text-slate-100">
               <p className="font-semibold mb-1">
-                Aucun plat configuré pour ce restaurant.
+                {t("Aucun plat configuré pour ce restaurant.")}
               </p>
               <p className="text-xs text-slate-300">
                 Le propriétaire du restaurant doit d&apos;abord ajouter des
@@ -274,7 +278,7 @@ export default function RestaurantMenuPage() {
 
                     {!item.is_available && (
                       <p className="text-[11px] text-red-300">
-                        Indisponible pour le moment.
+                        {t("Indisponible pour le moment.")}
                       </p>
                     )}
 
@@ -323,11 +327,11 @@ export default function RestaurantMenuPage() {
       {/* Récapitulatif panier */}
       {!loading && (
         <section className="border rounded-xl px-4 py-3 bg-white space-y-2">
-          <h2 className="text-sm font-semibold">Récapitulatif de ta commande</h2>
+          <h2 className="text-sm font-semibold">{t("Récapitulatif de ta commande")}</h2>
 
           {cartIsEmpty ? (
             <p className="text-xs text-gray-500">
-              Ajoute au moins un plat pour pouvoir valider ta commande.
+              {t("Ajoute au moins un plat pour pouvoir valider ta commande.")}
             </p>
           ) : (
             <>

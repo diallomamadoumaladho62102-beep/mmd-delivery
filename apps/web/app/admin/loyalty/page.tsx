@@ -262,7 +262,7 @@ function LoyaltyAdminInner() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <label className="text-sm text-slate-700">
-                Points / livraison
+                {t("Points / livraison")}
                 <input
                   type="number"
                   min={0}
@@ -273,7 +273,7 @@ function LoyaltyAdminInner() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                Points / course taxi
+                {t("Points / course taxi")}
                 <input
                   type="number"
                   min={0}
@@ -572,7 +572,7 @@ function LoyaltyAdminInner() {
           {canEdit && (
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <label className="text-sm text-slate-700">
-                Ajuster points (+/-)
+                {t("Ajuster points (+/-)")}
                 <input
                   type="number"
                   className={INPUT_CLASS}
@@ -588,7 +588,7 @@ function LoyaltyAdminInner() {
                 </button>
               </label>
               <label className="text-sm text-slate-700">
-                Ajuster crédit (cents, +/-)
+                {t("Ajuster crédit (cents, +/-)")}
                 <input
                   type="number"
                   className={INPUT_CLASS}

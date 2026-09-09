@@ -249,8 +249,7 @@ function CommissionEngineInner() {
           orderSnapshots.length === 0 &&
           !orderCommission && (
             <p className="mt-3 text-sm text-slate-500">
-              Aucun snapshot / commission persistée pour cet ID (ou pas encore
-              chargé).
+              {t("Aucun snapshot / commission persistée pour cet ID (ou pas encore chargé).")}
             </p>
           )}
       </section>

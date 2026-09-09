@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseBrowser';
 import Avatar from '@/components/Avatar';
@@ -37,6 +39,8 @@ function normalizeProfile(p: ProfileJoin): Profile | null {
 }
 
 export default function MessagesList({ orderId }: Props) {
+  const { t } = useAdminT();
+
   const [items, setItems] = useState<
     (Omit<Msg, 'profiles'> & { profiles?: Profile | null; _signedUrl?: string | null })[]
   >([]);
@@ -222,12 +226,12 @@ export default function MessagesList({ orderId }: Props) {
     };
   }, [orderId, signedCache]);
 
-  if (loading) return <p className="text-sm text-gray-500">Chargement…</p>;
+  if (loading) return <p className="text-sm text-gray-500">{t("Chargement…")}</p>;
 
   if (!items.length)
     return (
       <div className="text-sm text-gray-500">
-        Aucun message pour cette commande.
+        {t("Aucun message pour cette commande.")}
         <div ref={bottomRef} />
       </div>
     );

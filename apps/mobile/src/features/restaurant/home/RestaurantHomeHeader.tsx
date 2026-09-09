@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MMD_FONT } from "../../../theme/mmdUi";
@@ -51,6 +52,7 @@ export function RestaurantHomeHeader({
   brandTitle,
   brandSubtitle,
 }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const statusColor = !online ? RH.offline : busy ? RH.busy : RH.online;
 
@@ -70,7 +72,7 @@ export function RestaurantHomeHeader({
             onPress={onPressMenu}
             style={styles.logoBtn}
             accessibilityRole="button"
-            accessibilityLabel="Menu"
+            accessibilityLabel={t("restaurant.home.tabs.menu", "Menu")}
             hitSlop={8}
           >
             <Image source={MMD_LOGO} style={styles.logo} resizeMode="contain" />
@@ -112,7 +114,7 @@ export function RestaurantHomeHeader({
           onPress={onPressNotifications}
           style={styles.notifBtn}
           accessibilityRole="button"
-          accessibilityLabel="Notifications"
+          accessibilityLabel={t("restaurant.home.notifications", "Notifications")}
         >
           <Ionicons name="notifications" size={18} color={RH.brandGold} />
           {notificationCount > 0 ? (

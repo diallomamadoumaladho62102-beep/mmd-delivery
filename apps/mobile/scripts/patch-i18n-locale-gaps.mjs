@@ -1,11 +1,12 @@
 /**
  * One-shot durable locale gap fill for production i18n consistency.
  * Deep-merges missing keys into en/fr/es/ar/zh/ff common.json + extras.json.
- * Does not overwrite existing non-empty strings.
+ * Overwrites a locale string only when it is empty or still identical to English.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { COMMON_GAPS, EXTRAS_GAPS } from "./i18n-locale-gap-catalog.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const localesDir = path.join(root, "src", "i18n", "locales");
@@ -23,6 +24,40 @@ function deepMergeMissing(target, source) {
     }
   }
   return added;
+}
+
+/** Fill missing keys; replace leftover English copies with the locale translation. */
+function deepMergeFill(target, source, english) {
+  let added = 0;
+  for (const [k, v] of Object.entries(source)) {
+    if (v != null && typeof v === "object" && !Array.isArray(v)) {
+      if (target[k] == null || typeof target[k] !== "object" || Array.isArray(target[k])) {
+        target[k] = {};
+      }
+      added += deepMergeFill(
+        target[k],
+        v,
+        english && typeof english === "object" ? english[k] : undefined,
+      );
+    } else if (typeof v === "string") {
+      const cur = target[k];
+      const enVal = typeof english?.[k] === "string" ? english[k] : undefined;
+      if (cur == null || cur === "") {
+        target[k] = v;
+        added += 1;
+      } else if (enVal != null && cur === enVal && v !== enVal) {
+        target[k] = v;
+        added += 1;
+      }
+    }
+  }
+  return added;
+}
+
+function mergeLangTree(base, extra) {
+  const out = JSON.parse(JSON.stringify(base || {}));
+  deepMergeMissing(out, extra || {});
+  return out;
 }
 
 const COMMON = {
@@ -530,14 +565,21 @@ const EXTRAS = {
   },
 };
 
+const COMMON_ALL = {};
+const EXTRAS_ALL = {};
+for (const lang of LANGS) {
+  COMMON_ALL[lang] = mergeLangTree(COMMON[lang], COMMON_GAPS[lang]);
+  EXTRAS_ALL[lang] = mergeLangTree(EXTRAS[lang], EXTRAS_GAPS[lang]);
+}
+
 let total = 0;
 for (const lang of LANGS) {
   const commonPath = path.join(localesDir, lang, "common.json");
   const extrasPath = path.join(localesDir, lang, "extras.json");
   const common = JSON.parse(fs.readFileSync(commonPath, "utf8"));
   const extras = JSON.parse(fs.readFileSync(extrasPath, "utf8"));
-  const a = deepMergeMissing(common, COMMON[lang] || {});
-  const b = deepMergeMissing(extras, EXTRAS[lang] || {});
+  const a = deepMergeFill(common, COMMON_ALL[lang] || {}, COMMON_ALL.en);
+  const b = deepMergeFill(extras, EXTRAS_ALL[lang] || {}, EXTRAS_ALL.en);
   fs.writeFileSync(commonPath, `${JSON.stringify(common, null, 2)}\n`, "utf8");
   fs.writeFileSync(extrasPath, `${JSON.stringify(extras, null, 2)}\n`, "utf8");
   console.log(`${lang}: +${a} common, +${b} extras`);

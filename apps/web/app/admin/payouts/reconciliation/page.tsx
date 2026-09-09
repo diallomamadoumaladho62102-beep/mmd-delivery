@@ -490,7 +490,7 @@ export default function AdminPayoutsReconciliationPage() {
               {t("MMD Delivery · Finance Ops · Reconciliation")}
             </div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-              Reconciliation / Anomaly Center
+              {t("Reconciliation / Anomaly Center")}
             </h1>
             <p className="mt-2 max-w-3xl text-sm text-slate-600">
               Monitor paid orders without payouts, failed payouts, partial

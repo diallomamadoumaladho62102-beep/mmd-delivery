@@ -28,7 +28,9 @@ import { formatDateTime } from "../../i18n/formatters";
 import {
   normalizeStripeConnectStatus,
   stripeConnectStatusLabel,
+  stripeConnectStatusLabelKey,
   stripeConnectUserMessage,
+  stripeConnectUserMessageKey,
 } from "../../lib/stripeConnectStatus";
 import {
   SellerBottomNav,
@@ -80,10 +82,10 @@ export default function SellerWalletScreen() {
   const [note, setNote] = useState<string | null>(null);
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [stripeLabel, setStripeLabel] = useState(
-    stripeConnectStatusLabel("setup_required")
+    t(stripeConnectStatusLabelKey("setup_required"), stripeConnectStatusLabel("setup_required")),
   );
   const [stripeMessage, setStripeMessage] = useState(
-    stripeConnectUserMessage("setup_required")
+    t(stripeConnectUserMessageKey("setup_required"), stripeConnectUserMessage("setup_required")),
   );
 
   const fmt = useCallback(
@@ -161,9 +163,12 @@ export default function SellerWalletScreen() {
       if (!connectRes.error && connect) {
         const code = normalizeStripeConnectStatus(connect.status);
         setStripeLabel(
-          String(connect.status_label ?? "") || stripeConnectStatusLabel(code)
+          String(connect.status_label ?? "") ||
+            t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
         );
-        setStripeMessage(stripeConnectUserMessage(code));
+        setStripeMessage(
+          t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),
+        );
       }
     } catch (e) {
       setError(

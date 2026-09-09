@@ -2,8 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 import { sitePrimaryBtnClass } from "./siteTheme";
+import { useAdminT } from "@/i18n/useAdminT";
 
 export default function NewsletterForm() {
+  const { t } = useAdminT();
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -22,21 +24,21 @@ export default function NewsletterForm() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setStatus("error");
-        setError(String(json.error ?? "Something went wrong"));
+        setError(String(json.error ?? t("Something went wrong")));
         return;
       }
       setStatus("ok");
       e.currentTarget.reset();
     } catch {
       setStatus("error");
-      setError("Network error. Please try again.");
+      setError(t("Network error. Please try again."));
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2" aria-label="Newsletter signup">
+    <form onSubmit={onSubmit} className="space-y-2" aria-label={t("Newsletter signup")}>
       <label htmlFor="site-newsletter-email" className="text-sm font-medium text-slate-300">
-        Newsletter
+        {t("Newsletter")}
       </label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
@@ -54,12 +56,12 @@ export default function NewsletterForm() {
           className={`${sitePrimaryBtnClass} shrink-0`}
           data-site-event="newsletter_subscribe"
         >
-          {status === "sending" ? "…" : "Subscribe"}
+          {status === "sending" ? "…" : t("Subscribe")}
         </button>
       </div>
       {status === "ok" ? (
         <p className="text-xs text-emerald-400" role="status">
-          You are subscribed.
+          {t("You are subscribed.")}
         </p>
       ) : null}
       {status === "error" && error ? (

@@ -1,10 +1,14 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 
 export default function WhoAmIPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   useEffect(() => {
@@ -47,7 +51,7 @@ export default function WhoAmIPage() {
 
   return (
     <main className="flex min-h-[50vh] items-center justify-center p-6 text-sm text-slate-600">
-      Finalisation de la connexion…
+      {t("Finalisation de la connexion…")}
     </main>
   );
 }

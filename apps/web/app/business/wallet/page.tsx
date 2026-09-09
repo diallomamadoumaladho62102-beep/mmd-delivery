@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -41,6 +43,8 @@ type Item = {
 };
 
 export default function BusinessWalletPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -124,7 +128,7 @@ export default function BusinessWalletPage() {
     return (
       <BusinessLoadingState
         title="Loading business wallet..."
-        subtitle="Please wait"
+        subtitle={t("Please wait")}
       />
     );
   }
@@ -167,7 +171,7 @@ export default function BusinessWalletPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[30px] font-bold text-white">Business Wallet</h1>
+        <h1 className="text-[30px] font-bold text-white">{t("Business Wallet")}</h1>
         <p className="mt-1.5 text-sm text-white/70">
           {summary.account?.name ?? "Corporate prepaid balance"} ·{" "}
           {summary.role ?? "—"}
@@ -180,7 +184,7 @@ export default function BusinessWalletPage() {
         <p className="text-[44px] font-extrabold leading-none text-white">
           {money(balance, currency)}
         </p>
-        <p className="text-sm text-[#22C55E]">Available balance</p>
+        <p className="text-sm text-[#22C55E]">{t("Available balance")}</p>
         <p className="text-xs text-white/60">
           Connect:{" "}
           {summary.connect?.stripe_payouts_enabled
@@ -198,7 +202,7 @@ export default function BusinessWalletPage() {
           }}
           className="rounded-[14px] bg-[#22C55E] px-[18px] py-3 text-sm font-extrabold text-white"
         >
-          Top Up
+          {t("Top Up")}
         </button>
         <button
           type="button"
@@ -208,14 +212,14 @@ export default function BusinessWalletPage() {
           }}
           className="rounded-[14px] border border-white/[0.15] bg-white/[0.08] px-[18px] py-3 text-sm font-extrabold text-white"
         >
-          Cash Out
+          {t("Cash Out")}
         </button>
       </div>
 
       {showTopup ? (
         <form onSubmit={onTopup} className={`${bizCard} flex flex-col gap-3 p-5`}>
           <label className="text-sm font-bold text-white">
-            Amount (cents)
+            {t("Amount (cents)")}
             <input
               className="mt-2 w-full rounded-xl border border-white/20 bg-white/[0.06] px-3 py-2 text-white"
               value={topupCents}
@@ -237,7 +241,7 @@ export default function BusinessWalletPage() {
           className={`${bizCard} flex flex-col gap-3 p-5`}
         >
           <label className="text-sm font-bold text-white">
-            Amount (cents)
+            {t("Amount (cents)")}
             <input
               className="mt-2 w-full rounded-xl border border-white/20 bg-white/[0.06] px-3 py-2 text-white"
               value={cashoutCents}
@@ -258,9 +262,9 @@ export default function BusinessWalletPage() {
       ) : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-base font-extrabold text-white">Recent activity</h2>
+        <h2 className="text-base font-extrabold text-white">{t("Recent activity")}</h2>
         {items.length === 0 ? (
-          <p className="text-sm text-white/60">No transactions yet.</p>
+          <p className="text-sm text-white/60">{t("No transactions yet.")}</p>
         ) : (
           items.map((item) => (
             <div

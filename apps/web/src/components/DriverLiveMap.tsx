@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useDriverLocation } from "@/hooks/useDriverLocation";
@@ -21,6 +23,8 @@ type Props = {
 };
 
 export function DriverLiveMap({ driverId }: Props) {
+  const { t } = useAdminT();
+
   const { location, loading, error } = useDriverLocation(driverId);
 
   const token = getPublicMapboxToken() ?? "";
@@ -47,7 +51,7 @@ export function DriverLiveMap({ driverId }: Props) {
   if (!token) {
     return (
       <p className="text-xs text-red-600">
-        Mapbox n&apos;est pas configuré (NEXT_PUBLIC_MAPBOX_TOKEN manquant).
+        {t("Mapbox n&apos;est pas configuré (NEXT_PUBLIC_MAPBOX_TOKEN manquant).")}
       </p>
     );
   }
@@ -56,7 +60,7 @@ export function DriverLiveMap({ driverId }: Props) {
   if (!driverId) {
     return (
       <p className="text-xs text-gray-500">
-        Aucun chauffeur n&apos;est encore assigné à cette commande.
+        {t("Aucun chauffeur n&apos;est encore assigné à cette commande.")}
       </p>
     );
   }
@@ -65,7 +69,7 @@ export function DriverLiveMap({ driverId }: Props) {
     <div className="space-y-1">
       {loading && !location && (
         <p className="text-xs text-gray-500">
-          Récupération de la position du chauffeur…
+          {t("Récupération de la position du chauffeur…")}
         </p>
       )}
 

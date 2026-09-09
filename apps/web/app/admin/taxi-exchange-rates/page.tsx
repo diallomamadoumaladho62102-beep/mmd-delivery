@@ -64,7 +64,7 @@ export default function AdminTaxiExchangeRatesPage() {
           <header>
             <h1 className="text-2xl font-bold">{t("Taxi Exchange Rates")}</h1>
             <p className="text-sm text-slate-600">
-              Taux de référence pour analytics/display — pas de conversion Stripe checkout.
+              {t("Taux de référence pour analytics/display — pas de conversion Stripe checkout.")}
             </p>
           </header>
           {loading ? (

@@ -1,7 +1,11 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { formatDateTime } from "@/i18n/formatters";
+import { orderStatusUiLabel, roleUiLabel } from "@/i18n/orderStatusUi";
 
 type OrderEvent = {
   id: string;
@@ -15,6 +19,8 @@ type OrderEvent = {
 };
 
 export function OrderTimeline({ orderId }: { orderId: string }) {
+  const { t, locale } = useAdminT();
+
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -93,7 +99,7 @@ export function OrderTimeline({ orderId }: { orderId: string }) {
   if (loading) {
     return (
       <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <p className="text-sm text-slate-500">Chargement de l&apos;historique…</p>
+        <p className="text-sm text-slate-500">{t("Chargement de l&apos;historique…")}</p>
       </div>
     );
   }
@@ -102,7 +108,7 @@ export function OrderTimeline({ orderId }: { orderId: string }) {
     return (
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <p className="text-sm text-slate-400">
-          Aucun événement enregistré pour cette commande pour le moment.
+          {t("Aucun événement enregistré pour cette commande pour le moment.")}
         </p>
       </div>
     );
@@ -111,7 +117,7 @@ export function OrderTimeline({ orderId }: { orderId: string }) {
   return (
     <div className="rounded-2xl bg-white p-4 shadow-sm">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Historique de la commande
+        {t("Historique de la commande")}
       </h2>
 
       <ol className="mt-4 space-y-3">
@@ -121,10 +127,10 @@ export function OrderTimeline({ orderId }: { orderId: string }) {
             <div className="flex-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium">
-                  {formatEventTitle(ev.event_type, ev.old_status, ev.new_status)}
+                  {formatEventTitle(ev.event_type, ev.old_status, ev.new_status, t)}
                 </p>
                 <span className="text-xs text-slate-400">
-                  {new Date(ev.created_at).toLocaleString()}
+                  {formatDateTime(ev.created_at, locale)}
                 </span>
               </div>
               {ev.description && (
@@ -132,7 +138,7 @@ export function OrderTimeline({ orderId }: { orderId: string }) {
               )}
               {ev.triggered_role && (
                 <p className="text-xs text-slate-400">
-                  Rôle : {ev.triggered_role}
+                  {t("Rôle :")} {roleUiLabel(ev.triggered_role, t)}
                 </p>
               )}
             </div>
@@ -146,10 +152,11 @@ export function OrderTimeline({ orderId }: { orderId: string }) {
 function formatEventTitle(
   eventType: string,
   oldStatus: string | null,
-  newStatus: string | null
+  newStatus: string | null,
+  t: (source: string) => string,
 ) {
   if (eventType === "status_changed") {
-    return `Statut : ${oldStatus ?? "—"} → ${newStatus ?? "—"}`;
+    return `${t("Statut :")} ${orderStatusUiLabel(oldStatus, t)} → ${orderStatusUiLabel(newStatus, t)}`;
   }
   return eventType;
 }

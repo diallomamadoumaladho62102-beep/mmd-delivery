@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -11,6 +13,8 @@ function isValidEmail(value: string): boolean {
 }
 
 export default function AuthPage() {
+  const { t } = useAdminT();
+
   const [email, setEmail] = useState("");
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [state, setState] = useState<ViewState>("idle");
@@ -104,17 +108,17 @@ export default function AuthPage() {
             </div>
 
             <h1 className="text-2xl font-bold leading-tight md:text-4xl">
-              Bienvenue sur MMD Delivery
+              {t("Bienvenue sur MMD Delivery")}
             </h1>
 
             <p className="mt-4 max-w-md text-sm leading-6 text-gray-300 md:text-base">
-              Une plateforme moderne pour les clients, les chauffeurs et les restaurants.
+              {t("Une plateforme moderne pour les clients, les chauffeurs et les restaurants.")}
             </p>
 
             <div className="mt-8 space-y-3 text-sm text-gray-300 md:text-base">
-              <div>Commande rapide</div>
-              <div>Suivi en temps réel</div>
-              <div>Gestion simple et sécurisée</div>
+              <div>{t("Commande rapide")}</div>
+              <div>{t("Suivi en temps réel")}</div>
+              <div>{t("Gestion simple et sécurisée")}</div>
             </div>
           </section>
 
@@ -122,16 +126,16 @@ export default function AuthPage() {
             <div className="w-full max-w-md">
               <div className="mb-6">
                 <h2 className="text-2xl font-semibold text-gray-900 md:text-3xl">
-                  Connexion
+                  {t("Connexion")}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Entre ton email pour recevoir un lien magique de connexion.
+                  {t("Entre ton email pour recevoir un lien magique de connexion.")}
                 </p>
               </div>
 
               {isCheckingSession ? (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                  Vérification de la session...
+                  {t("Vérification de la session...")}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -140,7 +144,7 @@ export default function AuthPage() {
                       htmlFor="email"
                       className="mb-2 block text-sm font-medium text-gray-700"
                     >
-                      Email
+                      {t("Email")}
                     </label>
 
                     <input
@@ -167,7 +171,7 @@ export default function AuthPage() {
                     disabled={state === "loading"}
                     className="w-full rounded-2xl bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {state === "loading" ? "Envoi en cours..." : "Envoyer le lien magique"}
+                    {state === "loading" ? "Envoi en cours..." : t("Envoyer le lien magique")}
                   </button>
                 </div>
               )}

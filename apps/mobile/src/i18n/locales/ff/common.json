@@ -213,7 +213,8 @@
     "no": "Alaa",
     "edit": "Waylu",
     "delete": "Momtu",
-    "view": "Ƴeew"
+    "view": "Ƴeew",
+    "save": "Danndu"
   },
   "shared": {
     "common": {
@@ -277,6 +278,20 @@
       "showPassword": "Hollu",
       "hidePassword": "Suuɗ",
       "forgotPassword": "A yejjitii finnde?"
+    },
+    "home": {
+      "tabs": {
+        "home": "Jaɓɓorgo",
+        "orders": "Njamndi"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "Rewindo"
+      }
+    },
+    "profile": {
+      "titleShort": "Profil"
     }
   },
   "driver": {
@@ -1501,7 +1516,8 @@
       },
       "close": "Uddu",
       "closeMenu": "Uddu menu",
-      "menu": "Menu"
+      "menu": "Menu",
+      "live": "Live"
     },
     "automation": {
       "title": "Otomatisasi yamirooje",
@@ -1522,7 +1538,11 @@
     "orders": {
       "accept": "Jaɓ",
       "prepared": "Peewnaama",
-      "ready": "Hewtii"
+      "ready": "Hewtii",
+      "status": {
+        "order": "Njamndi",
+        "prepared": "Hebtinaama"
+      }
     },
     "orderDetails": {
       "title": "Yamiroore",
@@ -1600,5 +1620,12 @@
       "directionsPh": "Caggal Station Total, laawol ɗiɗaɓol ñaamo, suudu mboɗeeri e damal buloori...",
       "directionsMin": "Haani ko famɗi 8 karakteer."
     }
+  },
+  "boot": {
+    "loadingMmd": "Nana loowa MMD…",
+    "nativeUnavailable": "Module native / navigation heɓotaako",
+    "errorTitle": "MMD Delivery — juumre waɗii",
+    "errorBody": "A waawi fuɗɗitaade. So caɗeele ɗee njokki, lollin ndee mesasu e ballal.",
+    "screenUnavailable": "Ndee yaynirde horiima yiyneede."
   }
 }

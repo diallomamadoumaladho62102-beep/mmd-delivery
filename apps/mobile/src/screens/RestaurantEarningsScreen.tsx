@@ -27,7 +27,9 @@ import { logTechnicalError } from "../lib/userFacingError";
 import {
   deriveRestaurantConnectStatus,
   stripeConnectStatusLabel,
+  stripeConnectStatusLabelKey,
   stripeConnectUserMessage,
+  stripeConnectUserMessageKey,
 } from "../lib/stripeConnectStatus";
 import { RestaurantStripeConnectCard } from "../features/restaurant/components/RestaurantStripeConnectCard";
 import {
@@ -659,11 +661,11 @@ export function RestaurantEarningsScreen() {
     const code = deriveRestaurantConnectStatus(payoutProfile);
     return {
       code,
-      label: stripeConnectStatusLabel(code),
-      message: stripeConnectUserMessage(code),
+      label: t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
+      message: t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),
       ok: code === "ready_for_payouts",
     };
-  }, [payoutProfile]);
+  }, [payoutProfile, t]);
 
   const debugCopyJwt = useCallback(async () => {
     try {

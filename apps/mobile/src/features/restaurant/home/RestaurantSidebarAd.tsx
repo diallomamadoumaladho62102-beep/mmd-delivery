@@ -11,6 +11,7 @@ import {
 import type { ClientAdvertisement } from "../../../lib/clientAdvertisementsApi";
 import { trackAdvertisementEvent } from "../../../lib/clientAdvertisementsApi";
 import { RH, RH_SHADOW_SOFT } from "./restaurantHomeTheme";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   ad: ClientAdvertisement | null;
@@ -31,6 +32,7 @@ export function RestaurantSidebarAd({
   language,
   onAction,
 }: Props) {
+  const { t } = useTranslation();
   const impressed = useRef<string | null>(null);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export function RestaurantSidebarAd({
 
   if (loading) {
     return (
-      <View style={styles.skeleton} accessibilityLabel="Loading advertisement">
+      <View style={styles.skeleton} accessibilityLabel={t("restaurant.ads.loading")}>
         <ActivityIndicator color={RH.green} />
       </View>
     );

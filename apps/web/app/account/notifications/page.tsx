@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -33,6 +35,8 @@ async function api(path: string, init?: RequestInit) {
 }
 
 export default function AccountNotificationsPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +76,7 @@ export default function AccountNotificationsPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-10 text-slate-700">
-        Loading notifications…
+        {t("Loading notifications…")}
       </main>
     );
   }
@@ -80,7 +84,7 @@ export default function AccountNotificationsPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-        Notifications
+        {t("Notifications")}
       </h1>
       <p className="mt-2 text-slate-500">
         {unread > 0 ? `${unread} unread` : "You are up to date"}
@@ -93,7 +97,7 @@ export default function AccountNotificationsPage() {
       ) : null}
 
       {items.length === 0 ? (
-        <p className="mt-8 text-slate-500">No notifications yet.</p>
+        <p className="mt-8 text-slate-500">{t("No notifications yet.")}</p>
       ) : (
         <ul className="mt-8 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
           {items.map((item) => {
@@ -123,14 +127,14 @@ export default function AccountNotificationsPage() {
                       variant="secondary"
                       onClick={() => void act(item.id, "read")}
                     >
-                      Mark read
+                      {t("Mark read")}
                     </Button>
                   ) : null}
                   <Button
                     variant="ghost"
                     onClick={() => void act(item.id, "archive")}
                   >
-                    Archive
+                    {t("Archive")}
                   </Button>
                 </div>
               </li>

@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
   Pressable,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   DRIVER_MAP_REPORT_CATEGORIES,
-  DRIVER_MAP_REPORT_LABELS,
   type DriverMapReportCategory,
 } from "../../lib/driverNavigation/reports/config";
 
@@ -27,6 +27,7 @@ export function DriverReportSheet({
   onClose,
   onSelectCategory,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -67,17 +68,17 @@ export function DriverReportSheet({
           />
 
           <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900" }}>
-            Signaler un problème
+            {t("driver.report.title")}
           </Text>
           <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 6, lineHeight: 18 }}>
-            Le signalement sera visible aux autres chauffeurs pendant 25 minutes à proximité.
+            {t("driver.report.nearbyHint")}
           </Text>
 
           {submitting && (
             <View style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}>
               <ActivityIndicator size="small" color="#93C5FD" />
               <Text style={{ color: "#CBD5E1", marginLeft: 8, fontSize: 12, fontWeight: "700" }}>
-                Envoi en cours…
+                {t("driver.report.sending")}
               </Text>
             </View>
           )}
@@ -104,7 +105,7 @@ export function DriverReportSheet({
                 }}
               >
                 <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "800" }}>
-                  {DRIVER_MAP_REPORT_LABELS[category]}
+                  {t(`driver.report.categories.${category}`)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -123,7 +124,7 @@ export function DriverReportSheet({
             }}
           >
             <Text style={{ color: "#E2E8F0", fontSize: 14, fontWeight: "800" }}>
-              Annuler
+              {t("common.cancel")}
             </Text>
           </TouchableOpacity>
         </Pressable>

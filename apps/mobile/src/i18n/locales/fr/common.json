@@ -297,6 +297,20 @@
       "showPassword": "Voir",
       "hidePassword": "Cacher",
       "forgotPassword": "Mot de passe oublié ?"
+    },
+    "home": {
+      "tabs": {
+        "home": "Accueil",
+        "orders": "Commandes"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "Suivi"
+      }
+    },
+    "profile": {
+      "titleShort": "Profil"
     }
   },
   "driver": {
@@ -1441,7 +1455,8 @@
       },
       "close": "Fermer",
       "closeMenu": "Fermer le menu",
-      "menu": "Menu"
+      "menu": "Menu",
+      "live": "En direct"
     },
     "automation": {
       "title": "Automatisation des commandes",
@@ -1462,7 +1477,11 @@
     "orders": {
       "accept": "Accepter",
       "prepared": "Préparé",
-      "ready": "Prêt"
+      "ready": "Prêt",
+      "status": {
+        "order": "Commande",
+        "prepared": "Préparée"
+      }
     },
     "orderDetails": {
       "title": "Commande",
@@ -1540,5 +1559,12 @@
       "directionsPh": "Après la station Total, 2e rue à droite, maison jaune avec portail bleu...",
       "directionsMin": "Minimum 8 caractères requis."
     }
+  },
+  "boot": {
+    "loadingMmd": "Chargement MMD…",
+    "nativeUnavailable": "Module natif / navigation indisponible",
+    "errorTitle": "MMD Delivery — une erreur est survenue",
+    "errorBody": "Vous pouvez réessayer. Si le problème persiste, partagez ce message au support.",
+    "screenUnavailable": "Cet écran n’a pas pu s’afficher."
   }
 }

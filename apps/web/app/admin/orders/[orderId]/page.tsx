@@ -9,6 +9,15 @@ import { supabase } from "@/lib/supabaseBrowser";
 import { OrderTimeline } from "@/components/orders/OrderTimeline";
 import { canAccessAdminDashboard } from "@/lib/adminAccess";
 import AdminCancelRefundPanel from "@/components/AdminCancelRefundPanel";
+import {
+  formatDateTime,
+  formatDistance,
+  formatDurationMinutes,
+  formatMoney as formatMoneyAmount,
+} from "@/i18n/formatters";
+import { orderKindUiLabel, orderStatusUiLabel } from "@/i18n/orderStatusUi";
+import { paymentStatusBadge } from "@/lib/adminFoodOrderDisplay";
+import type { WebLocale } from "@/i18n/locales";
 
 type OrderStatus =
   | "pending"
@@ -57,17 +66,12 @@ type OrderRow = {
   items_json: OrderItem[] | null;
 };
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null, locale: WebLocale): string {
   if (!iso) return "—";
-
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
-
-    return new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(d);
+    return formatDateTime(d, locale);
   } catch {
     return "—";
   }
@@ -75,45 +79,22 @@ function formatDate(iso: string | null): string {
 
 function formatMoney(
   value: number | null | undefined,
-  currency = "USD"
+  currency = "USD",
+  locale?: WebLocale,
 ): string {
   if (value == null) return "—";
-
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(value);
+  return formatMoneyAmount(value, currency, locale);
 }
 
 /** Prefer persisted charge cents when present (PE / Stripe SoT). */
 function formatOrderTotal(
-  order: Pick<OrderRow, "total" | "total_cents" | "currency">
+  order: Pick<OrderRow, "total" | "total_cents" | "currency">,
+  locale: WebLocale,
 ): string {
   if (order.total_cents != null && Number.isFinite(order.total_cents)) {
-    return formatMoney(order.total_cents / 100, order.currency || "USD");
+    return formatMoney(order.total_cents / 100, order.currency || "USD", locale);
   }
-  return formatMoney(order.total, order.currency || "USD");
-}
-
-function statusLabel(status: OrderStatus, t: (source: string) => string): string {
-  switch (status) {
-    case "pending":
-      return t("En attente");
-    case "accepted":
-      return "Acceptée par le restaurant";
-    case "prepared":
-      return "En préparation";
-    case "ready":
-      return "Prête (en attente du driver)";
-    case "dispatched":
-      return "En livraison";
-    case "delivered":
-      return "Livrée";
-    case "canceled":
-      return "Annulée";
-    default:
-      return status;
-  }
+  return formatMoney(order.total, order.currency || "USD", locale);
 }
 
 function statusBadgeClass(status: OrderStatus): string {
@@ -173,7 +154,7 @@ function InfoRow({
 }
 
 export default function AdminOrderPage() {
-  const { t } = useAdminT();
+  const { t, locale } = useAdminT();
 
   const params = useParams<{ orderId: string }>();
   const router = useRouter();
@@ -230,7 +211,7 @@ export default function AdminOrderPage() {
         if (!profile || !canAccessAdminDashboard(profile.role)) {
           setIsAdmin(false);
           setAuthChecked(true);
-          setErr("Access restricted to administrators.");
+          setErr(t("Access restricted to administrators."));
           return;
         }
 
@@ -273,24 +254,24 @@ export default function AdminOrderPage() {
 
         if (error) {
           throw new Error(
-            error.message || "Erreur lors du chargement de la commande."
+            error.message || t("Erreur lors du chargement de la commande.")
           );
         }
 
         if (!data) {
-          throw new Error("Commande introuvable.");
+          throw new Error(t("Commande introuvable."));
         }
 
         setOrder(data as OrderRow);
       } catch (error) {
-        setErr(error instanceof Error ? error.message : "Unknown error");
+        setErr(error instanceof Error ? error.message : t("Unknown error"));
         setOrder(null);
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [orderId, router]
+    [orderId, router, t]
   );
 
   useEffect(() => {
@@ -303,13 +284,13 @@ export default function AdminOrderPage() {
 
   const distanceLabel = useMemo(() => {
     if (order?.distance_miles == null) return "—";
-    return `${order.distance_miles.toFixed(2)} mi`;
-  }, [order?.distance_miles]);
+    return formatDistance(order.distance_miles, locale, { maximumFractionDigits: 2 });
+  }, [locale, order?.distance_miles]);
 
   const etaLabel = useMemo(() => {
     if (order?.eta_minutes == null) return "—";
-    return `${Math.round(order.eta_minutes)} min`;
-  }, [order?.eta_minutes]);
+    return formatDurationMinutes(order.eta_minutes, locale);
+  }, [locale, order?.eta_minutes]);
 
   const restaurantCommission = order?.restaurant_commission_amount ?? 0;
   const deliveryPlatformFee = order?.platform_delivery_fee ?? 0;
@@ -341,20 +322,20 @@ export default function AdminOrderPage() {
   const getMissingTargetMessage = useCallback(
     (targetRole: AdminCommunicationTarget) => {
       if (targetRole === "client" && !effectiveClientId) {
-        return "Client introuvable pour cette commande.";
+        return t("Client introuvable pour cette commande.");
       }
 
       if (targetRole === "driver" && !order?.driver_id) {
-        return "Aucun chauffeur n’est encore assigné à cette commande.";
+        return t("Aucun chauffeur n’est encore assigné à cette commande.");
       }
 
       if (targetRole === "restaurant" && !order?.restaurant_id) {
-        return "Restaurant introuvable pour cette commande.";
+        return t("Restaurant introuvable pour cette commande.");
       }
 
       return null;
     },
-    [effectiveClientId, order?.driver_id, order?.restaurant_id]
+    [effectiveClientId, order?.driver_id, order?.restaurant_id, t]
   );
 
   const startAdminCall = useCallback(
@@ -385,7 +366,7 @@ export default function AdminOrderPage() {
         }
 
         if (!session?.access_token) {
-          throw new Error("Session admin expirée. Reconnecte-toi puis réessaie.");
+          throw new Error(t("Session admin expirée. Reconnecte-toi puis réessaie."));
         }
 
         const response = await fetch("/api/twilio/calls/create", {
@@ -404,23 +385,23 @@ export default function AdminOrderPage() {
         const json = await response.json().catch(() => null);
 
         if (!response.ok) {
-          throw new Error(json?.error || "Unable to create call session");
+          throw new Error(json?.error || t("Unable to create call session"));
         }
 
         const proxyNumber = String(json?.proxyNumber || "").trim();
 
         if (!proxyNumber) {
-          throw new Error("Numéro proxy manquant.");
+          throw new Error(t("Numéro proxy manquant."));
         }
 
         window.location.href = `tel:${proxyNumber}`;
       } catch (error) {
-        alert(error instanceof Error ? error.message : "Erreur appel admin.");
+        alert(error instanceof Error ? error.message : t("Erreur appel admin."));
       } finally {
         setCallingTarget(null);
       }
     },
-    [callingTarget, getMissingTargetMessage, isFinalOrder, order?.id]
+    [callingTarget, getMissingTargetMessage, isFinalOrder, order?.id, t]
   );
 
   const openAdminChat = useCallback(
@@ -464,12 +445,12 @@ export default function AdminOrderPage() {
             onClick={() => router.push("/admin/orders")}
             className="text-xs text-blue-600 underline"
           >
-            ← Retour aux commandes (admin)
+            {t("← Retour aux commandes (admin)")}
           </button>
 
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
             <p className="text-sm text-red-700">
-              {err ?? "Commande introuvable."}
+              {err ?? t("Commande introuvable.")}
             </p>
           </div>
         </div>
@@ -486,7 +467,7 @@ export default function AdminOrderPage() {
             onClick={() => router.push("/admin/orders")}
             className="text-xs text-blue-600 underline"
           >
-            ← Retour aux commandes (admin)
+            {t("← Retour aux commandes (admin)")}
           </button>
 
           <button
@@ -505,7 +486,8 @@ export default function AdminOrderPage() {
           </div>
 
           <h1 className="text-2xl font-bold text-slate-900">
-            Commande #{shortId} (vue admin)
+            {t("Commande #")}
+            {shortId} {t("(vue admin)")}
           </h1>
 
           <p className="text-sm text-slate-600">
@@ -518,12 +500,12 @@ export default function AdminOrderPage() {
                 order.status
               )}`}
             >
-              Statut : {statusLabel(order.status, t)}
+              {t("Statut :")} {orderStatusUiLabel(order.status, t)}
             </span>
           </div>
 
           <p className="text-xs text-slate-500">
-            Créée le : {formatDate(order.created_at)}
+            {t("Créée le :")} {formatDate(order.created_at, locale)}
           </p>
         </header>
 
@@ -534,7 +516,7 @@ export default function AdminOrderPage() {
         />
 
         <SectionCard title={t("Informations générales")}>
-          <InfoRow label={t("Type")} value={order.kind || "—"} />
+          <InfoRow label={t("Type")} value={orderKindUiLabel(order.kind, t)} />
           <InfoRow label={t("Client (client_id)")} value={effectiveClientId || "—"} />
           <InfoRow label={t("Ancien user_id")} value={order.user_id || "—"} />
           <InfoRow label={t("Chauffeur (driver_id)")} value={order.driver_id || "—"} />
@@ -569,7 +551,7 @@ export default function AdminOrderPage() {
                   <div className="mb-3">
                     <p className="text-sm font-semibold text-slate-900">{label}</p>
                     <p className="mt-1 break-all text-[11px] text-slate-500">
-                      {targetId || "Non disponible"}
+                      {targetId || t("Non disponible")}
                     </p>
                   </div>
 
@@ -580,7 +562,7 @@ export default function AdminOrderPage() {
                       onClick={() => void startAdminCall(targetRole)}
                       className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {isCalling ? "Appel..." : "Call"}
+                      {isCalling ? t("Appel...") : t("Call")}
                     </button>
 
                     <button
@@ -620,12 +602,12 @@ export default function AdminOrderPage() {
                       </p>
                     ) : null}
                     <p className="text-[11px] text-slate-500">
-                      Qté {item.quantity} —{" "}
-                      {formatMoney(item.unit_price, currency)} / unité
+                      {t("Qté")} {item.quantity} —{" "}
+                      {formatMoney(item.unit_price, currency, locale)} {t("/ unité")}
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-slate-900">
-                    {formatMoney(item.line_total, currency)}
+                    {formatMoney(item.line_total, currency, locale)}
                   </p>
                 </div>
               ))}
@@ -639,15 +621,18 @@ export default function AdminOrderPage() {
           <div className="mt-3 space-y-1 border-t border-slate-200 pt-3">
             <InfoRow
               label={t("Montant (plats)")}
-              value={formatMoney(order.subtotal, currency)}
+              value={formatMoney(order.subtotal, currency, locale)}
             />
-            <InfoRow label={t("Taxes")} value={formatMoney(order.tax, currency)} />
+            <InfoRow label={t("Taxes")} value={formatMoney(order.tax, currency, locale)} />
             <InfoRow
               label={t("Total client (persisté)")}
-              value={formatOrderTotal(order)}
+              value={formatOrderTotal(order, locale)}
             />
             {order.payment_status ? (
-              <InfoRow label={t("Statut paiement")} value={order.payment_status} />
+              <InfoRow
+                label={t("Statut paiement")}
+                value={t(paymentStatusBadge(order.payment_status).label)}
+              />
             ) : null}
             {order.total_cents != null ? (
               <InfoRow
@@ -663,7 +648,7 @@ export default function AdminOrderPage() {
           <InfoRow label={t("Temps estimé")} value={etaLabel} />
           <InfoRow
             label={t("Frais de livraison facturés")}
-            value={formatMoney(order.delivery_fee, currency)}
+            value={formatMoney(order.delivery_fee, currency, locale)}
           />
         </SectionCard>
 
@@ -681,19 +666,19 @@ export default function AdminOrderPage() {
           />
           <InfoRow
             label={t("Commission MMD")}
-            value={formatMoney(order.restaurant_commission_amount, currency)}
+            value={formatMoney(order.restaurant_commission_amount, currency, locale)}
           />
           <InfoRow
             label={t("Montant net restaurant")}
-            value={formatMoney(order.restaurant_net_amount, currency)}
+            value={formatMoney(order.restaurant_net_amount, currency, locale)}
           />
 
           <p className="mt-3 text-[11px] text-slate-500">
-            Valeurs enregistrées sur la commande
+            {t("Valeurs enregistrées sur la commande")}
             {restaurantRatePct != null
-              ? ` (taux persisté ${restaurantRatePct.toFixed(2)} % MMD)`
+              ? ` (${t("taux persisté")} ${restaurantRatePct.toFixed(2)} % MMD)`
               : ""}
-            . Aucun recalcul avec les taux admin actuels.
+            . {t("Aucun recalcul avec les taux admin actuels.")}
           </p>
         </SectionCard>
 
@@ -703,23 +688,23 @@ export default function AdminOrderPage() {
         >
           <InfoRow
             label={t("Frais de livraison (client)")}
-            value={formatMoney(order.delivery_fee, currency)}
+            value={formatMoney(order.delivery_fee, currency, locale)}
           />
           <InfoRow
             label={t("Part chauffeur")}
-            value={formatMoney(order.driver_delivery_payout, currency)}
+            value={formatMoney(order.driver_delivery_payout, currency, locale)}
           />
           <InfoRow
             label={t("Part MMD (plateforme)")}
-            value={formatMoney(order.platform_delivery_fee, currency)}
+            value={formatMoney(order.platform_delivery_fee, currency, locale)}
           />
 
           <p className="mt-3 text-[11px] text-slate-500">
-            Parts persistées sur cette commande
+            {t("Parts persistées sur cette commande")}
             {driverSharePct != null && platformSharePct != null
-              ? ` (~${driverSharePct.toFixed(1)} % chauffeur / ~${platformSharePct.toFixed(1)} % plateforme)`
+              ? ` (~${driverSharePct.toFixed(1)} % ${t("chauffeur")} / ~${platformSharePct.toFixed(1)} % ${t("plateforme")})`
               : ""}
-            . Ce ne sont pas les taux configurés « actuels » du panneau Pricing.
+            . {t("Ce ne sont pas les taux configurés « actuels » du panneau Pricing.")}
           </p>
         </SectionCard>
 
@@ -729,25 +714,23 @@ export default function AdminOrderPage() {
         >
           <InfoRow
             label={t("Commission MMD sur plats")}
-            value={formatMoney(restaurantCommission, currency)}
+            value={formatMoney(restaurantCommission, currency, locale)}
           />
           <InfoRow
             label={t("Commission MMD sur livraison")}
-            value={formatMoney(deliveryPlatformFee, currency)}
+            value={formatMoney(deliveryPlatformFee, currency, locale)}
           />
           <InfoRow
             label={t("Total part plateforme MMD")}
-            value={formatMoney(mmdPlatformTake, currency)}
+            value={formatMoney(mmdPlatformTake, currency, locale)}
           />
           <InfoRow
             label={t("Rémunération chauffeur (persistée)")}
-            value={formatMoney(driverPayout, currency)}
+            value={formatMoney(driverPayout, currency, locale)}
           />
 
           <p className="mt-3 text-[11px] text-slate-500">
-            Total part plateforme = commission plats + part livraison plateforme
-            (montants persistés). Le payout chauffeur n’est pas retranché de cette
-            part — il est déjà séparé. Frais carte / marketing hors ce résumé.
+            {t("Total part plateforme = commission plats + part livraison plateforme (montants persistés). Le payout chauffeur n’est pas retranché de cette part — il est déjà séparé. Frais carte / marketing hors ce résumé.")}
           </p>
         </SectionCard>
 

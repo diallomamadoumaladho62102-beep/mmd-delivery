@@ -36,12 +36,12 @@ export function isFailedPayoutStatus(status: unknown): boolean {
 
 export function payoutStatusLabel(status: unknown): string {
   const key = payoutStatusKey(status);
-  if (isPaidPayoutStatus(key)) return "Paid";
+  if (isPaidPayoutStatus(key)) return "driver.wallet.payouts.status.paid";
   if (isFailedPayoutStatus(key) && (key === "canceled" || key === "cancelled")) {
-    return "Canceled";
+    return "driver.wallet.payouts.status.canceled";
   }
-  if (key === "reversed") return "Reversed";
-  if (isFailedPayoutStatus(key)) return "Failed";
-  if (isProcessingPayoutStatus(key)) return "Processing";
-  return formatWalletField(status, "Unknown");
+  if (key === "reversed") return "driver.wallet.payouts.status.reversed";
+  if (isFailedPayoutStatus(key)) return "driver.wallet.payouts.status.failed";
+  if (isProcessingPayoutStatus(key)) return "driver.wallet.payouts.status.processing";
+  return "driver.wallet.payouts.status.unknown";
 }

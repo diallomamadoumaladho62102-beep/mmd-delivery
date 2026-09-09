@@ -1,4 +1,6 @@
 'use client';
+
+import { useAdminT } from "@/i18n/useAdminT";
 import * as React from 'react';
 import { supabase } from '@/lib/supabaseBrowser';
 import { sendChatMessageViaApi } from '@/lib/chatApiClient';
@@ -7,6 +9,8 @@ type PageProps = { params: { orderId: string } };
 type Msg = { id: string; order_id: string; user_id: string | null; text: string; created_at: string };
 
 export default function OrderChatPage({ params }: PageProps) {
+  const { t } = useAdminT();
+
   const { orderId } = params;
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [text, setText] = React.useState('');
@@ -53,13 +57,13 @@ export default function OrderChatPage({ params }: PageProps) {
 
   return (
     <main className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold">Chat de la commande</h1>
+      <h1 className="text-2xl font-bold">{t("Chat de la commande")}</h1>
       <p className="mt-2 text-sm text-gray-600">Commande ID: {orderId}</p>
 
       <div className="mt-6 border rounded-xl p-4 h-[60vh] flex flex-col">
         <div className="flex-1 overflow-y-auto space-y-2">
           {messages.length === 0 ? (
-            <p className="text-gray-500">Aucun message pour l’instant…</p>
+            <p className="text-gray-500">{t("Aucun message pour l’instant…")}</p>
           ) : (
             messages.map(m => (
               <div key={m.id} className="px-3 py-2 rounded-lg border">
@@ -75,11 +79,11 @@ export default function OrderChatPage({ params }: PageProps) {
         <div className="mt-4 flex gap-2">
           <input
             className="flex-1 border rounded-lg px-3 py-2"
-            placeholder="Écrire un message…"
+            placeholder={t("Écrire un message…")}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <button onClick={send} className="px-4 py-2 rounded-lg border">Envoyer</button>
+          <button onClick={send} className="px-4 py-2 rounded-lg border">{t("Envoyer")}</button>
         </div>
       </div>
     </main>

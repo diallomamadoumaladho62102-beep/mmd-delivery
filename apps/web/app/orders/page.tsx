@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -29,28 +31,30 @@ const ACTIVE_CLIENT_STATUSES: OrderStatus[] = [
   "dispatched",
 ];
 
-function statusLabel(s: OrderStatus): string {
+function statusLabel(s: OrderStatus, t: (source: string) => string): string {
   switch (s) {
     case "pending":
-      return "En attente";
+      return t("En attente");
     case "accepted":
-      return "Acceptée par le restaurant";
+      return t("Acceptée par le restaurant");
     case "prepared":
-      return "En préparation";
+      return t("En préparation");
     case "ready":
-      return "Prête pour pickup";
+      return t("Prête pour pickup");
     case "dispatched":
-      return "En livraison";
+      return t("En livraison");
     case "delivered":
-      return "Livrée";
+      return t("Livrée");
     case "canceled":
-      return "Annulée";
+      return t("Annulée");
     default:
       return s;
   }
 }
 
 export default function OrdersPage() {
+  const { t } = useAdminT();
+
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -112,19 +116,19 @@ export default function OrdersPage() {
   return (
     <main className="p-6 space-y-4 max-w-3xl mx-auto">
       <div className="flex items-baseline gap-3">
-        <h1 className="text-2xl font-bold">Mes commandes</h1>
+        <h1 className="text-2xl font-bold">{t("Mes commandes")}</h1>
         <button
           type="button"
           onClick={load}
           className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
         >
-          Rafraîchir
+          {t("Rafraîchir")}
         </button>
       </div>
 
       {loading && (
         <p className="text-sm text-gray-600">
-          Chargement de tes commandes en cours…
+          {t("Chargement de tes commandes en cours…")}
         </p>
       )}
 
@@ -136,7 +140,7 @@ export default function OrdersPage() {
 
       {!loading && !err && orders.length === 0 && (
         <p className="text-sm text-gray-600">
-          Tu n&apos;as aucune commande en cours pour le moment.
+          {t("Tu n&apos;as aucune commande en cours pour le moment.")}
         </p>
       )}
 
@@ -161,7 +165,7 @@ export default function OrdersPage() {
                 <p className="text-xs mt-1 text-gray-700">
                   Statut :{" "}
                   <span className="font-semibold">
-                    {statusLabel(o.status)}
+                    {statusLabel(o.status, t)}
                   </span>
                 </p>
                 {o.total !== null && (

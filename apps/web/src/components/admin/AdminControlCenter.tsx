@@ -203,7 +203,7 @@ export default function AdminControlCenter() {
                     {t("Commissions récentes")}
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Vue finance / super admin des commissions calculées.
+                    {t("Vue finance / super admin des commissions calculées.")}
                   </p>
                 </div>
                 <a

@@ -361,7 +361,7 @@ function FinanceInner() {
 
       {module === "disputes" && (
         <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Litiges / chargebacks</h2>
+          <h2 className="font-semibold">{t("Litiges / chargebacks")}</h2>
           <ul className="mt-3 divide-y text-sm">
             {disputes.map((d) => (
               <li key={String(d.id)} className="py-2">

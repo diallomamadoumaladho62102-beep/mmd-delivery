@@ -1,8 +1,12 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 export default function RestaurantCommission({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [row, setRow] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,9 +33,9 @@ export default function RestaurantCommission({ orderId }: { orderId: string }) {
 
   return (
     <div className="rounded-2xl border p-4 shadow-sm bg-white">
-      <div className="font-semibold mb-2">Votre commission (restaurant)</div>
+      <div className="font-semibold mb-2">{t("Votre commission (restaurant)")}</div>
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <div className="text-gray-600">Commission (15%)</div>
+        <div className="text-gray-600">{t("Commission (15%)")}</div>
         <div className="text-right">{fmt(row.restaurant_amt)}</div>
       </div>
     </div>

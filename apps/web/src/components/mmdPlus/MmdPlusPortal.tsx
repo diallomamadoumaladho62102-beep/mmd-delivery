@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -69,6 +71,8 @@ function formatMoney(cents: number, currency: string) {
 }
 
 export default function MmdPlusPortal() {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [current, setCurrent] = useState<Current | null>(null);
@@ -125,7 +129,7 @@ export default function MmdPlusPortal() {
   if (loading) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-10">
-        <p className="text-sm text-slate-500">Chargement de MMD+…</p>
+        <p className="text-sm text-slate-500">{t("Chargement de MMD+…")}</p>
       </main>
     );
   }
@@ -140,7 +144,7 @@ export default function MmdPlusPortal() {
           onClick={() => void load()}
           className="mt-4 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white"
         >
-          Réessayer
+          {t("Réessayer")}
         </button>
       </main>
     );
@@ -150,7 +154,7 @@ export default function MmdPlusPortal() {
     <main className="mx-auto max-w-4xl px-4 py-10">
       <div className="mb-8">
         <p className="text-sm font-medium uppercase tracking-wide text-amber-600">MMD+</p>
-        <h1 className="mt-1 text-3xl font-semibold text-slate-900">Abonnement Premium client</h1>
+        <h1 className="mt-1 text-3xl font-semibold text-slate-900">{t("Abonnement Premium client")}</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
           Un seul abonnement pour Food, Delivery, Taxi et Marketplace — indépendant de vos points
           fidélité et du Crédit MMD.
@@ -160,7 +164,7 @@ export default function MmdPlusPortal() {
       <section className="mb-8 rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white">
         {current ? (
           <>
-            <p className="text-sm text-slate-300">Abonnement actuel</p>
+            <p className="text-sm text-slate-300">{t("Abonnement actuel")}</p>
             <h2 className="mt-1 text-2xl font-semibold">
               {current.plan?.name ?? "MMD+"}{" "}
               <span className="text-base font-normal text-slate-300">({current.status})</span>
@@ -184,7 +188,7 @@ export default function MmdPlusPortal() {
                 onClick={() => void runAction("portal")}
                 className="rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-900"
               >
-                Gérer le paiement
+                {t("Gérer le paiement")}
               </button>
               {current.cancel_at_period_end ? (
                 <button
@@ -192,7 +196,7 @@ export default function MmdPlusPortal() {
                   onClick={() => void runAction("resume")}
                   className="rounded-md border border-white/40 px-3 py-2 text-sm"
                 >
-                  Reprendre
+                  {t("Reprendre")}
                 </button>
               ) : (
                 <button
@@ -200,25 +204,25 @@ export default function MmdPlusPortal() {
                   onClick={() => void runAction("cancel")}
                   className="rounded-md border border-white/40 px-3 py-2 text-sm"
                 >
-                  Annuler
+                  {t("Annuler")}
                 </button>
               )}
             </div>
           </>
         ) : (
           <>
-            <h2 className="text-2xl font-semibold">Aucun abonnement actif</h2>
+            <h2 className="text-2xl font-semibold">{t("Aucun abonnement actif")}</h2>
             <p className="mt-2 text-sm text-slate-300">
-              Comparez les plans ci-dessous et souscrivez pour débloquer vos avantages.
+              {t("Comparez les plans ci-dessous et souscrivez pour débloquer vos avantages.")}
             </p>
           </>
         )}
       </section>
 
       <section className="mb-10">
-        <h2 className="text-lg font-semibold text-slate-900">Comparer les plans</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{t("Comparer les plans")}</h2>
         {plans.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Aucun plan disponible pour le moment.</p>
+          <p className="mt-3 text-sm text-slate-500">{t("Aucun plan disponible pour le moment.")}</p>
         ) : (
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {plans.map((plan) => {
@@ -259,9 +263,9 @@ export default function MmdPlusPortal() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">Historique de facturation</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{t("Historique de facturation")}</h2>
         {invoices.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Aucune facture pour le moment.</p>
+          <p className="mt-3 text-sm text-slate-500">{t("Aucune facture pour le moment.")}</p>
         ) : (
           <ul className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
             {invoices.map((inv) => (
@@ -285,7 +289,7 @@ export default function MmdPlusPortal() {
 
       <p className="mt-8 text-sm text-slate-500">
         <Link href="/client" className="underline">
-          Retour à l&apos;espace client
+          {t("Retour à l&apos;espace client")}
         </Link>
       </p>
     </main>

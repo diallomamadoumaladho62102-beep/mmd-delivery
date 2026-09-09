@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
@@ -90,6 +92,8 @@ async function uploadAvatarToSupabase(params: {
 }
 
 export default function SignupClientPage() {
+  const { t } = useAdminT();
+
   const [mode, setMode] = useState<Mode>("login");
 
   const [email, setEmail] = useState("");
@@ -450,11 +454,11 @@ export default function SignupClientPage() {
         <div className="hidden lg:block">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-extrabold text-slate-300">
             <span>🛍️</span>
-            <span>MMD Client Access</span>
+            <span>{t("MMD Client Access")}</span>
           </div>
 
           <h1 className="mt-6 text-5xl font-black leading-tight tracking-tight xl:text-7xl">
-            Order faster with MMD Delivery.
+            {t("Order faster with MMD Delivery.")}
           </h1>
 
           <p className="mt-5 max-w-xl text-lg font-semibold leading-8 text-slate-400">
@@ -477,7 +481,7 @@ export default function SignupClientPage() {
         <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/40 backdrop-blur md:p-8">
           <div className="mb-7 text-center">
             <p className="mb-3 text-xs font-black uppercase tracking-[0.25em] text-red-300">
-              Client account
+              {t("Client account")}
             </p>
             <h2 className="text-3xl font-black tracking-tight md:text-5xl">{title}</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-400 md:text-base">
@@ -493,7 +497,7 @@ export default function SignupClientPage() {
                 mode === "login" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
-              Se connecter
+              {t("Se connecter")}
             </button>
             <button
               type="button"
@@ -502,14 +506,14 @@ export default function SignupClientPage() {
                 mode === "signup" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
-              Créer un compte
+              {t("Créer un compte")}
             </button>
           </div>
 
           {mode === "signup" && (
             <div className="mb-5 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-200">Photo de profil</label>
+                <label className="mb-2 block text-sm font-bold text-slate-200">{t("Photo de profil")}</label>
                 <div className="flex items-center gap-4">
                   <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-950 text-2xl font-black text-slate-500">
                     {avatarPreview ? (
@@ -529,17 +533,17 @@ export default function SignupClientPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-200">Nom complet</label>
+                <label className="mb-2 block text-sm font-bold text-slate-200">{t("Nom complet")}</label>
                 <input
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
-                  placeholder="Ton nom complet"
+                  placeholder={t("Ton nom complet")}
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-200">Téléphone</label>
+                <label className="mb-2 block text-sm font-bold text-slate-200">{t("Téléphone")}</label>
                 <input
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
@@ -563,7 +567,7 @@ export default function SignupClientPage() {
                     of purchase. Reply STOP to cancel and HELP for help. Optional
                     — not required to create an account.{" "}
                     <a className="text-blue-300 underline" href="/legal/sms">
-                      SMS program
+                      {t("SMS program")}
                     </a>
                   </span>
                 </label>
@@ -571,21 +575,21 @@ export default function SignupClientPage() {
 
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-200">
-                  Adresse (optionnelle)
+                  {t("Adresse (optionnelle)")}
                 </label>
                 <p className="mb-2 text-xs text-slate-400">
-                  Tu pourras l’ajouter plus tard pour une livraison ou un taxi.
+                  {t("Tu pourras l’ajouter plus tard pour une livraison ou un taxi.")}
                 </p>
                 <input
                   value={addressLine1}
                   onChange={(event) => setAddressLine1(event.target.value)}
-                  placeholder="Rue, numéro"
+                  placeholder={t("Rue, numéro")}
                   className="mb-3 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
                 <input
                   value={addressLine2}
                   onChange={(event) => setAddressLine2(event.target.value)}
-                  placeholder="Appartement, étage (optionnel)"
+                  placeholder={t("Appartement, étage (optionnel)")}
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
               </div>
@@ -594,13 +598,13 @@ export default function SignupClientPage() {
                 <input
                   value={city}
                   onChange={(event) => setCity(event.target.value)}
-                  placeholder="Ville"
+                  placeholder={t("Ville")}
                   className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
                 <input
                   value={stateRegion}
                   onChange={(event) => setStateRegion(event.target.value.toUpperCase())}
-                  placeholder="État"
+                  placeholder={t("État")}
                   className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold uppercase outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
               </div>
@@ -609,27 +613,27 @@ export default function SignupClientPage() {
                 <input
                   value={postalCode}
                   onChange={(event) => setPostalCode(event.target.value)}
-                  placeholder="ZIP code"
+                  placeholder={t("ZIP code")}
                   className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
                 <input
                   value={country}
                   onChange={(event) => setCountry(event.target.value.toUpperCase())}
-                  placeholder="Pays"
+                  placeholder={t("Pays")}
                   className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold uppercase outline-none transition placeholder:text-slate-600 focus:border-blue-500"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-200">Referral code</label>
+                <label className="mb-2 block text-sm font-bold text-slate-200">{t("Referral code")}</label>
                 <input
                   value={referralCode}
                   onChange={(event) => setReferralCode(event.target.value.toUpperCase())}
-                  placeholder="MMD referral code"
+                  placeholder={t("MMD referral code")}
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold uppercase outline-none transition placeholder:text-slate-600 focus:border-purple-500"
                 />
                 <p className="mt-2 text-xs font-bold text-slate-500">
-                  Si tu ouvres un lien referral MMD, le code apparaît ici automatiquement.
+                  {t("Si tu ouvres un lien referral MMD, le code apparaît ici automatiquement.")}
                 </p>
               </div>
             </div>
@@ -637,7 +641,7 @@ export default function SignupClientPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-bold text-slate-200">Email</label>
+              <label className="mb-2 block text-sm font-bold text-slate-200">{t("Email")}</label>
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -649,12 +653,12 @@ export default function SignupClientPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-bold text-slate-200">Mot de passe</label>
+              <label className="mb-2 block text-sm font-bold text-slate-200">{t("Mot de passe")}</label>
               <div className="relative">
                 <input
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Minimum 8 caractères"
+                  placeholder={t("Minimum 8 caractères")}
                   type={showPassword ? "text" : "password"}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   disabled={loading}
@@ -680,7 +684,7 @@ export default function SignupClientPage() {
                 disabled={loading}
                 className="text-sm font-extrabold text-blue-300 hover:text-blue-200 disabled:opacity-60"
               >
-                Mot de passe oublié ?
+                {t("Mot de passe oublié ?")}
               </button>
             </div>
           )}
@@ -703,7 +707,7 @@ export default function SignupClientPage() {
             disabled={loading}
             className="mt-6 w-full rounded-2xl bg-blue-600 px-5 py-4 text-base font-black text-white shadow-lg shadow-blue-950/50 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loading ? "Chargement..." : mode === "login" ? "Se connecter" : "Créer mon compte client"}
+            {loading ? "Chargement..." : mode === "login" ? t("Se connecter") : "Créer mon compte client"}
           </button>
 
           <button

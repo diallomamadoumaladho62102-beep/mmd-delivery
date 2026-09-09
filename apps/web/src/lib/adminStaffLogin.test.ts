@@ -21,10 +21,10 @@ test("validates staff login email", () => {
   assert.equal(isValidStaffLoginEmail("bad-email"), false);
 });
 
-test("maps invalid credentials to French message", () => {
+test("maps invalid credentials to English catalog source", () => {
   assert.equal(
     mapSupabaseSignInError("Invalid login credentials"),
-    "Email ou mot de passe incorrect."
+    "Incorrect email or password."
   );
 });
 
@@ -66,7 +66,7 @@ test("rejects suspended staff accounts", () => {
   });
   assert.equal(result.allowed, false);
   if (!result.allowed) {
-    assert.match(result.message, /suspendu/i);
+    assert.match(result.message, /suspended/i);
   }
 });
 

@@ -270,7 +270,7 @@ function MmdPlusAdminInner() {
       </section>
 
       <section className={CARD}>
-        <h2 className="text-lg font-semibold">Factures / paiements</h2>
+        <h2 className="text-lg font-semibold">{t("Factures / paiements")}</h2>
         <ul className="mt-3 divide-y divide-slate-100 text-sm">
           {invoices.map((inv) => (
             <li key={inv.id} className="flex justify-between py-2">

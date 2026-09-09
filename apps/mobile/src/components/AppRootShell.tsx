@@ -9,6 +9,17 @@ import {
 } from "../lib/startupProbe";
 import { BOOT_SHELL_TIMEOUT_MS, withTimeout } from "../lib/bootFailOpen";
 import { NetworkBanner } from "./NetworkBanner";
+import i18n from "../i18n";
+
+function bootT(key: string, fallback: string): string {
+  try {
+    if (!i18n.isInitialized) return fallback;
+    const value = i18n.t(key);
+    return typeof value === "string" && value && value !== key ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 type StripeGateComponent = React.ComponentType<{
   initialRouteName?: string;
@@ -127,7 +138,9 @@ export function AppRootShell({
         }}
       >
         <ActivityIndicator size="large" color="#FFFFFF" />
-        <Text style={{ color: "#E5E7EB", marginTop: 16 }}>Chargement MMD…</Text>
+        <Text style={{ color: "#E5E7EB", marginTop: 16 }}>
+          {bootT("boot.loadingMmd", "Loading MMD…")}
+        </Text>
       </View>
     );
   }
@@ -143,7 +156,7 @@ export function AppRootShell({
         }}
       >
         <Text style={{ color: "#FEE2E2", fontSize: 18, fontWeight: "800" }}>
-          Module natif / navigation indisponible
+          {bootT("boot.nativeUnavailable", "Native module / navigation unavailable")}
         </Text>
         <Text
           style={{
@@ -158,7 +171,7 @@ export function AppRootShell({
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Retry"
+          accessibilityLabel={bootT("common.retry", "Retry")}
           onPress={() => setBootAttempt((n) => n + 1)}
           style={{
             marginTop: 24,
@@ -169,7 +182,9 @@ export function AppRootShell({
             borderRadius: 10,
           }}
         >
-          <Text style={{ color: "#111827", fontWeight: "700" }}>Retry</Text>
+          <Text style={{ color: "#111827", fontWeight: "700" }}>
+            {bootT("common.retry", "Retry")}
+          </Text>
         </Pressable>
       </View>
     );

@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import {
   DEFAULT_DRIVER_MAP_REPORT_CONTEXT,
-  DRIVER_MAP_REPORT_LABELS,
   type DriverMapCountryCode,
   type DriverMapModuleType,
   type DriverMapReportCategory,
@@ -110,8 +109,8 @@ export function DriverReportButton({
 
       Alert.alert(
         t("driver.report.sentTitle", "Report sent"),
-        t("driver.report.sentBody", "{{label}} reported. Visible for 25 minutes to nearby drivers.", {
-          label: DRIVER_MAP_REPORT_LABELS[category],
+        t("driver.report.sentBody", {
+          label: t(`driver.report.categories.${category}`),
         }),
       );
       onSubmitted?.();

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseBrowser';
@@ -7,6 +9,8 @@ import { supabase } from '@/lib/supabaseBrowser';
 type Order = { id: string; status: string };
 
 export default function OrdersSelector() {
+  const { t } = useAdminT();
+
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
@@ -22,7 +26,7 @@ export default function OrdersSelector() {
 
   return (
     <div className="p-4 border rounded-xl bg-white shadow-sm space-y-2">
-      <h2 className="font-bold">Sélectionne une commande</h2>
+      <h2 className="font-bold">{t("Sélectionne une commande")}</h2>
       {orders.map((o) => (
         <Link
           key={o.id}

@@ -729,10 +729,10 @@ export function ClientProfileScreen() {
     <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <ScreenHeader
-        title={t("client.profile.title", "Profil client")}
+        title={t("client.profile.title", "Client profile")}
         subtitle={t(
           "client.profile.subtitle",
-          "Complète ton profil (photo, adresse, téléphone) pour passer des commandes."
+          "Complete your profile (photo, address, phone) to place orders.",
         )}
         fallbackRoute="ClientHome"
         variant="dark"
@@ -756,13 +756,17 @@ export function ClientProfileScreen() {
 
           <View style={styles.banner}>
             <Text style={styles.bannerTitle}>
-              {t("client.profile.completeness", "Complétude du profil")} :{" "}
+              {t("client.profile.completeness", "Profile completeness")} :{" "}
               {completeness.percent}%
             </Text>
             <Text style={styles.bannerBody}>
               {completeness.missing.length
-                ? `${t("client.profile.missing", "Manquant")} : ${completeness.missing.join(", ")}`
-                : t("client.profile.complete", "Profil complet.")}
+                ? `${t("client.profile.missing", "Missing")} : ${completeness.missing
+                    .map((id) =>
+                      t(`client.profile.missingFields.${id}`, id.replace(/_/g, " ")),
+                    )
+                    .join(", ")}`
+                : t("client.profile.complete", "Profile complete.")}
             </Text>
             {latitude != null && longitude != null ? (
               <Text style={styles.bannerOk}>
@@ -815,20 +819,20 @@ export function ClientProfileScreen() {
             >
               <Text style={styles.addPhotoText}>
                 {avatarPreview
-                  ? t("client.profile.changePhoto", "Changer la photo")
+                  ? t("client.profile.changePhoto", "Change photo")
                   : t("client.profile.addPhoto", "Ajouter une photo")}
               </Text>
             </TouchableOpacity>
           </View>
 
-          <Label t={tt} labelKey="client.profile.fields.fullName" fallback="Nom complet" />
+          <Label t={tt} labelKey="client.profile.fields.fullName" fallback="Full name" />
           <Field
             value={fullName}
             onChangeText={setFullName}
             placeholder={t("client.profile.placeholders.fullName", "Ex: Mamadou Diallo")}
           />
 
-          <Label t={tt} labelKey="client.profile.fields.phone" fallback="Numéro de téléphone" />
+          <Label t={tt} labelKey="client.profile.fields.phone" fallback="Phone number" />
           <Field
             value={phone}
             onChangeText={setPhone}
@@ -873,7 +877,7 @@ export function ClientProfileScreen() {
             </Text>
           </TouchableOpacity>
 
-          <Label t={tt} labelKey="client.profile.fields.address" fallback="Adresse" />
+          <Label t={tt} labelKey="client.profile.fields.address" fallback="Address" />
           <AddressAutocomplete
             value={address}
             onChangeText={(text) => {
@@ -896,7 +900,7 @@ export function ClientProfileScreen() {
 
           <View style={styles.rowFields}>
             <View style={{ flex: 1 }}>
-              <Label t={tt} labelKey="client.profile.fields.city" fallback="Ville" />
+              <Label t={tt} labelKey="client.profile.fields.city" fallback="City" />
               <Field
                 value={city}
                 onChangeText={setCity}
@@ -904,7 +908,7 @@ export function ClientProfileScreen() {
               />
             </View>
             <View style={{ width: 90 }}>
-              <Label t={tt} labelKey="client.profile.fields.state" fallback="État" />
+              <Label t={tt} labelKey="client.profile.fields.state" fallback="State" />
               <Field
                 value={state}
                 onChangeText={setState}
@@ -916,7 +920,7 @@ export function ClientProfileScreen() {
 
           <View style={styles.rowFields}>
             <View style={{ flex: 1 }}>
-              <Label t={tt} labelKey="client.profile.fields.postalCode" fallback="Code postal" />
+              <Label t={tt} labelKey="client.profile.fields.postalCode" fallback="Postal code" />
               <Field
                 value={postalCode}
                 onChangeText={setPostalCode}
@@ -925,7 +929,7 @@ export function ClientProfileScreen() {
               />
             </View>
             <View style={{ width: 90 }}>
-              <Label t={tt} labelKey="client.profile.fields.country" fallback="Pays" />
+              <Label t={tt} labelKey="client.profile.fields.country" fallback="Country" />
               <Field
                 value={country}
                 onChangeText={setCountry}

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState, type FormEvent } from "react";
 import {
   SMS_LEGAL_LINKS,
@@ -42,6 +44,8 @@ export default function SmsOptInForm({
   copy: SmsProgramCopy;
   source?: "public_cta" | "web_signup";
 }) {
+  const { t } = useAdminT();
+
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
@@ -165,7 +169,7 @@ export function SmsProgramLocaleToggle({
   onChange: (next: SmsProgramLocale) => void;
 }) {
   return (
-    <div className="flex gap-2" role="group" aria-label="Language">
+    <div className="flex gap-2" role="group" aria-label={t("Language")}>
       {(["en", "fr"] as const).map((code) => (
         <button
           key={code}

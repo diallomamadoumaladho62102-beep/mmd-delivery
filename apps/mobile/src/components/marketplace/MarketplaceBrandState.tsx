@@ -16,6 +16,7 @@ import {
   MMD_TEXT_MUTED_BLUE,
   MMD_WHITE,
 } from "../../theme/mmdUi";
+import { useTranslation } from "react-i18next";
 
 const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
@@ -33,8 +34,10 @@ export function MarketplaceBrandState({
   title,
   message,
   onRetry,
-  retryLabel = "Retry",
+  retryLabel,
 }: Props) {
+  const { t } = useTranslation();
+  const retry = retryLabel ?? t("common.retry");
   return (
     <View
       style={styles.wrap}
@@ -50,18 +53,18 @@ export function MarketplaceBrandState({
       {mode === "loading" ? (
         <>
           <Text style={styles.loadingMessage}>
-            {message ?? "Loading marketplace..."}
+            {message ?? t("marketplace.loadingLong")}
           </Text>
           <View style={styles.feedback}>
             <ActivityIndicator color={MMD_LINK_BLUE} size="small" />
-            <Text style={styles.feedbackTitle}>Loading…</Text>
+            <Text style={styles.feedbackTitle}>{t("common.loading")}</Text>
           </View>
         </>
       ) : null}
       {mode === "empty" ? (
         <View style={styles.feedback}>
           <Text style={styles.emptyTitle}>
-            {title ?? "No approved shops in your area yet."}
+            {title ?? t("marketplace.emptyShops")}
           </Text>
           {message ? <Text style={styles.emptyMessage}>{message}</Text> : null}
         </View>
@@ -69,12 +72,12 @@ export function MarketplaceBrandState({
       {mode === "error" ? (
         <>
           <Text style={styles.errorTitle}>
-            {title ?? "Couldn’t load marketplace"}
+            {title ?? t("marketplace.loadFailed")}
           </Text>
           {message ? <Text style={styles.emptyMessage}>{message}</Text> : null}
           {onRetry ? (
             <TouchableOpacity style={styles.retry} onPress={onRetry}>
-              <Text style={styles.retryText}>{retryLabel}</Text>
+              <Text style={styles.retryText}>{retry}</Text>
             </TouchableOpacity>
           ) : null}
         </>

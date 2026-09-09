@@ -141,7 +141,7 @@ export default function PromotionsScreen() {
         <View style={styles.stateWrap}>
           <Text style={styles.error}>{error}</Text>
           <TouchableOpacity style={styles.btn} onPress={() => void load()}>
-            <Text style={styles.btnText}>Réessayer</Text>
+            <Text style={styles.btnText}>{t("promotions.retry")}</Text>
           </TouchableOpacity>
           <View style={styles.stateSpacer} />
           <Image
@@ -167,23 +167,23 @@ export default function PromotionsScreen() {
           }
         >
           <View style={styles.card}>
-            <Text style={styles.cardSection}>Promo Code</Text>
+            <Text style={styles.cardSection}>{t("promotions.promoCode")}</Text>
             <TextInput
               style={styles.input}
               value={code}
               onChangeText={setCode}
               autoCapitalize="characters"
-              placeholder="CODEPROMO"
+              placeholder={t("promotions.placeholder")}
               placeholderTextColor={MMD_LINK_BLUE}
             />
             <TouchableOpacity style={styles.btn} onPress={() => void onValidate()}>
-              <Text style={styles.btnText}>Verify</Text>
+              <Text style={styles.btnText}>{t("promotions.verify", "Verify")}</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.section}>My Coupons</Text>
+          <Text style={styles.section}>{t("promotions.myCoupons", "My Coupons")}</Text>
           {coupons.length === 0 ? (
-            <Text style={styles.muted}>Aucun coupon.</Text>
+            <Text style={styles.muted}>{t("promotions.emptyCoupons", "No coupons.")}</Text>
           ) : (
             coupons.map((c) => (
               <View key={String(c.id)} style={styles.listCard}>
@@ -202,9 +202,9 @@ export default function PromotionsScreen() {
             ))
           )}
 
-          <Text style={styles.section}>Offers</Text>
+          <Text style={styles.section}>{t("promotions.offers", "Offers")}</Text>
           {offers.length === 0 ? (
-            <Text style={styles.muted}>Aucune offre.</Text>
+            <Text style={styles.muted}>{t("promotions.emptyOffers", "No offers.")}</Text>
           ) : (
             offers.map((o) => (
               <View key={String(o.id)} style={styles.listCard}>
@@ -218,7 +218,7 @@ export default function PromotionsScreen() {
             style={styles.link}
             onPress={() => navigation.navigate("MmdPlus")}
           >
-            <Text style={styles.linkText}>See also MMD+</Text>
+            <Text style={styles.linkText}>{t("promotions.seeAlsoMmdPlus")}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}

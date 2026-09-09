@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -32,6 +34,8 @@ type OrderListItem = {
 };
 
 export default function OrdersList() {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [items, setItems] = useState<OrderListItem[]>([]);
@@ -189,7 +193,7 @@ export default function OrdersList() {
   if (loading) {
     return (
       <div className="text-sm text-gray-600">
-        Chargement de tes commandes…
+        {t("Chargement de tes commandes…")}
       </div>
     );
   }
@@ -205,10 +209,10 @@ export default function OrdersList() {
   if (items.length === 0) {
     return (
       <div className="text-sm text-gray-600">
-        Tu n&apos;as encore aucune commande.
+        {t("Tu n&apos;as encore aucune commande.")}
         <br />
         <Link href="/orders/new" className="text-emerald-700 underline">
-          Crée ta première commande →
+          {t("Crée ta première commande →")}
         </Link>
       </div>
     );
@@ -227,7 +231,7 @@ export default function OrdersList() {
               : "text-gray-600"
           }`}
         >
-          Toutes (en cours)
+          {t("Toutes (en cours)")}
         </button>
         <button
           type="button"
@@ -238,7 +242,7 @@ export default function OrdersList() {
               : "text-gray-600"
           }`}
         >
-          En cours
+          {t("En cours")}
         </button>
         <button
           type="button"
@@ -250,7 +254,7 @@ export default function OrdersList() {
           }`}
           disabled
         >
-          Terminées / annulées
+          {t("Terminées / annulées")}
         </button>
       </div>
 
@@ -258,7 +262,7 @@ export default function OrdersList() {
       <div className="space-y-3">
         {filteredItems.length === 0 ? (
           <p className="text-sm text-gray-600">
-            Aucune commande en cours à afficher.
+            {t("Aucune commande en cours à afficher.")}
           </p>
         ) : (
           filteredItems.map(({ order, role }) => {

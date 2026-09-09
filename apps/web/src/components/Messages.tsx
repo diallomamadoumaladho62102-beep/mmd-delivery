@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseBrowser";
 import { ORDER_MESSAGE_SELECT } from "../lib/orderMessages";
@@ -53,6 +55,8 @@ function Avatar({ name, url }: { name?: string | null; url?: string | null }) {
 }
 
 export default function Messages({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -255,7 +259,7 @@ export default function Messages({ orderId }: { orderId: string }) {
     <div className="space-y-3">
       <div ref={listRef} className="max-h-80 overflow-auto border rounded-lg p-3 bg-white">
         {msgs.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">Aucun message pour le moment.</p>
+          <p className="text-sm text-gray-500 italic">{t("Aucun message pour le moment.")}</p>
         ) : (
           <ul className="space-y-3">
             {msgs.map((m) => {
@@ -305,7 +309,7 @@ export default function Messages({ orderId }: { orderId: string }) {
 
       {isMember === false && (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
-          Tu dois <strong>rejoindre la commande</strong> avant d’écrire.
+          {t("Tu dois")} <strong>rejoindre la commande</strong> avant d’écrire.
         </p>
       )}
 
@@ -336,7 +340,7 @@ export default function Messages({ orderId }: { orderId: string }) {
                 send();
               }
             }}
-            placeholder="Écrire un message…"
+            placeholder={t("Écrire un message…")}
             className="flex-1 border rounded-lg px-3 py-2"
             disabled={isMember === false}
           />
@@ -355,7 +359,7 @@ export default function Messages({ orderId }: { orderId: string }) {
             disabled={inputDisabled}
             className="px-4 py-2 rounded-lg bg-black text-white disabled:opacity-50"
           >
-            Envoyer
+            {t("Envoyer")}
           </button>
         </div>
       </div>

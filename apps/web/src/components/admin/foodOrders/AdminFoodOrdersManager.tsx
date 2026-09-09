@@ -237,7 +237,7 @@ export default function AdminFoodOrdersManager() {
           </div>
           {manageOrders ? (
             <p className="text-xs text-slate-500">
-              Cancel/refund actions are available on each order detail page.
+              {t("Cancel/refund actions are available on each order detail page.")}
             </p>
           ) : null}
         </>

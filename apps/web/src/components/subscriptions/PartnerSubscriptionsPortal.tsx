@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -77,6 +79,8 @@ export default function PartnerSubscriptionsPortal({
   actionsPath: string;
   backHref: string;
 }) {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [current, setCurrent] = useState<Current | null>(null);
@@ -133,7 +137,7 @@ export default function PartnerSubscriptionsPortal({
   if (loading) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <p className="text-sm text-gray-500">Chargement des abonnements…</p>
+        <p className="text-sm text-gray-500">{t("Chargement des abonnements…")}</p>
       </main>
     );
   }
@@ -146,7 +150,7 @@ export default function PartnerSubscriptionsPortal({
           onClick={() => void load()}
           className="mt-4 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white"
         >
-          Réessayer
+          {t("Réessayer")}
         </button>
       </main>
     );
@@ -162,7 +166,7 @@ export default function PartnerSubscriptionsPortal({
       </div>
 
       <section className="mt-6 rounded-xl border border-gray-200 p-5">
-        <h2 className="text-lg font-semibold">Plan actuel</h2>
+        <h2 className="text-lg font-semibold">{t("Plan actuel")}</h2>
         {current ? (
           <div className="mt-3 space-y-2 text-sm">
             <p>
@@ -198,7 +202,7 @@ export default function PartnerSubscriptionsPortal({
                   }}
                   className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium"
                 >
-                  Annuler
+                  {t("Annuler")}
                 </button>
               )}
               {current.cancel_at_period_end && (
@@ -207,7 +211,7 @@ export default function PartnerSubscriptionsPortal({
                   onClick={() => void runAction("resume")}
                   className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white"
                 >
-                  Reprendre
+                  {t("Reprendre")}
                 </button>
               )}
               <button
@@ -215,17 +219,17 @@ export default function PartnerSubscriptionsPortal({
                 onClick={() => void runAction("portal")}
                 className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium"
               >
-                Portail de facturation
+                {t("Portail de facturation")}
               </button>
             </div>
           </div>
         ) : (
-          <p className="mt-2 text-sm text-gray-600">Aucun abonnement actif. Choisissez un plan ci-dessous.</p>
+          <p className="mt-2 text-sm text-gray-600">{t("Aucun abonnement actif. Choisissez un plan ci-dessous.")}</p>
         )}
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Comparer les plans</h2>
+        <h2 className="text-lg font-semibold">{t("Comparer les plans")}</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {plans.map((p) => {
             const isCurrent = current?.plan?.id === p.id;
@@ -238,7 +242,7 @@ export default function PartnerSubscriptionsPortal({
                   </div>
                   {isCurrent && (
                     <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
-                      Actuel
+                      {t("Actuel")}
                     </span>
                   )}
                 </div>
@@ -278,7 +282,7 @@ export default function PartnerSubscriptionsPortal({
 
       {invoices.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-lg font-semibold">Historique de facturation</h2>
+          <h2 className="text-lg font-semibold">{t("Historique de facturation")}</h2>
           <ul className="mt-3 space-y-2">
             {invoices.map((inv) => (
               <li key={inv.id} className="rounded-lg border border-gray-200 px-3 py-2 text-sm">

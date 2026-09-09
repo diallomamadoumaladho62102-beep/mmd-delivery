@@ -1,8 +1,12 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 
 export default function Checkout() {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -55,12 +59,12 @@ export default function Checkout() {
 
   return (
     <main style={{ padding: 24, maxWidth: 500 }}>
-      <h2>Paiement test</h2>
+      <h2>{t("Paiement test")}</h2>
 
       <input
         value={orderId}
         onChange={(e) => setOrderId(e.target.value)}
-        placeholder="Order ID"
+        placeholder={t("Order ID")}
         style={{
           width: "100%",
           padding: 10,

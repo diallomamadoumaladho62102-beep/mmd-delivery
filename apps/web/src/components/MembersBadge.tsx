@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -24,6 +26,8 @@ function ToastStack({ toasts }: { toasts: { id: string; text: string }[] }) {
 }
 
 export default function MembersBadge({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<Member[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [err, setErr] = useState<string | null>(null);
@@ -154,7 +158,7 @@ export default function MembersBadge({ orderId }: { orderId: string }) {
             className="absolute left-0 top-[120%] z-20 w-64 max-w-[80vw] rounded-md border bg-white p-2 text-[11px] shadow-xl"
             role="tooltip"
           >
-            <div className="mb-1 font-medium text-gray-700">Membres</div>
+            <div className="mb-1 font-medium text-gray-700">{t("Membres")}</div>
             <pre className="whitespace-pre-wrap text-[11px] text-gray-700 leading-relaxed">{tooltip}</pre>
           </div>
         )}

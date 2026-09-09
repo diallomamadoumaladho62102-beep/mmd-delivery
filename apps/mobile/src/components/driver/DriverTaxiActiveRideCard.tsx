@@ -321,7 +321,7 @@ export function DriverTaxiActiveRideCard({
 
         {(preferenceLines?.length ?? 0) > 0 ? (
           <View style={styles.prefsBox}>
-            <Text style={styles.prefsTitle}>Client Preferences</Text>
+            <Text style={styles.prefsTitle}>{t("taxi.driver.activeRide.clientPreferences")}</Text>
             {preferenceLines!.map((line) => (
               <Text key={line.label} style={styles.prefLine}>
                 {line.emoji} {line.label}
@@ -337,20 +337,24 @@ export function DriverTaxiActiveRideCard({
               .map((stop) => (
                 <View key={stop.stop_order} style={styles.stopRow}>
                   <Text style={styles.stopText} numberOfLines={1}>
-                    Stop {stop.stop_order}: {stop.address ?? ""} ({stop.status})
+                    {t("taxi.driver.activeRide.stopLine", {
+                      order: stop.stop_order,
+                      address: stop.address ?? "",
+                      status: stop.status ?? "",
+                    })}
                   </Text>
                   <View style={styles.row}>
                     <TouchableOpacity
                       style={styles.secondaryBtn}
                       onPress={() => onArriveStop(stop.stop_order)}
                     >
-                      <Text style={styles.secondaryText}>Arrive stop</Text>
+                      <Text style={styles.secondaryText}>{t("taxi.driver.activeRide.arriveStop")}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.secondaryBtn}
                       onPress={() => onCompleteStop(stop.stop_order)}
                     >
-                      <Text style={styles.secondaryText}>Complete stop</Text>
+                      <Text style={styles.secondaryText}>{t("taxi.driver.activeRide.completeStop")}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -440,10 +444,9 @@ export function DriverTaxiActiveRideCard({
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Verify Pickup Code</Text>
+            <Text style={styles.modalTitle}>{t("taxi.driver.activeRide.verifyPickupCode")}</Text>
             <Text style={styles.modalHint}>
-              Ask the client for their 4-digit boarding code. The keyboard opens
-              automatically — no photo is required.
+              {t("taxi.driver.activeRide.verifyHint")}
             </Text>
             <View style={{ marginTop: 18 }}>
               <OtpDigitInput
@@ -464,7 +467,7 @@ export function DriverTaxiActiveRideCard({
             {verifying ? (
               <View style={styles.verifyingRow}>
                 <ActivityIndicator color="#F5C542" />
-                <Text style={styles.verifyingText}>Verifying…</Text>
+                <Text style={styles.verifyingText}>{t("taxi.driver.activeRide.verifying")}</Text>
               </View>
             ) : null}
             <View style={styles.modalActions}>
@@ -473,7 +476,7 @@ export function DriverTaxiActiveRideCard({
                 onPress={closeCodeModal}
                 disabled={verifying || codeSuccess}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
             </View>
           </View>

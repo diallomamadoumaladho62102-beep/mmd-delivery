@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -31,6 +33,8 @@ type Order = {
 type VerifyKind = "pickup" | "dropoff";
 
 export default function DriverOrderDetailsPage() {
+  const { t } = useAdminT();
+
   const params = useParams();
   const orderId = params?.orderId as string | undefined;
 
@@ -68,14 +72,14 @@ export default function DriverOrderDetailsPage() {
 
       if (error) throw error;
       if (!data) {
-        alert("Commande introuvable.");
+        alert(t("Commande introuvable."));
         return;
       }
 
       setOrder(data as Order);
     } catch (e: any) {
       console.error("Erreur fetch driver order details (web):", e);
-      alert(e?.message ?? "Impossible de charger les détails de la commande.");
+      alert(e?.message ?? t("Impossible de charger les détails de la commande."));
     } finally {
       setLoading(false);
     }
@@ -98,18 +102,18 @@ export default function DriverOrderDetailsPage() {
   function formatStatusLabel(status: OrderStatus) {
     switch (status) {
       case "pending":
-        return "En attente d’un chauffeur";
+        return t("En attente d’un chauffeur");
       case "accepted":
       case "prepared":
-        return "En attente (restaurant)";
+        return t("En attente (restaurant)");
       case "ready":
-        return "Prête pour pickup";
+        return t("Prête pour pickup");
       case "dispatched":
-        return "En livraison";
+        return t("En livraison");
       case "delivered":
-        return "Livrée";
+        return t("Livrée");
       case "canceled":
-        return "Annulée";
+        return t("Annulée");
       default:
         return status;
     }
@@ -150,7 +154,7 @@ export default function DriverOrderDetailsPage() {
 
       if (userError || !user) {
         console.error("Impossible d'obtenir le user", userError);
-        alert("Impossible de récupérer ton profil chauffeur. Reconnecte-toi.");
+        alert(t("Impossible de récupérer ton profil chauffeur. Reconnecte-toi."));
         return;
       }
 
@@ -163,7 +167,7 @@ export default function DriverOrderDetailsPage() {
         console.error("driver_accept_ready_order (web):", acceptError);
         alert(
           acceptError.message ??
-            "Impossible d'accepter cette course (commande non prête ou non payée)."
+            t("Impossible d'accepter cette course (commande non prête ou non payée).")
         );
         return;
       }
@@ -172,16 +176,16 @@ export default function DriverOrderDetailsPage() {
       if (!ok) {
         const message =
           (acceptData as { message?: string })?.message ??
-          "Course non disponible.";
+          t("Course non disponible.");
         alert(message);
         return;
       }
 
       await fetchOrder();
-      alert("Course acceptée ✅ Tu es maintenant assigné à cette course.");
+      alert(t("Course acceptée ✅ Tu es maintenant assigné à cette course."));
     } catch (e: any) {
       console.error("Erreur handleAccept (web):", e);
-      alert(e?.message ?? "Impossible d'accepter la course pour le moment.");
+      alert(e?.message ?? t("Impossible d'accepter la course pour le moment."));
     } finally {
       setAccepting(false);
     }
@@ -190,7 +194,7 @@ export default function DriverOrderDetailsPage() {
   async function handleSubmitCode() {
     if (!order || !verifyingKind) return;
     if (!codeInput.trim()) {
-      alert("Code manquant. Entre le code de vérification.");
+      alert(t("Code manquant. Entre le code de vérification."));
       return;
     }
 
@@ -205,7 +209,7 @@ export default function DriverOrderDetailsPage() {
 
       if (error) {
         console.error("Erreur RPC verify_order_code (web):", error);
-        alert("Erreur serveur pendant la vérification du code.");
+        alert(t("Erreur serveur pendant la vérification du code."));
         return;
       }
 
@@ -213,12 +217,12 @@ export default function DriverOrderDetailsPage() {
       const message =
         (data as any)?.message ??
         (verifyingKind === "pickup"
-          ? "Code pickup validé."
-          : "Code de livraison validé.");
+          ? t("Code pickup validé.")
+          : t("Code de livraison validé."));
 
       if (!success) {
         console.log("verify_order_code web data", data);
-        alert(`Code invalide : ${message}`);
+        alert(`${t("Code invalide :")} ${message}`);
         return;
       }
 
@@ -227,7 +231,7 @@ export default function DriverOrderDetailsPage() {
       } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
-        alert("Session expirée. Reconnecte-toi.");
+        alert(t("Session expirée. Reconnecte-toi."));
         return;
       }
 
@@ -257,20 +261,20 @@ export default function DriverOrderDetailsPage() {
 
       const confirmBody = await confirmRes.json().catch(() => null);
       if (!confirmRes.ok) {
-        alert(confirmBody?.error ?? "Confirmation serveur échouée.");
+        alert(confirmBody?.error ?? t("Confirmation serveur échouée."));
         return;
       }
 
       await fetchOrder();
       alert(
         verifyingKind === "pickup"
-          ? "Pickup confirmé ✅"
-          : "Livraison confirmée ✅"
+          ? t("Pickup confirmé ✅")
+          : t("Livraison confirmée ✅")
       );
       closeCodeModal();
     } catch (e: any) {
       console.error("Erreur handleSubmitCode (web):", e);
-      alert(e?.message ?? "Impossible de vérifier le code pour le moment.");
+      alert(e?.message ?? t("Impossible de vérifier le code pour le moment."));
     } finally {
       setSubmittingCode(false);
     }
@@ -281,7 +285,7 @@ export default function DriverOrderDetailsPage() {
       <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-lg font-semibold">
-            Aucun identifiant de commande fourni.
+            {t("Aucun identifiant de commande fourni.")}
           </p>
           <Link
             href="/driver/dashboard"
@@ -300,7 +304,7 @@ export default function DriverOrderDetailsPage() {
         <div className="flex flex-col items-center gap-2">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
           <p className="text-sm text-slate-300">
-            Chargement de la commande...
+            {t("Chargement de la commande...")}
           </p>
         </div>
       </div>
@@ -311,7 +315,7 @@ export default function DriverOrderDetailsPage() {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <p className="text-lg font-semibold">Commande introuvable.</p>
+          <p className="text-lg font-semibold">{t("Commande introuvable.")}</p>
           <Link
             href="/driver/dashboard"
             className="inline-flex items-center rounded-full border border-slate-600 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
@@ -348,7 +352,7 @@ export default function DriverOrderDetailsPage() {
         {/* Statut */}
         <div className="inline-flex items-center rounded-full border border-blue-700 px-3 py-1 mb-4">
           <span className="text-xs font-semibold text-blue-100">
-            Statut : {formatStatusLabel(order.status)}
+            {t("Statut :")} {formatStatusLabel(order.status)}
           </span>
         </div>
 
@@ -360,18 +364,18 @@ export default function DriverOrderDetailsPage() {
             disabled={accepting}
             className="mb-4 inline-flex w-full items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-70"
           >
-            {accepting ? "Acceptation..." : "Accepter cette course"}
+            {accepting ? t("Acceptation...") : t("Accepter cette course")}
           </button>
         )}
 
         <p className="text-[11px] text-slate-500 mb-4">
-          Commande créée le : {formatDate(order.created_at)}
+          {t("Commande créée le :")} {formatDate(order.created_at)}
         </p>
 
         {/* Bloc adresses */}
         <section className="mb-4 rounded-2xl border border-slate-900 bg-slate-950/60 p-4">
           <h2 className="text-sm sm:text-base font-semibold text-slate-100 mb-2">
-            Adresses de la course
+            {t("Adresses de la course")}
           </h2>
 
           {order.restaurant_name && (
@@ -400,7 +404,7 @@ export default function DriverOrderDetailsPage() {
         {/* Bloc course */}
         <section className="mb-4 rounded-2xl border border-slate-900 bg-slate-950/60 p-4">
           <h2 className="text-sm sm:text-base font-semibold text-slate-100 mb-2">
-            Course
+            {t("Course")}
           </h2>
 
           <p className="text-xs text-slate-400 mb-1">
@@ -425,7 +429,7 @@ export default function DriverOrderDetailsPage() {
         {/* Bloc rémunération */}
         <section className="mb-4 rounded-2xl border border-slate-900 bg-slate-950/60 p-4">
           <h2 className="text-sm sm:text-base font-semibold text-slate-100 mb-2">
-            Ta rémunération chauffeur (estimation)
+            {t("Ta rémunération chauffeur (estimation)")}
           </h2>
 
           <p className="text-xs text-slate-400 mb-1.5">
@@ -446,7 +450,7 @@ export default function DriverOrderDetailsPage() {
         {/* Bloc codes */}
         <section className="mb-6 rounded-2xl border border-slate-900 bg-slate-950/60 p-4">
           <h2 className="text-sm sm:text-base font-semibold text-slate-100 mb-3">
-            Codes de vérification
+            {t("Codes de vérification")}
           </h2>
 
           <div className="flex flex-col gap-2">
@@ -460,7 +464,7 @@ export default function DriverOrderDetailsPage() {
                   : "bg-slate-900 text-slate-500 cursor-not-allowed"
               }`}
             >
-              Je récupère la commande (code de ramassage)
+              {t("Je récupère la commande (code de ramassage)")}
             </button>
 
             <button
@@ -473,7 +477,7 @@ export default function DriverOrderDetailsPage() {
                   : "bg-slate-900 text-slate-500 cursor-not-allowed"
               }`}
             >
-              Je livre la commande (code de livraison)
+              {t("Je livre la commande (code de livraison)")}
             </button>
           </div>
         </section>
@@ -484,7 +488,7 @@ export default function DriverOrderDetailsPage() {
           disabled
           className="inline-flex w-full items-center justify-center rounded-full border border-slate-600 px-4 py-2 text-sm text-slate-300"
         >
-          Ouvrir le chat (à venir)
+          {t("Ouvrir le chat (à venir)")}
         </button>
       </main>
 
@@ -494,18 +498,17 @@ export default function DriverOrderDetailsPage() {
           <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-xl">
             <h3 className="text-base sm:text-lg font-semibold text-slate-50 mb-1">
               {verifyingKind === "pickup"
-                ? "Code de ramassage"
-                : "Code de livraison"}
+                ? t("Code de ramassage")
+                : t("Code de livraison")}
             </h3>
             <p className="text-xs sm:text-sm text-slate-400 mb-3">
-              Demande le code à la personne (restaurant ou client) et saisis-le
-              ci-dessous.
+              {t("Demande le code à la personne (restaurant ou client) et saisis-le ci-dessous.")}
             </p>
 
             <input
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-              placeholder="Ex : ABC123"
+              placeholder={`${t("Ex :")} ABC123`}
               className="mb-3 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-50 placeholder:text-slate-500 outline-none focus:border-emerald-500"
             />
 
@@ -516,7 +519,7 @@ export default function DriverOrderDetailsPage() {
                 disabled={submittingCode}
                 className="inline-flex items-center rounded-full border border-slate-600 px-3 py-1.5 text-xs sm:text-sm text-slate-100 hover:bg-slate-800 disabled:opacity-60"
               >
-                Annuler
+                {t("Annuler")}
               </button>
 
               <button

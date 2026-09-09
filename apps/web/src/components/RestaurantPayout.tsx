@@ -1,10 +1,14 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type Row = { net: number; currency: string };
 
 export default function RestaurantPayout({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [row, setRow] = useState<Row | null>(null);
 
   useEffect(() => {
@@ -30,7 +34,7 @@ export default function RestaurantPayout({ orderId }: { orderId: string }) {
 
   return (
     <div className="rounded-2xl p-4 border shadow-sm">
-      <div className="text-xs text-gray-500">Net restaurant</div>
+      <div className="text-xs text-gray-500">{t("Net restaurant")}</div>
       <div className="text-xl font-semibold">{fmt(row.net, row.currency)}</div>
     </div>
   );

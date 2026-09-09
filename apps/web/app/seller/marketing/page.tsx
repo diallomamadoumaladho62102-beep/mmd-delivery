@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -21,6 +23,8 @@ async function authFetch(path: string, init?: RequestInit) {
 }
 
 export default function SellerMarketingPage() {
+  const { t } = useAdminT();
+
   const [campaigns, setCampaigns] = useState<Array<Record<string, unknown>>>([]);
   const [requests, setRequests] = useState<Array<Record<string, unknown>>>([]);
   const [title, setTitle] = useState("");
@@ -59,18 +63,18 @@ export default function SellerMarketingPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold">Campagnes Marketplace</h1>
+      <h1 className="text-2xl font-semibold">{t("Campagnes Marketplace")}</h1>
       {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
       <form onSubmit={submit} className="mt-6 space-y-3 rounded-2xl border p-4">
         <input
           className="w-full rounded-xl border px-3 py-2 text-sm"
-          placeholder="Titre de la demande"
+          placeholder={t("Titre de la demande")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
         />
         <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">
-          Demander une campagne
+          {t("Demander une campagne")}
         </button>
       </form>
       <ul className="mt-6 space-y-2 text-sm">

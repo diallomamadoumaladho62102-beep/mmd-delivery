@@ -260,7 +260,7 @@ export function DriverServicesScreen() {
         )}
 
         {saving ? (
-          <Text style={styles.saving}>Enregistrement…</Text>
+          <Text style={styles.saving}>{t("driver.services.saving")}</Text>
         ) : null}
 
         <TouchableOpacity
@@ -268,7 +268,7 @@ export function DriverServicesScreen() {
           onPress={() => void load()}
           activeOpacity={0.9}
         >
-          <Text style={styles.primaryBtnText}>Actualiser les préférences</Text>
+          <Text style={styles.primaryBtnText}>{t("driver.services.refreshPreferences")}</Text>
         </TouchableOpacity>
 
         <BrandFooter />

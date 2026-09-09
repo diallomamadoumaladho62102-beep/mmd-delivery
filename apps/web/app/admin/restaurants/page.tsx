@@ -812,7 +812,7 @@ export default function AdminRestaurantsPage() {
                           </p>
                           <p>
                             <span className="font-medium">{t("Cuisine :")}</span>{" "}
-                            {r.cuisine_type || "—"}
+                            {t(r.cuisine_type || "") || r.cuisine_type || "—"}
                           </p>
                         </div>
 

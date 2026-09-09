@@ -1,11 +1,15 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type Obj = { name: string; id?: string; updated_at?: string; signed?: string | null };
 
 export default function OrderFilesPage({ params }: { params: { orderId: string } }) {
+  const { t } = useAdminT();
+
   const orderId = params.orderId;
   const [items, setItems] = useState<Obj[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,12 +64,12 @@ export default function OrderFilesPage({ params }: { params: { orderId: string }
 
       <div className="flex items-center gap-3">
         <input type="file" ref={inputRef} accept="image/*" />
-        <button onClick={upload} className="border rounded px-3 py-1">Uploader</button>
-        <a className="text-blue-600 underline" href={`/orders/${orderId}/chat`}>Retour au chat</a>
+        <button onClick={upload} className="border rounded px-3 py-1">{t("Uploader")}</button>
+        <a className="text-blue-600 underline" href={`/orders/${orderId}/chat`}>{t("Retour au chat")}</a>
       </div>
 
       {err ? <div className="text-sm text-red-600">{err}</div> : null}
-      {loading ? <div>Chargement…</div> : null}
+      {loading ? <div>{t("Chargement…")}</div> : null}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {items.map((o) => (
@@ -78,7 +82,7 @@ export default function OrderFilesPage({ params }: { params: { orderId: string }
               <div className="w-full h-32 bg-gray-100 rounded" />
             )}
             <div className="text-xs break-all">{o.name}</div>
-            <button onClick={() => remove(o.name)} className="text-sm text-red-600">Supprimer</button>
+            <button onClick={() => remove(o.name)} className="text-sm text-red-600">{t("Supprimer")}</button>
           </div>
         ))}
       </div>

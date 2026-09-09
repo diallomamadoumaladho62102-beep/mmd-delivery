@@ -232,14 +232,22 @@ function statusColor(status: string | null | undefined) {
   return "#A78BFA";
 }
 
-function statusLabel(status: string | null | undefined) {
+function statusLabel(
+  status: string | null | undefined,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+) {
   const normalized = String(status ?? "").trim().toLowerCase();
-
-  if (normalized === "pending") return "Pending";
-  if (normalized === "accepted") return "Accepted";
-  if (normalized === "prepared") return "Preparing";
-  if (normalized === "ready") return "Ready";
-  return "Order";
+  const keys: Record<string, [string, string]> = {
+    pending: ["restaurant.orders.status.pending", "Pending"],
+    accepted: ["restaurant.orders.status.accepted", "Accepted"],
+    prepared: ["restaurant.orders.status.prepared", "Prepared"],
+    ready: ["restaurant.orders.status.ready", "Ready"],
+    dispatched: ["restaurant.orders.status.dispatched", "Dispatched"],
+    delivered: ["restaurant.orders.status.delivered", "Delivered"],
+    canceled: ["restaurant.orders.status.canceled", "Canceled"],
+  };
+  const [key, fallback] = keys[normalized] ?? ["restaurant.orders.status.order", "Order"];
+  return t(key, { defaultValue: fallback });
 }
 
 function RestaurantMapPin({ label }: { label: string }) {
@@ -292,9 +300,17 @@ function RestaurantMapPin({ label }: { label: string }) {
   );
 }
 
-function OrderMapPin({ status, index }: { status: string | null; index: number }) {
+function OrderMapPin({
+  status,
+  index,
+  t,
+}: {
+  status: string | null;
+  index: number;
+  t: (key: string, options?: { defaultValue?: string }) => string;
+}) {
   const color = statusColor(status);
-  const label = statusLabel(status);
+  const label = statusLabel(status, t);
 
   return (
     <View
@@ -1963,7 +1979,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
                 layersActive={mapStyleURL === getMapStyleDark()}
                 refreshing={statsLoading}
                 formatMoney={(amount) => formatMoney(Number(amount ?? 0), stats.currency)}
-                statusLabel={statusLabel}
+                statusLabel={(status) => statusLabel(status, t)}
                 t={(key, fallback) => t(key, fallback)}
                 opsMode={mapOpsMode}
               />
@@ -2045,13 +2061,13 @@ export function RestaurantHomeScreen({ navigation }: any) {
                           marginTop: 3,
                         }}
                       >
-                        {statusLabel(liveOrder.status)} ·{" "}
+                        {statusLabel(liveOrder.status, t)} ·{" "}
                         {liveOrder.created_at
                           ? new Date(liveOrder.created_at).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
                             })
-                          : "Live"}
+                          : t("restaurant.home.live", { defaultValue: "Live" })}
                       </Text>
                     </View>
 

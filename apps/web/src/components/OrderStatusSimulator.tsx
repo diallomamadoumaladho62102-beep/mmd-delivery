@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+
+import { useAdminT } from "@/i18n/useAdminT";
+import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { orderStatusUiLabel } from "@/i18n/orderStatusUi";
 
 type SimulatableStatus = "assigned" | "accepted" | "prepared" | "ready";
 
@@ -14,19 +17,8 @@ const SAFE_SIMULATION_STATUSES: SimulatableStatus[] = [
 
 const BLOCKED_STATUSES = ["dispatched", "delivered"] as const;
 
-function formatStatusLabel(status: string) {
-  switch (status) {
-    case "assigned":
-      return "assigned";
-    case "accepted":
-      return "accepted";
-    case "prepared":
-      return "prepared";
-    case "ready":
-      return "ready";
-    default:
-      return status;
-  }
+function formatStatusLabel(status: string, t: (source: string) => string) {
+  return orderStatusUiLabel(status, t);
 }
 
 export default function OrderStatusSimulator({
@@ -34,14 +26,10 @@ export default function OrderStatusSimulator({
 }: {
   orderId: string;
 }) {
+  const { t } = useAdminT();
+
   const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const blockedText = useMemo(
-    () =>
-      'Les statuts "dispatched" et "delivered" sont protégés. Utilise les routes métier pickup-confirm / delivered-confirm.',
-    []
-  );
 
   async function setStatus(nextStatus: SimulatableStatus) {
     if (!orderId?.trim()) {
@@ -73,7 +61,7 @@ export default function OrderStatusSimulator({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2 items-center text-sm">
-        <span className="font-medium">Simuler statut :</span>
+        <span className="font-medium">{t("Simuler statut :")}</span>
 
         {SAFE_SIMULATION_STATUSES.map((status) => (
           <button
@@ -84,18 +72,20 @@ export default function OrderStatusSimulator({
             disabled={loadingStatus !== null}
           >
             {loadingStatus === status
-              ? "Mise à jour..."
-              : formatStatusLabel(status)}
+              ? t("Mise à jour...")
+              : formatStatusLabel(status, t)}
           </button>
         ))}
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        <p className="font-semibold">Statuts protégés</p>
+        <p className="font-semibold">{t("Statuts protégés")}</p>
         <p className="mt-1">
-          {BLOCKED_STATUSES.join(" / ")} ne sont plus simulables directement.
+          {t("Les statuts « en livraison » et « livrée » ne sont plus simulables directement.")}
         </p>
-        <p className="mt-1">{blockedText}</p>
+        <p className="mt-1">
+          {t("Les statuts protégés utilisent les routes métier pickup-confirm / delivered-confirm.")}
+        </p>
       </div>
 
       {errorMsg && (

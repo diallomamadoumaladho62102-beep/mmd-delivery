@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -23,6 +25,8 @@ type Props = {
 type GateState = "loading" | "allowed" | "no-session" | "forbidden" | "error";
 
 export default function AdminGate({ children, requiredPermission }: Props) {
+  const { t } = useAdminT();
+
   const [state, setState] = useState<GateState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -93,7 +97,7 @@ export default function AdminGate({ children, requiredPermission }: Props) {
   if (state === "loading") {
     return (
       <div className="admin-figma min-h-screen p-6 text-sm text-[var(--cc-muted)]">
-        Chargement Control Center…
+        {t("Chargement Control Center…")}
       </div>
     );
   }
@@ -104,7 +108,7 @@ export default function AdminGate({ children, requiredPermission }: Props) {
         <div className="mx-auto max-w-xl p-6">
           <div className="cc-card p-6">
             <div className="text-lg font-semibold text-white">
-              Control Center indisponible
+              {t("Control Center indisponible")}
             </div>
             <p className="mt-2 text-sm text-[var(--cc-muted)]">
               {errorMessage ??
@@ -119,10 +123,10 @@ export default function AdminGate({ children, requiredPermission }: Props) {
                 }}
                 className={CC_BTN_SECONDARY}
               >
-                Réessayer
+                {t("Réessayer")}
               </button>
               <Link href="/admin/login" className={CC_BTN_PRIMARY}>
-                Se connecter
+                {t("Se connecter")}
               </Link>
             </div>
           </div>
@@ -136,7 +140,7 @@ export default function AdminGate({ children, requiredPermission }: Props) {
       <div className="admin-figma min-h-screen">
         <div className="mx-auto max-w-xl p-6">
           <div className="cc-card p-6">
-            <div className="text-lg font-semibold text-white">Connexion requise</div>
+            <div className="text-lg font-semibold text-white">{t("Connexion requise")}</div>
             <p className="mt-2 text-sm text-[var(--cc-muted)]">
               Connecte-toi avec ton compte staff MMD Delivery pour accéder au
               Control Center.
@@ -145,7 +149,7 @@ export default function AdminGate({ children, requiredPermission }: Props) {
               href="/admin/login"
               className={`mt-4 inline-flex ${CC_BTN_PRIMARY}`}
             >
-              Se connecter
+              {t("Se connecter")}
             </Link>
           </div>
         </div>
@@ -158,15 +162,15 @@ export default function AdminGate({ children, requiredPermission }: Props) {
       <div className="admin-figma min-h-screen">
         <div className="mx-auto max-w-xl p-6">
           <div className="cc-card p-6">
-            <div className="text-lg font-semibold text-white">Accès refusé</div>
+            <div className="text-lg font-semibold text-white">{t("Accès refusé")}</div>
             <p className="mt-2 text-sm text-[var(--cc-muted)]">
-              {STAFF_LOGIN_DENIED_MESSAGE}
+              {t(STAFF_LOGIN_DENIED_MESSAGE)}
             </p>
             <Link
               href="/admin"
               className="mt-4 inline-block text-sm font-medium text-[var(--cc-gold)] underline"
             >
-              Retour au Dashboard
+              {t("Retour au Dashboard")}
             </Link>
           </div>
         </div>

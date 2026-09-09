@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useAdminT } from "@/i18n/useAdminT";
 import SiteImage from "./SiteImage";
 import { siteTheme } from "./siteTheme";
 
@@ -51,6 +54,8 @@ export default function HeroShowcase({
 }: {
   brand?: string;
 }) {
+  const { t } = useAdminT();
+
   return (
     <div
       className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-4 shadow-2xl shadow-black/50 sm:p-5"
@@ -68,14 +73,14 @@ export default function HeroShowcase({
       <div className="relative mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-300">
-            Platform
+            {t("Platform")}
           </p>
           <p className="mt-1 text-sm font-medium text-white">
-            Five services. One app.
+            {t("Five services. One app.")}
           </p>
         </div>
         <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-          Live GPS · Stripe · Dispatch
+          {t("Live GPS · Stripe · Dispatch")}
         </div>
       </div>
 
@@ -104,9 +109,9 @@ export default function HeroShowcase({
                   className="object-cover transition duration-500 group-hover:scale-[1.04]"
                 />
               </div>
-              <p className="text-sm font-semibold text-white">{s.title}</p>
+              <p className="text-sm font-semibold text-white">{t(s.title)}</p>
               <p className="mt-1 text-xs leading-snug text-slate-300">
-                {s.blurb}
+                {t(s.blurb)}
               </p>
             </Link>
           </li>

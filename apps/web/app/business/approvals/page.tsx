@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -27,6 +29,8 @@ type PendingRide = {
 type Tab = "all" | "pending" | "approved" | "rejected";
 
 export default function BusinessApprovalsPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -95,7 +99,7 @@ export default function BusinessApprovalsPage() {
     return (
       <BusinessLoadingState
         title="Loading pending approvals..."
-        subtitle="Please wait"
+        subtitle={t("Please wait")}
       />
     );
   }
@@ -103,9 +107,9 @@ export default function BusinessApprovalsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-[30px] font-bold text-white">Ride Approvals</h1>
+        <h1 className="text-[30px] font-bold text-white">{t("Ride Approvals")}</h1>
         <p className="mt-2 text-sm text-white/70">
-          Review business rides that require manager approval.
+          {t("Review business rides that require manager approval.")}
         </p>
       </div>
 
@@ -201,7 +205,7 @@ export default function BusinessApprovalsPage() {
                       onClick={() => void act(ride.id, "approve")}
                       className="rounded-[14px] bg-[#22C55E] px-4 py-3 text-[13px] font-extrabold text-white shadow-[0px_10px_12px_rgba(34,197,94,0.2)] disabled:opacity-60"
                     >
-                      {busyId === ride.id ? "…" : "Approve"}
+                      {busyId === ride.id ? "…" : t("Approve")}
                     </button>
                     <button
                       type="button"
@@ -209,7 +213,7 @@ export default function BusinessApprovalsPage() {
                       onClick={() => void act(ride.id, "reject")}
                       className="rounded-[14px] bg-[#7F1D1D] px-4 py-3 text-[13px] font-extrabold text-white shadow-[0px_10px_12px_rgba(127,29,29,0.2)] disabled:opacity-60"
                     >
-                      Reject
+                      {t("Reject")}
                     </button>
                   </div>
                 ) : null}

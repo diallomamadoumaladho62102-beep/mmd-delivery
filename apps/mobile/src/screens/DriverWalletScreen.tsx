@@ -47,7 +47,9 @@ import {
   isStripeConnectReady,
   normalizeStripeConnectStatus,
   stripeConnectStatusLabel,
+  stripeConnectStatusLabelKey,
   stripeConnectUserMessage,
+  stripeConnectUserMessageKey,
   type StripeConnectStatusCode,
 } from "../lib/stripeConnectStatus";
 import { financialStatusColor } from "../components/wallet/walletStatusColor";
@@ -180,10 +182,10 @@ export function DriverWalletScreen() {
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatusCode>("setup_required");
   const [stripeStatusLabel, setStripeStatusLabel] = useState(
-    stripeConnectStatusLabel("setup_required"),
+    t(stripeConnectStatusLabelKey("setup_required"), stripeConnectStatusLabel("setup_required")),
   );
   const [stripeStatusMessage, setStripeStatusMessage] = useState(
-    stripeConnectUserMessage("setup_required"),
+    t(stripeConnectUserMessageKey("setup_required"), stripeConnectUserMessage("setup_required")),
   );
   const [canCashout, setCanCashout] = useState(false);
   const [cashoutBlockReason, setCashoutBlockReason] = useState<string | null>(null);
@@ -241,8 +243,14 @@ export function DriverWalletScreen() {
     (codeRaw: unknown, label?: string | null, message?: string | null) => {
       const code = normalizeStripeConnectStatus(codeRaw);
       setStripeStatus(code);
-      setStripeStatusLabel(label?.trim() || stripeConnectStatusLabel(code));
-      setStripeStatusMessage(message?.trim() || stripeConnectUserMessage(code));
+      setStripeStatusLabel(
+        label?.trim() ||
+          t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
+      );
+      setStripeStatusMessage(
+        message?.trim() ||
+          t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),
+      );
     },
     [],
   );
@@ -890,7 +898,7 @@ export function DriverWalletScreen() {
                               { color: payoutStatusColor(formatWalletField(item.status, "processing")) },
                             ]}
                           >
-                            {payoutStatusLabel(item.status)}
+                            {t(payoutStatusLabel(item.status))}
                           </Text>
                         </View>
                       </View>

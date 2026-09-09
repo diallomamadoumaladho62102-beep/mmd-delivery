@@ -1,7 +1,11 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 
 export default function CreateOrderForm() {
+  const { t } = useAdminT();
+
   const [kind, setKind] = useState<"food"|"errand">("food");
   const [pickupKind, setPickupKind] = useState<"restaurant"|"home"|"store">("restaurant");
   const [pickupAddress, setPickupAddress] = useState("");
@@ -30,29 +34,29 @@ export default function CreateOrderForm() {
   return (
     <form className="space-y-3" onSubmit={(e)=>{e.preventDefault();submit();}}>
       <div>
-        <label className="block text-sm">Type de course</label>
+        <label className="block text-sm">{t("Type de course")}</label>
         <select value={kind} onChange={(e)=>setKind(e.target.value as any)} className="border rounded px-2 py-1">
-          <option value="food">Livraison nourriture</option>
-          <option value="errand">Récupérer un objet (maison / magasin)</option>
+          <option value="food">{t("Livraison nourriture")}</option>
+          <option value="errand">{t("Récupérer un objet (maison / magasin)")}</option>
         </select>
       </div>
       <div>
-        <label className="block text-sm">Lieu de prise</label>
+        <label className="block text-sm">{t("Lieu de prise")}</label>
         <select value={pickupKind} onChange={(e)=>setPickupKind(e.target.value as any)} className="border rounded px-2 py-1">
-          <option value="restaurant">Restaurant</option>
-          <option value="home">Maison</option>
-          <option value="store">Magasin</option>
+          <option value="restaurant">{t("Restaurant")}</option>
+          <option value="home">{t("Maison")}</option>
+          <option value="store">{t("Magasin")}</option>
         </select>
       </div>
       <div>
-        <label className="block text-sm">Adresse de prise</label>
+        <label className="block text-sm">{t("Adresse de prise")}</label>
         <input value={pickupAddress} onChange={(e)=>setPickupAddress(e.target.value)} className="border rounded px-2 py-1 w-full" />
       </div>
       <div>
-        <label className="block text-sm">Adresse de dépôt</label>
+        <label className="block text-sm">{t("Adresse de dépôt")}</label>
         <input value={dropoffAddress} onChange={(e)=>setDropoffAddress(e.target.value)} className="border rounded px-2 py-1 w-full" />
       </div>
-      <button className="px-3 py-2 bg-black text-white rounded">Créer</button>
+      <button className="px-3 py-2 bg-black text-white rounded">{t("Créer")}</button>
     </form>
   );
 }

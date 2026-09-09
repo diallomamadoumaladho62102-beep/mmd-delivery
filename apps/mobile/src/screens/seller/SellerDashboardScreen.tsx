@@ -39,7 +39,9 @@ import {
 import {
   normalizeStripeConnectStatus,
   stripeConnectStatusLabel,
+  stripeConnectStatusLabelKey,
   stripeConnectUserMessage,
+  stripeConnectUserMessageKey,
   type StripeConnectStatusCode,
 } from "../../lib/stripeConnectStatus";
 import { toUserFacingError } from "../../lib/userFacingError";
@@ -93,9 +95,11 @@ export default function SellerDashboardScreen({ navigation }: Props) {
   const [togglingShop, setTogglingShop] = useState(false);
   const [stripeBusy, setStripeBusy] = useState(false);
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatusCode>("setup_required");
-  const [stripeLabel, setStripeLabel] = useState(stripeConnectStatusLabel("setup_required"));
+  const [stripeLabel, setStripeLabel] = useState(
+    t(stripeConnectStatusLabelKey("setup_required"), stripeConnectStatusLabel("setup_required")),
+  );
   const [stripeMessage, setStripeMessage] = useState(
-    stripeConnectUserMessage("setup_required"),
+    t(stripeConnectUserMessageKey("setup_required"), stripeConnectUserMessage("setup_required")),
   );
 
   const refresh = useCallback(async () => {
@@ -127,17 +131,24 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                 const code = normalizeStripeConnectStatus(connect.status);
                 setStripeStatus(code);
                 setStripeLabel(
-                  String(connect.status_label ?? "") || stripeConnectStatusLabel(code),
+                  String(connect.status_label ?? "") ||
+                    t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
                 );
-                setStripeMessage(stripeConnectUserMessage(code));
+                setStripeMessage(
+                  t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),
+                );
               } else {
                 const code = normalizeStripeConnectStatus(
                   row.stripe_onboarding_status ??
                     (row.stripe_payouts_enabled ? "ready_for_payouts" : "setup_required"),
                 );
                 setStripeStatus(code);
-                setStripeLabel(stripeConnectStatusLabel(code));
-                setStripeMessage(stripeConnectUserMessage(code));
+                setStripeLabel(
+                  t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
+                );
+                setStripeMessage(
+                  t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),
+                );
               }
             }
           }
@@ -150,7 +161,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -253,7 +264,9 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                   <Text style={styles.statusText}>
                     {seller?.is_accepting_orders
                       ? t("seller.dashboard.openForOrders", "Open for orders")
-                      : sellerStatusLabel(seller?.status ?? "pending")}
+                      : sellerStatusLabel(seller?.status ?? "pending", (key, fallback) =>
+                          t(key, { defaultValue: fallback }),
+                        )}
                   </Text>
                 </View>
               </View>

@@ -1,11 +1,21 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
+import i18n from "i18next";
 import { supabase } from "./supabase";
 
 const PROOF_BUCKET = "delivery-proofs";
 const MAX_PROOF_PHOTO_BYTES = 8 * 1024 * 1024;
 const FILE_SYSTEM_CACHE_DIRECTORY = String((FileSystem as any).cacheDirectory || "");
+
+function tr(key: string, defaultValue: string): string {
+  try {
+    const value = i18n.t(key, { defaultValue });
+    return typeof value === "string" && value.trim() ? value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
 
 function sanitizeBase64(value: string) {
   return String(value || "")
@@ -147,13 +157,25 @@ async function prepareProofPhotoUri(sourceUri: string) {
 
 export function getDeliveryProofPhotoErrorMessage(error: unknown): string {
   const code = String((error as { message?: string })?.message ?? error ?? "").trim();
-  if (code === "PHOTO_EMPTY") return "La photo est vide.";
-  if (code === "PHOTO_TOO_LARGE") return "La photo est trop volumineuse (max 8 Mo).";
-  if (code === "PHOTO_URI_MISSING") return "Photo introuvable.";
-  if (code === "PHOTO_FILE_NOT_FOUND") return "Fichier photo introuvable.";
-  if (code === "PHOTO_READ_FAILED") return "Impossible de lire la photo.";
-  if (/network|fetch|timeout/i.test(code)) return "Erreur réseau. Réessaie.";
-  return code || "Impossible de traiter la photo.";
+  if (code === "PHOTO_EMPTY") {
+    return tr("errors.photo.empty", "The photo is empty.");
+  }
+  if (code === "PHOTO_TOO_LARGE") {
+    return tr("errors.photo.tooLarge", "The photo is too large (max 8 MB).");
+  }
+  if (code === "PHOTO_URI_MISSING") {
+    return tr("errors.photo.missing", "Photo not found.");
+  }
+  if (code === "PHOTO_FILE_NOT_FOUND") {
+    return tr("errors.photo.fileNotFound", "Photo file not found.");
+  }
+  if (code === "PHOTO_READ_FAILED") {
+    return tr("errors.photo.readFailed", "Unable to read the photo.");
+  }
+  if (/network|fetch|timeout/i.test(code)) {
+    return tr("errors.photo.networkShort", "Network error. Please try again.");
+  }
+  return code || tr("errors.photo.processFailed", "Unable to process the photo.");
 }
 
 export async function captureDeliveryProofPhoto(): Promise<string | null> {

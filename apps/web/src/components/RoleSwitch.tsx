@@ -1,10 +1,14 @@
 'use client';
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 const ROLES = ["client","driver","restaurant"];
 
 export default function RoleSwitch({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [role, setRole] = useState<string>("client");
   const [uid, setUid] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -46,13 +50,13 @@ export default function RoleSwitch({ orderId }: { orderId: string }) {
 
   return (
     <div className="border rounded-lg p-3 space-y-2">
-      <div className="text-sm font-medium">Rôle</div>
+      <div className="text-sm font-medium">{t("Rôle")}</div>
       <div className="flex gap-2 items-center">
         <select className="border rounded px-2 py-1 text-sm" value={role} onChange={e => setRole(e.target.value)}>
           {ROLES.map(x => <option key={x} value={x}>{x}</option>)}
         </select>
         <button onClick={apply} disabled={loading} className="px-3 py-1.5 rounded bg-zinc-800 text-white text-sm disabled:opacity-60">
-          {loading ? '…' : 'Appliquer'}
+          {loading ? "…" : t("Appliquer")}
         </button>
       </div>
       {msg && <div className="text-xs text-green-700 break-all">OK: {msg}</div>}

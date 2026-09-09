@@ -1,7 +1,11 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { orderStatusUiLabel } from "@/i18n/orderStatusUi";
+import { formatDateTime } from "@/i18n/formatters";
 
 type OrderStatus =
   | "pending"
@@ -26,23 +30,8 @@ const SAFE_DIRECT_STATUSES: OrderStatus[] = [
 
 const BLOCKED_STATUSES = new Set<OrderStatus>(["dispatched", "delivered"]);
 
-function formatStatusLabel(status: string) {
-  switch (status) {
-    case "pending":
-      return "pending";
-    case "assigned":
-      return "assigned";
-    case "prepared":
-      return "prepared";
-    case "ready":
-      return "ready";
-    case "dispatched":
-      return "dispatched";
-    case "delivered":
-      return "delivered";
-    default:
-      return status;
-  }
+function formatStatusLabel(status: string, t: (source: string) => string) {
+  return orderStatusUiLabel(status, t);
 }
 
 export default function OrderStatusManager({
@@ -50,6 +39,8 @@ export default function OrderStatusManager({
 }: {
   orderId: string;
 }) {
+  const { t, locale } = useAdminT();
+
   const [status, setStatus] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +49,8 @@ export default function OrderStatusManager({
 
   const blockedStatusText = useMemo(
     () =>
-      'Les statuts "dispatched" et "delivered" sont protégés. Utilise les routes métier dédiées (pickup-confirm / delivered-confirm).',
-    []
+      t("Les statuts protégés utilisent les routes métier pickup-confirm / delivered-confirm."),
+    [t]
   );
 
   useEffect(() => {
@@ -180,10 +171,10 @@ export default function OrderStatusManager({
 
   return (
     <div className="rounded-2xl border p-4 bg-white space-y-3">
-      <h3 className="text-lg font-semibold">Statut de la commande</h3>
+      <h3 className="text-lg font-semibold">{t("Statut de la commande")}</h3>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Chargement…</p>
+        <p className="text-sm text-gray-500">{t("Chargement…")}</p>
       ) : (
         <>
           <div className="flex flex-wrap gap-2">
@@ -203,16 +194,16 @@ export default function OrderStatusManager({
                       : "bg-gray-100 hover:bg-gray-200"
                   } ${updatingStatus !== null ? "disabled:opacity-60" : ""}`}
                 >
-                  {isBusy ? "Mise à jour..." : formatStatusLabel(s)}
+                  {isBusy ? t("Mise à jour...") : formatStatusLabel(s, t)}
                 </button>
               );
             })}
           </div>
 
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            <p className="font-semibold">Statuts protégés</p>
+            <p className="font-semibold">{t("Statuts protégés")}</p>
             <p className="mt-1">
-              dispatched / delivered ne sont plus modifiables directement ici.
+              {t("Les statuts « en livraison » et « livrée » ne sont plus modifiables directement ici.")}
             </p>
           </div>
 
@@ -222,15 +213,15 @@ export default function OrderStatusManager({
             </div>
           )}
 
-          <h4 className="font-semibold mt-3 text-sm">Historique</h4>
+          <h4 className="font-semibold mt-3 text-sm">{t("Historique")}</h4>
           <ul className="text-xs text-gray-600 space-y-1 max-h-40 overflow-y-auto">
             {history.length === 0 ? (
-              <li>Aucun historique disponible.</li>
+              <li>{t("Aucun historique disponible.")}</li>
             ) : (
               history.map((h, i) => (
                 <li key={`${h.created_at}-${h.new_status ?? "null"}-${i}`}>
-                  {new Date(h.created_at).toLocaleString()} —{" "}
-                  {h.old_status ?? "∅"} → {h.new_status ?? "∅"}
+                  {formatDateTime(h.created_at, locale)} —{" "}
+                  {orderStatusUiLabel(h.old_status, t)} → {orderStatusUiLabel(h.new_status, t)}
                 </li>
               ))
             )}

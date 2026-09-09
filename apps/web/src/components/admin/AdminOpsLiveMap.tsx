@@ -329,7 +329,7 @@ export default function AdminOpsLiveMap({
           onChange={(e) => setRegion(e.target.value)}
           className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
         >
-          <option value="">All states / regions</option>
+          <option value="">{t("All states / regions")}</option>
           {regionOptions.map((r) => (
             <option
               key={`${r.country_code}-${r.region_code}`}

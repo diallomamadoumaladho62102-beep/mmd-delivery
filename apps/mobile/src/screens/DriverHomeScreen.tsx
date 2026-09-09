@@ -2983,7 +2983,7 @@ export function DriverHomeScreen() {
       : waitRangeText;
   const liveDemandLabel = areaIntel?.demand_label ?? fallbackActivity.label;
   const liveDemandDetail = areaIntel
-    ? `${areaIntel.earnings_multiplier.toFixed(1)}x · ${areaIntel.requests_nearby} open`
+    ? `${areaIntel.earnings_multiplier.toFixed(1)}x · ${areaIntel.requests_nearby} ${t("driver.home.premium.requestMany")}`
     : fallbackActivity.detail;
   const liveDriversNearby = areaIntel?.drivers_nearby ?? 0;
   const liveRequestsNearby =
@@ -3050,13 +3050,13 @@ export function DriverHomeScreen() {
 
           {activeOffer && hasOfferPickup && (
             <Mapbox.PointAnnotation id="pickup-location" coordinate={[offerPickupLng as number, activeOffer.pickup_lat as number]}>
-              <View style={styles.pickupPin}><Text style={styles.pinText}>PICKUP</Text></View>
+              <View style={styles.pickupPin}><Text style={styles.pinText}>{t("driver.home.map.pickupTitle")}</Text></View>
             </Mapbox.PointAnnotation>
           )}
 
           {activeOffer && hasOfferDropoff && (
             <Mapbox.PointAnnotation id="dropoff-location" coordinate={[offerDropoffLng as number, activeOffer.dropoff_lat as number]}>
-              <View style={styles.dropoffPin}><Text style={styles.pinText}>DROPOFF</Text></View>
+              <View style={styles.dropoffPin}><Text style={styles.pinText}>{t("driver.home.map.dropoffTitle")}</Text></View>
             </Mapbox.PointAnnotation>
           )}
 
@@ -3192,7 +3192,7 @@ export function DriverHomeScreen() {
             style={[styles.demandPill, { top: insets.top + 98 }]}
           >
             <Ionicons name="flame" size={12} color="#EA580C" />
-            <Text style={styles.demandPillText}>Demand</Text>
+            <Text style={styles.demandPillText}>{t("driver.home.demand")}</Text>
             <Ionicons name="chevron-down" size={11} color="#64748B" />
           </TouchableOpacity>
         ) : null}
@@ -3472,12 +3472,14 @@ function OrderRow({
   formatStatus,
   formatKind,
   formatDate,
+  t,
 }: {
   order: DriverOrder;
   onPress: () => void;
   formatStatus: (status: OrderStatus) => string;
   formatKind: (kind: OrderKind, restaurantName: string | null) => string;
   formatDate: (iso: string | null) => string;
+  t: (key: string, fallback?: string) => string;
 }) {
   const amount = getBestDriverAmount(order);
   return (
@@ -3495,15 +3497,15 @@ function OrderRow({
       </View>
       <View style={styles.orderDetailsRow}>
         <View style={styles.detailBlock}>
-          <Text style={styles.detailLabel}>Pickup</Text>
+          <Text style={styles.detailLabel}>{t("driver.home.map.pickupTitle")}</Text>
           <Text style={styles.detailValue} numberOfLines={1}>{order.pickup_address ?? "—"}</Text>
         </View>
         <View style={styles.detailBlock}>
-          <Text style={styles.detailLabel}>Dropoff</Text>
+          <Text style={styles.detailLabel}>{t("driver.home.map.dropoffTitle")}</Text>
           <Text style={styles.detailValue} numberOfLines={1}>{order.dropoff_address ?? "—"}</Text>
         </View>
         <View style={styles.detailBlockSmall}>
-          <Text style={styles.detailLabel}>Miles</Text>
+          <Text style={styles.detailLabel}>{t("driver.home.miles")}</Text>
           <Text style={styles.detailValue}>{order.distance_miles != null ? order.distance_miles.toFixed(1) : "—"}</Text>
         </View>
       </View>
@@ -3541,17 +3543,17 @@ function OfferCard({
           <Text style={styles.countdown}>{countdown}s</Text>
         </View>
         <Text style={styles.orderKind}>{formatKind(offer.kind, offer.restaurant_name)}</Text>
-        <Text style={styles.offerAddress}>Pickup: <Text style={styles.offerAddressStrong}>{offer.pickup_address ?? "—"}</Text></Text>
-        <Text style={styles.offerAddress}>Dropoff: <Text style={styles.offerAddressStrong}>{offer.dropoff_address ?? "—"}</Text></Text>
+        <Text style={styles.offerAddress}>{t("driver.home.offer.pickup")} <Text style={styles.offerAddressStrong}>{offer.pickup_address ?? "—"}</Text></Text>
+        <Text style={styles.offerAddress}>{t("driver.home.offer.dropoff")} <Text style={styles.offerAddressStrong}>{offer.dropoff_address ?? "—"}</Text></Text>
         <View style={styles.offerStats}>
-          <Text style={styles.offerStat}>Distance: <Text style={styles.offerStatStrong}>{offer.distance_miles != null ? `${offer.distance_miles.toFixed(2)} mi` : "—"}</Text></Text>
+          <Text style={styles.offerStat}>{t("driver.home.offer.distance")}: <Text style={styles.offerStatStrong}>{offer.distance_miles != null ? `${offer.distance_miles.toFixed(2)} mi` : "—"}</Text></Text>
           <Text style={styles.offerMoney}>{money(amount)}</Text>
         </View>
         <Text style={styles.orderTime}>{formatDate(offer.created_at)}</Text>
         <View style={styles.offerActions}>
-          <TouchableOpacity onPress={onDecline} style={styles.declineButton}><Text style={styles.actionText}>Ignore</Text></TouchableOpacity>
+          <TouchableOpacity onPress={onDecline} style={styles.declineButton}><Text style={styles.actionText}>{t("driver.home.ignore")}</Text></TouchableOpacity>
           <TouchableOpacity onPress={onAccept} disabled={accepting} style={[styles.acceptButton, accepting && { opacity: 0.6 }]}>
-            <Text style={styles.acceptText}>{accepting ? "Accepting..." : "Accept"}</Text>
+            <Text style={styles.acceptText}>{accepting ? t("driver.home.accepting") : t("driver.home.offer.accept")}</Text>
           </TouchableOpacity>
         </View>
       </View>

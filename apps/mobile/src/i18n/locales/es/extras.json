@@ -74,7 +74,10 @@
     },
     "errors": {
       "unavailable": "Marketplace no disponible en tu zona."
-    }
+    },
+    "loadingLong": "Cargando marketplace...",
+    "emptyShops": "Aún no hay tiendas aprobadas en tu zona.",
+    "loadFailed": "No se pudo cargar el marketplace"
   },
   "seller": {
     "gate": {
@@ -93,7 +96,13 @@
       "shopOpenOn": "Los clientes pueden ver tus productos activos.",
       "shopOpenOff": "Tu tienda está cerrada a nuevos pedidos.",
       "toggleFailed": "No se pudo actualizar el estado de la tienda.",
-      "language": "Idioma"
+      "language": "Idioma",
+      "status": {
+        "approved": "Aprobado",
+        "rejected": "Rechazado",
+        "suspended": "Suspendido",
+        "pending": "Pendiente de revisión"
+      }
     },
     "nav": {
       "home": "Inicio",
@@ -151,7 +160,13 @@
       "updateFailed": "Error al actualizar"
     },
     "wallet": {
-      "stripeFailed": "No se pudo abrir Stripe."
+      "stripeFailed": "No se pudo abrir Stripe.",
+      "cashOut": "Retirar",
+      "cashoutFailed": "No se pudo solicitar el retiro.",
+      "recentTransactions": "Transacciones recientes",
+      "cashoutUnavailable": "Retiro no disponible",
+      "cashoutRequested": "Retiro solicitado",
+      "cashoutRules": "Mínimo {{min}} • 1 retiro / día"
     }
   },
   "taxi": {
@@ -209,7 +224,30 @@
       "yourArea": "Tu zona",
       "currencyLabel": "Moneda",
       "moreOptions": "Más opciones",
-      "wallet": "Billetera"
+      "wallet": "Billetera",
+      "comfort": "Confort",
+      "wheelchair": "Accesible",
+      "useMyGps": "Usar GPS",
+      "optionalPreferences": "Preferencias opcionales",
+      "categoryUnavailable": "No hay conductor disponible para esta categoría ahora.",
+      "categoryUnavailableShort": "No disponible",
+      "ambiance": "Ambiente del viaje",
+      "ambianceNone": "Sin preferencia",
+      "ambianceQuiet": "Viaje silencioso",
+      "ambianceMusic": "Música",
+      "ambianceTalk": "Conversación",
+      "preferElectric": "Prefiero un vehículo eléctrico o híbrido",
+      "preferElectricHint": "Prioriza vehículos ecológicos y cambia automáticamente si no hay ninguno.",
+      "pref": {
+        "nonSmoking": "Conductor no fumador",
+        "childSeat": "Silla infantil disponible",
+        "pets": "Mascotas permitidas",
+        "largeLuggage": "Gran espacio para equipaje",
+        "airConditioning": "Aire acondicionado obligatorio",
+        "phoneCharger": "Cargador de teléfono",
+        "quietVehicle": "Vehículo silencioso"
+      },
+      "bookSubtitle": "Reserva un viaje, separado de los envíos de paquetes."
     },
     "quote": {
       "title": "Estimación",
@@ -550,7 +588,13 @@
         "incorrectCode": "Código incorrecto. Pide al cliente e inténtalo de nuevo.",
         "verifyFailed": "No se pudo verificar el código. Inténtalo de nuevo.",
         "arrivedPickup": "Llegué al punto de recogida",
-        "verifyPickupCode": "Verificar código de recogida"
+        "verifyPickupCode": "Verificar código de recogida",
+        "clientPreferences": "Preferencias del cliente",
+        "arriveStop": "Llegar a la parada",
+        "completeStop": "Completar parada",
+        "verifyHint": "Pida al cliente su código de embarque de 4 dígitos. El teclado se abre automáticamente; no se necesita foto.",
+        "verifying": "Verificando…",
+        "stopLine": "Parada {{order}}: {{address}} ({{status}})"
       }
     },
     "tip": {
@@ -580,6 +624,11 @@
       "payFailed": "No se pudo pagar la propina.",
       "view": "Ver propina",
       "cta": "Dar propina"
+    },
+    "offer": {
+      "expired": "Caducada",
+      "secondsLeft": "{{count}} s restantes",
+      "minutesLeft": "{{minutes}} min {{seconds}} s restantes"
     }
   },
   "client": {
@@ -610,6 +659,10 @@
         },
         "maintenance": "MMD está en mantenimiento en tu zona. Los nuevos pedidos están desactivados temporalmente.",
         "comingSoon": "Próximamente en tu zona"
+      },
+      "tabs": {
+        "home": "Inicio",
+        "orders": "Pedidos"
       }
     },
     "profile": {
@@ -626,6 +679,28 @@
         "verifiedNotice": "Teléfono verificado.",
         "sendFailed": "No se pudo enviar el código",
         "invalidCode": "Código no válido"
+      },
+      "title": "Perfil del cliente",
+      "titleShort": "Perfil",
+      "subtitle": "Completa tu perfil (foto, dirección, teléfono) para hacer pedidos.",
+      "completeness": "Completitud del perfil",
+      "missing": "Falta",
+      "complete": "Perfil completo.",
+      "openSettings": "Ajustes",
+      "openSettingsHint": "Idioma, notificaciones, seguridad y más",
+      "smsConsent": "Acepto recibir mensajes de texto automatizados informativos y transaccionales de MMD Delivery sobre mi cuenta, verificación, pedidos, entregas, paquetes, viajes en taxi y atención al cliente. La frecuencia varía. Pueden aplicarse tarifas de mensajes y datos. El consentimiento no es una condición de compra. Responda STOP para cancelar y HELP para ayuda. Opcional.",
+      "changePhoto": "Cambiar foto",
+      "missingFields": {
+        "first_name": "nombre",
+        "last_name": "apellido",
+        "email": "correo",
+        "email_verified": "verificación de correo",
+        "phone": "teléfono",
+        "phone_verified": "verificación de teléfono",
+        "avatar": "foto de perfil",
+        "address": "dirección",
+        "city": "ciudad",
+        "address_verified": "dirección verificada"
       }
     },
     "deliveryRequest": {
@@ -710,11 +785,78 @@
       "resetEmailSentBody": "Revisa tu bandeja de entrada. Haz clic en el enlace recibido para restablecer tu contraseña.",
       "cannotSendEmail": "No se pudo enviar el correo.",
       "addressOptional": "Dirección (opcional)",
-      "addressOptionalHint": "Puedes añadir una dirección de entrega más tarde al pedir comida, paquetes o un taxi."
+      "addressOptionalHint": "Puedes añadir una dirección de entrega más tarde al pedir comida, paquetes o un taxi.",
+      "smsConsent": "Acepto recibir mensajes de texto automatizados informativos y transaccionales de MMD Delivery sobre mi cuenta, verificación, pedidos, entregas, paquetes, viajes en taxi y atención al cliente. La frecuencia varía. Pueden aplicarse tarifas de mensajes y datos. El consentimiento no es una condición de compra. Responda STOP para cancelar y HELP para ayuda. Opcional."
     },
     "restaurantMenu": {
       "pickupAddressLabel": "Dirección de recogida (restaurante / inicio)",
       "deliveryAddressLabel": "Dirección de entrega (cliente)"
+    },
+    "restaurants": {
+      "header": {
+        "title": "Restaurantes asociados",
+        "subtitle": "Elige un restaurante por categoría o busca tu plato favorito."
+      },
+      "search": {
+        "placeholder": "Buscar restaurante, dirección o cocina..."
+      },
+      "cuisineAll": "Todos",
+      "loading": "Cargando restaurantes…",
+      "empty": {
+        "title": "No hay restaurantes disponibles",
+        "body": "Ningún restaurante coincide con este filtro ahora."
+      },
+      "phoneLabel": "Teléfono:",
+      "viewMenu": "Ver menú →",
+      "cuisine": {
+        "african": "Africana",
+        "west_african": "África occidental",
+        "west_african_food": "Comida de África occidental",
+        "east_african": "África oriental",
+        "north_african": "Norteafricana",
+        "asian": "Asiática",
+        "chinese": "China",
+        "indian": "India",
+        "italian": "Italiana",
+        "american": "Americana",
+        "french": "Francesa",
+        "mexican": "Mexicana",
+        "mediterranean": "Mediterránea",
+        "middle_eastern": "Oriente Medio",
+        "caribbean": "Caribeña",
+        "european": "Europea",
+        "fast_food": "Comida rápida",
+        "pizza": "Pizza",
+        "seafood": "Mariscos",
+        "vegetarian": "Vegetariana",
+        "grill": "Parrilla",
+        "barbecue": "Barbacoa",
+        "bbq": "BBQ",
+        "fusion": "Fusión",
+        "local": "Local",
+        "international": "Internacional",
+        "bakery": "Panadería",
+        "desserts": "Postres",
+        "healthy": "Saludable",
+        "sushi": "Sushi",
+        "thai": "Tailandesa",
+        "vietnamese": "Vietnamita",
+        "japanese": "Japonesa",
+        "korean": "Coreana",
+        "lebanese": "Libanesa",
+        "moroccan": "Marroquí",
+        "ethiopian": "Etíope",
+        "nigerian": "Nigeriana",
+        "senegalese": "Senegalesa",
+        "guinean": "Guineana",
+        "malian": "Maliense",
+        "ivorian": "Marfileña"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "Seguimiento"
+      }
     }
   },
   "location": {
@@ -724,8 +866,21 @@
     "useLocation": "Usar esta ubicación",
     "back": "Atrás",
     "tripCard": {
-      "loadFailed": "No se pudo cargar la ubicación."
-    }
+      "loadFailed": "No se pudo cargar la ubicación.",
+      "defaultTitle": "Detalles de ubicación del cliente",
+      "landmark": "Punto de referencia",
+      "clientDirections": "Indicaciones del cliente",
+      "unavailable": "Ubicación no disponible.",
+      "viewOnMap": "Ver en el mapa",
+      "pin": "Pin:"
+    },
+    "enterAddress": "Introduce una dirección",
+    "useGps": "Usar GPS",
+    "servicesOff": "Los servicios de ubicación están desactivados",
+    "gpsTimeout": "El GPS agotó el tiempo",
+    "permissionRequired": "Se requiere permiso de ubicación",
+    "gpsUnavailable": "No se pudo leer el GPS",
+    "noPlacesFound": "No se encontraron lugares"
   },
   "auth": {
     "resetPassword": {
@@ -836,10 +991,51 @@
         "insurance": "Seguro",
         "registration": "Tarjeta de circulación"
       },
-      "toggleStatusFailed": "No se puede cambiar el estado ahora."
+      "toggleStatusFailed": "No se puede cambiar el estado ahora.",
+      "demand": "Demanda",
+      "miles": "Millas",
+      "ignore": "Ignorar",
+      "accepting": "Aceptando...",
+      "premium": {
+        "todaySummary": "Resumen de hoy",
+        "viewDetails": "Ver detalles",
+        "earnings": "Ganancias",
+        "trips": "Viajes",
+        "points": "Puntos",
+        "level": "Nivel",
+        "nextReward": "Próxima recompensa",
+        "activeJobs": "Trabajos activos ({{count}})",
+        "viewAll": "Ver todo",
+        "refresh": "Actualizar",
+        "noMission": "Aún no hay misión activa",
+        "noMissionBody": "Los trabajos de taxi, comida y entrega aceptados aparecen aquí.",
+        "restaurantLine": "Restaurante: {{address}}",
+        "pickupLine": "Recogida: {{address}}",
+        "customerLine": "Cliente: {{address}}",
+        "destinationLine": "Destino: {{address}}",
+        "youreOffline": "Estás desconectado",
+        "offlineBody": "Conéctate para recibir solicitudes, ver zonas de demanda y desbloquear MMD Smart Dispatch.",
+        "goOnline": "Conectarse",
+        "live": "EN VIVO",
+        "smartSubtitle": "MMD analiza la demanda en tiempo real para mostrar las mejores oportunidades cercanas.",
+        "viewHotspots": "Ver zonas calientes",
+        "highDemand": "Alta demanda",
+        "driversNearby": "Conductores cerca",
+        "driverOne": "conductor",
+        "driverMany": "conductores",
+        "estWait": "Espera est.",
+        "requestsNearby": "Solicitudes cerca",
+        "requestOne": "solicitud",
+        "requestMany": "solicitudes",
+        "goBusyArea": "Ir a zona ocupada",
+        "goBusyAreaSub": "Navegar a una zona de alta demanda",
+        "goOffline": "Desconectarse",
+        "goOfflineSub": "Dejarás de recibir solicitudes"
+      }
     },
     "profile": {
-      "transportValidationRequired": "Este modo de transporte requiere validación de documentos antes de activarse."
+      "transportValidationRequired": "Este modo de transporte requiere validación de documentos antes de activarse.",
+      "activeFleet": "Vehículo activo (flota)"
     },
     "account": {
       "createProfileFailed": "No se puede crear el perfil del conductor ahora.",
@@ -1005,7 +1201,9 @@
       "acceptStandardDesc": "Comfort, XL or Wheelchair can also receive Standard rides",
       "availableSection": "Available services",
       "advancedSection": "Advanced options",
-      "enableTaxiForAdvanced": "Enable Taxi rides to manage advanced options."
+      "enableTaxiForAdvanced": "Enable Taxi rides to manage advanced options.",
+      "saving": "Guardando…",
+      "refreshPreferences": "Actualizar preferencias"
     },
     "identity": {
       "cameraRequiredTitle": "Cámara requerida",
@@ -1039,7 +1237,9 @@
       "refreshStatus": "Refresh Status",
       "successBody": "You can now go online.",
       "problemTitle": "Verification problem",
-      "selfieHint": "Selfie required — centered face, good lighting"
+      "selfieHint": "Selfie required — centered face, good lighting",
+      "submitForVerification": "Enviar para verificación",
+      "cameraIssue": "¿Problema con la cámara?"
     },
     "taxiPanel": {
       "title": "Taxi",
@@ -1093,7 +1293,19 @@
       "sentTitle": "Reporte enviado",
       "sentBody": "{{label}} reportado. Visible 25 minutos para los conductores cercanos.",
       "reportButton": "Reportar",
-      "nearbyAlerts": "{{count}} alerta(s) activa(s) cerca"
+      "nearbyAlerts": "{{count}} alerta(s) activa(s) cerca",
+      "title": "Reportar un problema",
+      "nearbyHint": "El aviso será visible para conductores cercanos durante 25 minutos.",
+      "sending": "Enviando…",
+      "categories": {
+        "accident": "Accidente",
+        "traffic_jam": "Atasco",
+        "road_closed": "Carretera cerrada",
+        "hazard": "Peligro",
+        "police": "Policía",
+        "bad_address": "Dirección incorrecta",
+        "other": "Otro problema"
+      }
     },
     "taxPdf": {
       "errorTitle": "Error de PDF"
@@ -1153,6 +1365,16 @@
       },
       "success": {
         "title": "¡Cash out correcto!"
+      },
+      "payouts": {
+        "status": {
+          "paid": "Pagado",
+          "canceled": "Cancelado",
+          "reversed": "Revertido",
+          "failed": "Fallido",
+          "processing": "Procesando",
+          "unknown": "Desconocido"
+        }
       }
     },
     "mapFallback": {
@@ -1171,6 +1393,30 @@
       "routeErrorBody": "Unable to calculate the route at this time. You can retry or open an external app from the details.",
       "errorTitle": "Error",
       "errorBody": "Something went wrong."
+    },
+    "menu": {
+      "servicesTitle": "Mis servicios",
+      "servicesSub": "Comida, paquetes, taxi",
+      "vehicleTitle": "Mi vehículo",
+      "vehicleSub": "Categorías de taxi"
+    },
+    "inbox": {
+      "emptyTitle": "Bandeja vacía"
+    },
+    "workAccount": {
+      "loadingTitle": "Estado de la cuenta"
+    },
+    "trip": {
+      "clientPickup": "CLIENTE · RECOGIDA",
+      "client": "CLIENTE"
+    },
+    "referrals": {
+      "inviteStatus": {
+        "earned": "Recompensa obtenida",
+        "active": "Activo",
+        "expired": "Expirado",
+        "pending": "Pendiente"
+      }
     }
   },
   "restaurant": {
@@ -1300,7 +1546,13 @@
       "history": "Historial",
       "loadFailed": "No se pudo cargar la billetera.",
       "emptyTitle": "Sin transacciones",
-      "emptyBody": "Los movimientos aparecerán aquí."
+      "emptyBody": "Los movimientos aparecerán aquí.",
+      "cashOut": "Retirar",
+      "cashoutFailed": "No se pudo solicitar el retiro.",
+      "recentTransactions": "Transacciones recientes",
+      "cashoutUnavailable": "Retiro no disponible",
+      "cashoutRequested": "Retiro solicitado",
+      "cashoutRules": "Mínimo {{min}} • 1 retiro / día"
     },
     "automation": {
       "errorTitle": "Error",
@@ -1312,11 +1564,11 @@
       "testPrintQueued": "Ticket de prueba añadido a la cola de impresión.",
       "testFailed": "Falló la prueba de impresión",
       "title": "Automatización de pedidos",
-      "subtitle": "Settings",
-      "loadingTitle": "Loading Settings...",
-      "loadingSubtitle": "Fetching your automation preferences",
-      "infoTitle": "Auto-accept & Kitchen Print",
-      "infoBody": "Control how new orders are accepted and printed.",
+      "subtitle": "Ajustes",
+      "loadingTitle": "Cargando ajustes…",
+      "loadingSubtitle": "Obteniendo tus preferencias de automatización",
+      "infoTitle": "Aceptación automática e impresión de cocina",
+      "infoBody": "Controla cómo se aceptan e imprimen los pedidos nuevos.",
       "autoAccept": "Auto-accept new orders",
       "autoPrint": "Auto-print on accept",
       "soundAlert": "Sound alert",
@@ -1346,7 +1598,28 @@
     "menu": {
       "alerts": {
         "actionFailed": "Esta acción no está disponible ahora."
-      }
+      },
+      "addCategory": "+ Añadir categoría",
+      "noCategories": "Sin categorías",
+      "noCategoriesBody": "Aún no hay categorías. Añade una para empezar.",
+      "addCategoryTitle": "Añadir categoría",
+      "categoryNamePlaceholder": "Nombre de la categoría",
+      "changeImage": "Cambiar imagen",
+      "chooseImage": "Elegir imagen",
+      "noItems": "Sin productos",
+      "noItemsBody": "Añade un producto a esta categoría.",
+      "addItem": "+ Añadir producto",
+      "addItemTitle": "Añadir producto",
+      "editItemTitle": "Editar producto",
+      "name": "Nombre",
+      "price": "Precio",
+      "description": "Descripción",
+      "available": "Disponible",
+      "unavailable": "No disponible",
+      "add": "Añadir",
+      "title": "Menú",
+      "loadingTitle": "Cargando menú...",
+      "loadingSubtitle": "Obteniendo tus productos"
     },
     "dashboard": {
       "availabilityUpdateFailed": "No se pudo cambiar el estado del restaurante."
@@ -1354,6 +1627,44 @@
     "orders": {
       "statusUpdateFailed": "No se pudo actualizar el estado del pedido ({{status}}).",
       "rejectFailed": "No se pudo rechazar el pedido ({{status}})."
+    },
+    "connect": {
+      "cta": {
+        "setup_required": {
+          "title": "Conecte su cuenta bancaria",
+          "body": "Debe conectar Stripe para recibir pagos del restaurante. Stripe pedirá su nombre legal, identidad y cuenta bancaria. MMD nunca recopila datos bancarios.",
+          "action": "Conectar Stripe"
+        },
+        "verification_pending": {
+          "title": "Complete la configuración de Stripe",
+          "body": "Inició Stripe Connect. Termine identidad y cuenta bancaria en Stripe para recibir pagos.",
+          "action": "Completar Stripe"
+        },
+        "verification_in_progress": {
+          "title": "Configuración de Stripe incompleta",
+          "body": "Stripe está revisando su cuenta. Continúe si falta información bancaria o de identidad.",
+          "action": "Continuar Stripe"
+        },
+        "ready_for_payouts": {
+          "title": "Stripe conectado",
+          "body": "Su cuenta bancaria está conectada. Abra Stripe para gestionar pagos o actualizar datos.",
+          "action": "Gestionar pagos"
+        },
+        "restricted": {
+          "title": "Pago bloqueado",
+          "body": "Stripe aún no puede pagar a este restaurante. Abra Stripe para corregir la cuenta; los pagos se reintentarán solos.",
+          "action": "Corregir cuenta Stripe"
+        }
+      }
+    },
+    "earnings": {
+      "stripe": {
+        "bankKicker": "Pagos bancarios",
+        "moreInfoNeeded": "Stripe aún necesita información de identidad o bancaria."
+      }
+    },
+    "ads": {
+      "loading": "Cargando anuncio"
     }
   },
   "roleSelect": {
@@ -1385,6 +1696,13 @@
     "footer": {
       "safe": "Tus datos están seguros con nosotros",
       "trusted": "Con la confianza de miles"
+    },
+    "profileGate": {
+      "sessionExpired": "Tu sesión caducó. Inicia sesión de nuevo.",
+      "network": "Error de red al verificar tu perfil. Comprueba tu conexión e inténtalo de nuevo.",
+      "permission": "No se puede acceder a tu perfil. Cierra sesión, inicia de nuevo o contacta con soporte.",
+      "server": "El servicio de perfil no está disponible temporalmente. Inténtalo de nuevo en un momento.",
+      "unknown": "No se pudo verificar tu perfil. Inténtalo de nuevo."
     }
   },
   "finance": {
@@ -1477,12 +1795,33 @@
     "codeAcceptedWithDiscount": "Código aceptado (−{{orderDiscount}} / −{{deliveryDiscount}} envío). El importe exacto se aplica al pagar.",
     "codeAccepted": "Código aceptado. El importe exacto se aplica al pagar según tu carrito.",
     "codeRejected": "Código rechazado.",
-    "loadFailed": "No se pudieron cargar las promociones."
+    "loadFailed": "No se pudieron cargar las promociones.",
+    "verify": "Verificar",
+    "myCoupons": "Mis cupones",
+    "emptyCoupons": "No hay cupones.",
+    "offers": "Ofertas",
+    "emptyOffers": "No hay ofertas.",
+    "retry": "Reintentar",
+    "promoCode": "Código promo",
+    "placeholder": "CODIGOPROMO",
+    "seeAlsoMmdPlus": "Ver también MMD+"
   },
   "mmdPlus": {
     "title": "MMD+",
     "actionFailed": "Acción no disponible.",
-    "loadFailed": "No se pudo cargar MMD+."
+    "loadFailed": "No se pudo cargar MMD+.",
+    "currentSubscription": "Suscripción actual",
+    "manageSubscription": "Gestionar suscripción",
+    "resume": "Reanudar",
+    "noActive": "Sin suscripción activa",
+    "planBenefits": "Un plan para beneficios de Comida, Entrega, Taxi y Marketplace.",
+    "plansSection": "Planes y beneficios",
+    "noPlans": "No hay planes disponibles.",
+    "billing": "Facturación",
+    "noInvoices": "No hay facturas.",
+    "currentPlan": "Plan actual",
+    "changePlan": "Cambiar plan",
+    "join": "Unirse"
   },
   "locationPicker": {
     "permissionTitle": "Permiso requerido",
@@ -1591,6 +1930,25 @@
       "cardDeclined": "Tu tarjeta fue rechazada. Comprueba tus datos o usa otra tarjeta.",
       "networkFailed": "Conexión inestable. Comprueba tu red e inténtalo de nuevo.",
       "distanceTooFar": "La distancia es demasiado larga para este viaje."
+    },
+    "sessionExpired": "Sesión caducada. Inicia sesión de nuevo.",
+    "account": {
+      "deleted": "Esta cuenta ha sido eliminada y ya no se puede usar.",
+      "banned": "Esta cuenta está prohibida. Contacta con el soporte de MMD Delivery.",
+      "suspended": "Tu cuenta está suspendida. Contacta con el soporte de MMD Delivery.",
+      "disabled": "Tu cuenta está desactivada. Contacta con el soporte de MMD Delivery.",
+      "unknown": "No se pudo verificar el estado de la cuenta. Inténtalo de nuevo en un momento."
+    },
+    "photo": {
+      "cameraDenied": "Permite el acceso a la cámara en Ajustes para continuar.",
+      "empty": "La foto está vacía.",
+      "tooLarge": "La foto es demasiado grande (máx. 8 MB).",
+      "missing": "Foto no encontrada.",
+      "fileNotFound": "Archivo de foto no encontrado.",
+      "readFailed": "No se pudo leer la foto.",
+      "network": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
+      "networkShort": "Error de red. Inténtalo de nuevo.",
+      "processFailed": "No se pudo procesar la foto."
     }
   },
   "common": {
@@ -1661,15 +2019,111 @@
       "pinPickup": "Fijar recogida",
       "pickupPinned": "Recogida fijada",
       "pickupExactLocation": "Ubicación exacta de recogida",
-      "usePickupLocation": "Usar esta recogida"
+      "usePickupLocation": "Usar esta recogida",
+      "title": "Título",
+      "titleRidePlaceholder": "Ejemplo: viaje al aeropuerto",
+      "titlePackagePlaceholder": "Ejemplo: documentos importantes",
+      "pickupAddress": "Dirección de recogida",
+      "pickupPlaceholder": "Introduce la dirección de recogida",
+      "dropoffAddress": "Dirección de destino",
+      "dropoffPlaceholder": "Introduce la dirección de destino",
+      "pinDropoff": "Fijar el destino exacto en el mapa",
+      "dropoffPinned": "Destino fijado en el mapa",
+      "dropoffExactLocation": "Ubicación exacta de destino",
+      "useDropoffLocation": "Usar este destino",
+      "pickupContactName": "Nombre de contacto en recogida",
+      "pickupPhone": "Teléfono de recogida",
+      "dropoffContactName": "Nombre de contacto en destino",
+      "dropoffPhone": "Teléfono de destino",
+      "rideNotes": "Notas del viaje",
+      "packageDescription": "Descripción del paquete",
+      "rideNotesPlaceholder": "Notas opcionales del viaje",
+      "packageDescriptionPlaceholder": "Describe el paquete"
     },
     "pricing": {
       "distance": "Distancia",
-      "eta": "ETA",
+      "eta": "Tiempo estimado",
       "deliveryFee": "Tarifa de entrega",
       "tax": "Impuesto",
       "serviceFee": "Tarifa de servicio",
-      "total": "Total"
+      "total": "Total",
+      "title": "Resumen del precio",
+      "loading": "Cargando precios…",
+      "calculating": "Calculando estimación…",
+      "ready": "Estimación lista",
+      "emptyHint": "Calcula el precio para ver la estimación."
+    },
+    "header": {
+      "title": "Solicitar una entrega",
+      "subtitle": "Crea un envío de paquete o un viaje privado sin pasar por un restaurante."
+    },
+    "type": {
+      "title": "Tipo de solicitud",
+      "packageShort": "Paquete",
+      "rideShort": "Viaje"
+    },
+    "details": {
+      "title": "Detalles de la entrega"
+    },
+    "leaveAtDoor": {
+      "title": "Dejar en la puerta",
+      "hint": "Permite al repartidor dejar el paquete en la puerta tras la espera máxima (foto obligatoria)."
+    },
+    "unavailable": {
+      "title": "Entrega no disponible"
+    },
+    "actions": {
+      "calculate": "Calcular precio de entrega",
+      "create": "Crear solicitud de entrega",
+      "payNow": "Pagar ahora"
+    },
+    "created": {
+      "paidCardTitle": "Solicitud de entrega pagada",
+      "cardTitle": "Solicitud de entrega creada",
+      "payHint": "Puedes continuar al pago seguro."
+    },
+    "alerts": {
+      "scopeTitle": "Mercado no disponible",
+      "missingPickupTitle": "Falta la recogida",
+      "missingPickupBody": "Introduce la dirección de recogida.",
+      "missingDropoffTitle": "Falta el destino",
+      "missingDropoffBody": "Introduce la dirección de destino.",
+      "incompleteAddressTitle": "Dirección incompleta",
+      "incompleteAddressBody": "Introduce direcciones de recogida y destino completas.",
+      "missingDescriptionTitle": "Falta la descripción",
+      "missingDescriptionBody": "Describe lo que se debe entregar.",
+      "missingFieldsTitle": "Faltan campos",
+      "missingFieldsBody": "Completa primero las direcciones de recogida y destino.",
+      "missingConfigTitle": "Falta la configuración",
+      "missingConfigBody": "La URL de la API no está configurada.",
+      "estimateFailedTitle": "Estimación fallida",
+      "createdTitle": "Solicitud creada",
+      "createdBody": "Solicitud de entrega creada. Pulsa Pagar ahora para completar el pago."
+    },
+    "errors": {
+      "estimateGeneric": "No se pudo calcular la estimación de entrega ahora.",
+      "networkEstimate": "Error de red al calcular la estimación.",
+      "estimateTimeout": "La estimación tardó demasiado. Inténtalo de nuevo.",
+      "distanceTooLarge": "La distancia es demasiado grande. Revisa ambas direcciones.",
+      "distanceTooLargeOrImprecise": "La distancia es demasiado grande o la dirección no es lo bastante precisa.",
+      "invalidDistanceTime": "Respuesta de distancia/tiempo inválida de la API de estimación.",
+      "loginRequiredCreate": "Debes iniciar sesión para crear una solicitud de entrega.",
+      "loginRequiredPay": "Debes iniciar sesión para pagar.",
+      "createFailed": "No se pudo crear la solicitud.",
+      "missingCoords": "Faltan las coordenadas de recogida y destino.",
+      "quoteRequired": "Calcula la estimación antes de crear la solicitud."
+    },
+    "payment": {
+      "title": "Pago",
+      "notCompletedNoRequest": "El pago no se completó. No se creó ninguna solicitud.",
+      "successTitle": "Pago correcto",
+      "successOrderVisible": "Tu pago está confirmado y el pedido ya es visible para los conductores.",
+      "successBody": "Tu pago está confirmado.",
+      "createFirst": "Crea primero la solicitud de entrega.",
+      "pendingTitle": "Pago pendiente",
+      "pendingBody": "El pago comenzó, pero la confirmación sigue pendiente. Los conductores no verán el pedido hasta que se confirme.",
+      "unableToStart": "No se pudo iniciar el pago ahora.",
+      "errorTitle": "Error de pago"
     }
   },
   "mmd": {
@@ -1709,5 +2163,57 @@
         "banner": "Se requiere confirmación. MMD AI no cobra. Continúa en Taxi o en el menú del restaurante."
       }
     }
+  },
+  "payments": {
+    "stripeConnect": {
+      "status": {
+        "setup_required": "Configuración requerida",
+        "verification_pending": "Verificación pendiente",
+        "verification_in_progress": "Verificación en curso",
+        "ready_for_payouts": "Listo para pagos",
+        "restricted": "Restringido",
+        "disabled": "Deshabilitado"
+      },
+      "message": {
+        "setup_required": "Complete la configuración de Stripe para recibir pagos. Pulse Activar.",
+        "verification_pending": "Stripe aún necesita información. Continúe el registro para terminar la verificación.",
+        "verification_in_progress": "Stripe está revisando su cuenta. Los pagos se desbloquean al completar la verificación.",
+        "ready_for_payouts": "Su cuenta Stripe está lista. Puede retirar cuando el saldo lo permita.",
+        "restricted": "Su cuenta Stripe está restringida. Abra Stripe para resolver los requisitos pendientes.",
+        "disabled": "Su cuenta Stripe está deshabilitada. Contacte a soporte o reabra Stripe."
+      }
+    },
+    "picker": {
+      "title": "Elegir método de pago",
+      "unavailable": "Método de pago temporalmente no disponible",
+      "test": "Prueba"
+    }
+  },
+  "tracking": {
+    "offlineWaiting": "Sin conexión — esperando red",
+    "offline": "Sin conexión",
+    "etaApproximate": "La hora de llegada puede ser aproximada",
+    "mapUnavailable": "Mapa no disponible",
+    "rezoom": "Reencuadrar",
+    "recenter": "Recentrar el mapa",
+    "etaUnavailable": "Hora de llegada no disponible",
+    "arriveApprox": "Llegada ~{{time}}",
+    "remainingMeters": "{{meters}} m restantes",
+    "remainingMiles": "{{miles}} mi restantes",
+    "updatedAt": "Actualizado {{time}}",
+    "locationStale": "La ubicación puede estar desactualizada"
+  },
+  "otp": {
+    "verified": "Código verificado",
+    "enterCode": "Introduce el código de verificación"
+  },
+  "ui": {
+    "loadingPlaceholder": "Marcador de carga"
+  },
+  "market": {
+    "scopeUnavailable": "Ámbito de mercado no disponible. Active la ubicación o inténtelo de nuevo."
+  },
+  "social": {
+    "a11y": "Redes sociales de MMD Delivery"
   }
 }

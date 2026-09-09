@@ -83,7 +83,7 @@ export function RestaurantHomeMapChrome({
 
   const filterLabel = useMemo(() => {
     const row = RESTAURANT_MAP_STATUS_FILTERS.find((f) => f.key === statusFilter);
-    return t(row?.labelKey ?? "restaurant.home.filter.all", row?.labelFallback ?? "Tous les statuts");
+    return t(row?.labelKey ?? "restaurant.home.filter.all", row?.labelFallback ?? "All statuses");
   }, [statusFilter, t]);
 
   const opsCopy = useMemo(() => {

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -37,22 +39,25 @@ const ACTIVE_STATUSES: OrderStatus[] = [
   "dispatched",
 ];
 
-function restaurantStatusLabel(s: OrderStatus): string {
+function restaurantStatusLabel(
+  s: OrderStatus,
+  t: (source: string) => string,
+): string {
   switch (s) {
     case "pending":
-      return "En attente (à accepter)";
+      return t("En attente (à accepter)");
     case "accepted":
-      return "Acceptée (en préparation)";
+      return t("Acceptée (en préparation)");
     case "prepared":
-      return "Préparée (en attente de pickup)";
+      return t("Préparée (en attente de pickup)");
     case "ready":
-      return "Prête (en attente du driver)";
+      return t("Prête (en attente du driver)");
     case "dispatched":
-      return "En livraison";
+      return t("En livraison");
     case "delivered":
-      return "Livrée";
+      return t("Livrée");
     case "canceled":
-      return "Annulée";
+      return t("Annulée");
     default:
       return s;
   }
@@ -68,6 +73,8 @@ function formatDate(iso: string) {
 }
 
 export default function RestaurantOrdersDashboardPage() {
+  const { t } = useAdminT();
+
   const [me, setMe] = useState<Me | null>(null);
   const [activeOrders, setActiveOrders] = useState<OrderRow[]>([]);
   const [pastOrders, setPastOrders] = useState<OrderRow[]>([]);
@@ -288,7 +295,7 @@ export default function RestaurantOrdersDashboardPage() {
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Commandes à préparer</h1>
+          <h1 className="text-2xl font-bold">{t("Commandes à préparer")}</h1>
           <p className="text-sm text-gray-600">
             Restaurant :{" "}
             <span className="font-medium">{me?.full_name || "Ton restaurant"}</span>
@@ -303,12 +310,12 @@ export default function RestaurantOrdersDashboardPage() {
           onClick={() => load()}
           className="px-3 py-1.5 rounded-lg border text-sm bg-white hover:bg-gray-50"
         >
-          Rafraîchir
+          {t("Rafraîchir")}
         </button>
       </header>
 
       {loading && (
-        <p className="text-sm text-gray-600">Chargement des commandes restaurant…</p>
+        <p className="text-sm text-gray-600">{t("Chargement des commandes restaurant…")}</p>
       )}
 
       {err && <p className="text-sm text-red-600">Erreur : {err}</p>}
@@ -316,15 +323,15 @@ export default function RestaurantOrdersDashboardPage() {
       {!loading && !err && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-lg font-semibold">Commandes en cours</h2>
+            <h2 className="text-lg font-semibold">{t("Commandes en cours")}</h2>
             <p className="text-xs text-gray-500">
-              Commandes en attente, acceptées, en préparation, prêtes ou en livraison.
+              {t("Commandes en attente, acceptées, en préparation, prêtes ou en livraison.")}
             </p>
           </div>
 
           {activeOrders.length === 0 ? (
             <p className="text-sm text-gray-600">
-              Tu n&apos;as aucune commande en cours pour le moment.
+              {t("Tu n&apos;as aucune commande en cours pour le moment.")}
             </p>
           ) : (
             <div className="space-y-3">
@@ -360,7 +367,7 @@ export default function RestaurantOrdersDashboardPage() {
                       </div>
 
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium bg-amber-50 text-amber-700 border-amber-200">
-                        {restaurantStatusLabel(order.status)}
+                        {restaurantStatusLabel(order.status, t)}
                       </span>
                     </div>
 
@@ -374,13 +381,13 @@ export default function RestaurantOrdersDashboardPage() {
                         href={`/orders/${order.id}/restaurant`}
                         className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                       >
-                        Détails de la commande
+                        {t("Détails de la commande")}
                       </Link>
                       <Link
                         href={`/orders/${order.id}/chat`}
                         className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                       >
-                        Ouvrir le chat
+                        {t("Ouvrir le chat")}
                       </Link>
                     </div>
                   </article>
@@ -394,13 +401,13 @@ export default function RestaurantOrdersDashboardPage() {
       {!loading && !err && (
         <section className="space-y-3">
           <div className="pt-4 border-t">
-            <h2 className="text-lg font-semibold">Historique des commandes</h2>
-            <p className="text-xs text-gray-500">Commandes livrées ou annulées pour ce restaurant.</p>
+            <h2 className="text-lg font-semibold">{t("Historique des commandes")}</h2>
+            <p className="text-xs text-gray-500">{t("Commandes livrées ou annulées pour ce restaurant.")}</p>
           </div>
 
           {pastOrders.length === 0 ? (
             <p className="text-sm text-gray-600">
-              Aucun historique de commande pour l&apos;instant.
+              {t("Aucun historique de commande pour l&apos;instant.")}
             </p>
           ) : (
             <div className="space-y-3">
@@ -428,7 +435,7 @@ export default function RestaurantOrdersDashboardPage() {
                       </div>
 
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium bg-gray-50 text-gray-700 border-gray-200">
-                        {restaurantStatusLabel(order.status)}
+                        {restaurantStatusLabel(order.status, t)}
                       </span>
                     </div>
 
@@ -437,7 +444,7 @@ export default function RestaurantOrdersDashboardPage() {
                         href={`/orders/${order.id}/restaurant`}
                         className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                       >
-                        Voir la commande
+                        {t("Voir la commande")}
                       </Link>
                     </div>
                   </article>

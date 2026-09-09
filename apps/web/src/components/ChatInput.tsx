@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { sendChatMessage } from "@/lib/chat";
 
@@ -47,7 +49,7 @@ export default function ChatInput({
 
       <textarea
         className="w-full border rounded px-3 py-2 h-20"
-        placeholder="Écrire un message…"
+        placeholder={t("Écrire un message…")}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
@@ -70,7 +72,7 @@ export default function ChatInput({
           disabled={pending || (!text.trim() && !file)}
           className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
         >
-          {pending ? "Envoi…" : "Envoyer"}
+          {pending ? "Envoi…" : t("Envoyer")}
         </button>
       </div>
     </div>

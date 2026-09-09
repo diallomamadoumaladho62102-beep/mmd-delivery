@@ -615,9 +615,9 @@ export default function StaffCommsPanel({
     if (m.sender_id !== currentUserId) return "";
     const receipts = m.staff_message_receipts ?? [];
     const peer = receipts.find((r) => r.admin_id === peerAdminId);
-    if (peer?.read_at) return "Read";
-    if (peer?.delivered_at) return "Delivered";
-    return "Sent";
+    if (peer?.read_at) return t("Read");
+    if (peer?.delivered_at) return t("Delivered");
+    return t("Sent");
   }
 
   const parentById = Object.fromEntries(messages.map((m) => [m.id, m]));

@@ -18,6 +18,9 @@ import DriverAvatar from "./DriverAvatar";
 import DriverBadge from "./DriverBadge";
 import DriverDocBadges from "./DriverDocBadges";
 import DriverStatusStepper from "./DriverStatusStepper";
+import { missingRequirementsSummary } from "@/i18n/missingRequirementLabel";
+import { transportModeUiLabel } from "@/i18n/orderStatusUi";
+import { formatDateTime } from "@/i18n/formatters";
 
 export type DriverProfileDraft = {
   full_name: string;
@@ -77,21 +80,16 @@ function DriverOpsCard({
   onDeleteDocument: (docId: string) => void;
   updatingDocumentId: string | null;
 }) {
-  const { t } = useAdminT();
+  const { t, locale } = useAdminT();
 
   const name = partyDisplayName(driver.full_name, driver.email);
   const status = driverStatusBadge(driver.status);
   const online = onlineBadge(driver.is_online);
   const joined = driver.created_at
-    ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
-        new Date(driver.created_at)
-      )
+    ? formatDateTime(driver.created_at, locale, { dateStyle: "medium", timeStyle: undefined })
     : null;
   const lastActivity = driver.last_activity_at
-    ? new Intl.DateTimeFormat("en-US", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(new Date(driver.last_activity_at))
+    ? formatDateTime(driver.last_activity_at, locale)
     : null;
 
   const vehicleType =
@@ -121,10 +119,10 @@ function DriverOpsCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="truncate text-base font-semibold text-slate-900">{name}</h2>
-            <DriverBadge label={status.label} tone={status.tone} />
-            <DriverBadge label={online.label} tone={online.tone} />
+            <DriverBadge label={t(status.label)} tone={status.tone} />
+            <DriverBadge label={t(online.label)} tone={online.tone} />
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-              {driver.transport_mode}
+              {transportModeUiLabel(driver.transport_mode, t)}
             </span>
           </div>
           {driver.email ? (
@@ -162,10 +160,7 @@ function DriverOpsCard({
         </div>
         {driver.computed_missing_requirements.length > 0 ? (
           <p className="mt-1 text-[11px] text-amber-700">
-            Missing: {driver.computed_missing_requirements.slice(0, 4).join(", ")}
-            {driver.computed_missing_requirements.length > 4
-              ? ` +${driver.computed_missing_requirements.length - 4}`
-              : ""}
+            {missingRequirementsSummary(driver.computed_missing_requirements, t)}
           </p>
         ) : null}
       </div>
@@ -195,12 +190,12 @@ function DriverOpsCard({
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                 {(
                   [
-                    [t("Type"), vehicleType],
-                    ["Make", vehicleMake],
-                    ["Model", vehicleModel],
+                    [t("Type"), vehicleType ? transportModeUiLabel(vehicleType, t) : null],
+                    [t("Make"), vehicleMake],
+                    [t("Model"), vehicleModel],
                     [t("Year"), vehicleYear != null ? String(vehicleYear) : null],
-                    ["Color", vehicleColor],
-                    ["Plate", vehiclePlate],
+                    [t("Color"), vehicleColor],
+                    [t("Plate"), vehiclePlate],
                   ] as const
                 )
                   .filter(([, value]) => Boolean(value))

@@ -11,6 +11,7 @@ import {
   getActiveSocialLinks,
   type SocialLinkDefinition,
 } from "../../lib/socialLinks";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   style?: ViewStyle;
@@ -26,6 +27,7 @@ export function SocialLinks({
   compact = false,
   tone = "light",
 }: Props) {
+  const { t } = useTranslation();
   const items = links ?? getActiveSocialLinks();
   if (!items.length) return null;
   const dark = tone === "dark";
@@ -34,7 +36,7 @@ export function SocialLinks({
     <View
       style={[styles.row, compact && styles.rowCompact, style]}
       accessibilityRole="summary"
-      accessibilityLabel="MMD Delivery social media"
+      accessibilityLabel={t("social.a11y", "MMD Delivery social media")}
     >
       {items.map((link) => (
         <Pressable

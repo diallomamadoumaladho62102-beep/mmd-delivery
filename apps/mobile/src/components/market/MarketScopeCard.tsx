@@ -7,6 +7,7 @@ import {
   MMD_TEXT,
   MMD_TEXT_MUTED_BLUE,
 } from "../../theme/mmdUi";
+import { useTranslation } from "react-i18next";
 
 type Props = {
   market: UnifiedMarketScope;
@@ -25,6 +26,7 @@ export default function MarketScopeCard({
   unresolvedMessage = "Resolving your market from GPS…",
   variant = "dark",
 }: Props) {
+  const { t } = useTranslation();
   const isDark = variant === "dark";
 
   if (loading && !market.scopeResolved) {
@@ -61,7 +63,7 @@ export default function MarketScopeCard({
         }}
       >
         <Text style={{ color: "#FDE68A", fontSize: 13, fontWeight: "600" }}>
-          Market scope unavailable. Enable location or try again.
+          {t("market.scopeUnavailable")}
         </Text>
       </View>
     );

@@ -128,7 +128,7 @@ export default function AdminCommunicationPanel() {
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="email@exemple.com ou +1… ou nom"
+            placeholder={t("email@exemple.com ou +1… ou nom")}
             className="flex-1 rounded-lg border px-3 py-2 text-sm"
           />
           <button

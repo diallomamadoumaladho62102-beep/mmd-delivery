@@ -1,9 +1,13 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { supabase } from "@/lib/supabaseBrowser";
 import { useState } from "react";
 
 export default function TokenDebug() {
+  const { t } = useAdminT();
+
   const [token, setToken] = useState("");
 
   async function getToken() {
@@ -13,7 +17,7 @@ export default function TokenDebug() {
 
   return (
     <div style={{ padding: 12 }}>
-      <button onClick={getToken}>Show Access Token</button>
+      <button onClick={getToken}>{t("Show Access Token")}</button>
       <pre>{token}</pre>
     </div>
   );

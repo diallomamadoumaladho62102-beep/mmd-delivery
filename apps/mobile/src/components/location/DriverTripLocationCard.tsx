@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import i18n from "i18next";
+import { useTranslation } from "react-i18next";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   ActivityIndicator,
@@ -21,9 +21,11 @@ type Props = {
 
 export function DriverTripLocationCard({
   locationId,
-  title = "Client location details",
+  title,
   onViewOnMap,
 }: Props) {
+  const { t } = useTranslation();
+  const heading = title ?? t("location.tripCard.defaultTitle");
   const [location, setLocation] = useState<MmdLocationTripView | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export function DriverTripLocationCard({
         setError(
           toUserFacingError(
             e,
-            i18n.t("location.tripCard.loadFailed", "Unable to load the location."),
+            t("location.tripCard.loadFailed"),
           ),
         );
       })
@@ -62,7 +64,7 @@ export function DriverTripLocationCard({
     return () => {
       cancelled = true;
     };
-  }, [locationId]);
+  }, [locationId, t]);
 
   if (!locationId) return null;
 
@@ -78,7 +80,7 @@ export function DriverTripLocationCard({
         gap: 10,
       }}
     >
-      <Text style={{ color: "#7DD3FC", fontSize: 13, fontWeight: "800" }}>{title}</Text>
+      <Text style={{ color: "#7DD3FC", fontSize: 13, fontWeight: "800" }}>{heading}</Text>
 
       {loading ? (
         <ActivityIndicator color="#38BDF8" />
@@ -97,7 +99,7 @@ export function DriverTripLocationCard({
           {location.landmark ? (
             <View>
               <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "700" }}>
-                Landmark
+                {t("location.tripCard.landmark")}
               </Text>
               <Text style={{ color: "#E2E8F0", fontSize: 14, fontWeight: "700" }}>
                 {location.landmark.name}
@@ -111,7 +113,7 @@ export function DriverTripLocationCard({
 
           <View>
             <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "700" }}>
-              Client directions
+              {t("location.tripCard.clientDirections")}
             </Text>
             <Text style={{ color: "#F8FAFC", fontSize: 13, lineHeight: 19 }}>
               {location.directions_text || location.address || "—"}
@@ -123,11 +125,11 @@ export function DriverTripLocationCard({
           ) : null}
 
           <Text style={{ color: "#64748B", fontSize: 11 }}>
-            Pin: {location.pin_lat.toFixed(5)}, {location.pin_lng.toFixed(5)}
+            {t("location.tripCard.pin")} {location.pin_lat.toFixed(5)}, {location.pin_lng.toFixed(5)}
           </Text>
         </>
       ) : (
-        <Text style={{ color: "#94A3B8", fontSize: 12 }}>Location unavailable.</Text>
+        <Text style={{ color: "#94A3B8", fontSize: 12 }}>{t("location.tripCard.unavailable")}</Text>
       )}
 
       {onViewOnMap && location ? (
@@ -147,7 +149,7 @@ export function DriverTripLocationCard({
           }}
         >
           <Text style={{ color: "#FFFFFF", fontWeight: "800", fontSize: 13 }}>
-            View on map
+            {t("location.tripCard.viewOnMap")}
           </Text>
         </TouchableOpacity>
       ) : null}

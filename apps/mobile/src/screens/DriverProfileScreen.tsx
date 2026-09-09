@@ -651,68 +651,64 @@ export function DriverProfileScreen() {
     return 4;
   }, [driver?.driver_tier, driverScore]);
 
-  const missingRequirements = useMemo(() => {
+  const missingRequirementKeys = useMemo(() => {
     const missing: string[] = [];
 
     if (!trimOrNull(driver?.full_name ?? profile?.full_name ?? "")) {
-      missing.push(t("common.profile.name", { defaultValue: "Nom complet" }));
+      missing.push("full_name");
     }
     if (!trimOrNull(driver?.phone ?? profile?.phone ?? "")) {
-      missing.push(t("common.profile.phone", { defaultValue: "Téléphone" }));
+      missing.push("phone");
     }
     if (!trimOrNull(driver?.emergency_phone ?? "")) {
-      missing.push(t("common.profile.emergencyPhone", { defaultValue: "Téléphone d’urgence" }));
+      missing.push("emergency_phone");
     }
     if (!trimOrNull(driver?.address ?? "")) {
-      missing.push(t("common.profile.address", { defaultValue: "Adresse" }));
+      missing.push("address");
     }
     if (!trimOrNull(driver?.city ?? "")) {
-      missing.push(t("common.profile.city", { defaultValue: "Ville" }));
+      missing.push("city");
     }
     if (!trimOrNull(driver?.state ?? "")) {
-      missing.push(t("common.profile.state", { defaultValue: "État" }));
+      missing.push("state");
     }
     if (!trimOrNull(normalizeZip(driver?.zip_code ?? ""))) {
-      missing.push(t("common.profile.zip", { defaultValue: "ZIP code" }));
+      missing.push("zip");
     }
     if (!trimOrNull(driver?.date_of_birth ?? "")) {
-      missing.push(t("common.profile.dateOfBirth", { defaultValue: "Date de naissance" }));
+      missing.push("date_of_birth");
     }
     if (!hasProfilePhoto) {
-      missing.push(t("driver.profile.docs.profilePhoto", { defaultValue: "Photo personnelle" }));
+      missing.push("profile_photo");
     }
     if (!hasIdFront) {
-      missing.push(t("driver.profile.docs.idFront", { defaultValue: "Pièce d’identité recto" }));
+      missing.push("id_front");
     }
     if (!hasIdBack) {
-      missing.push(t("driver.profile.docs.idBack", { defaultValue: "Pièce d’identité verso" }));
+      missing.push("id_back");
     }
 
     if (!isBike) {
       if (!driver?.active_vehicle_id) {
-        missing.push("Véhicule actif (flotte)");
+        missing.push("active_vehicle");
       }
       if (!trimOrNull(driver?.license_number ?? "")) {
-        missing.push(t("driver.profile.licenseNumber", { defaultValue: "Numéro du permis" }));
+        missing.push("license_number");
       }
       if (!trimOrNull(driver?.license_expiry ?? "")) {
-        missing.push(
-          t("driver.profile.licenseExpiry", { defaultValue: "Expiration du permis" }),
-        );
+        missing.push("license_expiry");
       }
       if (!hasLicenseFront) {
-        missing.push(
-          t("driver.profile.docs.licenseFront", { defaultValue: "Permis recto" }),
-        );
+        missing.push("license_front");
       }
       if (!hasLicenseBack) {
-        missing.push(t("driver.profile.docs.licenseBack", { defaultValue: "Permis verso" }));
+        missing.push("license_back");
       }
       if (!hasInsurance) {
-        missing.push(t("driver.profile.docs.insurance", { defaultValue: "Assurance" }));
+        missing.push("insurance");
       }
       if (!hasRegistration) {
-        missing.push(t("driver.profile.docs.registration", { defaultValue: "Registration" }));
+        missing.push("registration");
       }
     }
 
@@ -739,8 +735,32 @@ export function DriverProfileScreen() {
     isBike,
     profile?.full_name,
     profile?.phone,
-    t,
   ]);
+
+  function missingRequirementDisplayLabel(key: string): string {
+    const map: Record<string, [string, string]> = {
+      full_name: ["common.profile.name", "Full name"],
+      phone: ["common.profile.phone", "Phone"],
+      emergency_phone: ["common.profile.emergencyPhone", "Emergency phone"],
+      address: ["common.profile.address", "Address"],
+      city: ["common.profile.city", "City"],
+      state: ["common.profile.state", "State"],
+      zip: ["common.profile.zip", "ZIP code"],
+      date_of_birth: ["common.profile.dateOfBirth", "Date of birth"],
+      profile_photo: ["driver.profile.docs.profilePhoto", "Personal photo"],
+      id_front: ["driver.profile.docs.idFront", "ID card front"],
+      id_back: ["driver.profile.docs.idBack", "ID card back"],
+      active_vehicle: ["driver.profile.activeFleet", "Active vehicle (fleet)"],
+      license_number: ["driver.profile.licenseNumber", "License number"],
+      license_expiry: ["driver.profile.licenseExpiry", "License expiry"],
+      license_front: ["driver.profile.docs.licenseFront", "License front"],
+      license_back: ["driver.profile.docs.licenseBack", "License back"],
+      insurance: ["driver.profile.docs.insurance", "Insurance"],
+      registration: ["driver.profile.docs.registration", "Registration"],
+    };
+    const [i18nKey, fallback] = map[key] ?? [key, key];
+    return t(i18nKey, { defaultValue: fallback });
+  }
 
   const refreshAvatarUrl = useCallback(async (path: string | null) => {
     if (!path) {
@@ -1998,7 +2018,7 @@ export function DriverProfileScreen() {
               })}
             </SectionTitle>
             <Card>
-              {missingRequirements.length === 0 ? (
+              {missingRequirementKeys.length === 0 ? (
                 <Text
                   style={{
                     color: okColor,
@@ -2010,7 +2030,7 @@ export function DriverProfileScreen() {
                 </Text>
               ) : (
                 <View style={{ gap: 12 }}>
-                  {missingRequirements.map((item, index) => (
+                  {missingRequirementKeys.map((item, index) => (
                     <View
                       key={`${item}-${index}`}
                       style={{
@@ -2029,7 +2049,9 @@ export function DriverProfileScreen() {
                         <Text style={ui.rowLabel}>
                           {t("driver.profile.missing", { defaultValue: "Missing" })}
                         </Text>
-                        <Text style={[ui.rowValue, { color: missingColor }]}>{item}</Text>
+                        <Text style={[ui.rowValue, { color: missingColor }]}>
+                          {missingRequirementDisplayLabel(item)}
+                        </Text>
                       </View>
                     </View>
                   ))}

@@ -12,7 +12,7 @@ import {
   adminNavLabel,
   listAdminNavEnglishLabels,
 } from "../i18n/adminNavI18n";
-import { WEB_LOCALES, type WebLocale } from "../i18n/locales";
+import { WEB_LOCALES, webT, type WebLocale } from "../i18n/locales";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -98,4 +98,31 @@ test("useAdminT is wired across admin pages/components", () => {
   walk(path.join(root, "..", "app", "admin"));
   walk(path.join(root, "components", "admin"));
   assert.ok(wired >= 80, `expected many admin files wired, got ${wired}`);
+});
+
+test("receipt chrome is localized for all 6 locales", () => {
+  for (const locale of WEB_LOCALES) {
+    assert.notEqual(webT("taxi.receipt.title", locale), "taxi.receipt.title");
+    assert.notEqual(webT("order.receipt.title", locale), "order.receipt.title");
+    if (locale !== "en") {
+      assert.notEqual(
+        webT("taxi.receipt.loading", locale),
+        webT("taxi.receipt.loading", "en"),
+        `taxi receipt should not stay English for ${locale}`
+      );
+    }
+  }
+});
+
+test("every admin catalog key has fr, es, ar, zh, ff", () => {
+  const missing: string[] = [];
+  for (const [key, entry] of Object.entries(ADMIN_UI_CATALOG)) {
+    for (const locale of NON_EN) {
+      const value = entry?.[locale];
+      if (typeof value !== "string" || value.length === 0) {
+        missing.push(`${key}/${locale}`);
+      }
+    }
+  }
+  assert.equal(missing.length, 0, `missing locales: ${missing.slice(0, 20).join(", ")}`);
 });

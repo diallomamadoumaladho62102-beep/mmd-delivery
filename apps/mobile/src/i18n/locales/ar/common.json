@@ -213,7 +213,8 @@
     "no": "لا",
     "edit": "تعديل",
     "delete": "حذف",
-    "view": "عرض"
+    "view": "عرض",
+    "save": "حفظ"
   },
   "shared": {
     "common": {
@@ -328,6 +329,20 @@
       "showPassword": "إظهار",
       "hidePassword": "إخفاء",
       "forgotPassword": "نسيت كلمة المرور؟"
+    },
+    "home": {
+      "tabs": {
+        "home": "الرئيسية",
+        "orders": "الطلبات"
+      }
+    },
+    "delivery": {
+      "tabs": {
+        "track": "التتبع"
+      }
+    },
+    "profile": {
+      "titleShort": "الملف"
     }
   },
   "driver": {
@@ -1552,7 +1567,8 @@
       },
       "close": "إغلاق",
       "closeMenu": "إغلاق القائمة",
-      "menu": "القائمة"
+      "menu": "القائمة",
+      "live": "مباشر"
     },
     "automation": {
       "title": "أتمتة الطلبات",
@@ -1573,7 +1589,11 @@
     "orders": {
       "accept": "قبول",
       "prepared": "جاهز للتحضير",
-      "ready": "جاهز"
+      "ready": "جاهز",
+      "status": {
+        "order": "طلب",
+        "prepared": "قيد التحضير"
+      }
     },
     "orderDetails": {
       "title": "الطلب",
@@ -1651,5 +1671,12 @@
       "directionsPh": "بعد محطة Total، الشارع الثاني يميناً، منزل أصفر ببوابة زرقاء...",
       "directionsMin": "يلزم 8 أحرف على الأقل."
     }
+  },
+  "boot": {
+    "loadingMmd": "جارٍ تحميل MMD…",
+    "nativeUnavailable": "الوحدة الأصلية / التنقل غير متاح",
+    "errorTitle": "MMD Delivery — حدث خطأ",
+    "errorBody": "يمكنك إعادة المحاولة. إذا استمرت المشكلة، شارك هذه الرسالة مع الدعم.",
+    "screenUnavailable": "تعذر عرض هذه الشاشة."
   }
 }

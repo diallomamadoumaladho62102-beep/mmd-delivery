@@ -1,10 +1,14 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
 import { validatePassword } from "@/lib/authValidation";
 
 export default function SignUp() {
+  const { t } = useAdminT();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -40,7 +44,7 @@ export default function SignUp() {
 
   return (
     <div className="max-w-md mx-auto p-6 border rounded-xl mt-10 space-y-4">
-      <h1 className="text-xl font-bold">Créer un compte</h1>
+      <h1 className="text-xl font-bold">{t("Créer un compte")}</h1>
       <input
         className="w-full border rounded px-3 py-2"
         type="email"
@@ -52,7 +56,7 @@ export default function SignUp() {
         <input
           className="w-full border rounded px-3 py-2 pr-20"
           type={showPassword ? "text" : "password"}
-          placeholder="Mot de passe"
+          placeholder={t("Mot de passe")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -68,14 +72,14 @@ export default function SignUp() {
         onClick={submit}
         className="w-full px-4 py-2 rounded bg-black text-white"
       >
-        Créer le compte
+        {t("Créer le compte")}
       </button>
       {err && <div className="text-red-600 text-sm">{err}</div>}
-      {ok && <div className="text-green-700 text-sm">Compte créé. Redirection…</div>}
+      {ok && <div className="text-green-700 text-sm">{t("Compte créé. Redirection…")}</div>}
       <div className="text-sm text-gray-600">
         Déjà un compte ?{" "}
         <a className="underline" href="/auth/sign-in-password">
-          Se connecter
+          {t("Se connecter")}
         </a>
       </div>
     </div>

@@ -334,7 +334,7 @@ function AdvertisementsAdminInner() {
             />
           </label>
           <label className="block">
-            <span className={LABEL}>Action / lien</span>
+            <span className={LABEL}>{t("Action / lien")}</span>
             <input
               className={INPUT}
               value={form.button_action}
@@ -405,7 +405,7 @@ function AdvertisementsAdminInner() {
               onChange={(e) => setForm((p) => ({ ...p, audience: e.target.value }))}
               disabled={!canEdit}
             >
-              <option value="">Toutes / non ciblée</option>
+              <option value="">{t("Toutes / non ciblée")}</option>
               <option value="client">client</option>
               <option value="restaurant">restaurant</option>
               <option value="driver">driver</option>

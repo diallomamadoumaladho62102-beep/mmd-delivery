@@ -8,6 +8,7 @@ import {
   StyleSheet,
   type TextInputProps,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   searchMapboxPlaces,
   type MapboxPlaceSuggestion,
@@ -42,7 +43,7 @@ export function AddressAutocomplete({
   value,
   onChangeText,
   onSelect,
-  placeholder = "Enter address",
+  placeholder,
   proximity,
   country,
   showUseGps = false,
@@ -50,6 +51,8 @@ export function AddressAutocomplete({
   style,
   editable = true,
 }: AddressAutocompleteProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("location.enterAddress", "Enter address");
   const [suggestions, setSuggestions] = useState<MapboxPlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,10 +150,10 @@ export function AddressAutocomplete({
       ) {
         const msg =
           pos.state === "services_off"
-            ? "Location services are off"
+            ? t("location.servicesOff", "Location services are off")
             : pos.state === "timeout"
-              ? "GPS timed out"
-              : "Location permission required";
+              ? t("location.gpsTimeout", "GPS timed out")
+              : t("location.permissionRequired", "Location permission required");
         onGpsError?.(msg);
         setError(msg);
         return;
@@ -168,7 +171,7 @@ export function AddressAutocomplete({
         longitude: geo.longitude,
       });
     } catch {
-      const msg = "Unable to read GPS";
+      const msg = t("location.gpsUnavailable", "Unable to read GPS");
       onGpsError?.(msg);
       setError(msg);
     } finally {
@@ -185,7 +188,7 @@ export function AddressAutocomplete({
             onChangeText(text);
             setOpen(true);
           }}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           placeholderTextColor="#64748B"
           style={[styles.input, style]}
           editable={editable}
@@ -210,7 +213,7 @@ export function AddressAutocomplete({
           {gpsLoading ? (
             <ActivityIndicator color="#93C5FD" />
           ) : (
-            <Text style={styles.gpsText}>Use GPS</Text>
+            <Text style={styles.gpsText}>{t("taxi.home.useMyGps", "Use GPS")}</Text>
           )}
         </TouchableOpacity>
       ) : null}
@@ -243,7 +246,7 @@ export function AddressAutocomplete({
       value.trim().length >= MIN_CHARS &&
       suggestions.length === 0 &&
       !error ? (
-        <Text style={styles.empty}>No places found</Text>
+        <Text style={styles.empty}>{t("location.noPlacesFound", "No places found")}</Text>
       ) : null}
     </View>
   );

@@ -1,0 +1,328 @@
+{
+  "filesInspected": 98,
+  "uniqueCount": 40,
+  "top": [
+    {
+      "count": 3,
+      "text": "you@example.com"
+    },
+    {
+      "count": 2,
+      "text": "ton@email.com"
+    },
+    {
+      "count": 2,
+      "text": "READY"
+    },
+    {
+      "count": 2,
+      "text": "W-9"
+    },
+    {
+      "count": 2,
+      "text": "ton.email@example.com"
+    },
+    {
+      "count": 1,
+      "text": "Instagram"
+    },
+    {
+      "count": 1,
+      "text": "Facebook"
+    },
+    {
+      "count": 1,
+      "text": "contact@monrestaurant.com"
+    },
+    {
+      "count": 1,
+      "text": "929 000 0000"
+    },
+    {
+      "count": 1,
+      "text": "MMD African Food"
+    },
+    {
+      "count": 1,
+      "text": "123 Main St"
+    },
+    {
+      "count": 1,
+      "text": "Brooklyn"
+    },
+    {
+      "count": 1,
+      "text": "11226"
+    },
+    {
+      "count": 1,
+      "text": "00-0000000"
+    },
+    {
+      "count": 1,
+      "text": "https://monrestaurant.com"
+    },
+    {
+      "count": 1,
+      "text": "https://instagram.com/monrestaurant"
+    },
+    {
+      "count": 1,
+      "text": "https://facebook.com/monrestaurant"
+    },
+    {
+      "count": 1,
+      "text": "+1 555 000 0000"
+    },
+    {
+      "count": 1,
+      "text": "restaurant@email.com"
+    },
+    {
+      "count": 1,
+      "text": "UG0XSO, RTS2S3, ..."
+    },
+    {
+      "count": 1,
+      "text": "Ex : 686 Vermont St, Brooklyn, NY 11207"
+    },
+    {
+      "count": 1,
+      "text": "Ex : 1112 Flatbush Ave, Brooklyn, NY 11226"
+    },
+    {
+      "count": 1,
+      "text": "Ex : SAVE10"
+    },
+    {
+      "count": 1,
+      "text": "••••••"
+    },
+    {
+      "count": 1,
+      "text": "Mamadou Maladho Diallo"
+    },
+    {
+      "count": 1,
+      "text": "+19297408722"
+    },
+    {
+      "count": 1,
+      "text": "Apt 3B, 2nd Floor…"
+    },
+    {
+      "count": 1,
+      "text": "Code 1234#"
+    },
+    {
+      "count": 1,
+      "text": "Ex : ABC123"
+    },
+    {
+      "count": 1,
+      "text": "TIN"
+    },
+    {
+      "count": 1,
+      "text": "SSN"
+    },
+    {
+      "count": 1,
+      "text": "EIN"
+    },
+    {
+      "count": 1,
+      "text": "https://…"
+    },
+    {
+      "count": 1,
+      "text": "vous@email.com"
+    },
+    {
+      "count": 1,
+      "text": "colleague@company.com"
+    },
+    {
+      "count": 1,
+      "text": "CODEPROMO"
+    },
+    {
+      "count": 1,
+      "text": "you@email.com"
+    },
+    {
+      "count": 1,
+      "text": "Redirecting to Business Wallet…"
+    },
+    {
+      "count": 1,
+      "text": "PNG"
+    },
+    {
+      "count": 1,
+      "text": "SVG"
+    }
+  ],
+  "all": [
+    {
+      "count": 3,
+      "text": "you@example.com"
+    },
+    {
+      "count": 2,
+      "text": "ton@email.com"
+    },
+    {
+      "count": 2,
+      "text": "READY"
+    },
+    {
+      "count": 2,
+      "text": "W-9"
+    },
+    {
+      "count": 2,
+      "text": "ton.email@example.com"
+    },
+    {
+      "count": 1,
+      "text": "Instagram"
+    },
+    {
+      "count": 1,
+      "text": "Facebook"
+    },
+    {
+      "count": 1,
+      "text": "contact@monrestaurant.com"
+    },
+    {
+      "count": 1,
+      "text": "929 000 0000"
+    },
+    {
+      "count": 1,
+      "text": "MMD African Food"
+    },
+    {
+      "count": 1,
+      "text": "123 Main St"
+    },
+    {
+      "count": 1,
+      "text": "Brooklyn"
+    },
+    {
+      "count": 1,
+      "text": "11226"
+    },
+    {
+      "count": 1,
+      "text": "00-0000000"
+    },
+    {
+      "count": 1,
+      "text": "https://monrestaurant.com"
+    },
+    {
+      "count": 1,
+      "text": "https://instagram.com/monrestaurant"
+    },
+    {
+      "count": 1,
+      "text": "https://facebook.com/monrestaurant"
+    },
+    {
+      "count": 1,
+      "text": "+1 555 000 0000"
+    },
+    {
+      "count": 1,
+      "text": "restaurant@email.com"
+    },
+    {
+      "count": 1,
+      "text": "UG0XSO, RTS2S3, ..."
+    },
+    {
+      "count": 1,
+      "text": "Ex : 686 Vermont St, Brooklyn, NY 11207"
+    },
+    {
+      "count": 1,
+      "text": "Ex : 1112 Flatbush Ave, Brooklyn, NY 11226"
+    },
+    {
+      "count": 1,
+      "text": "Ex : SAVE10"
+    },
+    {
+      "count": 1,
+      "text": "••••••"
+    },
+    {
+      "count": 1,
+      "text": "Mamadou Maladho Diallo"
+    },
+    {
+      "count": 1,
+      "text": "+19297408722"
+    },
+    {
+      "count": 1,
+      "text": "Apt 3B, 2nd Floor…"
+    },
+    {
+      "count": 1,
+      "text": "Code 1234#"
+    },
+    {
+      "count": 1,
+      "text": "Ex : ABC123"
+    },
+    {
+      "count": 1,
+      "text": "TIN"
+    },
+    {
+      "count": 1,
+      "text": "SSN"
+    },
+    {
+      "count": 1,
+      "text": "EIN"
+    },
+    {
+      "count": 1,
+      "text": "https://…"
+    },
+    {
+      "count": 1,
+      "text": "vous@email.com"
+    },
+    {
+      "count": 1,
+      "text": "colleague@company.com"
+    },
+    {
+      "count": 1,
+      "text": "CODEPROMO"
+    },
+    {
+      "count": 1,
+      "text": "you@email.com"
+    },
+    {
+      "count": 1,
+      "text": "Redirecting to Business Wallet…"
+    },
+    {
+      "count": 1,
+      "text": "PNG"
+    },
+    {
+      "count": 1,
+      "text": "SVG"
+    }
+  ]
+}

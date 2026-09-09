@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -47,6 +49,8 @@ function money(cents: number, currency = "USD") {
 }
 
 export default function SellerDashboardPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +170,7 @@ export default function SellerDashboardPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-10 text-slate-700">
-        Loading seller dashboard…
+        {t("Loading seller dashboard…")}
       </main>
     );
   }
@@ -174,7 +178,7 @@ export default function SellerDashboardPage() {
   if (!seller) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-10">
-        <h1 className="text-2xl font-semibold text-slate-900">Seller dashboard</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{t("Seller dashboard")}</h1>
         <p className="mt-3 text-slate-600">
           No seller profile found for this account. Create your seller profile in the
           mobile app, then return here.
@@ -186,13 +190,13 @@ export default function SellerDashboardPage() {
   return (
     <main className="mx-auto max-w-4xl space-y-8 px-4 py-10">
       <header>
-        <h1 className="text-2xl font-semibold text-slate-900">Seller dashboard</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{t("Seller dashboard")}</h1>
         <p className="mt-1 text-slate-600">
           {seller.city} · status {seller.status}
           {seller.is_accepting_orders ? " · accepting orders" : " · paused"}
         </p>
         <p className="mt-1 text-sm text-amber-700">
-          Marketplace Live money flags stay OFF. No Checkout / payouts from this page.
+          {t("Marketplace Live money flags stay OFF. No Checkout / payouts from this page.")}
         </p>
       </header>
 
@@ -204,14 +208,14 @@ export default function SellerDashboardPage() {
 
       <div className="mb-4 flex flex-wrap gap-3 text-sm">
         <Link href="/seller/wallet" className="text-sky-700 underline">
-          Seller wallet
+          {t("Seller wallet")}
         </Link>
       </div>
 
       <form onSubmit={saveProfile} className="space-y-3 rounded-xl border border-slate-200 p-4">
-        <h2 className="font-medium text-slate-900">Profile & media</h2>
+        <h2 className="font-medium text-slate-900">{t("Profile & media")}</h2>
         <label className="block text-sm text-slate-700">
-          Business name
+          {t("Business name")}
           <input
             className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
             value={businessName}
@@ -220,7 +224,7 @@ export default function SellerDashboardPage() {
           />
         </label>
         <label className="block text-sm text-slate-700">
-          Logo URL
+          {t("Logo URL")}
           <input
             className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
             value={logoUrl}
@@ -228,7 +232,7 @@ export default function SellerDashboardPage() {
           />
         </label>
         <label className="block text-sm text-slate-700">
-          Cover URL
+          {t("Cover URL")}
           <input
             className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
             value={coverUrl}
@@ -236,7 +240,7 @@ export default function SellerDashboardPage() {
           />
         </label>
         <label className="block text-sm text-slate-700">
-          Document URLs (one per line)
+          {t("Document URLs (one per line)")}
           <textarea
             className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
             rows={4}
@@ -250,14 +254,14 @@ export default function SellerDashboardPage() {
           disabled={saving}
           className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
-          {saving ? "Saving…" : "Save profile"}
+          {saving ? "Saving…" : t("Save profile")}
         </button>
       </form>
 
       <section className="space-y-2 rounded-xl border border-slate-200 p-4">
-        <h2 className="font-medium text-slate-900">Stripe Connect payouts</h2>
+        <h2 className="font-medium text-slate-900">{t("Stripe Connect payouts")}</h2>
         <p className="text-sm text-slate-600">
-          Status: <span className="font-semibold">{stripeStatus.replace(/_/g, " ")}</span>
+          {t("Status:")} <span className="font-semibold">{stripeStatus.replace(/_/g, " ")}</span>
         </p>
         <button
           type="button"
@@ -303,7 +307,7 @@ export default function SellerDashboardPage() {
         <h2 className="font-medium text-slate-900">Products ({products.length})</h2>
         <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200">
           {products.length === 0 ? (
-            <li className="px-3 py-4 text-sm text-slate-500">No products yet.</li>
+            <li className="px-3 py-4 text-sm text-slate-500">{t("No products yet.")}</li>
           ) : (
             products.map((product) => (
               <li key={product.id} className="flex justify-between gap-3 px-3 py-3 text-sm">
@@ -323,7 +327,7 @@ export default function SellerDashboardPage() {
         <h2 className="font-medium text-slate-900">Orders ({orders.length})</h2>
         <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200">
           {orders.length === 0 ? (
-            <li className="px-3 py-4 text-sm text-slate-500">No marketplace orders yet.</li>
+            <li className="px-3 py-4 text-sm text-slate-500">{t("No marketplace orders yet.")}</li>
           ) : (
             orders.map((order) => (
               <li key={order.id} className="flex justify-between gap-3 px-3 py-3 text-sm">

@@ -22,22 +22,22 @@ import TaxiRideAvatar from "./TaxiRideAvatar";
 import TaxiRideBadge from "./TaxiRideBadge";
 import TaxiRideStatusStepper from "./TaxiRideStatusStepper";
 
-function timeLabel(iso: string | null | undefined): string | null {
+function timeLabel(iso: string | null | undefined, locale?: string): string | null {
   if (!iso) return null;
-  const { date, time } = formatRideDateParts(iso);
+  const { date, time } = formatRideDateParts(iso, locale);
   if (date === "—") return null;
   return `${date} · ${time}`;
 }
 
 function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
-  const { t } = useAdminT();
+  const { t, locale } = useAdminT();
 
   const status = rideStatusBadge(ride.status);
   const payment = paymentStatusBadge(ride.payment_status);
   const refund = ride.refund_status
     ? paymentStatusBadge(ride.refund_status)
     : null;
-  const { date, time } = formatRideDateParts(ride.created_at);
+  const { date, time } = formatRideDateParts(ride.created_at, locale);
   const hasClient = Boolean(ride.client?.id || ride.client_user_id);
   const hasDriver = Boolean(ride.driver?.id || ride.driver_id);
   const clientName = hasClient
@@ -66,11 +66,11 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
 
   const lifecycle = (
     [
-      [t("Created"), timeLabel(ride.created_at)],
-      ["Accepted", timeLabel(ride.accepted_at)],
-      ["Arrived", timeLabel(ride.driver_arrived_at)],
-      ["Picked up", timeLabel(ride.started_at)],
-      [t("Completed"), timeLabel(ride.completed_at)],
+      [t("Created"), timeLabel(ride.created_at, locale)],
+      [t("Accepted"), timeLabel(ride.accepted_at, locale)],
+      [t("Arrived"), timeLabel(ride.driver_arrived_at, locale)],
+      [t("Picked up"), timeLabel(ride.started_at, locale)],
+      [t("Completed"), timeLabel(ride.completed_at, locale)],
     ] as const
   ).filter(([, value]) => Boolean(value));
 
@@ -88,9 +88,9 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
             >
               #{shortRideId(ride.id)}
             </Link>
-            <TaxiRideBadge label={status.label} tone={status.tone} />
+            <TaxiRideBadge label={t(status.label)} tone={status.tone} />
             <TaxiRideBadge
-              label={payment.label}
+              label={t(payment.label)}
               tone={(payment.tone === "orange" ? "yellow" : payment.tone) as TaxiBadgeTone}
             />
             {ride.vehicle_class ? (
@@ -129,12 +129,12 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-slate-900">{t("Payment")}</span>
           <TaxiRideBadge
-            label={payment.label}
+            label={t(payment.label)}
             tone={(payment.tone === "orange" ? "yellow" : payment.tone) as TaxiBadgeTone}
           />
           {refund && String(ride.refund_status ?? "").trim() ? (
             <TaxiRideBadge
-              label={`Refund: ${String(ride.refund_status)}`}
+              label={`${t("Refund")}: ${t(refund.label)}`}
               tone={(refund.tone === "orange" ? "yellow" : refund.tone) as TaxiBadgeTone}
             />
           ) : null}
@@ -177,7 +177,7 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                 {t("Driver")}
               </div>
-              {online ? <TaxiRideBadge label={online.label} tone={online.tone} /> : null}
+              {online ? <TaxiRideBadge label={t(online.label)} tone={online.tone} /> : null}
             </div>
             {driverName ? (
               <>

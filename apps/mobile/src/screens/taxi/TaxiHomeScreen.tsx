@@ -377,12 +377,12 @@ export default function TaxiHomeScreen() {
     } catch (e: unknown) {
       const message = toUserFacingError(
         e,
-        t("taxi.home.quoteFailed", "Nous n'avons pas pu calculer l'itinéraire exact pour le moment. Veuillez vérifier les adresses ou réessayer."),
+        t("taxi.home.quoteFailed", "Unable to get estimate. Check the addresses or try again."),
       );
       Alert.alert(
-        t("taxi.home.estimateFailed", "Estimation indisponible"),
+        t("taxi.home.estimateFailed", "Estimate failed"),
         message.includes("country") || message.includes("pays")
-          ? t("taxi.home.countryMismatch", "Le lieu de prise en charge ne correspond pas au pays sélectionné.")
+          ? t("taxi.home.countryMismatch", "Pickup location does not match selected country.")
           : message,
       );
     } finally {
@@ -663,7 +663,10 @@ export default function TaxiHomeScreen() {
                       Alert.alert(
                         item.label,
                         availability?.unavailable_message ??
-                          "Aucun chauffeur disponible pour cette catégorie actuellement.",
+                          t(
+                            "taxi.home.categoryUnavailable",
+                            "No driver is available for this category right now.",
+                          ),
                       );
                       return;
                     }
@@ -702,7 +705,7 @@ export default function TaxiHomeScreen() {
                   </Text>
                   {unavailable ? (
                     <Text style={{ color: "#94A3B8", fontSize: 11, marginTop: 4, textAlign: "center" }}>
-                      Indisponible
+                      {t("taxi.home.categoryUnavailableShort", "Unavailable")}
                     </Text>
                   ) : null}
                 </TouchableOpacity>
@@ -713,17 +716,20 @@ export default function TaxiHomeScreen() {
 
         <View style={{ gap: 10 }}>
           <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
-            {t("taxi.home.optionalPreferences", "Préférences facultatives")}
+            {t("taxi.home.optionalPreferences", "Optional preferences")}
           </Text>
           {(
             [
-              ["non_smoking_driver", "Chauffeur non-fumeur"],
-              ["child_seat_required", "Siège enfant disponible"],
-              ["pets_allowed", "Animaux acceptés"],
-              ["large_luggage", "Grand espace bagages"],
-              ["air_conditioning_required", "Climatisation obligatoire"],
-              ["phone_charger_requested", "Chargeur téléphone"],
-              ["prefer_quiet_vehicle", "Véhicule silencieux"],
+              ["non_smoking_driver", t("taxi.home.pref.nonSmoking", "Non-smoking driver")],
+              ["child_seat_required", t("taxi.home.pref.childSeat", "Child seat available")],
+              ["pets_allowed", t("taxi.home.pref.pets", "Pets allowed")],
+              ["large_luggage", t("taxi.home.pref.largeLuggage", "Large luggage space")],
+              [
+                "air_conditioning_required",
+                t("taxi.home.pref.airConditioning", "Air conditioning required"),
+              ],
+              ["phone_charger_requested", t("taxi.home.pref.phoneCharger", "Phone charger")],
+              ["prefer_quiet_vehicle", t("taxi.home.pref.quietVehicle", "Quiet vehicle")],
             ] as const
           ).map(([key, label]) => (
             <View
@@ -749,14 +755,14 @@ export default function TaxiHomeScreen() {
 
         <View style={{ gap: 8 }}>
           <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
-            {t("taxi.home.ambiance", "Ambiance pendant le trajet")}
+            {t("taxi.home.ambiance", "Ride atmosphere")}
           </Text>
           {(
             [
-              ["none", "🙂 Aucune préférence"],
-              ["quiet", "🔇 Trajet calme"],
-              ["music", "🎵 Musique"],
-              ["conversation", "🗣️ Discussion"],
+              ["none", `🙂 ${t("taxi.home.ambianceNone", "No preference")}`],
+              ["quiet", `🔇 ${t("taxi.home.ambianceQuiet", "Quiet ride")}`],
+              ["music", `🎵 ${t("taxi.home.ambianceMusic", "Music")}`],
+              ["conversation", `🗣️ ${t("taxi.home.ambianceTalk", "Conversation")}`],
             ] as const
           ).map(([key, label]) => {
             const selected = ambiancePreference === key;
@@ -792,12 +798,12 @@ export default function TaxiHomeScreen() {
         >
           <View style={{ flex: 1, paddingRight: 12 }}>
             <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
-              {t("taxi.home.preferElectric", "Je préfère un véhicule électrique ou hybride")}
+              {t("taxi.home.preferElectric", "I prefer an electric or hybrid vehicle")}
             </Text>
             <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 4 }}>
               {t(
                 "taxi.home.preferElectricHint",
-                "Recherche prioritaire, puis bascule automatique si aucun véhicule vert n'est disponible.",
+                "Prioritize green vehicles, then fall back automatically if none are available.",
               )}
             </Text>
           </View>

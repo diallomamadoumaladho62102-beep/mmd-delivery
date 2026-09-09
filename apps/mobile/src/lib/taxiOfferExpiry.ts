@@ -2,6 +2,21 @@
  * Filter taxi offers that are past expires_at.
  */
 
+import i18n from "i18next";
+
+function tr(
+  key: string,
+  defaultValue: string,
+  options?: Record<string, unknown>,
+): string {
+  try {
+    const value = i18n.t(key, { defaultValue, ...options });
+    return typeof value === "string" && value.trim() ? value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
 export type ExpirableOffer = {
   id: string;
   expires_at?: string | null;
@@ -29,10 +44,20 @@ export function formatOfferCountdown(
   nowMs: number = Date.now()
 ): string {
   const remainingMs = new Date(expiresAt).getTime() - nowMs;
-  if (remainingMs <= 0) return "Expired";
+  if (remainingMs <= 0) {
+    return tr("taxi.offer.expired", "Expired");
+  }
   const totalSeconds = Math.ceil(remainingMs / 1000);
-  if (totalSeconds < 60) return `${totalSeconds}s left`;
+  if (totalSeconds < 60) {
+    return tr("taxi.offer.secondsLeft", `${totalSeconds}s left`, {
+      count: totalSeconds,
+    });
+  }
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds}s left`;
+  return tr(
+    "taxi.offer.minutesLeft",
+    `${minutes}m ${seconds}s left`,
+    { minutes, seconds },
+  );
 }

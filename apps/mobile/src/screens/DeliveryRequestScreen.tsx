@@ -1214,10 +1214,10 @@ export function DeliveryRequestScreen() {
       <StatusBar barStyle="light-content" />
 
       <ScreenHeader
-        title={tr("deliveryRequest.header.title", "Demander une livraison")}
+        title={tr("deliveryRequest.header.title", "Request a delivery")}
         subtitle={tr(
           "deliveryRequest.header.subtitle",
-          "Crée une livraison de colis ou une course privée sans passer par le restaurant."
+          "Create a package delivery or a private ride without going through a restaurant.",
         )}
         fallbackRoute="ClientHome"
         variant="brand"
@@ -1339,15 +1339,15 @@ export function DeliveryRequestScreen() {
             >
             <View>
             <Text style={fieldLabelStyle}>
-                {tr("deliveryRequest.fields.title", "Titre")}
+                {tr("deliveryRequest.fields.title", "Title")}
               </Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder={
                 requestType === "ride"
-                  ? tr("deliveryRequest.fields.titleRidePlaceholder", "Exemple : course aéroport")
-                  : tr("deliveryRequest.fields.titlePackagePlaceholder", "Exemple : documents importants")
+                  ? tr("deliveryRequest.fields.titleRidePlaceholder", "Example: airport ride")
+                  : tr("deliveryRequest.fields.titlePackagePlaceholder", "Example: important documents")
               }
               placeholderTextColor={MMD_MUTED_70}
               style={inputStyle}
@@ -1356,7 +1356,7 @@ export function DeliveryRequestScreen() {
 
             <View>
             <Text style={fieldLabelStyle}>
-                {tr("deliveryRequest.fields.pickupAddress", "Adresse pickup")}
+                {tr("deliveryRequest.fields.pickupAddress", "Pickup address")}
               </Text>
             <TextInput
               value={pickupAddress}
@@ -1364,7 +1364,7 @@ export function DeliveryRequestScreen() {
                 setPickupAddress(value);
                 lastEstimateKeyRef.current = "";
               }}
-              placeholder={tr("deliveryRequest.fields.pickupPlaceholder", "Entre l’adresse pickup")}
+              placeholder={tr("deliveryRequest.fields.pickupPlaceholder", "Enter pickup address")}
               placeholderTextColor={MMD_MUTED_70}
               style={inputStyle}
             />
@@ -1372,7 +1372,7 @@ export function DeliveryRequestScreen() {
 
             <View>
             <Text style={fieldLabelStyle}>
-                {tr("deliveryRequest.fields.dropoffAddress", "Adresse dropoff")}
+                {tr("deliveryRequest.fields.dropoffAddress", "Dropoff address")}
               </Text>
             <TextInput
               value={dropoffAddress}
@@ -1380,7 +1380,7 @@ export function DeliveryRequestScreen() {
                 setDropoffAddress(value);
                 lastEstimateKeyRef.current = "";
               }}
-              placeholder={tr("deliveryRequest.fields.dropoffPlaceholder", "Entre l’adresse dropoff")}
+              placeholder={tr("deliveryRequest.fields.dropoffPlaceholder", "Enter dropoff address")}
               placeholderTextColor={MMD_MUTED_70}
               style={inputStyle}
             />
@@ -1451,12 +1451,12 @@ export function DeliveryRequestScreen() {
               >
                 <View style={{ flex: 1, paddingRight: 12 }}>
                   <Text style={{ color: MMD_WHITE, fontSize: 16, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-                    {tr("deliveryRequest.leaveAtDoor.title", "Laisser devant la porte")}
+                    {tr("deliveryRequest.leaveAtDoor.title", "Leave at the door")}
                   </Text>
                   <Text style={{ color: MMD_MUTED_70, fontSize: 13, marginTop: 4, lineHeight: 18, fontFamily: MMD_FONT.regular }}>
                     {tr(
                       "deliveryRequest.leaveAtDoor.hint",
-                      "Autorise le livreur à déposer le colis devant la porte après l’attente maximale (photo obligatoire)."
+                      "Allows the driver to leave the package at the door after the maximum wait (photo required).",
                     )}
                   </Text>
                 </View>
@@ -1484,7 +1484,7 @@ export function DeliveryRequestScreen() {
 
             <View>
             <Text style={fieldLabelStyle}>
-                {tr("deliveryRequest.fields.pickupPhone", "Téléphone pickup")}
+                {tr("deliveryRequest.fields.pickupPhone", "Pickup phone")}
               </Text>
             <TextInput
               value={pickupPhone}
@@ -1498,7 +1498,7 @@ export function DeliveryRequestScreen() {
 
             <View>
             <Text style={fieldLabelStyle}>
-                {tr("deliveryRequest.fields.dropoffContactName", "Nom du contact dropoff")}
+                {tr("deliveryRequest.fields.dropoffContactName", "Dropoff contact name")}
               </Text>
             <TextInput
               value={dropoffContactName}
@@ -1511,7 +1511,7 @@ export function DeliveryRequestScreen() {
 
             <View>
             <Text style={fieldLabelStyle}>
-                {tr("deliveryRequest.fields.dropoffPhone", "Téléphone dropoff")}
+                {tr("deliveryRequest.fields.dropoffPhone", "Dropoff phone")}
               </Text>
             <TextInput
               value={dropoffPhone}

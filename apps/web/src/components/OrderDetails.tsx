@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -31,6 +33,8 @@ function fmtMoney(n: number | null | undefined, ccy: string | null | undefined) 
 }
 
 export default function OrderDetails({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [row, setRow] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -54,9 +58,9 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
 
   useEffect(() => { void load(); }, [orderId]);
 
-  if (loading) return <main className="p-6">Chargement…</main>;
+  if (loading) return <main className="p-6">{t("Chargement…")}</main>;
   if (err) return <main className="p-6 text-red-600">Erreur: {err}</main>;
-  if (!row) return <main className="p-6">Commande introuvable.</main>;
+  if (!row) return <main className="p-6">{t("Commande introuvable.")}</main>;
 
   const shortId = row.id.slice(0,8);
 
@@ -68,7 +72,7 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
         <OrderStatusBadge orderId={row.id} />
         <div className="ml-auto flex gap-2">
           <Link href={`/orders/${row.id}/chat`} className="px-3 py-1.5 border rounded hover:bg-gray-50 text-sm">
-            Ouvrir le chat
+            {t("Ouvrir le chat")}
           </Link>
           <Link href="/orders" className="px-3 py-1.5 border rounded hover:bg-gray-50 text-sm">
             ← Retour à la liste
@@ -79,19 +83,19 @@ export default function OrderDetails({ orderId }: { orderId: string }) {
       {/* Résumé */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="border rounded-2xl p-4">
-          <div className="text-xs text-gray-500">ID</div>
+          <div className="text-xs text-gray-500">{t("ID")}</div>
           <div className="font-mono">{row.id}</div>
         </div>
         <div className="border rounded-2xl p-4">
-          <div className="text-xs text-gray-500">Statut</div>
+          <div className="text-xs text-gray-500">{t("Statut")}</div>
           <div className="uppercase tracking-wide">{row.status}</div>
         </div>
         <div className="border rounded-2xl p-4">
-          <div className="text-xs text-gray-500">Total</div>
+          <div className="text-xs text-gray-500">{t("Total")}</div>
           <div className="font-semibold">{fmtMoney(row.subtotal, row.currency)}</div>
         </div>
         <div className="border rounded-2xl p-4">
-          <div className="text-xs text-gray-500">Créée</div>
+          <div className="text-xs text-gray-500">{t("Créée")}</div>
           <div>{new Date(row.created_at).toLocaleString()}</div>
         </div>
       </div>

@@ -3,6 +3,8 @@
  * No money/payment/Stripe mutation — formatting and client-side filter/sort only.
  */
 
+import { intlLocaleTag } from "@/i18n/formatters";
+
 export type AdminFoodOrderParty = {
   id: string;
   full_name: string | null;
@@ -245,21 +247,26 @@ export function orderAmountNumber(order: Pick<AdminFoodOrderListItem, "total_cen
 }
 
 export function formatOrderMoney(
-  order: Pick<AdminFoodOrderListItem, "total_cents" | "total" | "subtotal" | "currency">
+  order: Pick<AdminFoodOrderListItem, "total_cents" | "total" | "subtotal" | "currency">,
+  locale?: string,
 ): string {
   const currency = order.currency || "USD";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(intlLocaleTag(locale), {
     style: "currency",
     currency,
   }).format(orderAmountNumber(order));
 }
 
-export function formatOrderDateParts(iso: string): { date: string; time: string } {
+export function formatOrderDateParts(
+  iso: string,
+  locale?: string,
+): { date: string; time: string } {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { date: "—", time: "—" };
+  const tag = intlLocaleTag(locale);
   return {
-    date: new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d),
-    time: new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(d),
+    date: new Intl.DateTimeFormat(tag, { dateStyle: "medium" }).format(d),
+    time: new Intl.DateTimeFormat(tag, { timeStyle: "short" }).format(d),
   };
 }
 

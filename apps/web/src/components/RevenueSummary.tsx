@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import RevenueChart from "@/components/RevenueChart";
@@ -37,6 +39,8 @@ async function backfillCommissions(fromISO: string, toISO: string) {
 }
 
 export default function RevenueSummary() {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState("USD");
@@ -122,46 +126,46 @@ export default function RevenueSummary() {
       {/* Filtres + raccourcis + export + backfill */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <div className="text-xs text-gray-500">Du</div>
+          <div className="text-xs text-gray-500">{t("Du")}</div>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="border rounded px-2 py-1" />
         </div>
         <div>
-          <div className="text-xs text-gray-500">Au</div>
+          <div className="text-xs text-gray-500">{t("Au")}</div>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="border rounded px-2 py-1" />
         </div>
-        <button onClick={load} className="px-3 py-2 border rounded bg-white shadow-sm">Appliquer</button>
+        <button onClick={load} className="px-3 py-2 border rounded bg-white shadow-sm">{t("Appliquer")}</button>
         <div className="flex items-center gap-1 text-[11px]">
-          Raccourcis:
+          {t("Raccourcis:")}
           <button onClick={() => setRange(7)}  className="px-2 py-1 border rounded">7j</button>
           <button onClick={() => setRange(30)} className="px-2 py-1 border rounded">30j</button>
           <button onClick={() => setRange(90)} className="px-2 py-1 border rounded">90j</button>
         </div>
-        <button onClick={exportCSV} className="ml-auto px-3 py-2 border rounded bg-white shadow-sm">Export CSV</button>
+        <button onClick={exportCSV} className="ml-auto px-3 py-2 border rounded bg-white shadow-sm">{t("Export CSV")}</button>
         <button
           onClick={async () => { await backfillCommissions(from, to); await load(); }}
           className="px-3 py-2 border rounded bg-white shadow-sm"
           title="Recalcule les commissions pour toutes les commandes de l’intervalle"
         >
-          Recalculer les commissions
+          {t("Recalculer les commissions")}
         </button>
       </div>
 
       {/* Tuiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="rounded-2xl p-4 border shadow-sm">
-          <div className="text-xs text-gray-500">GMV (subtotal)</div>
+          <div className="text-xs text-gray-500">{t("GMV (subtotal)")}</div>
           <div className="text-xl font-semibold">{fmtMoney(totals.gmv, currency)}</div>
         </div>
         <div className="rounded-2xl p-4 border shadow-sm">
-          <div className="text-xs text-gray-500">Commission plateforme</div>
+          <div className="text-xs text-gray-500">{t("Commission plateforme")}</div>
           <div className="text-xl font-semibold">{fmtMoney(totals.plat, currency)}</div>
         </div>
         <div className="rounded-2xl p-4 border shadow-sm">
-          <div className="text-xs text-gray-500">Take rate</div>
+          <div className="text-xs text-gray-500">{t("Take rate")}</div>
           <div className="text-xl font-semibold">{fmtPct(totals.take)}</div>
         </div>
         <div className="rounded-2xl p-4 border shadow-sm">
-          <div className="text-xs text-gray-500">Commandes</div>
+          <div className="text-xs text-gray-500">{t("Commandes")}</div>
           <div className="text-xl font-semibold">{rows.length}</div>
         </div>
       </div>
@@ -171,17 +175,17 @@ export default function RevenueSummary() {
 
       {/* Tableau */}
       <div>
-        <h3 className="text-lg font-semibold mb-2">Commandes dans l’intervalle</h3>
+        <h3 className="text-lg font-semibold mb-2">{t("Commandes dans l’intervalle")}</h3>
         <div className="overflow-x-auto border rounded-2xl">
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="text-left p-2">Date</th>
-                <th className="text-left p-2">Order ID</th>
-                <th className="text-right p-2">GMV</th>
-                <th className="text-right p-2">Commission</th>
-                <th className="text-right p-2">Take</th>
-                <th className="text-right p-2">Détail</th>
+                <th className="text-left p-2">{t("Date")}</th>
+                <th className="text-left p-2">{t("Order ID")}</th>
+                <th className="text-right p-2">{t("GMV")}</th>
+                <th className="text-right p-2">{t("Commission")}</th>
+                <th className="text-right p-2">{t("Take")}</th>
+                <th className="text-right p-2">{t("Détail")}</th>
               </tr>
             </thead>
             <tbody>
@@ -193,12 +197,12 @@ export default function RevenueSummary() {
                   <td className="p-2 text-right">{fmtMoney(r.platform_commission, r.currency)}</td>
                   <td className="p-2 text-right">{fmtPct(r.take_rate)}</td>
                   <td className="p-2 text-right">
-                    <a className="text-blue-600 hover:underline" href={`/orders/${r.order_id}/chat`} target="_blank" rel="noreferrer">Ouvrir</a>
+                    <a className="text-blue-600 hover:underline" href={`/orders/${r.order_id}/chat`} target="_blank" rel="noreferrer">{t("Ouvrir")}</a>
                   </td>
                 </tr>
               ))}
               {!loading && rows.length === 0 && (
-                <tr><td colSpan={6} className="p-4 text-gray-500">Aucune commande.</td></tr>
+                <tr><td colSpan={6} className="p-4 text-gray-500">{t("Aucune commande.")}</td></tr>
               )}
             </tbody>
           </table>

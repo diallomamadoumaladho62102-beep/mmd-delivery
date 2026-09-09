@@ -1,6 +1,17 @@
 import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { formatBootError, reportBootError } from "../lib/startupProbe";
+import i18n from "../i18n";
+
+function bootT(key: string, fallback: string): string {
+  try {
+    if (!i18n.isInitialized) return fallback;
+    const value = i18n.t(key);
+    return typeof value === "string" && value && value !== key ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 type Props = {
   children: React.ReactNode;
@@ -49,11 +60,13 @@ export class AppErrorBoundary extends React.Component<Props, State> {
             marginBottom: 12,
           }}
         >
-          MMD Delivery — une erreur est survenue
+          {bootT("boot.errorTitle", "MMD Delivery — an error occurred")}
         </Text>
         <Text style={{ color: "#FECACA", marginBottom: 16, lineHeight: 22 }}>
-          Vous pouvez réessayer. Si le problème persiste, partagez ce message au
-          support.
+          {bootT(
+            "boot.errorBody",
+            "You can retry. If the problem persists, share this with support.",
+          )}
         </Text>
         <Pressable
           onPress={this.reset}
@@ -66,7 +79,9 @@ export class AppErrorBoundary extends React.Component<Props, State> {
             marginBottom: 16,
           }}
         >
-          <Text style={{ color: "#111827", fontWeight: "700" }}>Réessayer</Text>
+          <Text style={{ color: "#111827", fontWeight: "700" }}>
+            {bootT("common.retry", "Retry")}
+          </Text>
         </Pressable>
         <ScrollView
           style={{

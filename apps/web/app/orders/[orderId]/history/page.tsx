@@ -1,8 +1,12 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 export default function OrderHistory({ params }: { params: { orderId: string } }) {
+  const { t } = useAdminT();
+
   const [events, setEvents] = useState<any[]>([]);
   const orderId = params.orderId;
 
@@ -19,7 +23,7 @@ export default function OrderHistory({ params }: { params: { orderId: string } }
 
   return (
     <main className="p-4">
-      <h1 className="text-xl font-bold mb-3">Historique de la commande</h1>
+      <h1 className="text-xl font-bold mb-3">{t("Historique de la commande")}</h1>
       <ul className="space-y-2">
         {events.map((e) => (
           <li key={e.id} className="border rounded p-2">

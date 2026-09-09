@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -29,6 +31,8 @@ function onlyDigits(s: string) {
 }
 
 export default function DriverW9Page() {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -221,27 +225,27 @@ export default function DriverW9Page() {
           <div>
             <h1 className="text-2xl font-semibold">W-9</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Complete or update your W-9. Your full TIN is never displayed back to you.
+              {t("Complete or update your W-9. Your full TIN is never displayed back to you.")}
             </p>
           </div>
 
           <a className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50" href="/driver/tax">
-            Back
+            {t("Back")}
           </a>
         </div>
 
         <div className="mt-6 rounded-xl border bg-white p-5 shadow-sm">
           {loading ? (
-            <p className="text-sm text-gray-600">Loading…</p>
+            <p className="text-sm text-gray-600">{t("Loading…")}</p>
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm">
-                  <span className="font-medium">Status:</span>{" "}
+                  <span className="font-medium">{t("Status:")}</span>{" "}
                   {status === "signed" ? (
-                    <span className="text-green-700">Signed</span>
+                    <span className="text-green-700">{t("Signed")}</span>
                   ) : (
-                    <span className="text-yellow-700">Missing</span>
+                    <span className="text-yellow-700">{t("Missing")}</span>
                   )}
                   {status === "signed" && signedAt ? (
                     <span className="ml-2 text-gray-600">({String(signedAt).slice(0, 10)})</span>
@@ -253,13 +257,13 @@ export default function DriverW9Page() {
                   className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
                   disabled={loading || submitting}
                 >
-                  Refresh
+                  {t("Refresh")}
                 </button>
               </div>
 
               {maskedTin ? (
                 <p className="mt-2 text-xs text-gray-600">
-                  Current TIN on file: <span className="font-medium">{maskedTin}</span>
+                  {t("Current TIN on file:")} <span className="font-medium">{maskedTin}</span>
                 </p>
               ) : null}
 
@@ -269,7 +273,7 @@ export default function DriverW9Page() {
               {/* ✅ Mini checklist */}
               <div className="mt-5 rounded-xl border bg-gray-50 p-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">Checklist</p>
+                  <p className="text-sm font-medium">{t("Checklist")}</p>
                   <span className={`text-xs ${canSubmit ? "text-green-700" : "text-gray-600"}`}>
                     {canSubmit ? "Ready to submit" : "Complete required fields"}
                   </span>
@@ -300,19 +304,19 @@ export default function DriverW9Page() {
                 <Field label="Business name (optional)" value={businessName} onChange={setBusinessName} />
 
                 <div>
-                  <label className="text-sm font-medium">Entity type (required)</label>
+                  <label className="text-sm font-medium">{t("Entity type (required)")}</label>
                   <select
                     className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                     value={entityType}
                     onChange={(e) => setEntityType(e.target.value)}
                   >
-                    <option>Individual/sole proprietor</option>
-                    <option>Single-member LLC</option>
-                    <option>C Corporation</option>
-                    <option>S Corporation</option>
-                    <option>Partnership</option>
-                    <option>Trust/estate</option>
-                    <option>Other</option>
+                    <option>{t("Individual/sole proprietor")}</option>
+                    <option>{t("Single-member LLC")}</option>
+                    <option>{t("C Corporation")}</option>
+                    <option>{t("S Corporation")}</option>
+                    <option>{t("Partnership")}</option>
+                    <option>{t("Trust/estate")}</option>
+                    <option>{t("Other")}</option>
                   </select>
                 </div>
 
@@ -327,7 +331,7 @@ export default function DriverW9Page() {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div>
-                    <label className="text-sm font-medium">TIN type</label>
+                    <label className="text-sm font-medium">{t("TIN type")}</label>
                     <select
                       className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
                       value={tinType}
@@ -360,7 +364,7 @@ export default function DriverW9Page() {
                       autoComplete="off"
                     />
                     <p className="mt-1 text-xs text-gray-600">
-                      We store your TIN encrypted and only keep the last 4 digits for display.
+                      {t("We store your TIN encrypted and only keep the last 4 digits for display.")}
                     </p>
                   </div>
                 </div>
@@ -372,7 +376,7 @@ export default function DriverW9Page() {
                   disabled={!canSubmit}
                   className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {submitting ? "Submitting…" : status === "signed" ? "Update / Re-sign" : "Submit W-9"}
+                  {submitting ? "Submitting…" : status === "signed" ? t("Update / Re-sign") : "Submit W-9"}
                 </button>
 
                 <p className="text-xs text-gray-600">

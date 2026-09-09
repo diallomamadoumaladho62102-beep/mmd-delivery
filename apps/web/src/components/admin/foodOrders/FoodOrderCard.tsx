@@ -18,6 +18,7 @@ import FoodOrderActionsMenu from "./FoodOrderActionsMenu";
 import FoodOrderAvatar from "./FoodOrderAvatar";
 import FoodOrderBadge from "./FoodOrderBadge";
 import FoodOrderStatusStepper from "./FoodOrderStatusStepper";
+import { orderKindUiLabel } from "@/i18n/orderStatusUi";
 
 function FoodOrderCard({
   order,
@@ -26,20 +27,20 @@ function FoodOrderCard({
   order: AdminFoodOrderListItem;
   canManageOrders: boolean;
 }) {
-  const { t } = useAdminT();
+  const { t, locale } = useAdminT();
 
   const [copied, setCopied] = useState(false);
   const status = orderStatusBadge(order.status);
   const payment = paymentStatusBadge(order.payment_status);
-  const { date, time } = formatOrderDateParts(order.created_at);
+  const { date, time } = formatOrderDateParts(order.created_at, locale);
   const restaurantName = order.restaurant?.name || order.restaurant_name || t("Restaurant");
   const clientName = partyDisplayName(order.client, t("Unknown client"));
   const driverName = partyDisplayName(order.driver, t("Unknown driver"));
   const clientKind = String(order.client?.account_kind ?? "").toLowerCase();
   const dropoff = summarizeAddress(order.dropoff_address);
-  const paidParts = order.paid_at ? formatOrderDateParts(order.paid_at) : null;
+  const paidParts = order.paid_at ? formatOrderDateParts(order.paid_at, locale) : null;
   const deliveredParts = order.delivered_confirmed_at
-    ? formatOrderDateParts(order.delivered_confirmed_at)
+    ? formatOrderDateParts(order.delivered_confirmed_at, locale)
     : null;
 
   async function copyId() {
@@ -69,13 +70,13 @@ function FoodOrderCard({
               aria-label={t("Copy full order ID")}
               className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 px-2 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
-              {copied ? "Copied" : "Copy"}
+              {copied ? t("Copied") : t("Copy")}
             </button>
-            <FoodOrderBadge label={status.label} tone={status.tone} />
-            <FoodOrderBadge label={payment.label} tone={payment.tone} />
+            <FoodOrderBadge label={t(status.label)} tone={status.tone} />
+            <FoodOrderBadge label={t(payment.label)} tone={payment.tone} />
             {order.kind ? (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                {order.kind}
+                {orderKindUiLabel(order.kind, t)}
               </span>
             ) : null}
           </div>
@@ -86,10 +87,11 @@ function FoodOrderCard({
         <div className="flex items-start gap-2">
           <div className="text-right">
             <div className="text-base font-semibold text-slate-900">
-              {formatOrderMoney(order)}
+              {formatOrderMoney(order, locale)}
             </div>
             <div className="text-[11px] text-slate-500">
-              {order.item_count} item{order.item_count === 1 ? "" : "s"}
+              {order.item_count}{" "}
+              {order.item_count === 1 ? t("item") : t("items")}
             </div>
           </div>
           <FoodOrderActionsMenu order={order} canManageOrders={canManageOrders} />
@@ -144,7 +146,7 @@ function FoodOrderCard({
             src={order.driver.avatar_url}
             size={24}
           />
-          <span className="truncate">Driver · {driverName}</span>
+          <span className="truncate">{t("Driver")} · {driverName}</span>
         </div>
       ) : (
         <div className="mt-3 text-xs text-slate-500">{t("No driver assigned")}</div>
@@ -153,7 +155,11 @@ function FoodOrderCard({
       {(order.distance_miles != null || order.eta_minutes != null || dropoff) && (
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
           {order.distance_miles != null ? <span>{order.distance_miles.toFixed(1)} mi</span> : null}
-          {order.eta_minutes != null ? <span>{order.eta_minutes} min ETA</span> : null}
+          {order.eta_minutes != null ? (
+            <span>
+              {order.eta_minutes} {t("min ETA")}
+            </span>
+          ) : null}
           {dropoff ? <span className="truncate">→ {dropoff}</span> : null}
         </div>
       )}
@@ -162,12 +168,12 @@ function FoodOrderCard({
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
           {paidParts ? (
             <span>
-              Paid {paidParts.date} · {paidParts.time}
+              {t("Paid")} {paidParts.date} · {paidParts.time}
             </span>
           ) : null}
           {deliveredParts ? (
             <span>
-              Delivered {deliveredParts.date} · {deliveredParts.time}
+              {t("Delivered")} {deliveredParts.date} · {deliveredParts.time}
             </span>
           ) : null}
         </div>

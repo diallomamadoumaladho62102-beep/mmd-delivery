@@ -1,3 +1,5 @@
+import { getAdminWebLocale } from "@/i18n/getAdminWebLocale";
+import { adminT } from "@/i18n/adminUiI18n";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -42,6 +44,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function SearchPage({ searchParams }: Props) {
+  const locale = await getAdminWebLocale();
+  const t = (s: string) => adminT(s, locale);
+
   const { q: rawQ } = await searchParams;
   const q = String(rawQ ?? "").trim();
   const { supabase, settings, headerItems, footerItems, overlays } =
@@ -61,33 +66,33 @@ export default async function SearchPage({ searchParams }: Props) {
       >
         <section className={siteSectionClass}>
           <div className={siteContainerClass}>
-            <h1 className={siteHeadingClass}>Search</h1>
+            <h1 className={siteHeadingClass}>{t("Search")}</h1>
             <form method="get" action="/search" className="mt-6 flex max-w-xl gap-2" role="search">
               <label htmlFor="site-search-q" className="sr-only">
-                Search query
+                {t("Search query")}
               </label>
               <input
                 id="site-search-q"
                 name="q"
                 defaultValue={q}
-                placeholder="Search pages, posts, FAQ…"
+                placeholder={t("Search pages, posts, FAQ…")}
                 className="flex-1 rounded-xl border border-white/15 bg-slate-950/60 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/50 focus:outline-none focus:ring-1 focus:ring-orange-400/40"
               />
               <button
                 type="submit"
                 className="rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 px-5 py-2.5 text-sm font-semibold text-white"
               >
-                Search
+                {t("Search")}
               </button>
             </form>
 
             {q.length > 0 && q.length < 2 ? (
-              <p className="mt-6 text-sm text-slate-400">Enter at least 2 characters.</p>
+              <p className="mt-6 text-sm text-slate-400">{t("Enter at least 2 characters.")}</p>
             ) : null}
 
             {q.length >= 2 ? (
               <div className="mt-10 space-y-10">
-                <ResultGroup title="Pages">
+                <ResultGroup title={t("Pages")}>
                   {results.pages.length === 0 ? (
                     <Empty />
                   ) : (
@@ -102,7 +107,7 @@ export default async function SearchPage({ searchParams }: Props) {
                     </ul>
                   )}
                 </ResultGroup>
-                <ResultGroup title="Posts">
+                <ResultGroup title={t("Posts")}>
                   {results.posts.length === 0 ? (
                     <Empty />
                   ) : (
@@ -120,7 +125,7 @@ export default async function SearchPage({ searchParams }: Props) {
                     </ul>
                   )}
                 </ResultGroup>
-                <ResultGroup title="FAQ">
+                <ResultGroup title={t("FAQ")}>
                   {results.faq.length === 0 ? (
                     <Empty />
                   ) : (
@@ -163,5 +168,5 @@ function ResultGroup({
 }
 
 function Empty() {
-  return <p className="text-sm text-slate-500">No results.</p>;
+  return <p className="text-sm text-slate-500">{t("No results.")}</p>;
 }

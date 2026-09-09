@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -14,6 +16,8 @@ type W9Status =
     };
 
 export default function DriverTaxCenterPage() {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [w9, setW9] = useState<W9Status | null>(null);
@@ -57,16 +61,16 @@ export default function DriverTaxCenterPage() {
   return (
     <main className="min-h-screen p-6 md:p-10">
       <div className="mx-auto max-w-2xl">
-        <h1 className="text-2xl font-semibold">Tax Center</h1>
+        <h1 className="text-2xl font-semibold">{t("Tax Center")}</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Manage your tax documents (W-9 now, 1099 coming next).
+          {t("Manage your tax documents (W-9 now, 1099 coming next).")}
         </p>
 
         <div className="mt-6 rounded-xl border bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-medium">W-9</h2>
-              <p className="text-sm text-gray-600">Tax information certification</p>
+              <p className="text-sm text-gray-600">{t("Tax information certification")}</p>
             </div>
 
             <button
@@ -74,22 +78,22 @@ export default function DriverTaxCenterPage() {
               className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
               disabled={loading}
             >
-              Refresh
+              {t("Refresh")}
             </button>
           </div>
 
           <div className="mt-4">
             {loading ? (
-              <p className="text-sm text-gray-600">Loading…</p>
+              <p className="text-sm text-gray-600">{t("Loading…")}</p>
             ) : err ? (
               <p className="text-sm text-red-600">{err}</p>
             ) : !w9 ? (
-              <p className="text-sm text-gray-600">No data.</p>
+              <p className="text-sm text-gray-600">{t("No data.")}</p>
             ) : w9.status === "missing" ? (
               <div className="rounded-lg bg-yellow-50 p-4">
-                <p className="text-sm font-medium text-yellow-900">W-9 not signed yet</p>
+                <p className="text-sm font-medium text-yellow-900">{t("W-9 not signed yet")}</p>
                 <p className="mt-1 text-sm text-yellow-800">
-                  Please complete your W-9 to enable 1099 generation.
+                  {t("Please complete your W-9 to enable 1099 generation.")}
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -97,21 +101,21 @@ export default function DriverTaxCenterPage() {
                     href="/driver/tax/w9"
                     className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90"
                   >
-                    Complete W-9
+                    {t("Complete W-9")}
                   </a>
                 </div>
               </div>
             ) : (
               <div className="rounded-lg bg-green-50 p-4">
-                <p className="text-sm font-medium text-green-900">Signed</p>
+                <p className="text-sm font-medium text-green-900">{t("Signed")}</p>
 
                 <div className="mt-3 grid gap-2 text-sm">
                   <div className="flex justify-between gap-4">
-                    <span className="text-gray-600">Legal name</span>
+                    <span className="text-gray-600">{t("Legal name")}</span>
                     <span className="font-medium text-gray-900">{w9.profile.legalName}</span>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <span className="text-gray-600">Entity type</span>
+                    <span className="text-gray-600">{t("Entity type")}</span>
                     <span className="font-medium text-gray-900">{w9.profile.entityType}</span>
                   </div>
                   <div className="flex justify-between gap-4">
@@ -119,7 +123,7 @@ export default function DriverTaxCenterPage() {
                     <span className="font-medium text-gray-900">{w9.tin.masked}</span>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <span className="text-gray-600">Signed at</span>
+                    <span className="text-gray-600">{t("Signed at")}</span>
                     <span className="font-medium text-gray-900">
                       {w9.signedAt ? String(w9.signedAt).slice(0, 10) : "—"}
                     </span>
@@ -134,14 +138,14 @@ export default function DriverTaxCenterPage() {
                       rel="noreferrer"
                       className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90"
                     >
-                      Download W-9 PDF
+                      {t("Download W-9 PDF")}
                     </a>
                   ) : (
                     <button
                       onClick={fetchW9}
                       className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90"
                     >
-                      Get download link
+                      {t("Get download link")}
                     </button>
                   )}
 
@@ -149,12 +153,12 @@ export default function DriverTaxCenterPage() {
                     href="/driver/tax/w9"
                     className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50"
                   >
-                    Update / Re-sign
+                    {t("Update / Re-sign")}
                   </a>
                 </div>
 
                 <p className="mt-3 text-xs text-gray-600">
-                  For security, your full TIN is never shown. Only the last 4 digits appear.
+                  {t("For security, your full TIN is never shown. Only the last 4 digits appear.")}
                 </p>
               </div>
             )}
@@ -164,7 +168,7 @@ export default function DriverTaxCenterPage() {
         <div className="mt-6 rounded-xl border bg-white p-5 shadow-sm">
           <h2 className="text-lg font-medium">1099</h2>
           <p className="text-sm text-gray-600">
-            Coming next: yearly 1099 generation + download by year.
+            {t("Coming next: yearly 1099 generation + download by year.")}
           </p>
         </div>
       </div>

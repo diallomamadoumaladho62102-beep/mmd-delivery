@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { mmdAudio } from "@/lib/mmdAudio";
@@ -47,6 +49,8 @@ type Props = {
 };
 
 export default function OrderAlerts({ orderId, role = "driver" }: Props) {
+  const { t } = useAdminT();
+
   const [enabled, setEnabled] = useState<boolean>(true);
   const [volume, setVolume] = useState<number>(0.6);
 
@@ -236,11 +240,11 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
             checked={enabled}
             onChange={(e) => setEnabled(e.target.checked)}
           />
-          Son ON/OFF
+          {t("Son ON/OFF")}
         </label>
 
         <label className="flex items-center gap-2">
-          Volume
+          {t("Volume")}
           <input
             type="range"
             min={0}
@@ -261,7 +265,7 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
           className="px-2 py-1 border rounded text-[11px]"
           title="Clique pour autoriser le son et tester"
         >
-          Test son premium
+          {t("Test son premium")}
         </button>
 
         {orderId ? (

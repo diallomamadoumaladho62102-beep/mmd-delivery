@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { sitePrimaryBtnClass } from "./siteTheme";
+import { useAdminT } from "@/i18n/useAdminT";
 
 type Props = {
   title?: string;
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export default function ContactForm({ title, subtitle }: Props) {
+  const { t } = useAdminT();
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -33,14 +35,14 @@ export default function ContactForm({ title, subtitle }: Props) {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setStatus("error");
-        setError(String(json.error ?? "Something went wrong"));
+        setError(String(json.error ?? t("Something went wrong")));
         return;
       }
       setStatus("ok");
       e.currentTarget.reset();
     } catch {
       setStatus("error");
-      setError("Network error. Please try again.");
+      setError(t("Network error. Please try again."));
     }
   }
 
@@ -56,7 +58,7 @@ export default function ContactForm({ title, subtitle }: Props) {
 
       <div>
         <label htmlFor="site-contact-name" className="text-sm font-medium text-slate-300">
-          Name
+          {t("Name")}
         </label>
         <input
           id="site-contact-name"
@@ -68,7 +70,7 @@ export default function ContactForm({ title, subtitle }: Props) {
       </div>
       <div>
         <label htmlFor="site-contact-email" className="text-sm font-medium text-slate-300">
-          Email
+          {t("Email")}
         </label>
         <input
           id="site-contact-email"
@@ -81,7 +83,7 @@ export default function ContactForm({ title, subtitle }: Props) {
       </div>
       <div>
         <label htmlFor="site-contact-phone" className="text-sm font-medium text-slate-300">
-          Phone <span className="text-slate-500">(optional)</span>
+          {t("Phone")} <span className="text-slate-500">{t("(optional)")}</span>
         </label>
         <input
           id="site-contact-phone"
@@ -93,13 +95,13 @@ export default function ContactForm({ title, subtitle }: Props) {
       </div>
       <div>
         <label htmlFor="site-contact-subject" className="text-sm font-medium text-slate-300">
-          Subject <span className="text-slate-500">(optional)</span>
+          {t("Subject")} <span className="text-slate-500">{t("(optional)")}</span>
         </label>
         <input id="site-contact-subject" name="subject" className={fieldClass} />
       </div>
       <div>
         <label htmlFor="site-contact-message" className="text-sm font-medium text-slate-300">
-          Message
+          {t("Message")}
         </label>
         <textarea
           id="site-contact-message"
@@ -116,12 +118,12 @@ export default function ContactForm({ title, subtitle }: Props) {
         className={sitePrimaryBtnClass}
         data-site-event="contact_submit"
       >
-        {status === "sending" ? "Sending…" : "Send message"}
+        {status === "sending" ? t("Sending…") : t("Send message")}
       </button>
 
       {status === "ok" ? (
         <p className="text-sm text-emerald-400" role="status">
-          Thanks — we received your message.
+          {t("Thanks — we received your message.")}
         </p>
       ) : null}
       {status === "error" && error ? (

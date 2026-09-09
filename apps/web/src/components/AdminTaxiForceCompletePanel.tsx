@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
@@ -16,6 +18,8 @@ export default function AdminTaxiForceCompletePanel({
   rideStatus = null,
   onCompleted,
 }: AdminTaxiForceCompletePanelProps) {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
@@ -73,7 +77,7 @@ export default function AdminTaxiForceCompletePanel({
     >
       <div className="mb-4">
         <h2 className="text-base font-semibold text-slate-900">
-          Admin — Force Complete Ride
+          {t("Admin — Force Complete Ride")}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
           Contourne uniquement{" "}

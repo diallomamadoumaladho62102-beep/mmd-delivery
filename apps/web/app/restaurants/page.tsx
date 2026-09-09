@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +15,8 @@ type Restaurant = {
 };
 
 export default function RestaurantsPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
 
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -79,13 +83,12 @@ export default function RestaurantsPage() {
     <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">
       {/* HEADER */}
       <header className="space-y-1">
-        <p className="text-sm font-semibold text-emerald-500">Espace client</p>
+        <p className="text-sm font-semibold text-emerald-500">{t("Espace client")}</p>
         <h1 className="text-2xl font-bold text-gray-900">
-          Restaurants partenaires
+          {t("Restaurants partenaires")}
         </h1>
         <p className="text-sm text-gray-600">
-          Choisis un restaurant pour voir son menu et ajouter des plats à ta
-          commande MMD.
+          {t("Choisis un restaurant pour voir son menu et ajouter des plats à ta commande MMD.")}
         </p>
       </header>
 
@@ -109,7 +112,7 @@ export default function RestaurantsPage() {
       {/* Bouton rafraîchir */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-700 font-semibold">
-          Liste des restaurants
+          {t("Liste des restaurants")}
         </p>
         <button
           type="button"
@@ -117,7 +120,7 @@ export default function RestaurantsPage() {
           disabled={refreshing || loading}
           className="text-xs text-blue-600 hover:underline disabled:opacity-50"
         >
-          {refreshing || loading ? "Actualisation…" : "Rafraîchir"}
+          {refreshing || loading ? "Actualisation…" : t("Rafraîchir")}
         </button>
       </div>
 
@@ -125,14 +128,13 @@ export default function RestaurantsPage() {
       {loading && restaurants.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 gap-2">
           <div className="h-5 w-5 animate-spin rounded-full border border-emerald-500 border-t-transparent" />
-          <p className="text-xs text-gray-500">Chargement des restaurants…</p>
+          <p className="text-xs text-gray-500">{t("Chargement des restaurants…")}</p>
         </div>
       ) : restaurants.length === 0 ? (
         <div className="border rounded-xl px-4 py-3 bg-slate-950/90 text-sm text-slate-100">
-          <p className="font-semibold mb-1">Aucun restaurant disponible</p>
+          <p className="font-semibold mb-1">{t("Aucun restaurant disponible")}</p>
           <p className="text-xs text-slate-300">
-            Pour l’instant aucun restaurant n’est encore configuré dans MMD
-            Delivery.
+            {t("Pour l’instant aucun restaurant n’est encore configuré dans MMD Delivery.")}
           </p>
         </div>
       ) : (
@@ -156,7 +158,7 @@ export default function RestaurantsPage() {
               )}
 
               <p className="text-[11px] text-blue-400 font-semibold mt-2">
-                Voir le menu →
+                {t("Voir le menu →")}
               </p>
             </Link>
           ))}

@@ -1,7 +1,10 @@
+"use client";
+
 // apps/web/src/components/ChatMessages.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useAdminT } from "@/i18n/useAdminT";
 import { supabase } from "@/lib/supabaseBrowser";
 import { mmdAudio } from "@/lib/mmdAudio";
 import {
@@ -29,6 +32,8 @@ type Row = {
 };
 
 export default function ChatMessages({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [rows, setRows] = useState<Row[]>([]);
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -290,7 +295,7 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
       <div className="flex gap-2 items-center">
         <input
           className="flex-1 border rounded-lg px-3 py-2"
-          placeholder="Écrire un message…"
+          placeholder={t("Écrire un message…")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -312,7 +317,7 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
           disabled={sending}
           className="px-3 py-2 rounded-lg bg-black text-white disabled:opacity-50"
         >
-          Envoyer
+          {t("Envoyer")}
         </button>
       </div>
     </div>

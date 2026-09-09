@@ -498,7 +498,7 @@ export default function AdminClientsManager() {
                       </div>
                       {row.missing_fields?.length ? (
                         <div className="mt-1 max-w-[140px] text-[10px] text-amber-700">
-                          Missing: {row.missing_fields.slice(0, 3).join(", ")}
+                          {t("Missing:")} {row.missing_fields.slice(0, 3).join(", ")}
                           {row.missing_fields.length > 3 ? "…" : ""}
                         </div>
                       ) : null}
@@ -510,14 +510,14 @@ export default function AdminClientsManager() {
                           onClick={() => void openClient(row)}
                           className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-50"
                         >
-                          View / Manage
+                          {t("View / Manage")}
                         </button>
                         <button
                           type="button"
                           onClick={() => void openClient(row)}
                           className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
                         >
-                          History / Audit
+                          {t("History / Audit")}
                         </button>
                         {canManage
                           ? statusActions(row.account_status, t).map((a) => (

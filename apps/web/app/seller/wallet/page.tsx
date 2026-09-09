@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,6 +41,8 @@ function money(cents: number, currency = "USD") {
 }
 
 export default function SellerWalletPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +84,7 @@ export default function SellerWalletPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-10 text-slate-200">
-        Loading seller wallet…
+        {t("Loading seller wallet…")}
       </main>
     );
   }
@@ -91,13 +95,13 @@ export default function SellerWalletPage() {
     <main className="mx-auto max-w-3xl px-4 py-10 text-slate-100">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Seller Wallet</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("Seller Wallet")}</h1>
           <p className="mt-2 text-slate-400">
-            Marketplace earnings, commissions, transfers and refunds
+            {t("Marketplace earnings, commissions, transfers and refunds")}
           </p>
         </div>
         <Link href="/seller" className="text-sky-300 hover:underline">
-          Back to seller
+          {t("Back to seller")}
         </Link>
       </div>
 
@@ -109,7 +113,7 @@ export default function SellerWalletPage() {
 
       <section className="mt-8 rounded-2xl border border-slate-700 bg-slate-900/60 p-6">
         <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-          Awaiting transfer
+          {t("Awaiting transfer")}
         </p>
         <p className="mt-2 text-4xl font-black">
           {money(
@@ -119,17 +123,17 @@ export default function SellerWalletPage() {
         </p>
         <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
           <div>
-            <p className="text-slate-400">Paid out</p>
+            <p className="text-slate-400">{t("Paid out")}</p>
             <p className="font-bold">
               {money(Number(summary?.paid_out_cents ?? summary?.available_cents ?? 0), currency)}
             </p>
           </div>
           <div>
-            <p className="text-slate-400">Commissions</p>
+            <p className="text-slate-400">{t("Commissions")}</p>
             <p className="font-bold">{money(Number(summary?.platform_fees_cents ?? 0), currency)}</p>
           </div>
           <div>
-            <p className="text-slate-400">Refunds</p>
+            <p className="text-slate-400">{t("Refunds")}</p>
             <p className="font-bold">{money(Number(summary?.refunded_cents ?? 0), currency)}</p>
           </div>
         </div>
@@ -139,9 +143,9 @@ export default function SellerWalletPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-xl font-bold">Activity</h2>
+        <h2 className="text-xl font-bold">{t("Activity")}</h2>
         {items.length === 0 ? (
-          <p className="mt-4 text-slate-400">No payouts or refunds yet.</p>
+          <p className="mt-4 text-slate-400">{t("No payouts or refunds yet.")}</p>
         ) : (
           <ul className="mt-4 divide-y divide-slate-800">
             {items.map((item) => (

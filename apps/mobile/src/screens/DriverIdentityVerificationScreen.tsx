@@ -359,7 +359,9 @@ export function DriverIdentityVerificationScreen() {
                     onPress={handleSubmit}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.primaryBtnText}>Submit for verification</Text>
+                    <Text style={styles.primaryBtnText}>
+                      {t("driver.identity.submitForVerification", "Submit for verification")}
+                    </Text>
                   </TouchableOpacity>
                 ) : null}
 
@@ -375,7 +377,7 @@ export function DriverIdentityVerificationScreen() {
                     )
                   }
                 >
-                  <Text style={styles.linkBtnText}>Camera issue?</Text>
+                  <Text style={styles.linkBtnText}>{t("driver.identity.cameraIssue")}</Text>
                 </TouchableOpacity>
               </>
             )}

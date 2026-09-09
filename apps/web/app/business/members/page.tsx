@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -38,6 +40,8 @@ function rolePillClass(role: string) {
 }
 
 export default function BusinessMembersPage() {
+  const { t } = useAdminT();
+
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -128,7 +132,7 @@ export default function BusinessMembersPage() {
 
   if (loading) {
     return (
-      <BusinessLoadingState title="Loading members..." subtitle="Please wait" />
+      <BusinessLoadingState title="Loading members..." subtitle={t("Please wait")} />
     );
   }
 
@@ -147,9 +151,9 @@ export default function BusinessMembersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-bold text-white">Team Members</h1>
+          <h1 className="text-[28px] font-bold text-white">{t("Team Members")}</h1>
           <p className="mt-1.5 text-base text-white/70">
-            Invite colleagues and manage roles.
+            {t("Invite colleagues and manage roles.")}
           </p>
         </div>
         <button
@@ -157,7 +161,7 @@ export default function BusinessMembersPage() {
           onClick={() => setShowInvite((v) => !v)}
           className="inline-flex items-center gap-2 rounded-[14px] bg-[#22C55E] px-6 py-3 text-sm font-bold text-[#0033CC] shadow-[0px_10px_12px_rgba(0,0,0,0.15)]"
         >
-          <span aria-hidden>+</span> Invite Member
+          <span aria-hidden>+</span> {t("Invite Member")}
         </button>
       </div>
 
@@ -186,16 +190,16 @@ export default function BusinessMembersPage() {
             value={role}
             onChange={(e) => setRole(e.target.value)}
           >
-            <option value="employee">Employee</option>
-            <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
+            <option value="employee">{t("Employee")}</option>
+            <option value="manager">{t("Manager")}</option>
+            <option value="admin">{t("Admin")}</option>
           </select>
           <button
             type="submit"
             disabled={busy}
             className="rounded-xl bg-[#22C55E] px-5 py-2.5 text-sm font-extrabold text-white disabled:opacity-60"
           >
-            {busy ? "Sending…" : "Send invite"}
+            {busy ? t("Sending…") : "Send invite"}
           </button>
         </form>
       ) : null}
@@ -203,7 +207,7 @@ export default function BusinessMembersPage() {
       {invites.length > 0 ? (
         <section className="flex flex-col gap-3">
           <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#FBBF24] px-3 py-2 text-[13px] font-bold text-[#0033CC]">
-            Pending Invites
+            {t("Pending Invites")}
           </div>
           {invites.map((inv) => (
             <div
@@ -218,7 +222,7 @@ export default function BusinessMembersPage() {
               </div>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.06] px-2.5 py-1.5 text-xs font-bold text-[#FBBF24]">
                 <span className="size-2 rounded-sm bg-[#FBBF24]" />
-                Pending
+                {t("Pending")}
               </span>
             </div>
           ))}
@@ -227,14 +231,14 @@ export default function BusinessMembersPage() {
 
       <section className={`${bizCard} overflow-hidden`}>
         <div className="hidden gap-4 border-b border-white/[0.06] bg-white/[0.06] px-4 py-3 text-[13px] font-semibold text-white/70 md:grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_140px_120px_auto]">
-          <span>Name</span>
-          <span>Email</span>
-          <span>Role</span>
-          <span>Status</span>
-          <span>Actions</span>
+          <span>{t("Name")}</span>
+          <span>{t("Email")}</span>
+          <span>{t("Role")}</span>
+          <span>{t("Status")}</span>
+          <span>{t("Actions")}</span>
         </div>
         {members.length === 0 ? (
-          <p className="p-6 text-sm text-white/60">No members yet.</p>
+          <p className="p-6 text-sm text-white/60">{t("No members yet.")}</p>
         ) : (
           <ul>
             {members.map((m, idx) => {
@@ -276,7 +280,7 @@ export default function BusinessMembersPage() {
                       }`}
                     >
                       <span className="size-2 rounded-sm bg-white" />
-                      {m.active ? "Active" : "Inactive"}
+                      {m.active ? t("Active") : "Inactive"}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -288,9 +292,9 @@ export default function BusinessMembersPage() {
                         void updateMember(m.id, { role: e.target.value })
                       }
                     >
-                      <option value="employee">Employee</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Admin</option>
+                      <option value="employee">{t("Employee")}</option>
+                      <option value="manager">{t("Manager")}</option>
+                      <option value="admin">{t("Admin")}</option>
                     </select>
                     <button
                       type="button"
@@ -300,7 +304,7 @@ export default function BusinessMembersPage() {
                       }
                       className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
                     >
-                      {m.active ? "Deactivate" : "Activate"}
+                      {m.active ? t("Deactivate") : "Activate"}
                     </button>
                   </div>
                 </li>

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -106,6 +108,8 @@ async function uploadMenuImage(userId: string, file: File): Promise<string> {
 }
 
 export default function RestaurantMenuPage() {
+  const { t } = useAdminT();
+
   const [loading, setLoading] = useState(true);
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
 
@@ -490,7 +494,7 @@ export default function RestaurantMenuPage() {
             <img src={item.image_url} alt={item.name} className="h-24 w-24 rounded-xl object-cover bg-slate-100" />
           ) : (
             <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-500">
-              No photo
+              {t("No photo")}
             </div>
           )}
 
@@ -509,7 +513,7 @@ export default function RestaurantMenuPage() {
                   item.is_available ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
                 }`}
               >
-                {item.is_available ? "Disponible" : "Indisponible"}
+                {item.is_available ? t("Disponible") : "Indisponible"}
               </span>
             </div>
 
@@ -520,15 +524,15 @@ export default function RestaurantMenuPage() {
                   checked={Boolean(item.is_available)}
                   onChange={(event) => void toggleAvailable(item.id, event.target.checked)}
                 />
-                Disponible
+                {t("Disponible")}
               </label>
 
               <button type="button" onClick={() => openEdit(item)} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-black text-white">
-                Modifier
+                {t("Modifier")}
               </button>
 
               <button type="button" onClick={() => void deleteItem(item)} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-black text-white">
-                Supprimer
+                {t("Supprimer")}
               </button>
             </div>
           </div>
@@ -540,8 +544,8 @@ export default function RestaurantMenuPage() {
   if (loading) {
     return (
       <main className="mx-auto max-w-3xl p-6">
-        <h1 className="text-2xl font-black">Menu / Produits</h1>
-        <p className="mt-3 text-slate-600">Chargement…</p>
+        <h1 className="text-2xl font-black">{t("Menu / Produits")}</h1>
+        <p className="mt-3 text-slate-600">{t("Chargement…")}</p>
       </main>
     );
   }
@@ -549,8 +553,8 @@ export default function RestaurantMenuPage() {
   if (!restaurantUserId) {
     return (
       <main className="mx-auto max-w-md p-6">
-        <h1 className="text-xl font-black">Menu du restaurant</h1>
-        <p className="mt-3 text-slate-600">Connecte-toi comme restaurant pour gérer ton menu.</p>
+        <h1 className="text-xl font-black">{t("Menu du restaurant")}</h1>
+        <p className="mt-3 text-slate-600">{t("Connecte-toi comme restaurant pour gérer ton menu.")}</p>
       </main>
     );
   }
@@ -559,15 +563,15 @@ export default function RestaurantMenuPage() {
     <main className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-slate-500">MMD Restaurant</p>
-          <h1 className="text-3xl font-black tracking-tight">Menu / Produits</h1>
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-slate-500">{t("MMD Restaurant")}</p>
+          <h1 className="text-3xl font-black tracking-tight">{t("Menu / Produits")}</h1>
           <p className="mt-2 text-sm font-semibold text-slate-500">
-            Gère les catégories, les plats, les images, les prix et la disponibilité.
+            {t("Gère les catégories, les plats, les images, les prix et la disponibilité.")}
           </p>
         </div>
 
         <a href="/restaurant/profile" className="rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white">
-          Profil restaurant
+          {t("Profil restaurant")}
         </a>
       </div>
 
@@ -575,17 +579,17 @@ export default function RestaurantMenuPage() {
       {ok && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{ok}</div>}
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-black">Catégories</h2>
+        <h2 className="text-lg font-black">{t("Catégories")}</h2>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <input
             value={newCategoryName}
             onChange={(event) => setNewCategoryName(event.target.value)}
-            placeholder="Ex: Pizzas, Boissons, Snacks..."
+            placeholder={t("Ex: Pizzas, Boissons, Snacks...")}
             className="min-w-0 flex-1 rounded-xl border px-4 py-3 font-semibold outline-none focus:border-blue-500"
           />
           <button type="button" onClick={() => void addCategory()} className="rounded-xl bg-blue-600 px-5 py-3 font-black text-white">
-            Ajouter
+            {t("Ajouter")}
           </button>
         </div>
 
@@ -599,22 +603,22 @@ export default function RestaurantMenuPage() {
             </div>
           ))}
 
-          {categories.length === 0 && <p className="text-sm font-semibold text-slate-500">Aucune catégorie pour l’instant.</p>}
+          {categories.length === 0 && <p className="text-sm font-semibold text-slate-500">{t("Aucune catégorie pour l’instant.")}</p>}
         </div>
       </section>
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-black">Ajouter un produit</h2>
+        <h2 className="text-lg font-black">{t("Ajouter un produit")}</h2>
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-3">
-            <label className="block text-sm font-bold">Catégorie</label>
+            <label className="block text-sm font-bold">{t("Catégorie")}</label>
             <select
               value={newItem.category_id}
               onChange={(event) => setNewItem((state) => ({ ...state, category_id: event.target.value }))}
               className="w-full rounded-xl border px-4 py-3 font-semibold"
             >
-              <option value="">Sans catégorie</option>
+              <option value="">{t("Sans catégorie")}</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
@@ -626,14 +630,14 @@ export default function RestaurantMenuPage() {
             <input
               value={newItem.name}
               onChange={(event) => setNewItem((state) => ({ ...state, name: event.target.value }))}
-              placeholder="Nom du produit"
+              placeholder={t("Nom du produit")}
               className="w-full rounded-xl border px-4 py-3 font-semibold"
             />
 
             <textarea
               value={newItem.description}
               onChange={(event) => setNewItem((state) => ({ ...state, description: event.target.value }))}
-              placeholder="Description"
+              placeholder={t("Description")}
               className="w-full rounded-xl border px-4 py-3 font-semibold"
               rows={3}
             />
@@ -644,7 +648,7 @@ export default function RestaurantMenuPage() {
               <input
                 value={newItem.price}
                 onChange={(event) => setNewItem((state) => ({ ...state, price: event.target.value }))}
-                placeholder="Prix (ex: 12.99)"
+                placeholder={t("Prix (ex: 12.99)")}
                 inputMode="decimal"
                 className="rounded-xl border px-4 py-3 font-semibold"
               />
@@ -659,7 +663,7 @@ export default function RestaurantMenuPage() {
             <input
               value={newItem.position}
               onChange={(event) => setNewItem((state) => ({ ...state, position: event.target.value }))}
-              placeholder="Position (optionnel)"
+              placeholder={t("Position (optionnel)")}
               inputMode="numeric"
               className="w-full rounded-xl border px-4 py-3 font-semibold"
             />
@@ -670,11 +674,11 @@ export default function RestaurantMenuPage() {
                 checked={newItem.is_available}
                 onChange={(event) => setNewItem((state) => ({ ...state, is_available: event.target.checked }))}
               />
-              Disponible
+              {t("Disponible")}
             </label>
 
             <div>
-              <label className="mb-2 block text-sm font-bold">Image</label>
+              <label className="mb-2 block text-sm font-bold">{t("Image")}</label>
               <input type="file" accept="image/*" onChange={(event: ChangeEvent<HTMLInputElement>) => onNewImageChange(event.target.files?.[0] ?? null)} />
               {newImagePreview && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -695,12 +699,12 @@ export default function RestaurantMenuPage() {
       </section>
 
       <section className="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-black">Ton menu</h2>
+        <h2 className="text-lg font-black">{t("Ton menu")}</h2>
 
         <div className="mt-4 space-y-6">
           {(itemsByCategory.get("uncategorized") ?? []).length > 0 && (
             <div>
-              <h3 className="mb-3 text-xl font-black">Sans catégorie</h3>
+              <h3 className="mb-3 text-xl font-black">{t("Sans catégorie")}</h3>
               <div className="space-y-3">{(itemsByCategory.get("uncategorized") ?? []).map(renderItemCard)}</div>
             </div>
           )}
@@ -717,7 +721,7 @@ export default function RestaurantMenuPage() {
             );
           })}
 
-          {items.length === 0 && <p className="text-sm font-semibold text-slate-500">Aucun produit pour le moment.</p>}
+          {items.length === 0 && <p className="text-sm font-semibold text-slate-500">{t("Aucun produit pour le moment.")}</p>}
         </div>
       </section>
 
@@ -725,7 +729,7 @@ export default function RestaurantMenuPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[92vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-black">Modifier le produit</h2>
+              <h2 className="text-xl font-black">{t("Modifier le produit")}</h2>
               <button type="button" onClick={closeEdit} className="rounded-full bg-slate-100 px-3 py-1 text-sm font-black">
                 ×
               </button>
@@ -737,7 +741,7 @@ export default function RestaurantMenuPage() {
                 onChange={(event) => setEditForm((state) => ({ ...state, category_id: event.target.value }))}
                 className="w-full rounded-xl border px-4 py-3 font-semibold"
               >
-                <option value="">Sans catégorie</option>
+                <option value="">{t("Sans catégorie")}</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -748,14 +752,14 @@ export default function RestaurantMenuPage() {
               <input
                 value={editForm.name}
                 onChange={(event) => setEditForm((state) => ({ ...state, name: event.target.value }))}
-                placeholder="Nom"
+                placeholder={t("Nom")}
                 className="w-full rounded-xl border px-4 py-3 font-semibold"
               />
 
               <textarea
                 value={editForm.description}
                 onChange={(event) => setEditForm((state) => ({ ...state, description: event.target.value }))}
-                placeholder="Description"
+                placeholder={t("Description")}
                 rows={3}
                 className="w-full rounded-xl border px-4 py-3 font-semibold"
               />
@@ -764,7 +768,7 @@ export default function RestaurantMenuPage() {
                 <input
                   value={editForm.price}
                   onChange={(event) => setEditForm((state) => ({ ...state, price: event.target.value }))}
-                  placeholder="Prix"
+                  placeholder={t("Prix")}
                   inputMode="decimal"
                   className="rounded-xl border px-4 py-3 font-semibold"
                 />
@@ -779,7 +783,7 @@ export default function RestaurantMenuPage() {
               <input
                 value={editForm.position}
                 onChange={(event) => setEditForm((state) => ({ ...state, position: event.target.value }))}
-                placeholder="Position"
+                placeholder={t("Position")}
                 inputMode="numeric"
                 className="w-full rounded-xl border px-4 py-3 font-semibold"
               />
@@ -790,11 +794,11 @@ export default function RestaurantMenuPage() {
                   checked={editForm.is_available}
                   onChange={(event) => setEditForm((state) => ({ ...state, is_available: event.target.checked }))}
                 />
-                Disponible
+                {t("Disponible")}
               </label>
 
               <div>
-                <label className="mb-2 block text-sm font-bold">Image</label>
+                <label className="mb-2 block text-sm font-bold">{t("Image")}</label>
                 <input type="file" accept="image/*" onChange={(event: ChangeEvent<HTMLInputElement>) => onEditImageChange(event.target.files?.[0] ?? null)} />
                 {(editImagePreview || editForm.image_url) && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -805,10 +809,10 @@ export default function RestaurantMenuPage() {
 
             <div className="mt-5 flex justify-end gap-3">
               <button type="button" onClick={closeEdit} disabled={editSaving || uploading} className="rounded-xl bg-slate-100 px-4 py-3 font-black">
-                Annuler
+                {t("Annuler")}
               </button>
               <button type="button" onClick={() => void saveEdit()} disabled={editSaving || uploading} className="rounded-xl bg-blue-600 px-4 py-3 font-black text-white disabled:opacity-60">
-                {editSaving || uploading ? "Enregistrement…" : "Enregistrer"}
+                {editSaving || uploading ? "Enregistrement…" : t("Enregistrer")}
               </button>
             </div>
           </div>

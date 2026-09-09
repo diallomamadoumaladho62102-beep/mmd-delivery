@@ -125,12 +125,12 @@ export function RestaurantStripeConnectCard({ heldAmountLabel }: Props) {
       await refreshStatus();
     } catch (e) {
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         toUserFacingError(
           e,
           t(
             "restaurant.earnings.errors.openStripe",
-            "Impossible d’ouvrir Stripe Connect.",
+            "Unable to open Stripe Connect.",
           ),
         ),
       );
@@ -144,8 +144,8 @@ export function RestaurantStripeConnectCard({ heldAmountLabel }: Props) {
       <Text style={styles.kicker}>
         {t("restaurant.earnings.stripe.bankKicker", "Bank payouts")}
       </Text>
-      <Text style={styles.title}>{cta.title}</Text>
-      <Text style={styles.body}>{cta.body}</Text>
+      <Text style={styles.title}>{t(cta.titleKey, cta.title)}</Text>
+      <Text style={styles.body}>{t(cta.bodyKey, cta.body)}</Text>
       {!ready && heldAmountLabel ? (
         <Text style={styles.held}>
           {t(
@@ -167,11 +167,11 @@ export function RestaurantStripeConnectCard({ heldAmountLabel }: Props) {
         disabled={loading}
         onPress={() => void openStripeExpress()}
         accessibilityRole="button"
-        accessibilityLabel={cta.action}
+        accessibilityLabel={t(cta.actionKey, cta.action)}
         testID="restaurant-connect-stripe"
       >
         <Text style={styles.ctaLabel}>
-          {loading ? t("common.loading", "Loading…") : cta.action}
+          {loading ? t("common.loading", "Loading…") : t(cta.actionKey, cta.action)}
         </Text>
       </TouchableOpacity>
     </View>

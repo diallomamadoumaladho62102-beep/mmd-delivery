@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useAdminT } from "@/i18n/useAdminT";
 import {
   OFFICIAL_WEBSITE_URL,
   SOCIAL_QR_TARGETS,
@@ -31,16 +34,18 @@ const KIT_LABELS = [
 ] as const;
 
 export default function SocialBrandKitPage() {
+  const { t } = useAdminT();
+
   const links = getActiveSocialLinks();
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-300">
-          Marketing kit
+          {t("Marketing kit")}
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-          Official social links &amp; QR codes
+          {t("Official social links &amp; QR codes")}
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-slate-400">
           Single source of truth for MMD Delivery presence. Use these assets on
@@ -50,7 +55,7 @@ export default function SocialBrandKitPage() {
         </p>
 
         <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-lg font-semibold">Follow MMD Delivery</h2>
+          <h2 className="text-lg font-semibold">{t("Follow MMD Delivery")}</h2>
           <div className="mt-4">
             <SocialLinks variant="footer" />
           </div>
@@ -76,7 +81,7 @@ export default function SocialBrandKitPage() {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-lg font-semibold">Printable QR codes</h2>
+          <h2 className="text-lg font-semibold">{t("Printable QR codes")}</h2>
           <p className="mt-1 text-sm text-slate-400">
             PNG (2048px, ECC H) and SVG available under{" "}
             <code className="text-orange-200">/brand/qr/</code>.
@@ -124,7 +129,7 @@ export default function SocialBrandKitPage() {
         </section>
 
         <section className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <h2 className="text-lg font-semibold">Recommended kits</h2>
+          <h2 className="text-lg font-semibold">{t("Recommended kits")}</h2>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
             {KIT_LABELS.map((kit) => (
               <li

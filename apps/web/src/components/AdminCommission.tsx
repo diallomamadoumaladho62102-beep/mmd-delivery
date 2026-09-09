@@ -1,11 +1,15 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type Props = { orderId: string };
 
 export default function AdminCommission({ orderId }: Props) {
+  const { t } = useAdminT();
+
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [row, setRow] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,21 +49,21 @@ export default function AdminCommission({ orderId }: Props) {
   }, [orderId]);
 
   if (!isAdmin) return null;
-  if (loading) return <div className="text-sm text-gray-500">Chargement commissions…</div>;
-  if (!row) return <div className="text-sm text-gray-500">Pas de données de commission.</div>;
+  if (loading) return <div className="text-sm text-gray-500">{t("Chargement commissions…")}</div>;
+  if (!row) return <div className="text-sm text-gray-500">{t("Pas de données de commission.")}</div>;
 
   const fmt = (n: number) =>
     new Intl.NumberFormat(undefined, { style: "currency", currency: row.currency || "USD" }).format(n || 0);
 
   return (
     <div className="rounded-2xl border p-4 shadow-sm bg-white">
-      <div className="font-semibold mb-2">Commissions (admin)</div>
+      <div className="font-semibold mb-2">{t("Commissions (admin)")}</div>
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <div className="text-gray-600">Sous-total</div><div className="text-right">{fmt(row.subtotal)}</div>
-        <div className="text-gray-600">Client (5%)</div><div className="text-right">{fmt(row.client_amt)}</div>
-        <div className="text-gray-600">Driver (5%)</div><div className="text-right">{fmt(row.driver_amt)}</div>
-        <div className="text-gray-600">Restaurant (15%)</div><div className="text-right">{fmt(row.restaurant_amt)}</div>
-        <div className="text-gray-600">Plateforme (total 25%)</div><div className="text-right">{fmt(row.platform_amt)}</div>
+        <div className="text-gray-600">{t("Sous-total")}</div><div className="text-right">{fmt(row.subtotal)}</div>
+        <div className="text-gray-600">{t("Client (5%)")}</div><div className="text-right">{fmt(row.client_amt)}</div>
+        <div className="text-gray-600">{t("Driver (5%)")}</div><div className="text-right">{fmt(row.driver_amt)}</div>
+        <div className="text-gray-600">{t("Restaurant (15%)")}</div><div className="text-right">{fmt(row.restaurant_amt)}</div>
+        <div className="text-gray-600">{t("Plateforme (total 25%)")}</div><div className="text-right">{fmt(row.platform_amt)}</div>
       </div>
     </div>
   );

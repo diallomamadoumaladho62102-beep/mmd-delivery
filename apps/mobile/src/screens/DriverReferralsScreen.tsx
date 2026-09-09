@@ -55,14 +55,19 @@ function normalizeStatus(value: unknown) {
   return String(value ?? "pending").trim().toLowerCase();
 }
 
-function inviteStatusLabel(status: unknown) {
+function inviteStatusLabel(
+  status: unknown,
+  t: (key: string, fallback?: string) => string,
+) {
   const s = normalizeStatus(status);
   if (s === "completed" || s === "paid" || s === "rewarded") {
-    return "✅ Reward earned";
+    return t("driver.referrals.inviteStatus.earned", "Reward earned");
   }
-  if (s === "active" || s === "accepted") return "Active";
-  if (s === "expired") return "Expired";
-  if (s === "pending") return "Pending";
+  if (s === "active" || s === "accepted") {
+    return t("driver.referrals.inviteStatus.active", "Active");
+  }
+  if (s === "expired") return t("driver.referrals.inviteStatus.expired", "Expired");
+  if (s === "pending") return t("driver.referrals.inviteStatus.pending", "Pending");
   return s.toUpperCase();
 }
 
@@ -345,7 +350,9 @@ export function DriverReferralsScreen() {
             ]}
           >
             <Text style={[styles.statusText, { color: colors.text }]}>
-              {inviteStatusLabel(invite.status)}
+              {inviteStatusLabel(invite.status, (key, fallback) =>
+                t(key, { defaultValue: fallback }),
+              )}
             </Text>
           </View>
         </View>

@@ -3,6 +3,17 @@
  * Separates JWT/session failures from missing-profile (null row, no error).
  */
 
+import i18n from "i18next";
+
+function tr(key: string, defaultValue: string): string {
+  try {
+    const value = i18n.t(key, { defaultValue });
+    return typeof value === "string" && value.trim() ? value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
+
 export type ProfileGateErrorKind =
   | "session_expired"
   | "network"
@@ -112,15 +123,30 @@ export function classifyProfileFetchError(error: {
 export function userMessageForProfileGateKind(kind: ProfileGateErrorKind): string {
   switch (kind) {
     case "session_expired":
-      return "Your session expired. Please sign in again.";
+      return tr(
+        "roleSelect.profileGate.sessionExpired",
+        "Your session expired. Please sign in again.",
+      );
     case "network":
-      return "Network error while verifying your profile. Check your connection and try again.";
+      return tr(
+        "roleSelect.profileGate.network",
+        "Network error while verifying your profile. Check your connection and try again.",
+      );
     case "permission":
-      return "Unable to access your profile. Sign out, sign in again, or contact support.";
+      return tr(
+        "roleSelect.profileGate.permission",
+        "Unable to access your profile. Sign out, sign in again, or contact support.",
+      );
     case "server":
-      return "Profile service is temporarily unavailable. Please try again in a moment.";
+      return tr(
+        "roleSelect.profileGate.server",
+        "Profile service is temporarily unavailable. Please try again in a moment.",
+      );
     default:
-      return "Unable to verify your profile. Please try again.";
+      return tr(
+        "roleSelect.profileGate.unknown",
+        "Unable to verify your profile. Please try again.",
+      );
   }
 }
 

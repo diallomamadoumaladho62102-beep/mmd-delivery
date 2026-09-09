@@ -882,10 +882,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
-        <ScreenHeader title="Menu" variant="mmd" fallbackRoute="RestaurantCommandCenter" />
+        <ScreenHeader title={t("restaurant.menu.title")} variant="mmd" fallbackRoute="RestaurantCommandCenter" />
         <RestaurantBrandLoadingState
-          title="Loading Menu..."
-          subtitle="Fetching your menu items"
+          title={t("restaurant.menu.loadingTitle")}
+          subtitle={t("restaurant.menu.loadingSubtitle")}
           glass
         />
       </SafeAreaView>
@@ -895,7 +895,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   if (!restaurantUserId) {
     return (
       <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
-        <ScreenHeader title="Menu" variant="mmd" fallbackRoute="RestaurantCommandCenter" />
+        <ScreenHeader title={t("restaurant.menu.title")} variant="mmd" fallbackRoute="RestaurantCommandCenter" />
         <View style={styles.emptyPad}>
           <Text style={styles.emptyTitle}>
             {t("restaurant.menu.errors.accountRequired", "Restaurant account required")}
@@ -910,7 +910,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title="Menu"
+        title={t("restaurant.menu.title")}
         variant="mmd"
         fallbackRoute="RestaurantCommandCenter"
         rightSlot={
@@ -926,7 +926,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
               style={styles.headerAction}
               accessibilityRole="button"
             >
-              <Text style={styles.headerActionText}>+ Item</Text>
+              <Text style={styles.headerActionText}>{t("restaurant.menu.addItem")}</Text>
             </TouchableOpacity>
           )
         }
@@ -939,16 +939,23 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
             onPress={() => setAddCategoryOpen(true)}
             accessibilityRole="button"
           >
-            <Text style={styles.addCategoryBtnText}>+ Add Category</Text>
+            <Text style={styles.addCategoryBtnText}>
+              {t("restaurant.menu.addCategory", "+ Add Category")}
+            </Text>
           </TouchableOpacity>
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconWrap}>
               <Text style={styles.emptyIcon}>ðŸ“‚</Text>
             </View>
             <View style={styles.emptyTextStack}>
-              <Text style={styles.emptyTitle}>No Categories</Text>
+              <Text style={styles.emptyTitle}>
+                {t("restaurant.menu.noCategories", "No Categories")}
+              </Text>
               <Text style={styles.emptySubtitle}>
-                No categories yet. Add one to get started.
+                {t(
+                  "restaurant.menu.noCategoriesBody",
+                  "No categories yet. Add one to get started.",
+                )}
               </Text>
             </View>
           </View>
@@ -993,9 +1000,9 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
             {visibleItems.length === 0 ? (
               <View style={styles.emptyCard}>
                 <View style={styles.emptyTextStack}>
-                  <Text style={styles.emptyTitle}>No items</Text>
+                  <Text style={styles.emptyTitle}>{t("restaurant.menu.noItems")}</Text>
                   <Text style={styles.emptySubtitle}>
-                    Add a product to this category.
+                    {t("restaurant.menu.noItemsBody")}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -1008,7 +1015,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                     setAddItemOpen(true);
                   }}
                 >
-                  <Text style={styles.addCategoryBtnText}>+ Add Item</Text>
+                  <Text style={styles.addCategoryBtnText}>{t("restaurant.menu.addItem")}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -1050,7 +1057,9 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                             item.is_available ? styles.badgeTextOn : styles.badgeTextOff,
                           ]}
                         >
-                          {item.is_available ? "Available" : "Unavailable"}
+                          {item.is_available
+                            ? t("restaurant.menu.available")
+                            : t("restaurant.menu.unavailable")}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -1070,17 +1079,17 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add Category</Text>
+            <Text style={styles.modalTitle}>{t("restaurant.menu.addCategoryTitle", "Add Category")}</Text>
             <TextInput
               value={newCategoryName}
               onChangeText={setNewCategoryName}
-              placeholder="Category name"
+              placeholder={t("restaurant.menu.categoryNamePlaceholder", "Category name")}
               placeholderTextColor="rgba(255,255,255,0.45)"
               style={styles.input}
             />
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => setAddCategoryOpen(false)}>
-                <Text style={styles.modalCancel}>Cancel</Text>
+                <Text style={styles.modalCancel}>{t("common.cancel", "Cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalSave}
@@ -1090,7 +1099,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                 }}
                 disabled={savingAction}
               >
-                <Text style={styles.modalSaveText}>Add</Text>
+                <Text style={styles.modalSaveText}>{t("restaurant.menu.add")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1106,15 +1115,15 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
         <View style={styles.modalBackdrop}>
           <ScrollView contentContainerStyle={styles.modalScroll}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Add Item</Text>
-              <Text style={styles.fieldLabel}>Name</Text>
+              <Text style={styles.modalTitle}>{t("restaurant.menu.addItemTitle")}</Text>
+              <Text style={styles.fieldLabel}>{t("restaurant.menu.name")}</Text>
               <TextInput
                 value={newItem.name}
                 onChangeText={(v) => setNewItem((s) => ({ ...s, name: v }))}
                 style={styles.input}
                 placeholderTextColor="rgba(255,255,255,0.45)"
               />
-              <Text style={styles.fieldLabel}>Price</Text>
+              <Text style={styles.fieldLabel}>{t("restaurant.menu.price")}</Text>
               <TextInput
                 value={newItem.price}
                 onChangeText={(v) => setNewItem((s) => ({ ...s, price: v }))}
@@ -1122,7 +1131,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                 style={styles.input}
                 placeholderTextColor="rgba(255,255,255,0.45)"
               />
-              <Text style={styles.fieldLabel}>Description</Text>
+              <Text style={styles.fieldLabel}>{t("restaurant.menu.description")}</Text>
               <TextInput
                 value={newItem.description}
                 onChangeText={(v) => setNewItem((s) => ({ ...s, description: v }))}
@@ -1130,7 +1139,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                 placeholderTextColor="rgba(255,255,255,0.45)"
               />
               <View style={styles.switchRow}>
-                <Text style={styles.fieldLabelInline}>Available</Text>
+                <Text style={styles.fieldLabelInline}>{t("restaurant.menu.available")}</Text>
                 <Switch
                   value={Boolean(newItem.is_available)}
                   onValueChange={(v) => setNewItem((s) => ({ ...s, is_available: v }))}
@@ -1148,12 +1157,14 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
               >
                 {uploading ? <ActivityIndicator color={MMD_WHITE} /> : null}
                 <Text style={styles.secondaryBtnText}>
-                  {newItem.image_url ? "Change image" : "Choose image"}
+                  {newItem.image_url
+                    ? t("restaurant.menu.changeImage", "Change image")
+                    : t("restaurant.menu.chooseImage", "Choose image")}
                 </Text>
               </TouchableOpacity>
               <View style={styles.modalActions}>
                 <TouchableOpacity onPress={() => setAddItemOpen(false)}>
-                  <Text style={styles.modalCancel}>Cancel</Text>
+                  <Text style={styles.modalCancel}>{t("common.cancel", "Cancel")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.modalSave}
@@ -1163,7 +1174,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                   }}
                   disabled={savingAction || uploading}
                 >
-                  <Text style={styles.modalSaveText}>Add</Text>
+                  <Text style={styles.modalSaveText}>{t("restaurant.menu.add")}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1175,15 +1186,15 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
         <View style={styles.modalBackdrop}>
           <ScrollView contentContainerStyle={styles.modalScroll}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Edit Item</Text>
-              <Text style={styles.fieldLabel}>Name</Text>
+              <Text style={styles.modalTitle}>{t("restaurant.menu.editItemTitle")}</Text>
+              <Text style={styles.fieldLabel}>{t("restaurant.menu.name")}</Text>
               <TextInput
                 value={editForm.name}
                 onChangeText={(v) => setEditForm((s) => ({ ...s, name: v }))}
                 style={styles.input}
                 placeholderTextColor="rgba(255,255,255,0.45)"
               />
-              <Text style={styles.fieldLabel}>Price</Text>
+              <Text style={styles.fieldLabel}>{t("restaurant.menu.price")}</Text>
               <TextInput
                 value={editForm.price}
                 onChangeText={(v) => setEditForm((s) => ({ ...s, price: v }))}
@@ -1191,7 +1202,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                 style={styles.input}
                 placeholderTextColor="rgba(255,255,255,0.45)"
               />
-              <Text style={styles.fieldLabel}>Description</Text>
+              <Text style={styles.fieldLabel}>{t("restaurant.menu.description")}</Text>
               <TextInput
                 value={editForm.description}
                 onChangeText={(v) => setEditForm((s) => ({ ...s, description: v }))}
@@ -1199,7 +1210,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                 placeholderTextColor="rgba(255,255,255,0.45)"
               />
               <View style={styles.switchRow}>
-                <Text style={styles.fieldLabelInline}>Available</Text>
+                <Text style={styles.fieldLabelInline}>{t("restaurant.menu.available")}</Text>
                 <Switch
                   value={Boolean(editForm.is_available)}
                   onValueChange={(v) => setEditForm((s) => ({ ...s, is_available: v }))}
@@ -1217,7 +1228,9 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
               >
                 {uploading ? <ActivityIndicator color={MMD_WHITE} /> : null}
                 <Text style={styles.secondaryBtnText}>
-                  {editForm.image_url ? "Change image" : "Choose image"}
+                  {editForm.image_url
+                    ? t("restaurant.menu.changeImage", "Change image")
+                    : t("restaurant.menu.chooseImage", "Choose image")}
                 </Text>
               </TouchableOpacity>
               <View style={styles.modalActions}>
@@ -1227,10 +1240,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                     closeEdit();
                   }}
                 >
-                  <Text style={styles.modalDelete}>Delete</Text>
+                  <Text style={styles.modalDelete}>{t("common.delete")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={closeEdit}>
-                  <Text style={styles.modalCancel}>Cancel</Text>
+                  <Text style={styles.modalCancel}>{t("common.cancel", "Cancel")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.modalSave}
@@ -1238,7 +1251,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                   disabled={editSaving || uploading}
                 >
                   {editSaving ? <ActivityIndicator color={MMD_WHITE} /> : null}
-                  <Text style={styles.modalSaveText}>Save</Text>
+                  <Text style={styles.modalSaveText}>{t("common.save", "Save")}</Text>
                 </TouchableOpacity>
               </View>
             </View>

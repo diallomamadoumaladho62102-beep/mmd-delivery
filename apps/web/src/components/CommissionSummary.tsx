@@ -1,6 +1,9 @@
+"use client";
+
 // apps/web/src/components/CommissionSummary.tsx
 "use client";
 import { useEffect, useState } from "react";
+import { useAdminT } from "@/i18n/useAdminT";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type OC = {
@@ -10,6 +13,8 @@ type OC = {
 };
 
 export default function CommissionSummary({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [c, setC] = useState<OC | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -23,7 +28,7 @@ export default function CommissionSummary({ orderId }: { orderId: string }) {
   useEffect(() => { load(); }, [orderId]);
 
   if (err) return <div className="text-red-600">{err}</div>;
-  if (!c) return <div>Chargement…</div>;
+  if (!c) return <div>{t("Chargement…")}</div>;
 
   const money = (x: number) => `${x.toFixed(2)} ${c.currency}`;
 

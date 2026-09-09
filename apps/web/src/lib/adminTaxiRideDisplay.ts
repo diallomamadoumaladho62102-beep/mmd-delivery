@@ -12,6 +12,7 @@ import {
   type AdminFoodOrderParty,
   type StatusBadgeTone,
 } from "@/lib/adminFoodOrderDisplay";
+import { intlLocaleTag } from "@/i18n/formatters";
 
 export type { AdminFoodOrderParty, StatusBadgeTone };
 export {
@@ -120,15 +121,19 @@ export function formatRideMoney(
   }).format(Number(cents) / 100);
 }
 
-export function formatRideDateParts(iso: string | null | undefined): {
+export function formatRideDateParts(
+  iso: string | null | undefined,
+  locale?: string,
+): {
   date: string;
   time: string;
 } {
   const d = new Date(String(iso ?? ""));
   if (Number.isNaN(d.getTime())) return { date: "—", time: "—" };
+  const tag = intlLocaleTag(locale);
   return {
-    date: new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(d),
-    time: new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(d),
+    date: new Intl.DateTimeFormat(tag, { dateStyle: "medium" }).format(d),
+    time: new Intl.DateTimeFormat(tag, { timeStyle: "short" }).format(d),
   };
 }
 

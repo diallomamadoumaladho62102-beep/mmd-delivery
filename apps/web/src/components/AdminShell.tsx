@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import {
   useCallback,
   useEffect,
@@ -53,6 +55,8 @@ export default function AdminShell({
   children,
   actions,
 }: ShellProps) {
+  const { t } = useAdminT();
+
   const pathname = usePathname();
   const router = useRouter();
   const { locale, dir } = useWebI18n();
@@ -412,7 +416,7 @@ export default function AdminShell({
 
       <nav
         className="fixed inset-x-0 bottom-0 z-30 flex border-t border-white/12 bg-[#0033CC]/95 px-2 py-2 backdrop-blur md:hidden"
-        aria-label="Mobile quick nav"
+        aria-label={t("Mobile quick nav")}
       >
         {[
           { href: "/admin", label: "Home" },
@@ -439,7 +443,7 @@ export default function AdminShell({
           onClick={() => setSidebarOpen(true)}
           className="flex flex-1 flex-col items-center rounded-xl px-2 py-1.5 text-[11px] font-medium text-white/70"
         >
-          More
+          {t("More")}
         </button>
       </nav>
       <div className="h-16 md:hidden" />

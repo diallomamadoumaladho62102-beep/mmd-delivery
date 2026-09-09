@@ -1,4 +1,6 @@
 "use client";
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -19,6 +21,8 @@ function mapsLink(addr?: string | null, lat?: number | null, lng?: number | null
 }
 
 export default function OrderAddresses({ orderId }: { orderId: string }) {
+  const { t } = useAdminT();
+
   const [row, setRow] = useState<Row | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -47,23 +51,23 @@ export default function OrderAddresses({ orderId }: { orderId: string }) {
   return (
     <div className="grid sm:grid-cols-2 gap-4">
       <div className="border rounded-2xl p-4">
-        <div className="text-xs text-gray-500">Pickup</div>
+        <div className="text-xs text-gray-500">{t("Pickup")}</div>
         <div className="text-sm">{row.pickup_address || "(non renseigné)"}</div>
         {(row.pickup_lat!=null && row.pickup_lng!=null) && (
           <div className="text-xs text-gray-500 mt-1">({row.pickup_lat}, {row.pickup_lng})</div>
         )}
         <a className="inline-block mt-2 text-sm px-3 py-1.5 border rounded hover:bg-gray-50" href={pUrl} target="_blank" rel="noreferrer">
-          Ouvrir dans Maps
+          {t("Ouvrir dans Maps")}
         </a>
       </div>
       <div className="border rounded-2xl p-4">
-        <div className="text-xs text-gray-500">Dropoff</div>
+        <div className="text-xs text-gray-500">{t("Dropoff")}</div>
         <div className="text-sm">{row.dropoff_address || "(non renseigné)"}</div>
         {(row.dropoff_lat!=null && row.dropoff_lng!=null) && (
           <div className="text-xs text-gray-500 mt-1">({row.dropoff_lat}, {row.dropoff_lng})</div>
         )}
         <a className="inline-block mt-2 text-sm px-3 py-1.5 border rounded hover:bg-gray-50" href={dUrl} target="_blank" rel="noreferrer">
-          Ouvrir dans Maps
+          {t("Ouvrir dans Maps")}
         </a>
       </div>
       {err && <div className="col-span-full text-xs text-red-600">{err}</div>}

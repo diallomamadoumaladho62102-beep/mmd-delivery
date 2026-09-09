@@ -1,10 +1,14 @@
 "use client";
 
+
+import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getAvatarSrc } from "@/lib/avatarUrl";
 import { computeDriverPay } from "@/lib/deliveryPricing";
+import { missingRequirementLabel } from "@/i18n/missingRequirementLabel";
+import { driverStatusBadge, type DriverReviewStatus } from "@/lib/adminDriverDisplay";
 
 type OrderStatus =
   | "pending"
@@ -98,22 +102,25 @@ const ACTIVE_STATUSES: OrderStatus[] = [
   "dispatched",
 ];
 
-function driverStatusLabel(order: OrderRow): string {
+function driverStatusLabel(
+  order: OrderRow,
+  t: (source: string) => string,
+): string {
   if (order.kind === "pickup_dropoff") {
     switch (order.status) {
       case "pending":
-        return "Course transport en attente";
+        return t("Course transport en attente");
       case "accepted":
       case "prepared":
-        return "Course acceptée";
+        return t("Course acceptée");
       case "ready":
-        return "Prête pour retrait";
+        return t("Prête pour retrait");
       case "dispatched":
-        return "En livraison";
+        return t("En livraison");
       case "delivered":
-        return "Livrée";
+        return t("Livrée");
       case "canceled":
-        return "Annulée";
+        return t("Annulée");
       default:
         return order.status;
     }
@@ -121,34 +128,40 @@ function driverStatusLabel(order: OrderRow): string {
 
   switch (order.status) {
     case "pending":
-      return "En attente (envoi au restaurant)";
+      return t("En attente (envoi au restaurant)");
     case "accepted":
-      return "Acceptée (chez le restaurant)";
+      return t("Acceptée (chez le restaurant)");
     case "prepared":
-      return "En préparation";
+      return t("En préparation");
     case "ready":
-      return "Prête (en attente du driver)";
+      return t("Prête (en attente du driver)");
     case "dispatched":
-      return "En livraison";
+      return t("En livraison");
     case "delivered":
-      return "Livrée";
+      return t("Livrée");
     case "canceled":
-      return "Annulée";
+      return t("Annulée");
     default:
       return order.status;
   }
 }
 
-function orderKindLabel(kind: OrderKind | null | undefined): string {
-  if (kind === "pickup_dropoff") return "Pickup & dropoff";
-  if (kind === "food") return "Commande restaurant";
-  return "Commande";
+function orderKindLabel(
+  kind: OrderKind | null | undefined,
+  t: (source: string) => string,
+): string {
+  if (kind === "pickup_dropoff") return t("Pickup & dropoff");
+  if (kind === "food") return t("Commande restaurant");
+  return t("Commande");
 }
 
-function transportModeLabel(value: string | null | undefined): string {
-  if (value === "bike") return "Bike";
-  if (value === "moto") return "Moto";
-  if (value === "car") return "Car";
+function transportModeLabel(
+  value: string | null | undefined,
+  t: (source: string) => string,
+): string {
+  if (value === "bike") return t("Vélo");
+  if (value === "moto") return t("Moto / Scooter");
+  if (value === "car") return t("Voiture");
   return "—";
 }
 
@@ -173,6 +186,8 @@ function isMineForDriver(order: OrderRow, uid: string): boolean {
 }
 
 export default function DriverOrdersDashboardPage() {
+  const { t } = useAdminT();
+
   const [me, setMe] = useState<Me | null>(null);
   const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
   const [driverDocuments, setDriverDocuments] = useState<DriverDocumentRow[]>([]);
@@ -527,7 +542,7 @@ export default function DriverOrdersDashboardPage() {
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Tableau de bord chauffeur</h1>
+          <h1 className="text-2xl font-bold">{t("Tableau de bord chauffeur")}</h1>
           <p className="text-sm text-gray-600">
             Connecté en tant que{" "}
             <span className="font-medium">
@@ -536,7 +551,7 @@ export default function DriverOrdersDashboardPage() {
             .
           </p>
           <p className="text-xs text-gray-500">
-            Liste des courses disponibles et de tes livraisons en cours.
+            {t("Liste des courses disponibles et de tes livraisons en cours.")}
           </p>
         </div>
 
@@ -545,7 +560,7 @@ export default function DriverOrdersDashboardPage() {
           onClick={() => void load()}
           className="px-3 py-1.5 rounded-lg border text-sm bg-white hover:bg-gray-50"
         >
-          Rafraîchir
+          {t("Rafraîchir")}
         </button>
       </header>
 
@@ -553,27 +568,33 @@ export default function DriverOrdersDashboardPage() {
         <section className="rounded-xl border bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <p className="text-sm font-semibold">Statut chauffeur</p>
+              <p className="text-sm font-semibold">{t("Statut chauffeur")}</p>
               <p className="text-xs text-gray-600">
                 Mode :{" "}
                 <span className="font-medium">
-                  {transportModeLabel(driverProfile.transport_mode)}
+                  {transportModeLabel(driverProfile.transport_mode, t)}
                 </span>
               </p>
               <p className="text-xs text-gray-600">
-                Validation :{" "}
-                <span className="font-medium">{driverProfile.status || "—"}</span>
-              </p>
-              <p className="text-xs text-gray-600">
-                Dossier requis :{" "}
+                {t("Validation")} :{" "}
                 <span className="font-medium">
-                  {missingRequirements.length > 0 ? "oui" : "non"}
+                  {t(
+                    driverStatusBadge(
+                      (driverProfile.status ?? "pending") as DriverReviewStatus,
+                    ).label,
+                  )}
                 </span>
               </p>
               <p className="text-xs text-gray-600">
-                Disponibilité :{" "}
+                {t("Dossier requis")} :{" "}
                 <span className="font-medium">
-                  {driverProfile.is_online ? "en ligne" : "hors ligne"}
+                  {missingRequirements.length > 0 ? t("Oui") : t("Non")}
+                </span>
+              </p>
+              <p className="text-xs text-gray-600">
+                {t("Disponibilité")} :{" "}
+                <span className="font-medium">
+                  {driverProfile.is_online ? t("en ligne") : t("hors ligne")}
                 </span>
               </p>
             </div>
@@ -581,19 +602,19 @@ export default function DriverOrdersDashboardPage() {
             <div>
               {canAccessDriverWork ? (
                 <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200">
-                  Compte prêt à recevoir des courses
+                  {t("Compte prêt à recevoir des courses")}
                 </span>
               ) : mustCompleteProfile ? (
                 <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-amber-50 text-amber-700 border-amber-200">
-                  Profil à compléter
+                  {t("Profil à compléter")}
                 </span>
               ) : !isApproved ? (
                 <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">
-                  En attente d’approbation
+                  {t("En attente d’approbation")}
                 </span>
               ) : (
                 <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-gray-50 text-gray-700 border-gray-200">
-                  Accès limité
+                  {t("Accès limité")}
                 </span>
               )}
             </div>
@@ -603,7 +624,7 @@ export default function DriverOrdersDashboardPage() {
 
       {loading && (
         <p className="text-sm text-gray-600">
-          Chargement des courses en cours…
+          {t("Chargement des courses en cours…")}
         </p>
       )}
 
@@ -611,15 +632,15 @@ export default function DriverOrdersDashboardPage() {
 
       {!loading && !err && !driverProfile && (
         <section className="rounded-xl border bg-white p-5 space-y-3">
-          <h2 className="text-lg font-semibold">Profil chauffeur introuvable</h2>
+          <h2 className="text-lg font-semibold">{t("Profil chauffeur introuvable")}</h2>
           <p className="text-sm text-gray-600">
-            Ton compte n’a pas encore de fiche dans <code>driver_profiles</code>.
+            {t("Ton compte n’a pas encore de fiche dans")} <code>driver_profiles</code>.
           </p>
           <Link
             href="/signup/driver"
             className="inline-flex px-3 py-2 rounded-lg bg-black text-white text-sm"
           >
-            Compléter mon profil chauffeur
+            {t("Compléter mon profil chauffeur")}
           </Link>
         </section>
       )}
@@ -628,22 +649,20 @@ export default function DriverOrdersDashboardPage() {
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 space-y-4">
           <div className="space-y-2">
             <h2 className="text-lg font-semibold text-amber-800">
-              Profil chauffeur incomplet
+              {t("Profil chauffeur incomplet")}
             </h2>
             <p className="text-sm text-amber-700">
-              Your driver account is approved, but your profile is incomplete.
-              Please upload the missing information and documents to go online.
+              {t("Your driver account is approved, but your profile is incomplete. Please upload the missing information and documents to go online.")}
             </p>
             <p className="text-sm text-amber-700">
-              Tant que ton dossier n’est pas complet, tu ne peux pas accepter de
-              nouvelles courses.
+              {t("Tant que ton dossier n’est pas complet, tu ne peux pas accepter de nouvelles courses.")}
             </p>
           </div>
 
           {missingRequirements.length > 0 && (
             <div className="rounded-xl border border-amber-300 bg-white p-4">
               <p className="text-sm font-semibold text-amber-800 mb-3">
-                Éléments à compléter
+                {t("Éléments à compléter")}
               </p>
               <ul className="space-y-2">
                 {missingRequirements.map((item) => (
@@ -651,7 +670,7 @@ export default function DriverOrdersDashboardPage() {
                     key={item}
                     className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
                   >
-                    {item}
+                    {missingRequirementLabel(item, t)}
                   </li>
                 ))}
               </ul>
@@ -663,7 +682,7 @@ export default function DriverOrdersDashboardPage() {
               href="/signup/driver"
               className="inline-flex px-4 py-2 rounded-lg bg-black text-white text-sm font-medium"
             >
-              Compléter mon profil chauffeur
+              {t("Compléter mon profil chauffeur")}
             </Link>
           </div>
         </section>
@@ -672,19 +691,19 @@ export default function DriverOrdersDashboardPage() {
       {!loading && !err && driverProfile && !isApproved && (
         <section className="rounded-xl border border-blue-200 bg-blue-50 p-5 space-y-3">
           <h2 className="text-lg font-semibold text-blue-800">
-            Compte chauffeur en attente
+            {t("Compte chauffeur en attente")}
           </h2>
           <p className="text-sm text-blue-700">
-            Ton compte chauffeur existe bien, mais il n’est pas encore approuvé.
+            {t("Ton compte chauffeur existe bien, mais il n’est pas encore approuvé.")}
           </p>
           <p className="text-sm text-blue-700">
-            Tu pourras recevoir des courses après validation de ton dossier.
+            {t("Tu pourras recevoir des courses après validation de ton dossier.")}
           </p>
           <Link
             href="/signup/driver"
             className="inline-flex px-3 py-2 rounded-lg bg-black text-white text-sm"
           >
-            Voir mon dossier chauffeur
+            {t("Voir mon dossier chauffeur")}
           </Link>
         </section>
       )}
@@ -692,15 +711,15 @@ export default function DriverOrdersDashboardPage() {
       {!loading && !err && canAccessDriverWork && (
         <section className="space-y-3">
           <div>
-            <h2 className="text-lg font-semibold">Courses à accepter</h2>
+            <h2 className="text-lg font-semibold">{t("Courses à accepter")}</h2>
             <p className="text-xs text-gray-500">
-              Courses pickup/dropoff en attente et commandes restaurant prêtes sans driver assigné.
+              {t("Courses pickup/dropoff en attente et commandes restaurant prêtes sans driver assigné.")}
             </p>
           </div>
 
           {available.length === 0 ? (
             <p className="text-sm text-gray-600">
-              Aucune course disponible pour le moment.
+              {t("Aucune course disponible pour le moment.")}
             </p>
           ) : (
             <div className="space-y-3">
@@ -717,7 +736,7 @@ export default function DriverOrdersDashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold">
-                          {orderKindLabel(order.kind)} #{shortId}
+                          {orderKindLabel(order.kind, t)} #{shortId}
                         </p>
                         <p className="text-xs text-gray-500">
                           Créée le {formatDate(order.created_at)}
@@ -761,7 +780,7 @@ export default function DriverOrdersDashboardPage() {
                             )}
                             <span className="text-xs text-gray-700">
                               <span className="text-[11px] text-gray-500 mr-1">
-                                Client :
+                                {t("Client :")}
                               </span>
                               <span className="font-medium">
                                 {client.full_name ?? "Client MMD"}
@@ -772,23 +791,23 @@ export default function DriverOrdersDashboardPage() {
                       </div>
 
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                        {driverStatusLabel(order)}
+                        {driverStatusLabel(order, t)}
                       </span>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-700">
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                         <p>
-                          <span className="text-gray-500 mr-1">Distance :</span>
+                          <span className="text-gray-500 mr-1">{t("Distance :")}</span>
                           <span className="font-medium">{formatDistance(order)}</span>
                         </p>
                         <p>
-                          <span className="text-gray-500 mr-1">Temps :</span>
+                          <span className="text-gray-500 mr-1">{t("Temps :")}</span>
                           <span className="font-medium">{formatEta(order)}</span>
                         </p>
                         <p>
                           <span className="text-gray-500 mr-1">
-                            Ta part (estimée) :
+                            {t("Ta part (estimée) :")}
                           </span>
                           <span className="font-semibold">
                             {formatDriverShare(order)}
@@ -815,21 +834,21 @@ export default function DriverOrdersDashboardPage() {
                           onClick={() => void rejectOrder(order.id)}
                           className="px-3 py-1.5 rounded-lg border border-red-500 text-red-600 bg-white hover:bg-red-50 text-xs font-semibold"
                         >
-                          Refuser la course
+                          {t("Refuser la course")}
                         </button>
 
                         <Link
                           href={`/orders/${order.id}/driver`}
                           className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                         >
-                          Détails de la course
+                          {t("Détails de la course")}
                         </Link>
 
                         <Link
                           href={`/orders/${order.id}/chat`}
                           className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                         >
-                          Ouvrir le chat
+                          {t("Ouvrir le chat")}
                         </Link>
                       </div>
                     </div>
@@ -844,15 +863,15 @@ export default function DriverOrdersDashboardPage() {
       {!loading && !err && canAccessDriverWork && (
         <section className="space-y-3">
           <div className="pt-4 border-t">
-            <h2 className="text-lg font-semibold">Mes livraisons en cours</h2>
+            <h2 className="text-lg font-semibold">{t("Mes livraisons en cours")}</h2>
             <p className="text-xs text-gray-500">
-              Courses où tu es déjà assigné en tant que driver.
+              {t("Courses où tu es déjà assigné en tant que driver.")}
             </p>
           </div>
 
           {mine.length === 0 ? (
             <p className="text-sm text-gray-600">
-              Tu n&apos;as aucune livraison active pour le moment.
+              {t("Tu n&apos;as aucune livraison active pour le moment.")}
             </p>
           ) : (
             <div className="space-y-3">
@@ -869,7 +888,7 @@ export default function DriverOrdersDashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold">
-                          {orderKindLabel(order.kind)} #{shortId}
+                          {orderKindLabel(order.kind, t)} #{shortId}
                         </p>
                         <p className="text-xs text-gray-500">
                           Créée le {formatDate(order.created_at)}
@@ -913,7 +932,7 @@ export default function DriverOrdersDashboardPage() {
                             )}
                             <span className="text-xs text-gray-700">
                               <span className="text-[11px] text-gray-500 mr-1">
-                                Client :
+                                {t("Client :")}
                               </span>
                               <span className="font-medium">
                                 {client.full_name ?? "Client MMD"}
@@ -924,22 +943,22 @@ export default function DriverOrdersDashboardPage() {
                       </div>
 
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                        {driverStatusLabel(order)}
+                        {driverStatusLabel(order, t)}
                       </span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4 text-xs text-gray-700">
                       <p>
-                        <span className="text-gray-500 mr-1">Distance :</span>
+                        <span className="text-gray-500 mr-1">{t("Distance :")}</span>
                         <span className="font-medium">{formatDistance(order)}</span>
                       </p>
                       <p>
-                        <span className="text-gray-500 mr-1">Temps :</span>
+                        <span className="text-gray-500 mr-1">{t("Temps :")}</span>
                         <span className="font-medium">{formatEta(order)}</span>
                       </p>
                       <p>
                         <span className="text-gray-500 mr-1">
-                          Ta part (estimée) :
+                          {t("Ta part (estimée) :")}
                         </span>
                         <span className="font-semibold">
                           {formatDriverShare(order)}
@@ -958,14 +977,14 @@ export default function DriverOrdersDashboardPage() {
                           href={`/orders/${order.id}/driver`}
                           className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                         >
-                          Voir la course
+                          {t("Voir la course")}
                         </Link>
 
                         <Link
                           href={`/orders/${order.id}/chat`}
                           className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                         >
-                          Ouvrir le chat
+                          {t("Ouvrir le chat")}
                         </Link>
                       </div>
                     </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 import Mapbox from "@rnmapbox/maps";
+import { useTranslation } from "react-i18next";
 import type { CoordinatePoint } from "../../lib/coordinates";
 
 type Props = {
@@ -77,8 +78,12 @@ export function DriverTripEndpointMarkers({
   destination,
   clientMeeting,
 }: Props) {
+  const { t } = useTranslation();
   const destColor = stage === "pickup" ? "#16A34A" : "#DC2626";
-  const destLabel = stage === "pickup" ? "PICKUP" : "DROP-OFF";
+  const destLabel =
+    stage === "pickup"
+      ? t("driver.home.map.pickupTitle")
+      : t("driver.home.map.dropoffTitle");
   const destEmoji = stage === "pickup" ? "📍" : "🏁";
 
   const samePoint =
@@ -95,7 +100,11 @@ export function DriverTripEndpointMarkers({
         anchor={{ x: 0.5, y: 1 }}
         allowOverlap
       >
-        <Pin color="#2563EB" label="CLIENT · PICKUP" emoji="👤" />
+        <Pin
+          color="#2563EB"
+          label={t("driver.trip.clientPickup")}
+          emoji="👤"
+        />
       </Mapbox.MarkerView>
     );
   }
@@ -120,7 +129,7 @@ export function DriverTripEndpointMarkers({
           anchor={{ x: 0.5, y: 1 }}
           allowOverlap
         >
-          <Pin color="#2563EB" label="CLIENT" emoji="👤" />
+          <Pin color="#2563EB" label={t("driver.trip.client")} emoji="👤" />
         </Mapbox.MarkerView>
       ) : null}
     </>

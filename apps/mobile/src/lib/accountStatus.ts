@@ -1,9 +1,20 @@
+import i18n from "i18next";
+
 export type AccountStatus =
   | "active"
   | "suspended"
   | "disabled"
   | "deleted"
   | "banned";
+
+function tr(key: string, defaultValue: string): string {
+  try {
+    const value = i18n.t(key, { defaultValue });
+    return typeof value === "string" && value.trim() ? value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}
 
 export function normalizeAccountStatus(
   value: string | null | undefined
@@ -31,19 +42,34 @@ export function accountStatusBlockMessage(
 ): string | null {
   const normalized = normalizeAccountStatus(status);
   if (normalized === "deleted") {
-    return "Ce compte a été supprimé et ne peut plus être utilisé.";
+    return tr(
+      "errors.account.deleted",
+      "This account has been deleted and can no longer be used.",
+    );
   }
   if (normalized === "banned") {
-    return "Ce compte est banni. Contacte le support MMD Delivery.";
+    return tr(
+      "errors.account.banned",
+      "This account is banned. Contact MMD Delivery support.",
+    );
   }
   if (normalized === "suspended") {
-    return "Votre compte est suspendu. Contactez le support MMD Delivery.";
+    return tr(
+      "errors.account.suspended",
+      "Your account is suspended. Contact MMD Delivery support.",
+    );
   }
   if (normalized === "disabled") {
-    return "Votre compte est désactivé. Contactez le support MMD Delivery.";
+    return tr(
+      "errors.account.disabled",
+      "Your account is disabled. Contact MMD Delivery support.",
+    );
   }
   if (String(status ?? "").trim().toLowerCase() === "unknown") {
-    return "Impossible de vérifier le statut du compte. Réessaie dans un instant.";
+    return tr(
+      "errors.account.unknown",
+      "Unable to verify account status. Please try again shortly.",
+    );
   }
   return null;
 }
@@ -59,13 +85,22 @@ export function driverOnlineBlockMessage(
 ): string | null {
   const normalized = String(status ?? "").trim().toLowerCase();
   if (normalized === "suspended") {
-    return "Ton compte chauffeur est suspendu. Contacte le support MMD Delivery.";
+    return tr(
+      "errors.codes.driver_suspended",
+      "Your driver account is suspended.",
+    );
   }
   if (normalized === "disabled") {
-    return "Ton compte chauffeur est désactivé. Contacte le support MMD Delivery.";
+    return tr(
+      "errors.codes.driver_disabled",
+      "Your driver account is disabled.",
+    );
   }
   if (normalized !== "approved") {
-    return "Ton profil chauffeur doit être approuvé avant de passer en ligne.";
+    return tr(
+      "errors.codes.driver_not_approved",
+      "Your driver account must be approved before you can go online.",
+    );
   }
   return null;
 }
