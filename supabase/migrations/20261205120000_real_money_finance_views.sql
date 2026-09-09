@@ -2,6 +2,9 @@
 -- Does NOT delete or rewrite existing rows.
 -- Live visibility already lives in v_orders_live / is_user_visible_trip_row.
 -- These views add the paid-payment gate for financial reporting.
+--
+-- Timestamp 20261205120000 is intentional: ordered after
+-- 20261204120000_partner_transfer_recoveries. Do not rename.
 
 create or replace view public.v_orders_real_money
 with (security_invoker = true)

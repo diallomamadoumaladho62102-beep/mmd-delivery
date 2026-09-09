@@ -67,7 +67,14 @@ export async function executeWorkerSundayBankPayout(params: {
   metadata?: Record<string, string>;
 }): Promise<
   | { ok: true; payout: Stripe.Payout; amountCents: number; skipped: false }
-  | { ok: true; skipped: true; amountCents: 0; reason: string }
+  | {
+      ok: true;
+      skipped: true;
+      amountCents: 0;
+      reason: string;
+      availableCents: number;
+      pendingCents: number;
+    }
   | { ok: false; error: string }
 > {
   return createFullAvailableConnectPayout(params);

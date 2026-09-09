@@ -18,6 +18,7 @@ import {
   isDriverBankPayoutWindow,
   DRIVER_BANK_PAYOUT_TIMEZONE,
 } from "@/lib/finance/driverConnectBankPayout";
+import { classifyStripeConnectAccountId } from "@/lib/finance/sundayBankEligibility";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
 import {
   executeWorkerSundayBankPayout,
@@ -108,100 +109,98 @@ async function handle(req: NextRequest) {
     JOB,
     async () => {
       const pageSize = 100;
-      const driverRows: Array<{
-        user_id: string;
-        stripe_account_id: string | null;
-      }> = [];
-      for (let from = 0; from < 5000; from += pageSize) {
-        const { data, error } = await supabaseAdmin
-          .from("driver_profiles")
-          .select("user_id, stripe_account_id")
-          .not("stripe_account_id", "is", null)
-          .range(from, from + pageSize - 1);
-        if (error) {
-          throw new Error(`driver_profiles_select_failed: ${error.message}`);
-        }
-        const page = (data ?? []).filter((d) =>
-          String(d.stripe_account_id ?? "").startsWith("acct_"),
-        );
-        driverRows.push(...page);
-        if ((data ?? []).length < pageSize) break;
-      }
-
-      const restaurantRows: Array<{
-        user_id: string;
-        stripe_account_id: string | null;
-      }> = [];
-      for (let from = 0; from < 5000; from += pageSize) {
-        const { data, error } = await supabaseAdmin
-          .from("restaurant_profiles")
-          .select("user_id, stripe_account_id")
-          .not("stripe_account_id", "is", null)
-          .range(from, from + pageSize - 1);
-        if (error) {
-          throw new Error(
-            `restaurant_profiles_select_failed: ${error.message}`,
-          );
-        }
-        const page = (data ?? []).filter((d) =>
-          String(d.stripe_account_id ?? "").startsWith("acct_"),
-        );
-        restaurantRows.push(...page);
-        if ((data ?? []).length < pageSize) break;
-      }
-
-      const sellerRows: Array<{
-        user_id: string;
-        stripe_account_id: string | null;
-      }> = [];
-      for (let from = 0; from < 5000; from += pageSize) {
-        const { data, error } = await supabaseAdmin
-          .from("sellers")
-          .select("user_id, stripe_account_id")
-          .not("stripe_account_id", "is", null)
-          .range(from, from + pageSize - 1);
-        if (error) {
-          throw new Error(`sellers_select_failed: ${error.message}`);
-        }
-        const page = (data ?? []).filter((d) =>
-          String(d.stripe_account_id ?? "").startsWith("acct_"),
-        );
-        sellerRows.push(...page);
-        if ((data ?? []).length < pageSize) break;
-      }
-
-      const driverBatch = driverRows.slice(0, Math.max(0, limit));
-      const restaurantBatch = restaurantRows.slice(0, Math.max(0, limit));
-      const sellerBatch = sellerRows.slice(0, Math.max(0, limit));
-      // Separate caps so restaurant/seller Sunday bank is never starved by a large driver set.
-      type BankTarget = {
-        role: "driver" | "restaurant" | "seller";
+      type ProfileRow = {
         user_id: string;
         stripe_account_id: string | null;
       };
+      async function loadProfiles(
+        table: "driver_profiles" | "restaurant_profiles" | "sellers",
+      ): Promise<ProfileRow[]> {
+        const rows: ProfileRow[] = [];
+        for (let from = 0; from < 5000; from += pageSize) {
+          const { data, error } = await supabaseAdmin
+            .from(table)
+            .select("user_id, stripe_account_id")
+            .range(from, from + pageSize - 1);
+          if (error) {
+            throw new Error(`${table}_select_failed: ${error.message}`);
+          }
+          rows.push(...((data ?? []) as unknown as ProfileRow[]));
+          if ((data ?? []).length < pageSize) break;
+        }
+        return rows;
+      }
+
+      const [allDrivers, allRestaurants, allSellers] = await Promise.all([
+        loadProfiles("driver_profiles"),
+        loadProfiles("restaurant_profiles"),
+        loadProfiles("sellers"),
+      ]);
+
+      type BankTarget = {
+        role: "driver" | "restaurant" | "seller";
+        user_id: string;
+        stripe_account_id: string;
+      };
+      function partitionRole(
+        role: BankTarget["role"],
+        rows: ProfileRow[],
+      ): { missing: ProfileRow[]; eligible: BankTarget[] } {
+        const missing: ProfileRow[] = [];
+        const eligible: BankTarget[] = [];
+        for (const row of rows) {
+          const classified = classifyStripeConnectAccountId(row.stripe_account_id);
+          if (!classified.ok || !classified.accountId) {
+            missing.push(row);
+            continue;
+          }
+          eligible.push({
+            role,
+            user_id: row.user_id,
+            stripe_account_id: classified.accountId,
+          });
+        }
+        return { missing, eligible };
+      }
+
+      const drivers = partitionRole("driver", allDrivers);
+      const restaurants = partitionRole("restaurant", allRestaurants);
+      const sellers = partitionRole("seller", allSellers);
+
+      // Separate caps so restaurant/seller Sunday bank is never starved by a large driver set.
       const batch: BankTarget[] = [
-        ...driverBatch.map((r) => ({
-          role: "driver" as const,
-          user_id: r.user_id,
-          stripe_account_id: r.stripe_account_id,
-        })),
-        ...restaurantBatch.map((r) => ({
-          role: "restaurant" as const,
-          user_id: r.user_id,
-          stripe_account_id: r.stripe_account_id,
-        })),
-        ...sellerBatch.map((r) => ({
-          role: "seller" as const,
-          user_id: r.user_id,
-          stripe_account_id: r.stripe_account_id,
-        })),
+        ...drivers.eligible.slice(0, Math.max(0, limit)),
+        ...restaurants.eligible.slice(0, Math.max(0, limit)),
+        ...sellers.eligible.slice(0, Math.max(0, limit)),
       ];
       const results: Array<Record<string, unknown>> = [];
       let paid = 0;
       let skipped = 0;
       let failed = 0;
+      let missingStripeAccount = 0;
       let schedulesUpdated = 0;
       let partial = false;
+
+      const missingCap = 100;
+      function recordMissing(role: BankTarget["role"], rows: ProfileRow[]) {
+        missingStripeAccount += rows.length;
+        skipped += rows.length;
+        for (const row of rows.slice(0, missingCap)) {
+          results.push({
+            role,
+            recipient_user_id: row.user_id,
+            ok: true,
+            skipped: true,
+            reason: "missing_stripe_account",
+            payout_blocked: true,
+            block_label:
+              "PAYOUT BLOCKED — STRIPE CONNECT ACCOUNT NOT CONFIGURED",
+          });
+        }
+      }
+      recordMissing("driver", drivers.missing);
+      recordMissing("restaurant", restaurants.missing);
+      recordMissing("seller", sellers.missing);
 
       for (const row of batch) {
         if (isDeadlineApproaching(start.startedMs)) {
@@ -289,6 +288,8 @@ async function handle(req: NextRequest) {
             ok: true,
             skipped: true,
             reason: payout.reason,
+            available_cents: "availableCents" in payout ? payout.availableCents : 0,
+            pending_cents: "pendingCents" in payout ? payout.pendingCents : 0,
           });
           continue;
         }
@@ -344,13 +345,14 @@ async function handle(req: NextRequest) {
       console.info("[driver-connect-bank-payouts] cycle", {
         timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
         local_date: parts.dateKey,
-        scanned_drivers: driverRows.length,
-        scanned_restaurants: restaurantRows.length,
-        scanned_sellers: sellerRows.length,
+        scanned_drivers: allDrivers.length,
+        scanned_restaurants: allRestaurants.length,
+        scanned_sellers: allSellers.length,
         eligible: batch.length,
         paid,
         skipped,
         failed,
+        missing_stripe_account: missingStripeAccount,
         skip_reasons: skipReasons,
         fail_reasons: failReasons,
         total_amount_cents: results.reduce(
@@ -363,14 +365,15 @@ async function handle(req: NextRequest) {
         ok: true as const,
         timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
         local_date: parts.dateKey,
-        scanned: driverRows.length + restaurantRows.length + sellerRows.length,
-        scanned_drivers: driverRows.length,
-        scanned_restaurants: restaurantRows.length,
-        scanned_sellers: sellerRows.length,
+        scanned: allDrivers.length + allRestaurants.length + allSellers.length,
+        scanned_drivers: allDrivers.length,
+        scanned_restaurants: allRestaurants.length,
+        scanned_sellers: allSellers.length,
         eligible: batch.length,
         paid,
         skipped,
         failed,
+        missing_stripe_account: missingStripeAccount,
         schedules_updated: schedulesUpdated,
         schedule_only: scheduleOnly,
         partial,

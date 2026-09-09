@@ -61,6 +61,8 @@ test("Sunday bank window opens at 04:00 ET — no weekday / no 16:00 UTC cron", 
   assert.match(wf, /0 9 \* \* 0/);
   assert.match(wf, /0 12 \* \* 0/);
   assert.match(wf, /0 14 \* \* 0/);
+  assert.match(wf, /0 16 \* \* 0/);
+  assert.match(wf, /0 22 \* \* 0/);
   assert.doesNotMatch(wf, /0 20 \* \* 0/);
   assert.doesNotMatch(wf, /0 21 \* \* 0/);
 });

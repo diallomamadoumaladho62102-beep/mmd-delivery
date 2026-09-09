@@ -12,8 +12,12 @@ on:
     - cron: "0 9 * * 0"
     # Same-Sunday recovery if GH delayed the 04:00 ET fire (08:00 EDT / 07:00 EST)
     - cron: "0 12 * * 0"
-    # Last same-Sunday recovery before Monday ET (10:00 EDT / 09:00 EST)
+    # Same-Sunday recovery (10:00 EDT / 09:00 EST)
     - cron: "0 14 * * 0"
+    # Afternoon recovery if GH is still delayed (12:00 EDT / 11:00 EST)
+    - cron: "0 16 * * 0"
+    # Evening same-Sunday recovery (18:00 EDT / 17:00 EST). Not 16:00 ET (0 20 / 0 21).
+    - cron: "0 22 * * 0"
   workflow_dispatch:
     inputs:
       force:
@@ -48,10 +52,10 @@ jobs:
       SCHEDULE_ONLY: ${{ github.event.inputs.schedule_only || '0' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
 

@@ -1529,6 +1529,13 @@ export default function AdminPayoutsPage() {
                     {t("Audit Logs")}
                   </Link>
 
+                  <Link
+                    href="/admin/payouts/sunday"
+                    className="inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-white/10 px-5 text-sm font-bold text-white ring-1 ring-white/15 transition hover:bg-white/15"
+                  >
+                    {t("Sunday eligibility")}
+                  </Link>
+
                   <ActionButton label={t("Reset filters")} onClick={resetFilters} />
 
                   <ActionButton

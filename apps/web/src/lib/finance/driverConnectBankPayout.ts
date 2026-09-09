@@ -16,6 +16,11 @@
 
 import type Stripe from "stripe";
 import { retrieveConnectBalance, stripe } from "@/lib/stripe";
+import {
+  classifyAvailableVsPending,
+  classifyStripeConnectAccountId,
+  SUNDAY_BANK_SKIP_REASONS,
+} from "@/lib/finance/sundayBankEligibility";
 
 /** IANA zone for founder-requested Sunday 4:00 local New York time. */
 export const DRIVER_BANK_PAYOUT_TIMEZONE = "America/New_York";
@@ -125,10 +130,28 @@ export async function createFullAvailableConnectPayout(params: {
   metadata?: Record<string, string>;
 }): Promise<
   | { ok: true; payout: Stripe.Payout; amountCents: number; skipped: false }
-  | { ok: true; skipped: true; amountCents: 0; reason: string }
+  | {
+      ok: true;
+      skipped: true;
+      amountCents: 0;
+      reason: string;
+      availableCents: number;
+      pendingCents: number;
+    }
   | { ok: false; error: string }
 > {
-  const stripeAccountId = String(params.stripeAccountId ?? "").trim();
+  const classified = classifyStripeConnectAccountId(params.stripeAccountId);
+  if (!classified.ok || !classified.accountId) {
+    return {
+      ok: true,
+      skipped: true,
+      amountCents: 0,
+      reason: classified.reason ?? SUNDAY_BANK_SKIP_REASONS.MISSING_STRIPE_ACCOUNT,
+      availableCents: 0,
+      pendingCents: 0,
+    };
+  }
+  const stripeAccountId = classified.accountId;
   const currency = String(params.currency ?? "usd").trim().toLowerCase() || "usd";
   const recipientUserId = String(
     params.recipientUserId ?? params.driverUserId ?? "",
@@ -141,14 +164,20 @@ export async function createFullAvailableConnectPayout(params: {
         : "driver";
 
   let availableCents = 0;
+  let pendingCents = 0;
   try {
     const balance = await retrieveConnectBalance(stripeAccountId);
-    availableCents = (balance.available ?? [])
-      .filter((row) => String(row.currency ?? "").toLowerCase() === currency)
-      .reduce(
-        (sum, row) => sum + Math.max(0, Math.round(Number(row.amount ?? 0))),
-        0,
-      );
+    const sumCurrency = (
+      rows: Array<{ amount?: number | null; currency?: string | null }> | null | undefined,
+    ) =>
+      (rows ?? [])
+        .filter((row) => String(row.currency ?? "").toLowerCase() === currency)
+        .reduce(
+          (sum, row) => sum + Math.max(0, Math.round(Number(row.amount ?? 0))),
+          0,
+        );
+    availableCents = sumCurrency(balance.available);
+    pendingCents = sumCurrency(balance.pending);
   } catch (e) {
     return {
       ok: false,
@@ -156,12 +185,15 @@ export async function createFullAvailableConnectPayout(params: {
     };
   }
 
-  if (availableCents <= 0) {
+  const funds = classifyAvailableVsPending({ availableCents, pendingCents });
+  if (!funds.eligible) {
     return {
       ok: true,
       skipped: true,
       amountCents: 0,
-      reason: "zero_available_balance",
+      reason: funds.reason ?? SUNDAY_BANK_SKIP_REASONS.ZERO_AVAILABLE_BALANCE,
+      availableCents,
+      pendingCents,
     };
   }
 
@@ -190,7 +222,9 @@ export async function createFullAvailableConnectPayout(params: {
       ok: true,
       skipped: true,
       amountCents: 0,
-      reason: "no_bank_account_destination",
+      reason: SUNDAY_BANK_SKIP_REASONS.NO_BANK_ACCOUNT,
+      availableCents,
+      pendingCents,
     };
   }
 

@@ -43,6 +43,13 @@ const NAV: Record<string, Record<Exclude<WebLocale, "en">, string>> = {
   "Finance Hub": { fr: "Hub finance", es: "Hub finanzas", ar: "مركز المالية", zh: "财务中心", ff: "Hub kaalis" },
   Payments: { fr: "Paiements", es: "Pagos", ar: "المدفوعات", zh: "支付", ff: "Njoɓdi" },
   Payouts: { fr: "Payouts", es: "Pagos salientes", ar: "المدفوعات الصادرة", zh: "打款", ff: "Payouts" },
+  "Sunday eligibility": {
+    fr: "Éligibilité dimanche",
+    es: "Elegibilidad domingo",
+    ar: "أهلية الأحد",
+    zh: "周日打款资格",
+    ff: "Jeytaare ala",
+  },
   Commissions: { fr: "Commissions", es: "Comisiones", ar: "العمولات", zh: "佣金", ff: "Komisiyoŋji" },
   Pricing: { fr: "Tarification", es: "Precios", ar: "التسعير", zh: "定价", ff: "Njoɓdi njaru" },
   "Taxi Pricing": { fr: "Tarifs taxi", es: "Precios taxi", ar: "تسعير التاكسي", zh: "出租车定价", ff: "Njoɓdi taksi" },

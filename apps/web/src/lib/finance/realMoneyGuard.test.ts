@@ -114,6 +114,14 @@ test("archived / hidden / unpaid / refunded are excluded", () => {
     }),
     "refund_or_dispute_excluded",
   );
+  assert.equal(
+    realMoneyBlockReason({
+      is_test: false,
+      payment_status: "paid",
+      status: "cancelled",
+    }),
+    "cancelled_excluded",
+  );
 });
 
 console.log("realMoneyGuard tests passed");

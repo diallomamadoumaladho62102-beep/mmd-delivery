@@ -184,6 +184,8 @@ test("GitHub Actions schedules Sunday driver/restaurant bank payouts", () => {
   assert.match(wf, /0 9 \* \* 0/);
   assert.match(wf, /0 12 \* \* 0/);
   assert.match(wf, /0 14 \* \* 0/);
+  assert.match(wf, /0 16 \* \* 0/);
+  assert.match(wf, /0 22 \* \* 0/);
   assert.doesNotMatch(wf, /0 20 \* \* 0/);
   assert.doesNotMatch(wf, /0 21 \* \* 0/);
   assert.match(wf, /driver-connect-bank-payouts/);

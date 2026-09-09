@@ -85,11 +85,16 @@ test("TEST 3 — SCT and SCT retry exclude test/demo trips", () => {
     path.join(webRoot, "src/lib/finance/executeTaxiDriverFareTransfer.ts"),
     "utf8",
   );
+  const retry = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/retryAwaitingConnectTransfers.ts"),
+    "utf8",
+  );
   assert.match(transfer, /realMoneyBlockReason/);
   assert.match(transfer, /real_money_excluded/);
   assert.match(process, /applyLiveTripFilters/);
   assert.match(process, /realMoneyBlockReason/);
   assert.match(taxi, /realMoneyBlockReason/);
+  assert.match(retry, /realMoneyBlockReason/);
 });
 
 test("GH Actions keeps 04:00 ET triggers plus same-Sunday recovery", () => {
@@ -101,8 +106,27 @@ test("GH Actions keeps 04:00 ET triggers plus same-Sunday recovery", () => {
   assert.match(wf, /0 9 \* \* 0/);
   assert.match(wf, /0 12 \* \* 0/);
   assert.match(wf, /0 14 \* \* 0/);
+  assert.match(wf, /0 16 \* \* 0/);
+  assert.match(wf, /0 22 \* \* 0/);
   assert.doesNotMatch(wf, /0 20 \* \* 0/);
   assert.doesNotMatch(wf, /0 21 \* \* 0/);
+});
+
+test("OWASP ZAP still builds, health-checks, and scans without bypass", () => {
+  const zap = fs.readFileSync(
+    path.join(repoRoot, ".github/workflows/owasp-zap.yml"),
+    "utf8",
+  );
+  const script = fs.readFileSync(
+    path.join(repoRoot, "scripts/owasp-zap-baseline.mjs"),
+    "utf8",
+  );
+  assert.doesNotMatch(zap, /continue-on-error/);
+  assert.match(zap, /owasp-zap-baseline\.mjs/);
+  assert.match(zap, /health_check=ok/);
+  assert.match(zap, /pnpm --dir apps\/web build/);
+  assert.match(script, /zap-baseline.py/);
+  assert.match(script, /high\.length > 0/);
 });
 
 console.log("sundayPayoutIntegrity tests passed");

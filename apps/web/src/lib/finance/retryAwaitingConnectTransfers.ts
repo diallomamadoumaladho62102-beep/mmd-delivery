@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { applyLiveTripFilters } from "@/lib/tripVisibility";
+import { realMoneyBlockReason } from "@/lib/finance/realMoneyGuard";
 
 export type ConnectPayoutRetryResult = {
   restaurant_attempted: number;
@@ -96,7 +97,7 @@ export async function retryAwaitingConnectTransfers(params: {
     const { data: orders, error } = await applyLiveTripFilters(
       params.supabaseAdmin
         .from("orders")
-        .select("id, restaurant_user_id, restaurant_id, restaurant_transfer_id, status, payment_status"),
+        .select("id, restaurant_user_id, restaurant_id, restaurant_transfer_id, status, payment_status, refund_status, is_test, hidden_from_user, archived_at"),
     )
       .eq("payment_status", "paid")
       .in("status", ["delivered", "completed"])
@@ -111,6 +112,8 @@ export async function retryAwaitingConnectTransfers(params: {
       errors.push(`restaurant_orders:${error.message}`);
     } else {
       for (const row of orders ?? []) {
+        const excluded = realMoneyBlockReason(row as Record<string, unknown>);
+        if (excluded) continue;
         const orderId = String((row as { id?: unknown }).id ?? "").trim();
         if (!orderId) continue;
         restaurantAttempted += 1;
@@ -135,7 +138,7 @@ export async function retryAwaitingConnectTransfers(params: {
     const { data: orders, error } = await applyLiveTripFilters(
       params.supabaseAdmin
         .from("orders")
-        .select("id, driver_id, driver_transfer_id, status, payment_status"),
+        .select("id, driver_id, driver_transfer_id, status, payment_status, refund_status, is_test, hidden_from_user, archived_at"),
     )
       .eq("payment_status", "paid")
       .in("status", ["delivered", "completed"])
@@ -148,6 +151,8 @@ export async function retryAwaitingConnectTransfers(params: {
       errors.push(`driver_orders:${error.message}`);
     } else {
       for (const row of orders ?? []) {
+        const excluded = realMoneyBlockReason(row as Record<string, unknown>);
+        if (excluded) continue;
         const orderId = String((row as { id?: unknown }).id ?? "").trim();
         if (!orderId) continue;
         driverAttempted += 1;

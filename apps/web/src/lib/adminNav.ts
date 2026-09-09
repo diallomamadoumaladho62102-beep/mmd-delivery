@@ -169,6 +169,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       { href: "/admin/stripe", label: "Payments", permission: "payments.read" },
       { href: "/admin/payouts", label: "Payouts", permission: "payouts.read" },
       {
+        href: "/admin/payouts/sunday",
+        label: "Sunday eligibility",
+        permission: "payouts.read",
+      },
+      {
         href: "/admin/commission-engine",
         label: "Commissions",
         permission: "commissions.read",

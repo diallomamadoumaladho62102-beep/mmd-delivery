@@ -77,7 +77,7 @@ export async function computeDriverAvailableCents(
     supabaseAdmin
       .from("orders")
       .select(
-        "id, driver_delivery_payout, driver_transfer_id, payment_status, refund_status, external_ref_type, external_ref_id, is_test, hidden_from_user, archived_at",
+        "id, driver_delivery_payout, driver_transfer_id, payment_status, refund_status, status, external_ref_type, external_ref_id, is_test, hidden_from_user, archived_at",
       ),
   )
     .eq("driver_id", driverUserId)
