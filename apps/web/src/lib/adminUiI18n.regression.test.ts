@@ -53,6 +53,11 @@ test("French source keys resolve to English when locale=en", () => {
   assert.equal(adminT("Chargement…", "en"), "Loading…");
   assert.equal(adminT("Enregistrer", "en"), "Save");
   assert.equal(adminT("Actualiser", "en"), "Refresh");
+  assert.equal(adminT("Bienvenue sur MMD Delivery", "en"), "Welcome to MMD Delivery");
+  assert.equal(adminT("Envoyer le lien magique", "en"), "Send the magic link");
+  assert.equal(adminT("Espace client", "en"), "Customer area");
+  assert.equal(adminT("Restaurants partenaires", "en"), "Partner restaurants");
+  assert.equal(adminT("Liste des restaurants", "en"), "List of restaurants");
 });
 
 test("nav labels remain covered for all locales", () => {

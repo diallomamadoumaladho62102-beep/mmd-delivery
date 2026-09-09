@@ -171,7 +171,7 @@ export default function AuthPage() {
                     disabled={state === "loading"}
                     className="w-full rounded-2xl bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {state === "loading" ? "Envoi en cours..." : t("Envoyer le lien magique")}
+                    {state === "loading" ? t("Envoi en cours...") : t("Envoyer le lien magique")}
                   </button>
                 </div>
               )}

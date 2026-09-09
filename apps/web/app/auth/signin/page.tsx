@@ -28,7 +28,7 @@ export default function SignInPage() {
         <input className="border rounded px-3 py-2 w-full" type="email" required value={email}
                onChange={e=>setEmail(e.target.value)} placeholder="vous@email.com" />
         <button className="border rounded px-3 py-2 w-full" disabled={loading}>
-          {loading ? "Envoi..." : t("Envoyer le lien magique")}
+          {loading ? t("Envoi...") : t("Envoyer le lien magique")}
         </button>
       </form>
       {msg && <p className="text-sm">{msg}</p>}

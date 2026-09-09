@@ -17785,5 +17785,29 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "ar": "مطعم MMD",
     "zh": "MMD 餐厅",
     "ff": "Restoraan MMD"
+  },
+  "Envoi en cours...": {
+    "en": "Sending…",
+    "fr": "Envoi en cours...",
+    "es": "Enviando…",
+    "ar": "جارٍ الإرسال…",
+    "zh": "正在发送…",
+    "ff": "Ina nelda…"
+  },
+  "Envoi en cours…": {
+    "en": "Sending…",
+    "fr": "Envoi en cours…",
+    "es": "Enviando…",
+    "ar": "جارٍ الإرسال…",
+    "zh": "正在发送…",
+    "ff": "Ina nelda…"
+  },
+  "Envoi...": {
+    "en": "Sending…",
+    "fr": "Envoi...",
+    "es": "Enviando…",
+    "ar": "جارٍ الإرسال…",
+    "zh": "正在发送…",
+    "ff": "Ina nelda…"
   }
 } as const;

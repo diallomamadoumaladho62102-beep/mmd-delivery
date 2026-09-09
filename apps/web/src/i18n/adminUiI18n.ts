@@ -59,7 +59,13 @@ export function adminT(source: string, locale: WebLocale): string {
   const entry = ADMIN_UI_CATALOG[source];
 
   if (locale === "en") {
-    if (entry?.en && looksNonEnglishSource(source)) return entry.en;
+    const english = entry?.en;
+    const preferCatalogEnglish =
+      typeof english === "string" &&
+      english.length > 0 &&
+      english !== source &&
+      (looksNonEnglishSource(source) || source.includes(" ") || Boolean(FRENCH_SOURCE_EN[source]));
+    if (preferCatalogEnglish) return english;
     if (FRENCH_SOURCE_EN[source]) return FRENCH_SOURCE_EN[source];
     return source;
   }
