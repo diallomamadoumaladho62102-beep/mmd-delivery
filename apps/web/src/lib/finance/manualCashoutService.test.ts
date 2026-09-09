@@ -156,7 +156,12 @@ test("Sunday bank payout requires ba_ destination and stays processing", () => {
   );
   assert.match(bank, /object:\s*"bank_account"/);
   assert.match(bank, /method:\s*"standard"/);
-  assert.match(bank, /no_bank_account_destination/);
+  assert.match(bank, /SUNDAY_BANK_SKIP_REASONS\.NO_BANK_ACCOUNT/);
+  const eligibility = fs.readFileSync(
+    path.join(webRoot, "src/lib/finance/sundayBankEligibility.ts"),
+    "utf8",
+  );
+  assert.match(eligibility, /NO_BANK_ACCOUNT:\s*"no_bank_account_destination"/);
   assert.match(ledgerBridge, /status:\s*"processing"/);
   assert.doesNotMatch(
     ledgerBridge,
