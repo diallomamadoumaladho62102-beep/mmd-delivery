@@ -34,35 +34,22 @@ export default function RestaurantsPage() {
         .select("user_id, restaurant_name, address, phone")
         .order("restaurant_name", { ascending: true });
 
-      console.log("🍔 RESTAURANTS RAW DATA =", data);
-      console.log("🍔 RESTAURANTS COUNT =", data?.length);
-      console.log("🍔 RESTAURANTS ERROR =", error);
-
       if (error) throw error;
 
-      const list: Restaurant[] = (data ?? []).map((r: any) => ({
+      const list: Restaurant[] = (data ?? []).map((r: { user_id: string; restaurant_name?: string | null; address?: string | null; phone?: string | null }) => ({
         id: r.user_id,
         name: r.restaurant_name ?? null,
         address: r.address ?? null,
         phone: r.phone ?? null,
       }));
 
-      console.log("🍔 RESTAURANTS LIST MAPPED =", list);
-      console.log("🍔 RESTAURANTS LIST COUNT =", list.length);
-
       setRestaurants(list);
 
-      // 🎯 Comme sur mobile : s'il n'y a QU'UN restaurant, on va direct sur son menu
       if (list.length === 1) {
-        const only = list[0];
-        console.log("➡️ REDIRECT SINGLE RESTAURANT =", only);
-        router.push(`/restaurants/${only.id}`);
+        router.push(`/restaurants/${list[0].id}`);
       }
-    } catch (err: any) {
-      console.error("Erreur fetch restaurants (web):", err);
-      setError(
-        err?.message ?? "Impossible de charger la liste des restaurants."
-      );
+    } catch {
+      setError(t("Impossible de charger la liste des restaurants."));
     } finally {
       if (showSpinner) setLoading(false);
     }
@@ -98,7 +85,7 @@ export default function RestaurantsPage() {
           href="/client"
           className="inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-medium text-gray-700 hover:bg-gray-50"
         >
-          ← Retour à l’espace client
+          {t("← Retour à l’espace client")}
         </Link>
       </div>
 
@@ -120,7 +107,7 @@ export default function RestaurantsPage() {
           disabled={refreshing || loading}
           className="text-xs text-blue-600 hover:underline disabled:opacity-50"
         >
-          {refreshing || loading ? "Actualisation…" : t("Rafraîchir")}
+          {refreshing || loading ? t("Actualisation…") : t("Rafraîchir")}
         </button>
       </div>
 
@@ -146,14 +133,14 @@ export default function RestaurantsPage() {
               className="block border border-slate-800 bg-slate-950/90 rounded-2xl px-4 py-3 hover:border-emerald-500 transition"
             >
               <p className="text-sm font-semibold text-slate-50">
-                {r.name ?? "Restaurant MMD"}
+                {r.name ?? t("Restaurant MMD")}
               </p>
               {r.address && (
                 <p className="text-xs text-slate-300 mt-0.5">{r.address}</p>
               )}
               {r.phone && (
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Téléphone : {r.phone}
+                  {t("Téléphone :")} {r.phone}
                 </p>
               )}
 

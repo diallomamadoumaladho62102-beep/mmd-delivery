@@ -159,10 +159,10 @@
   },
   "Disabled": {
     "fr": "Désactivé",
-    "es": "Desactivado",
+    "es": "Deshabilitado",
     "ar": "معطّل",
-    "zh": "已禁用",
-    "ff": "Daaƴaama",
+    "zh": "已停用",
+    "ff": "Ñifaa",
     "en": "Disabled"
   },
   "Email": {
@@ -9866,9 +9866,9 @@
   "Missing": {
     "fr": "Manquant",
     "es": "Falta",
-    "ar": "ناقص",
-    "zh": "缺少",
-    "ff": "Ŋatnii",
+    "ar": "مفقود",
+    "zh": "缺失",
+    "ff": "Ñaawii",
     "en": "Missing"
   },
   "Admin Chat": {
@@ -9932,7 +9932,7 @@
     "es": "Enviando…",
     "ar": "جارٍ الإرسال…",
     "zh": "发送中…",
-    "ff": "Nana nelda…",
+    "ff": "Neldugol…",
     "en": "Sending…"
   },
   "Image attached": {
@@ -17516,5 +17516,268 @@
     "ar": "محافظ وفرق وموافقات",
     "zh": "钱包、团队与审批",
     "ff": "Portefeuilles, kippe e jaɓe"
+  },
+  "Yes": {
+    "fr": "Oui",
+    "es": "Sí",
+    "ar": "نعم",
+    "zh": "是",
+    "ff": "Eey"
+  },
+  "No": {
+    "fr": "Non",
+    "es": "No",
+    "ar": "لا",
+    "zh": "否",
+    "ff": "Alaa"
+  },
+  "Access denied": {
+    "fr": "Accès refusé",
+    "es": "Acceso denegado",
+    "ar": "تم الرفض",
+    "zh": "拒绝访问",
+    "ff": "Heɓde haɗaama"
+  },
+  "Eligible": {
+    "fr": "Éligible",
+    "es": "Elegible",
+    "ar": "مؤهل",
+    "zh": "符合资格",
+    "ff": "Jeytaaɗo"
+  },
+  "Connect": {
+    "fr": "Connect",
+    "es": "Connect",
+    "ar": "Connect",
+    "zh": "Connect",
+    "ff": "Connect"
+  },
+  "Error": {
+    "fr": "Erreur",
+    "es": "Error",
+    "ar": "خطأ",
+    "zh": "错误",
+    "ff": "Juumre"
+  },
+  "Stripe ID": {
+    "fr": "ID Stripe",
+    "es": "ID de Stripe",
+    "ar": "معرّف Stripe",
+    "zh": "Stripe ID",
+    "ff": "ID Stripe"
+  },
+  "Processing": {
+    "fr": "En traitement",
+    "es": "Procesando",
+    "ar": "قيد المعالجة",
+    "zh": "处理中",
+    "ff": "Ina trewnda"
+  },
+  "processing": {
+    "fr": "en traitement",
+    "es": "procesando",
+    "ar": "قيد المعالجة",
+    "zh": "处理中",
+    "ff": "ina trewnda"
+  },
+  "paid": {
+    "fr": "payé",
+    "es": "pagado",
+    "ar": "مدفوع",
+    "zh": "已支付",
+    "ff": "joɓaama"
+  },
+  "failed": {
+    "fr": "échec",
+    "es": "fallido",
+    "ar": "فشل",
+    "zh": "失败",
+    "ff": "woorii"
+  },
+  "Sunday payout eligibility": {
+    "fr": "Éligibilité au payout dimanche",
+    "es": "Elegibilidad de payout domingo",
+    "ar": "أهلية دفع الأحد",
+    "zh": "周日打款资格",
+    "ff": "Jeytaare payout ala"
+  },
+  "← Payouts": {
+    "fr": "← Payouts",
+    "es": "← Pagos salientes",
+    "ar": "← المدفوعات الصادرة",
+    "zh": "← 打款",
+    "ff": "← Payouts"
+  },
+  "Sunday 04:00 America/New_York Connect → bank. Missing Stripe Connect is PAYOUT BLOCKED, never shown as $0 paid.": {
+    "fr": "Dimanche 04:00 America/New_York Connect → banque. Stripe Connect manquant = PAYOUT BLOQUÉ, jamais affiché comme 0 $ payé.",
+    "es": "Domingo 04:00 America/New_York Connect → banco. Sin Stripe Connect = PAYOUT BLOQUEADO, nunca se muestra como 0 $ pagado.",
+    "ar": "الأحد 04:00 America/New_York من Connect إلى البنك. غياب Stripe Connect يعني دفعًا محظورًا، وليس 0 $ مدفوع.",
+    "zh": "周日 04:00 America/New_York，Connect → 银行。缺少 Stripe Connect 为打款已阻止，绝不以 0 $ 已支付显示。",
+    "ff": "Ala 04:00 America/New_York Connect → banke. Stripe Connect ŋakkuɗo = PAYOUT HAƊAA, waawaa hollireede 0 $ joɓaama."
+  },
+  "Load Stripe balances": {
+    "fr": "Charger les soldes Stripe",
+    "es": "Cargar saldos de Stripe",
+    "ar": "تحميل أرصدة Stripe",
+    "zh": "加载 Stripe 余额",
+    "ff": "Loow njoɓdi Stripe"
+  },
+  "Stripe Connect missing": {
+    "fr": "Stripe Connect manquant",
+    "es": "Falta Stripe Connect",
+    "ar": "Stripe Connect غير موجود",
+    "zh": "缺少 Stripe Connect",
+    "ff": "Stripe Connect ŋakkuɗo"
+  },
+  "Connect not ready": {
+    "fr": "Connect pas prêt",
+    "es": "Connect no está listo",
+    "ar": "Connect غير جاهز",
+    "zh": "Connect 未就绪",
+    "ff": "Connect heɓaani"
+  },
+  "Pending Stripe funds": {
+    "fr": "Fonds Stripe en attente",
+    "es": "Fondos Stripe pendientes",
+    "ar": "أموال Stripe معلّقة",
+    "zh": "Stripe 待结算资金",
+    "ff": "Kaalis Stripe ina sabbii"
+  },
+  "No blocked beneficiaries in this view.": {
+    "fr": "Aucun bénéficiaire bloqué dans cette vue.",
+    "es": "No hay beneficiarios bloqueados en esta vista.",
+    "ar": "لا يوجد مستفيدون محظورون في هذا العرض.",
+    "zh": "此视图中没有被阻止的收款人。",
+    "ff": "Alaa keɓoowo haɗaaɗo e ndee yiytinde."
+  },
+  "Window open": {
+    "fr": "Fenêtre ouverte",
+    "es": "Ventana abierta",
+    "ar": "النافذة مفتوحة",
+    "zh": "窗口开放",
+    "ff": "Henorde udditii"
+  },
+  "Window closed": {
+    "fr": "Fenêtre fermée",
+    "es": "Ventana cerrada",
+    "ar": "النافذة مغلقة",
+    "zh": "窗口关闭",
+    "ff": "Henorde uddii"
+  },
+  "Live Stripe balances": {
+    "fr": "Soldes Stripe en direct",
+    "es": "Saldos Stripe en vivo",
+    "ar": "أرصدة Stripe مباشرة",
+    "zh": "实时 Stripe 余额",
+    "ff": "Njoɓdi Stripe live"
+  },
+  "PAYOUT BLOCKED — STRIPE CONNECT ACCOUNT NOT CONFIGURED": {
+    "fr": "PAYOUT BLOQUÉ — COMPTE STRIPE CONNECT NON CONFIGURÉ",
+    "es": "PAYOUT BLOQUEADO — CUENTA STRIPE CONNECT NO CONFIGURADA",
+    "ar": "الدفع محظور — حساب Stripe Connect غير مُعدّ",
+    "zh": "打款已阻止 — 未配置 Stripe Connect 账户",
+    "ff": "PAYOUT HAƊAA — KONTE STRIPE CONNECT HEƁAANI"
+  },
+  "PENDING FUNDS — Stripe settlement, not available yet": {
+    "fr": "FONDS EN ATTENTE — règlement Stripe, pas encore disponible",
+    "es": "FONDOS PENDIENTES — liquidación Stripe, aún no disponibles",
+    "ar": "أموال معلّقة — تسوية Stripe، غير متاحة بعد",
+    "zh": "待结算资金 — Stripe 清算中，尚不可用",
+    "ff": "KAALIS INA SABBII — njoɓdi Stripe, heɓaani tawo"
+  },
+  "AVAILABLE FUNDS = 0 — no payout created": {
+    "fr": "FONDS DISPONIBLES = 0 — aucun payout créé",
+    "es": "FONDOS DISPONIBLES = 0 — no se creó payout",
+    "ar": "الأموال المتاحة = 0 — لم يُنشأ أي دفع",
+    "zh": "可用资金 = 0 — 未创建打款",
+    "ff": "KAALIS HEƁAAƊO = 0 — alaa payout sosaa"
+  },
+  "PAYOUT BLOCKED — no verified bank account on Connect": {
+    "fr": "PAYOUT BLOQUÉ — aucun compte bancaire vérifié sur Connect",
+    "es": "PAYOUT BLOQUEADO — no hay cuenta bancaria verificada en Connect",
+    "ar": "الدفع محظور — لا يوجد حساب بنكي موثّق على Connect",
+    "zh": "打款已阻止 — Connect 上没有已验证的银行账户",
+    "ff": "PAYOUT HAƊAA — alaa konte banke ƴeewtaande e Connect"
+  },
+  "OUTSIDE WINDOW — Sunday 04:00 America/New_York through end of Sunday": {
+    "fr": "HORS FENÊTRE — dimanche 04:00 America/New_York jusqu’à la fin du dimanche",
+    "es": "FUERA DE VENTANA — domingo 04:00 America/New_York hasta el final del domingo",
+    "ar": "خارج النافذة — الأحد 04:00 America/New_York حتى نهاية الأحد",
+    "zh": "不在窗口内 — 周日 04:00 America/New_York 至周日结束",
+    "ff": "YALTII HENORDE — ala 04:00 America/New_York haa joofirde ala"
+  },
+  "PAYOUT BLOCKED — Stripe Connect not ready for payouts": {
+    "fr": "PAYOUT BLOQUÉ — Stripe Connect n’est pas prêt pour les payouts",
+    "es": "PAYOUT BLOQUEADO — Stripe Connect no está listo para payouts",
+    "ar": "الدفع محظور — Stripe Connect غير جاهز للمدفوعات",
+    "zh": "打款已阻止 — Stripe Connect 尚未准备好打款",
+    "ff": "PAYOUT HAƊAA — Stripe Connect heɓaani payouts"
+  },
+  "Setup required": {
+    "fr": "Configuration requise",
+    "es": "Configuración requerida",
+    "ar": "يلزم الإعداد",
+    "zh": "需要设置",
+    "ff": "Teeltol ina ɗaɓɓiree"
+  },
+  "Verification pending": {
+    "fr": "Vérification en attente",
+    "es": "Verificación pendiente",
+    "ar": "التحقق معلّق",
+    "zh": "验证待处理",
+    "ff": "Ƴeewndo ina sabbii"
+  },
+  "Verification in progress": {
+    "fr": "Vérification en cours",
+    "es": "Verificación en curso",
+    "ar": "التحقق قيد التنفيذ",
+    "zh": "正在验证",
+    "ff": "Ƴeewndo ina yahra"
+  },
+  "Ready for payouts": {
+    "fr": "Prêt pour les payouts",
+    "es": "Listo para payouts",
+    "ar": "جاهز للمدفوعات",
+    "zh": "可打款",
+    "ff": "Heɓii payouts"
+  },
+  "Restricted": {
+    "fr": "Restreint",
+    "es": "Restringido",
+    "ar": "مقيّد",
+    "zh": "受限",
+    "ff": "Haɗaaɗo"
+  },
+  "← Retour à l’espace client": {
+    "en": "← Back to client area",
+    "fr": "← Retour à l’espace client",
+    "es": "← Volver al área de clientes",
+    "ar": "← العودة إلى منطقة العملاء",
+    "zh": "← 返回客户区",
+    "ff": "← Rutto e nokku soodooɓe"
+  },
+  "Actualisation…": {
+    "en": "Refreshing…",
+    "fr": "Actualisation…",
+    "es": "Actualizando…",
+    "ar": "جارٍ التحديث…",
+    "zh": "正在刷新…",
+    "ff": "Hesɗitinde…"
+  },
+  "Impossible de charger la liste des restaurants.": {
+    "en": "Unable to load the restaurant list.",
+    "fr": "Impossible de charger la liste des restaurants.",
+    "es": "No se pudo cargar la lista de restaurantes.",
+    "ar": "تعذر تحميل قائمة المطاعم.",
+    "zh": "无法加载餐厅列表。",
+    "ff": "Horiima loowde doggol restoraaji."
+  },
+  "Restaurant MMD": {
+    "en": "MMD Restaurant",
+    "fr": "Restaurant MMD",
+    "es": "Restaurante MMD",
+    "ar": "مطعم MMD",
+    "zh": "MMD 餐厅",
+    "ff": "Restoraan MMD"
   }
 }

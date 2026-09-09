@@ -116,7 +116,7 @@ export default function AdminSundayPayoutEligibilityPage() {
   }
 
   return (
-    <div className="p-6 text-slate-100">
+    <div className="max-w-full overflow-x-hidden p-6 text-slate-100">
       <Link href="/admin/payouts" className="text-sm text-sky-300">
         {t("← Payouts")}
       </Link>
@@ -137,7 +137,15 @@ export default function AdminSundayPayoutEligibilityPage() {
               role === value ? "bg-white text-slate-950" : "bg-white/10"
             }`}
           >
-            {t(value)}
+            {t(
+              value === "restaurant"
+                ? "Restaurant"
+                : value === "driver"
+                  ? "Driver"
+                  : value === "seller"
+                    ? "Seller"
+                    : "All",
+            )}
           </button>
         ))}
         <button
@@ -158,10 +166,10 @@ export default function AdminSundayPayoutEligibilityPage() {
 
       {data ? (
         <p className="mt-4 text-sm text-slate-400">
-          {data.timezone} · {data.local_date} {data.local_weekday}{" "}
-          {String(data.local_hour).padStart(2, "0")}:00 · window={" "}
-          {data.in_sunday_window ? "OPEN" : "CLOSED"}
-          {live ? " · live Stripe balances" : ""}
+          {t("Timezone")} {data.timezone} · {data.local_date} {data.local_weekday}{" "}
+          {String(data.local_hour).padStart(2, "0")}:00 ·{" "}
+          {data.in_sunday_window ? t("Window open") : t("Window closed")}
+          {live ? ` · ${t("Live Stripe balances")}` : ""}
         </p>
       ) : null}
 
@@ -192,8 +200,8 @@ export default function AdminSundayPayoutEligibilityPage() {
         </div>
       ) : null}
 
-      <div className="mt-8 overflow-x-auto rounded-2xl ring-1 ring-white/10">
-        <table className="min-w-full text-left text-sm">
+      <div className="mt-8 max-w-full overflow-x-auto rounded-2xl ring-1 ring-white/10">
+        <table className="min-w-[720px] w-full text-left text-sm">
           <thead className="bg-white/5 text-slate-300">
             <tr>
               <th className="px-3 py-2">{t("Role")}</th>
@@ -214,18 +222,32 @@ export default function AdminSundayPayoutEligibilityPage() {
                 key={`${row.role}:${row.user_id}`}
                 className="border-t border-white/10"
               >
-                <td className="px-3 py-2">{row.role}</td>
+                <td className="px-3 py-2">
+                  {t(
+                    row.role === "restaurant"
+                      ? "Restaurant"
+                      : row.role === "seller"
+                        ? "Seller"
+                        : "Driver",
+                  )}
+                </td>
                 <td className="px-3 py-2">
                   {row.display_name || row.user_id.slice(0, 8)}
                 </td>
-                <td className="px-3 py-2">{row.connect_status_label}</td>
+                <td className="px-3 py-2">{t(row.connect_status_label)}</td>
                 <td className="px-3 py-2">
                   {row.eligible ? t("Yes") : t("No")}
                 </td>
-                <td className="px-3 py-2 text-amber-200">{row.block_label}</td>
+                <td className="max-w-[14rem] break-words px-3 py-2 text-amber-200">
+                  {t(row.block_label)}
+                </td>
                 <td className="px-3 py-2">{cents(row.available_cents)}</td>
                 <td className="px-3 py-2">{cents(row.pending_cents)}</td>
-                <td className="px-3 py-2">{row.last_payout_status ?? "—"}</td>
+                <td className="px-3 py-2">
+                  {row.last_payout_status
+                    ? t(row.last_payout_status)
+                    : "—"}
+                </td>
                 <td className="px-3 py-2 font-mono text-xs">
                   {row.last_stripe_payout_id ?? "—"}
                 </td>

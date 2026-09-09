@@ -130,4 +130,11 @@ apps/mobile/android/app/debug.keystore
 
 # OWASP ZAP local/CI artifacts
 zap-out/
+# Next.js / Cursor auto-generated agent files (recreated by next dev)
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
 
+# Local i18n scan dumps (never commit)
+apps/mobile/scripts/hardcoded-ui-scan.json
+apps/web/src/i18n/portal-ui-wire-report.json
+apps/web/src/i18n/web-hardcoded-ui-scan.json
