@@ -72,6 +72,7 @@ export const NAV_ICONS: Record<string, string> = {
   "/admin/finance": "💰",
   "/admin/stripe": "💳",
   "/admin/payouts": "🏦",
+  "/admin/payouts/sunday": "🗓️",
   "/admin/commission-engine": "📈",
   "/admin/pricing": "🏷️",
   "/admin/taxi-pricing": "🚕",
