@@ -58,6 +58,7 @@ test("French source keys resolve to English when locale=en", () => {
   assert.equal(adminT("Espace client", "en"), "Customer area");
   assert.equal(adminT("Restaurants partenaires", "en"), "Partner restaurants");
   assert.equal(adminT("Liste des restaurants", "en"), "List of restaurants");
+  assert.equal(adminT("Connexion", "en"), "Log in");
 });
 
 test("nav labels remain covered for all locales", () => {

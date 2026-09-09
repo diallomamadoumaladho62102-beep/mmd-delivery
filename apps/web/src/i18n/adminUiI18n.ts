@@ -19,6 +19,8 @@ const FRENCH_SOURCE_EN: Record<string, string> = {
   Filtrer: "Filter",
   Retour: "Back",
   Fermer: "Close",
+  Connexion: "Log in",
+  Inscription: "Sign up",
   "En attente": "Pending",
   Approuver: "Approve",
   Refuser: "Refuse",
