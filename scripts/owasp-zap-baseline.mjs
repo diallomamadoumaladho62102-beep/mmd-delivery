@@ -36,6 +36,17 @@ try {
   /* Windows / non-POSIX */
 }
 
+const preflight = spawnSync("curl", ["-fsS", "--max-time", "10", target], {
+  encoding: "utf8",
+});
+if (preflight.status !== 0) {
+  console.error(
+    `ZAP preflight failed: target ${target} is not reachable (${preflight.stderr || preflight.error?.message || "curl_failed"}).`,
+  );
+  process.exit(1);
+}
+console.log(`ZAP preflight ok target=${target}`);
+
 const docker = spawnSync(
   "docker",
   [
@@ -57,6 +68,10 @@ const docker = spawnSync(
   ],
   { encoding: "utf8" }
 );
+
+if (docker.error) {
+  console.error(`ZAP docker spawn failed: ${docker.error.message}`);
+}
 
 const combined = `${docker.stdout || ""}\n${docker.stderr || ""}`;
 process.stdout.write(docker.stdout || "");
@@ -80,6 +95,18 @@ if (existsSync(reportPath)) {
   if (high.length > 0) process.exit(1);
 } else if (failCount === null) {
   console.error("ZAP produced neither a JSON report nor a FAIL-NEW summary.");
+  console.error(
+    JSON.stringify(
+      {
+        docker_status: docker.status,
+        docker_error: docker.error?.message ?? null,
+        stdout_tail: (docker.stdout || "").slice(-800),
+        stderr_tail: (docker.stderr || "").slice(-800),
+      },
+      null,
+      2,
+    ),
+  );
   process.exit(docker.status === 0 ? 1 : docker.status ?? 1);
 }
 

@@ -3,8 +3,10 @@
  *
  * Product rule:
  * - SCT (platform → Connect): immediate after delivered/completed + paid
- * - Connect → bank (automatic): Sunday 04:00 America/New_York only
- *   (full available → ba_* standard) — NO 16:00 catch-up, NO weekday bank sweep
+ * - Connect → bank (automatic): Sunday from 04:00 America/New_York
+ *   (full available → ba_* standard). Intended fire is 04:00; same-Sunday
+ *   retries after 04:00 are allowed because GitHub Actions cron is often late.
+ *   No weekday automatic bank sweep. Idempotency key is account + ET date.
  * - Manual Instant Cash Out: Instant card or Instant-eligible bank, no $ minimum, 1/day ET
  * - Mid-week available without Instant → Instant Cash Out once eligible, else next Sunday 04:00
  * - Restaurants + sellers: same Cash Out + Sunday bank rules as drivers
@@ -46,17 +48,17 @@ export function getNowPartsInTimeZone(
 }
 
 /**
- * True only during Sunday 04:00–04:59 America/New_York (DST-aware).
- * Exact 4am ET year-round via dual GitHub Actions schedules
- * (Sunday 08:00 UTC for EDT, Sunday 09:00 UTC for EST); this gate accepts only hour 4.
- * There is NO Sunday 16:00 catch-up window.
+ * True on Sunday America/New_York from 04:00 through 23:59 (DST-aware).
+ * Product trigger remains Sunday 04:00 ET. GitHub Actions schedules are often
+ * delayed by hours; same-Sunday execution after 04:00 still pays once
+ * (idempotency key = account + ET date). Saturday and weekday fires never pay.
  */
 export function isDriverBankPayoutWindow(now = new Date()): boolean {
   const { weekday, hour } = getNowPartsInTimeZone(
     DRIVER_BANK_PAYOUT_TIMEZONE,
     now,
   );
-  return weekday === "Sun" && hour === DRIVER_BANK_PAYOUT_PRIMARY_HOUR;
+  return weekday === "Sun" && hour >= DRIVER_BANK_PAYOUT_PRIMARY_HOUR;
 }
 
 export function driverBankPayoutIdempotencyKey(

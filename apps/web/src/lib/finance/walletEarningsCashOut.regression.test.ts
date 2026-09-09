@@ -146,7 +146,7 @@ test("Sunday 4:00 AM America/New_York bank payout window (EDT + EST)", () => {
   const sun4edt = new Date("2026-08-16T08:30:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun4edt), true);
   const sun5edt = new Date("2026-08-16T09:30:00.000Z");
-  assert.equal(isDriverBankPayoutWindow(sun5edt), false);
+  assert.equal(isDriverBankPayoutWindow(sun5edt), true);
   const sun4est = new Date("2026-01-11T09:15:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun4est), true);
 });
@@ -182,6 +182,8 @@ test("GitHub Actions schedules Sunday driver/restaurant bank payouts", () => {
   );
   assert.match(wf, /0 8 \* \* 0/);
   assert.match(wf, /0 9 \* \* 0/);
+  assert.match(wf, /0 12 \* \* 0/);
+  assert.match(wf, /0 14 \* \* 0/);
   assert.doesNotMatch(wf, /0 20 \* \* 0/);
   assert.doesNotMatch(wf, /0 21 \* \* 0/);
   assert.match(wf, /driver-connect-bank-payouts/);

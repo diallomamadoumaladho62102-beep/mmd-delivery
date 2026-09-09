@@ -122,12 +122,15 @@ export function BusinessShell({ children, avatarInitials }: Props) {
 }
 
 export function BusinessLoadingState({
-  title = "Loading business accounts...",
-  subtitle = {t("Please wait")},
+  title,
+  subtitle,
 }: {
   title?: string;
   subtitle?: string;
 }) {
+  const { t } = useAdminT();
+  const resolvedTitle = title ?? t("Loading business accounts...");
+  const resolvedSubtitle = subtitle ?? t("Please wait");
   return (
     <div className="flex flex-1 items-center justify-center py-16">
       <div
@@ -138,8 +141,8 @@ export function BusinessLoadingState({
           aria-hidden
         />
         <div className="w-full text-center">
-          <p className="text-[22px] font-semibold text-white">{title}</p>
-          <p className="mt-2 text-base text-white/60">{subtitle}</p>
+          <p className="text-[22px] font-semibold text-white">{resolvedTitle}</p>
+          <p className="mt-2 text-base text-white/60">{resolvedSubtitle}</p>
         </div>
       </div>
     </div>

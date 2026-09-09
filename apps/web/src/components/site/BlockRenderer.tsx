@@ -452,6 +452,7 @@ function BlogTeaserBlock({
   payload: Record<string, unknown>;
   posts?: BlogPostTeaser[];
 }) {
+  const { t } = useAdminT();
   const limit =
     typeof payload.limit === "number" && payload.limit > 0
       ? Math.min(12, payload.limit)

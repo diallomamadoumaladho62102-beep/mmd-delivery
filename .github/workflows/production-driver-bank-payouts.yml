@@ -1,15 +1,19 @@
 name: Production driver Connect bank payouts
 
-# Exact Sunday 04:00 America/New_York year-round (DST-aware).
-# Vercel Hobby cannot schedule two Sunday UTC times; GitHub Actions can.
-# Handler /api/cron/driver-connect-bank-payouts only pays when local NY hour === 4.
-# NO Sunday 16:00 catch-up. Mid-week path = Instant Cash Out only.
+# Intended Sunday 04:00 America/New_York year-round (DST-aware).
+# GitHub Actions cron is frequently delayed; handler pays any Sunday after 04:00 ET
+# (idempotent per account + ET date). Extra Sunday UTC fires recover late runs.
+# Mid-week path = Instant Cash Out only. No weekday automatic bank sweep.
 on:
   schedule:
     # EDT (UTC-4): Sunday 08:00 UTC = 04:00 America/New_York
     - cron: "0 8 * * 0"
     # EST (UTC-5): Sunday 09:00 UTC = 04:00 America/New_York
     - cron: "0 9 * * 0"
+    # Same-Sunday recovery if GH delayed the 04:00 ET fire (08:00 EDT / 07:00 EST)
+    - cron: "0 12 * * 0"
+    # Last same-Sunday recovery before Monday ET (10:00 EDT / 09:00 EST)
+    - cron: "0 14 * * 0"
   workflow_dispatch:
     inputs:
       force:

@@ -10,12 +10,6 @@ import {
 } from "@mmd/social-links";
 import SocialLinks from "@/components/site/SocialLinks";
 
-export const metadata = {
-  title: "MMD Delivery · Social & QR Kit",
-  description:
-    "Official MMD Delivery social links and printable QR codes for marketing materials.",
-};
-
 const KIT_LABELS = [
   "Business Cards",
   "Referral Cards",

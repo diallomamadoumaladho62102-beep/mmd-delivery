@@ -11,6 +11,7 @@ import {
   orderAmount,
   pctChange,
 } from "@/lib/restaurantCommandCenterKpi";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 type GenericRow = Record<string, unknown>;
 
@@ -249,45 +250,57 @@ export async function getRestaurantCommandCenter(params: {
       )
       .eq("user_id", restaurantUserId)
       .maybeSingle(),
-    supabase
-      .from("orders")
-      .select(
-        "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,items_json,ready_at,restaurant_prepared_at,paid_at,restaurant_accept_expires_at,driver_id,eta_minutes,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
-      )
+    applyLiveTripFilters(
+      supabase
+        .from("orders")
+        .select(
+          "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,items_json,ready_at,restaurant_prepared_at,paid_at,restaurant_accept_expires_at,driver_id,eta_minutes,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
+        ),
+    )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
       .eq("payment_status", "paid")
       .gte("created_at", todayStart.toISOString()),
-    supabase
-      .from("orders")
-      .select(
-        "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id"
-      )
+    applyLiveTripFilters(
+      supabase
+        .from("orders")
+        .select(
+          "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id"
+        ),
+    )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
       .eq("payment_status", "paid")
       .gte("created_at", yesterdayStart.toISOString())
       .lt("created_at", todayStart.toISOString()),
-    supabase
-      .from("orders")
-      .select(
-        "id,status,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,restaurant_prepared_at,paid_at,ready_at,items_json,restaurant_net_amount"
-      )
+    applyLiveTripFilters(
+      supabase
+        .from("orders")
+        .select(
+          "id,status,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,restaurant_prepared_at,paid_at,ready_at,items_json,restaurant_net_amount"
+        ),
+    )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
+      .eq("payment_status", "paid")
       .gte("created_at", monthStart.toISOString()),
-    supabase
-      .from("orders")
-      .select("id,status,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id")
+    applyLiveTripFilters(
+      supabase
+        .from("orders")
+        .select("id,status,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id"),
+    )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
+      .eq("payment_status", "paid")
       .gte("created_at", prevMonthStart.toISOString())
       .lt("created_at", prevMonthEnd.toISOString()),
-    supabase
-      .from("orders")
-      .select(
-        "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,items_json,ready_at,restaurant_prepared_at,paid_at,restaurant_accept_expires_at,driver_id,eta_minutes,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
-      )
+    applyLiveTripFilters(
+      supabase
+        .from("orders")
+        .select(
+          "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,items_json,ready_at,restaurant_prepared_at,paid_at,restaurant_accept_expires_at,driver_id,eta_minutes,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
+        ),
+    )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
       .in("status", ["pending", "accepted", "prepared", "ready", "dispatched"])
@@ -299,16 +312,21 @@ export async function getRestaurantCommandCenter(params: {
       .select("driver_id,lat,lng,updated_at")
       .gte("updated_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
       .limit(50),
-    supabase
-      .from("orders")
-      .select("id")
+    applyLiveTripFilters(
+      supabase
+        .from("orders")
+        .select("id"),
+    )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
+      .eq("payment_status", "paid")
       .in("status", ["delivered", "completed"])
       .limit(500),
-    supabase
-      .from("orders")
-      .select("client_id,client_user_id,created_at")
+    applyLiveTripFilters(
+      supabase
+        .from("orders")
+        .select("client_id,client_user_id,created_at"),
+    )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
       .eq("payment_status", "paid")

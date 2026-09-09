@@ -3,6 +3,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { AdminAccessError, assertCanRetryPayout } from "@/lib/adminServer";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { withCronJobLock } from "@/lib/cronJobLock";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
+import { realMoneyBlockReason } from "@/lib/finance/realMoneyGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +40,9 @@ type OrderRow = {
   driver_paid_out: boolean | null;
   restaurant_transfer_id: string | null;
   driver_transfer_id: string | null;
+  is_test?: boolean | null;
+  hidden_from_user?: boolean | null;
+  archived_at?: string | null;
 };
 
 type ProcessResult = {
@@ -364,10 +369,11 @@ async function runProcessPayouts(request: NextRequest) {
 
         // Unpaid SCT only — confirmed earnings must not age out of lookback
         // and sit forever in awaiting_transfer_cents.
-        let query = supabase
-          .from("orders")
-          .select(
-            `
+        let query = applyLiveTripFilters(
+          supabase
+            .from("orders")
+            .select(
+              `
           id,
           created_at,
           delivered_confirmed_at,
@@ -378,9 +384,13 @@ async function runProcessPayouts(request: NextRequest) {
           restaurant_paid_out,
           driver_paid_out,
           restaurant_transfer_id,
-          driver_transfer_id
+          driver_transfer_id,
+          is_test,
+          hidden_from_user,
+          archived_at
         `
-          )
+            ),
+        )
           .eq("payment_status", "paid")
           .in("status", ["delivered", "completed"])
           .or("driver_transfer_id.is.null,restaurant_transfer_id.is.null")
@@ -409,6 +419,25 @@ async function runProcessPayouts(request: NextRequest) {
         const results: ProcessResult[] = [];
 
         for (const order of typedOrders) {
+          const excluded = realMoneyBlockReason(order);
+          if (excluded) {
+            results.push({
+              order_id: order.id,
+              target: "restaurant",
+              ok: true,
+              skipped: true,
+              error: excluded,
+            });
+            results.push({
+              order_id: order.id,
+              target: "driver",
+              ok: true,
+              skipped: true,
+              error: excluded,
+            });
+            continue;
+          }
+
           const { data: commissionRow, error: commissionErr } = await supabase
             .from("order_commissions")
             .select("order_id")

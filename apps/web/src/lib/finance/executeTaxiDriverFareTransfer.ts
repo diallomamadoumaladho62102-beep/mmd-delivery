@@ -24,6 +24,7 @@ import {
   taxiFareTransferGroup,
 } from "@/lib/finance/taxiFareTransferGuards";
 import { isTaxiSctHistoricallyClosed } from "@/lib/finance/taxiSctClosure";
+import { realMoneyBlockReason } from "@/lib/finance/realMoneyGuard";
 
 export type ExecuteTaxiDriverFareTransferResult =
   | {
@@ -65,6 +66,9 @@ type TaxiRideRow = {
   total_cents: number | null;
   completed_at: string | null;
   updated_at: string | null;
+  is_test?: boolean | null;
+  hidden_from_user?: boolean | null;
+  archived_at?: string | null;
 };
 
 type TaxiCommissionRow = {
@@ -140,13 +144,23 @@ export async function executeTaxiDriverFareTransfer(params: {
   const { data: ride, error: rideErr } = await params.supabaseAdmin
     .from("taxi_rides")
     .select(
-      "id, status, payment_status, refund_status, currency, country_code, driver_id, stripe_payment_intent_id, total_cents, completed_at, updated_at",
+      "id, status, payment_status, refund_status, currency, country_code, driver_id, stripe_payment_intent_id, total_cents, completed_at, updated_at, is_test, hidden_from_user, archived_at",
     )
     .eq("id", rideId)
     .maybeSingle<TaxiRideRow>();
 
   if (rideErr || !ride) {
     return { ok: false, error: "Taxi ride not found", httpStatus: 404 };
+  }
+
+  const realMoneyBlock = realMoneyBlockReason(ride);
+  if (realMoneyBlock) {
+    return {
+      ok: false,
+      error: realMoneyBlock,
+      taxi_ride_id: ride.id,
+      httpStatus: 409,
+    };
   }
 
   const commissionSelect =

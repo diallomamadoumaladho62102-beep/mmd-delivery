@@ -42,8 +42,9 @@ function json(body: Record<string, unknown>, status = 200) {
  * Trigger: GitHub Actions (dual Sunday UTC schedules — Hobby Vercel cannot do both):
  * - `0 8 * * 0` → 04:00 EDT
  * - `0 9 * * 0` → 04:00 EST
- * Handler pays only when local NY time is Sunday 04:xx (or force=1).
- * There is NO Sunday 16:00 catch-up and NO weekday automatic bank sweep.
+ * Handler pays when local NY time is Sunday and hour >= 4 (or force=1).
+ * Same-Sunday retries after 04:00 recover delayed GitHub Actions fires.
+ * No weekday automatic bank sweep.
  * schedule_only=1 (+ force): set Connect payout interval=manual without creating payouts.
  *
  * SCT (platform → Connect) is independent and must already have run — this is bank payout only.
@@ -62,6 +63,16 @@ async function handle(req: NextRequest) {
   const limit = readCronBatchLimit(req.nextUrl.searchParams, 50);
   const start = startCronRun(JOB, dryRun);
   const parts = getNowPartsInTimeZone(DRIVER_BANK_PAYOUT_TIMEZONE);
+  console.info("[driver-connect-bank-payouts] started", {
+    timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
+    local_weekday: parts.weekday,
+    local_hour: parts.hour,
+    local_date: parts.dateKey,
+    earning_period: parts.dateKey,
+    force,
+    dry_run: dryRun,
+    schedule_only: scheduleOnly,
+  });
 
   if (!isAuthorizedCronRequest(req)) {
     return json(
@@ -323,6 +334,30 @@ async function handle(req: NextRequest) {
           currency: stripePayout.currency,
         });
       }
+
+      const skipReasons = results
+        .filter((row) => row.skipped === true)
+        .map((row) => String(row.reason ?? "skipped"));
+      const failReasons = results
+        .filter((row) => row.ok === false)
+        .map((row) => String(row.error ?? "failed"));
+      console.info("[driver-connect-bank-payouts] cycle", {
+        timezone: DRIVER_BANK_PAYOUT_TIMEZONE,
+        local_date: parts.dateKey,
+        scanned_drivers: driverRows.length,
+        scanned_restaurants: restaurantRows.length,
+        scanned_sellers: sellerRows.length,
+        eligible: batch.length,
+        paid,
+        skipped,
+        failed,
+        skip_reasons: skipReasons,
+        fail_reasons: failReasons,
+        total_amount_cents: results.reduce(
+          (sum, row) => sum + (Number(row.amount_cents) || 0),
+          0,
+        ),
+      });
 
       return {
         ok: true as const,

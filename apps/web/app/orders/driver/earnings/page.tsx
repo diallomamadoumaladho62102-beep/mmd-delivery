@@ -89,6 +89,7 @@ type ApiErr = {
 };
 
 function TaxPdfCard() {
+  const { t } = useAdminT();
   const years = useMemo(() => {
     const y = currentYearUTC();
     return [y, y - 1, y - 2, y - 3];

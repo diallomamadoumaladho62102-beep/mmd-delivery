@@ -1,6 +1,6 @@
-"use client";
-
 import Link from "next/link";
+import { adminT } from "@/i18n/adminUiI18n";
+import { getAdminWebLocale } from "@/i18n/getAdminWebLocale";
 import SiteAnalytics from "./SiteAnalytics";
 import SiteShell from "./SiteShell";
 import { loadSiteChrome } from "./renderCmsPage";
@@ -18,6 +18,8 @@ export async function renderInAppServicePage(input: {
   primaryHref?: string;
   primaryLabel?: string;
 }) {
+  const locale = await getAdminWebLocale();
+  const t = (source: string) => adminT(source, locale);
   const { settings, headerItems, footerItems, overlays } = await loadSiteChrome();
 
   return (

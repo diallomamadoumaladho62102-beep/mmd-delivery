@@ -94,7 +94,7 @@ export default async function SearchPage({ searchParams }: Props) {
               <div className="mt-10 space-y-10">
                 <ResultGroup title={t("Pages")}>
                   {results.pages.length === 0 ? (
-                    <Empty />
+                    <Empty label={t("No results.")} />
                   ) : (
                     <ul className="space-y-2">
                       {results.pages.map((p) => (
@@ -109,7 +109,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 </ResultGroup>
                 <ResultGroup title={t("Posts")}>
                   {results.posts.length === 0 ? (
-                    <Empty />
+                    <Empty label={t("No results.")} />
                   ) : (
                     <ul className="space-y-2">
                       {results.posts.map((p) => (
@@ -127,7 +127,7 @@ export default async function SearchPage({ searchParams }: Props) {
                 </ResultGroup>
                 <ResultGroup title={t("FAQ")}>
                   {results.faq.length === 0 ? (
-                    <Empty />
+                    <Empty label={t("No results.")} />
                   ) : (
                     <ul className="space-y-3">
                       {results.faq.map((f) => (
@@ -167,6 +167,6 @@ function ResultGroup({
   );
 }
 
-function Empty() {
-  return <p className="text-sm text-slate-500">{t("No results.")}</p>;
+function Empty({ label }: { label: string }) {
+  return <p className="text-sm text-slate-500">{label}</p>;
 }

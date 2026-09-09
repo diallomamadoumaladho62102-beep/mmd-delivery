@@ -28,4 +28,9 @@ test("hybrid mode does not apply weekly created_at filter", () => {
   assert.match(route, /hybrid \+ immediate: process all unpaid/);
 });
 
+test("process-payouts excludes test/demo trips from SCT retry", () => {
+  assert.match(route, /applyLiveTripFilters/);
+  assert.match(route, /realMoneyBlockReason/);
+});
+
 console.log("process-payouts weekly regression passed");

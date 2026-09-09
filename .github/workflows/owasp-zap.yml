@@ -39,20 +39,26 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm --dir apps/web build
 
-      - name: Start Next.js locally
+      - name: Start Next.js and run ZAP baseline
+        env:
+          ZAP_TARGET: http://127.0.0.1:3000
         run: |
+          set -euo pipefail
+          echo "ZAP job started target=${ZAP_TARGET}"
           pnpm --dir apps/web start --hostname 127.0.0.1 --port 3000 &
+          SERVER_PID=$!
+          trap 'kill ${SERVER_PID} 2>/dev/null || true' EXIT
           for i in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:3000/ >/dev/null; then
-              echo "Next.js is ready"
-              exit 0
+              echo "health_check=ok Next.js ready on 127.0.0.1:3000"
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "health_check=failed Next.js did not become ready on 127.0.0.1:3000"
+              exit 1
             fi
             sleep 2
           done
-          echo "Next.js did not become ready on 127.0.0.1:3000"
-          exit 1
-
-      - name: ZAP baseline (localhost only)
-        env:
-          ZAP_TARGET: http://127.0.0.1:3000
-        run: node scripts/owasp-zap-baseline.mjs
+          echo "ZAP scan starting against ${ZAP_TARGET}"
+          node scripts/owasp-zap-baseline.mjs
+          echo "ZAP scan finished"

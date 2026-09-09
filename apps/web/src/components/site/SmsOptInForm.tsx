@@ -168,6 +168,7 @@ export function SmsProgramLocaleToggle({
   locale: SmsProgramLocale;
   onChange: (next: SmsProgramLocale) => void;
 }) {
+  const { t } = useAdminT();
   return (
     <div className="flex gap-2" role="group" aria-label={t("Language")}>
       {(["en", "fr"] as const).map((code) => (

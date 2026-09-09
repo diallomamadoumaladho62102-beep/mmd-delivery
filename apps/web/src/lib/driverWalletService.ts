@@ -16,6 +16,8 @@ import {
   type StripeConnectStatusCode,
 } from "@/lib/stripeConnectStatus";
 import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
+import { isRealMoneyFinancialSource } from "@/lib/finance/realMoneyGuard";
 
 export { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
 
@@ -71,11 +73,13 @@ export async function computeDriverAvailableCents(
 ): Promise<number> {
   // Food + package linked orders: Stripe Transfer id is the paid SoT (Taxi parity).
   // Never treat driver_paid_out / driver_payout_id alone as paid.
-  const { data: deliveredOrders, error: ordersErr } = await supabaseAdmin
-    .from("orders")
-    .select(
-      "id, driver_delivery_payout, driver_transfer_id, payment_status, refund_status, external_ref_type, external_ref_id",
-    )
+  const { data: deliveredOrders, error: ordersErr } = await applyLiveTripFilters(
+    supabaseAdmin
+      .from("orders")
+      .select(
+        "id, driver_delivery_payout, driver_transfer_id, payment_status, refund_status, external_ref_type, external_ref_id, is_test, hidden_from_user, archived_at",
+      ),
+  )
     .eq("driver_id", driverUserId)
     .eq("status", "delivered")
     .eq("payment_status", "paid")
@@ -85,6 +89,7 @@ export async function computeDriverAvailableCents(
 
   const linkedDeliveryRequestIds = new Set<string>();
   const ordersAvailableCents = (deliveredOrders ?? []).reduce((sum, row) => {
+    if (!isRealMoneyFinancialSource(row)) return sum;
     const refund = String(row.refund_status ?? "").toLowerCase();
     if (
       refund === "refunded" ||
@@ -118,17 +123,20 @@ export async function computeDriverAvailableCents(
   // Orphan package rows without a linked order (legacy). Prefer order SoT when linked.
   // Only fundable orphans (Stripe PI / session present) belong in awaiting SCT —
   // unfunded "paid" ghosts must not inflate awaiting forever.
-  const { data: deliveredRequests, error: requestsErr } = await supabaseAdmin
-    .from("delivery_requests")
-    .select(
-      "id, driver_delivery_payout, driver_paid_out, driver_payout_id, payment_status, refund_status, stripe_payment_intent_id, stripe_session_id",
-    )
+  const { data: deliveredRequests, error: requestsErr } = await applyLiveTripFilters(
+    supabaseAdmin
+      .from("delivery_requests")
+      .select(
+        "id, driver_delivery_payout, driver_paid_out, driver_payout_id, payment_status, refund_status, stripe_payment_intent_id, stripe_session_id, is_test, hidden_from_user, archived_at",
+      ),
+  )
     .eq("driver_id", driverUserId)
     .eq("status", "delivered");
 
   if (requestsErr) throw new Error(requestsErr.message);
 
   const requestsAvailableCents = (deliveredRequests ?? []).reduce((sum, row) => {
+    if (!isRealMoneyFinancialSource(row)) return sum;
     const id = String(row.id ?? "").trim();
     if (id && linkedDeliveryRequestIds.has(id)) return sum;
     if (row.driver_paid_out === true) return sum;
@@ -151,11 +159,12 @@ export async function computeDriverAvailableCents(
   const { data: taxiAwaitingRows, error: taxiErr } = await supabaseAdmin
     .from("taxi_commissions")
     .select(
-      "driver_cents, sct_closure_status, taxi_rides!inner(driver_id, status, payment_status, refund_status)",
+      "driver_cents, sct_closure_status, taxi_rides!inner(driver_id, status, payment_status, refund_status, is_test, hidden_from_user, archived_at)",
     )
     .eq("taxi_rides.driver_id", driverUserId)
     .eq("taxi_rides.status", "completed")
     .eq("taxi_rides.payment_status", "paid")
+    .eq("taxi_rides.is_test", false)
     .is("driver_transfer_id", null)
     // Historical write-off (legacy_closed) ≠ awaiting Transfer (keeps driver_transfer_id null).
     .is("sct_closure_status", null);
@@ -165,6 +174,7 @@ export async function computeDriverAvailableCents(
   const taxiAwaitingCents = (taxiAwaitingRows ?? []).reduce((sum, row) => {
     const rideRaw = (row as { taxi_rides?: unknown }).taxi_rides;
     const ride = Array.isArray(rideRaw) ? rideRaw[0] : rideRaw;
+    if (!isRealMoneyFinancialSource(ride as { payment_status?: unknown })) return sum;
     const refund = String(
       (ride as { refund_status?: unknown } | null | undefined)?.refund_status ??
         "",

@@ -22,6 +22,7 @@ import {
   orderTransferGroup,
 } from "@/lib/finance/orderTransferGuards";
 import { isStripeSourceChargeId } from "@/lib/finance/stripeSourceChargeId";
+import { realMoneyBlockReason } from "@/lib/finance/realMoneyGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +62,9 @@ type OrderRow = {
   dropoff_lng?: number | null;
   pickup_lat?: number | null;
   pickup_lng?: number | null;
+  is_test?: boolean | null;
+  hidden_from_user?: boolean | null;
+  archived_at?: string | null;
 };
 
 type CommissionRow = {
@@ -570,7 +574,10 @@ export async function POST(req: NextRequest) {
         dropoff_lat,
         dropoff_lng,
         pickup_lat,
-        pickup_lng
+        pickup_lng,
+        is_test,
+        hidden_from_user,
+        archived_at
       `
       )
       .eq("id", orderId)
@@ -585,6 +592,19 @@ export async function POST(req: NextRequest) {
       }
 
       return json({ error: "Order not found" }, 404);
+    }
+
+    const realMoneyBlock = realMoneyBlockReason(order);
+    if (realMoneyBlock) {
+      return json(
+        {
+          error: "real_money_excluded",
+          reason: realMoneyBlock,
+          order_id: order.id,
+          target,
+        },
+        409,
+      );
     }
 
     const payoutCountry = resolveOrderPlatformCountry(order);

@@ -1,3 +1,6 @@
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
+import { isRealMoneyFinancialSource } from "@/lib/finance/realMoneyGuard";
+
 export type RestaurantTaxProfile = {
   restaurantName: string | null;
   email: string | null;
@@ -264,7 +267,8 @@ export function computeRestaurantTotalsFromOrders(params: {
   const restaurantRows = rows.filter(
     (row) =>
       isRestaurantOrderForUser(row, restaurantUserId) &&
-      isIncludedOrderStatus(row)
+      isIncludedOrderStatus(row) &&
+      isRealMoneyFinancialSource(row)
   );
 
   let grossSales = 0;
@@ -345,9 +349,12 @@ export async function getRestaurantTaxSummary(params: {
       .eq("user_id", restaurantUserId)
       .maybeSingle(),
 
-    supabase
-      .from("orders")
-      .select("*")
+    applyLiveTripFilters(
+      supabase
+        .from("orders")
+        .select("*"),
+    )
+      .eq("payment_status", "paid")
       .gte("created_at", dates.start)
       .lt("created_at", dates.end),
 

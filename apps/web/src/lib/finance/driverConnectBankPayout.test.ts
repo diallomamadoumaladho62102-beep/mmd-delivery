@@ -31,7 +31,7 @@ test("idempotency key is stable per account+ET date", () => {
   );
 });
 
-test("window helper uses America/New_York parts — exact Sunday 4am ET only", () => {
+test("window helper uses America/New_York parts — Sunday from 4am ET", () => {
   const sun4edt = new Date("2026-08-16T08:30:00.000Z");
   const parts = getNowPartsInTimeZone("America/New_York", sun4edt);
   assert.equal(parts.weekday, "Sun");
@@ -39,11 +39,10 @@ test("window helper uses America/New_York parts — exact Sunday 4am ET only", (
   assert.equal(isDriverBankPayoutWindow(sun4edt), true);
 
   const sun5edt = new Date("2026-08-16T09:30:00.000Z");
-  assert.equal(isDriverBankPayoutWindow(sun5edt), false);
+  assert.equal(isDriverBankPayoutWindow(sun5edt), true);
 
-  // Sunday 16:00 ET is NOT a bank window (no catch-up)
   const sun16edt = new Date("2026-08-16T20:30:00.000Z");
-  assert.equal(isDriverBankPayoutWindow(sun16edt), false);
+  assert.equal(isDriverBankPayoutWindow(sun16edt), true);
 
   const sun3est = new Date("2026-01-11T08:15:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sun3est), false);
@@ -52,10 +51,10 @@ test("window helper uses America/New_York parts — exact Sunday 4am ET only", (
   assert.equal(isDriverBankPayoutWindow(sun4est), true);
 
   const sun16est = new Date("2026-01-11T21:15:00.000Z");
-  assert.equal(isDriverBankPayoutWindow(sun16est), false);
+  assert.equal(isDriverBankPayoutWindow(sun16est), true);
 });
 
-test("Saturday 23:59 ET is not bank window; Sunday 04:00 ET is; 16:00 is not", () => {
+test("Saturday and Sunday before 04:00 ET are not bank window; Sunday after 04:00 is", () => {
   const sat2359et = new Date("2026-08-16T03:59:00.000Z");
   assert.equal(isDriverBankPayoutWindow(sat2359et), false);
 
@@ -72,13 +71,13 @@ test("Saturday 23:59 ET is not bank window; Sunday 04:00 ET is; 16:00 is not", (
   assert.equal(isDriverBankPayoutWindow(sun401et), true);
 
   const sun5et = new Date("2026-08-16T09:00:00.000Z");
-  assert.equal(isDriverBankPayoutWindow(sun5et), false);
+  assert.equal(isDriverBankPayoutWindow(sun5et), true);
 
   const sun10et = new Date("2026-08-16T14:00:00.000Z");
-  assert.equal(isDriverBankPayoutWindow(sun10et), false);
+  assert.equal(isDriverBankPayoutWindow(sun10et), true);
 
   const sun16et = new Date("2026-08-16T20:00:00.000Z");
-  assert.equal(isDriverBankPayoutWindow(sun16et), false);
+  assert.equal(isDriverBankPayoutWindow(sun16et), true);
 });
 
 console.log("driverConnectBankPayout tests passed");

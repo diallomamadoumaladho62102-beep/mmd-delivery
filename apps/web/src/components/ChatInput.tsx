@@ -16,6 +16,7 @@ export default function ChatInput({
   senderRole?: string | null;
   targetRole?: string | null;
 }) {
+  const { t } = useAdminT();
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [pending, setPending] = useState(false);

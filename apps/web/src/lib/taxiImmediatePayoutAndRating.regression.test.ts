@@ -49,7 +49,7 @@ test("sunday bank payout cron has no cashout minimum", () => {
   assert.match(helper, /DRIVER_BANK_PAYOUT_PRIMARY_HOUR\s*=\s*4/);
   assert.doesNotMatch(helper, /DRIVER_BANK_PAYOUT_CATCHUP_HOUR/);
   assert.doesNotMatch(helper, /_catchup:/);
-  assert.match(helper, /hour === DRIVER_BANK_PAYOUT_PRIMARY_HOUR/);
+  assert.match(helper, /hour >= DRIVER_BANK_PAYOUT_PRIMARY_HOUR/);
 });
 
 test("exact Sunday 4am ET is driven by GitHub Actions dual schedules", () => {
@@ -59,6 +59,8 @@ test("exact Sunday 4am ET is driven by GitHub Actions dual schedules", () => {
   );
   assert.match(wf, /0 8 \* \* 0/);
   assert.match(wf, /0 9 \* \* 0/);
+  assert.match(wf, /0 12 \* \* 0/);
+  assert.match(wf, /0 14 \* \* 0/);
   assert.doesNotMatch(wf, /0 20 \* \* 0/);
   assert.doesNotMatch(wf, /0 21 \* \* 0/);
   assert.match(wf, /driver-connect-bank-payouts/);

@@ -8,6 +8,7 @@
  * Never invents Connect accounts. transfers/run still refuse without acct_.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 export type ConnectPayoutRetryResult = {
   restaurant_attempted: number;
@@ -92,9 +93,11 @@ export async function retryAwaitingConnectTransfers(params: {
     .filter(Boolean);
 
   if (restaurantIds.length > 0) {
-    const { data: orders, error } = await params.supabaseAdmin
-      .from("orders")
-      .select("id, restaurant_user_id, restaurant_id, restaurant_transfer_id, status, payment_status")
+    const { data: orders, error } = await applyLiveTripFilters(
+      params.supabaseAdmin
+        .from("orders")
+        .select("id, restaurant_user_id, restaurant_id, restaurant_transfer_id, status, payment_status"),
+    )
       .eq("payment_status", "paid")
       .in("status", ["delivered", "completed"])
       .is("restaurant_transfer_id", null)
@@ -129,9 +132,11 @@ export async function retryAwaitingConnectTransfers(params: {
     .filter(Boolean);
 
   if (driverIds.length > 0) {
-    const { data: orders, error } = await params.supabaseAdmin
-      .from("orders")
-      .select("id, driver_id, driver_transfer_id, status, payment_status")
+    const { data: orders, error } = await applyLiveTripFilters(
+      params.supabaseAdmin
+        .from("orders")
+        .select("id, driver_id, driver_transfer_id, status, payment_status"),
+    )
       .eq("payment_status", "paid")
       .in("status", ["delivered", "completed"])
       .is("driver_transfer_id", null)

@@ -53,11 +53,14 @@ test("TAXI_PAYOUT_HOLD_HOURS defaults to 0", () => {
   assert.match(hold, /TAXI_PAYOUT_HOLD_HOURS\s*\?\?\s*0/);
 });
 
-test("Sunday bank window is 04:00 ET only — no catch-up / no 16:00 cron", () => {
+test("Sunday bank window opens at 04:00 ET — no weekday / no 16:00 UTC cron", () => {
   assert.match(bank, /DRIVER_BANK_PAYOUT_PRIMARY_HOUR\s*=\s*4/);
+  assert.match(bank, /hour >= DRIVER_BANK_PAYOUT_PRIMARY_HOUR/);
   assert.doesNotMatch(bank, /DRIVER_BANK_PAYOUT_CATCHUP_HOUR/);
   assert.match(wf, /0 8 \* \* 0/);
   assert.match(wf, /0 9 \* \* 0/);
+  assert.match(wf, /0 12 \* \* 0/);
+  assert.match(wf, /0 14 \* \* 0/);
   assert.doesNotMatch(wf, /0 20 \* \* 0/);
   assert.doesNotMatch(wf, /0 21 \* \* 0/);
 });
