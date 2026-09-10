@@ -383,7 +383,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.creditLabel}>
-                  {props.ts("client.home.credit.title", "Crédit MMD")}
+                  {props.ts("client.home.credit.title", "MMD credit")}
                 </Text>
                 <Text style={styles.creditValue}>{creditLabel}</Text>
                 <Text style={styles.creditAvail}>

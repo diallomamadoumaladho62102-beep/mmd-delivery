@@ -279,7 +279,7 @@ function OpportunityCard({
   const pillLabel = joined
     ? t("driver.opps.pill.joined", "Inscrit ✅")
     : saved
-    ? t("driver.opps.pill.saved", "Enregistrée")
+    ? t("driver.opps.pill.saved", "Saved")
     : opp.tag
     ? opp.tag
     : null;
@@ -303,7 +303,7 @@ function OpportunityCard({
         <TouchableOpacity onPress={onToggleSave} style={styles.saveBtn}>
           <Text style={styles.saveBtnLabel}>
             {saved
-              ? t("driver.opps.actions.saved", "Enregistré ✅")
+              ? t("driver.opps.actions.saved", "Saved ✅")
               : t("driver.opps.actions.save", "Enregistrer")}
           </Text>
         </TouchableOpacity>
@@ -408,7 +408,7 @@ export function DriverOpportunitiesScreen() {
     try {
       if (Platform.OS === "android") {
         await Notifications.setNotificationChannelAsync("mmd-opps", {
-          name: t("driver.opps.notifs.channelName", "MMD Opportunités"),
+          name: t("driver.opps.notifs.channelName", "MMD Opportunities"),
           importance: Notifications.AndroidImportance.DEFAULT,
         });
       }
@@ -468,7 +468,7 @@ export function DriverOpportunitiesScreen() {
 
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
-          title: t("driver.opps.notifs.reminderTitle", "Rappel opportunité ⏰"),
+          title: t("driver.opps.notifs.reminderTitle", "Opportunity reminder ⏰"),
           body: t("driver.opps.notifs.reminderBody", "{{title}} • commence dans 30 minutes", {
             title: opp.title,
           }),
@@ -679,10 +679,10 @@ export function DriverOpportunitiesScreen() {
       }
 
       Alert.alert(
-        nextSaved ? t("driver.opps.alerts.savedTitle", "Enregistré ✅") : t("driver.opps.alerts.removedTitle", "Retiré ✅"),
+        nextSaved ? t("driver.opps.alerts.savedTitle", "Saved ✅") : t("driver.opps.alerts.removedTitle", "Removed ✅"),
         nextSaved
-          ? t("driver.opps.alerts.savedBody", "Ajouté: {{title}}", { title: opp.title })
-          : t("driver.opps.alerts.removedBody", "Retiré: {{title}}", { title: opp.title })
+          ? t("driver.opps.alerts.savedBody", "Added: {{title}}", { title: opp.title })
+          : t("driver.opps.alerts.removedBody", "Removed: {{title}}", { title: opp.title })
       );
     },
     [cancelReminder, persistMap, restoreNotifMap, savedIds, scheduleReminder, t, userId]
@@ -694,8 +694,8 @@ export function DriverOpportunitiesScreen() {
 
       if (!uid) {
         Alert.alert(
-          t("client.auth.titleLogin", "Connexion requise"),
-          t("driver.opps.alerts.loginToJoin", "Connecte-toi pour t’inscrire.")
+          t("client.auth.titleLogin", "Login"),
+          t("driver.opps.alerts.loginToJoin", "Sign in to join.")
         );
         return;
       }
@@ -722,7 +722,7 @@ export function DriverOpportunitiesScreen() {
 
       Alert.alert(
         t("common.ok", "OK ✅"),
-        t("driver.opps.alerts.joinedBody", "Inscription confirmée • {{title}}", { title: opp.title })
+        t("driver.opps.alerts.joinedBody", "Registration confirmed • {{title}}", { title: opp.title })
       );
     },
     [joinedIds, persistMap, t, userId]
@@ -732,7 +732,7 @@ export function DriverOpportunitiesScreen() {
     <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
-        title={t("driver.opps.title", "Opportunités")}
+        title={t("driver.opps.title", "Opportunities")}
         fallbackRoute="DriverTabs"
         variant="mmd"
         style={styles.header}

@@ -185,7 +185,7 @@ export function RestaurantHomeMapChrome({
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.selectionKind} numberOfLines={1}>
                   {selection.kind === "order"
-                    ? t("restaurant.home.selection.order", "Commande")
+                    ? t("restaurant.home.selection.order", "Order")
                     : selection.kind === "driver"
                       ? t("restaurant.home.selection.driver", "Livreur")
                       : t("restaurant.home.selection.restaurant", "Restaurant")}
@@ -194,7 +194,7 @@ export function RestaurantHomeMapChrome({
                   {selection.kind === "order"
                     ? `#${selection.id.slice(0, 8)}`
                     : selection.kind === "driver"
-                      ? t("restaurant.home.selection.driverActive", "En livraison")
+                      ? t("restaurant.home.selection.driverActive", "Out for delivery")
                       : selection.name}
                 </Text>
               </View>
@@ -230,7 +230,7 @@ export function RestaurantHomeMapChrome({
             ) : selection.kind === "driver" ? (
               <View style={styles.metaRow}>
                 <Text style={styles.metaChip} numberOfLines={1}>
-                  {t("restaurant.home.selection.inDelivery", "En livraison")}
+                  {t("restaurant.home.selection.inDelivery", "Out for delivery")}
                 </Text>
                 {selection.distanceKm != null ? (
                   <Text style={styles.metaChip} numberOfLines={1}>
@@ -241,7 +241,7 @@ export function RestaurantHomeMapChrome({
             ) : (
               <View style={styles.metaRow}>
                 <Text style={styles.metaChip} numberOfLines={1}>
-                  {t("restaurant.home.selection.yourRestaurant", "Votre établissement")}
+                  {t("restaurant.home.selection.yourRestaurant", "Your restaurant")}
                 </Text>
               </View>
             )}
@@ -280,7 +280,7 @@ export function RestaurantHomeMapChrome({
             />
             <View style={styles.filterSheet} accessibilityViewIsModal>
               <Text style={styles.filterSheetTitle}>
-                {t("restaurant.home.filter.title", "Filtrer la carte")}
+                {t("restaurant.home.filter.title", "Filter the map")}
               </Text>
               <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
                 {RESTAURANT_MAP_STATUS_FILTERS.map((row) => {

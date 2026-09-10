@@ -424,7 +424,7 @@ function getProofPhotoErrorMessage(t: any, error: any) {
   if (message === "PHOTO_TOO_LARGE") {
     return t(
       "driver.orderDetails.photo.tooLarge",
-      "La photo est trop grande. Reprends une photo plus légère."
+      "The photo is too large. Take a smaller one."
     );
   }
 
@@ -438,13 +438,13 @@ function getProofPhotoErrorMessage(t: any, error: any) {
   ) {
     return t(
       "driver.orderDetails.photo.readError",
-      "Impossible de lire la photo. Reprends une nouvelle photo."
+      "Unable to read the photo. Take a new one."
     );
   }
 
   return t(
     "driver.orderDetails.photo.readError",
-    "Impossible de lire la photo. Reprends une nouvelle photo."
+    "Unable to read the photo. Take a new one."
   );
 }
 
@@ -888,19 +888,19 @@ export function DriverOrderDetailsScreen() {
     if (kind === "pickup_dropoff") {
       switch (currentOrder.status) {
         case "pending":
-          return t("driver.orderDetails.status.pd_pending", "En attente d’un chauffeur");
+          return t("driver.orderDetails.status.pd_pending", "Waiting for a driver");
         case "accepted":
-          return t("driver.orderDetails.status.pd_accepted", "Pickup à confirmer");
+          return t("driver.orderDetails.status.pd_accepted", "Pickup to confirm");
         case "prepared":
-          return t("driver.orderDetails.status.pd_prepared", "Pickup à confirmer");
+          return t("driver.orderDetails.status.pd_prepared", "Pickup to confirm");
         case "ready":
-          return t("driver.orderDetails.status.pd_ready", "Pickup prêt à confirmer");
+          return t("driver.orderDetails.status.pd_ready", "Pickup ready to confirm");
         case "dispatched":
-          return t("driver.orderDetails.status.pd_dispatched", "En route vers le destinataire");
+          return t("driver.orderDetails.status.pd_dispatched", "On the way to the recipient");
         case "delivered":
-          return t("driver.orderDetails.status.delivered", "Livrée");
+          return t("driver.orderDetails.status.delivered", "Delivered");
         case "canceled":
-          return t("driver.orderDetails.status.canceled", "Annulée");
+          return t("driver.orderDetails.status.canceled", "Canceled");
         default:
           return currentOrder.status;
       }
@@ -910,20 +910,20 @@ export function DriverOrderDetailsScreen() {
       case "pending":
       case "paid_pending":
       case "processing_pending":
-        return t("driver.orderDetails.status.pending", "En attente d’un chauffeur");
+        return t("driver.orderDetails.status.pending", "Waiting for a driver");
       case "accepted":
       case "prepared":
-        return t("driver.orderDetails.status.accepted_prepared", "En attente (restaurant)");
+        return t("driver.orderDetails.status.accepted_prepared", "Waiting (restaurant)");
       case "ready":
-        return t("driver.orderDetails.status.ready", "Prête pour retrait");
+        return t("driver.orderDetails.status.ready", "Ready for pickup");
       case "dispatched":
-        return t("driver.orderDetails.status.dispatched", "En livraison");
+        return t("driver.orderDetails.status.dispatched", "On delivery");
       case "picked_up":
-        return t("driver.orderDetails.status.picked_up", "Colis récupéré — en route");
+        return t("driver.orderDetails.status.picked_up", "Package picked up — on the way");
       case "delivered":
-        return t("driver.orderDetails.status.delivered", "Livrée");
+        return t("driver.orderDetails.status.delivered", "Delivered");
       case "canceled":
-        return t("driver.orderDetails.status.canceled", "Annulée");
+        return t("driver.orderDetails.status.canceled", "Canceled");
       default:
         return currentOrder.status;
     }
@@ -1031,7 +1031,7 @@ export function DriverOrderDetailsScreen() {
           const uid = user?.id ?? null;
 
           if (!uid) {
-            throw new Error(t("common.mustBeLoggedIn", "Tu dois être connecté."));
+            throw new Error(t("common.mustBeLoggedIn", "You must be logged in."));
           }
 
           let nextOrder: Order | null = null;
@@ -1118,8 +1118,8 @@ export function DriverOrderDetailsScreen() {
 
           if (!nextOrder) {
             Alert.alert(
-              t("common.error", "Erreur"),
-              t("driver.orderDetails.notFound", "Commande introuvable.")
+              t("common.error", "Error"),
+              t("driver.orderDetails.notFound", "Order not found.")
             );
             navigation.goBack();
             return;
@@ -1129,7 +1129,7 @@ export function DriverOrderDetailsScreen() {
             throw new Error(
               t(
                 "driver.orderDetails.notAllowed",
-                "Cette course n’est pas disponible pour ce compte chauffeur."
+                "This ride is not available for this driver account."
               )
             );
           }
@@ -1144,11 +1144,11 @@ export function DriverOrderDetailsScreen() {
     } catch (e: any) {
       console.error("Erreur fetch driver order details:", e);
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         e?.message ??
           t(
             "driver.orderDetails.loadError",
-            "Impossible de charger les détails de la commande."
+            "Unable to load order details."
           )
       );
     } finally {
@@ -1319,10 +1319,10 @@ export function DriverOrderDetailsScreen() {
       Linking.openURL(url).catch((err) => {
         console.error("Erreur ouverture Maps (coords):", err);
         Alert.alert(
-          t("common.error", "Erreur"),
+          t("common.error", "Error"),
           t(
             "driver.orderDetails.mapsOpenError",
-            "Impossible d'ouvrir l'application de navigation sur ce téléphone."
+            "Unable to open navigation app on this phone."
           )
         );
       });
@@ -1331,10 +1331,10 @@ export function DriverOrderDetailsScreen() {
 
     if (!address) {
       Alert.alert(
-        t("driver.orderDetails.missingAddressTitle", "Adresse manquante"),
+        t("driver.orderDetails.missingAddressTitle", "Missing address"),
         t(
           "driver.orderDetails.missingAddressBody",
-          "Aucune adresse disponible pour cette étape."
+          "No address available for this step."
         )
       );
       return;
@@ -1349,10 +1349,10 @@ export function DriverOrderDetailsScreen() {
     Linking.openURL(url).catch((err) => {
       console.error("Erreur ouverture Maps:", err);
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         t(
           "driver.orderDetails.mapsOpenError",
-          "Impossible d'ouvrir l'application de navigation sur ce téléphone."
+          "Unable to open navigation app on this phone."
         )
       );
     });
@@ -1366,7 +1366,7 @@ export function DriverOrderDetailsScreen() {
         t("driver.orderDetails.navigation.unavailableTitle", "Navigation indisponible"),
         t(
           "driver.orderDetails.navigation.mustAcceptFirst",
-          "Accepte d'abord cette course avant de démarrer la navigation MMD."
+          "Accept this trip first before starting MMD navigation."
         )
       );
       return;
@@ -1379,7 +1379,7 @@ export function DriverOrderDetailsScreen() {
           t("driver.orderDetails.missingCoordsTitle", "Infos manquantes"),
           t(
             "driver.orderDetails.missingCoordsBody",
-            "Cette course n’a pas encore de coordonnées GPS."
+            "This trip does not have GPS coordinates yet."
           )
         );
         return;
@@ -1405,10 +1405,10 @@ export function DriverOrderDetailsScreen() {
 
     if (!hasCoords && !encodedAddress) {
       Alert.alert(
-        t("driver.orderDetails.missingAddressTitle", "Adresse manquante"),
+        t("driver.orderDetails.missingAddressTitle", "Missing address"),
         t(
           "driver.orderDetails.missingAddressBody",
-          "Aucune adresse disponible pour cette étape."
+          "No address available for this step."
         )
       );
       return;
@@ -1426,10 +1426,10 @@ export function DriverOrderDetailsScreen() {
       Linking.openURL(fallbackUrl).catch((err) => {
         console.error("Erreur ouverture Waze:", err);
         Alert.alert(
-          t("common.error", "Erreur"),
+          t("common.error", "Error"),
           t(
             "driver.orderDetails.wazeOpenError",
-            "Impossible d'ouvrir Waze sur ce téléphone."
+            "Unable to open Waze on this phone."
           )
         );
       });
@@ -1617,7 +1617,7 @@ export function DriverOrderDetailsScreen() {
       );
     } catch (e: unknown) {
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         e instanceof Error
           ? e.message
           : t(
@@ -1659,10 +1659,10 @@ export function DriverOrderDetailsScreen() {
 
       if (permission.status !== "granted") {
         Alert.alert(
-          t("driver.orderDetails.photo.permissionTitle", "Caméra"),
+          t("driver.orderDetails.photo.permissionTitle", "Camera"),
           t(
             "driver.orderDetails.photo.permissionBody",
-            "Autorise la caméra pour prendre une photo de preuve."
+            "Allow camera access to take a proof photo."
           )
         );
         return;
@@ -1698,7 +1698,7 @@ export function DriverOrderDetailsScreen() {
       console.log("takeProofPhoto error:", e);
       setProofPhotoUri(null);
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         getProofPhotoErrorMessage(t, e)
       );
     } finally {
@@ -1817,7 +1817,7 @@ export function DriverOrderDetailsScreen() {
     if (sessionError) {
       throw new Error(
         sessionError.message ||
-          t("driver.orderDetails.sessionError", "Impossible de récupérer la session.")
+          t("driver.orderDetails.sessionError", "Unable to retrieve the session.")
       );
     }
 
@@ -1883,11 +1883,11 @@ export function DriverOrderDetailsScreen() {
           (kind === "pickup"
             ? t(
                 "driver.orderDetails.pickupConfirmError",
-                "Échec de la confirmation du pickup."
+                "Pickup confirmation failed."
               )
             : t(
                 "driver.orderDetails.deliveryConfirmError",
-                "Échec de la confirmation de la livraison."
+                "Delivery confirmation failed."
               ))
       );
     }
@@ -1903,7 +1903,7 @@ export function DriverOrderDetailsScreen() {
       await fetchOrder();
     } catch (e: unknown) {
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         e instanceof Error
           ? e.message
           : t("driver.marketplace.updateFailed", "Unable to update marketplace delivery.")
@@ -1918,10 +1918,10 @@ export function DriverOrderDetailsScreen() {
 
     if (!canAccept) {
       Alert.alert(
-        t("driver.orderDetails.acceptDeniedTitle", "Impossible d'accepter"),
+        t("driver.orderDetails.acceptDeniedTitle", "Unable to accept"),
         t(
           "driver.orderDetails.acceptDeniedGeneric",
-          "Impossible d'accepter cette course."
+          "Unable to accept this trip."
         )
       );
       return;
@@ -1952,20 +1952,20 @@ export function DriverOrderDetailsScreen() {
       await fetchOrder();
 
       Alert.alert(
-        t("driver.orderDetails.acceptedTitle", "Course acceptée ✅"),
+        t("driver.orderDetails.acceptedTitle", "Trip accepted ✅"),
         t(
           "driver.orderDetails.acceptedBody",
-          "Tu es maintenant assigné à cette course."
+          "You are now assigned to this trip."
         )
       );
     } catch (e: any) {
       console.error("Erreur handleAccept:", e);
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         e?.message ??
           t(
             "driver.orderDetails.acceptError",
-            "Impossible d'accepter la course pour le moment."
+            "Unable to accept the trip right now."
           )
       );
     } finally {
@@ -1981,17 +1981,17 @@ export function DriverOrderDetailsScreen() {
         t("driver.orderDetails.cancel.unavailableTitle", "Annulation indisponible"),
         t(
           "driver.orderDetails.cancel.unavailableBody",
-          "Tu peux annuler seulement avant le pickup, quand la course est encore acceptée ou prête."
+          "You can cancel only before pickup, while the trip is still accepted or ready."
         )
       );
       return;
     }
 
     Alert.alert(
-      t("driver.orderDetails.cancel.title", "Annuler la course ?"),
+      t("driver.orderDetails.cancel.title", "Cancel the trip?"),
       t(
         "driver.orderDetails.cancel.body",
-        "Si tu annules maintenant, tu seras retiré de cette course et elle pourra être proposée à un autre chauffeur."
+        "If you cancel now, you will be removed from this trip and it may be offered to another driver."
       ),
       [
         {
@@ -1999,7 +1999,7 @@ export function DriverOrderDetailsScreen() {
           style: "cancel",
         },
         {
-          text: t("driver.orderDetails.cancel.confirm", "Oui, annuler"),
+          text: t("driver.orderDetails.cancel.confirm", "Yes, cancel"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -2015,10 +2015,10 @@ export function DriverOrderDetailsScreen() {
                 await fetchOrder();
 
                 Alert.alert(
-                  t("driver.orderDetails.cancel.successTitle", "Course annulée"),
+                  t("driver.orderDetails.cancel.successTitle", "Trip canceled"),
                   t(
                     "driver.orderDetails.cancel.successBody",
-                    "Tu as été retiré de cette course. Elle peut maintenant être prise par un autre chauffeur."
+                    "You were removed from this trip. Another driver can now take it."
                   )
                 );
 
@@ -2060,7 +2060,7 @@ export function DriverOrderDetailsScreen() {
               if (!response.ok || !result?.ok) {
                 throw new Error(
                   result?.error ??
-                    t("driver.orderDetails.cancel.error", "Impossible d'annuler cette course.")
+                    t("driver.orderDetails.cancel.error", "Unable to cancel this trip.")
                 );
               }
 
@@ -2068,20 +2068,20 @@ export function DriverOrderDetailsScreen() {
               await fetchOrder();
 
               Alert.alert(
-                t("driver.orderDetails.cancel.successTitle", "Course annulée"),
+                t("driver.orderDetails.cancel.successTitle", "Trip canceled"),
                 result?.message ??
                   t(
                     "driver.orderDetails.cancel.successBody",
-                    "Tu as été retiré de cette course. Elle peut maintenant être prise par un autre chauffeur."
+                    "You were removed from this trip. Another driver can now take it."
                   )
               );
 
               navigation.goBack();
             } catch (e: any) {
               Alert.alert(
-                t("common.error", "Erreur"),
+                t("common.error", "Error"),
                 e?.message ??
-                  t("driver.orderDetails.cancel.error", "Impossible d'annuler cette course.")
+                  t("driver.orderDetails.cancel.error", "Unable to cancel this trip.")
               );
             } finally {
               setCanceling(false);
@@ -2316,10 +2316,10 @@ export function DriverOrderDetailsScreen() {
 
       if (isFinalStatus(order.status)) {
         Alert.alert(
-          t("common.error", "Erreur"),
+          t("common.error", "Error"),
           t(
             "driver.orderDetails.communication.callClosed",
-            "Les appels sont désactivés pour cette commande."
+            "Calls are disabled for this order."
           )
         );
         return;
@@ -2327,10 +2327,10 @@ export function DriverOrderDetailsScreen() {
 
       if (targetRole === "restaurant" && isPickupDropoff) {
         Alert.alert(
-          t("common.error", "Erreur"),
+          t("common.error", "Error"),
           t(
             "driver.orderDetails.communication.noRestaurant",
-            "Cette course pickup/dropoff n’a pas de restaurant à appeler."
+            "This pickup/dropoff trip has no restaurant to call."
           )
         );
         return;
@@ -2360,7 +2360,7 @@ export function DriverOrderDetailsScreen() {
             t("driver.orderDetails.communication.callUnavailableTitle", "Call unavailable"),
             t(
               "driver.orderDetails.communication.driverPhoneMissing",
-              "Ton numéro de téléphone chauffeur est manquant. Ajoute ton numéro dans ton profil avant d'utiliser les appels masqués."
+              "Your driver phone number is missing. Add it in your profile before using masked calls."
             )
           );
           return;
@@ -2382,7 +2382,7 @@ export function DriverOrderDetailsScreen() {
             t("driver.orderDetails.communication.callUnavailableTitle", "Call unavailable"),
             t(
               "driver.orderDetails.communication.targetPhoneMissing",
-              "Le numéro de téléphone de {{target}} est manquant pour cette commande.",
+              "The phone number for {{target}} is missing on this order.",
               { target: targetLabel }
             )
           );
@@ -2394,7 +2394,7 @@ export function DriverOrderDetailsScreen() {
           e?.message ??
             t(
               "driver.orderDetails.communication.callFailed",
-              "Impossible de démarrer l'appel pour le moment."
+              "Unable to start the call right now."
             )
         );
       } finally {
@@ -2421,10 +2421,10 @@ export function DriverOrderDetailsScreen() {
 
     if (isFinalStatus(order.status)) {
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         t(
           "driver.orderDetails.communication.chatClosed",
-          "Les messages sont désactivés pour cette commande."
+          "Messages are disabled for this order."
         )
       );
       return;
@@ -2432,10 +2432,10 @@ export function DriverOrderDetailsScreen() {
 
     if (targetRole === "restaurant" && isPickupDropoff) {
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         t(
           "driver.orderDetails.communication.noRestaurantMessage",
-          "Cette course pickup/dropoff n’a pas de restaurant à contacter."
+          "This pickup/dropoff trip has no restaurant to contact."
         )
       );
       return;
@@ -2698,7 +2698,7 @@ export function DriverOrderDetailsScreen() {
           ellipsizeMode="tail"
           style={{ color: "#9CA3AF", fontSize: 12, marginTop: 3 }}
         >
-          {loadingProfile ? t("driver.orderDetails.profile.loading", "Chargement du profil…") : subtitle}
+          {loadingProfile ? t("driver.orderDetails.profile.loading", "Loading profile…") : subtitle}
         </Text>
       </View>
     </View>
@@ -2708,7 +2708,7 @@ export function DriverOrderDetailsScreen() {
     ? t("driver.orderDetails.header.tripTitle", "Trip #{{id}}", {
         id: order.id.slice(0, 8),
       })
-    : t("driver.orderDetails.header.title", "Course #{{id}}", {
+    : t("driver.orderDetails.header.title", "Trip #{{id}}", {
         id: order.id.slice(0, 8),
       });
 
@@ -2856,7 +2856,7 @@ export function DriverOrderDetailsScreen() {
                   t("driver.orderDetails.missingCoordsTitle", "Infos manquantes"),
                   t(
                     "driver.orderDetails.missingCoordsBody",
-                    "Cette course n’a pas encore de coordonnées GPS."
+                    "This trip does not have GPS coordinates yet."
                   )
                 );
                 return;
@@ -3312,12 +3312,12 @@ export function DriverOrderDetailsScreen() {
             }}
           >
             <Text style={{ color: "#FECACA", fontSize: 15, fontWeight: "900", marginBottom: 8 }}>
-              {t("driver.orderDetails.cancel.cardTitle", "Besoin d’annuler ?")}
+              {t("driver.orderDetails.cancel.cardTitle", "Need to cancel?")}
             </Text>
             <Text style={{ color: "#FCA5A5", fontSize: 12, lineHeight: 17, marginBottom: 12 }}>
               {t(
                 "driver.orderDetails.cancel.cardBody",
-                "Tu peux annuler avant le pickup. La course sera remise disponible pour un autre chauffeur."
+                "You can cancel before pickup. The trip will become available to another driver."
               )}
             </Text>
             <TouchableOpacity
@@ -3336,7 +3336,7 @@ export function DriverOrderDetailsScreen() {
                 <ActivityIndicator color="white" />
               ) : (
                 <Text style={{ color: "white", fontSize: 13, fontWeight: "900" }}>
-                  {t("driver.orderDetails.cancel.button", "Annuler cette course")}
+                  {t("driver.orderDetails.cancel.button", "Cancel this trip")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -3468,7 +3468,7 @@ export function DriverOrderDetailsScreen() {
           <Text style={{ color: "#9CA3AF", fontSize: 12, lineHeight: 17, marginBottom: 12 }}>
             {t(
               "driver.orderDetails.communication.hint",
-              "Appelle ou envoie un message au client, au restaurant ou au support MMD sans exposer ton vrai numéro."
+              "Call or message the client, restaurant, or MMD support without exposing your real number."
             )}
           </Text>
 
@@ -3487,7 +3487,7 @@ export function DriverOrderDetailsScreen() {
               name={clientName}
               subtitle={t(
                 "driver.orderDetails.communication.clientProfile",
-                "Profil client lié à cette course"
+                "Client profile linked to this trip"
               )}
               avatarUrl={clientAvatarUrl}
               fallbackEmoji="👤"
@@ -3555,7 +3555,7 @@ export function DriverOrderDetailsScreen() {
                 name={restaurantName}
                 subtitle={t(
                   "driver.orderDetails.communication.restaurantProfile",
-                  "Profil restaurant lié à cette commande"
+                  "Restaurant profile linked to this order"
                 )}
                 avatarUrl={restaurantAvatarUrl}
                 fallbackEmoji="🍽️"
@@ -3732,7 +3732,7 @@ export function DriverOrderDetailsScreen() {
             <Text style={{ color: "white", fontSize: 14, fontWeight: "900" }}>
               {accepting
                 ? t("driver.orderDetails.accept.loading", "Acceptation...")
-                : t("driver.orderDetails.accept.cta", "Accepter la course")}
+                : t("driver.orderDetails.accept.cta", "Accept trip")}
             </Text>
           </TouchableOpacity>
 
@@ -3746,7 +3746,7 @@ export function DriverOrderDetailsScreen() {
           >
             {t(
               "driver.orderDetails.accept.hint",
-              "En acceptant, tu seras assigné à cette course."
+              "By accepting, you will be assigned to this trip."
             )}
           </Text>
         </View>

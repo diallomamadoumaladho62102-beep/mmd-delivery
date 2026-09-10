@@ -220,7 +220,7 @@ export function ClientProfileScreen() {
             if (!session) {
               Alert.alert(
                 t("common.session", "Session"),
-                t("common.notLoggedIn", "Tu n’es pas connecté.")
+                t("common.notLoggedIn", "You are not signed in.")
               );
               return;
             }
@@ -320,10 +320,10 @@ export function ClientProfileScreen() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
-        t("common.permission", "Permission"),
+        t("common.permission.title", "Permission"),
         t(
           "client.profile.permissionPhotosBody",
-          "Autorise l’accès aux photos pour choisir une image."
+          "Allow photo access to choose an image."
         )
       );
       return;
@@ -361,7 +361,7 @@ export function ClientProfileScreen() {
       throw new Error(
         t(
           "client.profile.avatarUploadError",
-          "Upload photo impossible. Vérifie Storage policies (avatars) + permissions."
+          "Unable to upload photo. Check storage permissions."
         )
       );
     }
@@ -408,7 +408,7 @@ export function ClientProfileScreen() {
     const upsertAttempt = await supabase.from("client_addresses").upsert(
       {
         user_id: uid,
-        label: t("client.profile.mainAddressLabel", "Adresse principale"),
+        label: t("client.profile.mainAddressLabel", "Primary address"),
         address_line1: addressLine1,
         address_line2: null,
         city,
@@ -428,7 +428,7 @@ export function ClientProfileScreen() {
       upsertAttempt.error
     );
 
-    const label = t("client.profile.mainAddressLabel", "Adresse principale");
+    const label = t("client.profile.mainAddressLabel", "Primary address");
 
     const { data: existing, error: selErr } = await supabase
       .from("client_addresses")
@@ -462,7 +462,7 @@ export function ClientProfileScreen() {
         throw new Error(
           t(
             "client.profile.addressSaveUpdateError",
-            "Adresse non enregistrée (update):"
+            "Address not saved (update):"
           ) + ` ${updErr.message}`
         );
       }
@@ -487,7 +487,7 @@ export function ClientProfileScreen() {
       throw new Error(
         t(
           "client.profile.addressSaveInsertError",
-          "Adresse non enregistrée (insert):"
+          "Address not saved (insert):"
         ) + ` ${insErr.message}`
       );
     }
@@ -516,7 +516,7 @@ export function ClientProfileScreen() {
               });
             } catch (e: unknown) {
               Alert.alert(
-                t("common.error", "Erreur"),
+                t("common.error", "Error"),
                 toUserFacingError(
                   e,
                   t("client.profile.signOut.error", "Unable to sign out right now."),
@@ -538,7 +538,7 @@ export function ClientProfileScreen() {
       if (!session) {
         Alert.alert(
           t("common.session", "Session"),
-          t("common.notLoggedIn", "Tu n’es pas connecté.")
+          t("common.notLoggedIn", "You are not signed in.")
         );
         return;
       }
@@ -546,17 +546,17 @@ export function ClientProfileScreen() {
       if (trimOrEmpty(fullName).length < 2)
         return Alert.alert(
           t("client.profile.fullNameTitle", "Nom"),
-          t("client.profile.fullNameError", "Entre ton nom complet.")
+          t("client.profile.fullNameError", "Enter your full name.")
         );
       if (trimOrEmpty(phone).length < 7)
         return Alert.alert(
-          t("client.profile.phoneTitle", "Téléphone"),
-          t("client.profile.phoneError", "Entre un numéro valide.")
+          t("client.profile.phoneTitle", "Phone"),
+          t("client.profile.phoneError", "Enter a valid number.")
         );
       if (trimOrEmpty(address).length < 4)
         return Alert.alert(
-          t("client.profile.addressTitle", "Adresse"),
-          t("client.profile.addressError", "Entre une adresse valide.")
+          t("client.profile.addressTitle", "Address"),
+          t("client.profile.addressError", "Enter a valid address.")
         );
       if (
         latitude == null ||
@@ -565,17 +565,17 @@ export function ClientProfileScreen() {
         !Number.isFinite(longitude)
       ) {
         return Alert.alert(
-          t("client.profile.addressTitle", "Adresse"),
+          t("client.profile.addressTitle", "Address"),
           t(
             "client.profile.addressMapboxError",
-            "Sélectionne une adresse Mapbox dans la liste pour la normaliser.",
+            "Select a Mapbox address from the list to normalize it.",
           ),
         );
       }
       if (trimOrEmpty(city).length < 2)
         return Alert.alert(
           t("client.profile.cityTitle", "Ville"),
-          t("client.profile.cityError", "Entre une ville valide.")
+          t("client.profile.cityError", "Enter a valid city.")
         );
 
       setSaving(true);
@@ -620,7 +620,7 @@ export function ClientProfileScreen() {
         throw new Error(
           t(
             "client.profile.saveProfileError",
-            "Sauvegarde impossible (client_profiles):"
+            "Unable to save (client_profiles):"
           ) + ` ${profErr.message}`
         );
       }
@@ -674,7 +674,7 @@ export function ClientProfileScreen() {
 
       Alert.alert(
         t("common.ok", "OK"),
-        t("client.profile.saved", "Profil enregistré."),
+        t("client.profile.saved", "Profile saved."),
         [
           {
             text: t("common.continue", "Continuer"),
@@ -689,8 +689,8 @@ export function ClientProfileScreen() {
       );
     } catch (e: any) {
       Alert.alert(
-        t("common.error", "Erreur"),
-        e?.message ?? t("client.profile.saveError", "Impossible d’enregistrer.")
+        t("common.error", "Error"),
+        e?.message ?? t("client.profile.saveError", "Unable to save.")
       );
     } finally {
       setSaving(false);
@@ -705,7 +705,7 @@ export function ClientProfileScreen() {
       <SafeAreaView style={styles.loadingRoot} edges={["top", "bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" />
         <ScreenHeader
-          title={t("client.profile.title", "Profil client")}
+          title={t("client.profile.title", "Client profile")}
           fallbackRoute="ClientHome"
           variant="dark"
         />
@@ -716,7 +716,7 @@ export function ClientProfileScreen() {
         </Text>
         <ActivityIndicator color={MMD_GOLD_DARK} size="large" style={{ marginTop: 16 }} />
         <Text style={styles.loadingCaption}>
-          {t("client.profile.loading", "Chargement du profil...")}
+          {t("client.profile.loading", "Loading profile…")}
         </Text>
       </SafeAreaView>
     );
@@ -770,7 +770,7 @@ export function ClientProfileScreen() {
             </Text>
             {latitude != null && longitude != null ? (
               <Text style={styles.bannerOk}>
-                {t("client.profile.addressVerifiedBadge", "Adresse vérifiée")}
+                {t("client.profile.addressVerifiedBadge", "Address verified")}
               </Text>
             ) : null}
           </View>
@@ -820,7 +820,7 @@ export function ClientProfileScreen() {
               <Text style={styles.addPhotoText}>
                 {avatarPreview
                   ? t("client.profile.changePhoto", "Change photo")
-                  : t("client.profile.addPhoto", "Ajouter une photo")}
+                  : t("client.profile.addPhoto", "Add a photo")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -892,7 +892,7 @@ export function ClientProfileScreen() {
             }}
             placeholder={t(
               "client.profile.placeholders.address",
-              "Rechercher une adresse…",
+              "Search for an address…",
             )}
             country={trimOrEmpty(country).toLowerCase() || undefined}
             style={styles.addressField}
@@ -940,7 +940,7 @@ export function ClientProfileScreen() {
           </View>
 
           <Text style={styles.hint}>
-            {t('client.profile.hint', 'Astuce: État = "NY", Pays = "US".')}
+            {t('client.profile.hint', 'Tip: State = "NY", Country = "US".')}
           </Text>
 
           <TouchableOpacity

@@ -165,7 +165,7 @@ export function RestaurantEarningsScreen() {
       }
 
       return {
-        label: t("restaurant.earnings.filters.prevMonth", "Mois précédent"),
+        label: t("restaurant.earnings.filters.prevMonth", "Previous month"),
         short: `${prevStart.toISOString().slice(0, 10)} → ${thisStart
           .toISOString()
           .slice(0, 10)}`,
@@ -390,7 +390,7 @@ export function RestaurantEarningsScreen() {
       setError(
         t(
           "restaurant.earnings.mustLogin",
-          "Connecte-toi comme restaurant pour voir tes gains."
+          "Sign in as a restaurant to see your earnings."
         )
       );
       return;
@@ -462,7 +462,7 @@ export function RestaurantEarningsScreen() {
         e?.message ??
           t(
             "restaurant.earnings.fetchError",
-            "Impossible de charger les earnings."
+            "Unable to load earnings."
           )
       );
     } finally {
@@ -678,7 +678,7 @@ export function RestaurantEarningsScreen() {
           t("common.info", "Info"),
           t(
             "restaurant.earnings.debug.noSession",
-            "Pas de session. Reconnecte-toi d'abord."
+            "No session. Sign in first."
           )
         );
         return;
@@ -687,19 +687,19 @@ export function RestaurantEarningsScreen() {
       await Clipboard.setStringAsync(token);
 
       Alert.alert(
-        t("restaurant.earnings.debug.copiedTitle", "Token copié ✅"),
-        t("restaurant.earnings.debug.copiedBody", "Début: {{a}}...\nFin: ...{{b}}", {
+        t("restaurant.earnings.debug.copiedTitle", "Token copied ✅"),
+        t("restaurant.earnings.debug.copiedBody", "Start: {{a}}...\\nEnd: ...{{b}}", {
           a: token.slice(0, 18),
           b: token.slice(-10),
         })
       );
     } catch (e: any) {
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         e?.message ??
           t(
             "restaurant.earnings.debug.fail",
-            "Impossible de récupérer la session."
+            "Unable to retrieve the session."
           )
       );
     }
@@ -888,7 +888,7 @@ export function RestaurantEarningsScreen() {
           <Text style={styles.empty}>
             {t(
               "restaurant.earnings.list.empty",
-              "Aucune commande livrée pour le moment."
+              "No delivered orders yet."
             )}
           </Text>
         ) : (

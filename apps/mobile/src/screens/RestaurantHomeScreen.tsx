@@ -735,7 +735,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
             error.message ||
               t(
                 "restaurant.dashboard.availabilityUpdateFailed",
-                "Unable to change restaurant status."
+                "Unable to change the restaurant status."
               )
           );
         }
@@ -748,7 +748,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
           e?.message ??
             t(
               "restaurant.dashboard.availabilityUpdateFailed",
-              "Unable to change restaurant status."
+              "Unable to change the restaurant status."
             )
         );
       } finally {
@@ -764,7 +764,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
         t("common.errorTitle", "Error"),
         t(
           "restaurant.dashboard.busyRequiresOnline",
-          "Passez en ligne avant d'activer le mode occupé.",
+          "Go online before turning on busy mode.",
         ),
       );
       return;
@@ -773,16 +773,16 @@ export function RestaurantHomeScreen({ navigation }: any) {
     const nextBusy = !restaurantBusy;
     Alert.alert(
       nextBusy
-        ? t("restaurant.dashboard.busyTitle", "Mode occupé")
-        : t("restaurant.dashboard.busyOffTitle", "Fin du mode occupé"),
+        ? t("restaurant.dashboard.busyTitle", "Busy mode")
+        : t("restaurant.dashboard.busyOffTitle", "Busy mode ended"),
       nextBusy
         ? t(
             "restaurant.dashboard.busyConfirm",
-            "Suspendre les nouvelles commandes tout en restant ouvert ?",
+            "Pause new orders while staying open?",
           )
         : t(
             "restaurant.dashboard.busyOffConfirm",
-            "Reprendre les nouvelles commandes ?",
+            "Resume new orders?",
           ),
       [
         { text: t("common.cancel", "Cancel"), style: "cancel" },
@@ -808,7 +808,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
                     e,
                     t(
                       "restaurant.dashboard.availabilityUpdateFailed",
-                      "Unable to change restaurant status.",
+                      "Unable to change the restaurant status.",
                     ),
                   ),
                 );
@@ -825,10 +825,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const handleToggleAvailability = useCallback(() => {
     if (profileNeedsSetup) {
       Alert.alert(
-        t("restaurant.dashboard.setupRequiredTitle", "Profil incomplet"),
+        t("restaurant.dashboard.setupRequiredTitle", "Incomplete profile"),
         t(
           "restaurant.dashboard.setupRequiredBody",
-          "Complète le nom, l’adresse et les coordonnées GPS du restaurant avant de passer en ligne."
+          "Complete the restaurant name, address, and GPS coordinates before going online."
         )
       );
       return;
@@ -1994,7 +1994,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
                     numberOfLines={1}
                     style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}
                   >
-                    {t("restaurant.dashboard.setupRequiredTitle", "Profil incomplet")}
+                    {t("restaurant.dashboard.setupRequiredTitle", "Incomplete profile")}
                   </Text>
                   <Text
                     numberOfLines={2}
@@ -2008,7 +2008,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
                   >
                     {t(
                       "restaurant.dashboard.setupRequiredBody",
-                      "Complète le nom, l’adresse et les coordonnées GPS du restaurant avant de passer en ligne.",
+                      "Complete the restaurant name, address, and GPS coordinates before going online.",
                     )}
                   </Text>
                 </TouchableOpacity>

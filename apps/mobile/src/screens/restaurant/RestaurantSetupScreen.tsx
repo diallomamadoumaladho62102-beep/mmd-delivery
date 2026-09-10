@@ -241,7 +241,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
           t("restaurant.setup.alerts.permissionTitle", "Permission"),
           t(
             "restaurant.setup.alerts.permissionPhotos",
-            "Autorise l’accès aux photos pour choisir le logo du restaurant."
+            "Allow photo access to choose the restaurant logo."
           )
         );
         return;
@@ -259,7 +259,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
       setLogoLocalUri(result.assets[0].uri);
     } catch (err: unknown) {
       Alert.alert(
-        t("restaurant.setup.alerts.errorTitle", "Erreur"),
+        t("restaurant.setup.alerts.errorTitle", "Error"),
         toUserFacingError(
           err,
           t("restaurant.setup.alerts.logoPickFailed", "Unable to pick the logo."),
@@ -301,7 +301,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
           t("restaurant.setup.alerts.permissionTitle", "Permission"),
           t(
             "restaurant.setup.alerts.permissionPhotosCover",
-            "Autorise l’accès aux photos pour choisir la couverture du restaurant."
+            "Allow photo access to choose the restaurant cover."
           )
         );
         return;
@@ -319,7 +319,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
       setCoverLocalUri(result.assets[0].uri);
     } catch (err: unknown) {
       Alert.alert(
-        t("restaurant.setup.alerts.errorTitle", "Erreur"),
+        t("restaurant.setup.alerts.errorTitle", "Error"),
         toUserFacingError(
           err,
           t(
@@ -382,7 +382,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
       }));
     } catch (err: unknown) {
       Alert.alert(
-        t("restaurant.setup.alerts.errorTitle", "Erreur"),
+        t("restaurant.setup.alerts.errorTitle", "Error"),
         toUserFacingError(
           err,
           t(
@@ -485,10 +485,10 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
       !restaurantCuisineType
     ) {
       Alert.alert(
-        t("restaurant.setup.alerts.errorTitle", "Erreur"),
+        t("restaurant.setup.alerts.errorTitle", "Error"),
         t(
           "restaurant.setup.alerts.requiredFields",
-          "Remplis le nom, téléphone, adresse, ville, code postal et type de cuisine."
+          "Fill in the name, phone, address, city, ZIP, and cuisine type."
         )
       );
       return;
@@ -505,7 +505,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
       if (userError) throw new Error(userError.message);
 
       if (!user) {
-        throw new Error(t("restaurant.setup.alerts.notLoggedIn", "Pas connecté"));
+        throw new Error(t("restaurant.setup.alerts.notLoggedIn", "Not logged in"));
       }
 
       const geocoded = await geocodeRestaurantAddress(fullAddress);
@@ -623,14 +623,14 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         t("restaurant.setup.alerts.successTitle", "OK"),
         t(
           "restaurant.setup.alerts.successBody",
-          "Profil envoyé. Documents envoyés si ajoutés. En attente d'approbation admin."
+          "Profile submitted. Waiting for admin approval."
         )
       );
 
       navigation.replace("RestaurantGate");
     } catch (err: unknown) {
       Alert.alert(
-        t("restaurant.setup.alerts.errorTitle", "Erreur"),
+        t("restaurant.setup.alerts.errorTitle", "Error"),
         toUserFacingError(err),
       );
     } finally {
@@ -708,7 +708,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
           />
           <Text style={styles.brandTitle}>MMD Delivery</Text>
           <Text style={styles.screenTitle}>
-            {t("restaurant.setup.title", "Restaurant Profile")}
+            {t("restaurant.setup.title", "Restaurant profile")}
           </Text>
         </View>
 
@@ -793,7 +793,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
 
             {iconField(
               "🍽️",
-              t("restaurant.setup.fields.restaurantName", "Restaurant Name"),
+              t("restaurant.setup.fields.restaurantName", "Restaurant name"),
               restaurantName,
               setRestaurantName,
             )}
@@ -912,7 +912,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
             <Text style={styles.ctaText}>
               {t(
                 "restaurant.setup.actions.save",
-                "Save Restaurant Profile",
+                "Save my restaurant profile",
               )}
             </Text>
           )}

@@ -282,7 +282,7 @@ export default function DriverW9Screen() {
           variant="mmd"
         />
         <DriverBrandLoadingState
-          title={t("driver.w9.loadingForm", "Chargement du formulaire W-9...")}
+          title={t("driver.w9.loadingForm", "Loading the W-9 form...")}
         />
       </SafeAreaView>
     );
@@ -306,7 +306,7 @@ export default function DriverW9Screen() {
             {status === "signed" ? (
               <View style={styles.badgeSigned}>
                 <Text style={styles.badgeSignedText}>
-                  ✅ {t("driver.w9.signed", "Signé")}
+                  ✅ {t("driver.w9.signed", "Signed")}
                 </Text>
               </View>
             ) : null}
@@ -318,7 +318,7 @@ export default function DriverW9Screen() {
                 {t("driver.w9.signedDate", "Date de signature")}: {formattedSignedAt}
               </Text>
               <Text style={[styles.metaLine, { textAlign: textAlignStart() }]}>
-                {t("driver.w9.tinMasked", "TIN (masqué)")}: {maskedTin ?? dash}
+                {t("driver.w9.tinMasked", "TIN (masked)")}: {maskedTin ?? dash}
               </Text>
             </View>
           ) : (
@@ -329,7 +329,7 @@ export default function DriverW9Screen() {
                 </Text>
                 <View style={styles.badgeMissing}>
                   <Text style={styles.badgeMissingText}>
-                    {t("driver.w9.missing", "Non signé")}
+                    {t("driver.w9.missing", "Missing")}
                   </Text>
                 </View>
               </View>
@@ -360,7 +360,7 @@ export default function DriverW9Screen() {
               disabled={!downloadUrl}
             >
               <Text style={styles.ghostBtnText}>
-                {t("driver.w9.downloadPdf", "Télécharger PDF")}
+                {t("driver.w9.downloadPdf", "Download W-9 PDF")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -368,7 +368,7 @@ export default function DriverW9Screen() {
 
         <View style={styles.card}>
           <Text style={[styles.cardTitle, { textAlign: textAlignStart() }]}>
-            ✅ {t("driver.w9.checklist", "Liste de vérification")}
+            ✅ {t("driver.w9.checklist", "Checklist")}
           </Text>
 
           <View style={{ marginTop: 2 }}>

@@ -18,7 +18,14 @@
       "openCount": "{{open}} 家营业 · 共 {{total}} 家店铺",
       "shopOpen": "营业中",
       "shopClosed": "已打烊",
-      "productCount": "{{count}} 件可购商品"
+      "productCount": "{{count}} 件可购商品",
+      "currency": "货币",
+      "emptyHint": "请稍后再试，或查看附近区域。",
+      "errorTitle": "无法加载市场",
+      "guestBrowseHint": "可自由浏览店铺和商品。准备下单时再登录。",
+      "loading": "正在加载市场...",
+      "market": "你的市场",
+      "searchPlaceholder": "搜索店铺…"
     },
     "products": {
       "subtitle": "浏览在售商品",
@@ -27,7 +34,14 @@
       "loadError": "无法加载商品",
       "shopClosed": "该店铺当前未营业。",
       "loadFailed": "无法加载商品。",
-      "favoriteFailed": "无法更新收藏。"
+      "favoriteFailed": "无法更新收藏。",
+      "allCategories": "全部",
+      "emptyHint": "试试其他分类，或稍后再来。",
+      "errorTitle": "无法加载商品",
+      "favorite": "☆ 收藏",
+      "favorited": "★ 已收藏",
+      "loading": "正在加载商品…",
+      "search": "搜索商品"
     },
     "details": {
       "addedTitle": "已加入草稿",
@@ -37,7 +51,19 @@
       "quantity": "数量",
       "lineTotal": "小项合计",
       "saving": "正在保存草稿…",
-      "addToDraft": "加入草稿购物车"
+      "addToDraft": "加入草稿购物车",
+      "addToCartAction": "将商品加入购物车",
+      "favorite": "加入收藏",
+      "favoriteAction": "保存收藏",
+      "guestBanner": "以访客浏览 — 登录后即可下单。",
+      "loading": "正在加载商品…",
+      "notFoundHint": "此商品可能已不可用。",
+      "signInBody": "创建账户或登录以{{action}}。没有账户也可以继续浏览商品。",
+      "signInCta": "登录",
+      "signInTitle": "需要登录",
+      "stock": "库存",
+      "title": "商品",
+      "unfavorite": "取消收藏"
     },
     "cart": {
       "title": "Marketplace 草稿",
@@ -70,7 +96,24 @@
       "checkout": "准备结账",
       "comingSoonCta": "Marketplace 结账即将推出",
       "payLive": "支付 Marketplace 订单",
-      "missingCheckoutUrl": "缺少结账链接"
+      "missingCheckoutUrl": "缺少结账链接",
+      "backToMarketplace": "返回商城",
+      "checkoutStillComingSoon": "结账即将推出 — Marketplace 暂无真实支付。",
+      "comingSoonBody": "Marketplace 结账即将推出。仅计算了 shadow 合计。",
+      "deliveryShadowNote": "仅 shadow — 结账与派单尚未上线。",
+      "deliveryShadowNoteLive": "仅为预估 — 已启用实时结账；派司机取决于卖家和地区。",
+      "dropoffPlaceholder": "未选择送达地点 — shadow 可能使用备用距离。",
+      "emptyHint": "浏览店铺并添加商品以继续。",
+      "liveDisabled": "未启用实时商城付款。请使用 shadow checkout。",
+      "loading": "正在加载草稿购物车…",
+      "orderPaidTitle": "订单已付款",
+      "orderStatus": "状态",
+      "paymentCancelledBody": "Stripe 结账已取消或未完成。草稿购物车仍已保存。",
+      "paymentCancelledTitle": "付款未完成",
+      "paymentStatus": "支付",
+      "paymentSuccessBody": "你的商城订单已付款。卖家将更新履约状态。",
+      "paymentSuccessTitle": "付款已确认",
+      "prepareTotals": "刷新结账合计"
     },
     "errors": {
       "unavailable": "您所在区域暂未开放 Marketplace。"
@@ -83,7 +126,12 @@
     "gate": {
       "error": "暂时无法打开卖家中心。",
       "unavailable": "你所在区域尚未开放卖家服务。",
-      "loading": "正在加载卖家中心…"
+      "loading": "正在加载卖家中心…",
+      "checking": "正在检查访问权限…",
+      "disabledTitle": "商城已停用",
+      "errorTitle": "卖家不可用",
+      "regionRestricted": "地区受限",
+      "verifying": "正在验证卖家账户"
     },
     "dashboard": {
       "title": "卖家面板",
@@ -102,7 +150,15 @@
         "rejected": "已拒绝",
         "suspended": "已暂停",
         "pending": "审核中"
-      }
+      },
+      "deleteHint": "永久删除你的 MMD 账户和商城店铺。此操作无法撤销。",
+      "loading": "正在加载控制台",
+      "manageBank": "管理银行账户",
+      "openForOrders": "接受订单中",
+      "payoutBlocked": "完成 Stripe Connect 前暂停结算。收入留在账本中，入驻完成后自动重试。",
+      "payoutsTitle": "结算（Stripe Connect）",
+      "setupPayouts": "设置结算",
+      "stripeError": "无法打开 Stripe Connect。"
     },
     "nav": {
       "home": "首页",
@@ -117,7 +173,13 @@
     },
     "actions": {
       "products": "管理商品",
-      "orders": "查看订单"
+      "orders": "查看订单",
+      "editHint": "更新店铺信息",
+      "editProfile": "编辑店铺",
+      "ordersHint": "查看全部订单",
+      "productsHint": "管理商品目录",
+      "wallet": "钱包",
+      "walletHint": "付款与结算"
     },
     "onboarding": {
       "title": "成为卖家",
@@ -127,14 +189,33 @@
       "submittedBody": "卖家资料待管理员审核。",
       "scopeRequired": "提交前需确定市场范围。",
       "loadFailed": "无法加载您的卖家资料。",
-      "submitFailed": "无法提交您的申请。"
+      "submitFailed": "无法提交您的申请。",
+      "createCardTitle": "创建店铺",
+      "currency": "货币",
+      "editCardTitle": "编辑店铺",
+      "headerSubtitle": "卖家设置",
+      "loadingProfile": "正在加载资料",
+      "market": "你的市场",
+      "save": "保存资料",
+      "updatedBody": "商业资料已保存。",
+      "updatedTitle": "资料已更新"
     },
     "fields": {
       "businessName": "企业名称",
       "country": "国家代码",
       "city": "城市",
       "address": "地址",
-      "phone": "电话"
+      "phone": "电话",
+      "addressPh": "描述店铺地址",
+      "businessNamePh": "输入店铺名称",
+      "cityPh": "输入城市",
+      "coverUrl": "封面图 URL",
+      "coverUrlPh": "https://…",
+      "documentUrls": "文件 URL（每行一个）",
+      "documentUrlsPh": "https://…",
+      "logoUrl": "标志 URL",
+      "logoUrlPh": "https://…",
+      "phonePh": "输入电话"
     },
     "orders": {
       "title": "Marketplace 订单",
@@ -143,7 +224,25 @@
       "deliveryNotLive": "配送尚未上线",
       "deliveryShadowStatus": "shadow 配送",
       "estimatedDelivery": "预估配送",
-      "updateFailed": "无法更新订单。"
+      "updateFailed": "无法更新订单。",
+      "accept": "接受",
+      "emptyBody": "商城订单将显示在这里",
+      "emptyTitle": "暂无订单",
+      "filterAccepted": "已接受",
+      "filterAll": "全部",
+      "filterEmpty": "此筛选下没有订单。",
+      "filterPending": "待处理",
+      "filterRefused": "已拒绝",
+      "loading": "正在获取订单",
+      "outForDelivery": "配送中",
+      "preparing": "准备中",
+      "ready": "已备好",
+      "refundedBody": "订单已拒绝，已通过 Stripe 向客户退款。",
+      "refundedTitle": "退款已完成",
+      "refundRetryBody": "订单已拒绝。Stripe 退款未自动完成，将重试。",
+      "refundRetryTitle": "退款待重试",
+      "refundStatus": "退款",
+      "refuse": "拒绝"
     },
     "products": {
       "title": "商品",
@@ -157,7 +256,21 @@
       "active": "启用中",
       "loadFailed": "加载失败",
       "saveFailed": "保存失败",
-      "updateFailed": "更新失败"
+      "updateFailed": "更新失败",
+      "addFirst": "+ 添加第一个商品",
+      "deleteBody": "永久删除此商品？此操作无法撤销。",
+      "deleteFailed": "无法删除商品。",
+      "deleteTitle": "删除商品",
+      "emptyBody": "添加第一个商品开始建立目录",
+      "emptyTitle": "暂无商品",
+      "inStock": "库存 {{n}}",
+      "invalidPrice": "请输入大于零的有效价格。",
+      "invalidPromo": "促销价无效",
+      "invalidStock": "库存数量无效",
+      "loading": "正在获取商品",
+      "outOfStock": "缺货",
+      "search": "搜索商品…",
+      "inactive": "未启用"
     },
     "wallet": {
       "stripeFailed": "无法打开 Stripe。",
@@ -166,7 +279,29 @@
       "recentTransactions": "最近交易",
       "cashoutUnavailable": "暂不可提现",
       "cashoutRequested": "已请求提现",
-      "cashoutRules": "最低 {{min}} • 每天 1 次提现"
+      "cashoutRules": "最低 {{min}} • 每天 1 次提现",
+      "activity": "最近交易",
+      "available": "可用余额",
+      "awaiting": "待结算",
+      "buckets": "待处理 {{p}} · 已付 {{paid}} · 退款 {{r}}",
+      "cashoutAmount": "金额：{{amount}}",
+      "cashoutConfirmBody": "提取全部可用余额：{{amount}}。\\n\\n最低 {{min}} • 每天 1 次提现。",
+      "cashoutConfirmTitle": "即时提现",
+      "connect": "Stripe Connect",
+      "emptyBody": "销售结算后，打款将显示在这里",
+      "emptyTitle": "暂无结算",
+      "errorTitle": "钱包错误",
+      "fees": "佣金",
+      "loadFailed": "无法加载卖家钱包",
+      "loading": "正在获取钱包",
+      "manageConnect": "管理结算",
+      "paidOut": "已支付",
+      "refunds": "退款",
+      "title": "钱包",
+      "viewOrders": "查看订单"
+    },
+    "signOut": {
+      "title": "退出登录"
     }
   },
   "taxi": {
@@ -247,7 +382,20 @@
         "phoneCharger": "手机充电器",
         "quietVehicle": "安静车辆"
       },
-      "bookSubtitle": "预约行程 — 与包裹配送分开。"
+      "bookSubtitle": "预约行程 — 与包裹配送分开。",
+      "businessWallet": "钱包",
+      "gpsErrorBody": "无法读取当前位置。",
+      "gpsErrorTitle": "GPS",
+      "gpsPermissionBody": "允许定位权限，以便将当前位置用作上车点。",
+      "gpsPermissionTitle": "定位权限",
+      "oneWay": "单程",
+      "returnImmediate": "立即返程",
+      "returnScheduled": "预约返程",
+      "returnScheduledAt": "返程时间（ISO，例如 2026-07-16T18:00:00Z）",
+      "returnWait": "在目的地等待",
+      "roundTrip": "往返",
+      "tripMode": "行程类型",
+      "waitMinutes": "等待分钟数（5–180）"
     },
     "quote": {
       "title": "估价",
@@ -297,7 +445,17 @@
     "history": {
       "title": "出租车行程记录",
       "empty": "暂无出租车行程。",
-      "tapToTrack": "点击追踪"
+      "tapToTrack": "点击追踪",
+      "bookFirst": "预订你的第一次行程",
+      "emptyTitle": "暂无行程",
+      "rate": "评分",
+      "statusCancelled": "已取消",
+      "statusCompleted": "已完成",
+      "statusInProgress": "进行中",
+      "tapToPay": "点按完成付款",
+      "totalRides": "行程总数：{{count}}",
+      "totalSpent": "总花费：{{amount}}",
+      "trackCta": "跟踪 →"
     },
     "favorites": {
       "title": "收藏的司机",
@@ -315,7 +473,10 @@
       "history": "记录",
       "tier": "等级：{{tier}} • 累计：{{lifetime}}",
       "noActivity": "暂无忠诚计划活动。",
-      "loadFailed": "加载失败"
+      "loadFailed": "加载失败",
+      "basedOnRides": "基于 {{count}} 次行程",
+      "driverRating": "司机评分",
+      "ratingEmpty": "完成出租车行程后即可查看司机平均评分。"
     },
     "loyaltyRewards": {
       "title": "忠诚奖励",
@@ -328,7 +489,8 @@
       "book": "预订预约行程",
       "cancel": "取消预约",
       "loadFailed": "加载失败",
-      "cancelFailed": "取消失败"
+      "cancelFailed": "取消失败",
+      "upcoming": "即将到来的行程"
     },
     "scheduledBook": {
       "title": "预约行程",
@@ -342,7 +504,13 @@
       "stop1": "站点 1（可选）",
       "stop2": "站点 2（可选）",
       "finalDestination": "最终目的地",
-      "pricingNote": "价格按整段路线的距离和时长计算。"
+      "pricingNote": "价格按整段路线的距离和时长计算。",
+      "addStop": "添加途经点",
+      "createBlocked": "付款前无法创建行程。",
+      "moveDown": "下",
+      "moveUp": "上",
+      "remove": "移除",
+      "stopN": "途经点 {{n}}（可选）"
     },
     "chat": {
       "title": "出租车聊天",
@@ -350,7 +518,14 @@
       "clientPlaceholder": "给客户发消息…",
       "send": "错误",
       "sendFailed": "发送失败",
-      "imageFailed": "图片失败"
+      "imageFailed": "图片失败",
+      "connectedPassenger": "已连接乘客",
+      "driverSubtitle": "行程对话",
+      "driverTitle": "出租车聊天",
+      "emptyDriverBody": "向乘客发送消息",
+      "emptyTitle": "暂无消息",
+      "loading": "正在加载聊天…",
+      "passenger": "乘客"
     },
     "ride": {
       "paymentPending": "待支付",
@@ -406,7 +581,23 @@
         "pickup_problem": "上车问题",
         "emergency": "紧急情况",
         "other": "其他"
-      }
+      },
+      "call": "呼叫",
+      "callFailed": "暂时无法发起加密通话。",
+      "calling": "正在呼叫…",
+      "callTitle": "呼叫司机",
+      "offline": "离线 — 跟踪可能不是最新",
+      "openingCheckout": "正在打开结账…",
+      "paymentRequiredBeforeDispatch": "付款成功前不会分配司机。完成付款后开始寻找司机。",
+      "payNow": "立即支付",
+      "pickupCodeHint": "上车前向司机出示此码。",
+      "pickupCodePending": "分配司机后，上车码将显示在这里。",
+      "pickupCodeTitle": "你的取件验证码",
+      "share": "分享行程",
+      "shareMessage": "MMD Taxi — {{name}} · {{vehicle}} · 车牌 {{plate}} · ETA {{eta}}\\n上车：{{pickup}}\\n下车：{{dropoff}}",
+      "vehicleFallback": "已分配车辆",
+      "vehicleYear": "{{year}} 年",
+      "waitingDriverGps": "正在等待司机 GPS…"
     },
     "tracking": {
       "safety": {
@@ -570,7 +761,14 @@
         "refund": "退款",
         "adjustment": "调整",
         "total": "合计"
-      }
+      },
+      "loadError": "无法加载收据",
+      "rateDriver": "为司机评分",
+      "ratingErrorBody": "无法保存评分。",
+      "ratingErrorTitle": "评分",
+      "ratingSavedBody": "你的评分已保存。",
+      "ratingSavedTitle": "谢谢",
+      "yourRating": "你的评分"
     },
     "driver": {
       "activeRide": {
@@ -594,7 +792,10 @@
         "completeStop": "完成停靠",
         "verifyHint": "向客户索取 4 位上车码。键盘会自动打开，无需拍照。",
         "verifying": "正在验证…",
-        "stopLine": "停靠 {{order}}：{{address}}（{{status}}）"
+        "stopLine": "停靠 {{order}}：{{address}}（{{status}}）",
+        "client": "客户",
+        "clientFallback": "客户",
+        "clientPhoto": "客户照片"
       }
     },
     "tip": {
@@ -646,7 +847,8 @@
       },
       "language": "语言",
       "errors": {
-        "lang_change_failed": "暂时无法切换语言。"
+        "lang_change_failed": "暂时无法切换语言。",
+        "loadFailed": "无法加载最近动态。"
       },
       "banner": {
         "marketplace": {
@@ -662,7 +864,70 @@
       },
       "tabs": {
         "home": "首页",
-        "orders": "订单"
+        "orders": "订单",
+        "aiShort": "A S K",
+        "inbox": "收件箱",
+        "settings": "设置"
+      },
+      "activity": {
+        "empty": "暂无近期行程。",
+        "title": "最近动态",
+        "unavailable": "最近动态暂时不可用。"
+      },
+      "credit": {
+        "available": "可用",
+        "title": "MMD 余额"
+      },
+      "location": {
+        "unknown": "当前位置"
+      },
+      "rewards": {
+        "member": "成员",
+        "title": "MMD 奖励",
+        "view": "查看奖励"
+      },
+      "scope": {
+        "source": {
+          "fallback": "默认",
+          "gps": "GPS",
+          "manual": "手动选择",
+          "order": "订单地址",
+          "profile": "资料",
+          "savedAddress": "已存地址",
+          "unknown": "未知"
+        }
+      },
+      "search": {
+        "placeholder": "你想去哪里，或需要什么？",
+        "subtitle": "你想去哪里，或需要什么？",
+        "title": "搜索 MMD"
+      },
+      "services": {
+        "delivery": "配送",
+        "deliverySub": "寄送任意物品",
+        "food": "美食",
+        "foodSub": "立即下单",
+        "marketplace": "商城",
+        "marketplaceSub": "购物省钱",
+        "taxi": "出租车",
+        "taxiSub": "随走随乘",
+        "title": "服务"
+      },
+      "v4": {
+        "comingSoon": "即将上线",
+        "language": {
+          "subtitle": "为 MMD 选择你偏好的语言。"
+        },
+        "service": {
+          "marketplace": {
+            "soon": "发现本地店铺"
+          }
+        }
+      },
+      "viewAll": "查看全部",
+      "wallet": {
+        "subtitle": "MMD 余额与付款记录",
+        "title": "钱包"
       }
     },
     "profile": {
@@ -701,7 +966,44 @@
         "address": "地址",
         "city": "城市",
         "address_verified": "已验证地址"
-      }
+      },
+      "addPhoto": "添加照片",
+      "addressTitle": "地址",
+      "cityError": "请输入有效城市。",
+      "cityTitle": "城市",
+      "fullNameError": "请输入全名。",
+      "fullNameTitle": "名称",
+      "phoneTitle": "电话",
+      "photo": "照片",
+      "placeholders": {
+        "city": "例如：Brooklyn",
+        "country": "US",
+        "fullName": "例如：Mamadou Diallo",
+        "phone": "例如：929xxxxxxx",
+        "postalCode": "11207",
+        "state": "NY",
+        "address": "搜索地址…"
+      },
+      "saveAndContinue": "保存并继续",
+      "signOut": {
+        "body": "退出此设备？账户和数据会保留。",
+        "button": "退出登录",
+        "confirm": "退出登录",
+        "error": "暂时无法退出登录。",
+        "title": "退出登录"
+      },
+      "permissionPhotosBody": "允许访问相册以选择图片。",
+      "mainAddressLabel": "主要地址",
+      "addressSaveUpdateError": "地址未保存 (update)：",
+      "addressSaveInsertError": "地址未保存 (insert)：",
+      "phoneError": "请输入有效号码。",
+      "addressError": "请输入有效地址。",
+      "addressMapboxError": "从列表中选择 Mapbox 地址以规范化。",
+      "saveProfileError": "无法保存 (client_profiles)：",
+      "saved": "资料已保存。",
+      "saveError": "无法保存。",
+      "addressVerifiedBadge": "地址已验证",
+      "hint": "提示：州 = \"NY\"，国家 = \"US\"。"
     },
     "deliveryRequest": {
       "total": "合计",
@@ -750,7 +1052,43 @@
       "callFailed": "暂时无法发起加密通话。",
       "chatDriver": "聊天",
       "loadingTitle": "正在加载配送…",
-      "summaryTitle": "配送摘要"
+      "summaryTitle": "配送摘要",
+      "alreadyRated": "评价已提交",
+      "apiUrlMissing": "缺少 EXPO_PUBLIC_API_URL。请将其设为你的 Web API 地址。",
+      "cancelAssignedHint": "分配后取消可能无法退款。",
+      "cancelAssignedMessage": "可能已分配司机或系统。现在取消可能无法退款。",
+      "cancelNotAllowed": "此配送已无法从此屏幕取消。",
+      "cancelPendingHint": "行程仍待处理时可取消。",
+      "cancelPendingMessage": "因行程仍待处理，此次取消应可申请全额退款审核。",
+      "createdAt": "创建于",
+      "deliveredAt": "确认送达于",
+      "distance": "距离",
+      "driverLiveLocation": "司机位置已更新 {{time}}",
+      "driverMissingGps": "已分配司机，但 GPS 暂不可用。",
+      "dropoffAddress": "送达地址",
+      "dropoffCodeHintOtp": "把此码分享给收件人。司机输入即可确认送达，无需拍照。",
+      "dropoffCodePending": "关联配送订单就绪后，送达码将显示在这里。",
+      "dropoffCodeTitle": "你的送达验证码",
+      "dropoffPhoto": "送达凭证照片",
+      "etaUnavailable": "实时预计到达时间不可用",
+      "lastUpdate": "最近更新：",
+      "offline": "离线 — 地图可能过时",
+      "paidAt": "付款于",
+      "pickedUpAt": "取件于",
+      "pickupAddress": "取件地址",
+      "pickupCodeHintOtp": "取件时向司机出示此码。使用验证码时无需拍照。",
+      "pickupCodePending": "关联配送订单就绪后，取件码将显示在这里。",
+      "pickupCodeTitle": "你的取件验证码",
+      "pickupPhoto": "取件凭证照片",
+      "rateDriver": "为司机评分",
+      "ratingComment": "可选备注",
+      "ratingFailed": "无法保存评分。",
+      "ratingSaved": "司机评分已保存。",
+      "refundFull": "已取消。退款状态：需全额退款。",
+      "refundNone": "已取消。退款状态：不予退款。",
+      "saved": "已保存",
+      "sendRating": "提交评分",
+      "waitingDriverGps": "正在等待司机 GPS…"
     },
     "orderHistory": {
       "title": "订单历史",
@@ -777,7 +1115,8 @@
         "completed": "已完成",
         "cancelled": "已取消",
         "inProgress": "进行中"
-      }
+      },
+      "trackTitle": "跟踪订单"
     },
     "auth": {
       "forgotPasswordEmailHint": "请输入邮箱，然后点击忘记密码。",
@@ -786,7 +1125,13 @@
       "cannotSendEmail": "无法发送邮件。",
       "addressOptional": "地址（可选）",
       "addressOptionalHint": "你可以稍后在下单餐食、包裹或叫车时添加配送地址。",
-      "smsConsent": "我同意接收 MMD Delivery 发送的关于账户、验证、订单、配送、包裹、出租车行程和客户支持的自动信息与交易短信。短信频率不定。可能产生短信和流量费用。同意不是购买条件。回复 STOP 取消，回复 HELP 获取帮助。可选。"
+      "smsConsent": "我同意接收 MMD Delivery 发送的关于账户、验证、订单、配送、包裹、出租车行程和客户支持的自动信息与交易短信。短信频率不定。可能产生短信和流量费用。同意不是购买条件。回复 STOP 取消，回复 HELP 获取帮助。可选。",
+      "emailNotVerified": "登录前请先确认邮箱。",
+      "referral": {
+        "autoFillHint": "如果你打开了 MMD 推荐链接，代码会自动显示在这里。",
+        "placeholder": "MMD 推荐码",
+        "title": "推荐码"
+      }
     },
     "restaurantMenu": {
       "pickupAddressLabel": "取餐地址（餐厅 / 起点）",
@@ -885,7 +1230,10 @@
         "fillAddressesFirst": "请先填写取餐和送餐地址。",
         "incompleteAddressCreateBody": "请先输入完整地址再继续。",
         "missingOrderBody": "请先创建订单，然后才能付款。",
-        "paymentSuccessBody": "谢谢。付款已确认。餐厅现在可以接受订单。"
+        "paymentSuccessBody": "谢谢。付款已确认。餐厅现在可以接受订单。",
+        "distanceTooFarWithMiles": "距离过远（{{miles}} 英里）。\\n\\n请修正地址（邮编 / 城市 / 州）。",
+        "paymentSuccessBodyWarn": "谢谢。Stripe 已确认付款。订单将很快通过 Stripe 标记为已付，或请几秒后再试。",
+        "verifyAddressBody": "距离非常远：{{miles}} 英里。\\n\\n请核对邮编、城市和州。\\n例如：\\"
       },
       "errors": {
         "paymentFailed": "目前无法付款。",
@@ -903,7 +1251,11 @@
         "sessionExpired": "会话已过期。请重新登录后再试。",
         "estimateFailed": "目前无法计算配送估价。",
         "distanceTooFarWithMiles": "距离过远（{{miles}} 英里）。请核对地址。",
-        "missingSession": "会话已过期。请重新登录后再试。"
+        "missingSession": "会话已过期。请重新登录后再试。",
+        "invalidDistanceTime": "Mapbox 返回的距离或时间无效。",
+        "invalidGps": "GPS 坐标无效。请重新估价。",
+        "invalidJson": "距离服务返回无效响应。",
+        "legacyDisabled": "已禁用直接创建订单。请通过餐厅菜单安全点餐。"
       },
       "cards": {
         "autoEstimate": "自动估价"
@@ -932,7 +1284,8 @@
         "pickupLabel": "取餐地址",
         "dropoffLabel": "送餐地址",
         "pickupLockedHint": "餐厅地址已自动填写。",
-        "dropoffPlaceholder": "例如：客户地址"
+        "dropoffPlaceholder": "例如：客户地址",
+        "pickupPlaceholder": "例如：686 Vermont St Brooklyn NY 11207"
       },
       "checkout": {
         "title": "结账",
@@ -950,7 +1303,215 @@
       "hints": {
         "autoEstimate": "当地址看起来完整时，稍等片刻会自动开始估价。",
         "checkoutSteps": "1）估价 → 2）创建订单 → 3）用 Stripe 付款。"
+      },
+      "footer": {
+        "steps": "1）估价 → 2）创建订单 → 3）用 Stripe 付款。"
       }
+    },
+    "chat": {
+      "empty": {
+        "body": "订单生效后即可与司机开始对话。",
+        "title": "暂无消息"
+      },
+      "errors": {
+        "missingOrder": "未找到订单。"
+      },
+      "titlePrefix": "客户"
+    },
+    "inbox": {
+      "alerts": {
+        "loginAsClient": "请以客户身份登录。"
+      },
+      "badges": {
+        "delivered": "已送达",
+        "inProgress": "进行中"
+      },
+      "empty": {
+        "hint": "你与司机和支持的对话将显示在这里。",
+        "noConversations": "暂无对话",
+        "notLoggedIn": "请以客户身份登录以查看对话。"
+      },
+      "lastMessage": {
+        "attachment": "附件",
+        "none": "无消息"
+      },
+      "loading": {
+        "prepare": "正在准备收件箱…"
+      },
+      "orderFallback": "订单",
+      "search": {
+        "placeholder": "搜索（#id，餐厅，状态）…"
+      },
+      "sections": {
+        "delivered7d": "已送达（7 天）",
+        "inProgress": "进行中",
+        "inProgressEmpty": "没有进行中的订单。",
+        "deliveredEmpty": "近 7 天没有配送。"
+      },
+      "subtitle": "进行中 + 已送达（7 天）",
+      "title": "收件箱",
+      "errors": {
+        "loadFailed": "无法加载收件箱。"
+      }
+    },
+    "notifications": {
+      "archive": "归档",
+      "archiveError": "无法归档。",
+      "emptyBody": "推送提醒和账户更新将显示在这里。",
+      "emptyTitle": "暂无通知",
+      "errorTitle": "无法加载",
+      "fallbackTitle": "通知",
+      "loadError": "无法加载通知。",
+      "readError": "无法标为已读。",
+      "title": "通知",
+      "unreadCount": "{{count}} 未读",
+      "upToDate": "已全部看过"
+    },
+    "orderDetails": {
+      "alreadyPaid": "已付款 ✅",
+      "alreadyPaidHint": "此订单已付款。可等待餐厅/司机进度。",
+      "alreadyRated": "评价已提交",
+      "alreadyRatedBtn": "已提交 ✅",
+      "callDriver": "呼叫",
+      "callFinalOrder": "此订单已禁用通话。",
+      "callRestaurant": "呼叫",
+      "callSupport": "呼叫",
+      "cancelAcceptedHint": "餐厅已接单。取消可能无法退款。",
+      "cancelError": "无法取消此订单。",
+      "cancelFullRefundHint": "因餐厅尚未接单，此次取消应可申请全额退款审核。",
+      "cancelNoRefundHint": "餐厅已接单。现在取消可能无法退款。",
+      "cancelOrder": "取消订单",
+      "cancelPendingHint": "订单仍待餐厅接单时可取消。",
+      "cancelRefundFull": "已取消。退款状态：需全额退款。",
+      "cancelRefundNone": "已取消。退款状态：不予退款。",
+      "cancelSuccess": "订单已取消",
+      "cancelTitle": "取消订单",
+      "cancelUnavailable": "此订单已无法从此屏幕取消。",
+      "cards": {
+        "delivery": "配送",
+        "route": "路线"
+      },
+      "chatClosed": "此订单已禁用消息。",
+      "commentOptional": "备注（可选）",
+      "commentPlaceholder": "例如：沟通好、配送快…",
+      "communicationHint": "可致电或发消息给餐厅、司机或 MMD 支持，而无需暴露真实号码。",
+      "communicationTitle": "沟通",
+      "confirmCancel": "取消订单",
+      "deliveryFee": "配送费：",
+      "distance": "距离：",
+      "driver": "司机：",
+      "driverAssigned": "已分配 ✅",
+      "driverContact": "司机",
+      "driverNotAssignedCall": "此订单尚未分配司机。",
+      "driverNotAssignedMessage": "此订单尚未分配司机。",
+      "driverPending": "尚未分配",
+      "dropoff": "送达",
+      "dropoffCodeHintOtp": "送达时向司机出示此码。使用验证码时无需拍照。",
+      "dropoffCodeTitle": "你的送达验证码",
+      "errors": {
+        "loadOrder": "无法加载订单。"
+      },
+      "etaUnavailable": "实时预计到达时间不可用",
+      "forReview": "供你评价",
+      "live": "实时跟踪：",
+      "liveOn": "进行中 ✅",
+      "liveWaiting": "等待中…",
+      "loadingTitle": "订单",
+      "map": {
+        "canceled": "此订单已取消",
+        "completed": "配送已完成",
+        "live": "实时行程"
+      },
+      "message": "消息",
+      "mustBeLoggedInToPay": "支付前必须先登录。",
+      "notOwnerError": "你未以订单所有者身份登录。",
+      "openRewards": "打开 MMD 奖励查看真实积分、余额和等级。",
+      "paid": "已付款 ✅",
+      "pay": "付款",
+      "payment": "状态：",
+      "paymentClosed": "此订单已关闭付款。",
+      "paymentConfirmed": "付款已确认",
+      "paymentDelayHint": "Stripe 已收到付款 ✅\\n应用确认仍在同步。\\n请稍候几秒 — 此屏幕将自动刷新。",
+      "paymentError": "付款出错。",
+      "paymentSheetPendingConfirm": "已收到付款。订单将很快通过 Stripe 标记为已付。请几秒后下拉刷新 — 请勿再次付款。",
+      "paymentStillSyncing": "应用正在确认付款。无需再次支付。",
+      "pickup": "取件",
+      "points": "积分",
+      "rateDriverTitle": "为司机评分",
+      "ratingHint": "你的评价有助于提升质量。反馈可获忠诚积分 ⭐",
+      "restaurantContact": "餐厅",
+      "restaurantVisible": "餐厅资料可见",
+      "reviewAndTipPaid": "评价已保存。小费付款已确认。",
+      "reviewSaved": "评价已保存。如已选择则已添加小费。",
+      "reviewSaveError": "无法保存你的评价。",
+      "reviewTitle": "评价",
+      "rewardLine": "你将获得",
+      "sendReview": "提交评价 ⭐ + 小费",
+      "status": "状态：",
+      "stripeHint": "由 Stripe 提供安全付款（Web Checkout）。",
+      "successBody": "此订单的忠诚积分已计入你的 MMD 奖励余额。",
+      "successTitle": "配送成功",
+      "supportContact": "MMD 支持",
+      "tipAlreadyGiven": "已给过小费",
+      "tipMaxHint": "建议上限：",
+      "tipMaxHint2": "（之后可以调整。）",
+      "tipOptional": "小费（可选）",
+      "tipOtherAmount": "其他金额",
+      "tipPaymentRequired": "评价已保存，但需支付小费。请重试小费付款。",
+      "tipPlaceholder": "例如：25",
+      "total": "总计：",
+      "unpaid": "未支付",
+      "verifyingPayment": "正在验证付款…",
+      "waitingDriverLocation": "正在等待司机位置…"
+    },
+    "security": {
+      "accountLabel": "账户",
+      "confirmLabel": "确认密码",
+      "errorTitle": "错误",
+      "genericError": "暂时无法更新密码。请重试。",
+      "hide": "隐藏",
+      "min8": "密码至少需要 8 个字符。",
+      "mismatch": "两次输入的密码不一致。",
+      "newPasswordLabel": "新密码",
+      "passwordTitle": "密码",
+      "save": "更新密码",
+      "sessionBody": "你尚未登录。",
+      "sessionTitle": "会话",
+      "show": "显示",
+      "successBody": "密码已更改。",
+      "successTitle": "密码已更新",
+      "tip": "至少使用 8 个字符。你将保持在此设备上登录。",
+      "title": "安全"
+    },
+    "settings": {
+      "about": "关于",
+      "account": "账户",
+      "appVersion": "应用版本",
+      "changePassword": "修改密码",
+      "danger": "危险",
+      "language": "语言",
+      "notifications": "通知",
+      "platform": "平台",
+      "privacy": "隐私",
+      "profile": "资料",
+      "security": "安全",
+      "social": "关注 MMD Delivery",
+      "title": "设置"
+    },
+    "wallet": {
+      "available": "可用余额",
+      "defaultNote": "MMD 余额在结账时抵扣。账本显示扣款与退款 — 此处不可提现或充值。",
+      "emptyBody": "扣款、退款和余额变动将显示在这里。",
+      "emptyTitle": "暂无交易",
+      "errorBody": "请检查网络后重试。",
+      "errorTitle": "无法加载钱包",
+      "history": "记录",
+      "ledgerBalance": "账本余额",
+      "loadFailed": "无法加载钱包",
+      "noCashout": "此钱包不可提现、Connect 或充值。充值仅限 Business 钱包。",
+      "openLoyalty": "积分与推荐",
+      "refunded": "已退款",
+      "title": "钱包"
     }
   },
   "location": {
@@ -974,7 +1535,8 @@
     "gpsTimeout": "GPS 超时",
     "permissionRequired": "需要位置权限",
     "gpsUnavailable": "无法读取 GPS",
-    "noPlacesFound": "未找到地点"
+    "noPlacesFound": "未找到地点",
+    "missingMarketScope": "此选择器需要市场范围。"
   },
   "auth": {
     "resetPassword": {
@@ -992,10 +1554,23 @@
       "updated": "密码已更新，现在可以登录。",
       "updateFailed": "无法更新密码。",
       "checkingSession": "正在检查会话…",
-      "errorTitle": "错误"
+      "errorTitle": "错误",
+      "confirmPassword": "确认密码",
+      "confirmPlaceholder": "确认密码",
+      "hide": "隐藏",
+      "newPasswordPlaceholder": "新密码",
+      "newSubtitle": "输入新密码以恢复你的 MMD Delivery 账户。",
+      "password": "密码",
+      "preparingLink": "正在准备链接…",
+      "show": "显示",
+      "update": "更新密码"
     },
     "loginRequiredTitle": "需要登录",
-    "loginRequiredBody": "请先登录再创建订单。"
+    "loginRequiredBody": "请先登录再创建订单。",
+    "title": "登录",
+    "errors": {
+      "sessionExpired": "会话已过期。请重新登录后再试。"
+    }
   },
   "driver": {
     "w9": {
@@ -1028,7 +1603,25 @@
       "openPdfFailed": "无法打开 PDF",
       "saved": "已保存。",
       "submitFailed": "提交失败",
-      "tinKeepCurrent": "留空则保留当前 TIN"
+      "tinKeepCurrent": "留空则保留当前 TIN",
+      "address1Required": "地址第 1 行（必填）",
+      "address2Optional": "地址第 2 行（可选）",
+      "businessNameOptional": "公司名称（可选）",
+      "certification": "提交即表示你在伪证处罚下证明 TIN 正确，且你是美国人（或美国居民外籍人士）。",
+      "cityRequired": "城市（必填）",
+      "entityTypeRequired": "实体类型（必填）",
+      "formScreenTitle": "W-9 表格",
+      "formTitle": "W-9 表格",
+      "legalNameRequired": "法定姓名（必填）",
+      "signedNameRequired": "签署姓名（必填）",
+      "stateRequired": "州（必填）",
+      "submitting": "正在提交…",
+      "tinOptional": "TIN（可选 • 9 位）",
+      "tinPrivacy": "完整 TIN 不会回显。我们只显示遮罩后的后 4 位。",
+      "tinRequired": "TIN（必填 • 9 位）",
+      "tinType": "TIN 类型",
+      "zipRequired": "邮编（必填）",
+      "loadingForm": "正在加载 W-9 表格..."
     },
     "marketplace": {
       "status": {
@@ -1045,7 +1638,8 @@
     },
     "home": {
       "kind": {
-        "marketplace": "Marketplace 配送"
+        "marketplace": "Marketplace 配送",
+        "delivery": "MMD Delivery"
       },
       "identityPhotoVerification": {
         "title": "照片验证（安全）",
@@ -1127,18 +1721,87 @@
         "goBusyAreaSub": "导航至高需求区域",
         "goOffline": "下线",
         "goOfflineSub": "你将停止接收请求"
-      }
+      },
+      "busyArea": {
+        "empty": "附近暂无带取件点的开放请求。",
+        "title": "繁忙区域"
+      },
+      "driversNearbyDetail": "在你附近",
+      "driversWithin": "{{miles}} 英里内",
+      "errors": {
+        "decline": "无法拒绝此要约。",
+        "offerUnavailable": "此要约已不可用。可能已过期或被其他司机接走。"
+      },
+      "hotspots": {
+        "needGps": "开启 GPS 以查看需求热点。",
+        "title": "热点"
+      },
+      "map": {
+        "layers": "地图图层",
+        "recenter": "回到我的位置",
+        "safety": "安全",
+        "compass": "重新朝向北"
+      },
+      "outOfServiceMessage": "你已进入 MMD Delivery 尚未运营的区域。\\n你可以完成当前行程，但在返回已开通县之前不会收到新请求。",
+      "outOfServiceTitle": "不在服务区域",
+      "searching": {
+        "msg1": "正在搜索附近最佳行程",
+        "msg2": "正在分析最赚钱的路线",
+        "msg4": "与你的区域实时同步",
+        "msg3": "优先附近和紧急请求"
+      },
+      "wait": {
+        "connectedDemand": "{{count}} 个附近请求 · {{zone}} · {{nearest}}",
+        "connectedZone": "基于 {{zone}} 需求的实时预估 · {{nearest}}",
+        "goOnline": "上线即可开始接收附近请求。",
+        "gpsLive": "实时 GPS",
+        "offlineSub": "你将不会收到配送请求",
+        "offlineTitle": "你已离线",
+        "title": "在你的区域等待"
+      },
+      "welcomeBackMessage": "欢迎回来。\\n你现在可以接收新请求。",
+      "welcomeBackTitle": "欢迎回来"
     },
     "profile": {
       "transportValidationRequired": "启用此交通方式前需先通过资料审核。",
-      "activeFleet": "当前车辆（车队）"
+      "activeFleet": "当前车辆（车队）",
+      "docs": {
+        "licenseBack": "驾照背面",
+        "licenseFront": "驾照正面",
+        "profilePhoto": "个人照片",
+        "idFront": "证件正面",
+        "idBack": "证件背面"
+      },
+      "licenseExpiry": "驾照到期",
+      "licenseNumber": "驾照号码",
+      "manageFleet": "管理车队",
+      "missing": "缺少",
+      "missingRequirements": "缺少所需项",
+      "placeholderLicenseNumber": "驾照号码"
     },
     "account": {
       "createProfileFailed": "暂时无法创建司机资料。",
       "loadProfileFailed": "暂时无法加载司机资料。",
       "loadDocsFailed": "暂时无法加载资料。",
       "loadStatusFailed": "无法加载账户状态。",
-      "logoutFailed": "出现临时问题，请重试。"
+      "logoutFailed": "出现临时问题，请重试。",
+      "changePassword": "修改密码",
+      "changePasswordHint": "更新登录凭据",
+      "documentsHint": "上传所需文件",
+      "guidedActive": "你的账户已激活",
+      "guidedIncomplete": "完成设置以激活",
+      "guidedStatus": "引导状态",
+      "needHelp": "需要帮助？",
+      "needHelpHint": "联系支持团队",
+      "payoutHint": "设置收款方式",
+      "setupSubtitle": "完善账户后即可开始接单",
+      "setupTitle": "资料与设置",
+      "statusActive": "启用中",
+      "statusIncomplete": "未完成",
+      "unnamed": "司机",
+      "vehicleHint": "添加车辆信息",
+      "zonePrefs": "区域与偏好",
+      "zonePrefsHint": "可用性与服务区域"
     },
     "auth": {
       "alert": {
@@ -1197,23 +1860,23 @@
       "photosPermissionVehicle": "请允许访问相册以选择车辆照片。",
       "title": "Vehicle",
       "subtitleDetails": "Vehicle details",
-      "loading": "Loading vehicle...",
-      "addTitle": "Add a vehicle",
+      "loading": "正在加载车辆...",
+      "addTitle": "添加车辆",
       "chooseTypeFirst": "Choose the type first",
       "mode": {
         "car": "Car",
         "carHint": "Car - food, parcels, taxi",
-        "moto": "Motorcycle",
+        "moto": "摩托车",
         "motoHint": "Motorcycle - fast delivery",
         "bike": "Bicycle",
         "bikeHint": "Bicycle - no motorized fleet required"
       },
-      "categorySynced": "Category is synced automatically",
-      "bikeTitle": "Bicycle",
-      "bikeSubtitle": "No motorized vehicle required",
-      "changeType": "Change type",
+      "categorySynced": "类别会自动同步",
+      "bikeTitle": "自行车",
+      "bikeSubtitle": "无需机动车辆",
+      "changeType": "更改类型",
       "backToTypeSelection": "Back to Car / Motorcycle / Bicycle selection",
-      "taxiCategoriesHint": "Taxi categories are calculated by the server.",
+      "taxiCategoriesHint": "出租车类别由服务器计算。",
       "photoPreviewA11y": "Vehicle photo preview",
       "field": {
         "make": "Make",
@@ -1236,9 +1899,9 @@
         "quiet": "Quiet vehicle",
         "nonSmoking": "Non-smoking"
       },
-      "screenTitle": "Vehicle",
-      "detailsSubtitle": "Vehicle details",
-      "chooseType": "Choose the type first"
+      "screenTitle": "车辆",
+      "detailsSubtitle": "车辆详情",
+      "chooseType": "请先选择类型"
     },
     "vehicles": {
       "errorTitle": "错误",
@@ -1251,26 +1914,26 @@
       "deleteConfirm": "删除",
       "deleteFailed": "暂时无法删除该车辆。",
       "title": "我的车辆",
-      "subtitleManage": "Manage your vehicle fleet",
-      "subtitleActive": "Only one active vehicle at a time",
-      "loading": "Loading your vehicles...",
-      "fallbackName": "Vehicle",
-      "statusActive": "Active",
-      "statusPending": "Pending",
-      "statusInactive": "Inactive",
+      "subtitleManage": "管理你的车队",
+      "subtitleActive": "同一时间只能有一辆启用车辆",
+      "loading": "正在加载你的车辆...",
+      "fallbackName": "车辆",
+      "statusActive": "有效",
+      "statusPending": "待处理",
+      "statusInactive": "未启用",
       "fuel": {
-        "electric": "Electric",
-        "hybrid": "Hybrid",
-        "plugInHybrid": "Plug-in hybrid",
-        "gasoline": "Gasoline",
-        "diesel": "Diesel"
+        "electric": "电动",
+        "hybrid": "混合动力",
+        "plugInHybrid": "插电混动",
+        "gasoline": "汽油",
+        "diesel": "柴油"
       },
-      "statusLabel": "Status: {{status}}",
-      "adminNote": "Admin: {{note}}",
-      "offlineRequired": "Go offline required",
-      "activate": "Activate",
-      "edit": "Edit",
-      "delete": "Delete"
+      "statusLabel": "状态：{{status}}",
+      "adminNote": "管理员：{{note}}",
+      "offlineRequired": "需先下线",
+      "activate": "启用",
+      "edit": "编辑",
+      "delete": "删除"
     },
     "services": {
       "errorTitle": "错误",
@@ -1280,24 +1943,24 @@
       "minOneTitle": "我的服务",
       "minOneBody": "请至少启用一项服务以接收任务。",
       "title": "我的服务",
-      "subtitle": "Manage your mission types",
-      "loading": "Loading your services...",
+      "subtitle": "管理你的任务类型",
+      "loading": "正在加载你的服务...",
       "foodLabel": "Food delivery",
-      "foodDesc": "Restaurant orders and meal delivery",
+      "foodDesc": "餐厅订单与餐食配送",
       "packageLabel": "Package delivery",
-      "packageDesc": "Parcel and errand delivery",
+      "packageDesc": "包裹与跑腿配送",
       "taxiLabel": "Taxi rides",
-      "taxiDesc": "Taxi rides based on your vehicle eligibility categories",
+      "taxiDesc": "按车辆资格类别承接出租车行程",
       "acceptAlsoStandardLabel": "Also accept Standard rides",
       "acceptAlsoStandardDesc": "Comfort, XL or Wheelchair can also receive Standard rides",
-      "food": "Food delivery",
-      "package": "Package delivery",
-      "taxi": "Taxi rides",
-      "acceptStandard": "Also accept Standard rides",
-      "acceptStandardDesc": "Comfort, XL or Wheelchair can also receive Standard rides",
-      "availableSection": "Available services",
-      "advancedSection": "Advanced options",
-      "enableTaxiForAdvanced": "Enable Taxi rides to manage advanced options.",
+      "food": "餐饮配送",
+      "package": "包裹配送",
+      "taxi": "出租车行程",
+      "acceptStandard": "同时接受 Standard 行程",
+      "acceptStandardDesc": "Comfort、XL 或 Wheelchair 也可接收 Standard 行程",
+      "availableSection": "可用服务",
+      "advancedSection": "高级选项",
+      "enableTaxiForAdvanced": "启用出租车行程以管理高级选项。",
       "saving": "正在保存…",
       "refreshPreferences": "刷新偏好"
     },
@@ -1315,25 +1978,25 @@
       "stripeRequiredBody": "请完成 Stripe Identity 验证以继续。资料仅由 Stripe 处理。",
       "verify": "验证",
       "title": "身份验证",
-      "loading": "Loading…",
-      "waitHint": "Please wait while we verify your identity.\nThis may take a few moments.",
-      "statusInProgress": "Verification in progress",
-      "statusRejected": "Verification refused",
-      "statusVerified": "Identity Confirmed",
-      "statusExpired": "Verification expired",
-      "intro": "To protect clients, drivers and the MMD Delivery platform, we need to confirm your identity. Please take a clear selfie of your face.",
-      "somethingWrong": "Something went wrong.",
-      "uploading": "Secure selfie upload…",
-      "submitting": "Submitting…",
-      "retakeSelfie": "Retake selfie",
-      "takeSelfie": "Take a Selfie",
+      "loading": "加载中…",
+      "waitHint": "正在验证你的身份，请稍候。\n可能需要一点时间。",
+      "statusInProgress": "正在验证",
+      "statusRejected": "验证被拒绝",
+      "statusVerified": "身份已确认",
+      "statusExpired": "验证已过期",
+      "intro": "为保护客户、司机和 MMD Delivery 平台，我们需要确认你的身份。请拍摄一张面部清晰的自拍。",
+      "somethingWrong": "出了点问题。",
+      "uploading": "正在安全上传自拍…",
+      "submitting": "提交中…",
+      "retakeSelfie": "重拍自拍",
+      "takeSelfie": "拍摄自拍",
       "screenTitle": "身份验证",
-      "pendingTitle": "Pending Validation",
-      "pendingBody": "Your selfie has been received. Our team or automated system is validating your identity. You can go online once verification is complete.",
-      "refreshStatus": "Refresh Status",
-      "successBody": "You can now go online.",
-      "problemTitle": "Verification problem",
-      "selfieHint": "Selfie required — centered face, good lighting",
+      "pendingTitle": "待验证",
+      "pendingBody": "已收到你的自拍。团队或自动系统正在核验身份。验证完成后即可上线。",
+      "refreshStatus": "刷新状态",
+      "successBody": "你现在可以上线。",
+      "problemTitle": "验证问题",
+      "selfieHint": "需要自拍 — 面部居中、光线充足",
       "submitForVerification": "提交验证",
       "cameraIssue": "相机有问题？"
     },
@@ -1465,7 +2128,8 @@
       },
       "alert": {
         "boostSelected": {
-          "title": "已选择加成 ✅"
+          "title": "已选择加成 ✅",
+          "body": "正式启用（DB）= 下一步。"
         },
         "help": {
           "title": "帮助"
@@ -1478,10 +2142,14 @@
         "claim": "领取",
         "claimed": "已领取",
         "earned": "已获得",
-        "inProgress": "进行中"
+        "inProgress": "进行中",
+        "active": "启用中",
+        "available": "可用"
       },
       "boostSubtitle": {
-        "timeWindow": "加成在限定时间内有效。"
+        "timeWindow": "加成在限定时间内有效。",
+        "percent": "司机分成额外 +{value}%。",
+        "perOrder": "已加奖金：每单已送达 +${value}。"
       },
       "empty": {
         "activeBoost": "暂无进行中的加成。",
@@ -1506,7 +2174,17 @@
         "deliveryPlusBonus": "（配送 + 奖励）",
         "events": "活动：",
         "payoutEstimated": "预计收款"
-      }
+      },
+      "progress": "进度",
+      "tabs": {
+        "boosts": "促销加速",
+        "payout": "预计收款"
+      },
+      "challenge": {
+        "progress": "进度：{value}",
+        "reward": "奖励：{amount}"
+      },
+      "footer": "已连接 Supabase：有效加成 + 奖励活动 + 挑战 + 预估结算。"
     },
     "opps": {
       "actions": {
@@ -1523,7 +2201,8 @@
         "removedBody": "已移除：{{title}}",
         "removedTitle": "已移除 ✅",
         "savedBody": "已添加：{{title}}",
-        "savedTitle": "已保存 ✅"
+        "savedTitle": "已保存 ✅",
+        "joinFailed": "无法加入。"
       },
       "demo": {
         "bkEvent": {
@@ -1589,11 +2268,15 @@
         "recommended": "推荐",
         "soon": "即将推出"
       },
-      "title": "机会"
+      "title": "机会",
+      "emptyTitle": "今天暂无机会"
     },
     "map": {
       "gpsEnableFailed": "无法启用 GPS。",
-      "preparingNavigation": "Preparing navigation…"
+      "preparingNavigation": "正在准备导航…",
+      "orderNotFound": "从订单详情打开导航。",
+      "missingCoords": "此步骤缺少 GPS 坐标。",
+      "orderLoadError": "无法加载行程。"
     },
     "hotspots": {
       "title": "需求热点",
@@ -1655,37 +2338,170 @@
           "failed": "失败",
           "processing": "处理中",
           "unknown": "未知"
-        }
+        },
+        "emptyBody": "已完成的提现将显示在这里。",
+        "emptyTitle": "暂无结算",
+        "title": "最近结算"
+      },
+      "bankAvailable": {
+        "hint": "Stripe 现可提：{{amount}} — 符合条件可即时提现，否则周日凌晨 4:00 ET 银行打款。非待处理/结算中。"
+      },
+      "breakdown": {
+        "pending": "Stripe 结算待处理：{{settling}} · 等待平台转账：{{awaiting}}"
+      },
+      "cashout": {
+        "authError": "请重新登录。"
+      },
+      "completed": {
+        "title": "银行收款"
+      },
+      "confirmed": {
+        "hint": "已确认收入：{{amount}}"
+      },
+      "earnings": {
+        "desc": "已确认完成的工作",
+        "title": "收入"
+      },
+      "failed": {
+        "short": "失败：{{amount}}"
+      },
+      "history": {
+        "title": "钱包记录"
+      },
+      "lastCashout": {
+        "failed": "失败：{{amount}}",
+        "paid": "已付 / 已完成：{{amount}}",
+        "processing": "处理中",
+        "title": "上次提现"
+      },
+      "moneyStages": {
+        "hint": "阶段：已赚 → 转入 Connect → Stripe 待结算 → 可用 → 即时提现或周日凌晨 4:00 ET 银行打款。待处理绝不可用或打款。"
+      },
+      "nextAuto": {
+        "desc": "MMD 每周日凌晨 04:00（America/New_York）将剩余 Stripe Connect 可用资金打入你的银行。周中在符合 Stripe Instant 条件时可即时提现。没有下午补打款。这是 MMD 的时间表，不是 Stripe 默认的每日打款。",
+        "title": "下次自动打款"
+      },
+      "payoutMethods": {
+        "auto": "自动",
+        "manual": "手动",
+        "title": "结算方式"
+      },
+      "processingHint": "部分收入仍在处理，待 Stripe 允许结算后可用。",
+      "stripe": {
+        "connectBankButton": "连接银行账户",
+        "connectBankDesc": "在 Stripe Express 中连接银行账户。MMD 从不收集路由号或账号。",
+        "continueButton": "继续",
+        "continueDesc": "完成 Stripe 验证以解锁银行打款。",
+        "manageButton": "管理",
+        "manageDesc": "在 Stripe Express 中添加、更新或更换银行账户。",
+        "manageTitle": "银行与结算方式"
       }
     },
     "mapFallback": {
       "preparing": "Preparing navigation…",
       "back": "Back",
       "retry": "Retry",
-      "missingTokenTitle": "Navigation unavailable",
-      "missingTokenBody": "Mapbox token is missing. Contact MMD support before using driver navigation.",
-      "missingOrderTitle": "Order not found",
-      "missingOrderBody": "Unable to load this trip.",
-      "missingCoordsTitle": "GPS coordinates missing",
-      "missingCoordsBody": "This trip has no valid coordinates yet. Return to order details.",
-      "permissionTitle": "Location permission denied",
-      "permissionBody": "Enable location access to use MMD navigation.",
-      "routeErrorTitle": "Route unavailable",
-      "routeErrorBody": "Unable to calculate the route at this time. You can retry or open an external app from the details.",
-      "errorTitle": "Error",
-      "errorBody": "Something went wrong."
+      "missingTokenTitle": "导航不可用",
+      "missingTokenBody": "缺少 Mapbox 令牌。使用司机导航前请联系 MMD 支持。",
+      "missingOrderTitle": "未找到订单",
+      "missingOrderBody": "无法加载此行程。",
+      "missingCoordsTitle": "缺少 GPS 坐标",
+      "missingCoordsBody": "此行程尚无有效坐标。请返回订单详情。",
+      "permissionTitle": "位置权限被拒绝",
+      "permissionBody": "开启位置权限以使用 MMD 导航。",
+      "routeErrorTitle": "路线不可用",
+      "routeErrorBody": "暂时无法计算路线。可重试或从详情打开外部应用。",
+      "errorTitle": "错误",
+      "errorBody": "出了点问题。"
     },
     "menu": {
       "servicesTitle": "我的服务",
       "servicesSub": "餐饮、包裹、出租车",
       "vehicleTitle": "我的车辆",
-      "vehicleSub": "出租车类别"
+      "vehicleSub": "出租车类别",
+      "account_sub": "资料、车辆和文件",
+      "driver_program_sub": "目标与奖励",
+      "help_sub": "获取 MMD 支持",
+      "loyalty": "MMD 奖励",
+      "opportunities_sub": "促销与新选项",
+      "payments_stripe_sub": "连接收款账户",
+      "referrals_sub": "邀请司机并赚取奖励",
+      "section_account": "账户与付款",
+      "section_growth": "成长",
+      "section_support": "支持",
+      "title": "菜单",
+      "wallet_sub": "收入与结算",
+      "loyalty_sub": "积分、MMD 余额与兑换"
     },
     "inbox": {
-      "emptyTitle": "收件箱为空"
+      "emptyTitle": "收件箱为空",
+      "hero": {
+        "label": "司机消息",
+        "unread": "未读对话"
+      }
     },
     "workAccount": {
-      "loadingTitle": "账户状态"
+      "loadingTitle": "账户状态",
+      "auth": {
+        "noUser": "没有用户登录。"
+      },
+      "footer": "MMD Driver • 司机账户",
+      "header": {
+        "title": "司机账户"
+      },
+      "legal": {
+        "about": {
+          "label": "关于 MMD",
+          "value": "版本与支持"
+        },
+        "privacy": {
+          "label": "隐私",
+          "value": "数据与权限"
+        },
+        "title": "法律与帮助"
+      },
+      "next": {
+        "addDocs": "添加文件",
+        "addVehicle": "添加车辆",
+        "ready": "已备好",
+        "setupPayment": "设置结算"
+      },
+      "rows": {
+        "docs": {
+          "label": "文件",
+          "notRequiredBike": "不需要（自行车）"
+        },
+        "payment": {
+          "label": "收款",
+          "notConfigured": "未配置",
+          "ready": "已备好"
+        },
+        "vehicle": {
+          "label": "车辆",
+          "missing": "待添加",
+          "ok": "确定"
+        }
+      },
+      "status": {
+        "subtitle": "下一步：{{step}}",
+        "title": "账户状态 • {{pct}}%"
+      },
+      "work": {
+        "center": {
+          "label": "工作中心",
+          "value": "区域、偏好、可用性"
+        },
+        "earnings": {
+          "label": "收入",
+          "value": "历史、付款、提现"
+        },
+        "subtitle": "影响你的行程与收入。",
+        "tax": {
+          "label": "税务信息",
+          "value": "W-9 / 1099（稍后）"
+        },
+        "title": "工作"
+      }
     },
     "trip": {
       "clientPickup": "客户 · 上车",
@@ -1697,7 +2513,392 @@
         "active": "进行中",
         "expired": "已过期",
         "pending": "待处理"
+      },
+      "codeLoading": "你的推荐码仍在加载。",
+      "deliveryLineCompact": "📦 配送 — {{amount}} / 每 {{goal}} 单",
+      "header": {
+        "subtitle": "邀请司机并赚取"
+      },
+      "headline": {
+        "withProgram": "最高 {{amount}}，{{days}} 天内"
+      },
+      "hero": {
+        "label": "🎁 MMD 推荐计划"
+      },
+      "invites": {
+        "deliveries": "配送次数",
+        "emptyHint": "分享你的代码以邀请司机。",
+        "emptyTitle": "暂无邀请",
+        "invitedOn": "已邀请",
+        "rides": "行程",
+        "title": "邀请",
+        "unknown": "受邀司机"
+      },
+      "linkLabel": "推荐链接",
+      "modal": {
+        "rules": "规则：一次邀请 = 一位朋友。奖励设有上限。满足推荐计划条件后发放。",
+        "summaryLine": "上限：{{max}} • 时长：{{days}} 天"
+      },
+      "programLoading": "正在加载计划…",
+      "rideLineCompact": "🚗 行程 — {{amount}} / 每 {{goal}} 单",
+      "shareText": "加入 MMD Delivery 🚗🍔\\n\\n我的代码：{{code}}\\n链接：{{link}}\\n\\n注册并开始接单！",
+      "showAllRewards": "全部奖励",
+      "status": {
+        "earnedShort": "已获得",
+        "friendHasDaysToComplete": "好友接受邀请后有 {{days}} 天完成目标。"
+      },
+      "validForDaysAfterFriendSignup": "好友注册后 {{days}} 天内有效。"
+    },
+    "about": {
+      "appVersion": "应用：版本 {{version}}",
+      "body": "MMD Delivery 通过流畅的配送平台连接餐厅、客户和独立司机。采用现代技术，提供快速、安全、可靠的服务。",
+      "company": "公司：MMD Delivery",
+      "madeWith": "用心为司机打造 ❤️",
+      "package": "包裹：{{id}}",
+      "social": "关注我们",
+      "tagline": "连接司机、餐厅与客户"
+    },
+    "arrival": {
+      "dropoffBody": "确认目的地，然后打开订单详情以完成。",
+      "dropoffLabel": "送达",
+      "dropoffTitle": "已到达送达点",
+      "openDetails": "打开订单详情",
+      "pickupBody": "确认会合点，然后打开订单详情继续。",
+      "pickupLabel": "取件",
+      "pickupTitle": "已到达上车点"
+    },
+    "chat": {
+      "actions": {
+        "image": "📷 图片",
+        "send": "📤 发送"
+      },
+      "empty": {
+        "body": "在下方开始对话",
+        "title": "暂无消息"
+      },
+      "loading": "正在加载消息…",
+      "missing": {
+        "goBack": "返回",
+        "orderBody": "此订单可能已取消或不再可用。",
+        "orderTitle": "未找到订单",
+        "subtitle": "支持",
+        "title": "聊天"
+      },
+      "orderSubtitle": "订单 #{{id}}",
+      "placeholder": "输入消息…",
+      "privateBanner": "与{{role}}的私密对话",
+      "receipt": {
+        "delivered": "已送达 ✓"
+      },
+      "titlePrefix": "司机",
+      "withTitle": "与{{role}}聊天"
+    },
+    "help": {
+      "callErrorBody": "无法打开电话应用。",
+      "callErrorTitle": "电话",
+      "callNow": "立即呼叫",
+      "chatOpenError": "无法打开管理员支持聊天。",
+      "chatSupport": "在线支持",
+      "chatSupportSub": "联系 MMD 管理员支持。",
+      "emailBody": "你好，MMD 支持，\\n\\n我需要帮助：\\n\\n订单号：\\n问题：\\n电话：\\n\\n谢谢。",
+      "emailErrorBody": "无法在此设备打开邮件应用。",
+      "emailErrorTitle": "邮箱",
+      "emailSubject": "MMD Delivery 司机支持",
+      "emailSupport": "邮件支持",
+      "emailSupportSubShort": "发送详情、截图或订单号。",
+      "emergency": "紧急情况",
+      "emergencyConfirmBody": "如遇紧急危险或医疗/警察/火警，请拨打 911。非紧急配送问题请使用聊天或邮件支持。",
+      "emergencyConfirmTitle": "紧急支持",
+      "emergencySub": "紧急配送或安全问题。",
+      "faq": {
+        "cashoutAShort": "请确认已启用 Stripe 且余额已达最低要求。",
+        "cashoutQ": "为什么无法提现？",
+        "documentsAShort": "前往账户，完成文件和收款设置。",
+        "documentsQShort": "账户未完成？",
+        "gpsAShort": "检查定位权限，并保持应用打开。",
+        "gpsQShort": "GPS 不更新？",
+        "orderAShort": "打开订单，使用聊天，并附上订单号反馈。",
+        "orderQShort": "订单有问题？"
+      },
+      "faqSection": "常见问题",
+      "footerTextShort": "请准备订单号、截图、电话和简短说明。",
+      "footerTitle": "联系支持之前",
+      "heroLabel": "MMD 司机支持",
+      "heroSubShort": "获取订单、结算、账户和安全方面的帮助。",
+      "heroTitle": "我们能帮你什么？",
+      "reportIssue": "报告问题",
+      "reportIssueBody": "目前请通过邮件联系支持，并附上订单号和详情。",
+      "reportIssueSubShort": "订单、付款或 GPS 问题。",
+      "reportIssueTitle": "报告问题",
+      "socialSection": "关注 MMD Delivery",
+      "subtitleShort": "支持、常见问题与紧急情况",
+      "supportSection": "支持",
+      "title": "帮助"
+    },
+    "language": {
+      "searchPlaceholder": "搜索语言…",
+      "supportedNote": "✅ 此处仅显示 6 种支持的语言。"
+    },
+    "onboarding": {
+      "continue": "继续前往首页",
+      "go": {
+        "profile": "资料与文件",
+        "profileHint": "身份、驾照、保险",
+        "services": "我的服务",
+        "servicesHint": "餐饮、包裹、出租车",
+        "vehicles": "我的车辆",
+        "vehiclesNeed": "添加汽车 / 摩托车",
+        "vehiclesOk": "车队已配置",
+        "wallet": "钱包 / Stripe Connect",
+        "walletNeed": "需要完成设置",
+        "walletOk": "结算已就绪"
+      },
+      "loadTimeout": "无法加载设置。请检查网络后重试。",
+      "next": {
+        "docs": "完善你的文件",
+        "payout": "激活 Stripe Connect（钱包）",
+        "ready": "已就绪 — 返回首页",
+        "vehicle": "添加并激活车辆"
+      },
+      "progress": "进度",
+      "title": "司机设置",
+      "transport": "车辆类型"
+    },
+    "orderDetails": {
+      "actions": {
+        "backupNavigation": "备用选项",
+        "googleDropoff": "Google / Apple 送达",
+        "googlePickup": "Google / Apple 取件",
+        "mmdNavigation": "MMD 导航",
+        "mmdNavigationDropoff": "前往客户",
+        "mmdNavigationPickup": "前往取件点",
+        "wazeDropoff": "Waze 送达",
+        "wazePickup": "Waze 取件"
+      },
+      "cancel": {
+        "confirm": "是，取消",
+        "error": "无法取消该行程。",
+        "unavailableTitle": "无法取消",
+        "unavailableBody": "仅可在取件前取消，且行程仍为已接受或已就绪。",
+        "title": "取消行程？",
+        "body": "若现在取消，你将从此行程移除，并可能改派给其他司机。",
+        "successTitle": "行程已取消",
+        "successBody": "你已从此行程移除。其他司机现在可以接单。",
+        "cardTitle": "需要取消？",
+        "cardBody": "可在取件前取消。行程将开放给其他司机。",
+        "button": "取消此行程"
+      },
+      "communication": {
+        "call": "呼叫",
+        "callClosed": "此订单已禁用通话。",
+        "callUnavailableTitle": "无法通话",
+        "client": "客户",
+        "message": "消息",
+        "restaurant": "餐厅",
+        "support": "MMD 支持",
+        "title": "沟通",
+        "noRestaurant": "此取送行程没有可致电的餐厅。",
+        "driverPhoneMissing": "缺少司机电话。请先在资料中添加，再使用隐号通话。",
+        "targetPhoneMissing": "此订单缺少 {{target}} 的电话号码。",
+        "callFailed": "暂时无法发起通话。",
+        "chatClosed": "此订单已禁用消息。",
+        "noRestaurantMessage": "此取送行程没有可联系的餐厅。",
+        "hint": "可致电或发消息给客户、餐厅或 MMD 支持，而无需暴露真实号码。",
+        "clientProfile": "关联此行程的客户资料",
+        "restaurantProfile": "关联此订单的餐厅资料"
+      },
+      "dropoffLocationDetails": "客户送达位置详情",
+      "earnings": {
+        "estimateTitle": "收入（交通）"
+      },
+      "header": {
+        "order": "订单",
+        "tripTitle": "行程 #{{id}}"
+      },
+      "locationRequired": "完成此行程需要定位权限。",
+      "map": {
+        "dropoffGeneric": "送达",
+        "pickupGeneric": "取件"
+      },
+      "modal": {
+        "hintDropoffOtp": "向收件人索取送达码。键盘会自动打开 — 无需拍照。",
+        "hintPickupOtp": "索取取件码。键盘会自动打开 — 无需拍照。"
+      },
+      "navigation": {
+        "unavailableTitle": "导航不可用",
+        "mustAcceptFirst": "请先接受此行程再启动 MMD 导航。"
+      },
+      "notAllowed": "此行程不适用于该司机账户。",
+      "notFoundBody": "此订单不存在或已不可用。",
+      "photo": {
+        "permissionTitle": "摄像头",
+        "preparingBody": "请等照片准备好后再确认。",
+        "tooLarge": "照片太大。请拍一张更小的。",
+        "readError": "无法读取照片。请重新拍摄。",
+        "permissionBody": "允许相机权限以拍摄凭证照片。"
+      },
+      "profile": {
+        "loading": "正在加载资料…"
+      },
+      "status": {
+        "pd_dispatched": "正在前往收件人",
+        "pd_pending": "等待司机",
+        "pd_accepted": "待确认取件",
+        "pd_prepared": "待确认取件",
+        "pd_ready": "取件可确认",
+        "picked_up": "包裹已取 — 运送中"
+      },
+      "steps": {
+        "dropoffPoint": "配送",
+        "pickupPoint": "取件",
+        "stops": "站点"
+      },
+      "summary": {
+        "transportTitle": "行程摘要"
+      },
+      "taxi": {
+        "completedBody": "出租车行程已标记为完成。",
+        "completedTitle": "行程已完成",
+        "completeFailed": "无法完成出租车行程。",
+        "pickupCodeLength": "输入客户提供的 4 位取件码。"
+      },
+      "title": "订单详情",
+      "tokenMissing": "缺少会话令牌。",
+      "verify": {
+        "autoHintPd": "按钮会按状态在合适时机自动启用。",
+        "completeRide": "完成行程",
+        "dropoffBtnPd": "验证送达码",
+        "dropoffNotReady": "取件确认后解锁送达验证（状态：picked_up）。",
+        "pickupBtnPd": "验证上车码",
+        "pickupNotReady": "分配给你且行程可取件后解锁取件验证（状态：ready / dispatched）。",
+        "taxiDropoffNotReady": "取件码验证后解锁完成行程（状态：in_progress）。",
+        "taxiPickupNotReady": "出租车行程被接单后解锁取件验证（状态：accepted / driver_arrived）。"
+      },
+      "wazeOpenError": "无法在此手机上打开 Waze。",
+      "sessionError": "无法获取会话。",
+      "pickupConfirmError": "取件确认失败。",
+      "deliveryConfirmError": "送达确认失败。"
+    },
+    "privacy": {
+      "heroTitle": "你的数据受到保护",
+      "intro": "在 MMD Delivery，我们认真对待你的隐私。我们只收集保障安全高效配送所需的数据。你的信息会安全存储，并按我们的严格政策处理。"
+    },
+    "revenue": {
+      "average": "平均 / 单",
+      "bank": "银行与结算",
+      "bank_hint": "连接银行账户",
+      "details": {
+        "auth": {
+          "body": "请以司机身份登录查看收入。"
+        },
+        "breakdown": {
+          "viewHistory": "查看收入记录",
+          "viewLastTripPrice": "查看行程价格明细"
+        },
+        "calc": {
+          "body": "在线/驾驶来自 RPC get_driver_stats(from_ts,to_ts)。行程 = 已送达。积分 = 行程数。",
+          "link": "我们如何计算统计"
+        },
+        "completed": {
+          "empty": "该时段没有已送达行程。",
+          "emptyShort": "暂无行程"
+        },
+        "list": {
+          "netTipLine": "净价：{{net}} · 小费：{{tip}}"
+        },
+        "shareText": "ID：{{id}}\\n日期：{{date}} {{time}}\\n净价：{{net}}\\n小费：{{tip}}\\n合计：{{total}}\\n餐厅：{{restaurant}}"
+      },
+      "history": {
+        "auth": {
+          "body": "请以司机身份登录查看收入记录。"
+        },
+        "list": {
+          "empty": "该时间段内没有已送达的行程。",
+          "emptySub": "已完成的配送将显示在这里。",
+          "netTipLine": "净价：{{net}} · 小费：{{tip}}"
+        },
+        "summary": {
+          "net": "净价",
+          "period": "时段：",
+          "tips": "小费"
+        }
+      },
+      "no_food_trips_title": "暂无餐饮/包裹行程",
+      "no_trips_hint": "该时段没有已送达行程。完成后会显示在这里。",
+      "no_trips_title": "暂无行程",
+      "taxi_only_hint": "该时段的出租车收入显示在上方。餐饮和包裹完成后会显示在这里。",
+      "taxi_paid": "已转入 Connect",
+      "taxi_pending": "Connect 转账待处理",
+      "taxi_rides": "已完成行程",
+      "taxi_title": "出租车收入",
+      "taxi_total": "出租车合计",
+      "taxi_transfer_hint": "待处理 = 等待平台→Connect 转账。已转 = SCT 完成（银行打款为周日 cron）。"
+    },
+    "security": {
+      "passwordPlaceholder": "密码"
+    },
+    "tabs": {
+      "home": "首页",
+      "inbox": "收件箱",
+      "menu": "菜单",
+      "revenue": "收入"
+    },
+    "tax": {
+      "badges": {
+        "available": "可用"
+      },
+      "buttons": {
+        "monthlySummary": "月度摘要（PDF）",
+        "w9": "W-9（表格 + PDF）",
+        "weeklySummary": "每周摘要（PDF）"
+      },
+      "countryNotSupported": "此文件目前仅在美国提供。",
+      "overview": {
+        "status": {
+          "configured": "已配置"
+        },
+        "withholding": {
+          "no": "否"
+        }
+      },
+      "sections": {
+        "documents": "税务文件"
+      },
+      "verifyFirst": "请先验证你的账户。",
+      "year": {
+        "future": {
+          "body": "今年尚未结束。我们将切换到上一年。",
+          "title": "尚未完成"
+        }
+      },
+      "yearlySummary": {
+        "note": "注意：下载可能会更新 download_count 和 last_downloaded_at。"
       }
+    },
+    "waitTimer": {
+      "cameraTitle": "需要相机",
+      "freeRemaining": "剩余免费时间",
+      "freeWait": "免费等待",
+      "lateFee": "费用",
+      "loadFailed": "状态不可用",
+      "locationTitle": "需要定位",
+      "noShowConfirm": "是，取消",
+      "sessionExpired": "会话已过期",
+      "tooFarTitle": "离该点太远",
+      "networkError": "连接不稳定。请重试。",
+      "locationBody": "开启定位以确认到达（≤ 50 米）。",
+      "tooFarBody": "进入 50 米内以确认 GPS 到达并开始计时。",
+      "arrivalBlockedTitle": "到达被阻止",
+      "cameraBody": "允许相机拍摄门口放置凭证。",
+      "depositOkTitle": "允许放置",
+      "depositOkBody": "照片已保存。你可用此凭证完成配送。",
+      "noShowTitle": "取消且无罚金",
+      "noShowBody": "计时器已确认客户未出现。确认取消？",
+      "title": "客户等待计时",
+      "arrivedCta": "我已到达",
+      "leaveAtDoorDisabled": "客户未允许放在门口。",
+      "depositCta": "拍照放置",
+      "noShowCta": "取消且无罚金（未出现）"
     }
   },
   "restaurant": {
@@ -1797,7 +2998,13 @@
         "newClients": "新客户",
         "loyalClients": "忠实客户",
         "repeatOrders": "复购订单"
-      }
+      },
+      "connectBank": "连接银行账户",
+      "homeMenuTitle": "餐厅菜单",
+      "liveMapFull": "地图操作",
+      "loadingSubtitle": "正在获取餐厅数据",
+      "loadingTitle": "正在加载指挥中心…",
+      "unableToLoad": "无法加载"
     },
     "financial": {
       "title": "财务中心",
@@ -1817,7 +3024,17 @@
       "lastPayoutDate": "最近收款日期",
       "monthlyStatements": "月度对账单",
       "noStatements": "暂无对账单。",
-      "taxDocuments": "税务文件"
+      "taxDocuments": "税务文件",
+      "apiMissing": "缺少 API_BASE_URL。请检查生产 API 配置。",
+      "errorTitle": "无法加载",
+      "loadingSubtitle": "正在获取财务概览",
+      "loadingTitle": "正在加载财务…",
+      "noData": "财务概览不可用。请重试。",
+      "overview": "财务概览",
+      "overviewSubtitle": "所选时段的净收入与费用。",
+      "sessionExpired": "会话已过期。请重新登录以查看财务中心。",
+      "viewEarnings": "查看收入",
+      "viewWallet": "查看钱包"
     },
     "wallet": {
       "title": "餐厅钱包",
@@ -1833,7 +3050,17 @@
       "recentTransactions": "最近交易",
       "cashoutUnavailable": "暂不可提现",
       "cashoutRequested": "已请求提现",
-      "cashoutRules": "最低 {{min}} • 每天 1 次提现"
+      "cashoutRules": "最低 {{min}} • 每天 1 次提现",
+      "awaitingHint": "等待转账：{{amount}}",
+      "cashoutAmount": "金额：{{amount}}",
+      "cashoutConfirmBody": "提取全部可用余额：{{amount}}。\\n\\n最低 {{min}} • 每天 1 次提现。",
+      "cashoutConfirmTitle": "即时提现",
+      "errorBody": "无法加载钱包动态。",
+      "errorTitle": "钱包错误",
+      "lastPayoutAt": "上次结算 {{when}}",
+      "loadingSubtitle": "正在获取余额数据",
+      "loadingTitle": "正在加载钱包…",
+      "paidOutHint": "已结算：{{amount}}"
     },
     "automation": {
       "errorTitle": "错误",
@@ -1850,14 +3077,14 @@
       "loadingSubtitle": "正在获取自动化偏好",
       "infoTitle": "自动接单与厨房打印",
       "infoBody": "控制新订单的接单和打印方式。",
-      "autoAccept": "Auto-accept new orders",
-      "autoPrint": "Auto-print on accept",
-      "soundAlert": "Sound alert",
+      "autoAccept": "自动接受新订单",
+      "autoPrint": "接受后自动打印",
+      "soundAlert": "声音提醒",
       "prepTime": "Default Prep Time",
-      "prepMinutes": "{{mins}} min",
-      "saving": "Saving…",
-      "saveSettings": "Save Settings",
-      "testPrint": "Test print"
+      "prepMinutes": "{{mins}} 分钟",
+      "saving": "保存中…",
+      "saveSettings": "保存设置",
+      "testPrint": "测试打印"
     },
     "autoPrint": {
       "title": "打印",
@@ -1873,12 +3100,33 @@
       "alerts": {
         "logoPickFailed": "无法选择标识。",
         "coverPickFailed": "无法选择封面图片。",
-        "documentPickFailed": "无法选择文件。"
-      }
+        "documentPickFailed": "无法选择文件。",
+        "permissionTitle": "权限",
+        "permissionPhotos": "允许访问相册以选择餐厅标志。",
+        "permissionPhotosCover": "允许访问相册以选择餐厅封面。",
+        "requiredFields": "请填写名称、电话、地址、城市、邮编和菜系。"
+      },
+      "cover": {
+        "addShort": "添加",
+        "subtitle": "展示在餐厅页面上的横幅。",
+        "title": "封面图"
+      },
+      "docs": {
+        "id": "身份证",
+        "license": "执照 / 许可证",
+        "none": "未选择文件",
+        "tax": "税务文件"
+      },
+      "logo": {
+        "subtitle": "对客户、司机和聊天可见。",
+        "title": "标志 / 照片"
+      },
+      "offerings": "供应项目"
     },
     "menu": {
       "alerts": {
-        "actionFailed": "此操作暂时不可用。"
+        "actionFailed": "此操作暂时不可用。",
+        "createFailed": "创建失败。"
       },
       "addCategory": "+ 添加分类",
       "noCategories": "暂无分类",
@@ -1900,14 +3148,71 @@
       "add": "添加",
       "title": "菜单",
       "loadingTitle": "正在加载菜单...",
-      "loadingSubtitle": "正在获取菜品"
+      "loadingSubtitle": "正在获取菜品",
+      "categories": {
+        "deleteConfirm": "此分类下的商品将变为未分类。继续？",
+        "deleteTitle": "删除分类",
+        "duplicate": "此分类已存在。",
+        "invalid": "无效分类。"
+      },
+      "items": {
+        "deleteTitle": "删除商品",
+        "invalidOptions": "无效选项。",
+        "invalidStock": "库存无效（整数或留空）。",
+        "deleteConfirm": "删除此商品？"
+      }
     },
     "dashboard": {
-      "availabilityUpdateFailed": "无法更改餐厅状态。"
+      "availabilityUpdateFailed": "无法更改餐厅状态。",
+      "aiDispatch": "AI 调度",
+      "aiDriversReady": "AI 调度：附近有司机。请尽快处理已就绪订单。",
+      "aiHighDemand": "AI 调度：检测到高需求。优先处理已就绪订单并缩短备餐时间。",
+      "aiNeedDrivers": "AI 调度：有进行中的订单，但尚未检测到附近司机。",
+      "aiOffline": "餐厅离线时 AI 调度已暂停。",
+      "aiStable": "AI 调度：需求稳定。地图正在实时监测新请求。",
+      "busyConfirm": "保持营业但暂停新订单？",
+      "busyOff": "忙碌模式",
+      "busyOffConfirm": "恢复接收新订单？",
+      "busyTitle": "忙碌模式",
+      "driversNearby": "附近司机",
+      "goOfflineConfirm": "暂时停止接收新订单？",
+      "goOfflineTitle": "下线",
+      "goOnlineConfirm": "现在开始接收新订单？",
+      "goOnlineTitle": "上线",
+      "newFoodOrder": "新餐饮订单",
+      "ordersToday": "今日订单",
+      "pendingOrders": "待处理订单",
+      "revenueToday": "今日营业额",
+      "setupRequiredTitle": "资料不完整",
+      "surgeZone": "高峰区域",
+      "title": "餐厅控制台",
+      "busyRequiresOnline": "请先上线再开启忙碌模式。",
+      "busyOffTitle": "忙碌模式已结束",
+      "setupRequiredBody": "上线前请填写餐厅名称、地址和 GPS 坐标。"
     },
     "orders": {
       "statusUpdateFailed": "无法更新订单状态（{{status}}）。",
-      "rejectFailed": "无法拒绝订单（{{status}}）。"
+      "rejectFailed": "无法拒绝订单（{{status}}）。",
+      "alertBody": "订单 #{{id}} 待处理 — 点按查看",
+      "alertOpen": "营业中",
+      "alertTitle": "新订单",
+      "cardMeta": "{{count}} 件 • {{total}}",
+      "emptyBody": "新订单将自动显示在这里",
+      "emptyTitle": "暂无进行中订单",
+      "loadingOrders": "正在加载订单…",
+      "loadingOrdersSubtitle": "正在获取订单",
+      "noProfile": "未找到餐厅账户。",
+      "openOrder": "订单 {{id}}，{{status}}，{{meta}}",
+      "rejectConfirm": "确定拒绝此订单？",
+      "rejectTitle": "拒绝订单",
+      "title": "订单",
+      "updateFailed": "无法更新订单。",
+      "errors": {
+        "invalidActor": "餐厅会话无效。请重新登录后再试。",
+        "orderNotFound": "未找到此餐厅的订单。",
+        "invalidTransition": "此订单状态已变更。请刷新列表。",
+        "acceptExpired": "接单时限已过。你无法再接受此订单。"
+      }
     },
     "connect": {
       "cta": {
@@ -1941,11 +3246,176 @@
     "earnings": {
       "stripe": {
         "bankKicker": "银行收款",
-        "moreInfoNeeded": "Stripe 仍需要身份或银行信息。"
+        "moreInfoNeeded": "Stripe 仍需要身份或银行信息。",
+        "blockedReason": "原因：{{reason}}",
+        "heldLine": "{{amount}} 将等到 Stripe Connect 完成。尚未支付。"
+      },
+      "debug": {
+        "noSession": "没有会话。请先登录。",
+        "copiedTitle": "令牌已复制 ✅",
+        "copiedBody": "起始: {{a}}...\\n结尾: ...{{b}}",
+        "fail": "无法获取会话。"
+      },
+      "errorBody": "无法加载收入。请重试。",
+      "errors": {
+        "openStripe": "无法打开 Stripe Connect。"
+      },
+      "errorTitle": "无法加载",
+      "fetchError": "无法加载收入。",
+      "filters": {
+        "thisMonth": "本月",
+        "prevMonth": "上个月"
+      },
+      "header": {
+        "title": "收入"
+      },
+      "loadingSubtitle": "正在获取收入数据",
+      "loadingTitle": "正在加载收入…",
+      "mustLogin": "请以餐厅身份登录查看收入。",
+      "recentOrders": "最近订单",
+      "thisMonth": "本月",
+      "thisWeek": "本周",
+      "today": "今天",
+      "todayMetaBlocked": "{{n}} 笔订单 • 完成 Stripe Connect 前暂停结算",
+      "todayMetaReady": "{{n}} 笔订单 • 已启用结算",
+      "list": {
+        "empty": "尚无已送达订单。"
       }
     },
     "ads": {
       "loading": "正在加载广告"
+    },
+    "auth": {
+      "errors": {
+        "accountWrongRole": "此账户不是餐厅账户。",
+        "restaurantNameRequired": "❌ 需要餐厅名称",
+        "accountIsDriver": "此账户已注册为司机。请从司机入口登录。",
+        "accountIsClient": "此账户已注册为客户。请从客户入口登录。",
+        "notRestaurantAccount": "此账户尚未设置为餐厅。",
+        "restaurantAddressRequired": "必须填写餐厅名称和完整地址。",
+        "sessionNotCreated": "未能创建会话。请重试。",
+        "userNotCreated": "账户已创建，但无法加载用户。",
+        "emailRequiredForReset": "❌ 请求重置前请先输入邮箱。",
+        "resetFailed": "❌ 无法发送邮件："
+      },
+      "fields": {
+        "restaurantAddress": "完整地址",
+        "restaurantName": "餐厅名称"
+      },
+      "placeholders": {
+        "restaurantAddress": "例如：123 Main St, New York, NY 10001",
+        "restaurantName": "例如：Fouta Halal"
+      },
+      "terms": {
+        "prefix": "我接受"
+      },
+      "success": {
+        "createdCheckEmail": "✅ 账户已创建。请查收邮件后登录。",
+        "resetEmailSent": "✅ 邮件已发送。打开链接以更改密码。"
+      }
+    },
+    "financialCenter": {
+      "title": "财务中心"
+    },
+    "gate": {
+      "timeoutBody": "网络较慢或不可用。你可以重试或返回登录。",
+      "timeoutTitle": "无法打开餐厅区域"
+    },
+    "home": {
+      "brandSubtitle": "配送",
+      "filter": {
+        "title": "筛选地图"
+      },
+      "loadingSubtitle": "正在准备控制台",
+      "loadingTitle": "正在加载餐厅…",
+      "map": {
+        "busyTitle": "忙碌模式",
+        "layers": "图层",
+        "liveTitle": "实时运营地图",
+        "opsSubtitle": "附近司机 • 可见待处理订单",
+        "recenter": "回中",
+        "refresh": "刷新",
+        "zoomIn": "放大 +",
+        "zoomOut": "缩小 −"
+      },
+      "menu": "菜单",
+      "notifications": "通知",
+      "selection": {
+        "driver": "司机",
+        "driverActive": "配送中",
+        "inDelivery": "配送中",
+        "order": "订单",
+        "restaurant": "餐厅",
+        "yourRestaurant": "你的餐厅"
+      },
+      "tabs": {
+        "menu": "菜单"
+      }
+    },
+    "language": {
+      "chooseHint": "选择应用语言",
+      "supportedNote": "此处仅显示 6 种支持的语言。",
+      "searchPlaceholder": "Search (English, Français, Español...)"
+    },
+    "platformUnavailable": "你的餐厅区域暂时没有新订单。",
+    "security": {
+      "changePassword": "修改密码",
+      "confirmLabel": "确认密码",
+      "confirmPlaceholder": "确认新密码",
+      "dangerZone": "危险操作",
+      "deleteHint": "永久删除你的账户和全部数据。",
+      "errorTitle": "错误",
+      "genericError": "无法更新密码。",
+      "hide": "隐藏",
+      "min8": "密码至少需要 8 个字符。",
+      "mismatch": "两次输入的密码不一致。",
+      "newPasswordLabel": "新密码",
+      "newPasswordPlaceholder": "输入新密码",
+      "passwordTitle": "密码",
+      "save": "保存密码",
+      "sessionBody": "会话缺失。请重新登录。",
+      "sessionTitle": "会话",
+      "show": "显示",
+      "successBody": "密码已成功更新。",
+      "successTitle": "密码已更新",
+      "title": "安全"
+    },
+    "signOut": {
+      "hint": "结束此设备上的会话。你可以随时重新登录。",
+      "sectionTitle": "会话"
+    },
+    "tax": {
+      "completeProfile": "完善资料",
+      "downloading": "正在下载…",
+      "downloadPdf": "下载 PDF",
+      "downloadReady": "你可以下载月度 PDF 报告。",
+      "errorBody": "无法加载税务摘要。请重试。",
+      "errors": {
+        "fetchFailed": "无法加载税务摘要。请重试。",
+        "noSession": "未找到会话。请重新登录后再试。",
+        "restaurantOnly": "此页面仅限餐厅账户。",
+        "noRestaurantProfile": "未找到餐厅资料。请完善餐厅资料。",
+        "unknown": "发生意外错误。",
+        "noSignedUrl": "未找到 PDF 下载链接。",
+        "cannotOpenPdf": "无法打开 PDF 链接。"
+      },
+      "errorTitle": "税务错误",
+      "loadingSubtitle": "正在获取税务摘要",
+      "loadingTitle": "正在加载税务数据…",
+      "pill": {
+        "month": "本月",
+        "quarter": "季度",
+        "year": "年份"
+      },
+      "platformFeesLine": "平台费用 {{amount}}",
+      "profileComplete": "资料已完善",
+      "profileIncomplete": "资料不完整",
+      "profileIncompleteNote": "生成正式文件前请先完善餐厅资料。",
+      "quarterLabel": "{{year}} Q{{q}}",
+      "summaryComplete": "摘要已完成",
+      "taxableSales": "应税销售额",
+      "titleShort": "税费",
+      "weekLabel": "第 {{w}} 周 · {{year}}"
     }
   },
   "roleSelect": {
@@ -1984,6 +3454,17 @@
       "permission": "无法访问你的资料。请退出后重新登录，或联系支持。",
       "server": "资料服务暂时不可用。请稍后再试。",
       "unknown": "无法验证你的资料。请重试。"
+    },
+    "adminTitle": "管理员",
+    "driverSuspendedBody": "你的司机账户已暂停。请联系 MMD Delivery 支持。",
+    "driverSuspendedTitle": "账户已暂停",
+    "sessionExpiredTitle": "会话已过期",
+    "signInAgain": "重新登录",
+    "wrongRoleTitle": "账户已登录",
+    "wrongRoleBody": "此账户已注册为 {{role}}。若要使用其他角色请先退出。",
+    "adminBody": "这是管理员账户。请使用管理界面管理 MMD Delivery。",
+    "errors": {
+      "openRoleFailed": "暂时无法打开此角色。"
     }
   },
   "finance": {
@@ -2134,6 +3615,39 @@
         "walletCredit": "钱包抵扣",
         "tip": "小费"
       }
+    },
+    "actions": {
+      "accept": "接受",
+      "acceptConfirm": "要接受此订单吗？",
+      "acceptTitle": "接单",
+      "refuse": "拒绝",
+      "rejectConfirm": "要拒绝此订单吗？",
+      "rejectTitle": "拒绝订单"
+    },
+    "card": {
+      "acceptWithin": "⏱️ 请在时限内接单",
+      "expired": "已过期"
+    },
+    "errors": {
+      "cancel": "无法取消此订单。",
+      "notFound": "未找到订单。",
+      "restaurantOnly": "此页面仅限餐厅账户。",
+      "notAllowed": "你无权访问此订单。",
+      "awaitingPayment": "此订单尚未付款，不可见。",
+      "notFoodOrder": "这不是餐厅订单。",
+      "update": "无法更新状态。"
+    },
+    "status": {
+      "acceptedLower": "已接单",
+      "canceledLower": "已取消",
+      "deliveredLower": "已送达",
+      "dispatchedLower": "已派出",
+      "expiredLower": "已过期",
+      "pending": "待处理",
+      "pendingLower": "待处理",
+      "preparedLower": "已备餐",
+      "readyLower": "已就绪",
+      "readyPickup": "已备好"
     }
   },
   "payment": {
@@ -2230,7 +3744,7 @@
     "quartierPlaceholder": "Lambanyi",
     "landmarkSearch": "地标搜索",
     "landmarkSearchRequired": "地标搜索 *",
-    "landmarkPlaceholder": "Station Total, mosquée, marché...",
+    "landmarkPlaceholder": "Total 加油站、清真寺、市场...",
     "formattedAddress": "格式化地址（可选）",
     "formattedAddressPlaceholder": "已知的街道或地点名",
     "directions": "描述您的确切位置 *",
@@ -2319,7 +3833,53 @@
     }
   },
   "common": {
-    "unknownError": "未知错误。"
+    "unknownError": "未知错误。",
+    "accept": "接受",
+    "all": "全部",
+    "client": "客户",
+    "copy": "复制",
+    "dash": "—",
+    "done": "完成",
+    "driver": "司机",
+    "ellipsis": "…",
+    "errors": {
+      "unknown": "未知错误"
+    },
+    "info": "信息",
+    "infoTitle": "信息",
+    "keepOrder": "保留订单",
+    "mustBeLoggedIn": "你必须先登录。",
+    "notLoggedIn": "你尚未登录。",
+    "password": "密码",
+    "payment": {
+      "title": "支付"
+    },
+    "permission": {
+      "title": "权限",
+      "camera": "允许相机权限以拍照。"
+    },
+    "profile": {
+      "address": "地址",
+      "avgRating": "平均评分",
+      "city": "城市",
+      "dateOfBirth": "出生日期",
+      "emergencyPhone": "紧急联系电话",
+      "placeholderAddress": "地址",
+      "placeholderCity": "城市",
+      "placeholderEmergencyPhone": "例如：9170000000",
+      "placeholderState": "NJ",
+      "placeholderZip": "07030",
+      "ratingsCount": "评分",
+      "state": "州",
+      "zip": "邮政编码"
+    },
+    "reject": "拒绝",
+    "restaurant": "餐厅",
+    "seeAll": "查看全部",
+    "session": "会话",
+    "somethingWentWrong": "发生错误",
+    "thanks": "谢谢",
+    "unavailable": "不可用"
   },
   "notifications": {
     "inbox": {
@@ -2467,7 +4027,8 @@
       "missingConfigBody": "未配置 API 地址。",
       "estimateFailedTitle": "估价失败",
       "createdTitle": "请求已创建",
-      "createdBody": "配送请求已创建。点按立即支付以完成付款。"
+      "createdBody": "配送请求已创建。点按立即支付以完成付款。",
+      "scopeBody": "开启定位以在你的市场选择配送地址。"
     },
     "errors": {
       "estimateGeneric": "暂时无法计算配送估价。",
@@ -2480,7 +4041,8 @@
       "loginRequiredPay": "必须登录才能支付。",
       "createFailed": "无法创建请求。",
       "missingCoords": "缺少取件和送达坐标。",
-      "quoteRequired": "创建请求前请先计算估价。"
+      "quoteRequired": "创建请求前请先计算估价。",
+      "unavailableInArea": "该县暂未开通配送服务。"
     },
     "payment": {
       "title": "支付",
@@ -2584,5 +4146,154 @@
   },
   "social": {
     "a11y": "MMD Delivery 社交媒体"
+  },
+  "account": {
+    "delete": {
+      "bulletAccess": "立即退出并禁止再次登录",
+      "bulletKeep": "订单、行程、付款、结算和税务记录在法律要求时予以保留",
+      "bulletPii": "姓名、电话、邮箱、地址和头像将被匿名化",
+      "bulletPush": "推送令牌和设备将被移除",
+      "confirmAction": "删除我的账户",
+      "confirmLead": "输入密码并键入 DELETE 以确认。",
+      "continue": "继续",
+      "doneBody": "你的个人数据已匿名化，你已退出。法律要求保留的财务记录已保留。",
+      "doneTitle": "账户已删除",
+      "failedTitle": "删除失败",
+      "finalBody": "此操作无法撤销。你将立即失去访问权限。",
+      "finalTitle": "永久删除？",
+      "lead": "你即将永久删除你在 MMD Delivery 上的 {{role}} 账户。",
+      "passwordPlaceholder": "当前密码",
+      "rowHint": "永久移除你的账户",
+      "title": "删除账户",
+      "typeDelete": "输入 \"DELETE\"",
+      "whatHappens": "接下来会发生什么"
+    }
+  },
+  "brand": {
+    "tagline": "用心配送 ❤️"
+  },
+  "calls": {
+    "connected": {
+      "end": "结束通话",
+      "endA11y": "结束通话",
+      "nativeHint": "在手机上通话。「结束通话」会挂断 Twilio 会话。静音和扬声器在手机上控制。",
+      "subtitle": "已接通",
+      "title": "通话进行中",
+      "withRole": "与{{role}}通话"
+    },
+    "incoming": {
+      "accept": "接受",
+      "acceptA11y": "接听",
+      "decline": "拒绝",
+      "declineA11y": "拒绝",
+      "fromRole": "{{role}}正在呼叫",
+      "nativeHint": "接听会停止应用内铃声。请在手机上接听才能通话。",
+      "relatedOrder": "相关任务",
+      "subtitle": "来电…",
+      "title": "来电"
+    },
+    "role": {
+      "caller": "来电者",
+      "customer": "顾客",
+      "driver": "司机",
+      "restaurant": "餐厅",
+      "support": "支持"
+    }
+  },
+  "delivery_requests": {
+    "status": {
+      "paid_pending": "已付款 • 等待司机",
+      "processing_pending": "付款处理中",
+      "unpaid": "未支付"
+    }
+  },
+  "legal": {
+    "openPrivacy": "隐私政策",
+    "openSupport": "支持",
+    "openTerms": "服务条款",
+    "privacy": "隐私政策",
+    "signupNotice": "创建账户即表示你同意我们的条款和隐私政策。",
+    "terms": "条款"
+  },
+  "loyalty": {
+    "apply": "确定",
+    "balance": "你的积分",
+    "codeFailed": "无效代码。",
+    "confirm": "确认",
+    "confirmTitle": "兑换我的积分",
+    "convertDone": "上次兑换已完成。积分足够时再兑换。",
+    "converting": "…",
+    "creditBalance": "可用余额：{{amount}}",
+    "creditExpiry": "余额将于 {{date}} 过期",
+    "enterCode": "输入推荐码",
+    "errorBody": "请检查网络后重试。",
+    "errorTitle": "无法加载积分",
+    "history": "积分记录",
+    "mmdPlusCta": "订阅 — 餐饮、配送、出租车与商城权益",
+    "mmdPlusOpen": "加入 / 管理订阅 →",
+    "needMore": "还需要更多",
+    "pointsValue": "{{points}} 积分 = {{amount}}",
+    "promotionsCta": "促销码、优惠券和自动优惠",
+    "redeem": "兑换",
+    "referral": "推荐",
+    "rewardCredit": "MMD 余额",
+    "rewardCreditDesc": "将 {{points}} 积分兑换为 {{amount}} 店铺余额",
+    "rewardsTitle": "可用奖励",
+    "share": "邀请好友",
+    "tierLine": "{{tier}} 会员 • 累计 {{lifetime}} 分",
+    "tierMax": "已达最高等级",
+    "tierProgress": "{{remaining}} 分到 {{next}}",
+    "title": "MMD 奖励",
+    "loadFailed": "无法加载。",
+    "convertSuccess": "兑换成功。MMD 余额已入账。",
+    "convertFailed": "兑换失败。",
+    "confirmMessage": "将 {{points}} 积分兑换为 {{amount}} MMD 余额？此操作不可撤销。",
+    "shareMessage": "加入 MMD Delivery 赚取奖励：{{link}}",
+    "codeApplied": "推荐码已保存。",
+    "referralCounts": "{{rewarded}} 已奖励 • {{pending}} 待处理",
+    "referralPending": "你的代码即将可用。",
+    "noActivity": "暂无活动。"
+  },
+  "orders": {
+    "status": {
+      "accepted": "已接受",
+      "acceptedRestaurant": "已接受",
+      "canceled": "已取消",
+      "delivered": "已送达",
+      "dispatched": "在途中",
+      "pending": "待处理",
+      "pendingRestaurant": "待处理",
+      "prepared": "准备中",
+      "ready": "已备好",
+      "readyWaitingDriver": "已就绪（等待司机）"
+    }
+  },
+  "restaurants": {
+    "chat": {
+      "empty": {
+        "body": "与客户或司机开始对话。",
+        "title": "暂无消息"
+      },
+      "loading": "正在加载聊天…",
+      "missing": {
+        "body": "找不到此订单。",
+        "goBack": "返回",
+        "title": "未找到订单"
+      },
+      "placeholder": "输入消息…",
+      "send": "发送",
+      "subtitle": "订单聊天",
+      "title": "聊天",
+      "titlePrefix": "餐厅"
+    }
+  },
+  "shared": {
+    "cancel": "取消",
+    "roles": {
+      "admin": "MMD 支持",
+      "client": "客户",
+      "driver": "司机",
+      "restaurant": "餐厅"
+    }
   }
 }

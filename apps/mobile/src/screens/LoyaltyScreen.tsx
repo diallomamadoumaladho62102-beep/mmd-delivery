@@ -102,10 +102,10 @@ export default function LoyaltyScreen() {
     } catch (e: unknown) {
       const msg = toUserFacingError(
         e,
-        t("loyalty.loadFailed", "Chargement impossible."),
+        t("loyalty.loadFailed", "Unable to load."),
       );
       setLoadError(msg);
-      Alert.alert(t("loyalty.title", "Fidélité MMD"), msg);
+      Alert.alert(t("loyalty.title", "MMD Rewards"), msg);
     } finally {
       setLoading(false);
     }
@@ -135,13 +135,13 @@ export default function LoyaltyScreen() {
       setLastConvertOk(true);
       await load();
       Alert.alert(
-        t("loyalty.title", "Fidélité MMD"),
-        t("loyalty.convertSuccess", "Conversion réussie. Votre Crédit MMD a été ajouté."),
+        t("loyalty.title", "MMD Rewards"),
+        t("loyalty.convertSuccess", "Conversion successful. Your MMD credit was added."),
       );
     } catch (e: unknown) {
       Alert.alert(
-        t("loyalty.title", "Fidélité MMD"),
-        toUserFacingError(e, t("loyalty.convertFailed", "Conversion impossible.")),
+        t("loyalty.title", "MMD Rewards"),
+        toUserFacingError(e, t("loyalty.convertFailed", "Conversion failed.")),
       );
     } finally {
       setConverting(false);
@@ -155,15 +155,15 @@ export default function LoyaltyScreen() {
       t("loyalty.confirmTitle", "Convertir mes points"),
       t(
         "loyalty.confirmMessage",
-        "Convertir {{points}} points en {{amount}} de Crédit MMD ? Cette action est définitive.",
+        "Convert {{points}} points into {{amount}} MMD credit? This cannot be undone.",
         {
           points: summary.settings.conversion_points,
           amount: formatCredit(summary.settings.conversion_credit_cents, summary.currency),
         },
       ),
       [
-        { text: t("common.cancel", "Annuler"), style: "cancel" },
-        { text: t("loyalty.confirm", "Confirmer"), onPress: () => void doConvert() },
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        { text: t("loyalty.confirm", "Confirm"), onPress: () => void doConvert() },
       ],
     );
   }, [summary, canConvert, converting, doConvert, t]);
@@ -174,7 +174,7 @@ export default function LoyaltyScreen() {
       await Share.share({
         message: t(
           "loyalty.shareMessage",
-          "Rejoignez MMD Delivery et gagnez des récompenses : {{link}}",
+          "Join MMD Delivery and earn rewards: {{link}}",
           { link: referralLink },
         ),
       });
@@ -190,13 +190,13 @@ export default function LoyaltyScreen() {
       await applyReferralCode(code);
       setCodeInput("");
       Alert.alert(
-        t("loyalty.title", "Fidélité MMD"),
-        t("loyalty.codeApplied", "Code de parrainage enregistré."),
+        t("loyalty.title", "MMD Rewards"),
+        t("loyalty.codeApplied", "Referral code saved."),
       );
       await load();
     } catch (e: unknown) {
       Alert.alert(
-        t("loyalty.title", "Fidélité MMD"),
+        t("loyalty.title", "MMD Rewards"),
         toUserFacingError(e, t("loyalty.codeFailed", "Code invalide.")),
       );
     }
@@ -399,7 +399,7 @@ export default function LoyaltyScreen() {
                 <>
                   <Text style={styles.code}>{referralCode}</Text>
                   <Text style={styles.soft}>
-                    {t("loyalty.referralCounts", "{{rewarded}} récompensés • {{pending}} en attente", {
+                    {t("loyalty.referralCounts", "{{rewarded}} rewarded • {{pending}} pending", {
                       rewarded: referralCounts.rewarded,
                       pending: referralCounts.pending,
                     })}
@@ -410,13 +410,13 @@ export default function LoyaltyScreen() {
                     activeOpacity={0.85}
                   >
                     <Text style={styles.secondaryBtnText}>
-                      {t("loyalty.share", "Inviter des amis")}
+                      {t("loyalty.share", "Invite friends")}
                     </Text>
                   </TouchableOpacity>
                 </>
               ) : (
                 <Text style={styles.soft}>
-                  {t("loyalty.referralPending", "Votre code sera bientôt disponible.")}
+                  {t("loyalty.referralPending", "Your code will be available soon.")}
                 </Text>
               )}
 
@@ -444,7 +444,7 @@ export default function LoyaltyScreen() {
             </Text>
             {points.length === 0 && credit.length === 0 ? (
               <Text style={styles.emptyText}>
-                {t("loyalty.noActivity", "Aucune activité pour le moment.")}
+                {t("loyalty.noActivity", "No activity yet.")}
               </Text>
             ) : (
               <>

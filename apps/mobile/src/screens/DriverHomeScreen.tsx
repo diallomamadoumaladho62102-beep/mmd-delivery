@@ -852,10 +852,10 @@ export function DriverHomeScreen() {
 
   const searchMessages = useMemo(
     () => [
-      t("driver.home.searching.msg1", "Recherche des meilleures courses autour de vous"),
-      t("driver.home.searching.msg2", "Analyse des routes les plus profitables"),
-      t("driver.home.searching.msg3", "Priorité aux demandes proches et urgentes"),
-      t("driver.home.searching.msg4", "Synchronisation en direct avec votre zone"),
+      t("driver.home.searching.msg1", "Searching for the best trips around you"),
+      t("driver.home.searching.msg2", "Analyzing the most profitable routes"),
+      t("driver.home.searching.msg3", "Priority for nearby and urgent requests"),
+      t("driver.home.searching.msg4", "Live sync with your area"),
     ],
     [t],
   );
@@ -1201,7 +1201,7 @@ export function DriverHomeScreen() {
     const { data: sessionData, error: sErr } = await supabase.auth.getSession();
     if (sErr) throw sErr;
     const userId = sessionData.session?.user?.id;
-    if (!userId) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
+    if (!userId) throw new Error(t("driver.home.errors.mustBeLoggedIn", "You must be logged in."));
     return userId;
   }, [t]);
 
@@ -1845,7 +1845,7 @@ export function DriverHomeScreen() {
       } catch (e: any) {
         console.log("Erreur chargement commandes driver:", e);
         if (mountedRef.current) {
-          setError(t("driver.home.errors.loadOrders", "Impossible de charger les commandes."));
+          setError(t("driver.home.errors.loadOrders", "Unable to load orders."));
         }
       } finally {
         if (mountedRef.current && fetchSeq === fetchSeqRef.current) setLoading(false);
@@ -2109,17 +2109,17 @@ export function DriverHomeScreen() {
         case "processing_pending":
           return t("driver.home.status.pending", "En attente");
         case "accepted":
-          return t("driver.home.status.accepted", "Acceptée");
+          return t("driver.home.status.accepted", "Accepted");
         case "prepared":
-          return t("driver.home.status.prepared", "En préparation");
+          return t("driver.home.status.prepared", "Preparing");
         case "ready":
-          return t("driver.home.status.ready", "Prête");
+          return t("driver.home.status.ready", "Ready (waiting for driver)");
         case "dispatched":
-          return t("driver.home.status.dispatched", "En livraison");
+          return t("driver.home.status.dispatched", "On delivery");
         case "delivered":
-          return t("driver.home.status.delivered", "Livrée");
+          return t("driver.home.status.delivered", "Delivered");
         case "canceled":
-          return t("driver.home.status.canceled", "Annulée");
+          return t("driver.home.status.canceled", "Canceled");
         default:
           return String(status);
       }
@@ -3213,7 +3213,7 @@ export function DriverHomeScreen() {
             <MapFloatingButton
               icon="compass"
               onPress={resetMapBearing}
-              accessibilityLabel={t("driver.home.map.compass", "Réorienter vers le nord")}
+              accessibilityLabel={t("driver.home.map.compass", "Reorient north")}
               scheme="day"
               compact
             />
@@ -3247,7 +3247,7 @@ export function DriverHomeScreen() {
           <View style={styles.loadingOverlay}>
             <ActivityIndicator color="#0F172A" />
             <Text style={[styles.loadingText, { color: "#0F172A" }]}>
-              {t("driver.home.gps.locating", "Localisation du chauffeur…")}
+              {t("driver.home.gps.locating", "Locating driver…")}
             </Text>
           </View>
         )}

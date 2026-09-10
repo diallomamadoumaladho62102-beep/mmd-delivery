@@ -1032,7 +1032,7 @@ export function DriverWalletScreen() {
               <Text style={styles.overlayHint}>
                 {t(
                   "driver.wallet.confirm.hint",
-                  "Instant cash out sends the full eligible available balance. Amount is not client-controlled.",
+                  "Instant cash out sends the full eligible available balance.",
                 )}
               </Text>
               {availableMethods[0]?.display_name ? (

@@ -1,0 +1,1815 @@
+{
+  "Notification": {
+    "fr": "Notification",
+    "es": "Notificación",
+    "ar": "إشعار",
+    "zh": "通知",
+    "ff": "Jeertingol"
+  },
+  "Communication": {
+    "fr": "Communication",
+    "es": "Comunicación",
+    "ar": "تواصل",
+    "zh": "通讯",
+    "ff": "Jeewte"
+  },
+  "Message": {
+    "fr": "Message",
+    "es": "Mensaje",
+    "ar": "رسالة",
+    "zh": "消息",
+    "ff": "Ɓatakuure"
+  },
+  "points": {
+    "fr": "points",
+    "es": "puntos",
+    "ar": "نقاط",
+    "zh": "积分",
+    "ff": "toɓɓe"
+  },
+  "Session": {
+    "fr": "Session",
+    "es": "Sesión",
+    "ar": "جلسة",
+    "zh": "会话",
+    "ff": "Naatgol"
+  },
+  "Photo": {
+    "fr": "Photo",
+    "es": "Foto",
+    "ar": "صورة",
+    "zh": "照片",
+    "ff": "Nataal"
+  },
+  "Danger": {
+    "fr": "Danger",
+    "es": "Peligro",
+    "ar": "خطر",
+    "zh": "危险",
+    "ff": "Koyɗol"
+  },
+  "MMD Delivery": {
+    "fr": "MMD Delivery",
+    "es": "MMD Delivery",
+    "ar": "MMD Delivery",
+    "zh": "MMD Delivery",
+    "ff": "MMD Delivery"
+  },
+  "{{level}} · score {{score}}": {
+    "fr": "{{level}} · score {{score}}",
+    "es": "{{level}} · puntuación {{score}}",
+    "ar": "{{level}} · النتيجة {{score}}",
+    "zh": "{{level}} · 分数 {{score}}",
+    "ff": "{{level}} · toɓɓe {{score}}"
+  },
+  "Category is synced automatically": {
+    "fr": "La catégorie est synchronisée automatiquement",
+    "es": "La categoría se sincroniza automáticamente",
+    "ar": "تتم مزامنة الفئة تلقائياً",
+    "zh": "类别会自动同步",
+    "ff": "Fannu hesɗitinee e hoore mum"
+  },
+  "Bicycle": {
+    "fr": "Bicycle",
+    "es": "Bicicleta",
+    "ar": "دراجة",
+    "zh": "自行车",
+    "ff": "Welo"
+  },
+  "No motorized vehicle required": {
+    "fr": "Aucun véhicule motorisé requis",
+    "es": "No se requiere vehículo motorizado",
+    "ar": "لا يلزم مركبة مزودة بمحرك",
+    "zh": "无需机动车辆",
+    "ff": "Alaa oto motoor wajibi"
+  },
+  "Change type": {
+    "fr": "Changer le type",
+    "es": "Cambiar tipo",
+    "ar": "تغيير النوع",
+    "zh": "更改类型",
+    "ff": "Waylu fannu"
+  },
+  "Motorcycle": {
+    "fr": "Moto",
+    "es": "Motocicleta",
+    "ar": "دراجة نارية",
+    "zh": "摩托车",
+    "ff": "Moto"
+  },
+  "Taxi categories are calculated by the server.": {
+    "fr": "Les catégories taxi sont calculées par le serveur.",
+    "es": "Las categorías de taxi las calcula el servidor.",
+    "ar": "يحسب الخادم فئات التاكسي.",
+    "zh": "出租车类别由服务器计算。",
+    "ff": "Fannuuji taksi ina limtee e sarworde."
+  },
+  "Accessible": {
+    "fr": "Accessible",
+    "es": "Accesible",
+    "ar": "ميسّر",
+    "zh": "无障碍",
+    "ff": "Heɓotoonde"
+  },
+  "Diesel": {
+    "fr": "Diesel",
+    "es": "Diésel",
+    "ar": "ديزل",
+    "zh": "柴油",
+    "ff": "Diisel"
+  },
+  "New York": {
+    "fr": "New York",
+    "es": "New York",
+    "ar": "New York",
+    "zh": "New York",
+    "ff": "New York"
+  },
+  "driver.benefits.boostSubtitle.percent": {
+    "fr": "Gagne +{value}% sur ta part chauffeur.",
+    "es": "Gana +{value}% en tu parte de conductor.",
+    "ar": "اربح +{value}% على حصتك كسائق.",
+    "zh": "司机分成额外 +{value}%。",
+    "ff": "Heɓ +{value}% e geɓal dooɓoowo maa."
+  },
+  "driver.benefits.boostSubtitle.perOrder": {
+    "fr": "Bonus ajouté : +{value} $ par course livrée.",
+    "es": "Bono añadido: +${value} por viaje entregado.",
+    "ar": "مكافأة مضافة: +${value} لكل رحلة مسلّمة.",
+    "zh": "已加奖金：每单已送达 +${value}。",
+    "ff": "Bonus ɓeydaama: +${value} e yahdu kala nelaaɗo."
+  },
+  "driver.benefits.challenge.progress": {
+    "fr": "Progression : {value}",
+    "es": "Progreso: {value}",
+    "ar": "التقدم: {value}",
+    "zh": "进度：{value}",
+    "ff": "Yahrugol: {value}"
+  },
+  "driver.benefits.challenge.reward": {
+    "fr": "Récompense : {amount}",
+    "es": "Recompensa: {amount}",
+    "ar": "المكافأة: {amount}",
+    "zh": "奖励：{amount}",
+    "ff": "Njoɓdi: {amount}"
+  },
+  "Miles": {
+    "fr": "Miles",
+    "es": "Millas",
+    "ar": "أميال",
+    "zh": "英里",
+    "ff": "Maayli"
+  },
+  "Please wait while we verify your identity.\nThis may take a few moments.": {
+    "fr": "Patiente pendant que nous vérifions ton identité.\nCela peut prendre quelques instants.",
+    "es": "Espera mientras verificamos tu identidad.\nPuede tardar unos momentos.",
+    "ar": "يرجى الانتظار أثناء التحقق من هويتك.\nقد يستغرق ذلك لحظات.",
+    "zh": "正在验证你的身份，请稍候。\n可能需要一点时间。",
+    "ff": "Sabbo tuma ngen ƴeewata holle maa.\nƊum ina waawi ɓooyde seeɗa."
+  },
+  "To protect clients, drivers and the MMD Delivery platform, we need to confirm your identity. Please take a clear selfie of your face.": {
+    "fr": "Pour protéger les clients, les chauffeurs et la plateforme MMD Delivery, nous devons confirmer ton identité. Prends une selfie claire de ton visage.",
+    "es": "Para proteger a clientes, conductores y la plataforma MMD Delivery, debemos confirmar tu identidad. Toma una selfie clara de tu rostro.",
+    "ar": "لحماية العملاء والسائقين ومنصة MMD Delivery، يلزم تأكيد هويتك. التقط سيلفي واضحة لوجهك.",
+    "zh": "为保护客户、司机和 MMD Delivery 平台，我们需要确认你的身份。请拍摄一张面部清晰的自拍。",
+    "ff": "Ngam hisnude kiliyeeɓe, dooɓooɓe e yuɓɓo MMD Delivery, min ɗaɓɓi tabitinde holle maa. Ñamndu selfie laaɓɗo e yeeso maa."
+  },
+  "Pending Validation": {
+    "fr": "Validation en attente",
+    "es": "Validación pendiente",
+    "ar": "بانتظار التحقق",
+    "zh": "待验证",
+    "ff": "Ƴeewndo nana sabbii"
+  },
+  "Your selfie has been received. Our team or automated system is validating your identity. You can go online once verification is complete.": {
+    "fr": "Ta selfie a été reçue. Notre équipe ou le système automatique valide ton identité. Tu pourras passer en ligne une fois la vérification terminée.",
+    "es": "Hemos recibido tu selfie. Nuestro equipo o el sistema automático está validando tu identidad. Podrás conectarte cuando termine la verificación.",
+    "ar": "تم استلام صورتك الذاتية. يتحقق فريقنا أو النظام الآلي من هويتك. يمكنك الاتصال بعد اكتمال التحقق.",
+    "zh": "已收到你的自拍。团队或自动系统正在核验身份。验证完成后即可上线。",
+    "ff": "Selfie maa keɓaama. Fedde men walla yuɓɓo hoore mum nana ƴeewa holle maa. A waawi naatde e kawral so ƴeewndo timmii."
+  },
+  "Refresh Status": {
+    "fr": "Actualiser le statut",
+    "es": "Actualizar estado",
+    "ar": "تحديث الحالة",
+    "zh": "刷新状态",
+    "ff": "Hesɗitin ngonka"
+  },
+  "You can now go online.": {
+    "fr": "Tu peux maintenant passer en ligne.",
+    "es": "Ya puedes conectarte.",
+    "ar": "يمكنك الاتصال الآن.",
+    "zh": "你现在可以上线。",
+    "ff": "A waawi naatde e kawral jooni."
+  },
+  "Verification problem": {
+    "fr": "Problème de vérification",
+    "es": "Problema de verificación",
+    "ar": "مشكلة في التحقق",
+    "zh": "验证问题",
+    "ff": "Caɗeele ƴeewndo"
+  },
+  "Something went wrong.": {
+    "fr": "Une erreur s’est produite.",
+    "es": "Algo salió mal.",
+    "ar": "حدث خطأ ما.",
+    "zh": "出了点问题。",
+    "ff": "Huunde moƴƴaani."
+  },
+  "Selfie required — centered face, good lighting": {
+    "fr": "Selfie requise — visage centré, bonne lumière",
+    "es": "Selfie obligatoria: rostro centrado y buena luz",
+    "ar": "يلزم سيلفي — وجه في الوسط وإضاءة جيدة",
+    "zh": "需要自拍 — 面部居中、光线充足",
+    "ff": "Selfie wajibi — yeeso hakkunde, annoora moƴƴo"
+  },
+  "Secure selfie upload…": {
+    "fr": "Envoi sécurisé de la selfie…",
+    "es": "Subida segura de la selfie…",
+    "ar": "رفع آمن للصورة الذاتية…",
+    "zh": "正在安全上传自拍…",
+    "ff": "Neldugol selfie hisngol…"
+  },
+  "Submitting…": {
+    "fr": "Envoi…",
+    "es": "Enviando…",
+    "ar": "جارٍ الإرسال…",
+    "zh": "提交中…",
+    "ff": "Nana nelda…"
+  },
+  "Retake selfie": {
+    "fr": "Reprendre la selfie",
+    "es": "Repetir selfie",
+    "ar": "إعادة التقاط السيلفي",
+    "zh": "重拍自拍",
+    "ff": "Fuɗɗu selfie"
+  },
+  "Take a Selfie": {
+    "fr": "Prendre une selfie",
+    "es": "Tomar una selfie",
+    "ar": "التقاط سيلفي",
+    "zh": "拍摄自拍",
+    "ff": "Ñamndu selfie"
+  },
+  "Total taxi": {
+    "fr": "Total taxi",
+    "es": "Total taxi",
+    "ar": "إجمالي التاكسي",
+    "zh": "出租车合计",
+    "ff": "Kuuɓal taksi"
+  },
+  "DESTINATION": {
+    "fr": "DESTINATION",
+    "es": "DESTINO",
+    "ar": "الوجهة",
+    "zh": "目的地",
+    "ff": "GARTIRDE"
+  },
+  "Version, support": {
+    "fr": "Version, support",
+    "es": "Versión, soporte",
+    "ar": "الإصدار، الدعم",
+    "zh": "版本、支持",
+    "ff": "Yamre, ballal"
+  },
+  "{{points}} points = {{amount}}": {
+    "fr": "{{points}} points = {{amount}}",
+    "es": "{{points}} puntos = {{amount}}",
+    "ar": "{{points}} نقطة = {{amount}}",
+    "zh": "{{points}} 积分 = {{amount}}",
+    "ff": "{{points}} toɓɓe = {{amount}}"
+  },
+  "Stock": {
+    "fr": "Stock",
+    "es": "Existencias",
+    "ar": "المخزون",
+    "zh": "库存",
+    "ff": "Stook"
+  },
+  "Auto-accept new orders": {
+    "fr": "Accepter automatiquement les nouvelles commandes",
+    "es": "Aceptar automáticamente pedidos nuevos",
+    "ar": "قبول الطلبات الجديدة تلقائياً",
+    "zh": "自动接受新订单",
+    "ff": "Jaɓtu e hoore njamndi kese"
+  },
+  "Auto-print on accept": {
+    "fr": "Imprimer automatiquement à l’acceptation",
+    "es": "Imprimir automáticamente al aceptar",
+    "ar": "طباعة تلقائية عند القبول",
+    "zh": "接受后自动打印",
+    "ff": "Winndito e hoore so jaɓaama"
+  },
+  "Sound alert": {
+    "fr": "Alerte sonore",
+    "es": "Alerta sonora",
+    "ar": "تنبيه صوتي",
+    "zh": "声音提醒",
+    "ff": "Jeertingol daande"
+  },
+  "{{mins}} min": {
+    "fr": "{{mins}} min",
+    "es": "{{mins}} min",
+    "ar": "{{mins}} د",
+    "zh": "{{mins}} 分钟",
+    "ff": "{{mins}} hoj"
+  },
+  "Saving…": {
+    "fr": "Enregistrement…",
+    "es": "Guardando…",
+    "ar": "جارٍ الحفظ…",
+    "zh": "保存中…",
+    "ff": "Nana dannda…"
+  },
+  "Save Settings": {
+    "fr": "Enregistrer les réglages",
+    "es": "Guardar ajustes",
+    "ar": "حفظ الإعدادات",
+    "zh": "保存设置",
+    "ff": "Danndu teelte"
+  },
+  "Test print": {
+    "fr": "Test d’impression",
+    "es": "Prueba de impresión",
+    "ar": "اختبار الطباعة",
+    "zh": "测试打印",
+    "ff": "Jiiɓannde winndito"
+  },
+  "Logo / Photo": {
+    "fr": "Logo / Photo",
+    "es": "Logo / Foto",
+    "ar": "الشعار / الصورة",
+    "zh": "标志 / 照片",
+    "ff": "Logo / Nataal"
+  },
+  "Search (English, Français, Español...)": {
+    "fr": "Search (English, Français, Español...)",
+    "es": "Search (English, Français, Español...)",
+    "ar": "Search (English, Français, Español...)",
+    "zh": "Search (English, Français, Español...)",
+    "ff": "Search (English, Français, Español...)"
+  },
+  "Client {{id}}": {
+    "fr": "Client {{id}}",
+    "es": "Cliente {{id}}",
+    "ar": "العميل {{id}}",
+    "zh": "客户 {{id}}",
+    "ff": "Kiliyee {{id}}"
+  },
+  "Notes": {
+    "fr": "Notes",
+    "es": "Notas",
+    "ar": "ملاحظات",
+    "zh": "备注",
+    "ff": "Ciimtol"
+  },
+  "Taxes": {
+    "fr": "Taxes",
+    "es": "Impuestos",
+    "ar": "الضرائب",
+    "zh": "税费",
+    "ff": "Kootu"
+  },
+  "Admin": {
+    "fr": "Admin",
+    "es": "Admin",
+    "ar": "المشرف",
+    "zh": "管理员",
+    "ff": "Admin"
+  },
+  "https://…": {
+    "fr": "https://…",
+    "es": "https://…",
+    "ar": "https://…",
+    "zh": "https://…",
+    "ff": "https://…"
+  },
+  "Stripe Connect": {
+    "fr": "Stripe Connect",
+    "es": "Stripe Connect",
+    "ar": "Stripe Connect",
+    "zh": "Stripe Connect",
+    "ff": "Stripe Connect"
+  },
+  "📷 Image": {
+    "fr": "📷 Image",
+    "es": "📷 Imagen",
+    "ar": "📷 صورة",
+    "zh": "📷 图片",
+    "ff": "📷 Nataal"
+  },
+  "{{title}} ({{count}} pts)": {
+    "fr": "{{title}} ({{count}} pts)",
+    "es": "{{title}} ({{count}} pts)",
+    "ar": "{{title}} ({{count}} نقطة)",
+    "zh": "{{title}} ({{count}} 分)",
+    "ff": "{{title}} ({{count}} toɓɓe)"
+  },
+  "Participant": {
+    "fr": "Participant",
+    "es": "Participante",
+    "ar": "مشارك",
+    "zh": "参与者",
+    "ff": "Tawtotooɗo"
+  },
+  "Code": {
+    "fr": "Code",
+    "es": "Código",
+    "ar": "الرمز",
+    "zh": "代码",
+    "ff": "Kode"
+  },
+  "Navigation unavailable": {
+    "fr": "Navigation indisponible",
+    "es": "Navegación no disponible",
+    "ar": "التنقل غير متاح",
+    "zh": "导航不可用",
+    "ff": "Yiiltugol heɓotaako"
+  },
+  "Mapbox token is missing. Contact MMD support before using driver navigation.": {
+    "fr": "Le jeton Mapbox est manquant. Contacte le support MMD avant d’utiliser la navigation chauffeur.",
+    "es": "Falta el token de Mapbox. Contacta con soporte MMD antes de usar la navegación del conductor.",
+    "ar": "رمز Mapbox مفقود. تواصل مع دعم MMD قبل استخدام تنقل السائق.",
+    "zh": "缺少 Mapbox 令牌。使用司机导航前请联系 MMD 支持。",
+    "ff": "Token Mapbox ŋatnii. Jokkondir e ballal MMD hade maa huutoraade yiiltugol dooɓoowo."
+  },
+  "Order not found": {
+    "fr": "Commande introuvable",
+    "es": "Pedido no encontrado",
+    "ar": "الطلب غير موجود",
+    "zh": "未找到订单",
+    "ff": "Njamndi heɓaaka"
+  },
+  "Unable to load this trip.": {
+    "fr": "Impossible de charger cette course.",
+    "es": "No se pudo cargar este viaje.",
+    "ar": "تعذّر تحميل هذه الرحلة.",
+    "zh": "无法加载此行程。",
+    "ff": "Horiima loowde ndee yahdu."
+  },
+  "GPS coordinates missing": {
+    "fr": "Coordonnées GPS manquantes",
+    "es": "Faltan coordenadas GPS",
+    "ar": "إحداثيات GPS مفقودة",
+    "zh": "缺少 GPS 坐标",
+    "ff": "Toɓɓe GPS ŋatnii"
+  },
+  "This trip has no valid coordinates yet. Return to order details.": {
+    "fr": "Cette course n’a pas encore de coordonnées valides. Retourne aux détails de la commande.",
+    "es": "Este viaje aún no tiene coordenadas válidas. Vuelve a los detalles del pedido.",
+    "ar": "هذه الرحلة بلا إحداثيات صالحة بعد. عُد إلى تفاصيل الطلب.",
+    "zh": "此行程尚无有效坐标。请返回订单详情。",
+    "ff": "Ndee yahdu alaa toɓɓe jaɓaaɗe tawo. Rutto to cariiiɗe njamndi."
+  },
+  "Location permission denied": {
+    "fr": "Permission de localisation refusée",
+    "es": "Permiso de ubicación denegado",
+    "ar": "رُفض إذن الموقع",
+    "zh": "位置权限被拒绝",
+    "ff": "Jamiroore nokkuure salaama"
+  },
+  "Enable location access to use MMD navigation.": {
+    "fr": "Active l’accès à la localisation pour utiliser la navigation MMD.",
+    "es": "Activa el acceso a la ubicación para usar la navegación MMD.",
+    "ar": "فعّل الوصول إلى الموقع لاستخدام تنقل MMD.",
+    "zh": "开启位置权限以使用 MMD 导航。",
+    "ff": "Hurmin naatgol nokkuure ngam huutoraade yiiltugol MMD."
+  },
+  "Route unavailable": {
+    "fr": "Itinéraire indisponible",
+    "es": "Ruta no disponible",
+    "ar": "المسار غير متاح",
+    "zh": "路线不可用",
+    "ff": "Laawol heɓotaako"
+  },
+  "Unable to calculate the route at this time. You can retry or open an external app from the details.": {
+    "fr": "Impossible de calculer l’itinéraire pour le moment. Tu peux réessayer ou ouvrir une app externe depuis les détails.",
+    "es": "No se puede calcular la ruta ahora. Puedes reintentar o abrir una app externa desde los detalles.",
+    "ar": "تعذّر حساب المسار حالياً. يمكنك إعادة المحاولة أو فتح تطبيق خارجي من التفاصيل.",
+    "zh": "暂时无法计算路线。可重试或从详情打开外部应用。",
+    "ff": "Horiima limtude laawol jooni. A waawi etooɗde kadi walla udditde jaŋngirgal yaasi e cariiiɗe."
+  },
+  "Error": {
+    "fr": "Erreur",
+    "es": "Error",
+    "ar": "خطأ",
+    "zh": "错误",
+    "ff": "Juumre"
+  },
+  "Premium": {
+    "fr": "Premium",
+    "es": "Premium",
+    "ar": "بريميوم",
+    "zh": "高级",
+    "ff": "Premium"
+  },
+  "CLIENT": {
+    "fr": "CLIENT",
+    "es": "CLIENTE",
+    "ar": "العميل",
+    "zh": "客户",
+    "ff": "KILIYEE"
+  },
+  "Zone ({{code}})": {
+    "fr": "Zone ({{code}})",
+    "es": "Zona ({{code}})",
+    "ar": "المنطقة ({{code}})",
+    "zh": "区域 ({{code}})",
+    "ff": "Diiwaan ({{code}})"
+  },
+  "Commune": {
+    "fr": "Commune",
+    "es": "Commune",
+    "ar": "Commune",
+    "zh": "Commune",
+    "ff": "Commune"
+  },
+  "Matoto": {
+    "fr": "Matoto",
+    "es": "Matoto",
+    "ar": "Matoto",
+    "zh": "Matoto",
+    "ff": "Matoto"
+  },
+  "Quartier": {
+    "fr": "Quartier",
+    "es": "Quartier",
+    "ar": "Quartier",
+    "zh": "Quartier",
+    "ff": "Quartier"
+  },
+  "Lambanyi": {
+    "fr": "Lambanyi",
+    "es": "Lambanyi",
+    "ar": "Lambanyi",
+    "zh": "Lambanyi",
+    "ff": "Lambanyi"
+  },
+  "Station Total, mosquée, marché...": {
+    "fr": "Station Total, mosquée, marché...",
+    "es": "Estación Total, mezquita, mercado...",
+    "ar": "محطة Total، مسجد، سوق...",
+    "zh": "Total 加油站、清真寺、市场...",
+    "ff": "Station Total, juulirde, luumo..."
+  },
+  "Test": {
+    "fr": "Test",
+    "es": "Prueba",
+    "ar": "اختبار",
+    "zh": "测试",
+    "ff": "Jiiɓannde"
+  },
+  "Microphone": {
+    "fr": "Microphone",
+    "es": "Micrófono",
+    "ar": "ميكروفون",
+    "zh": "麦克风",
+    "ff": "Mikoro"
+  },
+  "Zoom +": {
+    "fr": "Zoom +",
+    "es": "Zoom +",
+    "ar": "Zoom +",
+    "zh": "Zoom +",
+    "ff": "Zoom +"
+  },
+  "Zoom −": {
+    "fr": "Zoom −",
+    "es": "Zoom −",
+    "ar": "Zoom −",
+    "zh": "Zoom −",
+    "ff": "Zoom −"
+  },
+  "Unable to load the inbox.": {
+    "fr": "Impossible de charger la boîte.",
+    "es": "No se pudo cargar la bandeja.",
+    "ar": "تعذّر تحميل صندوق الوارد.",
+    "zh": "无法加载收件箱。",
+    "ff": "Horiima loowde sandu ɓatakuuji."
+  },
+  "No orders in progress.": {
+    "fr": "Aucune commande en cours.",
+    "es": "No hay pedidos en curso.",
+    "ar": "لا توجد طلبات قيد التنفيذ.",
+    "zh": "没有进行中的订单。",
+    "ff": "Alaa njamndi nana yaha."
+  },
+  "No deliveries in the last 7 days.": {
+    "fr": "Aucune commande livrée sur 7 jours.",
+    "es": "No hay entregas en los últimos 7 días.",
+    "ar": "لا تسليمات في آخر 7 أيام.",
+    "zh": "近 7 天没有配送。",
+    "ff": "Alaa neldugol e balɗe 7 cakkitiiɗe."
+  },
+  "Allow photo access to choose an image.": {
+    "fr": "Autorise l’accès aux photos pour choisir une image.",
+    "es": "Permite el acceso a las fotos para elegir una imagen.",
+    "ar": "اسمح بالوصول إلى الصور لاختيار صورة.",
+    "zh": "允许访问相册以选择图片。",
+    "ff": "Yamir naatgol nataaluuji ngam suɓaade natal."
+  },
+  "Primary address": {
+    "fr": "Adresse principale",
+    "es": "Dirección principal",
+    "ar": "العنوان الرئيسي",
+    "zh": "主要地址",
+    "ff": "Ñiiɓirde mawnde"
+  },
+  "Address not saved (update):": {
+    "fr": "Adresse non enregistrée (update):",
+    "es": "Dirección no guardada (update):",
+    "ar": "لم يُحفظ العنوان (update):",
+    "zh": "地址未保存 (update)：",
+    "ff": "Ñiiɓirde danndaaka (update):"
+  },
+  "Address not saved (insert):": {
+    "fr": "Adresse non enregistrée (insert):",
+    "es": "Dirección no guardada (insert):",
+    "ar": "لم يُحفظ العنوان (insert):",
+    "zh": "地址未保存 (insert)：",
+    "ff": "Ñiiɓirde danndaaka (insert):"
+  },
+  "Enter a valid number.": {
+    "fr": "Entre un numéro valide.",
+    "es": "Introduce un número válido.",
+    "ar": "أدخل رقماً صالحاً.",
+    "zh": "请输入有效号码。",
+    "ff": "Naatnu limoore jaɓaande."
+  },
+  "Enter a valid address.": {
+    "fr": "Entre une adresse valide.",
+    "es": "Introduce una dirección válida.",
+    "ar": "أدخل عنواناً صالحاً.",
+    "zh": "请输入有效地址。",
+    "ff": "Naatnu ñiiɓirde jaɓaande."
+  },
+  "Select a Mapbox address from the list to normalize it.": {
+    "fr": "Sélectionne une adresse Mapbox dans la liste pour la normaliser.",
+    "es": "Selecciona una dirección de Mapbox de la lista para normalizarla.",
+    "ar": "اختر عنوان Mapbox من القائمة لتوحيده.",
+    "zh": "从列表中选择 Mapbox 地址以规范化。",
+    "ff": "Suɓo ñiiɓirde Mapbox e doggol ngam fotndude ɗum."
+  },
+  "Unable to save (client_profiles):": {
+    "fr": "Sauvegarde impossible (client_profiles):",
+    "es": "No se pudo guardar (client_profiles):",
+    "ar": "تعذّر الحفظ (client_profiles):",
+    "zh": "无法保存 (client_profiles)：",
+    "ff": "Horiima danndude (client_profiles):"
+  },
+  "Profile saved.": {
+    "fr": "Profil enregistré.",
+    "es": "Perfil guardado.",
+    "ar": "تم حفظ الملف.",
+    "zh": "资料已保存。",
+    "ff": "Profil danndaama."
+  },
+  "Unable to save.": {
+    "fr": "Impossible d’enregistrer.",
+    "es": "No se pudo guardar.",
+    "ar": "تعذّر الحفظ.",
+    "zh": "无法保存。",
+    "ff": "Horiima danndude."
+  },
+  "Address verified": {
+    "fr": "Adresse vérifiée",
+    "es": "Dirección verificada",
+    "ar": "تم التحقق من العنوان",
+    "zh": "地址已验证",
+    "ff": "Ñiiɓirde ƴeewtaama"
+  },
+  "Search for an address…": {
+    "fr": "Rechercher une adresse…",
+    "es": "Buscar una dirección…",
+    "ar": "ابحث عن عنوان…",
+    "zh": "搜索地址…",
+    "ff": "Seet ñiiɓirde…"
+  },
+  "Tip: State = \"NY\", Country = \"US\".": {
+    "fr": "Astuce: État = \"NY\", Pays = \"US\".",
+    "es": "Consejo: Estado = \"NY\", País = \"US\".",
+    "ar": "تلميح: الولاية = \"NY\"، البلد = \"US\".",
+    "zh": "提示：州 = \"NY\"，国家 = \"US\"。",
+    "ff": "Ciimtol: Diiwaan = \"NY\", Leydi = \"US\"."
+  },
+  "Manage your mission types": {
+    "fr": "Gère tes types de mission",
+    "es": "Gestiona tus tipos de misión",
+    "ar": "أدِر أنواع مهامك",
+    "zh": "管理你的任务类型",
+    "ff": "Yuɓɓin fannuuji golle maa"
+  },
+  "Loading your services...": {
+    "fr": "Chargement de tes services...",
+    "es": "Cargando tus servicios...",
+    "ar": "جارٍ تحميل خدماتك...",
+    "zh": "正在加载你的服务...",
+    "ff": "Nana loowa golle maa..."
+  },
+  "Available services": {
+    "fr": "Services disponibles",
+    "es": "Servicios disponibles",
+    "ar": "الخدمات المتاحة",
+    "zh": "可用服务",
+    "ff": "Golle woodiɗe"
+  },
+  "Food delivery": {
+    "fr": "Livraison de repas",
+    "es": "Entrega de comida",
+    "ar": "توصيل الطعام",
+    "zh": "餐饮配送",
+    "ff": "Neldugol ñaamdu"
+  },
+  "Restaurant orders and meal delivery": {
+    "fr": "Commandes restaurant et livraison de repas",
+    "es": "Pedidos de restaurante y entrega de comidas",
+    "ar": "طلبات المطعم وتوصيل الوجبات",
+    "zh": "餐厅订单与餐食配送",
+    "ff": "Njamndi restoraa e neldugol ñaamdu"
+  },
+  "Package delivery": {
+    "fr": "Livraison de colis",
+    "es": "Entrega de paquetes",
+    "ar": "توصيل الطرود",
+    "zh": "包裹配送",
+    "ff": "Neldugol pakke"
+  },
+  "Parcel and errand delivery": {
+    "fr": "Livraison de colis et courses",
+    "es": "Entrega de paquetes y recados",
+    "ar": "توصيل الطرود والمهام",
+    "zh": "包裹与跑腿配送",
+    "ff": "Neldugol pakke e golle yahdu"
+  },
+  "Taxi rides": {
+    "fr": "Courses taxi",
+    "es": "Viajes en taxi",
+    "ar": "رحلات التاكسي",
+    "zh": "出租车行程",
+    "ff": "Yahduuji taksi"
+  },
+  "Taxi rides based on your vehicle eligibility categories": {
+    "fr": "Courses taxi selon les catégories d’éligibilité de ton véhicule",
+    "es": "Viajes en taxi según las categorías de elegibilidad de tu vehículo",
+    "ar": "رحلات تاكسي وفق فئات أهلية مركبتك",
+    "zh": "按车辆资格类别承接出租车行程",
+    "ff": "Yahduuji taksi e fannuuji jaɓaande oto maa"
+  },
+  "Advanced options": {
+    "fr": "Options avancées",
+    "es": "Opciones avanzadas",
+    "ar": "خيارات متقدمة",
+    "zh": "高级选项",
+    "ff": "Cuɓe ɓeydaaɗe"
+  },
+  "Also accept Standard rides": {
+    "fr": "Accepter aussi les courses Standard",
+    "es": "Aceptar también viajes Standard",
+    "ar": "قبول رحلات Standard أيضاً",
+    "zh": "同时接受 Standard 行程",
+    "ff": "Jaɓtu kadi yahduuji Standard"
+  },
+  "Comfort, XL or Wheelchair can also receive Standard rides": {
+    "fr": "Comfort, XL ou Wheelchair peuvent aussi recevoir des courses Standard",
+    "es": "Comfort, XL o Wheelchair también pueden recibir viajes Standard",
+    "ar": "Comfort أو XL أو Wheelchair يمكنها أيضاً استلام رحلات Standard",
+    "zh": "Comfort、XL 或 Wheelchair 也可接收 Standard 行程",
+    "ff": "Comfort, XL walla Wheelchair ina mbaawi kadi keɓde yahduuji Standard"
+  },
+  "Enable Taxi rides to manage advanced options.": {
+    "fr": "Active les courses Taxi pour gérer les options avancées.",
+    "es": "Activa los viajes Taxi para gestionar las opciones avanzadas.",
+    "ar": "فعّل رحلات التاكسي لإدارة الخيارات المتقدمة.",
+    "zh": "启用出租车行程以管理高级选项。",
+    "ff": "Hurmin yahduuji Taksi ngam yuɓɓinde cuɓe ɓeydaaɗe."
+  },
+  "Vehicle": {
+    "fr": "Véhicule",
+    "es": "Vehículo",
+    "ar": "المركبة",
+    "zh": "车辆",
+    "ff": "Oto"
+  },
+  "Vehicle details": {
+    "fr": "Détails du véhicule",
+    "es": "Datos del vehículo",
+    "ar": "تفاصيل المركبة",
+    "zh": "车辆详情",
+    "ff": "Cariiɗe oto"
+  },
+  "Loading vehicle...": {
+    "fr": "Chargement du véhicule...",
+    "es": "Cargando vehículo...",
+    "ar": "جارٍ تحميل المركبة...",
+    "zh": "正在加载车辆...",
+    "ff": "Nana loowa oto..."
+  },
+  "Add a vehicle": {
+    "fr": "Ajouter un véhicule",
+    "es": "Añadir un vehículo",
+    "ar": "إضافة مركبة",
+    "zh": "添加车辆",
+    "ff": "Ɓeydu oto"
+  },
+  "Choose the type first": {
+    "fr": "Choisis d’abord le type",
+    "es": "Elige primero el tipo",
+    "ar": "اختر النوع أولاً",
+    "zh": "请先选择类型",
+    "ff": "Suɓo fannu adan"
+  },
+  "Electric": {
+    "fr": "Electric",
+    "es": "Eléctrico",
+    "ar": "كهربائي",
+    "zh": "电动",
+    "ff": "Kuuraa"
+  },
+  "Hybrid": {
+    "fr": "Hybrid",
+    "es": "Híbrido",
+    "ar": "هجين",
+    "zh": "混合动力",
+    "ff": "Jiiɓaande"
+  },
+  "Plug-in hybrid": {
+    "fr": "Hybride rechargeable",
+    "es": "Híbrido enchufable",
+    "ar": "هجين قابل للشحن",
+    "zh": "插电混动",
+    "ff": "Jiiɓaande seŋoowo"
+  },
+  "Gasoline": {
+    "fr": "Essence",
+    "es": "Gasolina",
+    "ar": "بنزين",
+    "zh": "汽油",
+    "ff": "Petroŋ"
+  },
+  "Active": {
+    "fr": "Active",
+    "es": "Activo",
+    "ar": "نشط",
+    "zh": "有效",
+    "ff": "Hurminii"
+  },
+  "Pending": {
+    "fr": "Pending",
+    "es": "Pendiente",
+    "ar": "قيد الانتظار",
+    "zh": "待处理",
+    "ff": "Nana sabbii"
+  },
+  "Inactive": {
+    "fr": "Inactif",
+    "es": "Inactivo",
+    "ar": "غير نشط",
+    "zh": "未启用",
+    "ff": "Hurminaaki"
+  },
+  "Status: {{status}}": {
+    "fr": "Statut : {{status}}",
+    "es": "Estado: {{status}}",
+    "ar": "الحالة: {{status}}",
+    "zh": "状态：{{status}}",
+    "ff": "Ngonka: {{status}}"
+  },
+  "Admin: {{note}}": {
+    "fr": "Admin : {{note}}",
+    "es": "Admin: {{note}}",
+    "ar": "المشرف: {{note}}",
+    "zh": "管理员：{{note}}",
+    "ff": "Admin: {{note}}"
+  },
+  "Go offline required": {
+    "fr": "Hors ligne requis",
+    "es": "Debes desconectarte",
+    "ar": "يلزم قطع الاتصال",
+    "zh": "需先下线",
+    "ff": "Yaltugol e kawral wajibi"
+  },
+  "Activate": {
+    "fr": "Activer",
+    "es": "Activar",
+    "ar": "تفعيل",
+    "zh": "启用",
+    "ff": "Hurmin"
+  },
+  "Edit": {
+    "fr": "Modifier",
+    "es": "Editar",
+    "ar": "تعديل",
+    "zh": "编辑",
+    "ff": "Taƴto"
+  },
+  "Delete": {
+    "fr": "Supprimer",
+    "es": "Eliminar",
+    "ar": "حذف",
+    "zh": "删除",
+    "ff": "Momtu"
+  },
+  "Manage your vehicle fleet": {
+    "fr": "Gère ta flotte de véhicules",
+    "es": "Gestiona tu flota de vehículos",
+    "ar": "أدِر أسطول مركباتك",
+    "zh": "管理你的车队",
+    "ff": "Yuɓɓin otoji maa"
+  },
+  "Loading your vehicles...": {
+    "fr": "Chargement de tes véhicules...",
+    "es": "Cargando tus vehículos...",
+    "ar": "جارٍ تحميل مركباتك...",
+    "zh": "正在加载你的车辆...",
+    "ff": "Nana loowa otoji maa..."
+  },
+  "Only one active vehicle at a time": {
+    "fr": "Un seul véhicule actif à la fois",
+    "es": "Solo un vehículo activo a la vez",
+    "ar": "مركبة نشطة واحدة فقط في كل مرة",
+    "zh": "同一时间只能有一辆启用车辆",
+    "ff": "Oto gooto tan ina waawi hurmineede e sahaa"
+  },
+  "Live activation (DB) = next step.": {
+    "fr": "Activation réelle (DB) = prochaine étape.",
+    "es": "Activación real (DB) = siguiente paso.",
+    "ar": "التفعيل الفعلي (DB) = الخطوة التالية.",
+    "zh": "正式启用（DB）= 下一步。",
+    "ff": "Hurmingol e sahaa (DB) = yolnde aroore."
+  },
+  "Connected to Supabase: active boosts + bonus events + challenges + estimated payout.": {
+    "fr": "Branché Supabase : boosts actifs + bonus events + défis + payout estimé.",
+    "es": "Conectado a Supabase: boosts activos + eventos de bono + desafíos + pago estimado.",
+    "ar": "متصل بـ Supabase: تعزيزات نشطة + أحداث مكافأة + تحديات + صرف مقدّر.",
+    "zh": "已连接 Supabase：有效加成 + 奖励活动 + 挑战 + 预估结算。",
+    "ff": "Seŋaaɗo e Supabase: boosts hurminiiɗi + kewuuji bonus + caɗeele + yuɓɓugol limtaaɗo."
+  },
+  "Priority for nearby and urgent requests": {
+    "fr": "Priorité aux demandes proches et urgentes",
+    "es": "Prioridad para solicitudes cercanas y urgentes",
+    "ar": "أولوية للطلبات القريبة والعاجلة",
+    "zh": "优先附近和紧急请求",
+    "ff": "Adannde e ɗaɓɓe ɓadiiɗe e cariiɗe"
+  },
+  "Reorient north": {
+    "fr": "Réorienter vers le nord",
+    "es": "Reorientar al norte",
+    "ar": "إعادة التوجيه شمالاً",
+    "zh": "重新朝向北",
+    "ff": "Ruttin to worgo"
+  },
+  "Verification in progress": {
+    "fr": "Vérification en cours",
+    "es": "Verificación en curso",
+    "ar": "التحقق قيد التنفيذ",
+    "zh": "正在验证",
+    "ff": "Ƴeewndo nana yaha"
+  },
+  "Verification refused": {
+    "fr": "Vérification refusée",
+    "es": "Verificación rechazada",
+    "ar": "رُفض التحقق",
+    "zh": "验证被拒绝",
+    "ff": "Ƴeewndo salaama"
+  },
+  "Identity Confirmed": {
+    "fr": "Identité confirmée",
+    "es": "Identidad confirmada",
+    "ar": "تم تأكيد الهوية",
+    "zh": "身份已确认",
+    "ff": "Holle tabitinaama"
+  },
+  "Verification expired": {
+    "fr": "Vérification expirée",
+    "es": "Verificación caducada",
+    "ar": "انتهت صلاحية التحقق",
+    "zh": "验证已过期",
+    "ff": "Ƴeewndo gasii"
+  },
+  "Loading…": {
+    "fr": "Chargement…",
+    "es": "Cargando…",
+    "ar": "جارٍ التحميل…",
+    "zh": "加载中…",
+    "ff": "Nana loowa…"
+  },
+  "Open navigation from the order details.": {
+    "fr": "Ouvre la navigation depuis les détails de commande.",
+    "es": "Abre la navegación desde los detalles del pedido.",
+    "ar": "افتح التنقل من تفاصيل الطلب.",
+    "zh": "从订单详情打开导航。",
+    "ff": "Uddit yiiltugol e cariiiɗe njamndi."
+  },
+  "GPS coordinates missing for this step.": {
+    "fr": "Coordonnées GPS manquantes pour cette étape.",
+    "es": "Faltan coordenadas GPS para este paso.",
+    "ar": "إحداثيات GPS مفقودة لهذه الخطوة.",
+    "zh": "此步骤缺少 GPS 坐标。",
+    "ff": "Toɓɓe GPS ŋatnii e ndee stage."
+  },
+  "Unable to load the trip.": {
+    "fr": "Impossible de charger la course.",
+    "es": "No se pudo cargar el viaje.",
+    "ar": "تعذّر تحميل الرحلة.",
+    "zh": "无法加载行程。",
+    "ff": "Horiima loowde yahdu."
+  },
+  "Points, MMD credit, and conversion": {
+    "fr": "Points, Crédit MMD et conversion",
+    "es": "Puntos, crédito MMD y conversión",
+    "ar": "النقاط ورصيد MMD والتحويل",
+    "zh": "积分、MMD 余额与兑换",
+    "ff": "Toɓɓe, kredit MMD, e waylugol"
+  },
+  "The photo is too large. Take a smaller one.": {
+    "fr": "La photo est trop grande. Reprends une photo plus légère.",
+    "es": "La foto es demasiado grande. Toma una más pequeña.",
+    "ar": "الصورة كبيرة جداً. التقط صورة أصغر.",
+    "zh": "照片太大。请拍一张更小的。",
+    "ff": "Nataal ɓurtii mawnude. Ñamndu goɗɗo famɗo."
+  },
+  "Unable to read the photo. Take a new one.": {
+    "fr": "Impossible de lire la photo. Reprends une nouvelle photo.",
+    "es": "No se pudo leer la foto. Toma una nueva.",
+    "ar": "تعذّر قراءة الصورة. التقط صورة جديدة.",
+    "zh": "无法读取照片。请重新拍摄。",
+    "ff": "Horiima tarde nataal. Ñamndu goɗɗo hesɗo."
+  },
+  "Pickup to confirm": {
+    "fr": "Pickup à confirmer",
+    "es": "Recogida por confirmar",
+    "ar": "استلام بانتظار التأكيد",
+    "zh": "待确认取件",
+    "ff": "Fuɗɗorde nana sabbii tabitinal"
+  },
+  "Pickup ready to confirm": {
+    "fr": "Pickup prêt à confirmer",
+    "es": "Recogida lista para confirmar",
+    "ar": "الاستلام جاهز للتأكيد",
+    "zh": "取件可确认",
+    "ff": "Fuɗɗorde hebbii tabitineede"
+  },
+  "Package picked up — on the way": {
+    "fr": "Colis récupéré — en route",
+    "es": "Paquete recogido — en camino",
+    "ar": "تم استلام الطرد — في الطريق",
+    "zh": "包裹已取 — 运送中",
+    "ff": "Pakke ɓettaa — e laawol"
+  },
+  "Accept this trip first before starting MMD navigation.": {
+    "fr": "Accepte d'abord cette course avant de démarrer la navigation MMD.",
+    "es": "Acepta este viaje primero antes de iniciar la navegación MMD.",
+    "ar": "اقبل هذه الرحلة أولاً قبل بدء تنقل MMD.",
+    "zh": "请先接受此行程再启动 MMD 导航。",
+    "ff": "Jaɓ ndee yahdu adan hade maa fuɗɗude yiiltugol MMD."
+  },
+  "Unable to open Waze on this phone.": {
+    "fr": "Impossible d'ouvrir Waze sur ce téléphone.",
+    "es": "No se pudo abrir Waze en este teléfono.",
+    "ar": "تعذّر فتح Waze على هذا الهاتف.",
+    "zh": "无法在此手机上打开 Waze。",
+    "ff": "Horiima udditde Waze e ndee telefon."
+  },
+  "Allow camera access to take a proof photo.": {
+    "fr": "Autorise la caméra pour prendre une photo de preuve.",
+    "es": "Permite el acceso a la cámara para tomar una foto de prueba.",
+    "ar": "اسمح بالكاميرا لالتقاط صورة إثبات.",
+    "zh": "允许相机权限以拍摄凭证照片。",
+    "ff": "Yamir kamera ngam ñaamndude nataal seedee."
+  },
+  "Unable to retrieve the session.": {
+    "fr": "Impossible de récupérer la session.",
+    "es": "No se pudo recuperar la sesión.",
+    "ar": "تعذّر استرداد الجلسة.",
+    "zh": "无法获取会话。",
+    "ff": "Horiima heɓde naatgol."
+  },
+  "Pickup confirmation failed.": {
+    "fr": "Échec de la confirmation du pickup.",
+    "es": "Falló la confirmación de recogida.",
+    "ar": "فشل تأكيد الاستلام.",
+    "zh": "取件确认失败。",
+    "ff": "Tabitinal fuɗɗorde horiima."
+  },
+  "Delivery confirmation failed.": {
+    "fr": "Échec de la confirmation de la livraison.",
+    "es": "Falló la confirmación de entrega.",
+    "ar": "فشل تأكيد التسليم.",
+    "zh": "送达确认失败。",
+    "ff": "Tabitinal neldugol horiima."
+  },
+  "You can cancel only before pickup, while the trip is still accepted or ready.": {
+    "fr": "Tu peux annuler seulement avant le pickup, quand la course est encore acceptée ou prête.",
+    "es": "Solo puedes cancelar antes de la recogida, mientras el viaje sigue aceptado o listo.",
+    "ar": "يمكنك الإلغاء فقط قبل الاستلام، بينما الرحلة ما زالت مقبولة أو جاهزة.",
+    "zh": "仅可在取件前取消，且行程仍为已接受或已就绪。",
+    "ff": "A waawi haɗtude tan hade fuɗɗorde, so yahdu nana jaɓaandi walla hebbaandi."
+  },
+  "Cancel the trip?": {
+    "fr": "Annuler la course ?",
+    "es": "¿Cancelar el viaje?",
+    "ar": "إلغاء الرحلة؟",
+    "zh": "取消行程？",
+    "ff": "Haɗtu yahdu nduu?"
+  },
+  "If you cancel now, you will be removed from this trip and it may be offered to another driver.": {
+    "fr": "Si tu annules maintenant, tu seras retiré de cette course et elle pourra être proposée à un autre chauffeur.",
+    "es": "Si cancelas ahora, se te quitará de este viaje y podría ofrecerse a otro conductor.",
+    "ar": "إذا ألغيت الآن، ستُزال من هذه الرحلة وقد تُعرض على سائق آخر.",
+    "zh": "若现在取消，你将从此行程移除，并可能改派给其他司机。",
+    "ff": "So a haɗtii jooni, a ittee e ndee yahdu e ina waawi dokkeede dooɓoowo goɗɗo."
+  },
+  "Trip canceled": {
+    "fr": "Course annulée",
+    "es": "Viaje cancelado",
+    "ar": "أُلغيت الرحلة",
+    "zh": "行程已取消",
+    "ff": "Yahdu haɗtaama"
+  },
+  "You were removed from this trip. Another driver can now take it.": {
+    "fr": "Tu as été retiré de cette course. Elle peut maintenant être prise par un autre chauffeur.",
+    "es": "Te quitaron de este viaje. Otro conductor puede tomarlo ahora.",
+    "ar": "أُزلت من هذه الرحلة. يمكن لسائق آخر توليها الآن.",
+    "zh": "你已从此行程移除。其他司机现在可以接单。",
+    "ff": "A ittaa e ndee yahdu. Dooɓoowo goɗɗo waawi ɓeŋtude ɗum jooni."
+  },
+  "This pickup/dropoff trip has no restaurant to call.": {
+    "fr": "Cette course pickup/dropoff n’a pas de restaurant à appeler.",
+    "es": "Este viaje de recogida/entrega no tiene restaurante a quien llamar.",
+    "ar": "رحلة الاستلام/التسليم هذه بلا مطعم للاتصال به.",
+    "zh": "此取送行程没有可致电的餐厅。",
+    "ff": "Ndee yahdu fuɗɗorde/jaɓorde alaa restoraa noddeteeɗo."
+  },
+  "Your driver phone number is missing. Add it in your profile before using masked calls.": {
+    "fr": "Ton numéro de téléphone chauffeur est manquant. Ajoute ton numéro dans ton profil avant d'utiliser les appels masqués.",
+    "es": "Falta tu número de conductor. Añádelo en tu perfil antes de usar llamadas enmascaradas.",
+    "ar": "رقم هاتف السائق مفقود. أضفه في ملفك قبل استخدام المكالمات المقنّعة.",
+    "zh": "缺少司机电话。请先在资料中添加，再使用隐号通话。",
+    "ff": "Limoore telefon dooɓoowo maa ŋatnii. Ɓeydu ɗum e profil maa hade maa huutoraade noddaandu cuuɗaaɗo."
+  },
+  "The phone number for {{target}} is missing on this order.": {
+    "fr": "Le numéro de téléphone de {{target}} est manquant pour cette commande.",
+    "es": "Falta el número de teléfono de {{target}} en este pedido.",
+    "ar": "رقم هاتف {{target}} مفقود في هذا الطلب.",
+    "zh": "此订单缺少 {{target}} 的电话号码。",
+    "ff": "Limoore telefon {{target}} ŋatnii e ndee njamndi."
+  },
+  "Unable to start the call right now.": {
+    "fr": "Impossible de démarrer l'appel pour le moment.",
+    "es": "No se puede iniciar la llamada ahora.",
+    "ar": "تعذّر بدء المكالمة الآن.",
+    "zh": "暂时无法发起通话。",
+    "ff": "Horiima fuɗɗude noddaandu jooni."
+  },
+  "Messages are disabled for this order.": {
+    "fr": "Les messages sont désactivés pour cette commande.",
+    "es": "Los mensajes están desactivados para este pedido.",
+    "ar": "الرسائل معطّلة لهذا الطلب.",
+    "zh": "此订单已禁用消息。",
+    "ff": "Ɓatakuuji koɗaa e ndee njamndi."
+  },
+  "This pickup/dropoff trip has no restaurant to contact.": {
+    "fr": "Cette course pickup/dropoff n’a pas de restaurant à contacter.",
+    "es": "Este viaje de recogida/entrega no tiene restaurante a quien contactar.",
+    "ar": "رحلة الاستلام/التسليم هذه بلا مطعم للتواصل معه.",
+    "zh": "此取送行程没有可联系的餐厅。",
+    "ff": "Ndee yahdu fuɗɗorde/jaɓorde alaa restoraa jokkondirteɗo."
+  },
+  "Need to cancel?": {
+    "fr": "Besoin d’annuler ?",
+    "es": "¿Necesitas cancelar?",
+    "ar": "هل تريد الإلغاء؟",
+    "zh": "需要取消？",
+    "ff": "Aɗa sokli haɗtude?"
+  },
+  "You can cancel before pickup. The trip will become available to another driver.": {
+    "fr": "Tu peux annuler avant le pickup. La course sera remise disponible pour un autre chauffeur.",
+    "es": "Puedes cancelar antes de la recogida. El viaje quedará disponible para otro conductor.",
+    "ar": "يمكنك الإلغاء قبل الاستلام. ستصبح الرحلة متاحة لسائق آخر.",
+    "zh": "可在取件前取消。行程将开放给其他司机。",
+    "ff": "A waawi haɗtude hade fuɗɗorde. Yahdu nduu waɗete woodnde e dooɓoowo goɗɗo."
+  },
+  "Cancel this trip": {
+    "fr": "Annuler cette course",
+    "es": "Cancelar este viaje",
+    "ar": "إلغاء هذه الرحلة",
+    "zh": "取消此行程",
+    "ff": "Haɗtu ndee yahdu"
+  },
+  "Call or message the client, restaurant, or MMD support without exposing your real number.": {
+    "fr": "Appelle ou envoie un message au client, au restaurant ou au support MMD sans exposer ton vrai numéro.",
+    "es": "Llama o escribe al cliente, al restaurante o a soporte MMD sin exponer tu número real.",
+    "ar": "اتصل أو راسل العميل أو المطعم أو دعم MMD دون كشف رقمك الحقيقي.",
+    "zh": "可致电或发消息给客户、餐厅或 MMD 支持，而无需暴露真实号码。",
+    "ff": "Noddu walla neldu ɓatakuure kiliyee, restoraa, walla ballal MMD tawa a holliraani limoore maa goonga."
+  },
+  "Client profile linked to this trip": {
+    "fr": "Profil client lié à cette course",
+    "es": "Perfil del cliente vinculado a este viaje",
+    "ar": "ملف العميل المرتبط بهذه الرحلة",
+    "zh": "关联此行程的客户资料",
+    "ff": "Profil kiliyee jokkondirɗo e ndee yahdu"
+  },
+  "Restaurant profile linked to this order": {
+    "fr": "Profil restaurant lié à cette commande",
+    "es": "Perfil del restaurante vinculado a este pedido",
+    "ar": "ملف المطعم المرتبط بهذا الطلب",
+    "zh": "关联此订单的餐厅资料",
+    "ff": "Profil restoraa jokkondirɗo e ndee njamndi"
+  },
+  "ID front": {
+    "fr": "Pièce d’identité recto",
+    "es": "ID anverso",
+    "ar": "الهوية — الوجه",
+    "zh": "证件正面",
+    "ff": "Kartal holle yeeso"
+  },
+  "ID back": {
+    "fr": "Pièce d’identité verso",
+    "es": "ID reverso",
+    "ar": "الهوية — الخلف",
+    "zh": "证件背面",
+    "ff": "Kartal holle caggal"
+  },
+  "Loading the W-9 form...": {
+    "fr": "Chargement du formulaire W-9...",
+    "es": "Cargando el formulario W-9...",
+    "ar": "جارٍ تحميل نموذج W-9...",
+    "zh": "正在加载 W-9 表格...",
+    "ff": "Nana loowa form W-9..."
+  },
+  "Manual": {
+    "fr": "Manual",
+    "es": "Manual",
+    "ar": "يدوي",
+    "zh": "手动",
+    "ff": "Junngo"
+  },
+  "Unable to load.": {
+    "fr": "Chargement impossible.",
+    "es": "No se pudo cargar.",
+    "ar": "تعذّر التحميل.",
+    "zh": "无法加载。",
+    "ff": "Horiima loowde."
+  },
+  "Conversion successful. Your MMD credit was added.": {
+    "fr": "Conversion réussie. Votre Crédit MMD a été ajouté.",
+    "es": "Conversión correcta. Se añadió tu crédito MMD.",
+    "ar": "تم التحويل. أُضيف رصيد MMD الخاص بك.",
+    "zh": "兑换成功。MMD 余额已入账。",
+    "ff": "Waylugol moƴƴii. Kredit MMD maa ɓeydaama."
+  },
+  "Conversion failed.": {
+    "fr": "Conversion impossible.",
+    "es": "Falló la conversión.",
+    "ar": "فشل التحويل.",
+    "zh": "兑换失败。",
+    "ff": "Waylugol horiima."
+  },
+  "Convert {{points}} points into {{amount}} MMD credit? This cannot be undone.": {
+    "fr": "Convertir {{points}} points en {{amount}} de Crédit MMD ? Cette action est définitive.",
+    "es": "¿Convertir {{points}} puntos en {{amount}} de crédito MMD? No se puede deshacer.",
+    "ar": "تحويل {{points}} نقطة إلى {{amount}} من رصيد MMD؟ لا يمكن التراجع.",
+    "zh": "将 {{points}} 积分兑换为 {{amount}} MMD 余额？此操作不可撤销。",
+    "ff": "Waylu {{points}} toɓɓe e {{amount}} kredit MMD? Ɗum waawaa ruttude."
+  },
+  "Join MMD Delivery and earn rewards: {{link}}": {
+    "fr": "Rejoignez MMD Delivery et gagnez des récompenses : {{link}}",
+    "es": "Únete a MMD Delivery y gana recompensas: {{link}}",
+    "ar": "انضم إلى MMD Delivery واربح مكافآت: {{link}}",
+    "zh": "加入 MMD Delivery 赚取奖励：{{link}}",
+    "ff": "Naatu MMD Delivery e heɓ njoɓdi: {{link}}"
+  },
+  "Referral code saved.": {
+    "fr": "Code de parrainage enregistré.",
+    "es": "Código de referido guardado.",
+    "ar": "تم حفظ رمز الإحالة.",
+    "zh": "推荐码已保存。",
+    "ff": "Kode noddaandu danndaama."
+  },
+  "{{rewarded}} rewarded • {{pending}} pending": {
+    "fr": "{{rewarded}} récompensés • {{pending}} en attente",
+    "es": "{{rewarded}} recompensados • {{pending}} pendientes",
+    "ar": "{{rewarded}} مكافأون • {{pending}} قيد الانتظار",
+    "zh": "{{rewarded}} 已奖励 • {{pending}} 待处理",
+    "ff": "{{rewarded}} njoɓaa • {{pending}} nana sabbii"
+  },
+  "Your code will be available soon.": {
+    "fr": "Votre code sera bientôt disponible.",
+    "es": "Tu código estará disponible pronto.",
+    "ar": "سيكون رمزك متاحاً قريباً.",
+    "zh": "你的代码即将可用。",
+    "ff": "Kode maa woodoto njaaɗi."
+  },
+  "No activity yet.": {
+    "fr": "Aucune activité pour le moment.",
+    "es": "Aún no hay actividad.",
+    "ar": "لا نشاط بعد.",
+    "zh": "暂无活动。",
+    "ff": "Alaa golle tawo."
+  },
+  "Delete this product?": {
+    "fr": "Confirmer la suppression de ce produit ?",
+    "es": "¿Eliminar este producto?",
+    "ar": "حذف هذا المنتج؟",
+    "zh": "删除此商品？",
+    "ff": "Momtu ndee njeeygu?"
+  },
+  "Allow photo access to choose the restaurant logo.": {
+    "fr": "Autorise l’accès aux photos pour choisir le logo du restaurant.",
+    "es": "Permite el acceso a las fotos para elegir el logo del restaurante.",
+    "ar": "اسمح بالوصول إلى الصور لاختيار شعار المطعم.",
+    "zh": "允许访问相册以选择餐厅标志。",
+    "ff": "Yamir naatgol nataaluuji ngam suɓaade logo restoraa."
+  },
+  "Allow photo access to choose the restaurant cover.": {
+    "fr": "Autorise l’accès aux photos pour choisir la couverture du restaurant.",
+    "es": "Permite el acceso a las fotos para elegir la portada del restaurante.",
+    "ar": "اسمح بالوصول إلى الصور لاختيار غلاف المطعم.",
+    "zh": "允许访问相册以选择餐厅封面。",
+    "ff": "Yamir naatgol nataaluuji ngam suɓaade ɓoggol restoraa."
+  },
+  "Fill in the name, phone, address, city, ZIP, and cuisine type.": {
+    "fr": "Remplis le nom, téléphone, adresse, ville, code postal et type de cuisine.",
+    "es": "Completa el nombre, teléfono, dirección, ciudad, código postal y tipo de cocina.",
+    "ar": "أملأ الاسم والهاتف والعنوان والمدينة والرمز البريدي ونوع المطبخ.",
+    "zh": "请填写名称、电话、地址、城市、邮编和菜系。",
+    "ff": "Heɓɓin innde, telefon, ñiiɓirde, wuro, kode postaal, e fannu ñaamdu."
+  },
+  "This account is registered as a driver. Sign in from the Driver section.": {
+    "fr": "Ce compte est enregistré comme chauffeur. Connecte-toi depuis la section Driver.",
+    "es": "Esta cuenta está registrada como conductor. Inicia sesión desde la sección Conductor.",
+    "ar": "هذا الحساب مسجّل كسائق. سجّل الدخول من قسم السائق.",
+    "zh": "此账户已注册为司机。请从司机入口登录。",
+    "ff": "Ndee konto winnditaama dooɓoowo. Naatu e taƴre Dooɓoowo."
+  },
+  "This account is registered as a client. Sign in from the Client section.": {
+    "fr": "Ce compte est enregistré comme client. Connecte-toi depuis la section Client.",
+    "es": "Esta cuenta está registrada como cliente. Inicia sesión desde la sección Cliente.",
+    "ar": "هذا الحساب مسجّل كعميل. سجّل الدخول من قسم العميل.",
+    "zh": "此账户已注册为客户。请从客户入口登录。",
+    "ff": "Ndee konto winnditaama kiliyee. Naatu e taƴre Kiliyee."
+  },
+  "This account is not set up as a restaurant yet.": {
+    "fr": "Ce compte n’est pas encore configuré comme restaurant.",
+    "es": "Esta cuenta aún no está configurada como restaurante.",
+    "ar": "هذا الحساب غير معدّ كمطعم بعد.",
+    "zh": "此账户尚未设置为餐厅。",
+    "ff": "Ndee konto heɓɓinaaka restoraa tawo."
+  },
+  "Restaurant name and full address are required.": {
+    "fr": "Nom et adresse complète du restaurant obligatoires.",
+    "es": "El nombre del restaurante y la dirección completa son obligatorios.",
+    "ar": "اسم المطعم والعنوان الكامل مطلوبان.",
+    "zh": "必须填写餐厅名称和完整地址。",
+    "ff": "Innde restoraa e ñiiɓirde timmunde ina ɗaɓɓi."
+  },
+  "Session was not created. Try again.": {
+    "fr": "Session non créée. Réessaie.",
+    "es": "No se creó la sesión. Inténtalo de nuevo.",
+    "ar": "لم تُنشأ الجلسة. حاول مرة أخرى.",
+    "zh": "未能创建会话。请重试。",
+    "ff": "Naatgol sosaaka. Eto kadi."
+  },
+  "Account created, but the user could not be loaded.": {
+    "fr": "Compte créé, mais impossible de récupérer l’utilisateur.",
+    "es": "Cuenta creada, pero no se pudo cargar el usuario.",
+    "ar": "أُنشئ الحساب، لكن تعذّر تحميل المستخدم.",
+    "zh": "账户已创建，但无法加载用户。",
+    "ff": "Konto sosaama, kono kuutoro heɓotaako."
+  },
+  "✅ Account created. Check your email, then sign in.": {
+    "fr": "✅ Compte créé. Vérifie ton email puis connecte-toi.",
+    "es": "✅ Cuenta creada. Revisa tu correo e inicia sesión.",
+    "ar": "✅ تم إنشاء الحساب. تحقق من بريدك ثم سجّل الدخول.",
+    "zh": "✅ 账户已创建。请查收邮件后登录。",
+    "ff": "✅ Konto sosaama. Ƴeew iimeel maa, ndeen naatu."
+  },
+  "❌ Enter your email before requesting a reset.": {
+    "fr": "❌ Entre ton email avant de demander la réinitialisation.",
+    "es": "❌ Introduce tu correo antes de pedir un restablecimiento.",
+    "ar": "❌ أدخل بريدك قبل طلب إعادة التعيين.",
+    "zh": "❌ 请求重置前请先输入邮箱。",
+    "ff": "❌ Naatnu iimeel maa hade maa ɗaɓɓude hesɗitinal."
+  },
+  "✅ Email sent. Open the link to change your password.": {
+    "fr": "✅ Email envoyé. Clique sur le lien reçu pour modifier ton mot de passe.",
+    "es": "✅ Correo enviado. Abre el enlace para cambiar tu contraseña.",
+    "ar": "✅ أُرسل البريد. افتح الرابط لتغيير كلمة المرور.",
+    "zh": "✅ 邮件已发送。打开链接以更改密码。",
+    "ff": "✅ Iimeel neldaama. Uddit jokkol ngam waylude finnde maa."
+  },
+  "❌ Unable to send the email:": {
+    "fr": "❌ Impossible d’envoyer l’email :",
+    "es": "❌ No se pudo enviar el correo:",
+    "ar": "❌ تعذّر إرسال البريد:",
+    "zh": "❌ 无法发送邮件：",
+    "ff": "❌ Horiima neldude iimeel:"
+  },
+  "Previous month": {
+    "fr": "Mois précédent",
+    "es": "Mes anterior",
+    "ar": "الشهر السابق",
+    "zh": "上个月",
+    "ff": "Lewru ɓennundu"
+  },
+  "Token copied ✅": {
+    "fr": "Token copié ✅",
+    "es": "Token copiado ✅",
+    "ar": "تم نسخ الرمز ✅",
+    "zh": "令牌已复制 ✅",
+    "ff": "Token nattaama ✅"
+  },
+  "Start: {{a}}...\\nEnd: ...{{b}}": {
+    "fr": "Début: {{a}}...\\nFin: ...{{b}}",
+    "es": "Inicio: {{a}}...\\nFin: ...{{b}}",
+    "ar": "البداية: {{a}}...\\nالنهاية: ...{{b}}",
+    "zh": "起始: {{a}}...\\n结尾: ...{{b}}",
+    "ff": "Fuɗɗoode: {{a}}...\\nJoofirde: ...{{b}}"
+  },
+  "No delivered orders yet.": {
+    "fr": "Aucune commande livrée pour le moment.",
+    "es": "Aún no hay pedidos entregados.",
+    "ar": "لا توجد طلبات مسلّمة بعد.",
+    "zh": "尚无已送达订单。",
+    "ff": "Alaa njamndi nelaaɗi tawo."
+  },
+  "Go online before turning on busy mode.": {
+    "fr": "Passez en ligne avant d'activer le mode occupé.",
+    "es": "Ponte en línea antes de activar el modo ocupado.",
+    "ar": "اتصل أولاً قبل تفعيل وضع الانشغال.",
+    "zh": "请先上线再开启忙碌模式。",
+    "ff": "Naatu e kawral hade maa hurminde ngonka cuɓiiɗo."
+  },
+  "Busy mode ended": {
+    "fr": "Fin du mode occupé",
+    "es": "Modo ocupado finalizado",
+    "ar": "انتهى وضع الانشغال",
+    "zh": "忙碌模式已结束",
+    "ff": "Ngonka cuɓiiɗo gasii"
+  },
+  "Complete the restaurant name, address, and GPS coordinates before going online.": {
+    "fr": "Complète le nom, l’adresse et les coordonnées GPS du restaurant avant de passer en ligne.",
+    "es": "Completa el nombre, la dirección y las coordenadas GPS del restaurante antes de conectarte.",
+    "ar": "أكمل اسم المطعم والعنوان وإحداثيات GPS قبل الاتصال.",
+    "zh": "上线前请填写餐厅名称、地址和 GPS 坐标。",
+    "ff": "Heɓɓin innde restoraa, ñiiɓirde, e toɓɓe GPS hade maa naatde e kawral."
+  },
+  "Session expired. Sign in again, then retry.": {
+    "fr": "Session expirée. Reconnecte-toi puis réessaie.",
+    "es": "La sesión caducó. Inicia sesión de nuevo e inténtalo otra vez.",
+    "ar": "انتهت الجلسة. سجّل الدخول ثم أعد المحاولة.",
+    "zh": "会话已过期。请重新登录后再试。",
+    "ff": "Naatgol gasii. Naatu kadi, ndeen eto."
+  },
+  "This page is reserved for restaurant accounts.": {
+    "fr": "Cette page est réservée aux comptes restaurant.",
+    "es": "Esta página está reservada a cuentas de restaurante.",
+    "ar": "هذه الصفحة مخصصة لحسابات المطاعم.",
+    "zh": "此页面仅限餐厅账户。",
+    "ff": "Ndee hello ko konte restoraa tan."
+  },
+  "You do not have access to this order.": {
+    "fr": "Tu n’as pas accès à cette commande.",
+    "es": "No tienes acceso a este pedido.",
+    "ar": "ليست لديك صلاحية الوصول إلى هذا الطلب.",
+    "zh": "你无权访问此订单。",
+    "ff": "A alaa naatgol e ndee njamndi."
+  },
+  "This order is not paid yet and is not visible.": {
+    "fr": "Cette commande n’est pas encore payée et n’est pas visible.",
+    "es": "Este pedido aún no está pagado y no es visible.",
+    "ar": "هذا الطلب غير مدفوع بعد وغير ظاهر.",
+    "zh": "此订单尚未付款，不可见。",
+    "ff": "Ndee njamndi yoɓaaka tawo e yiyaaka."
+  },
+  "This is not a restaurant order.": {
+    "fr": "Cette commande n’est pas une commande restaurant.",
+    "es": "Este no es un pedido de restaurante.",
+    "ar": "هذا ليس طلب مطعم.",
+    "zh": "这不是餐厅订单。",
+    "ff": "Ndee wonaa njamndi restoraa."
+  },
+  "Unable to update the status.": {
+    "fr": "Impossible de mettre à jour le statut.",
+    "es": "No se pudo actualizar el estado.",
+    "ar": "تعذّر تحديث الحالة.",
+    "zh": "无法更新状态。",
+    "ff": "Horiima hesɗitinde ngonka."
+  },
+  "Invalid restaurant session. Sign in again, then retry.": {
+    "fr": "Session restaurant invalide. Reconnecte-toi puis réessaie.",
+    "es": "Sesión de restaurante no válida. Inicia sesión de nuevo e inténtalo otra vez.",
+    "ar": "جلسة المطعم غير صالحة. سجّل الدخول ثم أعد المحاولة.",
+    "zh": "餐厅会话无效。请重新登录后再试。",
+    "ff": "Naatgol restoraa moƴƴaani. Naatu kadi, ndeen eto."
+  },
+  "Order not found for this restaurant.": {
+    "fr": "Commande introuvable pour ce restaurant.",
+    "es": "Pedido no encontrado para este restaurante.",
+    "ar": "الطلب غير موجود لهذا المطعم.",
+    "zh": "未找到此餐厅的订单。",
+    "ff": "Njamndi heɓaaka e ndee restoraa."
+  },
+  "This order already changed status. Refresh the list.": {
+    "fr": "Cette commande a déjà changé de statut. Rafraîchis la liste.",
+    "es": "Este pedido ya cambió de estado. Actualiza la lista.",
+    "ar": "غيّر هذا الطلب حالته بالفعل. حدّث القائمة.",
+    "zh": "此订单状态已变更。请刷新列表。",
+    "ff": "Ndee njamndi waylii ngonka kisa. Hesɗitin doggol."
+  },
+  "The acceptance window expired. You can no longer accept this order.": {
+    "fr": "Le délai d’acceptation est expiré. Tu ne peux plus accepter cette commande.",
+    "es": "La ventana de aceptación caducó. Ya no puedes aceptar este pedido.",
+    "ar": "انتهت نافذة القبول. لم يعد يمكنك قبول هذا الطلب.",
+    "zh": "接单时限已过。你无法再接受此订单。",
+    "ff": "Waktu jaɓgol gasii. A waawaa jaɓde ndee njamndi kadi."
+  },
+  "Session not found. Sign in again, then retry.": {
+    "fr": "Session introuvable. Reconnecte-toi puis réessaie.",
+    "es": "Sesión no encontrada. Inicia sesión de nuevo e inténtalo otra vez.",
+    "ar": "الجلسة غير موجودة. سجّل الدخول ثم أعد المحاولة.",
+    "zh": "未找到会话。请重新登录后再试。",
+    "ff": "Naatgol heɓaaka. Naatu kadi, ndeen eto."
+  },
+  "Restaurant profile not found. Complete your restaurant profile.": {
+    "fr": "Profil restaurant introuvable. Complète ton profil restaurant.",
+    "es": "Perfil de restaurante no encontrado. Completa tu perfil de restaurante.",
+    "ar": "ملف المطعم غير موجود. أكمل ملف مطعمك.",
+    "zh": "未找到餐厅资料。请完善餐厅资料。",
+    "ff": "Profil restoraa heɓaaka. Heɓɓin profil restoraa maa."
+  },
+  "An unexpected error occurred.": {
+    "fr": "Une erreur inattendue est survenue.",
+    "es": "Ocurrió un error inesperado.",
+    "ar": "حدث خطأ غير متوقع.",
+    "zh": "发生意外错误。",
+    "ff": "Juumre anndaaka waɗii."
+  },
+  "The PDF download link was not found.": {
+    "fr": "Le lien de téléchargement du PDF est introuvable.",
+    "es": "No se encontró el enlace de descarga del PDF.",
+    "ar": "لم يُعثر على رابط تنزيل PDF.",
+    "zh": "未找到 PDF 下载链接。",
+    "ff": "Jokkol ɗowgol PDF heɓaaka."
+  },
+  "Unable to open the PDF link.": {
+    "fr": "Impossible d’ouvrir le lien du PDF.",
+    "es": "No se pudo abrir el enlace del PDF.",
+    "ar": "تعذّر فتح رابط PDF.",
+    "zh": "无法打开 PDF 链接。",
+    "ff": "Horiima udditde jokkol PDF."
+  },
+  "Account already signed in": {
+    "fr": "Compte déjà connecté",
+    "es": "Cuenta ya conectada",
+    "ar": "الحساب مسجّل الدخول بالفعل",
+    "zh": "账户已登录",
+    "ff": "Konto naatii kisa"
+  },
+  "This account is registered as {{role}}. Sign out if you want to use another role.": {
+    "fr": "Ce compte est enregistré comme {{role}}. Déconnecte-toi si tu veux utiliser un autre rôle.",
+    "es": "Esta cuenta está registrada como {{role}}. Cierra sesión si quieres usar otro rol.",
+    "ar": "هذا الحساب مسجّل كـ {{role}}. سجّل الخروج إن أردت استخدام دور آخر.",
+    "zh": "此账户已注册为 {{role}}。若要使用其他角色请先退出。",
+    "ff": "Ndee konto winnditaama {{role}}. Yaltu so a yiɗii huutoraade darnde woɗnde."
+  },
+  "This is an admin account. Use the admin interface to manage MMD Delivery.": {
+    "fr": "Ce compte est un compte admin. Utilise l’interface admin prévue pour gérer MMD Delivery.",
+    "es": "Esta es una cuenta de admin. Usa la interfaz de admin para gestionar MMD Delivery.",
+    "ar": "هذا حساب مشرف. استخدم واجهة المشرف لإدارة MMD Delivery.",
+    "zh": "这是管理员账户。请使用管理界面管理 MMD Delivery。",
+    "ff": "Ndee ko konto admin. Huutoro heɓɓitere admin ngam yuɓɓinde MMD Delivery."
+  },
+  "Unable to open this role right now.": {
+    "fr": "Impossible d’ouvrir ce rôle pour le moment.",
+    "es": "No se puede abrir este rol ahora.",
+    "ar": "تعذّر فتح هذا الدور الآن.",
+    "zh": "暂时无法打开此角色。",
+    "ff": "Horiima udditde ndee darnde jooni."
+  },
+  "MMD credit": {
+    "fr": "Crédit MMD",
+    "es": "Crédito MMD",
+    "ar": "رصيد MMD",
+    "zh": "MMD 余额",
+    "ff": "Kredit MMD"
+  },
+  "Preparing navigation…": {
+    "fr": "Préparation de la navigation…",
+    "es": "Preparando la navegación…",
+    "ar": "جارٍ تجهيز التنقل…",
+    "zh": "正在准备导航…",
+    "ff": "Nana heɓna yiiltugol…"
+  },
+  "Unstable connection. Try again.": {
+    "fr": "Connexion instable. Réessaie.",
+    "es": "Conexión inestable. Inténtalo de nuevo.",
+    "ar": "الاتصال غير مستقر. حاول مرة أخرى.",
+    "zh": "连接不稳定。请重试。",
+    "ff": "Seŋaande jaaɓaani. Eto kadi."
+  },
+  "Turn on location to confirm your arrival (≤ 50 m).": {
+    "fr": "Active la localisation pour confirmer ton arrivée (≤ 50 m).",
+    "es": "Activa la ubicación para confirmar tu llegada (≤ 50 m).",
+    "ar": "فعّل الموقع لتأكيد وصولك (≤ 50 م).",
+    "zh": "开启定位以确认到达（≤ 50 米）。",
+    "ff": "Hurmin nokkuure ngam tabitinde artagol maa (≤ 50 m)."
+  },
+  "Move within 50 m to confirm GPS arrival and start the timer.": {
+    "fr": "Approche à moins de 50 m pour valider l’arrivée GPS et démarrer le chronomètre.",
+    "es": "Acércate a menos de 50 m para confirmar la llegada GPS e iniciar el temporizador.",
+    "ar": "اقترب إلى أقل من 50 م لتأكيد وصول GPS وبدء المؤقت.",
+    "zh": "进入 50 米内以确认 GPS 到达并开始计时。",
+    "ff": "Yah nder 50 m ngam tabitinde artagol GPS e fuɗɗude waktu."
+  },
+  "Arrival blocked": {
+    "fr": "Arrivée refusée",
+    "es": "Llegada bloqueada",
+    "ar": "الوصول محظور",
+    "zh": "到达被阻止",
+    "ff": "Artagol haɗaama"
+  },
+  "Allow the camera to photograph the doorstep drop-off.": {
+    "fr": "Autorise la caméra pour photographier le dépôt devant la porte.",
+    "es": "Permite la cámara para fotografiar la entrega en la puerta.",
+    "ar": "اسمح للكاميرا بتصوير التسليم عند الباب.",
+    "zh": "允许相机拍摄门口放置凭证。",
+    "ff": "Yamir kamera ngam ñaamndude jaɓorde e damal."
+  },
+  "Drop-off allowed": {
+    "fr": "Dépôt autorisé",
+    "es": "Entrega permitida",
+    "ar": "التسليم مسموح",
+    "zh": "允许放置",
+    "ff": "Jaɓorde yamiraama"
+  },
+  "Photo saved. You can finish the delivery with this proof.": {
+    "fr": "Photo enregistrée. Tu peux finaliser la livraison avec cette preuve.",
+    "es": "Foto guardada. Puedes terminar la entrega con esta prueba.",
+    "ar": "حُفظت الصورة. يمكنك إنهاء التسليم بهذا الإثبات.",
+    "zh": "照片已保存。你可用此凭证完成配送。",
+    "ff": "Nataal danndaama. A waawi timminde neldugol e ndee seedee."
+  },
+  "Cancel without penalty": {
+    "fr": "Annuler sans pénalité",
+    "es": "Cancelar sin penalización",
+    "ar": "إلغاء بلا غرامة",
+    "zh": "取消且无罚金",
+    "ff": "Haɗtu tawa alaa tattee"
+  },
+  "Client no-show confirmed by the timer. Confirm cancellation?": {
+    "fr": "No-show client validé par le chronomètre. Confirmer l’annulation ?",
+    "es": "El temporizador confirmó la ausencia del cliente. ¿Confirmar la cancelación?",
+    "ar": "أكّد المؤقت غياب العميل. تأكيد الإلغاء؟",
+    "zh": "计时器已确认客户未出现。确认取消？",
+    "ff": "Kiliyee artaaki tabitinaama e waktu. Tabitin haɗtugol?"
+  },
+  "Customer wait timer": {
+    "fr": "Chronomètre d’attente client",
+    "es": "Temporizador de espera del cliente",
+    "ar": "مؤقت انتظار العميل",
+    "zh": "客户等待计时",
+    "ff": "Waktu sabbaade kiliyee"
+  },
+  "I have arrived": {
+    "fr": "Je suis arrivé",
+    "es": "He llegado",
+    "ar": "لقد وصلت",
+    "zh": "我已到达",
+    "ff": "Mi arti"
+  },
+  "The client did not allow leave-at-door.": {
+    "fr": "Le client n’a pas autorisé le dépôt devant la porte.",
+    "es": "El cliente no autorizó dejarlo en la puerta.",
+    "ar": "لم يسمح العميل بالترك عند الباب.",
+    "zh": "客户未允许放在门口。",
+    "ff": "Kiliyee yamiraani accude e damal."
+  },
+  "Drop off with photo": {
+    "fr": "Déposer avec photo",
+    "es": "Entregar con foto",
+    "ar": "تسليم مع صورة",
+    "zh": "拍照放置",
+    "ff": "Jaɓor e nataal"
+  },
+  "Cancel without penalty (no-show)": {
+    "fr": "Annuler sans pénalité (no-show)",
+    "es": "Cancelar sin penalización (no-show)",
+    "ar": "إلغاء بلا غرامة (عدم الحضور)",
+    "zh": "取消且无罚金（未出现）",
+    "ff": "Haɗtu tawa alaa tattee (artaaki)"
+  },
+  "Your restaurant": {
+    "fr": "Votre établissement",
+    "es": "Tu restaurante",
+    "ar": "مطعمك",
+    "zh": "你的餐厅",
+    "ff": "Restoraa maa"
+  },
+  "YYYY-MM-DD": {
+    "fr": "YYYY-MM-DD",
+    "es": "YYYY-MM-DD",
+    "ar": "YYYY-MM-DD",
+    "zh": "YYYY-MM-DD",
+    "ff": "YYYY-MM-DD"
+  },
+  "Q{{q}} {{year}}": {
+    "fr": "T{{q}} {{year}}",
+    "es": "T{{q}} {{year}}",
+    "ar": "ر{{q}} {{year}}",
+    "zh": "{{year}} Q{{q}}",
+    "ff": "Q{{q}} {{year}}"
+  },
+  "Checkout": {
+    "fr": "Checkout",
+    "es": "Pago",
+    "ar": "الدفع",
+    "zh": "结账",
+    "ff": "Yoɓgol"
+  },
+  "Ex: Mamadou Diallo": {
+    "fr": "Ex: Mamadou Diallo",
+    "es": "Ej: Mamadou Diallo",
+    "ar": "مثال: Mamadou Diallo",
+    "zh": "例如：Mamadou Diallo",
+    "ff": "Yeru: Mamadou Diallo"
+  },
+  "Ex: 929xxxxxxx": {
+    "fr": "Ex: 929xxxxxxx",
+    "es": "Ej: 929xxxxxxx",
+    "ar": "مثال: 929xxxxxxx",
+    "zh": "例如：929xxxxxxx",
+    "ff": "Yeru: 929xxxxxxx"
+  },
+  "Ex: Brooklyn": {
+    "fr": "Ex: Brooklyn",
+    "es": "Ej: Brooklyn",
+    "ar": "مثال: Brooklyn",
+    "zh": "例如：Brooklyn",
+    "ff": "Yeru: Brooklyn"
+  },
+  "W-9 (Form + PDF)": {
+    "fr": "W-9 (Form + PDF)",
+    "es": "W-9 (Formulario + PDF)",
+    "ar": "W-9 (نموذج + PDF)",
+    "zh": "W-9（表格 + PDF）",
+    "ff": "W-9 (Form + PDF)"
+  },
+  "SETUP": {
+    "fr": "CONFIG",
+    "es": "CONFIG",
+    "ar": "إعداد",
+    "zh": "设置",
+    "ff": "HEƁƁINAL"
+  },
+  "BUSY": {
+    "fr": "OCCUPÉ",
+    "es": "OCUPADO",
+    "ar": "مشغول",
+    "zh": "忙碌",
+    "ff": "CUƁIIƊO"
+  },
+  "OFFLINE": {
+    "fr": "HORS LIGNE",
+    "es": "DESCONECTADO",
+    "ar": "غير متصل",
+    "zh": "离线",
+    "ff": "YALTII"
+  },
+  "ONLINE": {
+    "fr": "EN LIGNE",
+    "es": "EN LÍNEA",
+    "ar": "متصل",
+    "zh": "在线",
+    "ff": "E KAWRAL"
+  },
+  "Live": {
+    "fr": "Live",
+    "es": "En vivo",
+    "ar": "مباشر",
+    "zh": "实时",
+    "ff": "E sahaa"
+  },
+  "Print": {
+    "fr": "Print",
+    "es": "Imprimir",
+    "ar": "طباعة",
+    "zh": "打印",
+    "ff": "Winndito"
+  },
+  "GPS accuracy: ~{{meters}} m · Pin: {{lat}}, {{lng}}": {
+    "fr": "Précision GPS : ~{{meters}} m · Épingle : {{lat}}, {{lng}}",
+    "es": "Precisión GPS: ~{{meters}} m · Pin: {{lat}}, {{lng}}",
+    "ar": "دقة GPS: ~{{meters}} م · الدبوس: {{lat}}، {{lng}}",
+    "zh": "GPS 精度：约 {{meters}} 米 · 图钉：{{lat}}, {{lng}}",
+    "ff": "Tagoore GPS: ~{{meters}} m · Pin: {{lat}}, {{lng}}"
+  },
+  "Pin: {{lat}}, {{lng}} · source: {{source}}": {
+    "fr": "Épingle : {{lat}}, {{lng}} · source : {{source}}",
+    "es": "Pin: {{lat}}, {{lng}} · origen: {{source}}",
+    "ar": "الدبوس: {{lat}}، {{lng}} · المصدر: {{source}}",
+    "zh": "图钉：{{lat}}, {{lng}} · 来源：{{source}}",
+    "ff": "Pin: {{lat}}, {{lng}} · iwdi: {{source}}"
+  }
+}

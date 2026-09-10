@@ -155,7 +155,7 @@ function boostSubtitle(b: BoostRow, t: TSimple) {
     const pct = Number.isFinite(v) ? v.toFixed(0) : "0";
     return t(
       "driver.benefits.boostSubtitle.percent",
-      `Gagne +${pct}% sur ta part chauffeur.`,
+      "Earn +{value}% on your driver share.",
     ).replace("{value}", pct);
   }
 
@@ -163,11 +163,11 @@ function boostSubtitle(b: BoostRow, t: TSimple) {
     const money = Number.isFinite(v) ? v.toFixed(2) : "0.00";
     return t(
       "driver.benefits.boostSubtitle.perOrder",
-      `Bonus ajouté : +${money} $ par course livrée.`,
+      "Bonus added: +${value} per delivered trip.",
     ).replace("{value}", money);
   }
 
-  return t("driver.benefits.boostSubtitle.timeWindow", "Boost actif sur une période limitée.");
+  return t("driver.benefits.boostSubtitle.timeWindow", "Boost active for a limited time window.");
 }
 
 function BrandFooter() {
@@ -343,15 +343,15 @@ export function DriverBenefitsScreen() {
         e.occurred_at,
         localeForDate(i18n.language),
       )}`,
-      badge: t("driver.benefits.badge.earned", "Gagné"),
+      badge: t("driver.benefits.badge.earned", "Earned"),
       accent: "green",
     }));
 
     const challengeItems: BenefitItem[] = challengesArr.map((c) => {
       const badge = c.claimed
-        ? t("driver.benefits.badge.claimed", "Réclamé")
+        ? t("driver.benefits.badge.claimed", "Claimed")
         : c.claimable
-          ? t("driver.benefits.badge.claim", "Réclamer")
+          ? t("driver.benefits.badge.claim", "Claim")
           : t("driver.benefits.badge.inProgress", "En cours");
 
       const desc = (c.description ?? "").trim();
@@ -359,7 +359,7 @@ export function DriverBenefitsScreen() {
       const line2 = t("driver.benefits.challenge.progress", `Progression: {done}/{goal}`)
         .replace("{done}", String(Number(c.trips_done ?? 0)))
         .replace("{goal}", String(Number(c.goal_trips ?? 0)));
-      const line3 = t("driver.benefits.challenge.reward", `Récompense: {amount}`).replace(
+      const line3 = t("driver.benefits.challenge.reward", "Reward: {amount}").replace(
         "{amount}",
         fmtMoneyUSD(c.reward_amount),
       );
@@ -398,7 +398,7 @@ export function DriverBenefitsScreen() {
 
   function renderCard(item: BenefitItem, opts?: { canActivate?: boolean }) {
     const canActivate = !!opts?.canActivate;
-    const activeBadge = item.active || item.badge === t("driver.benefits.badge.earned", "Gagné");
+    const activeBadge = item.active || item.badge === t("driver.benefits.badge.earned", "Earned");
 
     return (
       <View key={item.id} style={styles.itemCard}>
@@ -437,10 +437,10 @@ export function DriverBenefitsScreen() {
             onPress={() => {
               setActiveBoostId(item.id);
               Alert.alert(
-                t("driver.benefits.alert.boostSelected.title", "Boost sélectionné ✅"),
+                t("driver.benefits.alert.boostSelected.title", "Boost selected ✅"),
                 t(
                   "driver.benefits.alert.boostSelected.body",
-                  "Activation réelle (DB) = prochaine étape.",
+                  "Live activation (DB) = next step.",
                 ),
               );
             }}
@@ -466,7 +466,7 @@ export function DriverBenefitsScreen() {
           variant="mmd"
         />
         <DriverBrandLoadingState
-          title={t("driver.benefits.loading", "Chargement des avantages...")}
+          title={t("driver.benefits.loading", "Loading…")}
         />
       </SafeAreaView>
     );
@@ -498,7 +498,7 @@ export function DriverBenefitsScreen() {
             activeOpacity={0.85}
           >
             <Text style={[styles.tabText, tab === "payout" && styles.tabTextActive]}>
-              {t("driver.benefits.tabs.payout", "Payout estimé")}
+              {t("driver.benefits.tabs.payout", "Estimated payout")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -506,20 +506,20 @@ export function DriverBenefitsScreen() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryCol}>
             <Text style={styles.summaryLabel}>
-              {t("driver.benefits.summary.bonusEarned", "Bonus gagnés")}
+              {t("driver.benefits.summary.bonusEarned", "Bonuses earned")}
             </Text>
             <Text style={styles.summaryValue}>
               {loading && !rpc ? "-" : fmtMoneyUSD(safeBonusTotal)}
             </Text>
             <Text style={styles.summaryMeta}>
-              {t("driver.benefits.summary.events", "Événements:")}{" "}
+              {t("driver.benefits.summary.events", "Events:")}{" "}
               {loading && !rpc ? 0 : safeBonusCount}
             </Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryCol}>
             <Text style={styles.summaryLabel}>
-              {t("driver.benefits.summary.payoutEstimated", "Payout estimé")}
+              {t("driver.benefits.summary.payoutEstimated", "Estimated payout")}
             </Text>
             <Text style={[styles.summaryValue, styles.summaryValueGreen]}>
               {loading && !rpc ? "-" : fmtMoneyUSD(safePayoutEstimated)}
@@ -538,8 +538,8 @@ export function DriverBenefitsScreen() {
         >
           <Text style={styles.refreshBtnText}>
             {loading
-              ? t("driver.benefits.actions.refreshing", "Rafraîchissement...")
-              : t("driver.benefits.actions.refresh", "Rafraîchir")}
+              ? t("driver.benefits.actions.refreshing", "Refreshing...")
+              : t("driver.benefits.actions.refresh", "Refresh")}
           </Text>
         </TouchableOpacity>
 
@@ -547,14 +547,14 @@ export function DriverBenefitsScreen() {
           <View style={styles.loadingCard}>
             <Text style={styles.loadingEmoji}>🎁</Text>
             <Text style={styles.loadingTitle}>
-              {t("driver.benefits.loading", "Chargement des avantages...")}
+              {t("driver.benefits.loading", "Loading…")}
             </Text>
             <ActivityIndicator color={MMD_WHITE} />
           </View>
         ) : tab === "payout" ? (
           <View style={styles.itemCard}>
             <Text style={styles.itemTitle}>
-              {t("driver.benefits.summary.payoutEstimated", "Payout estimé")}
+              {t("driver.benefits.summary.payoutEstimated", "Estimated payout")}
             </Text>
             <Text style={[styles.summaryValue, styles.summaryValueGreen, { marginTop: 8 }]}>
               {fmtMoneyUSD(safePayoutEstimated)}
@@ -573,23 +573,23 @@ export function DriverBenefitsScreen() {
               title={t("driver.benefits.sections.activeBoost", "Boost actif")}
               body={t(
                 "driver.benefits.empty.activeBoost",
-                "Aucun boost actif pour le moment",
+                "No active boost.",
               )}
             />
             <EmptySectionCard
               emoji="🎯"
               title={t("driver.benefits.sections.availableBoosts", "Boosts disponibles")}
-              body={t("driver.benefits.empty.availableBoosts", "Aucun boost disponible")}
+              body={t("driver.benefits.empty.availableBoosts", "No boost available.")}
             />
             <EmptySectionCard
               emoji="💰"
               title={t("driver.benefits.sections.bonus", "Bonus")}
-              body={t("driver.benefits.empty.bonusPeriod", "Aucun bonus sur cette période")}
+              body={t("driver.benefits.empty.bonusPeriod", "No bonus for this period.")}
             />
             <EmptySectionCard
               emoji="🏆"
-              title={t("driver.benefits.sections.challenges", "Défis")}
-              body={t("driver.benefits.empty.challenges", "Aucun défi pour l'instant")}
+              title={t("driver.benefits.sections.challenges", "Challenges")}
+              body={t("driver.benefits.empty.challenges", "No challenges yet.")}
             />
           </View>
         ) : (
@@ -599,7 +599,7 @@ export function DriverBenefitsScreen() {
             </Text>
             {active.length === 0 ? (
               <Text style={styles.emptyInline}>
-                {t("driver.benefits.empty.activeBoost", "Aucun boost actif.")}
+                {t("driver.benefits.empty.activeBoost", "No active boost.")}
               </Text>
             ) : (
               active.map((i) => renderCard(i))
@@ -610,7 +610,7 @@ export function DriverBenefitsScreen() {
             </Text>
             {boosts.length === 0 ? (
               <Text style={styles.emptyInline}>
-                {t("driver.benefits.empty.availableBoosts", "Aucun boost disponible.")}
+                {t("driver.benefits.empty.availableBoosts", "No boost available.")}
               </Text>
             ) : (
               boosts.map((i) => renderCard(i, { canActivate: true }))
@@ -621,18 +621,18 @@ export function DriverBenefitsScreen() {
             </Text>
             {bonuses.length === 0 ? (
               <Text style={styles.emptyInline}>
-                {t("driver.benefits.empty.bonusPeriod", "Aucun bonus sur cette période.")}
+                {t("driver.benefits.empty.bonusPeriod", "No bonus for this period.")}
               </Text>
             ) : (
               bonuses.map((i) => renderCard(i))
             )}
 
             <Text style={styles.sectionTitle}>
-              🏆 {t("driver.benefits.sections.challenges", "Défis")}
+              🏆 {t("driver.benefits.sections.challenges", "Challenges")}
             </Text>
             {challenges.length === 0 ? (
               <Text style={styles.emptyInline}>
-                {t("driver.benefits.empty.challenges", "Aucun défi pour l'instant.")}
+                {t("driver.benefits.empty.challenges", "No challenges yet.")}
               </Text>
             ) : (
               challenges.map((i) => renderCard(i))
@@ -643,7 +643,7 @@ export function DriverBenefitsScreen() {
         <Text style={styles.footnote}>
           {t(
             "driver.benefits.footer",
-            "Branché Supabase : boosts actifs + bonus events + défis + payout estimé.",
+            "Connected to Supabase: active boosts + bonus events + challenges + estimated payout.",
           )}
         </Text>
 

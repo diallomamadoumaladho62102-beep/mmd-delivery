@@ -1,0 +1,16 @@
+{
+  "mobileNavigatorRoutes": 99,
+  "mobileScreenFiles": 98,
+  "mobileUsedI18nKeys": 3435,
+  "webPageRoutes": 187,
+  "locales": ["en", "fr", "es", "ar", "zh", "ff"],
+  "categories": {
+    "auth": ["RoleSelect", "ResetPassword", "ClientAuth", "DriverAuth", "RestaurantAuth"],
+    "client": ["ClientHome", "ClientNewOrder", "ClientRestaurantList", "ClientRestaurantMenu", "ClientOrderDetails", "ClientOrderHistory", "ClientDeliveryRequestDetails", "ClientInbox", "ClientChat", "ClientProfile", "ClientWallet", "ClientSettings", "ClientSecurity", "ClientNotificationCenter", "DeliveryRequest", "FoodOrderReceipt", "DeliveryRequestReceipt"],
+    "driver": ["DriverTabs", "DriverHomeTab", "DriverRevenueTab", "DriverInboxTab", "DriverMenuTab", "DriverOrderDetails", "DriverMap", "DriverChat", "DriverTaxiChat", "DriverOnboarding", "DriverIdentityVerification", "DriverProfile", "DriverReferrals", "DriverOpportunities", "DriverAccount", "DriverHelp", "DriverWorkAccount", "DriverPrivacyScreen", "DriverAboutScreen", "DriverSecurity", "DriverLanguage", "DriverTax", "DriverW9", "DriverRevenueDetails", "DriverRevenueHistory", "DriverServices", "DriverHotspots", "DriverVehicles", "DriverVehicle", "DriverWallet", "DriverBenefits", "DriverNotificationCenter"],
+    "restaurant": ["RestaurantGate", "RestaurantSetup", "RestaurantMenu", "RestaurantHome", "RestaurantCommandCenter", "RestaurantOrders", "RestaurantOrderDetails", "RestaurantEarnings", "RestaurantFinancialCenter", "RestaurantTax", "RestaurantLanguage", "RestaurantSecurity", "RestaurantOrderAutomation", "RestaurantChat", "RestaurantWallet"],
+    "marketplace": ["SellerGate", "SellerOnboarding", "SellerDashboard", "SellerProducts", "SellerOrders", "SellerWallet", "MarketplaceHome", "MarketplaceProductList", "MarketplaceProductDetails", "MarketplaceCart"],
+    "taxi": ["TaxiHome", "TaxiQuote", "TaxiRideTracking", "TaxiTip", "TaxiReceipt", "TaxiHistory", "TaxiFavorites", "TaxiLoyalty", "TaxiScheduled", "TaxiScheduledBook", "TaxiMultiStop", "TaxiLoyaltyRewards", "TaxiChat", "BusinessWallet"],
+    "shared": ["MMDLocationPicker", "DeleteAccount", "MmdAi", "LoyaltyHub", "MmdPlus", "Promotions", "EntityReceipt"]
+  }
+}

@@ -403,7 +403,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     const name = cleanText(newCategoryName, MAX_CATEGORY_NAME_LENGTH);
     if (!name) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.categories.nameRequired", "Category name required")
       );
     }
@@ -414,7 +414,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     if (exists) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.categories.duplicate", "This category already exists.")
       );
     }
@@ -435,7 +435,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     } catch (error: any) {
       console.log("âŒ add category:", error);
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         error?.message ?? t("restaurant.menu.alerts.createFailed", "Create failed.")
       );
     } finally {
@@ -453,7 +453,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
         "Items in this category will become uncategorized. Continue?"
       ),
       [
-        { text: t("shared.common.cancel", "Annuler"), style: "cancel" },
+        { text: t("shared.common.cancel", "Cancel"), style: "cancel" },
         {
           text: t("restaurant.menu.actions.delete", "Supprimer"),
           style: "destructive",
@@ -481,8 +481,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
             } catch (error: any) {
               console.log("âŒ delete category:", error);
               Alert.alert(
-                t("restaurant.menu.alerts.errorTitle", "Erreur"),
-                error?.message ?? t("restaurant.menu.alerts.deleteFailed", "Suppression impossible")
+                t("restaurant.menu.alerts.errorTitle", "Error"),
+                error?.message ?? t("restaurant.menu.alerts.deleteFailed", "Delete failed")
               );
             } finally {
               setSavingAction(false);
@@ -523,7 +523,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       const uri = asset?.uri;
       if (!uri) {
         Alert.alert(
-          t("restaurant.menu.alerts.errorTitle", "Erreur"),
+          t("restaurant.menu.alerts.errorTitle", "Error"),
           t("restaurant.menu.alerts.invalidImageUri", "Image invalide (uri manquante).")
         );
         return null;
@@ -559,7 +559,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
         console.log("âŒ menu image upload error", upErr);
 
         Alert.alert(
-          t("restaurant.menu.alerts.errorTitle", "Erreur"),
+          t("restaurant.menu.alerts.errorTitle", "Error"),
           `${t(
             "restaurant.menu.alerts.imageNotUploaded",
             "Image not uploaded. Check Storage policies for bucket:"
@@ -576,8 +576,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     } catch (e: any) {
       console.log("âŒ pickAndUploadMenuImage error", e);
       Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        e?.message ?? t("restaurant.menu.alerts.uploadFailed", "Upload impossible")
+        t("restaurant.menu.alerts.errorTitle", "Error"),
+        e?.message ?? t("restaurant.menu.alerts.uploadFailed", "Upload failed")
       );
       return null;
     } finally {
@@ -591,7 +591,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     const name = cleanText(newItem.name, MAX_ITEM_NAME_LENGTH);
     if (!name) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.items.nameRequired", "Nom obligatoire")
       );
     }
@@ -599,7 +599,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     const priceCents = moneyToCents(newItem.price);
     if (!priceCents || priceCents <= 0 || priceCents > MAX_PRICE_CENTS) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.items.invalidPrice", "Prix invalide")
       );
     }
@@ -608,7 +608,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     if (!isValidCategoryId(selectedCatId, categories)) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.categories.invalid", "Categorie invalide.")
       );
     }
@@ -619,7 +619,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     const stockQty = parseStockQty(newItem.stock_qty);
     if (Number.isNaN(stockQty as any)) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.items.invalidStock", "Stock invalide (nombre entier ou vide).")
       );
     }
@@ -629,7 +629,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       optionsJson = parseOptionsText(newItem.options_text);
     } catch (error: any) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         error?.message ?? t("restaurant.menu.items.invalidOptions", "Options invalides.")
       );
     }
@@ -672,7 +672,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     } catch (error: any) {
       console.log("âŒ add item:", error);
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         error?.message ?? t("restaurant.menu.alerts.createFailed", "Create failed.")
       );
     } finally {
@@ -689,7 +689,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     if (error) {
       console.log("âŒ toggle available:", error);
-      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), toUserFacingError(
+      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Error"), toUserFacingError(
         error,
         t("restaurant.menu.alerts.actionFailed", "This action is unavailable right now."),
       ));
@@ -701,10 +701,10 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     if (!restaurantUserId || savingAction) return;
 
     Alert.alert(
-      t("restaurant.menu.items.deleteTitle", "Supprimer le produit"),
-      t("restaurant.menu.items.deleteConfirm", "Confirmer la suppression de ce produit ?"),
+      t("restaurant.menu.items.deleteTitle", "Delete product"),
+      t("restaurant.menu.items.deleteConfirm", "Delete this product?"),
       [
-        { text: t("shared.common.cancel", "Annuler"), style: "cancel" },
+        { text: t("shared.common.cancel", "Cancel"), style: "cancel" },
         {
           text: t("restaurant.menu.actions.delete", "Supprimer"),
           style: "destructive",
@@ -741,8 +741,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
             } catch (error: any) {
               console.log("âŒ deleteItem exception:", error);
               Alert.alert(
-                t("restaurant.menu.alerts.errorTitle", "Erreur"),
-                error?.message ?? t("restaurant.menu.alerts.deleteFailed", "Suppression impossible")
+                t("restaurant.menu.alerts.errorTitle", "Error"),
+                error?.message ?? t("restaurant.menu.alerts.deleteFailed", "Delete failed")
               );
             } finally {
               setSavingAction(false);
@@ -783,7 +783,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     const name = cleanText(editForm.name, MAX_ITEM_NAME_LENGTH);
     if (!name) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.items.nameRequired", "Nom obligatoire")
       );
     }
@@ -791,7 +791,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     const priceCents = moneyToCents(editForm.price);
     if (!priceCents || priceCents <= 0 || priceCents > MAX_PRICE_CENTS) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.items.invalidPrice", "Prix invalide")
       );
     }
@@ -800,7 +800,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     if (!isValidCategoryId(selectedCategoryId, categories)) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.categories.invalid", "Invalid category.")
       );
     }
@@ -810,7 +810,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     const stockQty = parseStockQty(editForm.stock_qty);
     if (Number.isNaN(stockQty as any)) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.items.invalidStock", "Stock invalide (nombre entier ou vide).")
       );
     }
@@ -820,7 +820,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       optionsJson = parseOptionsText(editForm.options_text);
     } catch (error: any) {
       return Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.alerts.errorTitle", "Error"),
         error?.message ?? t("restaurant.menu.items.invalidOptions", "Options invalides.")
       );
     }
@@ -851,7 +851,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       if (error) {
         console.log("âŒ edit item:", error);
         return Alert.alert(
-          t("restaurant.menu.alerts.errorTitle", "Erreur"),
+          t("restaurant.menu.alerts.errorTitle", "Error"),
           toUserFacingError(
             error,
             t("restaurant.menu.alerts.actionFailed", "This action is unavailable right now."),
@@ -863,8 +863,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       closeEdit();
     } catch (e: any) {
       Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        e?.message ?? t("restaurant.menu.alerts.updateFailed", "Update impossible.")
+        t("restaurant.menu.alerts.errorTitle", "Error"),
+        e?.message ?? t("restaurant.menu.alerts.updateFailed", "Update failed.")
       );
     } finally {
       setEditSaving(false);
@@ -898,7 +898,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
         <ScreenHeader title={t("restaurant.menu.title")} variant="mmd" fallbackRoute="RestaurantCommandCenter" />
         <View style={styles.emptyPad}>
           <Text style={styles.emptyTitle}>
-            {t("restaurant.menu.errors.accountRequired", "Restaurant account required")}
+            {t("restaurant.menu.errors.accountRequired", "❌ Restaurant account required")}
           </Text>
         </View>
       </SafeAreaView>

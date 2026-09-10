@@ -108,8 +108,8 @@ export function ClientInboxScreen() {
             setOrders([]);
             setLastMsgByOrder({});
             Alert.alert(
-              t("auth.title", "Connexion"),
-              t("client.inbox.alerts.loginAsClient", "Connecte-toi comme client.")
+              t("auth.title", "Sign in"),
+              t("client.inbox.alerts.loginAsClient", "Sign in as a client.")
             );
             return;
           }
@@ -186,8 +186,8 @@ export function ClientInboxScreen() {
     } catch (e: any) {
       console.log("ClientInbox fetch error:", e);
       Alert.alert(
-        t("common.error", "Erreur"),
-        e?.message ?? t("client.inbox.errors.loadFailed", "Impossible de charger la boîte.")
+        t("common.error", "Error"),
+        e?.message ?? t("client.inbox.errors.loadFailed", "Unable to load the inbox.")
       );
       setOrders([]);
       setLastMsgByOrder({});
@@ -235,7 +235,7 @@ export function ClientInboxScreen() {
 
     const badge = delivered
       ? {
-          text: t("client.inbox.badges.delivered", "Livrée"),
+          text: t("client.inbox.badges.delivered", "Delivered"),
           bg: MMD_GREEN,
           border: "#14532D",
           color: MMD_WHITE,
@@ -249,9 +249,9 @@ export function ClientInboxScreen() {
 
     const lastText =
       safeMsgText(last) ??
-      t("client.inbox.lastMessage.none", "Aucun message");
+      t("client.inbox.lastMessage.none", "No messages");
 
-    const attachmentFallback = t("client.inbox.lastMessage.attachment", "Pièce jointe");
+    const attachmentFallback = t("client.inbox.lastMessage.attachment", "Attachment");
 
     const shownLast =
       safeMsgText(last) != null ? lastText : attachmentFallback;
@@ -265,7 +265,7 @@ export function ClientInboxScreen() {
         <View style={styles.cardRow}>
           <View style={styles.cardCopy}>
             <Text style={styles.cardTitle}>
-              {o.restaurant_name ?? t("client.inbox.orderFallback", "Commande")}
+              {o.restaurant_name ?? t("client.inbox.orderFallback", "Order")}
             </Text>
 
             <Text style={styles.cardPreview}>{shownLast}</Text>
@@ -298,8 +298,8 @@ export function ClientInboxScreen() {
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <ScreenHeader
-        title={t("client.inbox.title", "Boîte")}
-        subtitle={t("client.inbox.subtitle", "En cours + livrées (7 jours)")}
+        title={t("client.inbox.title", "Inbox")}
+        subtitle={t("client.inbox.subtitle", "In progress + delivered (7 days)")}
         fallbackRoute="ClientHome"
         variant="dark"
         rightSlot={
@@ -309,7 +309,7 @@ export function ClientInboxScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.refreshText}>
-              {loading ? "..." : t("common.refresh", "Rafraîchir")}
+              {loading ? "..." : t("common.refresh", "Refresh")}
             </Text>
           </TouchableOpacity>
         }
@@ -320,7 +320,7 @@ export function ClientInboxScreen() {
           <TextInput
             value={q}
             onChangeText={setQ}
-            placeholder={t("client.inbox.search.placeholder", "Rechercher (#id, restaurant, statut)…")}
+            placeholder={t("client.inbox.search.placeholder", "Search (#id, restaurant, status)…")}
             placeholderTextColor={MMD_TEXT_MUTED_BLUE}
             style={styles.searchInput}
           />
@@ -365,7 +365,7 @@ export function ClientInboxScreen() {
         <ScrollView contentContainerStyle={styles.scroll}>
           {me == null ? (
             <Text style={styles.muted}>
-              {t("client.inbox.empty.notLoggedIn", "Connecte-toi comme client pour voir tes conversations.")}
+              {t("client.inbox.empty.notLoggedIn", "Sign in as a client to see your conversations.")}
             </Text>
           ) : (
             <View style={styles.sections}>
@@ -375,7 +375,7 @@ export function ClientInboxScreen() {
 
               {inProgressOrders.length === 0 ? (
                 <Text style={styles.muted}>
-                  {t("client.inbox.sections.inProgressEmpty", "Aucune commande en cours.")}
+                  {t("client.inbox.sections.inProgressEmpty", "No orders in progress.")}
                 </Text>
               ) : (
                 <View style={styles.listGap}>
@@ -386,12 +386,12 @@ export function ClientInboxScreen() {
               )}
 
               <Text style={[styles.sectionTitle, { marginTop: 8 }]}>
-                {t("client.inbox.sections.delivered7d", "Livrées (7 jours)")}
+                {t("client.inbox.sections.delivered7d", "Delivered (7 days)")}
               </Text>
 
               {deliveredOrders.length === 0 ? (
                 <Text style={styles.muted}>
-                  {t("client.inbox.sections.deliveredEmpty", "Aucune commande livrée sur 7 jours.")}
+                  {t("client.inbox.sections.deliveredEmpty", "No deliveries in the last 7 days.")}
                 </Text>
               ) : (
                 <View style={styles.listGap}>

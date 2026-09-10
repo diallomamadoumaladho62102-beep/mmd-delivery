@@ -367,7 +367,7 @@ export function RoleSelectScreen() {
       const title =
         gate.kind === "session_expired"
           ? t("roleSelect.sessionExpiredTitle", "Session expired")
-          : t("common.error", "Erreur");
+          : t("common.error", "Error");
 
       Alert.alert(title, userMessageForProfileGateKind(gate.kind), [
         { text: t("common.ok", "OK"), style: "cancel" as const },
@@ -404,10 +404,10 @@ export function RoleSelectScreen() {
 
     if (realRole && realRole !== selectedRole && !canUseAnyPublicRole) {
       Alert.alert(
-        t("roleSelect.wrongRoleTitle", "Compte déjà connecté"),
+        t("roleSelect.wrongRoleTitle", "Account already signed in"),
         t(
           "roleSelect.wrongRoleBody",
-          "Ce compte est enregistré comme {{role}}. Déconnecte-toi si tu veux utiliser un autre rôle.",
+          "This account is registered as {{role}}. Sign out if you want to use another role.",
           { role: realRole },
         ),
       );
@@ -477,7 +477,7 @@ export function RoleSelectScreen() {
           t("roleSelect.driverSuspendedTitle", "Compte suspendu"),
           t(
             "roleSelect.driverSuspendedBody",
-            "Ton compte chauffeur est suspendu. Contacte le support MMD Delivery.",
+            "Your driver account is suspended. Contact MMD Delivery support.",
           ),
         );
         await clearSelectedRole();
@@ -499,7 +499,7 @@ export function RoleSelectScreen() {
       t("roleSelect.adminTitle", "Admin"),
       t(
         "roleSelect.adminBody",
-        "Ce compte est un compte admin. Utilise l’interface admin prévue pour gérer MMD Delivery.",
+        "This is an admin account. Use the admin interface to manage MMD Delivery.",
       ),
     );
   }
@@ -549,11 +549,11 @@ export function RoleSelectScreen() {
       console.log("RoleSelect handlePress error:", e);
 
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         e?.message ??
           t(
             "roleSelect.errors.openRoleFailed",
-            "Impossible d’ouvrir ce rôle pour le moment.",
+            "Unable to open this role right now.",
           ),
       );
     }

@@ -146,17 +146,17 @@ export function RestaurantAuthScreen() {
     if (existingRole && existingRole !== "restaurant") {
       throw new Error(
         existingRole === "driver"
-          ? t("restaurant.auth.errors.accountIsDriver", "Ce compte est enregistré comme chauffeur. Connecte-toi depuis la section Driver.")
+          ? t("restaurant.auth.errors.accountIsDriver", "This account is registered as a driver. Sign in from the Driver section.")
           : existingRole === "client"
-            ? t("restaurant.auth.errors.accountIsClient", "Ce compte est enregistré comme client. Connecte-toi depuis la section Client.")
-            : t("restaurant.auth.errors.accountWrongRole", "Ce compte n’est pas un compte restaurant.")
+            ? t("restaurant.auth.errors.accountIsClient", "This account is registered as a client. Sign in from the Client section.")
+            : t("restaurant.auth.errors.accountWrongRole", "This account is not a restaurant account.")
       );
     }
 
     if (!existingProfile) {
       if (!allowCreateRestaurantRole) {
         throw new Error(
-          t("restaurant.auth.errors.notRestaurantAccount", "Ce compte n’est pas encore configuré comme restaurant.")
+          t("restaurant.auth.errors.notRestaurantAccount", "This account is not set up as a restaurant yet.")
         );
       }
 
@@ -194,7 +194,7 @@ export function RestaurantAuthScreen() {
         locationLng === undefined
       ) {
         throw new Error(
-          t("restaurant.auth.errors.restaurantAddressRequired", "Nom et adresse complète du restaurant obligatoires.")
+          t("restaurant.auth.errors.restaurantAddressRequired", "Restaurant name and full address are required.")
         );
       }
 
@@ -249,7 +249,7 @@ export function RestaurantAuthScreen() {
 
       if (!data.session) {
         throw new Error(
-          t("restaurant.auth.errors.sessionNotCreated", "Session non créée. Réessaie.")
+          t("restaurant.auth.errors.sessionNotCreated", "Session was not created. Try again.")
         );
       }
 
@@ -262,10 +262,10 @@ export function RestaurantAuthScreen() {
         });
       }
 
-      setMsg(t("restaurant.auth.success.signedIn", "✅ Connecté !"));
+      setMsg(t("restaurant.auth.success.signedIn", "Signed in ✅"));
     } catch (error: unknown) {
       setMsg(
-        t("restaurant.auth.errors.signinFailed", "❌ Connexion impossible : ") +
+        t("restaurant.auth.errors.signinFailed", "Login failed") +
           getErrorMessage(error, "Erreur inconnue")
       );
     } finally {
@@ -298,13 +298,13 @@ export function RestaurantAuthScreen() {
     }
 
     if (!name) {
-      setMsg(t("restaurant.auth.errors.restaurantNameRequired", "❌ Nom du restaurant obligatoire"));
+      setMsg(t("restaurant.auth.errors.restaurantNameRequired", "❌ Restaurant name required"));
       return;
     }
 
     if (!address) {
       setMsg(
-        t("restaurant.auth.errors.restaurantAddressRequired", "❌ Adresse complète du restaurant obligatoire")
+        t("restaurant.auth.errors.restaurantAddressRequired", "Restaurant name and full address are required.")
       );
       return;
     }
@@ -335,7 +335,7 @@ export function RestaurantAuthScreen() {
 
       if (!userId) {
         throw new Error(
-          t("restaurant.auth.errors.userNotCreated", "Compte créé, mais impossible de récupérer l’utilisateur.")
+          t("restaurant.auth.errors.userNotCreated", "Account created, but the user could not be loaded.")
         );
       }
 
@@ -352,18 +352,18 @@ export function RestaurantAuthScreen() {
 
       if (!data.session) {
         setMsg(
-          t("restaurant.auth.success.createdCheckEmail", "✅ Compte créé. Vérifie ton email puis connecte-toi.")
+          t("restaurant.auth.success.createdCheckEmail", "✅ Account created. Check your email, then sign in.")
         );
         setMode("login");
         return;
       }
 
       setMsg(
-        t("restaurant.auth.success.createdAndSignedIn", "✅ Compte restaurant créé et connecté !")
+        t("restaurant.auth.success.createdAndSignedIn", "Account created and signed in ✅")
       );
     } catch (error: unknown) {
       setMsg(
-        t("restaurant.auth.errors.signupFailed", "❌ Création du compte impossible : ") +
+        t("restaurant.auth.errors.signupFailed", "Signup failed") +
           getErrorMessage(error, "Erreur inconnue")
       );
     } finally {
@@ -378,7 +378,7 @@ export function RestaurantAuthScreen() {
 
     if (!e) {
       setMsg(
-        t("restaurant.auth.errors.emailRequiredForReset", "❌ Entre ton email avant de demander la réinitialisation.")
+        t("restaurant.auth.errors.emailRequiredForReset", "❌ Enter your email before requesting a reset.")
       );
       return;
     }
@@ -398,11 +398,11 @@ export function RestaurantAuthScreen() {
       if (error) throw new Error(toUserFacingError(error));
 
       setMsg(
-        t("restaurant.auth.success.resetEmailSent", "✅ Email envoyé. Clique sur le lien reçu pour modifier ton mot de passe.")
+        t("restaurant.auth.success.resetEmailSent", "✅ Email sent. Open the link to change your password.")
       );
     } catch (error: unknown) {
       setMsg(
-        t("restaurant.auth.errors.resetFailed", "❌ Impossible d’envoyer l’email : ") +
+        t("restaurant.auth.errors.resetFailed", "❌ Unable to send the email:") +
           getErrorMessage(error, "Erreur inconnue")
       );
     } finally {
@@ -461,10 +461,10 @@ export function RestaurantAuthScreen() {
             <Text style={styles.brandTitle}>MMD Delivery</Text>
             <Text style={styles.screenTitle}>
               {mode === "login"
-                ? t("restaurant.auth.titleLogin", "Restaurant Login")
+                ? t("restaurant.auth.titleLogin", "Restaurant login")
                 : t(
                     "restaurant.auth.titleSignup",
-                    "Create Restaurant Account",
+                    "Restaurant signup",
                   )}
             </Text>
           </View>

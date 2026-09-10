@@ -90,7 +90,7 @@ export function DriverWaitTimerPanel({
         const { data } = await supabase.auth.getSession();
         const token = data.session?.access_token;
         if (!token) {
-          setRefreshError(tr("driver.waitTimer.sessionExpired", "Session expirée"));
+          setRefreshError(tr("driver.waitTimer.sessionExpired", "Session expired"));
           return;
         }
         const next = await fetchWaitTimerStatus(token, { entityType, entityId });
@@ -110,7 +110,7 @@ export function DriverWaitTimerPanel({
         const message = toUserFacingError(e, String(e));
         setRefreshError(
           isNetworkErrorMessage(message)
-            ? tr("driver.waitTimer.networkError", "Connexion instable. Réessaie.")
+            ? tr("driver.waitTimer.networkError", "Unstable connection. Try again.")
             : message
         );
       } finally {
@@ -141,7 +141,7 @@ export function DriverWaitTimerPanel({
           tr("driver.waitTimer.locationTitle", "Localisation requise"),
           tr(
             "driver.waitTimer.locationBody",
-            "Active la localisation pour confirmer ton arrivée (≤ 50 m)."
+            "Turn on location to confirm your arrival (≤ 50 m)."
           )
         );
         return;
@@ -153,7 +153,7 @@ export function DriverWaitTimerPanel({
 
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
-      if (!token) throw new Error(tr("driver.waitTimer.sessionExpired", "Session expirée"));
+      if (!token) throw new Error(tr("driver.waitTimer.sessionExpired", "Session expired"));
 
       const result = await driverArrivedWaitTimer(token, {
         entity_type: entityType,
@@ -169,7 +169,7 @@ export function DriverWaitTimerPanel({
             tr("driver.waitTimer.tooFarTitle", "Trop loin du point"),
             tr(
               "driver.waitTimer.tooFarBody",
-              "Approche à moins de 50 m pour valider l’arrivée GPS et démarrer le chronomètre."
+              "Move within 50 m to confirm GPS arrival and start the timer."
             )
           );
           return;
@@ -183,9 +183,9 @@ export function DriverWaitTimerPanel({
     } catch (e) {
       const message = toUserFacingError(e, String(e));
       Alert.alert(
-        tr("driver.waitTimer.arrivalBlockedTitle", "Arrivée refusée"),
+        tr("driver.waitTimer.arrivalBlockedTitle", "Arrival blocked"),
         isNetworkErrorMessage(message)
-          ? tr("driver.waitTimer.networkError", "Connexion instable. Réessaie.")
+          ? tr("driver.waitTimer.networkError", "Unstable connection. Try again.")
           : message
       );
     } finally {
@@ -203,10 +203,10 @@ export function DriverWaitTimerPanel({
         const code = String((e as Error)?.message ?? e);
         if (code === "CAMERA_PERMISSION_DENIED") {
           Alert.alert(
-            tr("driver.waitTimer.cameraTitle", "Caméra requise"),
+            tr("driver.waitTimer.cameraTitle", "Camera required"),
             tr(
               "driver.waitTimer.cameraBody",
-              "Autorise la caméra pour photographier le dépôt devant la porte."
+              "Allow the camera to photograph the doorstep drop-off."
             )
           );
           return;
@@ -223,7 +223,7 @@ export function DriverWaitTimerPanel({
 
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
-      if (!token) throw new Error(tr("driver.waitTimer.sessionExpired", "Session expirée"));
+      if (!token) throw new Error(tr("driver.waitTimer.sessionExpired", "Session expired"));
 
       const result = await depositAtDoorWithProof(token, {
         entity_type: entityType === "delivery_request" ? "delivery_request" : "order",
@@ -237,16 +237,16 @@ export function DriverWaitTimerPanel({
 
       onDepositAuthorized?.(publicUrl);
       Alert.alert(
-        tr("driver.waitTimer.depositOkTitle", "Dépôt autorisé"),
+        tr("driver.waitTimer.depositOkTitle", "Drop-off allowed"),
         tr(
           "driver.waitTimer.depositOkBody",
-          "Photo enregistrée. Tu peux finaliser la livraison avec cette preuve."
+          "Photo saved. You can finish the delivery with this proof."
         )
       );
       await refresh({ silent: true });
     } catch (e) {
       Alert.alert(
-        tr("common.error.title", "Erreur"),
+        tr("common.error", "Error"),
         getDeliveryProofPhotoErrorMessage(e)
       );
     } finally {
@@ -256,15 +256,15 @@ export function DriverWaitTimerPanel({
 
   const onTaxiNoShow = useCallback(async () => {
     Alert.alert(
-      tr("driver.waitTimer.noShowTitle", "Annuler sans pénalité"),
+      tr("driver.waitTimer.noShowTitle", "Cancel without penalty"),
       tr(
         "driver.waitTimer.noShowBody",
-        "No-show client validé par le chronomètre. Confirmer l’annulation ?"
+        "Client no-show confirmed by the timer. Confirm cancellation?"
       ),
       [
-        { text: tr("common.cancel", "Annuler"), style: "cancel" },
+        { text: tr("common.cancel", "Cancel"), style: "cancel" },
         {
-          text: tr("driver.waitTimer.noShowConfirm", "Oui, annuler"),
+          text: tr("driver.waitTimer.noShowConfirm", "Yes, cancel"),
           style: "destructive",
           onPress: () => {
             void (async () => {
@@ -272,16 +272,16 @@ export function DriverWaitTimerPanel({
               try {
                 const { data } = await supabase.auth.getSession();
                 const token = data.session?.access_token;
-                if (!token) throw new Error(tr("driver.waitTimer.sessionExpired", "Session expirée"));
+                if (!token) throw new Error(tr("driver.waitTimer.sessionExpired", "Session expired"));
                 const result = await cancelTaxiNoShow(token, entityId);
                 if (!result.ok) throw new Error(result.error ?? "cancel_failed");
                 onTaxiNoShowCanceled?.();
               } catch (e) {
                 const message = toUserFacingError(e, String(e));
                 Alert.alert(
-                  tr("common.error.title", "Erreur"),
+                  tr("common.error", "Error"),
                   isNetworkErrorMessage(message)
-                    ? tr("driver.waitTimer.networkError", "Connexion instable. Réessaie.")
+                    ? tr("driver.waitTimer.networkError", "Unstable connection. Try again.")
                     : message
                 );
               } finally {
@@ -306,7 +306,7 @@ export function DriverWaitTimerPanel({
         <Text style={[styles.title, premium && styles.titlePremium]}>
           {premium
             ? "Customer wait time"
-            : tr("driver.waitTimer.title", "Chronomètre d’attente client")}
+            : tr("driver.waitTimer.title", "Customer wait timer")}
         </Text>
         {refreshing ? <ActivityIndicator size="small" color="#94A3B8" /> : null}
       </View>
@@ -335,7 +335,7 @@ export function DriverWaitTimerPanel({
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.primaryText}>
-                {tr("driver.waitTimer.arrivedCta", "Je suis arrivé")}
+                {tr("driver.waitTimer.arrivedCta", "I have arrived")}
               </Text>
             )}
           </TouchableOpacity>
@@ -380,7 +380,7 @@ export function DriverWaitTimerPanel({
             <Text style={styles.hint}>
               {tr(
                 "driver.waitTimer.leaveAtDoorDisabled",
-                "Le client n’a pas autorisé le dépôt devant la porte."
+                "The client did not allow leave-at-door."
               )}
             </Text>
           ) : null}
@@ -395,7 +395,7 @@ export function DriverWaitTimerPanel({
                 <ActivityIndicator color="#BBF7D0" />
               ) : (
                 <Text style={styles.secondaryText}>
-                  {tr("driver.waitTimer.depositCta", "Déposer avec photo")}
+                  {tr("driver.waitTimer.depositCta", "Drop off with photo")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -408,7 +408,7 @@ export function DriverWaitTimerPanel({
               onPress={() => void onTaxiNoShow()}
             >
               <Text style={styles.dangerText}>
-                {tr("driver.waitTimer.noShowCta", "Annuler sans pénalité (no-show)")}
+                {tr("driver.waitTimer.noShowCta", "Cancel without penalty (no-show)")}
               </Text>
             </TouchableOpacity>
           ) : null}

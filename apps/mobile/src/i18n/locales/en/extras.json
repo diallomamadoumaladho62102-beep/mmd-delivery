@@ -43,7 +43,18 @@
       "permission": "Unable to access your profile. Sign out, sign in again, or contact support.",
       "server": "Profile service is temporarily unavailable. Please try again in a moment.",
       "unknown": "Unable to verify your profile. Please try again."
-    }
+    },
+    "adminBody": "This is an admin account. Use the admin interface to manage MMD Delivery.",
+    "adminTitle": "Admin",
+    "driverSuspendedBody": "Your driver account is suspended. Contact MMD Delivery support.",
+    "driverSuspendedTitle": "Account suspended",
+    "errors": {
+      "openRoleFailed": "Unable to open this role right now."
+    },
+    "sessionExpiredTitle": "Session expired",
+    "signInAgain": "Sign in again",
+    "wrongRoleBody": "This account is registered as {{role}}. Sign out if you want to use another role.",
+    "wrongRoleTitle": "Account already signed in"
   },
   "marketplace": {
     "errors": {
@@ -59,7 +70,14 @@
       "openCount": "{{open}} open · {{total}} shops",
       "shopOpen": "Open",
       "shopClosed": "Closed",
-      "productCount": "{{count}} products available"
+      "productCount": "{{count}} products available",
+      "currency": "Currency",
+      "emptyHint": "Try again later or check a nearby area.",
+      "errorTitle": "Couldn’t load marketplace",
+      "guestBrowseHint": "Browse shops and products freely. Sign in when you are ready to order.",
+      "loading": "Loading marketplace...",
+      "market": "Your market",
+      "searchPlaceholder": "Search shops…"
     },
     "products": {
       "subtitle": "Browse active products",
@@ -68,7 +86,14 @@
       "empty": "No active products.",
       "loadError": "Unable to load products",
       "loadFailed": "Unable to load products.",
-      "favoriteFailed": "Unable to update favorite."
+      "favoriteFailed": "Unable to update favorite.",
+      "allCategories": "All",
+      "emptyHint": "Try another category or check back later.",
+      "errorTitle": "Couldn’t load products",
+      "favorite": "☆ Favorite",
+      "favorited": "★ Favorited",
+      "loading": "Loading products...",
+      "search": "Search products"
     },
     "details": {
       "addedTitle": "Added to draft",
@@ -78,7 +103,19 @@
       "quantity": "Quantity",
       "lineTotal": "Line total",
       "saving": "Saving draft…",
-      "addToDraft": "Add to draft cart"
+      "addToDraft": "Add to draft cart",
+      "addToCartAction": "add items to your cart",
+      "favorite": "Add to favorites",
+      "favoriteAction": "save favorites",
+      "guestBanner": "Browsing as guest — sign in to order.",
+      "loading": "Loading product...",
+      "notFoundHint": "This product may no longer be available.",
+      "signInBody": "Create an account or sign in to {{action}}. You can keep browsing products without an account.",
+      "signInCta": "Sign in",
+      "signInTitle": "Sign in required",
+      "stock": "Stock",
+      "title": "Product",
+      "unfavorite": "Remove favorite"
     },
     "cart": {
       "title": "Marketplace draft",
@@ -111,7 +148,24 @@
       "checkout": "Prepare checkout",
       "comingSoonCta": "Marketplace checkout coming soon",
       "payLive": "Pay Marketplace Order",
-      "missingCheckoutUrl": "Missing checkout URL"
+      "missingCheckoutUrl": "Missing checkout URL",
+      "backToMarketplace": "Back to marketplace",
+      "checkoutStillComingSoon": "Checkout still coming soon — no live marketplace payment.",
+      "comingSoonBody": "Marketplace checkout coming soon. Shadow totals were calculated only.",
+      "deliveryShadowNote": "Shadow only — checkout and driver dispatch are not live yet.",
+      "deliveryShadowNoteLive": "Estimate only — live checkout is enabled; driver dispatch depends on seller and region.",
+      "dropoffPlaceholder": "No dropoff selected — shadow may use fallback distance.",
+      "emptyHint": "Browse a shop and add products to continue.",
+      "liveDisabled": "Live marketplace payment is not enabled. Use shadow checkout.",
+      "loading": "Loading draft cart...",
+      "orderPaidTitle": "Order paid",
+      "orderStatus": "Status",
+      "paymentCancelledBody": "Stripe checkout was cancelled or not finished. Your draft cart is still saved.",
+      "paymentCancelledTitle": "Payment not completed",
+      "paymentStatus": "Payment",
+      "paymentSuccessBody": "Your marketplace order is paid. The seller will update fulfillment status.",
+      "paymentSuccessTitle": "Payment confirmed",
+      "prepareTotals": "Refresh checkout totals"
     },
     "loadingLong": "Loading marketplace...",
     "emptyShops": "No approved shops in your area yet.",
@@ -121,7 +175,12 @@
     "gate": {
       "error": "Unable to open seller area right now.",
       "unavailable": "Seller services are not available in your area yet.",
-      "loading": "Loading seller area…"
+      "loading": "Loading seller area…",
+      "checking": "Checking Access...",
+      "disabledTitle": "Marketplace Disabled",
+      "errorTitle": "Seller unavailable",
+      "regionRestricted": "REGION RESTRICTED",
+      "verifying": "Verifying your seller account"
     },
     "dashboard": {
       "title": "Seller Dashboard",
@@ -140,7 +199,15 @@
         "rejected": "Rejected",
         "suspended": "Suspended",
         "pending": "Pending review"
-      }
+      },
+      "deleteHint": "Permanently delete your MMD account and marketplace shop. This cannot be undone.",
+      "loading": "Loading dashboard",
+      "manageBank": "Manage bank account",
+      "openForOrders": "Open for orders",
+      "payoutBlocked": "Payouts are blocked until Stripe Connect is complete. Earnings stay on the ledger and retry automatically after onboarding.",
+      "payoutsTitle": "Payouts (Stripe Connect)",
+      "setupPayouts": "Set up payouts",
+      "stripeError": "Unable to open Stripe Connect."
     },
     "nav": {
       "home": "Home",
@@ -155,7 +222,13 @@
     },
     "actions": {
       "products": "Manage products",
-      "orders": "View orders"
+      "orders": "View orders",
+      "editHint": "Update shop details",
+      "editProfile": "Edit Shop",
+      "ordersHint": "View all orders",
+      "productsHint": "Manage your catalog",
+      "wallet": "Wallet",
+      "walletHint": "Payments & payouts"
     },
     "onboarding": {
       "title": "Become a Seller",
@@ -165,14 +238,33 @@
       "submit": "Submit for review",
       "scopeRequired": "Your market must be resolved before applying.",
       "loadFailed": "Unable to load your seller profile.",
-      "submitFailed": "Unable to submit your application."
+      "submitFailed": "Unable to submit your application.",
+      "createCardTitle": "Create Your Shop",
+      "currency": "Currency",
+      "editCardTitle": "Edit Your Shop",
+      "headerSubtitle": "Seller Setup",
+      "loadingProfile": "Loading profile",
+      "market": "Your market",
+      "save": "Save profile",
+      "updatedBody": "Your business profile was saved.",
+      "updatedTitle": "Profile updated"
     },
     "fields": {
       "businessName": "Business name",
       "country": "Country code",
       "city": "City",
       "address": "Address",
-      "phone": "Phone"
+      "phone": "Phone",
+      "addressPh": "Describe your shop address",
+      "businessNamePh": "Enter shop name",
+      "cityPh": "Enter city",
+      "coverUrl": "Cover image URL",
+      "coverUrlPh": "https://…",
+      "documentUrls": "Document URLs (one per line)",
+      "documentUrlsPh": "https://…",
+      "logoUrl": "Logo URL",
+      "logoUrlPh": "https://…",
+      "phonePh": "Enter phone"
     },
     "orders": {
       "title": "Marketplace Orders",
@@ -181,7 +273,25 @@
       "deliveryNotLive": "Delivery not live yet",
       "deliveryShadowStatus": "Delivery shadow",
       "estimatedDelivery": "Est. delivery",
-      "updateFailed": "Unable to update the order."
+      "updateFailed": "Unable to update the order.",
+      "accept": "Accept",
+      "emptyBody": "Orders from the marketplace will appear here",
+      "emptyTitle": "No Orders Yet",
+      "filterAccepted": "Accepted",
+      "filterAll": "All",
+      "filterEmpty": "No orders in this filter.",
+      "filterPending": "Pending",
+      "filterRefused": "Refused",
+      "loading": "Fetching your orders",
+      "outForDelivery": "Out for delivery",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "refundedBody": "Order refused and the customer was refunded on Stripe.",
+      "refundedTitle": "Refund completed",
+      "refundRetryBody": "Order refused. Stripe refund did not complete automatically and will be retried.",
+      "refundRetryTitle": "Refund pending retry",
+      "refundStatus": "Refund",
+      "refuse": "Refuse"
     },
     "products": {
       "title": "Products",
@@ -195,7 +305,21 @@
       "active": "Active",
       "loadFailed": "Load failed",
       "saveFailed": "Save failed",
-      "updateFailed": "Update failed"
+      "updateFailed": "Update failed",
+      "addFirst": "+ Add First Product",
+      "deleteBody": "Remove this product permanently? This cannot be undone.",
+      "deleteFailed": "Unable to delete the product.",
+      "deleteTitle": "Delete product",
+      "emptyBody": "Start building your catalog by adding your first product",
+      "emptyTitle": "No Products Yet",
+      "inactive": "Inactive",
+      "inStock": "{{n}} in stock",
+      "invalidPrice": "Enter a valid price greater than zero.",
+      "invalidPromo": "Invalid promo price",
+      "invalidStock": "Invalid stock quantity",
+      "loading": "Fetching your products",
+      "outOfStock": "Out of stock",
+      "search": "Search products..."
     },
     "wallet": {
       "stripeFailed": "Unable to open Stripe.",
@@ -204,7 +328,29 @@
       "recentTransactions": "Recent Transactions",
       "cashoutUnavailable": "Cash out unavailable",
       "cashoutRequested": "Cash out requested",
-      "cashoutRules": "Minimum {{min}} • 1 cash out / day"
+      "cashoutRules": "Minimum {{min}} • 1 cash out / day",
+      "activity": "Recent Transactions",
+      "available": "Available Balance",
+      "awaiting": "Awaiting transfer",
+      "buckets": "Pending {{p}} · Paid {{paid}} · Refunds {{r}}",
+      "cashoutAmount": "Amount: {{amount}}",
+      "cashoutConfirmBody": "Cash out your full available balance: {{amount}}.\\n\\nMinimum {{min}} • 1 cash out / day.",
+      "cashoutConfirmTitle": "Instant cash out",
+      "connect": "Stripe Connect",
+      "emptyBody": "Payouts will appear here after your sales settle",
+      "emptyTitle": "No Payouts Yet",
+      "errorTitle": "Wallet Error",
+      "fees": "Commissions",
+      "loadFailed": "Unable to load seller wallet",
+      "loading": "Fetching your wallet",
+      "manageConnect": "Manage payouts",
+      "paidOut": "Paid out",
+      "refunds": "Refunds",
+      "title": "Wallet",
+      "viewOrders": "View orders"
+    },
+    "signOut": {
+      "title": "Log out"
     }
   },
   "taxi": {
@@ -390,7 +536,20 @@
         "airConditioning": "Air conditioning required",
         "phoneCharger": "Phone charger",
         "quietVehicle": "Quiet vehicle"
-      }
+      },
+      "businessWallet": "Wallet",
+      "gpsErrorBody": "Unable to read your current location.",
+      "gpsErrorTitle": "GPS",
+      "gpsPermissionBody": "Allow location access to use your current position as pickup.",
+      "gpsPermissionTitle": "Location permission",
+      "oneWay": "One way",
+      "returnImmediate": "Return immediately",
+      "returnScheduled": "Scheduled return",
+      "returnScheduledAt": "Return time (ISO, e.g. 2026-07-16T18:00:00Z)",
+      "returnWait": "Wait at destination",
+      "roundTrip": "Round trip",
+      "tripMode": "Trip type",
+      "waitMinutes": "Wait minutes (5–180)"
     },
     "quote": {
       "title": "Estimate",
@@ -440,7 +599,17 @@
     "history": {
       "title": "Taxi history",
       "empty": "No taxi rides yet.",
-      "tapToTrack": "Tap to track"
+      "tapToTrack": "Tap to track",
+      "bookFirst": "Book your first ride",
+      "emptyTitle": "No rides yet",
+      "rate": "Rate",
+      "statusCancelled": "Cancelled",
+      "statusCompleted": "Completed",
+      "statusInProgress": "In progress",
+      "tapToPay": "Tap to complete payment",
+      "totalRides": "Total rides: {{count}}",
+      "totalSpent": "Total spent: {{amount}}",
+      "trackCta": "Track →"
     },
     "favorites": {
       "title": "Favorite drivers",
@@ -458,7 +627,10 @@
       "history": "History",
       "tier": "Tier: {{tier}} • Lifetime: {{lifetime}}",
       "noActivity": "No loyalty activity yet.",
-      "loadFailed": "Load failed"
+      "loadFailed": "Load failed",
+      "basedOnRides": "Based on {{count}} rides",
+      "driverRating": "Driver Rating",
+      "ratingEmpty": "Complete taxi rides to see your drivers’ average rating."
     },
     "loyaltyRewards": {
       "title": "Loyalty rewards",
@@ -471,7 +643,8 @@
       "book": "Book scheduled ride",
       "cancel": "Cancel reservation",
       "loadFailed": "Load failed",
-      "cancelFailed": "Failed"
+      "cancelFailed": "Failed",
+      "upcoming": "Upcoming Rides"
     },
     "scheduledBook": {
       "title": "Schedule a ride",
@@ -485,7 +658,13 @@
       "stop1": "Stop 1 (optional)",
       "stop2": "Stop 2 (optional)",
       "finalDestination": "Final destination",
-      "pricingNote": "Pricing uses total route distance/duration."
+      "pricingNote": "Pricing uses total route distance/duration.",
+      "addStop": "Add stop",
+      "createBlocked": "Ride create is blocked until payment.",
+      "moveDown": "Down",
+      "moveUp": "Up",
+      "remove": "Remove",
+      "stopN": "Stop {{n}} (optional)"
     },
     "chat": {
       "title": "Taxi chat",
@@ -493,7 +672,14 @@
       "clientPlaceholder": "Message client…",
       "send": "Error",
       "sendFailed": "Send failed",
-      "imageFailed": "Image failed"
+      "imageFailed": "Image failed",
+      "connectedPassenger": "Connected to passenger",
+      "driverSubtitle": "Ride conversation",
+      "driverTitle": "Taxi Chat",
+      "emptyDriverBody": "Send a message to your passenger",
+      "emptyTitle": "No Messages Yet",
+      "loading": "Loading Chat...",
+      "passenger": "Passenger"
     },
     "ride": {
       "paymentPending": "Payment pending",
@@ -549,7 +735,23 @@
         "pickup_problem": "Pickup problem",
         "emergency": "Emergency",
         "other": "Other"
-      }
+      },
+      "call": "Call",
+      "callFailed": "Unable to start a masked call right now.",
+      "calling": "Calling…",
+      "callTitle": "Call driver",
+      "offline": "Offline — tracking may be stale",
+      "openingCheckout": "Opening checkout…",
+      "paymentRequiredBeforeDispatch": "No driver is assigned until payment succeeds. Complete payment to start driver search.",
+      "payNow": "Pay now",
+      "pickupCodeHint": "Show this code to your driver before entering the vehicle.",
+      "pickupCodePending": "Your boarding code will appear here once the driver is assigned.",
+      "pickupCodeTitle": "Your Pickup Verification Code",
+      "share": "Share Trip",
+      "shareMessage": "MMD Taxi — {{name}} · {{vehicle}} · Plate {{plate}} · ETA {{eta}}\\nPickup: {{pickup}}\\nDropoff: {{dropoff}}",
+      "vehicleFallback": "Vehicle assigned",
+      "vehicleYear": "Year {{year}}",
+      "waitingDriverGps": "Waiting for driver GPS…"
     },
     "receipt": {
       "title": "Receipt",
@@ -608,7 +810,14 @@
         "refund": "Refund",
         "adjustment": "Adjustment",
         "total": "Total"
-      }
+      },
+      "loadError": "Unable to load receipt",
+      "rateDriver": "Rate your driver",
+      "ratingErrorBody": "Unable to save rating.",
+      "ratingErrorTitle": "Rating",
+      "ratingSavedBody": "Your rating was saved.",
+      "ratingSavedTitle": "Thank you",
+      "yourRating": "Your rating"
     },
     "driver": {
       "activeRide": {
@@ -632,7 +841,10 @@
         "completeStop": "Complete stop",
         "verifyHint": "Ask the client for their 4-digit boarding code. The keyboard opens automatically — no photo is required.",
         "verifying": "Verifying…",
-        "stopLine": "Stop {{order}}: {{address}} ({{status}})"
+        "stopLine": "Stop {{order}}: {{address}} ({{status}})",
+        "client": "Client",
+        "clientFallback": "Client",
+        "clientPhoto": "Client photo"
       }
     },
     "tip": {
@@ -708,7 +920,13 @@
       "resetEmailSentTitle": "Email sent",
       "resetEmailSentBody": "Check your inbox. Click the link you received to reset your password.",
       "cannotSendEmail": "Unable to send email.",
-      "smsConsent": "I agree to receive automated informational and transactional text messages from MMD Delivery about my account, verification, orders, deliveries, package deliveries, taxi rides, and customer support. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to cancel and HELP for help. Optional."
+      "smsConsent": "I agree to receive automated informational and transactional text messages from MMD Delivery about my account, verification, orders, deliveries, package deliveries, taxi rides, and customer support. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to cancel and HELP for help. Optional.",
+      "emailNotVerified": "Confirm your email before signing in.",
+      "referral": {
+        "autoFillHint": "If you opened an MMD referral link, the code appears here automatically.",
+        "placeholder": "MMD referral code",
+        "title": "Referral code"
+      }
     },
     "home": {
       "greeting_morning": "Good morning",
@@ -724,7 +942,8 @@
       },
       "language": "Language",
       "errors": {
-        "lang_change_failed": "Unable to change language right now."
+        "lang_change_failed": "Unable to change language right now.",
+        "loadFailed": "Unable to load your recent activity."
       },
       "banner": {
         "marketplace": {
@@ -740,7 +959,70 @@
       },
       "tabs": {
         "home": "Home",
-        "orders": "Orders"
+        "orders": "Orders",
+        "aiShort": "A S K",
+        "inbox": "Inbox",
+        "settings": "Settings"
+      },
+      "activity": {
+        "empty": "No recent trips yet.",
+        "title": "Recent activity",
+        "unavailable": "Recent activity is temporarily unavailable."
+      },
+      "credit": {
+        "available": "Available",
+        "title": "MMD credit"
+      },
+      "location": {
+        "unknown": "Current location"
+      },
+      "rewards": {
+        "member": "Member",
+        "title": "MMD Rewards",
+        "view": "View rewards"
+      },
+      "scope": {
+        "source": {
+          "fallback": "Default",
+          "gps": "GPS",
+          "manual": "Manual selection",
+          "order": "Order address",
+          "profile": "Profile",
+          "savedAddress": "Saved address",
+          "unknown": "Unknown"
+        }
+      },
+      "search": {
+        "placeholder": "Where do you want to go or what do you need?",
+        "subtitle": "Where do you want to go or what do you need?",
+        "title": "Search MMD"
+      },
+      "services": {
+        "delivery": "Delivery",
+        "deliverySub": "Send anything",
+        "food": "Food",
+        "foodSub": "Order now",
+        "marketplace": "Marketplace",
+        "marketplaceSub": "Shop & save",
+        "taxi": "Taxi",
+        "taxiSub": "Ride anywhere",
+        "title": "Services"
+      },
+      "v4": {
+        "comingSoon": "Launching soon",
+        "language": {
+          "subtitle": "Choose your preferred language for MMD."
+        },
+        "service": {
+          "marketplace": {
+            "soon": "Discover local stores"
+          }
+        }
+      },
+      "viewAll": "View all",
+      "wallet": {
+        "subtitle": "MMD credit & payment history",
+        "title": "Wallet"
       }
     },
     "profile": {
@@ -779,6 +1061,43 @@
         "address": "address",
         "city": "city",
         "address_verified": "verified address"
+      },
+      "addPhoto": "Add a photo",
+      "addressError": "Enter a valid address.",
+      "addressMapboxError": "Select a Mapbox address from the list to normalize it.",
+      "addressSaveInsertError": "Address not saved (insert):",
+      "addressSaveUpdateError": "Address not saved (update):",
+      "addressTitle": "Address",
+      "addressVerifiedBadge": "Address verified",
+      "cityError": "Enter a valid city.",
+      "cityTitle": "City",
+      "fullNameError": "Enter your full name.",
+      "fullNameTitle": "Name",
+      "hint": "Tip: State = \"NY\", Country = \"US\".",
+      "mainAddressLabel": "Primary address",
+      "permissionPhotosBody": "Allow photo access to choose an image.",
+      "phoneError": "Enter a valid number.",
+      "phoneTitle": "Phone",
+      "photo": "Photo",
+      "placeholders": {
+        "address": "Search for an address…",
+        "city": "Ex: Brooklyn",
+        "country": "US",
+        "fullName": "Ex: Mamadou Diallo",
+        "phone": "Ex: 929xxxxxxx",
+        "postalCode": "11207",
+        "state": "NY"
+      },
+      "saveAndContinue": "Save and continue",
+      "saved": "Profile saved.",
+      "saveError": "Unable to save.",
+      "saveProfileError": "Unable to save (client_profiles):",
+      "signOut": {
+        "body": "Sign out of this device? Your account and data stay intact.",
+        "button": "Sign Out",
+        "confirm": "Sign Out",
+        "error": "Unable to sign out right now.",
+        "title": "Sign Out"
       }
     },
     "deliveryRequest": {
@@ -828,7 +1147,43 @@
       "callFailed": "Unable to start a masked call right now.",
       "chatDriver": "Chat",
       "loadingTitle": "Loading delivery…",
-      "summaryTitle": "Delivery summary"
+      "summaryTitle": "Delivery summary",
+      "alreadyRated": "Review submitted",
+      "apiUrlMissing": "EXPO_PUBLIC_API_URL is missing. Set it to your web API URL.",
+      "cancelAssignedHint": "Cancelling after assignment may not be refundable.",
+      "cancelAssignedMessage": "A driver or system may already be assigned. Cancelling now may not be refundable.",
+      "cancelNotAllowed": "This delivery can no longer be cancelled from this screen.",
+      "cancelPendingHint": "You can cancel while this trip is still pending.",
+      "cancelPendingMessage": "Because the trip is still pending, this cancellation should be eligible for a full refund review.",
+      "createdAt": "Created at",
+      "deliveredAt": "Delivered confirmed at",
+      "distance": "Distance",
+      "driverLiveLocation": "Driver location updated {{time}}",
+      "driverMissingGps": "Driver assigned but GPS is unavailable right now.",
+      "dropoffAddress": "Dropoff address",
+      "dropoffCodeHintOtp": "Share this code with the recipient. The driver enters it to confirm delivery — no photo required.",
+      "dropoffCodePending": "The dropoff code will appear here as soon as the linked delivery order is available.",
+      "dropoffCodeTitle": "Your Delivery Verification Code",
+      "dropoffPhoto": "Dropoff proof photo",
+      "etaUnavailable": "Live ETA unavailable",
+      "lastUpdate": "Last update:",
+      "offline": "Offline — map may be stale",
+      "paidAt": "Paid at",
+      "pickedUpAt": "Picked up at",
+      "pickupAddress": "Pickup address",
+      "pickupCodeHintOtp": "Show this code to the driver at collection. No photo is required when the code is used.",
+      "pickupCodePending": "The pickup code will appear here as soon as the linked delivery order is available.",
+      "pickupCodeTitle": "Your Pickup Verification Code",
+      "pickupPhoto": "Pickup proof photo",
+      "rateDriver": "Rate your driver",
+      "ratingComment": "Optional comment",
+      "ratingFailed": "Unable to save rating.",
+      "ratingSaved": "Driver rating saved.",
+      "refundFull": "Cancellation completed. Refund status: full refund required.",
+      "refundNone": "Cancellation completed. Refund status: no refund.",
+      "saved": "Saved",
+      "sendRating": "Send rating",
+      "waitingDriverGps": "Waiting for driver GPS…"
     },
     "orderHistory": {
       "title": "Order history",
@@ -855,7 +1210,8 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "inProgress": "In progress"
-      }
+      },
+      "trackTitle": "Track orders"
     },
     "restaurantMenu": {
       "pickupAddressLabel": "Pickup address (restaurant / start point)",
@@ -954,7 +1310,10 @@
         "fillAddressesFirst": "Fill in the pickup and delivery addresses first.",
         "incompleteAddressCreateBody": "Enter a complete address before continuing.",
         "missingOrderBody": "Create the order first, then you can pay.",
-        "paymentSuccessBody": "Thank you. Your payment is confirmed. The restaurant can now accept the order."
+        "paymentSuccessBody": "Thank you. Your payment is confirmed. The restaurant can now accept the order.",
+        "distanceTooFarWithMiles": "Distance is too far ({{miles}} mi).\\n\\nFix the address (ZIP / city / state).",
+        "paymentSuccessBodyWarn": "Thank you. Stripe confirmed payment. The order will be marked paid shortly via Stripe, or try again in a few seconds.",
+        "verifyAddressBody": "Very long distance: {{miles}} mi.\\n\\nCheck the ZIP, city, and state.\\nEx: \\"
       },
       "errors": {
         "paymentFailed": "Payment is unavailable right now.",
@@ -972,7 +1331,11 @@
         "sessionExpired": "Session expired. Sign in again and try once more.",
         "estimateFailed": "Unable to calculate the delivery estimate right now.",
         "distanceTooFarWithMiles": "Distance is too far ({{miles}} mi). Check the address.",
-        "missingSession": "Session expired. Sign in again and try once more."
+        "missingSession": "Session expired. Sign in again and try once more.",
+        "invalidDistanceTime": "Invalid distance or time response from Mapbox.",
+        "invalidGps": "Invalid GPS coordinates. Recalculate the estimate.",
+        "invalidJson": "Invalid response from the distance service.",
+        "legacyDisabled": "Direct order creation is disabled. Use the restaurant menu to order food securely."
       },
       "cards": {
         "autoEstimate": "Auto estimate"
@@ -1001,7 +1364,8 @@
         "pickupLabel": "Pickup address",
         "dropoffLabel": "Delivery address",
         "pickupLockedHint": "Restaurant address filled in automatically.",
-        "dropoffPlaceholder": "Ex: customer address"
+        "dropoffPlaceholder": "Ex: customer address",
+        "pickupPlaceholder": "Ex: 686 Vermont St Brooklyn NY 11207"
       },
       "checkout": {
         "title": "Checkout",
@@ -1019,7 +1383,215 @@
       "hints": {
         "autoEstimate": "The estimate starts automatically after a short pause when the address looks complete.",
         "checkoutSteps": "1) Estimate → 2) Create the order → 3) Pay with Stripe."
+      },
+      "footer": {
+        "steps": "1) Estimate → 2) Create the order → 3) Pay with Stripe."
       }
+    },
+    "chat": {
+      "empty": {
+        "body": "Start the conversation with your driver once your order is active.",
+        "title": "No messages yet"
+      },
+      "errors": {
+        "missingOrder": "Order not found."
+      },
+      "titlePrefix": "Client"
+    },
+    "inbox": {
+      "alerts": {
+        "loginAsClient": "Sign in as a client."
+      },
+      "badges": {
+        "delivered": "Delivered",
+        "inProgress": "In progress"
+      },
+      "empty": {
+        "hint": "Your chats with drivers and support will show up here.",
+        "noConversations": "No conversations yet",
+        "notLoggedIn": "Sign in as a client to see your conversations."
+      },
+      "errors": {
+        "loadFailed": "Unable to load the inbox."
+      },
+      "lastMessage": {
+        "attachment": "Attachment",
+        "none": "No messages"
+      },
+      "loading": {
+        "prepare": "Preparing your inbox..."
+      },
+      "orderFallback": "Order",
+      "search": {
+        "placeholder": "Search (#id, restaurant, status)…"
+      },
+      "sections": {
+        "delivered7d": "Delivered (7 days)",
+        "deliveredEmpty": "No deliveries in the last 7 days.",
+        "inProgress": "In progress",
+        "inProgressEmpty": "No orders in progress."
+      },
+      "subtitle": "In progress + delivered (7 days)",
+      "title": "Inbox"
+    },
+    "notifications": {
+      "archive": "Archive",
+      "archiveError": "Unable to archive.",
+      "emptyBody": "Push alerts and account updates will appear here.",
+      "emptyTitle": "No notifications",
+      "errorTitle": "Could not load",
+      "fallbackTitle": "Notification",
+      "loadError": "Unable to load notifications.",
+      "readError": "Unable to mark as read.",
+      "title": "Notifications",
+      "unreadCount": "{{count}} unread",
+      "upToDate": "You're up to date"
+    },
+    "orderDetails": {
+      "alreadyPaid": "Already paid ✅",
+      "alreadyPaidHint": "This order is already paid. You can wait for restaurant/driver progress.",
+      "alreadyRated": "Review submitted",
+      "alreadyRatedBtn": "Already submitted ✅",
+      "callDriver": "Call",
+      "callFinalOrder": "Calls are disabled for this order.",
+      "callRestaurant": "Call",
+      "callSupport": "Call",
+      "cancelAcceptedHint": "The restaurant has accepted this order. Cancelling may not be refundable.",
+      "cancelError": "Unable to cancel this order.",
+      "cancelFullRefundHint": "Because the restaurant has not accepted yet, this cancellation should be eligible for a full refund review.",
+      "cancelNoRefundHint": "The restaurant has already accepted this order. Cancelling now may not be refundable.",
+      "cancelOrder": "Cancel order",
+      "cancelPendingHint": "You can cancel while the order is still pending restaurant acceptance.",
+      "cancelRefundFull": "Cancellation completed. Refund status: full refund required.",
+      "cancelRefundNone": "Cancellation completed. Refund status: no refund.",
+      "cancelSuccess": "Order cancelled",
+      "cancelTitle": "Cancel order",
+      "cancelUnavailable": "This order can no longer be cancelled from this screen.",
+      "cards": {
+        "delivery": "Delivery",
+        "route": "Route"
+      },
+      "chatClosed": "Messaging is disabled for this order.",
+      "commentOptional": "Comment (optional)",
+      "commentPlaceholder": "Ex: Great communication, fast delivery…",
+      "communicationHint": "Call or message the restaurant, driver, or MMD support without exposing your real phone number.",
+      "communicationTitle": "Communication",
+      "confirmCancel": "Cancel order",
+      "deliveryFee": "Delivery fee:",
+      "distance": "Distance:",
+      "driver": "Driver:",
+      "driverAssigned": "Assigned ✅",
+      "driverContact": "Driver",
+      "driverNotAssignedCall": "No driver is assigned to this order yet.",
+      "driverNotAssignedMessage": "No driver is assigned to this order yet.",
+      "driverPending": "Not assigned yet",
+      "dropoff": "Dropoff",
+      "dropoffCodeHintOtp": "Show this code to your driver at dropoff. No photo is required when the code is used.",
+      "dropoffCodeTitle": "Your Delivery Verification Code",
+      "errors": {
+        "loadOrder": "Unable to load the order."
+      },
+      "etaUnavailable": "Live ETA unavailable",
+      "forReview": "for your review",
+      "live": "Live tracking:",
+      "liveOn": "Active ✅",
+      "liveWaiting": "Waiting…",
+      "loadingTitle": "Order",
+      "map": {
+        "canceled": "This order is canceled",
+        "completed": "Delivery completed",
+        "live": "Live trip view"
+      },
+      "message": "Message",
+      "mustBeLoggedInToPay": "You must be logged in to pay.",
+      "notOwnerError": "You are not logged in as the order owner.",
+      "openRewards": "Open MMD Rewards to see your real points, credit and tier.",
+      "paid": "Paid ✅",
+      "pay": "Pay",
+      "payment": "Status:",
+      "paymentClosed": "Payment is closed for this order.",
+      "paymentConfirmed": "Payment confirmed",
+      "paymentDelayHint": "Stripe received the payment ✅\\nApp confirmation is still syncing.\\nPlease wait a few seconds — this screen will refresh automatically.",
+      "paymentError": "Payment error.",
+      "paymentSheetPendingConfirm": "Payment received. Your order will be marked paid shortly via Stripe. Pull to refresh in a few seconds — do not pay again.",
+      "paymentStillSyncing": "Payment is being confirmed by the app. No need to pay again.",
+      "pickup": "Pickup",
+      "points": "points",
+      "rateDriverTitle": "Rate your driver",
+      "ratingHint": "Your review improves quality. You earn loyalty points for feedback ⭐",
+      "restaurantContact": "Restaurant",
+      "restaurantVisible": "Restaurant profile visible",
+      "reviewAndTipPaid": "Review saved. Tip payment confirmed.",
+      "reviewSaved": "Review saved. Tip added if selected.",
+      "reviewSaveError": "Unable to save your review.",
+      "reviewTitle": "Review",
+      "rewardLine": "You earn",
+      "sendReview": "Send review ⭐ + Tip",
+      "status": "Status:",
+      "stripeHint": "Secure payment by Stripe (Web Checkout).",
+      "successBody": "Loyalty points for this order are added to your MMD Rewards balance.",
+      "successTitle": "Delivery success",
+      "supportContact": "MMD support",
+      "tipAlreadyGiven": "Tip already given",
+      "tipMaxHint": "Recommended max:",
+      "tipMaxHint2": "(We can adjust later.)",
+      "tipOptional": "Tip (optional)",
+      "tipOtherAmount": "Other amount",
+      "tipPaymentRequired": "Review saved, but tip payment is required. Please retry the tip payment.",
+      "tipPlaceholder": "ex: 25",
+      "total": "Total:",
+      "unpaid": "Unpaid",
+      "verifyingPayment": "Verifying payment…",
+      "waitingDriverLocation": "Waiting for driver location..."
+    },
+    "security": {
+      "accountLabel": "Account",
+      "confirmLabel": "Confirm password",
+      "errorTitle": "Error",
+      "genericError": "Unable to update password right now. Please try again.",
+      "hide": "Hide",
+      "min8": "Password must be at least 8 characters.",
+      "mismatch": "Passwords do not match.",
+      "newPasswordLabel": "New password",
+      "passwordTitle": "Password",
+      "save": "Update password",
+      "sessionBody": "You are not signed in.",
+      "sessionTitle": "Session",
+      "show": "Show",
+      "successBody": "Your password has been changed.",
+      "successTitle": "Password updated",
+      "tip": "Use at least 8 characters. You’ll stay signed in on this device.",
+      "title": "Security"
+    },
+    "settings": {
+      "about": "About",
+      "account": "Account",
+      "appVersion": "App version",
+      "changePassword": "Change password",
+      "danger": "Danger",
+      "language": "Language",
+      "notifications": "Notifications",
+      "platform": "Platform",
+      "privacy": "Privacy",
+      "profile": "Profile",
+      "security": "Security",
+      "social": "Follow MMD Delivery",
+      "title": "Settings"
+    },
+    "wallet": {
+      "available": "Available credit",
+      "defaultNote": "MMD credit applies as checkout discounts. Ledger shows charges and refunds — no cashout or top-up here.",
+      "emptyBody": "Charges, refunds, and credit activity will appear here.",
+      "emptyTitle": "No activity yet",
+      "errorBody": "Check your connection and try again.",
+      "errorTitle": "Couldn’t load wallet",
+      "history": "History",
+      "ledgerBalance": "Ledger balance",
+      "loadFailed": "Unable to load wallet",
+      "noCashout": "No cashout, Connect, or top-up on this wallet. Top-up is available on Business wallet only.",
+      "openLoyalty": "Points & referrals",
+      "refunded": "Refunded",
+      "title": "Wallet"
     }
   },
   "location": {
@@ -1043,7 +1615,8 @@
     "gpsTimeout": "GPS timed out",
     "permissionRequired": "Location permission required",
     "gpsUnavailable": "Unable to read GPS",
-    "noPlacesFound": "No places found"
+    "noPlacesFound": "No places found",
+    "missingMarketScope": "Market scope is required for this picker."
   },
   "auth": {
     "resetPassword": {
@@ -1061,15 +1634,41 @@
       "updated": "Password updated. You can log in now.",
       "updateFailed": "Unable to update password.",
       "checkingSession": "Checking session…",
-      "errorTitle": "Error"
+      "errorTitle": "Error",
+      "confirmPassword": "Confirm password",
+      "confirmPlaceholder": "Confirm password",
+      "hide": "Hide",
+      "newPasswordPlaceholder": "New password",
+      "newSubtitle": "Enter your new password to recover your MMD Delivery account.",
+      "password": "Password",
+      "preparingLink": "Preparing link...",
+      "show": "Show",
+      "update": "Update password"
     },
     "loginRequiredTitle": "Sign in required",
-    "loginRequiredBody": "Please sign in before creating an order."
+    "loginRequiredBody": "Please sign in before creating an order.",
+    "errors": {
+      "sessionExpired": "Session expired. Sign in again, then retry."
+    },
+    "title": "Sign in"
   },
   "driver": {
     "profile": {
       "transportValidationRequired": "This transport mode requires document validation before it can be enabled.",
-      "activeFleet": "Active vehicle (fleet)"
+      "activeFleet": "Active vehicle (fleet)",
+      "docs": {
+        "idBack": "ID back",
+        "idFront": "ID front",
+        "licenseBack": "License back",
+        "licenseFront": "License front",
+        "profilePhoto": "Personal photo"
+      },
+      "licenseExpiry": "License expiry",
+      "licenseNumber": "License number",
+      "manageFleet": "Manage fleet",
+      "missing": "Missing",
+      "missingRequirements": "Missing requirements",
+      "placeholderLicenseNumber": "License number"
     },
     "marketplace": {
       "status": {
@@ -1086,7 +1685,8 @@
     },
     "home": {
       "kind": {
-        "marketplace": "Marketplace delivery"
+        "marketplace": "Marketplace delivery",
+        "delivery": "MMD Delivery"
       },
       "identityPhotoVerification": {
         "title": "Photo verification (safety)",
@@ -1168,7 +1768,46 @@
         "goBusyAreaSub": "Navigate to high demand zone",
         "goOffline": "Go offline",
         "goOfflineSub": "You will stop receiving requests"
-      }
+      },
+      "busyArea": {
+        "empty": "No open nearby requests with a pickup location right now.",
+        "title": "Busy area"
+      },
+      "driversNearbyDetail": "in your area",
+      "driversWithin": "within {{miles}} mi",
+      "errors": {
+        "decline": "Unable to decline this offer.",
+        "offerUnavailable": "This offer is no longer available. It may have expired or been accepted by another driver."
+      },
+      "hotspots": {
+        "needGps": "Enable GPS to view demand hotspots.",
+        "title": "Hotspots"
+      },
+      "map": {
+        "compass": "Reorient north",
+        "layers": "Map layers",
+        "recenter": "Recenter on my location",
+        "safety": "Safety"
+      },
+      "outOfServiceMessage": "You have entered an area where MMD Delivery is not operating yet.\\nYou can finish your current trip, but you will not receive new requests until you return to an active county.",
+      "outOfServiceTitle": "Out of Service Area",
+      "searching": {
+        "msg1": "Searching for the best rides around you",
+        "msg2": "Analyzing the most profitable routes",
+        "msg3": "Priority for nearby and urgent requests",
+        "msg4": "Live sync with your zone"
+      },
+      "wait": {
+        "connectedDemand": "{{count}} nearby request(s) · {{zone}} · {{nearest}}",
+        "connectedZone": "Live estimate based on {{zone}} demand · {{nearest}}",
+        "goOnline": "Go online to start receiving nearby requests.",
+        "gpsLive": "GPS live",
+        "offlineSub": "You won't receive delivery requests",
+        "offlineTitle": "You're offline",
+        "title": "wait in your area"
+      },
+      "welcomeBackMessage": "Welcome back.\\nYou are now available to receive new requests.",
+      "welcomeBackTitle": "Welcome back"
     },
     "auth": {
       "alert": {
@@ -1429,7 +2068,24 @@
       "loadProfileFailed": "Unable to load the driver profile right now.",
       "loadDocsFailed": "Unable to load documents right now.",
       "loadStatusFailed": "Unable to load account status.",
-      "logoutFailed": "Something went wrong temporarily. Please try again."
+      "logoutFailed": "Something went wrong temporarily. Please try again.",
+      "changePassword": "Change Password",
+      "changePasswordHint": "Update your login credentials",
+      "documentsHint": "Upload required documents",
+      "guidedActive": "Your account is active",
+      "guidedIncomplete": "Finish setup to go active",
+      "guidedStatus": "Guided Status",
+      "needHelp": "Need Help?",
+      "needHelpHint": "Contact our support team",
+      "payoutHint": "Set up your payout method",
+      "setupSubtitle": "Complete your account to start driving",
+      "setupTitle": "Profile & Setup",
+      "statusActive": "Active",
+      "statusIncomplete": "Incomplete",
+      "unnamed": "Driver",
+      "vehicleHint": "Add your vehicle details",
+      "zonePrefs": "Zone & Preferences",
+      "zonePrefsHint": "Availability and service area"
     },
     "report": {
       "sessionRequiredTitle": "Session required",
@@ -1487,14 +2143,35 @@
       "openPdfFailed": "Unable to open PDF",
       "saved": "Saved.",
       "submitFailed": "Submit failed",
-      "tinKeepCurrent": "Leave blank to keep current TIN"
+      "tinKeepCurrent": "Leave blank to keep current TIN",
+      "address1Required": "Address line 1 (required)",
+      "address2Optional": "Address line 2 (optional)",
+      "businessNameOptional": "Business name (optional)",
+      "certification": "By submitting, you certify under penalties of perjury that the TIN is correct and you are a U.S. person (or U.S. resident alien).",
+      "cityRequired": "City (required)",
+      "entityTypeRequired": "Entity type (required)",
+      "formScreenTitle": "W-9 form",
+      "formTitle": "W-9 form",
+      "legalNameRequired": "Legal name (required)",
+      "loadingForm": "Loading the W-9 form...",
+      "signedNameRequired": "Signed name (required)",
+      "stateRequired": "State (required)",
+      "submitting": "Submitting…",
+      "tinOptional": "TIN (optional • 9 digits)",
+      "tinPrivacy": "Your full TIN is never shown back to you. We only display masked last 4 digits.",
+      "tinRequired": "TIN (required • 9 digits)",
+      "tinType": "TIN type",
+      "zipRequired": "ZIP (required)"
     },
     "taxPdf": {
       "errorTitle": "PDF error"
     },
     "map": {
       "gpsEnableFailed": "Unable to turn on GPS.",
-      "preparingNavigation": "Preparing navigation…"
+      "preparingNavigation": "Preparing navigation…",
+      "missingCoords": "GPS coordinates missing for this step.",
+      "orderLoadError": "Unable to load the trip.",
+      "orderNotFound": "Open navigation from the order details."
     },
     "hotspots": {
       "title": "Demand hotspots",
@@ -1556,20 +2233,153 @@
           "failed": "Failed",
           "processing": "Processing",
           "unknown": "Unknown"
-        }
+        },
+        "emptyBody": "Completed cash outs will appear here.",
+        "emptyTitle": "No payouts yet",
+        "title": "Recent payouts"
+      },
+      "bankAvailable": {
+        "hint": "Stripe available now: {{amount}} — Instant Cash Out if eligible, else Sunday 4:00 AM ET bank payout. Not pending/settling."
+      },
+      "breakdown": {
+        "pending": "Pending Stripe settlement: {{settling}} · Awaiting platform transfer: {{awaiting}}"
+      },
+      "cashout": {
+        "authError": "Please sign in again."
+      },
+      "completed": {
+        "title": "Bank payouts"
+      },
+      "confirmed": {
+        "hint": "Confirmed earnings: {{amount}}"
+      },
+      "earnings": {
+        "desc": "Confirmed completed work",
+        "title": "Earnings"
+      },
+      "failed": {
+        "short": "Failed: {{amount}}"
+      },
+      "history": {
+        "title": "Wallet history"
+      },
+      "lastCashout": {
+        "failed": "Failed: {{amount}}",
+        "paid": "Paid / completed: {{amount}}",
+        "processing": "Processing",
+        "title": "Last cash out"
+      },
+      "moneyStages": {
+        "hint": "Stages: earned → transferred to Connect → Stripe pending → available → Instant Cash Out or Sunday 4:00 AM ET bank payout. Pending is never available or paid out."
+      },
+      "nextAuto": {
+        "desc": "MMD sends remaining Stripe Connect available funds to your bank every Sunday at 04:00 AM (America/New_York). Instant Cash Out is available mid-week when Stripe Instant eligibility allows. There is no afternoon catch-up payout. This is MMD’s schedule, not Stripe’s default daily payout.",
+        "title": "Next automatic payout"
+      },
+      "payoutMethods": {
+        "auto": "Automatic",
+        "manual": "Manual",
+        "title": "Payout methods"
+      },
+      "processingHint": "Some earnings are still processing and will become available when Stripe allows payout.",
+      "stripe": {
+        "connectBankButton": "Connect your bank account",
+        "connectBankDesc": "Connect your bank account in Stripe Express. MMD never collects routing or account numbers.",
+        "continueButton": "Continue",
+        "continueDesc": "Finish Stripe verification to unlock bank payouts.",
+        "manageButton": "Manage",
+        "manageDesc": "Add, update or replace your bank account in Stripe Express.",
+        "manageTitle": "Bank & payout method"
       }
     },
     "menu": {
       "servicesTitle": "My services",
       "servicesSub": "Food, packages, taxi",
       "vehicleTitle": "My vehicle",
-      "vehicleSub": "Taxi categories"
+      "vehicleSub": "Taxi categories",
+      "account_sub": "Profile, vehicle and documents",
+      "driver_program_sub": "Goals & rewards",
+      "help_sub": "Get support from MMD",
+      "loyalty": "MMD Rewards",
+      "loyalty_sub": "Points, MMD credit, and conversion",
+      "opportunities_sub": "Promotions and new options",
+      "payments_stripe_sub": "Connect your payout account",
+      "referrals_sub": "Invite drivers and earn rewards",
+      "section_account": "Account & payments",
+      "section_growth": "Growth",
+      "section_support": "Support",
+      "title": "Menu",
+      "wallet_sub": "Earnings & payouts"
     },
     "inbox": {
-      "emptyTitle": "Inbox empty"
+      "emptyTitle": "Inbox empty",
+      "hero": {
+        "label": "Driver messages",
+        "unread": "unread conversation(s)"
+      }
     },
     "workAccount": {
-      "loadingTitle": "Account status"
+      "loadingTitle": "Account status",
+      "auth": {
+        "noUser": "No user logged in."
+      },
+      "footer": "MMD Driver • Driver account",
+      "header": {
+        "title": "Driver account"
+      },
+      "legal": {
+        "about": {
+          "label": "About MMD",
+          "value": "Version, support"
+        },
+        "privacy": {
+          "label": "Privacy",
+          "value": "Data, permissions"
+        },
+        "title": "Legal & Help"
+      },
+      "next": {
+        "addDocs": "Add documents",
+        "addVehicle": "Add vehicle",
+        "ready": "Ready",
+        "setupPayment": "Set up payout"
+      },
+      "rows": {
+        "docs": {
+          "label": "Documents",
+          "notRequiredBike": "Not required (Bike)"
+        },
+        "payment": {
+          "label": "Payout",
+          "notConfigured": "Not configured",
+          "ready": "Ready"
+        },
+        "vehicle": {
+          "label": "Vehicle",
+          "missing": "To add",
+          "ok": "OK"
+        }
+      },
+      "status": {
+        "subtitle": "Next step: {{step}}",
+        "title": "Account status • {{pct}}%"
+      },
+      "work": {
+        "center": {
+          "label": "Work center",
+          "value": "Zone, preferences, availability"
+        },
+        "earnings": {
+          "label": "Earnings",
+          "value": "History, payouts, cashouts"
+        },
+        "subtitle": "What impacts your trips and earnings.",
+        "tax": {
+          "label": "Tax info",
+          "value": "W-9 / 1099 (later)"
+        },
+        "title": "Work"
+      }
     },
     "trip": {
       "clientPickup": "CLIENT · PICKUP",
@@ -1581,7 +2391,423 @@
         "active": "Active",
         "expired": "Expired",
         "pending": "Pending"
+      },
+      "codeLoading": "Your referral code is still loading.",
+      "deliveryLineCompact": "📦 Deliveries - {{amount}} for every {{goal}} deliveries",
+      "header": {
+        "subtitle": "Invite drivers and earn"
+      },
+      "headline": {
+        "withProgram": "Up to {{amount}} in {{days}} days"
+      },
+      "hero": {
+        "label": "🎁 MMD Referral Program"
+      },
+      "invites": {
+        "deliveries": "Deliveries",
+        "emptyHint": "Share your code to invite drivers.",
+        "emptyTitle": "No invites yet",
+        "invitedOn": "Invited",
+        "rides": "Rides",
+        "title": "Invites",
+        "unknown": "Invited driver"
+      },
+      "linkLabel": "Referral link",
+      "modal": {
+        "rules": "Rules: one invite = one friend. Rewards are capped at the maximum. Rewards are applied after the referral program conditions are met.",
+        "summaryLine": "Max: {{max}} • Duration: {{days}} days"
+      },
+      "programLoading": "Loading program…",
+      "rideLineCompact": "🚗 Rides - {{amount}} for every {{goal}} rides",
+      "shareText": "Join MMD Delivery 🚗🍔\\n\\nMy code: {{code}}\\nLink: {{link}}\\n\\nSign up and start driving!",
+      "showAllRewards": "All rewards",
+      "status": {
+        "earnedShort": "Earned",
+        "friendHasDaysToComplete": "Your friend has {{days}} days to complete their goals after accepting your invite."
+      },
+      "validForDaysAfterFriendSignup": "Valid for {{days}} days after your friend signs up."
+    },
+    "about": {
+      "appVersion": "App: Version {{version}}",
+      "body": "MMD Delivery connects restaurants, clients, and independent drivers through a seamless delivery platform. Built with modern technology for fast, secure, and reliable service.",
+      "company": "Company: MMD Delivery",
+      "madeWith": "Made with ❤️ for drivers",
+      "package": "Package: {{id}}",
+      "social": "Follow us",
+      "tagline": "Connecting drivers, restaurants & clients"
+    },
+    "arrival": {
+      "dropoffBody": "Confirm the destination, then open order details to complete.",
+      "dropoffLabel": "DROP-OFF",
+      "dropoffTitle": "Arrived at drop-off",
+      "openDetails": "Open order details",
+      "pickupBody": "Confirm the meeting point, then open order details to continue.",
+      "pickupLabel": "PICKUP",
+      "pickupTitle": "Arrived at pickup"
+    },
+    "benefits": {
+      "alert": {
+        "boostSelected": {
+          "body": "Live activation (DB) = next step."
+        }
+      },
+      "badge": {
+        "active": "Active",
+        "available": "Available"
+      },
+      "boostSubtitle": {
+        "percent": "Earn +{value}% on your driver share.",
+        "perOrder": "Bonus added: +${value} per delivered trip."
+      },
+      "challenge": {
+        "progress": "Progress: {value}",
+        "reward": "Reward: {amount}"
+      },
+      "footer": "Connected to Supabase: active boosts + bonus events + challenges + estimated payout.",
+      "progress": "Progress",
+      "tabs": {
+        "boosts": "Promo boosts",
+        "payout": "Estimated payout"
       }
+    },
+    "chat": {
+      "actions": {
+        "image": "📷 Image",
+        "send": "📤 Send"
+      },
+      "empty": {
+        "body": "Start the conversation below",
+        "title": "No Messages Yet"
+      },
+      "loading": "Loading Messages...",
+      "missing": {
+        "goBack": "Go Back",
+        "orderBody": "This order may have been cancelled or is no longer available.",
+        "orderTitle": "Order Not Found",
+        "subtitle": "Support",
+        "title": "Chat"
+      },
+      "orderSubtitle": "Order #{{id}}",
+      "placeholder": "Type a message...",
+      "privateBanner": "Private conversation with {{role}}",
+      "receipt": {
+        "delivered": "Delivered ✓"
+      },
+      "titlePrefix": "Driver",
+      "withTitle": "Chat with {{role}}"
+    },
+    "help": {
+      "callErrorBody": "Unable to open phone app.",
+      "callErrorTitle": "Phone",
+      "callNow": "Call now",
+      "chatOpenError": "Unable to open admin support chat.",
+      "chatSupport": "Chat Support",
+      "chatSupportSub": "Contact MMD admin support.",
+      "emailBody": "Hello MMD Support,\\n\\nI need help with:\\n\\nOrder ID:\\nIssue:\\nPhone:\\n\\nThank you.",
+      "emailErrorBody": "Unable to open email app on this device.",
+      "emailErrorTitle": "Email",
+      "emailSubject": "MMD Delivery Driver Support",
+      "emailSupport": "Email Support",
+      "emailSupportSubShort": "Send details, screenshots, or order ID.",
+      "emergency": "Emergency",
+      "emergencyConfirmBody": "For immediate danger or medical/police/fire emergency, call 911. For non-emergency delivery issues, use chat or email support.",
+      "emergencyConfirmTitle": "Emergency support",
+      "emergencySub": "Urgent delivery or safety issue.",
+      "faq": {
+        "cashoutAShort": "Make sure Stripe is enabled and balance reached the minimum.",
+        "cashoutQ": "Why can't I cash out?",
+        "documentsAShort": "Go to Account, complete documents and payout.",
+        "documentsQShort": "Account not complete?",
+        "gpsAShort": "Check location permissions, keep app open.",
+        "gpsQShort": "GPS not updating?",
+        "orderAShort": "Open the order, use chat, report with order ID.",
+        "orderQShort": "Order has a problem?"
+      },
+      "faqSection": "FAQ",
+      "footerTextShort": "Prepare your order ID, screenshot, phone number, and a short explanation.",
+      "footerTitle": "Before contacting support",
+      "heroLabel": "MMD DRIVER SUPPORT",
+      "heroSubShort": "Get help with orders, payouts, account, safety.",
+      "heroTitle": "How can we help?",
+      "reportIssue": "Report an Issue",
+      "reportIssueBody": "For now, please contact support by email with the order ID and details.",
+      "reportIssueSubShort": "Problem with order, payment, GPS.",
+      "reportIssueTitle": "Report issue",
+      "socialSection": "Follow MMD Delivery",
+      "subtitleShort": "Support, FAQ & emergency",
+      "supportSection": "Support",
+      "title": "Help"
+    },
+    "language": {
+      "searchPlaceholder": "Search language...",
+      "supportedNote": "✅ Only the 6 supported languages are shown here."
+    },
+    "onboarding": {
+      "continue": "Continue to Home",
+      "go": {
+        "profile": "Profile & Documents",
+        "profileHint": "Identity, license, insurance",
+        "services": "My Services",
+        "servicesHint": "Food, packages, taxi",
+        "vehicles": "My Vehicle",
+        "vehiclesNeed": "Add Car / Motorcycle",
+        "vehiclesOk": "Fleet configured",
+        "wallet": "Wallet / Stripe Connect",
+        "walletNeed": "Setup required",
+        "walletOk": "Payout ready"
+      },
+      "loadTimeout": "Unable to load setup. Check your connection and try again.",
+      "next": {
+        "docs": "Complete your documents",
+        "payout": "Activate Stripe Connect (Wallet)",
+        "ready": "Ready — return to Home",
+        "vehicle": "Add and activate a vehicle"
+      },
+      "progress": "Progress",
+      "title": "Driver Setup",
+      "transport": "Vehicle Type"
+    },
+    "opps": {
+      "alerts": {
+        "joinFailed": "Unable to join."
+      },
+      "emptyTitle": "No opportunity for today"
+    },
+    "orderDetails": {
+      "actions": {
+        "backupNavigation": "Backup Options",
+        "googleDropoff": "Google / Apple dropoff",
+        "googlePickup": "Google / Apple pickup",
+        "mmdNavigation": "MMD Navigation",
+        "mmdNavigationDropoff": "Route to customer",
+        "mmdNavigationPickup": "Route to pickup",
+        "wazeDropoff": "Waze dropoff",
+        "wazePickup": "Waze pickup"
+      },
+      "cancel": {
+        "body": "If you cancel now, you will be removed from this trip and it may be offered to another driver.",
+        "button": "Cancel this trip",
+        "cardBody": "You can cancel before pickup. The trip will become available to another driver.",
+        "cardTitle": "Need to cancel?",
+        "confirm": "Yes, cancel",
+        "error": "Unable to cancel this trip.",
+        "successBody": "You were removed from this trip. Another driver can now take it.",
+        "successTitle": "Trip canceled",
+        "title": "Cancel the trip?",
+        "unavailableBody": "You can cancel only before pickup, while the trip is still accepted or ready.",
+        "unavailableTitle": "Cancellation unavailable"
+      },
+      "communication": {
+        "call": "Call",
+        "callClosed": "Calls are disabled for this order.",
+        "callFailed": "Unable to start the call right now.",
+        "callUnavailableTitle": "Call unavailable",
+        "chatClosed": "Messages are disabled for this order.",
+        "client": "Client",
+        "clientProfile": "Client profile linked to this trip",
+        "driverPhoneMissing": "Your driver phone number is missing. Add it in your profile before using masked calls.",
+        "hint": "Call or message the client, restaurant, or MMD support without exposing your real number.",
+        "message": "Message",
+        "noRestaurant": "This pickup/dropoff trip has no restaurant to call.",
+        "noRestaurantMessage": "This pickup/dropoff trip has no restaurant to contact.",
+        "restaurant": "Restaurant",
+        "restaurantProfile": "Restaurant profile linked to this order",
+        "support": "MMD support",
+        "targetPhoneMissing": "The phone number for {{target}} is missing on this order.",
+        "title": "Communication"
+      },
+      "deliveryConfirmError": "Delivery confirmation failed.",
+      "dropoffLocationDetails": "Client dropoff location details",
+      "earnings": {
+        "estimateTitle": "Earnings (transport)"
+      },
+      "header": {
+        "order": "Order",
+        "tripTitle": "Trip #{{id}}"
+      },
+      "locationRequired": "Location permission is required to complete this ride.",
+      "map": {
+        "dropoffGeneric": "Dropoff",
+        "pickupGeneric": "Pickup"
+      },
+      "modal": {
+        "hintDropoffOtp": "Ask the recipient for the delivery code. The keyboard opens automatically — no photo is required.",
+        "hintPickupOtp": "Ask for the pickup code. The keyboard opens automatically — no photo is required."
+      },
+      "navigation": {
+        "mustAcceptFirst": "Accept this trip first before starting MMD navigation.",
+        "unavailableTitle": "Navigation unavailable"
+      },
+      "notAllowed": "This ride is not available for this driver account.",
+      "notFoundBody": "This order does not exist or is no longer available.",
+      "photo": {
+        "permissionBody": "Allow camera access to take a proof photo.",
+        "permissionTitle": "Camera",
+        "preparingBody": "Wait until the photo is ready before confirming.",
+        "readError": "Unable to read the photo. Take a new one.",
+        "tooLarge": "The photo is too large. Take a smaller one."
+      },
+      "pickupConfirmError": "Pickup confirmation failed.",
+      "profile": {
+        "loading": "Loading profile…"
+      },
+      "sessionError": "Unable to retrieve the session.",
+      "status": {
+        "pd_accepted": "Pickup to confirm",
+        "pd_dispatched": "En route to the recipient",
+        "pd_pending": "Waiting for a driver",
+        "pd_prepared": "Pickup to confirm",
+        "pd_ready": "Pickup ready to confirm",
+        "picked_up": "Package picked up — on the way"
+      },
+      "steps": {
+        "dropoffPoint": "Delivery",
+        "pickupPoint": "Pickup",
+        "stops": "Stops"
+      },
+      "summary": {
+        "transportTitle": "Transport Summary"
+      },
+      "taxi": {
+        "completedBody": "The taxi ride was marked as completed.",
+        "completedTitle": "Ride completed",
+        "completeFailed": "Unable to complete the taxi ride.",
+        "pickupCodeLength": "Enter the 4-digit pickup code from the client."
+      },
+      "title": "Order details",
+      "tokenMissing": "Missing session token.",
+      "verify": {
+        "autoHintPd": "Buttons activate automatically at the right time based on status.",
+        "completeRide": "Complete ride",
+        "dropoffBtnPd": "Verify Delivery Code",
+        "dropoffNotReady": "Delivery verification unlocks after pickup is confirmed (status: picked_up).",
+        "pickupBtnPd": "Verify Pickup Code",
+        "pickupNotReady": "Pickup verification unlocks once you are assigned and the trip is ready for pickup (status: ready / dispatched).",
+        "taxiDropoffNotReady": "Complete ride unlocks after pickup code verification (status: in_progress).",
+        "taxiPickupNotReady": "Pickup verification unlocks after the taxi ride is accepted (status: accepted / driver_arrived)."
+      },
+      "wazeOpenError": "Unable to open Waze on this phone."
+    },
+    "privacy": {
+      "heroTitle": "Your data is protected",
+      "intro": "At MMD Delivery, we take your privacy seriously. We only collect the data necessary to ensure safe and efficient deliveries. Your information is stored securely and processed according to our strict policies."
+    },
+    "revenue": {
+      "average": "Avg / trip",
+      "bank": "Bank & payouts",
+      "bank_hint": "Connect your bank account",
+      "details": {
+        "auth": {
+          "body": "Log in as a driver to view your earnings."
+        },
+        "breakdown": {
+          "viewHistory": "View earnings history",
+          "viewLastTripPrice": "View trip price details"
+        },
+        "calc": {
+          "body": "Online/Driving come from RPC get_driver_stats(from_ts,to_ts). Trips = delivered. Points = number of trips.",
+          "link": "How we calculate stats"
+        },
+        "completed": {
+          "empty": "No delivered trip in this period.",
+          "emptyShort": "No trips"
+        },
+        "list": {
+          "netTipLine": "Net price: {{net}} · Tip: {{tip}}"
+        },
+        "shareText": "ID: {{id}}\\nDate: {{date}} {{time}}\\nNet price: {{net}}\\nTip: {{tip}}\\nTotal: {{total}}\\nRestaurant: {{restaurant}}"
+      },
+      "history": {
+        "auth": {
+          "body": "Log in as a driver to view your earnings history."
+        },
+        "list": {
+          "empty": "No delivered trips in this period.",
+          "emptySub": "Completed deliveries will appear here.",
+          "netTipLine": "Net price: {{net}} · Tip: {{tip}}"
+        },
+        "summary": {
+          "net": "Net price",
+          "period": "Period:",
+          "tips": "Tips"
+        }
+      },
+      "no_food_trips_title": "No food/package trips",
+      "no_trips_hint": "No delivered trips in this period. Completed deliveries will appear here after they are delivered.",
+      "no_trips_title": "No trips",
+      "taxi_only_hint": "Taxi earnings for this period are shown above. Food and package sessions will appear here when delivered.",
+      "taxi_paid": "Transferred to Connect",
+      "taxi_pending": "Pending Connect transfer",
+      "taxi_rides": "Completed rides",
+      "taxi_title": "Taxi earnings",
+      "taxi_total": "Total taxi",
+      "taxi_transfer_hint": "Pending = awaiting platform→Connect Transfer. Transferred = SCT done (bank payout is Sunday cron)."
+    },
+    "security": {
+      "passwordPlaceholder": "Password"
+    },
+    "tabs": {
+      "home": "Home",
+      "inbox": "Inbox",
+      "menu": "Menu",
+      "revenue": "Earnings"
+    },
+    "tax": {
+      "badges": {
+        "available": "Available"
+      },
+      "buttons": {
+        "monthlySummary": "Monthly summary (PDF)",
+        "w9": "W-9 (Form + PDF)",
+        "weeklySummary": "Weekly summary (PDF)"
+      },
+      "countryNotSupported": "This document is only available in the US for now.",
+      "overview": {
+        "status": {
+          "configured": "Configured"
+        },
+        "withholding": {
+          "no": "No"
+        }
+      },
+      "sections": {
+        "documents": "Tax Documents"
+      },
+      "verifyFirst": "Please verify your account first.",
+      "year": {
+        "future": {
+          "body": "This year is not completed yet. We’ll switch to the previous year.",
+          "title": "Not finished yet"
+        }
+      },
+      "yearlySummary": {
+        "note": "Note: Downloads may update download_count and last_downloaded_at."
+      }
+    },
+    "waitTimer": {
+      "arrivalBlockedTitle": "Arrival blocked",
+      "arrivedCta": "I have arrived",
+      "cameraBody": "Allow the camera to photograph the doorstep drop-off.",
+      "cameraTitle": "Camera required",
+      "depositCta": "Drop off with photo",
+      "depositOkBody": "Photo saved. You can finish the delivery with this proof.",
+      "depositOkTitle": "Drop-off allowed",
+      "freeRemaining": "Remaining free time",
+      "freeWait": "Free wait",
+      "lateFee": "Fees",
+      "leaveAtDoorDisabled": "The client did not allow leave-at-door.",
+      "loadFailed": "Status unavailable",
+      "locationBody": "Turn on location to confirm your arrival (≤ 50 m).",
+      "locationTitle": "Location required",
+      "networkError": "Unstable connection. Try again.",
+      "noShowBody": "Client no-show confirmed by the timer. Confirm cancellation?",
+      "noShowConfirm": "Yes, cancel",
+      "noShowCta": "Cancel without penalty (no-show)",
+      "noShowTitle": "Cancel without penalty",
+      "sessionExpired": "Session expired",
+      "title": "Customer wait timer",
+      "tooFarBody": "Move within 50 m to confirm GPS arrival and start the timer.",
+      "tooFarTitle": "Too far from the point"
     }
   },
   "restaurant": {
@@ -1599,7 +2825,17 @@
       "recentTransactions": "Recent Transactions",
       "cashoutUnavailable": "Cash out unavailable",
       "cashoutRequested": "Cash out requested",
-      "cashoutRules": "Minimum {{min}} • 1 cash out / day"
+      "cashoutRules": "Minimum {{min}} • 1 cash out / day",
+      "awaitingHint": "Awaiting transfer: {{amount}}",
+      "cashoutAmount": "Amount: {{amount}}",
+      "cashoutConfirmBody": "Cash out your full available balance: {{amount}}.\\n\\nMinimum {{min}} • 1 cash out / day.",
+      "cashoutConfirmTitle": "Instant cash out",
+      "errorBody": "Unable to load wallet activity.",
+      "errorTitle": "Wallet Error",
+      "lastPayoutAt": "Last payout {{when}}",
+      "loadingSubtitle": "Fetching your balance data",
+      "loadingTitle": "Loading Wallet...",
+      "paidOutHint": "Paid out: {{amount}}"
     },
     "commandCenter": {
       "title": "Command Center",
@@ -1697,7 +2933,13 @@
         "newClients": "New clients",
         "loyalClients": "Loyal clients",
         "repeatOrders": "Repeat orders"
-      }
+      },
+      "connectBank": "Connect bank account",
+      "homeMenuTitle": "Restaurant menu",
+      "liveMapFull": "Map operations",
+      "loadingSubtitle": "Fetching your restaurant data",
+      "loadingTitle": "Loading Command Center...",
+      "unableToLoad": "Unable to Load"
     },
     "financial": {
       "title": "Financial Center",
@@ -1717,7 +2959,17 @@
       "lastPayoutDate": "Last payout date",
       "monthlyStatements": "Monthly Statements",
       "noStatements": "No statements available yet.",
-      "taxDocuments": "Tax Documents"
+      "taxDocuments": "Tax Documents",
+      "apiMissing": "API_BASE_URL is missing. Check your production API configuration.",
+      "errorTitle": "Unable to Load",
+      "loadingSubtitle": "Fetching your financial overview",
+      "loadingTitle": "Loading Financials...",
+      "noData": "Financial overview unavailable. Please try again.",
+      "overview": "Financial Overview",
+      "overviewSubtitle": "Net revenue and fees for the selected period.",
+      "sessionExpired": "Session expired. Sign in again to view the financial center.",
+      "viewEarnings": "View Earnings",
+      "viewWallet": "View Wallet"
     },
     "automation": {
       "errorTitle": "Error",
@@ -1757,12 +3009,33 @@
       "alerts": {
         "logoPickFailed": "Unable to pick the logo.",
         "coverPickFailed": "Unable to pick the cover image.",
-        "documentPickFailed": "Unable to pick the document."
-      }
+        "documentPickFailed": "Unable to pick the document.",
+        "permissionPhotos": "Allow photo access to choose the restaurant logo.",
+        "permissionPhotosCover": "Allow photo access to choose the restaurant cover.",
+        "permissionTitle": "Permission",
+        "requiredFields": "Fill in the name, phone, address, city, ZIP, and cuisine type."
+      },
+      "cover": {
+        "addShort": "Add",
+        "subtitle": "Banner shown to customers on the restaurant page.",
+        "title": "Cover Image"
+      },
+      "docs": {
+        "id": "ID Card",
+        "license": "License / Permit",
+        "none": "No file chosen",
+        "tax": "Tax Document"
+      },
+      "logo": {
+        "subtitle": "Visible to customers, drivers, and in chat.",
+        "title": "Logo / Photo"
+      },
+      "offerings": "Offerings"
     },
     "menu": {
       "alerts": {
-        "actionFailed": "This action is unavailable right now."
+        "actionFailed": "This action is unavailable right now.",
+        "createFailed": "Create failed."
       },
       "addCategory": "+ Add Category",
       "noCategories": "No Categories",
@@ -1784,14 +3057,71 @@
       "add": "Add",
       "title": "Menu",
       "loadingTitle": "Loading Menu...",
-      "loadingSubtitle": "Fetching your menu items"
+      "loadingSubtitle": "Fetching your menu items",
+      "categories": {
+        "deleteConfirm": "Items in this category will become uncategorized. Continue?",
+        "deleteTitle": "Delete category",
+        "duplicate": "This category already exists.",
+        "invalid": "Invalid category."
+      },
+      "items": {
+        "deleteConfirm": "Delete this product?",
+        "deleteTitle": "Delete product",
+        "invalidOptions": "Invalid options.",
+        "invalidStock": "Invalid stock (whole number or empty)."
+      }
     },
     "dashboard": {
-      "availabilityUpdateFailed": "Unable to change the restaurant status."
+      "availabilityUpdateFailed": "Unable to change the restaurant status.",
+      "aiDispatch": "AI Dispatch",
+      "aiDriversReady": "AI dispatch: nearby drivers available. Keep ready orders moving.",
+      "aiHighDemand": "AI dispatch: high demand detected. Prioritize ready orders and keep prep times tight.",
+      "aiNeedDrivers": "AI dispatch: orders are active, but no nearby drivers were detected yet.",
+      "aiOffline": "AI dispatch paused while restaurant is offline.",
+      "aiStable": "AI dispatch: demand is stable. Map is monitoring new requests live.",
+      "busyConfirm": "Pause new orders while staying open?",
+      "busyOff": "Busy mode",
+      "busyOffConfirm": "Resume new orders?",
+      "busyOffTitle": "Busy mode ended",
+      "busyRequiresOnline": "Go online before turning on busy mode.",
+      "busyTitle": "Busy mode",
+      "driversNearby": "Drivers nearby",
+      "goOfflineConfirm": "Stop receiving new orders for now?",
+      "goOfflineTitle": "Go offline",
+      "goOnlineConfirm": "Start receiving new orders now?",
+      "goOnlineTitle": "Go online",
+      "newFoodOrder": "New food order",
+      "ordersToday": "Orders today",
+      "pendingOrders": "Pending orders",
+      "revenueToday": "Revenue today",
+      "setupRequiredBody": "Complete the restaurant name, address, and GPS coordinates before going online.",
+      "setupRequiredTitle": "Incomplete profile",
+      "surgeZone": "Surge zone",
+      "title": "Restaurant Dashboard"
     },
     "orders": {
       "statusUpdateFailed": "Unable to update the order status ({{status}}).",
-      "rejectFailed": "Unable to refuse the order ({{status}})."
+      "rejectFailed": "Unable to refuse the order ({{status}}).",
+      "alertBody": "Order #{{id}} waiting - tap to review",
+      "alertOpen": "Open",
+      "alertTitle": "New order",
+      "cardMeta": "{{count}} items • {{total}}",
+      "emptyBody": "New orders will appear here automatically",
+      "emptyTitle": "No Active Orders",
+      "errors": {
+        "acceptExpired": "The acceptance window expired. You can no longer accept this order.",
+        "invalidActor": "Invalid restaurant session. Sign in again, then retry.",
+        "invalidTransition": "This order already changed status. Refresh the list.",
+        "orderNotFound": "Order not found for this restaurant."
+      },
+      "loadingOrders": "Loading Orders...",
+      "loadingOrdersSubtitle": "Fetching your orders",
+      "noProfile": "Restaurant account not found.",
+      "openOrder": "Order {{id}}, {{status}}, {{meta}}",
+      "rejectConfirm": "Reject this order?",
+      "rejectTitle": "Reject order",
+      "title": "Orders",
+      "updateFailed": "Unable to update order."
     },
     "connect": {
       "cta": {
@@ -1825,11 +3155,176 @@
     "earnings": {
       "stripe": {
         "bankKicker": "Bank payouts",
-        "moreInfoNeeded": "Stripe still needs identity or bank information."
-      }
+        "moreInfoNeeded": "Stripe still needs identity or bank information.",
+        "blockedReason": "Reason: {{reason}}",
+        "heldLine": "{{amount}} is waiting until Stripe Connect is complete. It is not paid yet."
+      },
+      "debug": {
+        "copiedBody": "Start: {{a}}...\\nEnd: ...{{b}}",
+        "copiedTitle": "Token copied ✅",
+        "fail": "Unable to retrieve the session.",
+        "noSession": "No session. Sign in first."
+      },
+      "errorBody": "Could not load earnings. Please try again.",
+      "errors": {
+        "openStripe": "Unable to open Stripe Connect."
+      },
+      "errorTitle": "Unable to Load",
+      "fetchError": "Unable to load earnings.",
+      "filters": {
+        "prevMonth": "Previous month",
+        "thisMonth": "This month"
+      },
+      "header": {
+        "title": "Earnings"
+      },
+      "list": {
+        "empty": "No delivered orders yet."
+      },
+      "loadingSubtitle": "Fetching your revenue data",
+      "loadingTitle": "Loading Earnings...",
+      "mustLogin": "Sign in as a restaurant to see your earnings.",
+      "recentOrders": "Recent Orders",
+      "thisMonth": "This Month",
+      "thisWeek": "This Week",
+      "today": "Today",
+      "todayMetaBlocked": "{{n}} orders • payouts blocked until Stripe Connect",
+      "todayMetaReady": "{{n}} orders • payouts enabled"
     },
     "ads": {
       "loading": "Loading advertisement"
+    },
+    "auth": {
+      "errors": {
+        "accountIsClient": "This account is registered as a client. Sign in from the Client section.",
+        "accountIsDriver": "This account is registered as a driver. Sign in from the Driver section.",
+        "accountWrongRole": "This account is not a restaurant account.",
+        "emailRequiredForReset": "❌ Enter your email before requesting a reset.",
+        "notRestaurantAccount": "This account is not set up as a restaurant yet.",
+        "resetFailed": "❌ Unable to send the email:",
+        "restaurantAddressRequired": "Restaurant name and full address are required.",
+        "restaurantNameRequired": "❌ Restaurant name required",
+        "sessionNotCreated": "Session was not created. Try again.",
+        "userNotCreated": "Account created, but the user could not be loaded."
+      },
+      "fields": {
+        "restaurantAddress": "Full Address",
+        "restaurantName": "Restaurant Name"
+      },
+      "placeholders": {
+        "restaurantAddress": "Example: 123 Main St, New York, NY 10001",
+        "restaurantName": "Example: Fouta Halal"
+      },
+      "success": {
+        "createdCheckEmail": "✅ Account created. Check your email, then sign in.",
+        "resetEmailSent": "✅ Email sent. Open the link to change your password."
+      },
+      "terms": {
+        "prefix": "I accept the"
+      }
+    },
+    "financialCenter": {
+      "title": "Financial center"
+    },
+    "gate": {
+      "timeoutBody": "Network is slow or unavailable. You can retry or go back to sign in.",
+      "timeoutTitle": "Unable to open restaurant area"
+    },
+    "home": {
+      "brandSubtitle": "Delivery",
+      "filter": {
+        "title": "Filter the map"
+      },
+      "loadingSubtitle": "Preparing your dashboard",
+      "loadingTitle": "Loading Restaurant...",
+      "map": {
+        "busyTitle": "Busy Mode",
+        "layers": "Layers",
+        "liveTitle": "Live Operations Map",
+        "opsSubtitle": "Drivers nearby • Pending orders visible",
+        "recenter": "Recenter",
+        "refresh": "Refresh",
+        "zoomIn": "Zoom +",
+        "zoomOut": "Zoom −"
+      },
+      "menu": "Menu",
+      "notifications": "Notifications",
+      "selection": {
+        "driver": "Driver",
+        "driverActive": "Out for delivery",
+        "inDelivery": "Out for delivery",
+        "order": "Order",
+        "restaurant": "Restaurant",
+        "yourRestaurant": "Your restaurant"
+      },
+      "tabs": {
+        "menu": "Menu"
+      }
+    },
+    "language": {
+      "chooseHint": "Choose your app language",
+      "searchPlaceholder": "Search (English, Français, Español...)",
+      "supportedNote": "Only the 6 supported languages are shown here."
+    },
+    "platformUnavailable": "New orders are not available in your restaurant area right now.",
+    "security": {
+      "changePassword": "Change Password",
+      "confirmLabel": "Confirm Password",
+      "confirmPlaceholder": "Confirm new password",
+      "dangerZone": "Danger Zone",
+      "deleteHint": "Permanently delete your account and all data.",
+      "errorTitle": "Error",
+      "genericError": "Unable to update password.",
+      "hide": "Hide",
+      "min8": "Password must contain at least 8 characters.",
+      "mismatch": "The two passwords do not match.",
+      "newPasswordLabel": "New Password",
+      "newPasswordPlaceholder": "Enter new password",
+      "passwordTitle": "Password",
+      "save": "Save Password",
+      "sessionBody": "Your session is missing. Please log in again.",
+      "sessionTitle": "Session",
+      "show": "Show",
+      "successBody": "Your password has been updated successfully.",
+      "successTitle": "Password updated",
+      "title": "Security"
+    },
+    "signOut": {
+      "hint": "End your session on this device. You can sign in again anytime.",
+      "sectionTitle": "Session"
+    },
+    "tax": {
+      "completeProfile": "Complete profile",
+      "downloading": "Downloading…",
+      "downloadPdf": "Download PDF",
+      "downloadReady": "You can download the monthly PDF report.",
+      "errorBody": "Unable to load tax summary. Please try again.",
+      "errors": {
+        "cannotOpenPdf": "Unable to open the PDF link.",
+        "fetchFailed": "Unable to load tax summary. Please try again.",
+        "noRestaurantProfile": "Restaurant profile not found. Complete your restaurant profile.",
+        "noSession": "Session not found. Sign in again, then retry.",
+        "noSignedUrl": "The PDF download link was not found.",
+        "restaurantOnly": "This page is reserved for restaurant accounts.",
+        "unknown": "An unexpected error occurred."
+      },
+      "errorTitle": "Tax Error",
+      "loadingSubtitle": "Fetching your tax summary",
+      "loadingTitle": "Loading Tax Data...",
+      "pill": {
+        "month": "Month",
+        "quarter": "Quarter",
+        "year": "Year"
+      },
+      "platformFeesLine": "Platform fees {{amount}}",
+      "profileComplete": "Profile Complete",
+      "profileIncomplete": "Profile incomplete",
+      "profileIncompleteNote": "Complete your restaurant profile before generating official documents.",
+      "quarterLabel": "Q{{q}} {{year}}",
+      "summaryComplete": "Summary complete",
+      "taxableSales": "Taxable sales",
+      "titleShort": "Taxes",
+      "weekLabel": "Week {{w}} · {{year}}"
     }
   },
   "clientRestaurantMenu": {
@@ -1968,6 +3463,39 @@
         "walletCredit": "Wallet credit",
         "tip": "Tip"
       }
+    },
+    "actions": {
+      "accept": "Accept",
+      "acceptConfirm": "Do you want to accept this order?",
+      "acceptTitle": "Accept order",
+      "refuse": "Refuse",
+      "rejectConfirm": "Do you want to reject this order?",
+      "rejectTitle": "Reject order"
+    },
+    "card": {
+      "acceptWithin": "⏱️ Accept within",
+      "expired": "Expired"
+    },
+    "errors": {
+      "awaitingPayment": "This order is not paid yet and is not visible.",
+      "cancel": "Unable to cancel this order.",
+      "notAllowed": "You do not have access to this order.",
+      "notFoodOrder": "This is not a restaurant order.",
+      "notFound": "Order not found.",
+      "restaurantOnly": "This page is reserved for restaurant accounts.",
+      "update": "Unable to update the status."
+    },
+    "status": {
+      "acceptedLower": "accepted",
+      "canceledLower": "canceled",
+      "deliveredLower": "delivered",
+      "dispatchedLower": "dispatched",
+      "expiredLower": "expired",
+      "pending": "Pending",
+      "pendingLower": "pending",
+      "preparedLower": "prepared",
+      "readyLower": "ready",
+      "readyPickup": "Ready"
     }
   },
   "promotions": {
@@ -2132,7 +3660,53 @@
     }
   },
   "common": {
-    "unknownError": "Unknown error."
+    "unknownError": "Unknown error.",
+    "accept": "Accept",
+    "all": "All",
+    "client": "Client",
+    "copy": "Copy",
+    "dash": "—",
+    "done": "Done",
+    "driver": "Driver",
+    "ellipsis": "…",
+    "errors": {
+      "unknown": "Unknown error"
+    },
+    "info": "Info",
+    "infoTitle": "Info",
+    "keepOrder": "Keep order",
+    "mustBeLoggedIn": "You must be logged in.",
+    "notLoggedIn": "You are not signed in.",
+    "password": "Password",
+    "payment": {
+      "title": "Payment"
+    },
+    "permission": {
+      "title": "Permission",
+      "camera": "Allow camera access to take a photo."
+    },
+    "profile": {
+      "address": "Address",
+      "avgRating": "avg rating",
+      "city": "City",
+      "dateOfBirth": "Date of birth",
+      "emergencyPhone": "Emergency phone",
+      "placeholderAddress": "Address",
+      "placeholderCity": "City",
+      "placeholderEmergencyPhone": "Ex: 9170000000",
+      "placeholderState": "NJ",
+      "placeholderZip": "07030",
+      "ratingsCount": "ratings",
+      "state": "State",
+      "zip": "ZIP code"
+    },
+    "reject": "Reject",
+    "restaurant": "Restaurant",
+    "seeAll": "See all",
+    "session": "Session",
+    "somethingWentWrong": "Something went wrong",
+    "thanks": "Thanks",
+    "unavailable": "Unavailable"
   },
   "notifications": {
     "inbox": {
@@ -2280,7 +3854,8 @@
       "missingConfigBody": "The API base URL is not configured.",
       "estimateFailedTitle": "Estimate failed",
       "createdTitle": "Request created",
-      "createdBody": "Delivery request created. Tap Pay now to complete payment."
+      "createdBody": "Delivery request created. Tap Pay now to complete payment.",
+      "scopeBody": "Enable location to pick a delivery address in your market."
     },
     "errors": {
       "estimateGeneric": "Unable to calculate the delivery estimate right now.",
@@ -2293,7 +3868,8 @@
       "loginRequiredPay": "You must be signed in to pay.",
       "createFailed": "Unable to create the request.",
       "missingCoords": "Pickup and dropoff coordinates are missing.",
-      "quoteRequired": "Calculate the estimate before creating the request."
+      "quoteRequired": "Calculate the estimate before creating the request.",
+      "unavailableInArea": "Delivery service is not available in this county yet."
     },
     "payment": {
       "title": "Payment",
@@ -2397,5 +3973,154 @@
   },
   "social": {
     "a11y": "MMD Delivery social media"
+  },
+  "account": {
+    "delete": {
+      "bulletAccess": "Immediate sign-out and ban on future login",
+      "bulletKeep": "Orders, rides, payments, payouts, and tax records are retained when legally required",
+      "bulletPii": "Name, phone, email, addresses, and profile photos are anonymized",
+      "bulletPush": "Push tokens and devices are removed",
+      "confirmAction": "Delete my account",
+      "confirmLead": "Enter your password and type DELETE to confirm.",
+      "continue": "Continue",
+      "doneBody": "Your personal data has been anonymized. You have been signed out. Financial records required by law were retained.",
+      "doneTitle": "Account deleted",
+      "failedTitle": "Deletion failed",
+      "finalBody": "This cannot be undone. You will lose access immediately.",
+      "finalTitle": "Delete permanently?",
+      "lead": "You are about to permanently delete your {{role}} account on MMD Delivery.",
+      "passwordPlaceholder": "Current password",
+      "rowHint": "Permanently remove your account",
+      "title": "Delete account",
+      "typeDelete": "Type \"DELETE\"",
+      "whatHappens": "What happens"
+    }
+  },
+  "brand": {
+    "tagline": "We Deliver With Heart ❤️"
+  },
+  "calls": {
+    "connected": {
+      "end": "End Call",
+      "endA11y": "End call",
+      "nativeHint": "Talk on the phone. End Call hangs up the Twilio session. Mute and speaker are controlled on the phone.",
+      "subtitle": "Connected",
+      "title": "Call in progress",
+      "withRole": "Call with {{role}}"
+    },
+    "incoming": {
+      "accept": "Accept",
+      "acceptA11y": "Accept call",
+      "decline": "Decline",
+      "declineA11y": "Decline call",
+      "fromRole": "{{role}} is calling",
+      "nativeHint": "Accept stops the in-app ring. Answer the phone call itself to talk.",
+      "relatedOrder": "Related job",
+      "subtitle": "Incoming call...",
+      "title": "Incoming Call"
+    },
+    "role": {
+      "caller": "Caller",
+      "customer": "Customer",
+      "driver": "Driver",
+      "restaurant": "Restaurant",
+      "support": "Support"
+    }
+  },
+  "delivery_requests": {
+    "status": {
+      "paid_pending": "Paid • Waiting for a driver",
+      "processing_pending": "Payment processing",
+      "unpaid": "Unpaid"
+    }
+  },
+  "legal": {
+    "openPrivacy": "Privacy policy",
+    "openSupport": "Support",
+    "openTerms": "Terms of service",
+    "privacy": "Privacy Policy",
+    "signupNotice": "By creating an account you agree to our Terms and Privacy Policy.",
+    "terms": "Terms"
+  },
+  "loyalty": {
+    "apply": "OK",
+    "balance": "Your points",
+    "codeApplied": "Referral code saved.",
+    "codeFailed": "Invalid code.",
+    "confirm": "Confirm",
+    "confirmMessage": "Convert {{points}} points into {{amount}} MMD credit? This cannot be undone.",
+    "confirmTitle": "Convert my points",
+    "convertDone": "Last conversion completed. Convert again only when you have enough points.",
+    "convertFailed": "Conversion failed.",
+    "converting": "…",
+    "convertSuccess": "Conversion successful. Your MMD credit was added.",
+    "creditBalance": "Credit available: {{amount}}",
+    "creditExpiry": "Credit expires {{date}}",
+    "enterCode": "Enter a referral code",
+    "errorBody": "Check your connection and try again.",
+    "errorTitle": "Couldn’t load loyalty",
+    "history": "Points history",
+    "loadFailed": "Unable to load.",
+    "mmdPlusCta": "Subscription — Food, Delivery, Taxi & Marketplace perks",
+    "mmdPlusOpen": "Join / Manage subscription →",
+    "needMore": "Need more",
+    "noActivity": "No activity yet.",
+    "pointsValue": "{{points}} points = {{amount}}",
+    "promotionsCta": "Promo codes, coupons and automatic offers",
+    "redeem": "Redeem",
+    "referral": "Referral",
+    "referralCounts": "{{rewarded}} rewarded • {{pending}} pending",
+    "referralPending": "Your code will be available soon.",
+    "rewardCredit": "MMD Credit",
+    "rewardCreditDesc": "Convert {{points}} points into {{amount}} store credit",
+    "rewardsTitle": "Available rewards",
+    "share": "Invite friends",
+    "shareMessage": "Join MMD Delivery and earn rewards: {{link}}",
+    "tierLine": "{{tier}} member • {{lifetime}} lifetime pts",
+    "tierMax": "Top tier reached",
+    "tierProgress": "{{remaining}} pts to {{next}}",
+    "title": "MMD Rewards"
+  },
+  "orders": {
+    "status": {
+      "accepted": "Accepted",
+      "acceptedRestaurant": "Accepted",
+      "canceled": "Canceled",
+      "delivered": "Delivered",
+      "dispatched": "On the way",
+      "pending": "Pending",
+      "pendingRestaurant": "Pending",
+      "prepared": "Preparing",
+      "ready": "Ready",
+      "readyWaitingDriver": "Ready (waiting driver)"
+    }
+  },
+  "restaurants": {
+    "chat": {
+      "empty": {
+        "body": "Start the conversation with the customer or driver.",
+        "title": "No Messages"
+      },
+      "loading": "Loading Chat...",
+      "missing": {
+        "body": "This order could not be found.",
+        "goBack": "Go Back",
+        "title": "Order Not Found"
+      },
+      "placeholder": "Write a message...",
+      "send": "Send",
+      "subtitle": "Order chat",
+      "title": "Chat",
+      "titlePrefix": "Restaurant"
+    }
+  },
+  "shared": {
+    "cancel": "Cancel",
+    "roles": {
+      "admin": "MMD Support",
+      "client": "Client",
+      "driver": "Driver",
+      "restaurant": "Restaurant"
+    }
   }
 }

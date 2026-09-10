@@ -384,7 +384,7 @@ function extractReferralCodeFromUrl(url: string | null | undefined): string | nu
 export function AppNavigator({
   initialRouteName = "RoleSelect",
 }: AppNavigatorProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const langKey =
     (i18n.resolvedLanguage || i18n.language || "en").toLowerCase();
@@ -1331,7 +1331,7 @@ export function AppNavigator({
           getComponent={() =>
             require("../screens/MMDLocationPickerScreen").default
           }
-          options={{ title: "Exact location" }}
+          options={{ title: t("location.exactLocation") }}
         />
 
         <Stack.Screen
@@ -1636,7 +1636,7 @@ export function AppNavigator({
             require("../screens/DriverIdentityVerificationScreen")
               .DriverIdentityVerificationScreen
           }
-          options={{ title: "Vérification d'identité" }}
+          options={{ title: t("driver.identity.screenTitle") }}
         />
 
         <Stack.Screen
@@ -1729,14 +1729,14 @@ export function AppNavigator({
             require("../screens/driver/DriverServicesScreen")
               .DriverServicesScreen
           }
-          options={{ title: "Mes services" }}
+          options={{ title: t("driver.services.title") }}
         />
         <Stack.Screen
           name="DriverHotspots"
           getComponent={() =>
             require("../screens/driver/DriverHotspotsScreen").default
           }
-          options={{ title: "Demand hotspots" }}
+          options={{ title: t("driver.hotspots.title") }}
         />
         <Stack.Screen
           name="DriverVehicles"
@@ -1744,14 +1744,14 @@ export function AppNavigator({
             require("../screens/driver/DriverVehiclesScreen")
               .DriverVehiclesScreen
           }
-          options={{ title: "Mes véhicules" }}
+          options={{ title: t("driver.vehicles.title") }}
         />
         <Stack.Screen
           name="DriverVehicle"
           getComponent={() =>
             require("../screens/driver/DriverVehicleScreen").DriverVehicleScreen
           }
-          options={{ title: "Mon véhicule" }}
+          options={{ title: t("driver.vehicle.screenTitle") }}
         />
         <Stack.Screen
           name="DriverWallet"
@@ -1831,7 +1831,7 @@ export function AppNavigator({
             require("../screens/restaurant/RestaurantOrderAutomationScreen")
               .RestaurantOrderAutomationScreen
           }
-          options={{ title: "Commandes & impression" }}
+          options={{ title: t("restaurant.automation.title") }}
         />
         <Stack.Screen
           name="RestaurantChat"

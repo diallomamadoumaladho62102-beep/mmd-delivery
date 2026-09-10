@@ -71,12 +71,12 @@ export function ClientChatScreen() {
             )}
           </Text>
           <Text style={styles.errorLine}>
-            {t("client.chat.errors.missingOrder", "Commande introuvable.")}
+            {t("client.chat.errors.missingOrder", "Order not found.")}
           </Text>
 
           <TouchableOpacity onPress={safeBack} style={styles.backBtn} activeOpacity={0.85}>
             <Text style={styles.backBtnText}>
-              {t("common.back", "Retour")}
+              {t("common.back", "← Back")}
             </Text>
           </TouchableOpacity>
         </View>

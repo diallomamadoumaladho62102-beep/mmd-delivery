@@ -498,7 +498,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           throw new Error(
             t(
               "restaurant.orders.errors.invalidActor",
-              "Session restaurant invalide. Reconnecte-toi puis réessaie."
+              "Invalid restaurant session. Sign in again, then retry."
             )
           );
         }
@@ -522,7 +522,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           throw new Error(
             t(
               "restaurant.orders.errors.orderNotFound",
-              "Commande introuvable pour ce restaurant."
+              "Order not found for this restaurant."
             )
           );
         }
@@ -535,7 +535,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           throw new Error(
             t(
               "restaurant.orders.errors.invalidTransition",
-              "Cette commande a déjà changé de statut. Rafraîchis la liste."
+              "This order already changed status. Refresh the list."
             )
           );
         }
@@ -550,7 +550,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
             throw new Error(
               t(
                 "restaurant.orders.errors.acceptExpired",
-                "Le délai d’acceptation est expiré. Tu ne peux plus accepter cette commande."
+                "The acceptance window expired. You can no longer accept this order."
               )
             );
           }

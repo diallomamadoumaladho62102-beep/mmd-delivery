@@ -827,7 +827,7 @@ export default function DriverMapScreen() {
       setOrderError(
         t(
           "driver.map.orderNotFound",
-          "Ouvre la navigation depuis les détails de commande.",
+          "Open navigation from the order details.",
         ),
       );
       setOrderLoading(false);
@@ -879,7 +879,7 @@ export default function DriverMapScreen() {
 
       if (result.error) throw result.error;
       if (!result.data) {
-        setOrderError(t("driver.map.orderNotFound", "Course introuvable."));
+        setOrderError(t("driver.map.orderNotFound", "Open navigation from the order details."));
         setTrip(null);
         return;
       }
@@ -899,7 +899,7 @@ export default function DriverMapScreen() {
         setOrderError(
           t(
             "driver.map.missingCoords",
-            "Coordonnées GPS manquantes pour cette étape.",
+            "GPS coordinates missing for this step.",
           ),
         );
         setTrip(null);
@@ -921,7 +921,7 @@ export default function DriverMapScreen() {
       setOrderError(
         error instanceof Error
           ? error.message
-          : t("driver.map.orderLoadError", "Impossible de charger la course."),
+          : t("driver.map.orderLoadError", "Unable to load the trip."),
       );
       setTrip(null);
     } finally {

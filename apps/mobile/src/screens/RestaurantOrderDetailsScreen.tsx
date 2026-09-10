@@ -196,7 +196,7 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
     const uid = authData.user?.id;
     if (!uid) {
       throw new Error(
-        t("auth.errors.sessionExpired", "Session expirée. Reconnecte-toi puis réessaie.")
+        t("auth.errors.sessionExpired", "Session expired. Sign in again, then retry.")
       );
     }
 
@@ -211,7 +211,7 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
         "restaurant"
     ) {
       throw new Error(
-        t("order.errors.restaurantOnly", "Cette page est réservée au compte restaurant.")
+        t("order.errors.restaurantOnly", "This page is reserved for restaurant accounts.")
       );
     }
 
@@ -226,14 +226,14 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
         String(row?.restaurant_id || "") === uid;
       if (!belongsToRestaurant) {
         throw new Error(
-          t("order.errors.notAllowed", "Tu n’as pas accès à cette commande.")
+          t("order.errors.notAllowed", "You do not have access to this order.")
         );
       }
       if (String(row?.payment_status || "").toLowerCase() !== "paid") {
         throw new Error(
           t(
             "order.errors.awaitingPayment",
-            "Cette commande n’est pas encore payée et n’est pas visible."
+            "This order is not paid yet and is not visible."
           )
         );
       }
@@ -241,7 +241,7 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
         throw new Error(
           t(
             "order.errors.notFoodOrder",
-            "Cette commande n’est pas une commande restaurant."
+            "This is not a restaurant order."
           )
         );
       }
@@ -295,7 +295,7 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
             if (error || !data) {
               throw (
                 error ??
-                new Error(t("order.errors.notFound", "Commande introuvable."))
+                new Error(t("order.errors.notFound", "Order not found."))
               );
             }
 
@@ -352,9 +352,9 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
         await fetchOrder(true);
       } catch (error: any) {
         Alert.alert(
-          t("common.errorTitle", "Erreur"),
+          t("common.errorTitle", "Error"),
           error?.message ??
-            t("order.errors.update", "Impossible de mettre à jour le statut.")
+            t("order.errors.update", "Unable to update the status.")
         );
       } finally {
         setUpdating(false);
@@ -381,13 +381,13 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
       const result = await response.json().catch(() => null);
       if (!response.ok)
         throw new Error(
-          result?.error || t("order.errors.cancel", "Impossible d’annuler cette commande.")
+          result?.error || t("order.errors.cancel", "Unable to cancel this order.")
         );
       await fetchOrder(true);
     } catch (error: any) {
       Alert.alert(
-        t("common.errorTitle", "Erreur"),
-        error?.message ?? t("order.errors.cancel", "Impossible d’annuler cette commande.")
+        t("common.errorTitle", "Error"),
+        error?.message ?? t("order.errors.cancel", "Unable to cancel this order.")
       );
     } finally {
       setUpdating(false);

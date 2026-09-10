@@ -453,13 +453,13 @@ export function DriverProfileScreen() {
   const [editLicenseExpiry, setEditLicenseExpiry] = useState("");
 
   const [authFallbackName, setAuthFallbackName] = useState(
-    t("driver.profile.authFallbackName", { defaultValue: "Chauffeur" }),
+    t("driver.profile.authFallbackName", { defaultValue: "Driver" }),
   );
 
   const transportLabelI18n = useCallback(
     (mode: TransportMode) => {
       if (mode === "bike") {
-        return t("driver.auth.transport.bike", { defaultValue: "🚲 Vélo" });
+        return t("driver.auth.transport.bike", { defaultValue: "Bike" });
       }
       if (mode === "moto") {
         return t("driver.auth.transport.moto", { defaultValue: "🛵 Moto" });
@@ -475,9 +475,9 @@ export function DriverProfileScreen() {
         case "profile_photo":
           return t("driver.profile.docs.profilePhoto", { defaultValue: "Photo personnelle" });
         case "id_card_front":
-          return t("driver.profile.docs.idFront", { defaultValue: "Pièce d’identité recto" });
+          return t("driver.profile.docs.idFront", { defaultValue: "ID front" });
         case "id_card_back":
-          return t("driver.profile.docs.idBack", { defaultValue: "Pièce d’identité verso" });
+          return t("driver.profile.docs.idBack", { defaultValue: "ID back" });
         case "license_front":
           return t("driver.profile.docs.licenseFront", { defaultValue: "Permis recto" });
         case "license_back":
@@ -496,9 +496,9 @@ export function DriverProfileScreen() {
   const tierLabelI18n = useCallback(
     (tier: number | null | undefined) => {
       if (tier === 1) return t("common.driverTier.elite", { defaultValue: "🏆 Elite" });
-      if (tier === 2) return t("common.driverTier.confirmed", { defaultValue: "⭐ Confirmé" });
+      if (tier === 2) return t("common.driverTier.confirmed", { defaultValue: "⭐ Confirmed" });
       if (tier === 3) return t("common.driverTier.standard", { defaultValue: "🔄 Standard" });
-      return t("common.driverTier.needsImprovement", { defaultValue: "⚠️ À améliorer" });
+      return t("common.driverTier.needsImprovement", { defaultValue: "⚠️ Needs improvement" });
     },
     [t],
   );
@@ -516,7 +516,7 @@ export function DriverProfileScreen() {
       driver?.full_name?.trim() ||
       profile?.full_name?.trim() ||
       authFallbackName?.trim() ||
-      t("driver.profile.authFallbackName", { defaultValue: "Chauffeur" })
+      t("driver.profile.authFallbackName", { defaultValue: "Driver" })
     );
   }, [driver?.full_name, profile?.full_name, authFallbackName, t]);
 
@@ -606,13 +606,13 @@ export function DriverProfileScreen() {
     if (isProfileComplete) {
       return t("driver.profile.verified.full", { defaultValue: "Dossier complet ✅" });
     }
-    return t("driver.profile.verified.notVerified", { defaultValue: "Profil incomplet ❌" });
+    return t("driver.profile.verified.notVerified", { defaultValue: "Not verified" });
   }, [isProfileComplete, t]);
 
   const paymentLabel = useMemo(() => {
     return stripeOnboarded
-      ? t("common.ready", { defaultValue: "✅ Configuré" })
-      : t("common.notConfigured", { defaultValue: "❌ Non configuré" });
+      ? t("common.ready", { defaultValue: "Ready" })
+      : t("common.notConfigured", { defaultValue: "Not configured" });
   }, [stripeOnboarded, t]);
 
   const vehicleLine = useMemo(() => {
@@ -968,7 +968,7 @@ export function DriverProfileScreen() {
             setProfile(null);
             setDriver(null);
             setDriverDocuments([]);
-            setAuthFallbackName(t("driver.profile.authFallbackName", { defaultValue: "Chauffeur" }));
+            setAuthFallbackName(t("driver.profile.authFallbackName", { defaultValue: "Driver" }));
             setAvatarPath(null);
             setAvatarUrl(null);
             setAvatarBroken(false);
@@ -990,7 +990,7 @@ export function DriverProfileScreen() {
             (user.user_metadata as any)?.full_name ||
             (user.user_metadata as any)?.name ||
             user.email ||
-            t("driver.profile.authFallbackName", { defaultValue: "Chauffeur" });
+            t("driver.profile.authFallbackName", { defaultValue: "Driver" });
           setAuthFallbackName(String(fallback));
 
           const metaAvatarPath =
@@ -1126,8 +1126,8 @@ export function DriverProfileScreen() {
       const uid = authData?.user?.id;
       if (!uid) {
         Alert.alert(
-          t("client.auth.errorTitle", { defaultValue: "Erreur" }),
-          t("driver.home.errors.mustBeLoggedIn", { defaultValue: "Tu dois être connecté." }),
+          t("client.auth.errorTitle", { defaultValue: "Error" }),
+          t("driver.home.errors.mustBeLoggedIn", { defaultValue: "You must be logged in." }),
         );
         return;
       }
@@ -1163,11 +1163,11 @@ export function DriverProfileScreen() {
       if (pErr) {
         logTechnicalError("driver.profile.profiles", pErr);
         Alert.alert(
-          t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+          t("client.auth.errorTitle", { defaultValue: "Error" }),
           toUserFacingError(
             pErr,
             t("common.profile.saveProfilesFailed", {
-              defaultValue: "Impossible d'enregistrer votre profil pour le moment. Réessayez.",
+              defaultValue: "Unable to save account (profiles).",
             }),
           ),
         );
@@ -1223,11 +1223,11 @@ export function DriverProfileScreen() {
       if (dErr) {
         logTechnicalError("driver.profile.driver_profiles", dErr);
         Alert.alert(
-          t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+          t("client.auth.errorTitle", { defaultValue: "Error" }),
           toUserFacingError(
             dErr,
             t("common.profile.saveDriverProfilesFailed", {
-              defaultValue: "Impossible d'enregistrer votre profil chauffeur pour le moment. Réessayez.",
+              defaultValue: "Unable to save (driver_profiles).",
             }),
           ),
         );
@@ -1238,7 +1238,7 @@ export function DriverProfileScreen() {
       await loadAll();
       Alert.alert(
         t("common.ok", { defaultValue: "OK" }),
-        t("common.profile.updated", { defaultValue: "Profil mis à jour ✅" }),
+        t("common.profile.updated", { defaultValue: "Profile updated ✅" }),
       );
     } finally {
       setSaving(false);
@@ -1251,7 +1251,7 @@ export function DriverProfileScreen() {
       Alert.alert(
         t("common.permission.title", { defaultValue: "Permission" }),
         t("common.permission.camera", {
-          defaultValue: "Autorise la caméra pour prendre une photo.",
+          defaultValue: "Allow camera access to take a photo.",
         }),
       );
       return null;
@@ -1303,7 +1303,7 @@ export function DriverProfileScreen() {
       Alert.alert(
         t("common.permission.title", { defaultValue: "Permission" }),
         t("common.permission.camera", {
-          defaultValue: "Autorise la caméra pour prendre une photo.",
+          defaultValue: "Allow camera access to take a photo.",
         }),
       );
       return null;
@@ -1345,8 +1345,8 @@ export function DriverProfileScreen() {
       const uid = authData?.user?.id;
       if (!uid) {
         Alert.alert(
-          t("driver.security.sessionTitle", { defaultValue: "Session expirée" }),
-          t("driver.security.sessionBody", { defaultValue: "Reconnecte-toi pour continuer." }),
+          t("driver.security.sessionTitle", { defaultValue: "Session expired" }),
+          t("driver.security.sessionBody", { defaultValue: "Log in again to continue." }),
         );
         return;
       }
@@ -1371,9 +1371,9 @@ export function DriverProfileScreen() {
 
       if (upErr) {
         Alert.alert(
-          t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+          t("client.auth.errorTitle", { defaultValue: "Error" }),
           t("common.profile.avatarUploadFailed", {
-            defaultValue: "Upload avatar impossible. Vérifie Storage policies (avatars).",
+            defaultValue: "Unable to upload avatar. Check Storage policies (avatars).",
           }),
         );
         return;
@@ -1432,15 +1432,15 @@ export function DriverProfileScreen() {
 
       Alert.alert(
         `${t("common.ok", { defaultValue: "OK" })} ✅`,
-        t("common.profile.avatarUpdated", { defaultValue: "Photo de profil mise à jour." }),
+        t("common.profile.avatarUpdated", { defaultValue: "Profile photo updated." }),
       );
     } catch (error: any) {
       console.log("uploadAvatar catch", error);
       Alert.alert(
-        t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+        t("client.auth.errorTitle", { defaultValue: "Error" }),
         error?.message ??
           t("common.profile.avatarUnknownError", {
-            defaultValue: "Upload avatar: erreur inconnue.",
+            defaultValue: "Avatar upload: unknown error.",
           }),
       );
     } finally {
@@ -1452,10 +1452,10 @@ export function DriverProfileScreen() {
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          title: t("common.profile.avatarTitle", { defaultValue: "Photo de profil" }),
+          title: t("common.profile.avatarTitle", { defaultValue: "Profile photo" }),
           options: [
-            t("shared.common.cancel", { defaultValue: "Annuler" }),
-            t("driver.auth.actions.camera", { defaultValue: "Caméra" }),
+            t("shared.common.cancel", { defaultValue: "Cancel" }),
+            t("driver.auth.actions.camera", { defaultValue: "Camera" }),
             t("driver.auth.actions.files", { defaultValue: "Fichiers" }),
           ],
           cancelButtonIndex: 0,
@@ -1469,12 +1469,12 @@ export function DriverProfileScreen() {
     }
 
     Alert.alert(
-      t("common.profile.avatarTitle", { defaultValue: "Photo de profil" }),
-      t("driver.profile.chooseOption", { defaultValue: "Choisis une option :" }),
+      t("common.profile.avatarTitle", { defaultValue: "Profile photo" }),
+      t("driver.profile.chooseOption", { defaultValue: "Choose an option:" }),
       [
-        { text: t("shared.common.cancel", { defaultValue: "Annuler" }), style: "cancel" },
+        { text: t("shared.common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
         {
-          text: t("driver.auth.actions.camera", { defaultValue: "Caméra" }),
+          text: t("driver.auth.actions.camera", { defaultValue: "Camera" }),
           onPress: () => void uploadAvatar("camera"),
         },
         {
@@ -1498,8 +1498,8 @@ export function DriverProfileScreen() {
       const uid = authData?.user?.id;
       if (!uid) {
         Alert.alert(
-          t("driver.security.sessionTitle", { defaultValue: "Session expirée" }),
-          t("driver.security.sessionBody", { defaultValue: "Reconnecte-toi pour continuer." }),
+          t("driver.security.sessionTitle", { defaultValue: "Session expired" }),
+          t("driver.security.sessionBody", { defaultValue: "Log in again to continue." }),
         );
         return;
       }
@@ -1512,9 +1512,9 @@ export function DriverProfileScreen() {
           docType === "registration")
       ) {
         Alert.alert(
-          t("driver.auth.transport.bike", { defaultValue: "Vélo" }),
+          t("driver.auth.transport.bike", { defaultValue: "Bike" }),
           t("common.profile.bikeNoDocs", {
-            defaultValue: "En mode vélo, aucun document véhicule n’est requis ✅",
+            defaultValue: "In bike mode, no documents are required ✅",
           }),
         );
         return;
@@ -1541,9 +1541,9 @@ export function DriverProfileScreen() {
 
       if (upErr) {
         Alert.alert(
-          t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+          t("client.auth.errorTitle", { defaultValue: "Error" }),
           t("common.profile.docUploadFailed", {
-            defaultValue: "Upload impossible. Vérifie Storage policies (driver-docs).",
+            defaultValue: "Upload failed. Check Storage policies (driver-docs).",
           }),
         );
         return;
@@ -1586,9 +1586,9 @@ export function DriverProfileScreen() {
 
       if (insErr) {
         Alert.alert(
-          t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+          t("client.auth.errorTitle", { defaultValue: "Error" }),
           t("common.profile.docDbFailed", {
-            defaultValue: "Fichier uploadé mais DB non mise à jour (driver_documents).",
+            defaultValue: "File uploaded but DB not updated (driver_documents).",
           }),
         );
         return;
@@ -1600,16 +1600,16 @@ export function DriverProfileScreen() {
         `${t("common.ok", { defaultValue: "OK" })} ✅`,
         t("common.profile.docSent", {
           doc: driverDocumentLabel(docType),
-          defaultValue: "{{doc}} envoyé.",
+          defaultValue: "{{doc}} sent.",
         }),
       );
     } catch (error: any) {
       console.log("uploadDriverDocument catch", error);
       Alert.alert(
-        t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+        t("client.auth.errorTitle", { defaultValue: "Error" }),
         error?.message ??
           t("common.profile.docUnknownError", {
-            defaultValue: "Upload doc: erreur inconnue.",
+            defaultValue: "Doc upload: unknown error.",
           }),
       );
     } finally {
@@ -1626,8 +1626,8 @@ export function DriverProfileScreen() {
             defaultValue: "Uploader {{doc}}",
           }),
           options: [
-            t("shared.common.cancel", { defaultValue: "Annuler" }),
-            t("driver.auth.actions.camera", { defaultValue: "Caméra" }),
+            t("shared.common.cancel", { defaultValue: "Cancel" }),
+            t("driver.auth.actions.camera", { defaultValue: "Camera" }),
             t("driver.auth.actions.files", { defaultValue: "Fichiers" }),
           ],
           cancelButtonIndex: 0,
@@ -1645,11 +1645,11 @@ export function DriverProfileScreen() {
         doc: driverDocumentLabel(docType),
         defaultValue: "Uploader {{doc}}",
       }),
-      t("driver.profile.chooseOption", { defaultValue: "Choisis une option :" }),
+      t("driver.profile.chooseOption", { defaultValue: "Choose an option:" }),
       [
-        { text: t("shared.common.cancel", { defaultValue: "Annuler" }), style: "cancel" },
+        { text: t("shared.common.cancel", { defaultValue: "Cancel" }), style: "cancel" },
         {
-          text: t("driver.auth.actions.camera", { defaultValue: "Caméra" }),
+          text: t("driver.auth.actions.camera", { defaultValue: "Camera" }),
           onPress: () => void uploadDriverDocument(docType, "camera"),
         },
         {

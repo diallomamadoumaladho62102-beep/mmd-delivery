@@ -192,7 +192,7 @@ export default function RestaurantTaxScreen({
             setError(
               t(
                 "restaurant.tax.errors.noSession",
-                "Session introuvable. Reconnecte-toi puis réessaie."
+                "Session not found. Sign in again, then retry."
               )
             );
           }
@@ -218,7 +218,7 @@ export default function RestaurantTaxScreen({
             setError(
               t(
                 "restaurant.tax.errors.restaurantOnly",
-                "Cette page est réservée aux comptes restaurant."
+                "This page is reserved for restaurant accounts."
               )
             );
           }
@@ -249,7 +249,7 @@ export default function RestaurantTaxScreen({
             setError(
               t(
                 "restaurant.tax.errors.noRestaurantProfile",
-                "Profil restaurant introuvable. Complète ton profil restaurant."
+                "Restaurant profile not found. Complete your restaurant profile."
               )
             );
           }
@@ -268,7 +268,7 @@ export default function RestaurantTaxScreen({
             e?.message ??
               t(
                 "restaurant.tax.errors.unknown",
-                "Une erreur inattendue est survenue."
+                "An unexpected error occurred."
               )
           );
         }
@@ -294,7 +294,7 @@ export default function RestaurantTaxScreen({
           throw new Error(
             t(
               "restaurant.tax.errors.noRestaurantProfile",
-              "Profil restaurant introuvable. Complète ton profil restaurant."
+              "Restaurant profile not found. Complete your restaurant profile."
             )
           );
         }
@@ -308,7 +308,7 @@ export default function RestaurantTaxScreen({
           throw new Error(
             t(
               "restaurant.tax.errors.noSession",
-              "Session introuvable. Reconnecte-toi puis réessaie."
+              "Session not found. Sign in again, then retry."
             )
           );
         }
@@ -343,7 +343,7 @@ export default function RestaurantTaxScreen({
             throw new Error(
               t(
                 "restaurant.tax.errors.noSignedUrl",
-                "Le lien de téléchargement du PDF est introuvable."
+                "The PDF download link was not found."
               )
             );
           }
@@ -352,7 +352,7 @@ export default function RestaurantTaxScreen({
             throw new Error(
               t(
                 "restaurant.tax.errors.cannotOpenPdf",
-                "Impossible d’ouvrir le lien du PDF."
+                "Unable to open the PDF link."
               )
             );
           }
@@ -363,7 +363,7 @@ export default function RestaurantTaxScreen({
           e?.message ??
             t(
               "restaurant.tax.errors.unknown",
-              "Une erreur inattendue est survenue."
+              "An unexpected error occurred."
             )
         );
       } finally {

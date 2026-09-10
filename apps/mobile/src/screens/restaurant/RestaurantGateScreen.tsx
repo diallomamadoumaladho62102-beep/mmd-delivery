@@ -259,7 +259,7 @@ export default function RestaurantGateScreen({ navigation }: Props) {
     <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }}>
       <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
       <RestaurantBrandLoadingState
-        title={t("restaurant.gate.loading", "Loading Restaurant...")}
+        title={t("restaurant.gate.loading", "Loading…")}
         logoAtBottom
         showCardLogo
       />

@@ -142,7 +142,7 @@ export function RestaurantLanguageScreen() {
           onChangeText={setQuery}
           placeholder={t(
             "restaurant.language.searchPlaceholder",
-            "Search (English, Français, Español...)",
+            "Search a language…",
           )}
           placeholderTextColor="rgba(255,255,255,0.45)"
           autoCapitalize="none"

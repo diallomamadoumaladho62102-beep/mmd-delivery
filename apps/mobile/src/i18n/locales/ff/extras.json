@@ -18,7 +18,14 @@
       "openCount": "{{open}} udditii · {{total}} duka",
       "shopOpen": "Udditii",
       "shopClosed": "Udditaama",
-      "productCount": "{{count}} produit ɗi ngal woodi"
+      "productCount": "{{count}} produit ɗi ngal woodi",
+      "currency": "Kaalis",
+      "emptyHint": "Eto ɓawto walla ƴeew nokku ɓadiiɗo.",
+      "errorTitle": "Horiima loowde luumo",
+      "guestBrowseHint": "Yeeɓ dukaaji e njeeygu e ndimaaku. Naatu so a hepii ɗaɓɓude.",
+      "loading": "Nana loowa luumo...",
+      "market": "Luumo maa",
+      "searchPlaceholder": "Seet dukaaji…"
     },
     "products": {
       "subtitle": "Yeeɓ produits golloowi",
@@ -27,7 +34,14 @@
       "loadError": "Horiima loowde produits",
       "shopClosed": "Duka ngal udditaama.",
       "loadFailed": "Horiima loowde kaake.",
-      "favoriteFailed": "Horiima hesɗitinde ko cuɓaa."
+      "favoriteFailed": "Horiima hesɗitinde ko cuɓaa.",
+      "allCategories": "Fof",
+      "emptyHint": "Eto fannu woɗɗo walla rutto ɓawto.",
+      "errorTitle": "Horiima loowde njeeygu",
+      "favorite": "☆ Cuɓaaɗo",
+      "favorited": "★ Cuɓaama",
+      "loading": "Nana loowa njeeygu…",
+      "search": "Seet njeeygu"
     },
     "details": {
       "addedTitle": "Ɓeydaama e brouillon",
@@ -37,7 +51,19 @@
       "quantity": "Keewal",
       "lineTotal": "Total ligne",
       "saving": "Nana mooftoo brouillon…",
-      "addToDraft": "Ɓeydu e panier brouillon"
+      "addToDraft": "Ɓeydu e panier brouillon",
+      "addToCartAction": "ɓeydu kaake e kertu maa",
+      "favorite": "Ɓeydu e cuɓaaɗe",
+      "favoriteAction": "danndu cuɓaaɗe",
+      "guestBanner": "Yeeɓ no njillu — naatu ngam ɗaɓɓude.",
+      "loading": "Nana loowa njeeygu…",
+      "notFoundHint": "Ndee njeeygu ina waawi heɓotaako kadi.",
+      "signInBody": "Sos konto walla naatu ngam {{action}}. A waawi jokkude yeeɓde njeeygu tawa alaa konto.",
+      "signInCta": "Naatu",
+      "signInTitle": "Naatgol wajibi",
+      "stock": "Stook",
+      "title": "Njeeygu",
+      "unfavorite": "Ittu cuɓaaɗo"
     },
     "cart": {
       "title": "Brouillon Marketplace",
@@ -70,7 +96,24 @@
       "checkout": "Hebbo yoɓgol",
       "comingSoonCta": "Yoɓgol Marketplace ina ara",
       "payLive": "Yoɓ odaare Marketplace",
-      "missingCheckoutUrl": "URL yoɓgol ustaaɗo"
+      "missingCheckoutUrl": "URL yoɓgol ustaaɗo",
+      "backToMarketplace": "Rutto to luumo",
+      "checkoutStillComingSoon": "Yoɓgol ina ara — yoɓgol goonga Marketplace ngalaa tawo.",
+      "comingSoonBody": "Yoɓgol Marketplace ina ara. Ko totaux shadow tan limtaa.",
+      "deliveryShadowNote": "Shadow tan — yoɓgol e neldugol dooɓoowo ngalaa tawo.",
+      "deliveryShadowNoteLive": "Limto tan — yoɓgol e sahaa hurminii; neldugol dooɓoowo ina fawii e jeeyoowo e diiwaan.",
+      "dropoffPlaceholder": "Jaɓorde suɓaaka — shadow ina waawi huutoraade distance goɗɗo.",
+      "emptyHint": "Yeeɓ duka e ɓeydu njeeygu ngam jokkude.",
+      "liveDisabled": "Yoɓgol luumo e sahaa hurminaaki. Huutoro yoɓgol shadow.",
+      "loading": "Nana loowa kertu ngartol…",
+      "orderPaidTitle": "Njamndi yoɓaama",
+      "orderStatus": "Staatus",
+      "paymentCancelledBody": "Yoɓgol Stripe haɗtaama walla timmaani. Kertu ngartol maa danndaama tawo.",
+      "paymentCancelledTitle": "Yoɓgol timmaani",
+      "paymentStatus": "Njoɓdi",
+      "paymentSuccessBody": "Njamndi luumo maa yoɓaama. Jeeyoowo hesɗitinta xaalis neldugol.",
+      "paymentSuccessTitle": "Yoɓgol tabitinaama",
+      "prepareTotals": "Hesɗitin totaux yoɓgol"
     },
     "errors": {
       "unavailable": "Marketplace alaa e nder maɓɓe maa."
@@ -83,7 +126,12 @@
     "gate": {
       "error": "Horiima udditde nokku jeeyoowo jooni.",
       "unavailable": "Services jeeyoowo ngalaa e nokku maa tawo.",
-      "loading": "Nana loowa nokku jeeyoowo…"
+      "loading": "Nana loowa nokku jeeyoowo…",
+      "checking": "Nana ƴeewa naatgol…",
+      "disabledTitle": "Luumo ko daaƴaa",
+      "errorTitle": "Jeeyoowo heɓotaako",
+      "regionRestricted": "DIIWAAN HAƊAAƊO",
+      "verifying": "Nana ƴeewa konto jeeyoowo maa"
     },
     "dashboard": {
       "title": "Dashboard jaɓɓo",
@@ -102,7 +150,15 @@
         "rejected": "Salaama",
         "suspended": "Dartinaama",
         "pending": "Nana ƴeewtee"
-      }
+      },
+      "deleteHint": "Momtu konto MMD maa e duka luumo haa duumii. Ɗum waawaa ruttude.",
+      "loading": "Nana loowa tablol",
+      "manageBank": "Yuɓɓu konto banke",
+      "openForOrders": "Udditii e njamndi",
+      "payoutBlocked": "Yuɓɓugol daaƴaa haa Stripe Connect timma. Njoɓdi heddoto e deftere e etoto e hoore mum caggal naatgol.",
+      "payoutsTitle": "Yuɓɓugol (Stripe Connect)",
+      "setupPayouts": "Teeltu yuɓɓugol",
+      "stripeError": "Horiima udditde Stripe Connect."
     },
     "nav": {
       "home": "Galle",
@@ -117,7 +173,13 @@
     },
     "actions": {
       "products": "Ardo produits",
-      "orders": "Yiy odaaje"
+      "orders": "Yiy odaaje",
+      "editHint": "Hesɗitin cariiɗe duka",
+      "editProfile": "Waylu duka",
+      "ordersHint": "Yiy commandes fof",
+      "productsHint": "Yuɓɓu katalog maa",
+      "wallet": "Kaalis",
+      "walletHint": "Yoɓe e yuɓɓugol"
     },
     "onboarding": {
       "title": "Wontu jeeyoowo",
@@ -127,14 +189,33 @@
       "submittedBody": "Profile seller ngartii e admin.",
       "scopeRequired": "Market foti resolvaade adii apply.",
       "loadFailed": "Horiima loowde profil njeeygu maa.",
-      "submitFailed": "Horiima neldude ɗaɓɓaandu maa."
+      "submitFailed": "Horiima neldude ɗaɓɓaandu maa.",
+      "createCardTitle": "Sos duka maa",
+      "currency": "Kaalis",
+      "editCardTitle": "Waylu duka maa",
+      "headerSubtitle": "Teelte jeeyoowo",
+      "loadingProfile": "Nana loowa profil",
+      "market": "Luumo maa",
+      "save": "Danndu profil",
+      "updatedBody": "Profil jeeyngal maa danndaama.",
+      "updatedTitle": "Profil hesɗitinaama"
     },
     "fields": {
       "businessName": "Innde jeeyngal",
       "country": "Code leydi",
       "city": "Wuro",
       "address": "Adresse",
-      "phone": "Téléphone"
+      "phone": "Téléphone",
+      "addressPh": "Hollo ñiiɓirde duka maa",
+      "businessNamePh": "Naatnu innde duka",
+      "cityPh": "Naatnu wuro",
+      "coverUrl": "URL natal cover",
+      "coverUrlPh": "https://…",
+      "documentUrls": "URL dokimaaɗe (gooto e kala gorol)",
+      "documentUrlsPh": "https://…",
+      "logoUrl": "URL logo",
+      "logoUrlPh": "https://…",
+      "phonePh": "Naatnu telefon"
     },
     "orders": {
       "title": "Odaaje Marketplace",
@@ -143,7 +224,25 @@
       "deliveryNotLive": "Livraison ngalaa tawo",
       "deliveryShadowStatus": "Livraison shadow",
       "estimatedDelivery": "Livraison est.",
-      "updateFailed": "Horiima hesɗitinde jeyi ngan."
+      "updateFailed": "Horiima hesɗitinde jeyi ngan.",
+      "accept": "Jaɓu",
+      "emptyBody": "Njamndi luumo ina feeña ɗoo",
+      "emptyTitle": "Alaa njamndi tawo",
+      "filterAccepted": "Jaɓaama",
+      "filterAll": "Fof",
+      "filterEmpty": "Alaa njamndi e ndee seɗɗoore.",
+      "filterPending": "Nana e ɗoo",
+      "filterRefused": "Salaama",
+      "loading": "Nana aawtoo njamndi maa",
+      "outForDelivery": "E neldugol",
+      "preparing": "Nana heɓna",
+      "ready": "Hepii",
+      "refundedBody": "Njamndi salaama e kiliyee ruttaa e Stripe.",
+      "refundedTitle": "Ruttugol timmii",
+      "refundRetryBody": "Njamndi salaama. Ruttugol Stripe timmaani e hoore mum e etete kadi.",
+      "refundRetryTitle": "Ruttugol nana etee",
+      "refundStatus": "Remboursement",
+      "refuse": "Salaa"
     },
     "products": {
       "title": "Produits",
@@ -157,7 +256,21 @@
       "active": "Ena golle",
       "loadFailed": "Loowgol firlitii",
       "saveFailed": "Mooftude firlitii",
-      "updateFailed": "Hesɗitingol firlitii"
+      "updateFailed": "Hesɗitingol firlitii",
+      "addFirst": "+ Ɓeydu njeeygu gadano",
+      "deleteBody": "Momtu ndee njeeygu haa duumii? Ɗum waawaa ruttude.",
+      "deleteFailed": "Horiima momtude njeeygu.",
+      "deleteTitle": "Momtu njeeygu",
+      "emptyBody": "Fuɗɗu katalog maa e ɓeydude njeeygu gadano",
+      "emptyTitle": "Alaa njeeygu tawo",
+      "inStock": "{{n}} e stook",
+      "invalidPrice": "Naatnu njoɓdi moƴƴo ɓurɗo zero.",
+      "invalidPromo": "Njoɓdi promo moƴƴaani",
+      "invalidStock": "Keewal stook moƴƴaani",
+      "loading": "Nana aawtoo njeeygu maa",
+      "outOfStock": "Stook gasii",
+      "search": "Seet njeeygu…",
+      "inactive": "Hurminaaki"
     },
     "wallet": {
       "stripeFailed": "Horiima udditde Stripe.",
@@ -166,7 +279,29 @@
       "recentTransactions": "Golle cakkitiiɗe",
       "cashoutUnavailable": "Ƴettugol hebɓaaki",
       "cashoutRequested": "Ƴettugol ñaagaama",
-      "cashoutRules": "Les {{min}} • ƴettugol 1 / ñalnde"
+      "cashoutRules": "Les {{min}} • ƴettugol 1 / ñalnde",
+      "activity": "Golle cakkitiiɗe",
+      "available": "Nattugol woodɗo",
+      "awaiting": "Nana ñaaɗi",
+      "buckets": "Nana sabbii {{p}} · Yoɓaama {{paid}} · Ruttugol {{r}}",
+      "cashoutAmount": "Njoɓdi: {{amount}}",
+      "cashoutConfirmBody": "Ƴettu nattugol maa fow woodɗo: {{amount}}.\\n\\nFamɗude {{min}} • ƴettugol 1 / ñalnde.",
+      "cashoutConfirmTitle": "Ƴettugol xaalis jaawɗum",
+      "connect": "Stripe Connect",
+      "emptyBody": "Yuɓɓugol ina feeña ɗoo so njeeygu maa yuɓɓii",
+      "emptyTitle": "Alaa yuɓɓugol tawo",
+      "errorTitle": "Juume kaalis",
+      "fees": "Komisiyoŋ",
+      "loadFailed": "Horiima loowde kaalis jeeyoowo",
+      "loading": "Nana aawtoo kaalis maa",
+      "manageConnect": "Yuɓɓu yuɓɓugol",
+      "paidOut": "Yoɓaama",
+      "refunds": "Ruttugol",
+      "title": "Kaalis",
+      "viewOrders": "Yiy odaaje"
+    },
+    "signOut": {
+      "title": "Seŋtude"
     }
   },
   "taxi": {
@@ -247,7 +382,20 @@
         "phoneCharger": "Loowirde telefon",
         "quietVehicle": "Oto deeƴɗo"
       },
-      "bookSubtitle": "Reserver pijirla — seerndaa e neldol pakke."
+      "bookSubtitle": "Reserver pijirla — seerndaa e neldol pakke.",
+      "businessWallet": "Kaalis",
+      "gpsErrorBody": "Horiima janngude nokkuure maa jooni.",
+      "gpsErrorTitle": "GPS",
+      "gpsPermissionBody": "Yamir nokkuure ngam huutoraade nokku maa jooni no fuɗɗorde.",
+      "gpsPermissionTitle": "Duŋagol nokkuure",
+      "oneWay": "Laawol gootol",
+      "returnImmediate": "Rutto e sahaa",
+      "returnScheduled": "Rutto sahaa suɓaaɗo",
+      "returnScheduledAt": "Sahaa rutto (ISO, ex. 2026-07-16T18:00:00Z)",
+      "returnWait": "Sabbo e jaɓorde",
+      "roundTrip": "Yahdu-rutto",
+      "tripMode": "Fannu yahdu",
+      "waitMinutes": "Hoɓɓe sabbo (5–180)"
     },
     "quote": {
       "title": "Hiisa",
@@ -290,14 +438,24 @@
       "paymentNotCompleted": "Yoɓgol timmaani. Alaa yahdu sosaa. A waawi ɗaɓɓude njoɓdi hesere so a hebiima.",
       "rideNotReady": "Yoɓgol tabitinaama, kono yahdu hebaaki tawo. Hesɗitin doggol yahduuji maa.",
       "quoteUnavailable": "Njoɓdi heɓaaka — ƴeewto ñiiɓirɗe",
-      "loyaltyPoints": "{{title}} ({{count}} pts)",
+      "loyaltyPoints": "{{title}} ({{count}} toɓɓe)",
       "createFailed": "Horiima sosde yahdu",
       "checkoutMissing": "Yoɓgol heɓaaka"
     },
     "history": {
       "title": "Historique taxi",
       "empty": "Alaa yahduuji taxi tawo.",
-      "tapToTrack": "Ñoƴƴu ngam jokkude"
+      "tapToTrack": "Ñoƴƴu ngam jokkude",
+      "bookFirst": "Ɗaɓɓu yahdu maa adannde",
+      "emptyTitle": "Alaa yahdu tawo",
+      "rate": "Ñiɓnu",
+      "statusCancelled": "Haɗtaama",
+      "statusCompleted": "Timmii",
+      "statusInProgress": "Nana e ɗoo",
+      "tapToPay": "Tappu ngam timminde yoɓgol",
+      "totalRides": "Yahduuji fow: {{count}}",
+      "totalSpent": "Yoɓaa fow: {{amount}}",
+      "trackCta": "Rewindo →"
     },
     "favorites": {
       "title": "Dooɓooɓe cuɓaaɓe",
@@ -315,7 +473,10 @@
       "history": "Historique",
       "tier": "Daraja: {{tier}} • Ɗooɗe: {{lifetime}}",
       "noActivity": "Alaa golle fidélité tawo.",
-      "loadFailed": "Loowgol firlitii"
+      "loadFailed": "Loowgol firlitii",
+      "basedOnRides": "E dow {{count}} yahduuji",
+      "driverRating": "Ñiɓal dooɓoowo",
+      "ratingEmpty": "Timmin yahduuji taksi ngam yiyde ñiɓal hakkunde dooɓooɓe maa."
     },
     "loyaltyRewards": {
       "title": "Njoɓdi fidélité",
@@ -328,7 +489,8 @@
       "book": "Ɗaɓɓu yahdu teeltaandu",
       "cancel": "Haɗtu réservation",
       "loadFailed": "Loowgol firlitii",
-      "cancelFailed": "Haaltinde firlitii"
+      "cancelFailed": "Haaltinde firlitii",
+      "upcoming": "Yahduuji ɗoŋiiɗe"
     },
     "scheduledBook": {
       "title": "Teeltu yahdu",
@@ -342,7 +504,13 @@
       "stop1": "Dartorde 1 (suɓaande)",
       "stop2": "Dartorde 2 (suɓaande)",
       "finalDestination": "Jaɓorde battinde",
-      "pricingNote": "Njoɓdi limtee e distance e dumunna laawol fof."
+      "pricingNote": "Njoɓdi limtee e distance e dumunna laawol fof.",
+      "addStop": "Ɓeydu dartinal",
+      "createBlocked": "Sosde yahdu ko haɗaaɗo haa yoɓgol.",
+      "moveDown": "Les",
+      "moveUp": "Dow",
+      "remove": "Momtu",
+      "stopN": "Dartinirde {{n}} (wonaa waɗɗi)"
     },
     "chat": {
       "title": "Chat taxi",
@@ -350,7 +518,14 @@
       "clientPlaceholder": "Ɓataama e jeyaaɓo…",
       "send": "Juumre",
       "sendFailed": "Neldugol firlitii",
-      "imageFailed": "Foto firlitii"
+      "imageFailed": "Foto firlitii",
+      "connectedPassenger": "Seŋaande e yahooɓe",
+      "driverSubtitle": "Yeewtere yahdu",
+      "driverTitle": "Yeewtere taksi",
+      "emptyDriverBody": "Neldu mesasu e yahooɓe maa",
+      "emptyTitle": "Alaa peeje tawo",
+      "loading": "Nana loowa yeewtere…",
+      "passenger": "Yahooɓe"
     },
     "ride": {
       "paymentPending": "Yoɓgol nana e ɗoo",
@@ -406,7 +581,23 @@
         "pickup_problem": "Caɗeele ƴettugol",
         "emergency": "Kattanɗe",
         "other": "Woɗɗude"
-      }
+      },
+      "call": "Noddu",
+      "callFailed": "Waawaa fuɗɗude noddaango suuɗungol.",
+      "calling": "Nana nodda…",
+      "callTitle": "Noddu dooɓoowo",
+      "offline": "Ceŋol alaa — rewindo ina waawi wonde ɓooyɗo",
+      "openingCheckout": "Nana uddita yoɓgol…",
+      "paymentRequiredBeforeDispatch": "Alaa dooɓoowo rokkaa haa yoɓgol moƴƴi. Timmin yoɓgol ngam fuɗɗude seetgol dooɓoowo.",
+      "payNow": "Yoɓ jooni",
+      "pickupCodeHint": "Hollu ndee kode e dooɓoowo maa hade naatde e mootor.",
+      "pickupCodePending": "Kode naatgol maa ina feeña ɗoo so dooɓoowo rokkaa.",
+      "pickupCodeTitle": "Kode ƴeewndo fuɗɗorde maa",
+      "share": "Lollin yahdu",
+      "shareMessage": "MMD Taxi — {{name}} · {{vehicle}} · Limre {{plate}} · ETA {{eta}}\\nFuɗɗorde: {{pickup}}\\nJaɓorde: {{dropoff}}",
+      "vehicleFallback": "Mootor rokkaama",
+      "vehicleYear": "Hitaande {{year}}",
+      "waitingDriverGps": "Nana sabbii GPS dooɓoowo…"
     },
     "tracking": {
       "safety": {
@@ -570,7 +761,14 @@
         "refund": "Artirde jokko",
         "adjustment": "Teelte",
         "total": "Fof"
-      }
+      },
+      "loadError": "Horiima loowde reçu",
+      "rateDriver": "Ñiɓnu dooɓoowo maa",
+      "ratingErrorBody": "Horiima danndude ñiɓal.",
+      "ratingErrorTitle": "Jaɓde",
+      "ratingSavedBody": "Ñiɓal maa danndaama.",
+      "ratingSavedTitle": "A jaaraama",
+      "yourRating": "Ñiɓal maa"
     },
     "driver": {
       "activeRide": {
@@ -594,7 +792,10 @@
         "completeStop": "Timmin dartorde",
         "verifyHint": "Naamno kiliyee kod naatgol mum 4 limooje. Tappirde udditoo e hoore mum — nataal wonaa waɗɗi.",
         "verifying": "Nana ƴeewtoo…",
-        "stopLine": "Dartorde {{order}}: {{address}} ({{status}})"
+        "stopLine": "Dartorde {{order}}: {{address}} ({{status}})",
+        "client": "Kiliyee",
+        "clientFallback": "Kiliyee",
+        "clientPhoto": "Foto kiliyee"
       }
     },
     "tip": {
@@ -646,7 +847,8 @@
       },
       "language": "Demdol",
       "errors": {
-        "lang_change_failed": "Horiima waylude ɗemngal jooni."
+        "lang_change_failed": "Horiima waylude ɗemngal jooni.",
+        "loadFailed": "Horiima loowde golle maa cakkitiiɗe."
       },
       "banner": {
         "marketplace": {
@@ -662,7 +864,70 @@
       },
       "tabs": {
         "home": "Jaɓɓorgo",
-        "orders": "Njamndi"
+        "orders": "Njamndi",
+        "aiShort": "A S K",
+        "inbox": "Ɓataaje",
+        "settings": "Teelte"
+      },
+      "activity": {
+        "empty": "Alaa yahduuji cakkitiiɗi tawo.",
+        "title": "Golle cakkitiiɗe",
+        "unavailable": "Golle cakkitiiɗe heɓotaako seeɗa."
+      },
+      "credit": {
+        "available": "Woodi",
+        "title": "Kredit MMD"
+      },
+      "location": {
+        "unknown": "Nokkuure jooni"
+      },
+      "rewards": {
+        "member": "Terɗe",
+        "title": "Njeenaaje MMD",
+        "view": "Ƴeew njeenaaje"
+      },
+      "scope": {
+        "source": {
+          "fallback": "Goongɗinaaɗo",
+          "gps": "GPS",
+          "manual": "Suɓo e junngo",
+          "order": "Ñiiɓirde njamndi",
+          "profile": "Profil",
+          "savedAddress": "Ñiiɓirde danndaande",
+          "unknown": "Anndaaka"
+        }
+      },
+      "search": {
+        "placeholder": "Hol to njiɗ-ɗaa yahde walla hol ko njiɗ-ɗaa?",
+        "subtitle": "Hol to njiɗ-ɗaa yahde walla hol ko njiɗ-ɗaa?",
+        "title": "Seet MMD"
+      },
+      "services": {
+        "delivery": "Livraison",
+        "deliverySub": "Neldu kala huunde",
+        "food": "Ñamri",
+        "foodSub": "Ɗaɓɓu jooni",
+        "marketplace": "Luumo",
+        "marketplaceSub": "Sood e danndu",
+        "taxi": "Taksi",
+        "taxiSub": "Yahu kala nokku",
+        "title": "Sarwiisji"
+      },
+      "v4": {
+        "comingSoon": "Ina ara e njaaɗi",
+        "language": {
+          "subtitle": "Suɓo ɗemngal maa ngam MMD."
+        },
+        "service": {
+          "marketplace": {
+            "soon": "Yiytu dukaaji nokku"
+          }
+        }
+      },
+      "viewAll": "Yiy fof",
+      "wallet": {
+        "subtitle": "Kerdit MMD e tarikh yoɓe",
+        "title": "Kaalis"
       }
     },
     "profile": {
@@ -701,7 +966,44 @@
         "address": "ñiiɓirde",
         "city": "wuro",
         "address_verified": "ñiiɓirde ƴeewndaande"
-      }
+      },
+      "addPhoto": "Ɓeydu foto",
+      "addressTitle": "Adresse",
+      "cityError": "Naatnu wuro moƴƴo.",
+      "cityTitle": "Wuro",
+      "fullNameError": "Naatnu innde maa timmunde.",
+      "fullNameTitle": "Innde",
+      "phoneTitle": "Téléphone",
+      "photo": "Foto",
+      "placeholders": {
+        "city": "Yeru: Brooklyn",
+        "country": "US",
+        "fullName": "Yeru: Mamadou Diallo",
+        "phone": "Yeru: 929xxxxxxx",
+        "postalCode": "11207",
+        "state": "NY",
+        "address": "Seet ñiiɓirde…"
+      },
+      "saveAndContinue": "Danndu e jokku",
+      "signOut": {
+        "body": "Seŋtude e ngal kaɓirgal? Konto e keɓe maa ina njokki.",
+        "button": "Yaltude",
+        "confirm": "Yaltude",
+        "error": "Waawaa seŋtude jooni.",
+        "title": "Yaltude"
+      },
+      "permissionPhotosBody": "Yamir naatgol nataaluuji ngam suɓaade natal.",
+      "mainAddressLabel": "Ñiiɓirde mawnde",
+      "addressSaveUpdateError": "Ñiiɓirde danndaaka (update):",
+      "addressSaveInsertError": "Ñiiɓirde danndaaka (insert):",
+      "phoneError": "Naatnu limoore jaɓaande.",
+      "addressError": "Naatnu ñiiɓirde jaɓaande.",
+      "addressMapboxError": "Suɓo ñiiɓirde Mapbox e doggol ngam fotndude ɗum.",
+      "saveProfileError": "Horiima danndude (client_profiles):",
+      "saved": "Profil danndaama.",
+      "saveError": "Horiima danndude.",
+      "addressVerifiedBadge": "Ñiiɓirde ƴeewtaama",
+      "hint": "Ciimtol: Diiwaan = \"NY\", Leydi = \"US\"."
     },
     "deliveryRequest": {
       "total": "Total",
@@ -750,7 +1052,43 @@
       "callFailed": "Waawaa fuɗɗude noddaango suuɗungol.",
       "chatDriver": "Chat",
       "loadingTitle": "Loowgol delivery…",
-      "summaryTitle": "Ciifol delivery"
+      "summaryTitle": "Ciifol delivery",
+      "alreadyRated": "Ƴeewndo neldaama",
+      "apiUrlMissing": "EXPO_PUBLIC_API_URL ŋatnii. Teeltu ɗum e URL API web maa.",
+      "cancelAssignedHint": "Haɗtude caggal rokkaande ina waawi wonaa rutteteeɗo.",
+      "cancelAssignedMessage": "Dooɓoowo walla yuɓɓo ina waawi rokkaa. Haɗtude jooni ina waawi wonaa rutteteeɗo.",
+      "cancelNotAllowed": "Ndee neldol waawaa haɗteede e ndee yaynirde kadi.",
+      "cancelPendingHint": "A waawi haɗtude so ndee yahdu nana sabbii.",
+      "cancelPendingMessage": "Sabu yahdu nana sabbii, ndee haɗtugol foti ƴeewteede ngam ruttugol kaalis fow.",
+      "createdAt": "Sosaa",
+      "deliveredAt": "Neldol tabitinaama",
+      "distance": "Beetol",
+      "driverLiveLocation": "Nokkuure dooɓoowo hesɗitinaama {{time}}",
+      "driverMissingGps": "Dooɓoowo rokkaa kono GPS heɓotaako jooni.",
+      "dropoffAddress": "Ñiiɓirde neldol",
+      "dropoffCodeHintOtp": "Lollin ndee kode e keɓoowo. Dooɓoowo ina naatna ɗum ngam tabitinde neldol — alaa foto wajibi.",
+      "dropoffCodePending": "Kode jaɓorde ina feeña ɗoo so njamndi neldol jokkondirɗo heɓii.",
+      "dropoffCodeTitle": "Kode ƴeewndo neldol maa",
+      "dropoffPhoto": "Foto seedee jaɓorde",
+      "etaUnavailable": "ETA e sahaa heɓotaako",
+      "lastUpdate": "Hesɗitingol cakkitiiɗo:",
+      "offline": "Ala e kawral — kartal ina waawi ɓooyde",
+      "paidAt": "Yoɓaama",
+      "pickedUpAt": "Fuɗɗoraa",
+      "pickupAddress": "Ñiiɓirde ƴettugol",
+      "pickupCodeHintOtp": "Hollu ndee kode e dooɓoowo e fuɗɗorde. Alaa foto wajibi so kode huutoraa.",
+      "pickupCodePending": "Kode fuɗɗorde ina feeña ɗoo so njamndi neldol jokkondirɗo heɓii.",
+      "pickupCodeTitle": "Kode ƴeewndo fuɗɗorde maa",
+      "pickupPhoto": "Foto seedee fuɗɗorde",
+      "rateDriver": "Ñiɓnu dooɓoowo maa",
+      "ratingComment": "Haala (wonaa waɗɗi)",
+      "ratingFailed": "Horiima danndude ñiɓal.",
+      "ratingSaved": "Ñiɓal dooɓoowo danndaama.",
+      "refundFull": "Haɗtugol timmii. Xaalis ruttugol: ruttugol fow wajibi.",
+      "refundNone": "Haɗtugol timmii. Xaalis ruttugol: alaa ruttugol.",
+      "saved": "Mooftaama",
+      "sendRating": "Neldu ñiɓal",
+      "waitingDriverGps": "Nana sabbii GPS dooɓoowo…"
     },
     "orderHistory": {
       "title": "Tariku odaaje",
@@ -777,7 +1115,8 @@
         "completed": "Timmiima",
         "cancelled": "Haɗtaama",
         "inProgress": "In golle"
-      }
+      },
+      "trackTitle": "Rewindo njamndi"
     },
     "auth": {
       "accountCreatedLoginNow": "Konto sosaama! Naatu jooni.",
@@ -837,7 +1176,13 @@
       "cannotSendEmail": "Horiima neldude email.",
       "addressOptional": "Adresse (suɓaande)",
       "addressOptionalHint": "A waawi ɓeydude adresse livraison caggal, so aɗa ɗaɓɓa ñaamdu, colis walla taxi.",
-      "smsConsent": "Mi jaɓii keɓugol SMS automatiiji kabaruuji e golle ummoraade e MMD Delivery baɗte konte am, ƴeewndo, njamndi, neldol, pakke, pijirlooji taksi e ballal kiliyee. Keewal mesasuuji ina wayloo. Njoɓdi mesasuuji e keɓe ina waawi jogaade. Jaɓgol wonaa sarɗi soodgol. Winndu STOP ngam haɗtude, HELP ngam ballal. Wonaa waɗɗi."
+      "smsConsent": "Mi jaɓii keɓugol SMS automatiiji kabaruuji e golle ummoraade e MMD Delivery baɗte konte am, ƴeewndo, njamndi, neldol, pakke, pijirlooji taksi e ballal kiliyee. Keewal mesasuuji ina wayloo. Njoɓdi mesasuuji e keɓe ina waawi jogaade. Jaɓgol wonaa sarɗi soodgol. Winndu STOP ngam haɗtude, HELP ngam ballal. Wonaa waɗɗi.",
+      "emailNotVerified": "Tabit iimeel maa hade maa naatde.",
+      "referral": {
+        "autoFillHint": "So a udditii jokkol noddaandu MMD, kode ina feeña ɗoo e hoore mum.",
+        "placeholder": "Kode noddaandu MMD",
+        "title": "Kode noddaandu"
+      }
     },
     "restaurantMenu": {
       "pickupAddressLabel": "Ñiiɓirde ƴettugol (restoraa / fuɗɗoode)",
@@ -936,7 +1281,10 @@
         "fillAddressesFirst": "Hebbin ñiiɓirɗe ƴettugol e neldol so tawii.",
         "incompleteAddressCreateBody": "Naatnu ñiiɓirde timmunde hade jokkude.",
         "missingOrderBody": "Sos njamndi so tawii, ndeen a waawi yoɓde.",
-        "paymentSuccessBody": "A jaaraama. Njoɓdi maa jaɓaama. Restoraa waawi jaɓde njamndi jooni."
+        "paymentSuccessBody": "A jaaraama. Njoɓdi maa jaɓaama. Restoraa waawi jaɓde njamndi jooni.",
+        "distanceTooFarWithMiles": "Woɗɗitaare ɓuri juutude ({{miles}} mi).\\n\\nMoƴƴin ñiiɓirde (ZIP / wuro / diiwaan).",
+        "paymentSuccessBodyWarn": "A jaaraama. Stripe tabitinii yoɓgol. Njamndi maa waɗete yoɓaango e njaaɗi e Stripe, walla eto ɓawto e hoɓɓe.",
+        "verifyAddressBody": "Woɗɗitaare ɓurnde juutude: {{miles}} mi.\\n\\nƳeew ZIP, wuro e diiwaan.\\nEx: \\"
       },
       "errors": {
         "paymentFailed": "Njoɓdi hebɓaaki oo sahaa.",
@@ -954,7 +1302,11 @@
         "sessionExpired": "Session timmii. Naat kadi ndeen fuɗɗit.",
         "estimateFailed": "Horiima hiisde ƴeewndo neldol oo sahaa.",
         "distanceTooFarWithMiles": "Woɗɗude ɓurnde ({{miles}} mi). Ƴeewto ñiiɓirde.",
-        "missingSession": "Session timmii. Naat kadi ndeen fuɗɗit."
+        "missingSession": "Session timmii. Naat kadi ndeen fuɗɗit.",
+        "invalidDistanceTime": "Jaabawol woɗɗude/waktu moƴƴaani ummoraade e Mapbox.",
+        "invalidGps": "Coords GPS moƴƴaani. Hiit ƴeewndo.",
+        "invalidJson": "Jaabawol moƴƴaani ummoraade e sarwiis woɗɗude.",
+        "legacyDisabled": "Sosde njamndi e hoore mum ko daaƴaa. Huutoro menu restoraa ngam ɗaɓɓude ñaamri e kisal."
       },
       "cards": {
         "autoEstimate": "Ƴeewndo otomatik"
@@ -983,10 +1335,11 @@
         "pickupLabel": "Ñiiɓirde ƴettugol",
         "dropoffLabel": "Ñiiɓirde neldol",
         "pickupLockedHint": "Ñiiɓirde restoraa hebbinaama e hoore mum.",
-        "dropoffPlaceholder": "Yeru: ñiiɓirde kiliyee"
+        "dropoffPlaceholder": "Yeru: ñiiɓirde kiliyee",
+        "pickupPlaceholder": "Yeru: 686 Vermont St Brooklyn NY 11207"
       },
       "checkout": {
-        "title": "Checkout",
+        "title": "Yoɓgol",
         "stepEstimate": "Ƴeewndo otomatik",
         "stepCreate": "Sos njamndi",
         "stepPay": "Yoɓ e Stripe"
@@ -1001,7 +1354,215 @@
       "hints": {
         "autoEstimate": "Ƴeewndo fuɗɗoto e hoore mum caggal njaaweere seeɗa so ñiiɓirde yi’ete timmunde.",
         "checkoutSteps": "1) Ƴeewndo → 2) Sos njamndi → 3) Yoɓ e Stripe."
+      },
+      "footer": {
+        "steps": "1) Ƴeewndo → 2) Sos njamndi → 3) Yoɓ e Stripe."
       }
+    },
+    "chat": {
+      "empty": {
+        "body": "Fuɗɗu yeewtere e dooɓoowo maa so njamndi maa hurminii.",
+        "title": "Alaa peeje tawo"
+      },
+      "errors": {
+        "missingOrder": "Order heɓaaka."
+      },
+      "titlePrefix": "Kiliyee"
+    },
+    "inbox": {
+      "alerts": {
+        "loginAsClient": "Naatu no kiliyee."
+      },
+      "badges": {
+        "delivered": "Heɓnaama",
+        "inProgress": "Nana e ɗoo"
+      },
+      "empty": {
+        "hint": "Yeewtere maa e dooɓooɓe e ballal ina feeña ɗoo.",
+        "noConversations": "Alaa yeewtere tawo",
+        "notLoggedIn": "Naatu no kiliyee ngam yiyde yeewtere maa."
+      },
+      "lastMessage": {
+        "attachment": "Fayl jokkaaɗo",
+        "none": "Alaa message"
+      },
+      "loading": {
+        "prepare": "Nana heɓna boytere maa…"
+      },
+      "orderFallback": "Odaare",
+      "search": {
+        "placeholder": "Yiil (#id, restaurant, status)…"
+      },
+      "sections": {
+        "delivered7d": "Heɓnaama (7 ñalɗi)",
+        "inProgress": "Nana e ɗoo",
+        "inProgressEmpty": "Alaa njamndi nana yaha.",
+        "deliveredEmpty": "Alaa neldugol e balɗe 7 cakkitiiɗe."
+      },
+      "subtitle": "Nana e ɗoo + heɓnaama (7 ñalɗi)",
+      "title": "Ɓataaje",
+      "errors": {
+        "loadFailed": "Horiima loowde sandu ɓatakuuji."
+      }
+    },
+    "notifications": {
+      "archive": "Mooftu",
+      "archiveError": "Horiima mooftude.",
+      "emptyBody": "Tintine push e hesɗitingol konto ina feeña ɗoo.",
+      "emptyTitle": "Alaa jangirɗe",
+      "errorTitle": "Horiima loowde",
+      "fallbackTitle": "Jangol",
+      "loadError": "Horiima loowde jangirɗe.",
+      "readError": "Horiima waɗde tarɗaa.",
+      "title": "Jangirɗe",
+      "unreadCount": "{{count}} waawaa/ndiytaa",
+      "upToDate": "Aɗa e sahaa"
+    },
+    "orderDetails": {
+      "alreadyPaid": "Yoɓaama kisa ✅",
+      "alreadyPaidHint": "Ndee njamndi yoɓaama. A waawi sabbaade ƴellitaare restoraa/dooɓoowo.",
+      "alreadyRated": "Ƴeewndo neldaama",
+      "alreadyRatedBtn": "Neldaama kisa ✅",
+      "callDriver": "Noddu",
+      "callFinalOrder": "Noddaandu daaƴaa e ndee njamndi.",
+      "callRestaurant": "Noddu",
+      "callSupport": "Noddu",
+      "cancelAcceptedHint": "Restoraa jaɓii ndee njamndi. Haɗtugol ina waawi wonaa rutteteeɗo.",
+      "cancelError": "Horiima haɗtude ndee njamndi.",
+      "cancelFullRefundHint": "Sabu restoraa jaɓaaki tawo, ndee haɗtugol foti ƴeewteede ngam ruttugol kaalis fow.",
+      "cancelNoRefundHint": "Restoraa jaɓii ndee njamndi kisa. Haɗtude jooni ina waawi wonaa rutteteeɗo.",
+      "cancelOrder": "Haɗ yamiroore",
+      "cancelPendingHint": "A waawi haɗtude so njamndi nana sabbii jaɓgol restoraa.",
+      "cancelRefundFull": "Haɗtugol timmii. Xaalis ruttugol: ruttugol fow wajibi.",
+      "cancelRefundNone": "Haɗtugol timmii. Xaalis ruttugol: alaa ruttugol.",
+      "cancelSuccess": "Njamndi haɗtaama",
+      "cancelTitle": "Haɗ yamiroore",
+      "cancelUnavailable": "Ndee njamndi waawaa haɗteede e ndee yaynirde kadi.",
+      "cards": {
+        "delivery": "Livraison",
+        "route": "Laawol"
+      },
+      "chatClosed": "Peeje daaƴaa e ndee njamndi.",
+      "commentOptional": "Haala (wonaa waɗɗi)",
+      "commentPlaceholder": "Ex: Jokkondiral moƴƴo, neldol yaawngol…",
+      "communicationHint": "Nodda walla mesasu restoraa, dooɓoowo walla ballal MMD tawa a holliraaki limre maa goonga.",
+      "communicationTitle": "Jokkondiral",
+      "confirmCancel": "Haɗ yamiroore",
+      "deliveryFee": "Njoɓdi neldol:",
+      "distance": "Woɗɗitaare:",
+      "driver": "Dooɓoowo:",
+      "driverAssigned": "Rokkaa ✅",
+      "driverContact": "Dooɓoowo",
+      "driverNotAssignedCall": "Alaa dooɓoowo rokkaa e ndee njamndi tawo.",
+      "driverNotAssignedMessage": "Alaa dooɓoowo rokkaa e ndee njamndi tawo.",
+      "driverPending": "Rokkaaka tawo",
+      "dropoff": "Jaɓorde",
+      "dropoffCodeHintOtp": "Hollu ndee kode e dooɓoowo maa e jaɓorde. Alaa foto wajibi so kode huutoraa.",
+      "dropoffCodeTitle": "Kode ƴeewndo neldol maa",
+      "errors": {
+        "loadOrder": "Horiima loowde odaare."
+      },
+      "etaUnavailable": "ETA e sahaa heɓotaako",
+      "forReview": "ngam ƴeewndo maa",
+      "live": "Rewindo e sahaa:",
+      "liveOn": "Ena golle ✅",
+      "liveWaiting": "Nana sabbii…",
+      "loadingTitle": "Odaare",
+      "map": {
+        "canceled": "Ndee njamndi haɗtaama",
+        "completed": "Neldol timmii",
+        "live": "Ƴeewndo yahdu e sahaa"
+      },
+      "message": "Mesasu",
+      "mustBeLoggedInToPay": "A foti naatde ngam yoɓde.",
+      "notOwnerError": "A naataaki no jeyɗo njamndi.",
+      "openRewards": "Uddit Njeenaaje MMD ngam yiyde poŋte, kerdit e darnde maa goonga.",
+      "paid": "Yoɓaama ✅",
+      "pay": "Yoɓ",
+      "payment": "Xaalis:",
+      "paymentClosed": "Yoɓgol udditaama e ndee njamndi.",
+      "paymentConfirmed": "Yoɓgol tabitinaama",
+      "paymentDelayHint": "Stripe keɓii yoɓgol ✅\\nTabitinal app nana seŋtoo.\\nSabbo hoɓɓe — ndee yaynirde hesɗitoto e hoore mum.",
+      "paymentError": "Juume yoɓgol.",
+      "paymentSheetPendingConfirm": "Yoɓgol keɓaama. Njamndi maa waɗete yoɓaango e njaaɗi e Stripe. Fiɓɓu ngam hesɗitinde e hoɓɓe — hoto yoɓ kadi.",
+      "paymentStillSyncing": "App nana tabitina yoɓgol. Alaa saha yoɓde kadi.",
+      "pickup": "Fuɗɗorde",
+      "points": "poŋte",
+      "rateDriverTitle": "Ñiɓnu dooɓoowo maa",
+      "ratingHint": "Ƴeewndo maa ɓeyda moƴƴere. A keɓa poŋte hoolaare e jaabawol ⭐",
+      "restaurantContact": "Restoraa",
+      "restaurantVisible": "Profil restoraa yiyete",
+      "reviewAndTipPaid": "Ƴeewndo danndaama. Yoɓgol njeɗu tabitinaama.",
+      "reviewSaved": "Ƴeewndo danndaama. Njeɗu ɓeydaama so cuɓaama.",
+      "reviewSaveError": "Horiima danndude ƴeewndo maa.",
+      "reviewTitle": "Ƴeewndo",
+      "rewardLine": "A keɓa",
+      "sendReview": "Neldu ƴeewndo ⭐ + Njeɗu",
+      "status": "Xaalis:",
+      "stripeHint": "Yoɓgol kisal e Stripe (Web Checkout).",
+      "successBody": "Poŋte hoolaare ndee njamndi ɓeydaama e nattugol Njeenaaje MMD maa.",
+      "successTitle": "Neldol moƴƴi",
+      "supportContact": "Ballal MMD",
+      "tipAlreadyGiven": "Njeɗu rokkaa kisa",
+      "tipMaxHint": "Toowgol jaɓɓaaɗo:",
+      "tipMaxHint2": "(Min mbaawi moƴƴinde caggal.)",
+      "tipOptional": "Njeɗu (wonaa waɗɗi)",
+      "tipOtherAmount": "Njoɓdi woɗnde",
+      "tipPaymentRequired": "Ƴeewndo danndaama, kono yoɓgol njeɗu wajibi. Eto yoɓgol njeɗu kadi.",
+      "tipPlaceholder": "ex: 25",
+      "unpaid": "Yoɓaaka",
+      "verifyingPayment": "Nana ƴeewa yoɓgol…",
+      "waitingDriverLocation": "Nana sabbii nokkuure dooɓoowo…",
+      "total": "Kalaa"
+    },
+    "security": {
+      "accountLabel": "Konto",
+      "confirmLabel": "Tabitin mot de passe",
+      "errorTitle": "Juumre",
+      "genericError": "Horiima hesɗitinde finnde jooni. Eto ɓawto.",
+      "hide": "Suuɗ",
+      "min8": "Finnde foti waɗde hooreeje 8 famɗi.",
+      "mismatch": "Mot de passe ɗiɗi fotaani.",
+      "newPasswordLabel": "Mot de passe kesɗo",
+      "passwordTitle": "Mot de passe",
+      "save": "Hesɗitin mot de passe",
+      "sessionBody": "A naataaki.",
+      "sessionTitle": "Sahaa naatgol",
+      "show": "Hollu",
+      "successBody": "Finnde maa waylaama.",
+      "successTitle": "Finnde hesɗitinaama",
+      "tip": "Huutoro hooreeje 8 famɗi. A heddoto naatii e ngal kaɓirgal.",
+      "title": "Kisal"
+    },
+    "settings": {
+      "about": "Baɗte",
+      "account": "Konto",
+      "appVersion": "Yamre app",
+      "changePassword": "Waylu finnde",
+      "danger": "Kaaɗal",
+      "language": "Ɗemngal",
+      "notifications": "Jangirɗe",
+      "platform": "Palatfoorm",
+      "privacy": "Sutura",
+      "profile": "Profil",
+      "security": "Kisal",
+      "social": "Rewindo MMD Delivery",
+      "title": "Teelte"
+    },
+    "wallet": {
+      "available": "Kerdit woodɗo",
+      "defaultNote": "Kerdit MMD ina huutoree no ɗustal yoɓgol. Deftere hollirta njoɓdiiji e ruttugol — alaa ƴettugol walla ɓeydagol ɗoo.",
+      "emptyBody": "Njoɓdiiji, ruttugol e golle kerdit ina feeña ɗoo.",
+      "emptyTitle": "Alaa njoɓɗi",
+      "errorBody": "Ƴeew seŋaande maa e eto ɓawto.",
+      "errorTitle": "Horiima loowde kaalis",
+      "history": "Tariya",
+      "ledgerBalance": "Nattugol deftere",
+      "loadFailed": "Horiima loowde kaalis",
+      "noCashout": "Alaa ƴettugol, Connect, walla ɓeydagol e ndee kaalis. Ɓeydagol woodi e kaalis Business tan.",
+      "openLoyalty": "Poŋte e noddaandu",
+      "refunded": "Ruttaa",
+      "title": "Kaalis"
     }
   },
   "location": {
@@ -1025,7 +1586,8 @@
     "gpsTimeout": "GPS yahrii waktu",
     "permissionRequired": "Yamiroore nokkuure ina waɗɗii",
     "gpsUnavailable": "Horiima tarde GPS",
-    "noPlacesFound": "Alaa nokkuuji tawaama"
+    "noPlacesFound": "Alaa nokkuuji tawaama",
+    "missingMarketScope": "Nokkuure luumo wajibi ngam ndee suɓoore."
   },
   "auth": {
     "resetPassword": {
@@ -1043,10 +1605,23 @@
       "updated": "Mot de passe hesɗitinaama. A waawi naatde jooni.",
       "updateFailed": "Horiima hesɗitinde mot de passe.",
       "checkingSession": "Nana yeeɓee session…",
-      "errorTitle": "Juumre"
+      "errorTitle": "Juumre",
+      "confirmPassword": "Tabitin mot de passe",
+      "confirmPlaceholder": "Tabitin mot de passe",
+      "hide": "Suuɗ",
+      "newPasswordPlaceholder": "Mot de passe kesɗo",
+      "newSubtitle": "Naatnu finnde hesere ngam ruttude konto MMD Delivery maa.",
+      "password": "Mot de passe",
+      "preparingLink": "Nana heɓna jokkol…",
+      "show": "Hollu",
+      "update": "Hesɗitin mot de passe"
     },
     "loginRequiredTitle": "Naatgol wajibi",
-    "loginRequiredBody": "Naat hade sosde njamndi."
+    "loginRequiredBody": "Naat hade sosde njamndi.",
+    "title": "Naatu",
+    "errors": {
+      "sessionExpired": "Naatgol gasii. Naatu kadi, ndeen eto."
+    }
   },
   "driver": {
     "w9": {
@@ -1079,7 +1654,25 @@
       "openPdfFailed": "Horiima udditde PDF",
       "saved": "Mooftaama.",
       "submitFailed": "Neldude firlitii",
-      "tinKeepCurrent": "Acc meere ngam mooftude TIN jooniiwo"
+      "tinKeepCurrent": "Acc meere ngam mooftude TIN jooniiwo",
+      "address1Required": "Ñiiɓirde 1 (wajibi)",
+      "address2Optional": "Ñiiɓirde 2 (wonaa waɗɗi)",
+      "businessNameOptional": "Innde jeeyngal (wonaa waɗɗi)",
+      "certification": "So a neldii, a seedina e les njoɓdi fenannde wonde TIN moƴƴi e a neɗɗo U.S. (walla njillu hoɗɗo U.S.).",
+      "cityRequired": "Wuro (wajibi)",
+      "entityTypeRequired": "Fannu fedde (wajibi)",
+      "formScreenTitle": "Form W-9",
+      "formTitle": "Form W-9",
+      "legalNameRequired": "Innde laawol (wajibi)",
+      "signedNameRequired": "Innde siynaaɗo (wajibi)",
+      "stateRequired": "Diiwaan (wajibi)",
+      "submitting": "Nana nelda…",
+      "tinOptional": "TIN (wonaa waɗɗi • 9 limte)",
+      "tinPrivacy": "TIN maa fow hollirtaake maa kadi. Min kollirta limte 4 cakkitiiɗe cuuɗaaɗe tan.",
+      "tinRequired": "TIN (wajibi • 9 limte)",
+      "tinType": "Fannu TIN",
+      "zipRequired": "ZIP (wajibi)",
+      "loadingForm": "Nana loowa form W-9..."
     },
     "marketplace": {
       "status": {
@@ -1096,7 +1689,8 @@
     },
     "home": {
       "kind": {
-        "marketplace": "Livraison Marketplace"
+        "marketplace": "Livraison Marketplace",
+        "delivery": "MMD Delivery"
       },
       "identityPhotoVerification": {
         "title": "Verification foto (kisal)",
@@ -1140,7 +1734,7 @@
       },
       "toggleStatusFailed": "Horiima waylude staatus jooni.",
       "demand": "Ɗaɓɓaande",
-      "miles": "Miles",
+      "miles": "Maayli",
       "ignore": "Faaytu",
       "accepting": "Nana jaɓa...",
       "premium": {
@@ -1178,18 +1772,87 @@
         "goBusyAreaSub": "Yah to nokkuure ɗaɓɓaande toownde",
         "goOffline": "Yaltu laylaytol",
         "goOfflineSub": "A dartat keɓgol ɗaɓɓaande"
-      }
+      },
+      "busyArea": {
+        "empty": "Alaa ɗaɓɓe udditiiɗe ɓadiiɗe e fuɗɗorde jooni.",
+        "title": "Nokku cukki"
+      },
+      "driversNearbyDetail": "e nokkuure maa",
+      "driversWithin": "nder {{miles}} mi",
+      "errors": {
+        "decline": "Horiima salade ndee ɗaɓɓe.",
+        "offerUnavailable": "Ndee ɗaɓɓe heɓotaako kadi. Ina waawi gasii walla dooɓoowo woɗɗo jaɓii."
+      },
+      "hotspots": {
+        "needGps": "Hurmin GPS ngam yiyde nokkuuji cukki ɗaɓɓaande.",
+        "title": "Nokkuuji cukki"
+      },
+      "map": {
+        "layers": "Kelle kartal",
+        "recenter": "Ruttin e nokku am",
+        "safety": "Kisal",
+        "compass": "Ruttin to worgo"
+      },
+      "outOfServiceMessage": "A naatii e nokkuure nde MMD Delivery gollataa tawo.\\nA waawi timminde yahdu maa jooni, kono a keɓataa ɗaɓɓe kese haa a rutto e diiwaan hurminiiɗo.",
+      "outOfServiceTitle": "Alaa e nokkuure sarwiis",
+      "searching": {
+        "msg1": "Nana seeta yahduuji ɓurɗi moƴƴude e maa",
+        "msg2": "Nana ƴeewa laabi ɓurɗi nafde",
+        "msg4": "Seŋaande e sahaa e diiwaan maa",
+        "msg3": "Adannde e ɗaɓɓe ɓadiiɗe e cariiɗe"
+      },
+      "wait": {
+        "connectedDemand": "{{count}} ɗaɓɓe ɓadiiɗe · {{zone}} · {{nearest}}",
+        "connectedZone": "Limto e sahaa e ɗaɓɓaande {{zone}} · {{nearest}}",
+        "goOnline": "Naatu e kawral ngam fuɗɗude keɓugol ɗaɓɓe ɓadiiɗe.",
+        "gpsLive": "GPS e sahaa",
+        "offlineSub": "A keɓataa ɗaɓɓe neldol",
+        "offlineTitle": "Aɗa woni caggal laylaytol",
+        "title": "sabbo e nokkuure maa"
+      },
+      "welcomeBackMessage": "Jaɓɓaama kadi.\\nAɗa woodi jooni ngam keɓugol ɗaɓɓe kese.",
+      "welcomeBackTitle": "Jaɓɓaama kadi"
     },
     "profile": {
       "transportValidationRequired": "Mode transport oo ina hatojini validation dokimaaɗe mbere hurmineede.",
-      "activeFleet": "Otoo huɓɓiiɗo (flotte)"
+      "activeFleet": "Otoo huɓɓiiɗo (flotte)",
+      "docs": {
+        "licenseBack": "Jamiroore caggal",
+        "licenseFront": "Jamiroore yeeso",
+        "profilePhoto": "Foto neɗɗo",
+        "idFront": "Kartal holle yeeso",
+        "idBack": "Kartal holle caggal"
+      },
+      "licenseExpiry": "Gasgol jamiroore",
+      "licenseNumber": "Limngal licence",
+      "manageFleet": "Yuɓɓu laanaaji",
+      "missing": "Ustaaɗo",
+      "missingRequirements": "Wajibi ŋatniiɗi",
+      "placeholderLicenseNumber": "Limngal licence"
     },
     "account": {
       "createProfileFailed": "Horiima sosde profil dooɓoowo jooni.",
       "loadProfileFailed": "Horiima loowde profil dooɓoowo jooni.",
       "loadDocsFailed": "Horiima loowde dokimaaɗe jooni.",
       "loadStatusFailed": "Horiima loowde staatus konto.",
-      "logoutFailed": "Huunde juume waɗi jooni. Ete kadi."
+      "logoutFailed": "Huunde juume waɗi jooni. Ete kadi.",
+      "changePassword": "Waylu finnde",
+      "changePasswordHint": "Hesɗitin keɓe naatgol maa",
+      "documentsHint": "Yolde dokimaaɗe wajibi",
+      "guidedActive": "Konto maa hurminii",
+      "guidedIncomplete": "Timmin teelte ngam hurminde",
+      "guidedStatus": "Xaalis feññinaaɗo",
+      "needHelp": "Aɗa sokli ballal?",
+      "needHelpHint": "Jokkondir e fedde ballal amen",
+      "payoutHint": "Teeltu feere yuɓɓugol maa",
+      "setupSubtitle": "Timmin konto maa ngam fuɗɗude yahde",
+      "setupTitle": "Profil e teelte",
+      "statusActive": "Ena golle",
+      "statusIncomplete": "Timmaani",
+      "unnamed": "Dooɓoowo",
+      "vehicleHint": "Ɓeydu kabaruuji mootor maa",
+      "zonePrefs": "Diiwaan e cuɓoraaɗe",
+      "zonePrefsHint": "Heɓagol e nokkuure sarwiis"
     },
     "auth": {
       "alert": {
@@ -1248,23 +1911,23 @@
       "photosPermissionVehicle": "Jaɓ galerie foto ngam suɓaade foto mootor.",
       "title": "Vehicle",
       "subtitleDetails": "Vehicle details",
-      "loading": "Loading vehicle...",
-      "addTitle": "Add a vehicle",
+      "loading": "Nana loowa oto...",
+      "addTitle": "Ɓeydu oto",
       "chooseTypeFirst": "Choose the type first",
       "mode": {
         "car": "Car",
         "carHint": "Car - food, parcels, taxi",
-        "moto": "Motorcycle",
+        "moto": "Moto",
         "motoHint": "Motorcycle - fast delivery",
         "bike": "Bicycle",
         "bikeHint": "Bicycle - no motorized fleet required"
       },
-      "categorySynced": "Category is synced automatically",
-      "bikeTitle": "Bicycle",
-      "bikeSubtitle": "No motorized vehicle required",
-      "changeType": "Change type",
+      "categorySynced": "Fannu hesɗitinee e hoore mum",
+      "bikeTitle": "Welo",
+      "bikeSubtitle": "Alaa oto motoor wajibi",
+      "changeType": "Waylu fannu",
       "backToTypeSelection": "Back to Car / Motorcycle / Bicycle selection",
-      "taxiCategoriesHint": "Taxi categories are calculated by the server.",
+      "taxiCategoriesHint": "Fannuuji taksi ina limtee e sarworde.",
       "photoPreviewA11y": "Vehicle photo preview",
       "field": {
         "make": "Make",
@@ -1287,9 +1950,9 @@
         "quiet": "Quiet vehicle",
         "nonSmoking": "Non-smoking"
       },
-      "screenTitle": "Vehicle",
-      "detailsSubtitle": "Vehicle details",
-      "chooseType": "Choose the type first"
+      "screenTitle": "Oto",
+      "detailsSubtitle": "Cariiɗe oto",
+      "chooseType": "Suɓo fannu adan"
     },
     "vehicles": {
       "errorTitle": "Juumre",
@@ -1302,26 +1965,26 @@
       "deleteConfirm": "Momtu",
       "deleteFailed": "Horiima momtude mootor oo jooni.",
       "title": "Mootoraji am",
-      "subtitleManage": "Manage your vehicle fleet",
-      "subtitleActive": "Only one active vehicle at a time",
-      "loading": "Loading your vehicles...",
-      "fallbackName": "Vehicle",
-      "statusActive": "Active",
-      "statusPending": "Pending",
-      "statusInactive": "Inactive",
+      "subtitleManage": "Yuɓɓin otoji maa",
+      "subtitleActive": "Oto gooto tan ina waawi hurmineede e sahaa",
+      "loading": "Nana loowa otoji maa...",
+      "fallbackName": "Oto",
+      "statusActive": "Hurminii",
+      "statusPending": "Nana sabbii",
+      "statusInactive": "Hurminaaki",
       "fuel": {
-        "electric": "Electric",
-        "hybrid": "Hybrid",
-        "plugInHybrid": "Plug-in hybrid",
-        "gasoline": "Gasoline",
-        "diesel": "Diesel"
+        "electric": "Kuuraa",
+        "hybrid": "Jiiɓaande",
+        "plugInHybrid": "Jiiɓaande seŋoowo",
+        "gasoline": "Petroŋ",
+        "diesel": "Diisel"
       },
-      "statusLabel": "Status: {{status}}",
+      "statusLabel": "Ngonka: {{status}}",
       "adminNote": "Admin: {{note}}",
-      "offlineRequired": "Go offline required",
-      "activate": "Activate",
-      "edit": "Edit",
-      "delete": "Delete"
+      "offlineRequired": "Yaltugol e kawral wajibi",
+      "activate": "Hurmin",
+      "edit": "Taƴto",
+      "delete": "Momtu"
     },
     "services": {
       "errorTitle": "Juumre",
@@ -1331,24 +1994,24 @@
       "minOneTitle": "Services am",
       "minOneBody": "Hurmin service gooto ngam heɓde missions.",
       "title": "Sarwisaaji am",
-      "subtitle": "Manage your mission types",
-      "loading": "Loading your services...",
+      "subtitle": "Yuɓɓin fannuuji golle maa",
+      "loading": "Nana loowa golle maa...",
       "foodLabel": "Food delivery",
-      "foodDesc": "Restaurant orders and meal delivery",
+      "foodDesc": "Njamndi restoraa e neldugol ñaamdu",
       "packageLabel": "Package delivery",
-      "packageDesc": "Parcel and errand delivery",
+      "packageDesc": "Neldugol pakke e golle yahdu",
       "taxiLabel": "Taxi rides",
-      "taxiDesc": "Taxi rides based on your vehicle eligibility categories",
+      "taxiDesc": "Yahduuji taksi e fannuuji jaɓaande oto maa",
       "acceptAlsoStandardLabel": "Also accept Standard rides",
       "acceptAlsoStandardDesc": "Comfort, XL or Wheelchair can also receive Standard rides",
-      "food": "Food delivery",
-      "package": "Package delivery",
-      "taxi": "Taxi rides",
-      "acceptStandard": "Also accept Standard rides",
-      "acceptStandardDesc": "Comfort, XL or Wheelchair can also receive Standard rides",
-      "availableSection": "Available services",
-      "advancedSection": "Advanced options",
-      "enableTaxiForAdvanced": "Enable Taxi rides to manage advanced options.",
+      "food": "Neldugol ñaamdu",
+      "package": "Neldugol pakke",
+      "taxi": "Yahduuji taksi",
+      "acceptStandard": "Jaɓtu kadi yahduuji Standard",
+      "acceptStandardDesc": "Comfort, XL walla Wheelchair ina mbaawi kadi keɓde yahduuji Standard",
+      "availableSection": "Golle woodiɗe",
+      "advancedSection": "Cuɓe ɓeydaaɗe",
+      "enableTaxiForAdvanced": "Hurmin yahduuji Taksi ngam yuɓɓinde cuɓe ɓeydaaɗe.",
       "saving": "Nana dannda…",
       "refreshPreferences": "Hesɗitin cuɓaaɗe"
     },
@@ -1366,25 +2029,25 @@
       "stripeRequiredBody": "Timmin verification Stripe Identity ngam jokkude. Dokimaaɗe ina golloraa Stripe tan.",
       "verify": "Tabitin",
       "title": "Ƴeewndo neɗɗo",
-      "loading": "Loading…",
-      "waitHint": "Please wait while we verify your identity.\nThis may take a few moments.",
-      "statusInProgress": "Verification in progress",
-      "statusRejected": "Verification refused",
-      "statusVerified": "Identity Confirmed",
-      "statusExpired": "Verification expired",
-      "intro": "To protect clients, drivers and the MMD Delivery platform, we need to confirm your identity. Please take a clear selfie of your face.",
-      "somethingWrong": "Something went wrong.",
-      "uploading": "Secure selfie upload…",
-      "submitting": "Submitting…",
-      "retakeSelfie": "Retake selfie",
-      "takeSelfie": "Take a Selfie",
+      "loading": "Nana loowa…",
+      "waitHint": "Sabbo tuma ngen ƴeewata holle maa.\nƊum ina waawi ɓooyde seeɗa.",
+      "statusInProgress": "Ƴeewndo nana yaha",
+      "statusRejected": "Ƴeewndo salaama",
+      "statusVerified": "Holle tabitinaama",
+      "statusExpired": "Ƴeewndo gasii",
+      "intro": "Ngam hisnude kiliyeeɓe, dooɓooɓe e yuɓɓo MMD Delivery, min ɗaɓɓi tabitinde holle maa. Ñamndu selfie laaɓɗo e yeeso maa.",
+      "somethingWrong": "Huunde moƴƴaani.",
+      "uploading": "Neldugol selfie hisngol…",
+      "submitting": "Nana nelda…",
+      "retakeSelfie": "Fuɗɗu selfie",
+      "takeSelfie": "Ñamndu selfie",
       "screenTitle": "Ƴeewndo neɗɗo",
-      "pendingTitle": "Pending Validation",
-      "pendingBody": "Your selfie has been received. Our team or automated system is validating your identity. You can go online once verification is complete.",
-      "refreshStatus": "Refresh Status",
-      "successBody": "You can now go online.",
-      "problemTitle": "Verification problem",
-      "selfieHint": "Selfie required — centered face, good lighting",
+      "pendingTitle": "Ƴeewndo nana sabbii",
+      "pendingBody": "Selfie maa keɓaama. Fedde men walla yuɓɓo hoore mum nana ƴeewa holle maa. A waawi naatde e kawral so ƴeewndo timmii.",
+      "refreshStatus": "Hesɗitin ngonka",
+      "successBody": "A waawi naatde e kawral jooni.",
+      "problemTitle": "Caɗeele ƴeewndo",
+      "selfieHint": "Selfie wajibi — yeeso hakkunde, annoora moƴƴo",
       "submitForVerification": "Neldu ngam ƴeewndo",
       "cameraIssue": "Caɗeele kameraa?"
     },
@@ -1459,7 +2122,10 @@
     },
     "map": {
       "gpsEnableFailed": "Horiima huɓɓude GPS.",
-      "preparingNavigation": "Preparing navigation…"
+      "preparingNavigation": "Nana heɓna yiiltugol…",
+      "orderNotFound": "Uddit yiiltugol e cariiiɗe njamndi.",
+      "missingCoords": "Toɓɓe GPS ŋatnii e ndee stage.",
+      "orderLoadError": "Horiima loowde yahdu."
     },
     "hotspots": {
       "title": "Nokkuuji ɗaɗɗal",
@@ -1521,37 +2187,170 @@
           "failed": "Woorii",
           "processing": "Nana yahra",
           "unknown": "Anndaaka"
-        }
+        },
+        "emptyBody": "Ƴette timmiiɗe ina feeña ɗoo.",
+        "emptyTitle": "Alaa yuɓɓugol tawo",
+        "title": "Yuɓɓugol cakkitiiɗo"
+      },
+      "bankAvailable": {
+        "hint": "Stripe woodi jooni: {{amount}} — Ƴettu e sahaa so jaɓaa, walla yuɓɓugol banke alarba 4:00 AM ET. Wonaa nana sabbii/yuɓɓee."
+      },
+      "breakdown": {
+        "pending": "Yuɓɓugol Stripe nana sabbii: {{settling}} · Nana habbo yaltin palatfoorm: {{awaiting}}"
+      },
+      "cashout": {
+        "authError": "Naatu kadi."
+      },
+      "completed": {
+        "title": "Njoɓdi banke"
+      },
+      "confirmed": {
+        "hint": "Njoɓdi tabitinaande: {{amount}}"
+      },
+      "earnings": {
+        "desc": "Golle timmiiɗe tabitinaaɗe",
+        "title": "Njoɓdi"
+      },
+      "failed": {
+        "short": "Horiima: {{amount}}"
+      },
+      "history": {
+        "title": "Tarikh kaalis"
+      },
+      "lastCashout": {
+        "failed": "Horiima: {{amount}}",
+        "paid": "Yoɓaama / timmii: {{amount}}",
+        "processing": "Nana yahra",
+        "title": "Cash out ɓooyii"
+      },
+      "moneyStages": {
+        "hint": "Darɗe: keɓaa → yaltinaa to Connect → Stripe nana sabbii → woodi → Ƴettu e sahaa walla yuɓɓugol banke alarba 4:00 AM ET. Nana sabbii heɓotaako e yuɓɓetaake."
+      },
+      "nextAuto": {
+        "desc": "MMD neldata kaalis Stripe Connect heddiiɗo to banke maa kala alarba e 04:00 (America/New_York). Ƴettu e sahaa woodi e hakkunde yontere so Stripe Instant jaɓii. Alaa yuɓɓugol kikiiɗe. Ɗum ko sahaa MMD, wonaa yuɓɓugol ñalnde kala Stripe.",
+        "title": "Yuɓɓugol e hoore mum ɓooyngol"
+      },
+      "payoutMethods": {
+        "auto": "E hoore mum",
+        "manual": "E junngo",
+        "title": "Peere yuɓɓugol"
+      },
+      "processingHint": "Njoɓdi yoga nana yuɓɓee e keɓoto so Stripe jaɓii yuɓɓugol.",
+      "stripe": {
+        "connectBankButton": "Jokkondir konte banke maa",
+        "connectBankDesc": "Seŋo konto banke maa e Stripe Express. MMD mooftataa limte routing walla konto hay sahaa.",
+        "continueButton": "Jokku",
+        "continueDesc": "Timmin ƴeewndo Stripe ngam udditde yuɓɓugol banke.",
+        "manageButton": "Yuɓɓu",
+        "manageDesc": "Ɓeydu, hesɗitin walla lomtin konto banke maa e Stripe Express.",
+        "manageTitle": "Banke e feere yuɓɓugol"
       }
     },
     "mapFallback": {
       "preparing": "Preparing navigation…",
       "back": "Back",
       "retry": "Retry",
-      "missingTokenTitle": "Navigation unavailable",
-      "missingTokenBody": "Mapbox token is missing. Contact MMD support before using driver navigation.",
-      "missingOrderTitle": "Order not found",
-      "missingOrderBody": "Unable to load this trip.",
-      "missingCoordsTitle": "GPS coordinates missing",
-      "missingCoordsBody": "This trip has no valid coordinates yet. Return to order details.",
-      "permissionTitle": "Location permission denied",
-      "permissionBody": "Enable location access to use MMD navigation.",
-      "routeErrorTitle": "Route unavailable",
-      "routeErrorBody": "Unable to calculate the route at this time. You can retry or open an external app from the details.",
-      "errorTitle": "Error",
-      "errorBody": "Something went wrong."
+      "missingTokenTitle": "Yiiltugol heɓotaako",
+      "missingTokenBody": "Token Mapbox ŋatnii. Jokkondir e ballal MMD hade maa huutoraade yiiltugol dooɓoowo.",
+      "missingOrderTitle": "Njamndi heɓaaka",
+      "missingOrderBody": "Horiima loowde ndee yahdu.",
+      "missingCoordsTitle": "Toɓɓe GPS ŋatnii",
+      "missingCoordsBody": "Ndee yahdu alaa toɓɓe jaɓaaɗe tawo. Rutto to cariiiɗe njamndi.",
+      "permissionTitle": "Jamiroore nokkuure salaama",
+      "permissionBody": "Hurmin naatgol nokkuure ngam huutoraade yiiltugol MMD.",
+      "routeErrorTitle": "Laawol heɓotaako",
+      "routeErrorBody": "Horiima limtude laawol jooni. A waawi etooɗde kadi walla udditde jaŋngirgal yaasi e cariiiɗe.",
+      "errorTitle": "Juumre",
+      "errorBody": "Huunde moƴƴaani."
     },
     "menu": {
       "servicesTitle": "Sarwiisiiji am",
       "servicesSub": "Ñamri, pakke, taksi",
       "vehicleTitle": "Oto am",
-      "vehicleSub": "Pecce taksi"
+      "vehicleSub": "Pecce taksi",
+      "account_sub": "Profil, mootor e dokimaaɗe",
+      "driver_program_sub": "Paande e njeenaaje",
+      "help_sub": "Heɓ ballal ummoraade e MMD",
+      "loyalty": "Njeenaaje MMD",
+      "opportunities_sub": "Promo e cuɓoraaɗe kese",
+      "payments_stripe_sub": "Seŋo konto yuɓɓugol maa",
+      "referrals_sub": "Noddu dooɓooɓe e keɓ njeenaaje",
+      "section_account": "Konto e yoɓe",
+      "section_growth": "Ƴellitaare",
+      "section_support": "Wallude",
+      "title": "Menu",
+      "wallet_sub": "Njoɓdi e yuɓɓugol",
+      "loyalty_sub": "Toɓɓe, kredit MMD, e waylugol"
     },
     "inbox": {
-      "emptyTitle": "Inbox ɓolɗo"
+      "emptyTitle": "Inbox ɓolɗo",
+      "hero": {
+        "label": "Peeje dooɓoowo",
+        "unread": "yeewtere(eji) njaŋngaaka"
+      }
     },
     "workAccount": {
-      "loadingTitle": "Ngonka konte"
+      "loadingTitle": "Ngonka konte",
+      "auth": {
+        "noUser": "Alaa huutoro naatii."
+      },
+      "footer": "MMD Driver • Konto dooɓoowo",
+      "header": {
+        "title": "Konto driver"
+      },
+      "legal": {
+        "about": {
+          "label": "Baɗte MMD",
+          "value": "Yamre, ballal"
+        },
+        "privacy": {
+          "label": "Sutura",
+          "value": "Keɓe, duŋagol"
+        },
+        "title": "Laawol e ballal"
+      },
+      "next": {
+        "addDocs": "Ɓeydu dokimaaɗe",
+        "addVehicle": "Ɓeydu mootor",
+        "ready": "Hepii",
+        "setupPayment": "Teeltu yuɓɓugol"
+      },
+      "rows": {
+        "docs": {
+          "label": "Dokimaaɗe",
+          "notRequiredBike": "Wonaa wajibi (Welo)"
+        },
+        "payment": {
+          "label": "Yuɓɓugol",
+          "notConfigured": "Wonaa ngam",
+          "ready": "Hepii"
+        },
+        "vehicle": {
+          "label": "Mootor",
+          "missing": "Ɓeydu",
+          "ok": "OK"
+        }
+      },
+      "status": {
+        "subtitle": "Jokkude: {{step}}",
+        "title": "Xaalis konto • {{pct}}%"
+      },
+      "work": {
+        "center": {
+          "label": "Centre golle",
+          "value": "Zone, cuɓoraaɗe, availability"
+        },
+        "earnings": {
+          "label": "Njoɓdi",
+          "value": "Historique, yuɓɓugol, cash outs"
+        },
+        "subtitle": "Ko ɗum jeyaa e trip maa e earnings maa.",
+        "tax": {
+          "label": "Humpito taxes",
+          "value": "W-9 / 1099 (caggal)"
+        },
+        "title": "Golle"
+      }
     },
     "trip": {
       "clientPickup": "KILIYEE · ÑAGGOL",
@@ -1563,7 +2362,423 @@
         "active": "Huɓɓii",
         "expired": "Gasii",
         "pending": "Nana sabbi"
+      },
+      "codeLoading": "Kode noddaandu maa nana loowa tawo.",
+      "deliveryLineCompact": "📦 Neldol — {{amount}} e kala {{goal}} neldol",
+      "header": {
+        "subtitle": "Noddu dooɓooɓe e keɓ"
+      },
+      "headline": {
+        "withProgram": "Haa {{amount}} e nder {{days}} ñalɗi"
+      },
+      "hero": {
+        "label": "🎁 Porogaraam noddaandu MMD"
+      },
+      "invites": {
+        "deliveries": "Livraisons",
+        "emptyHint": "Lollin kode maa ngam noddude dooɓooɓe.",
+        "emptyTitle": "Alaa noddaandu tawo",
+        "invitedOn": "Noddaama",
+        "rides": "Yahduuji",
+        "title": "Noddaandi",
+        "unknown": "Dooɓoowo noddaaɗo"
+      },
+      "linkLabel": "Jokkol noddaandu",
+      "modal": {
+        "rules": "Sarɗiiji: noddaandu wootere = sehil gooto. Njeenaaje ina keɓii toowgol. Njeenaaje ina mbaɗee so sarɗiiji porogaraam timmii.",
+        "summaryLine": "Toowgol: {{max}} • Njuuteendi: {{days}} ñalɗi"
+      },
+      "programLoading": "Nana loowa porogaraam…",
+      "rideLineCompact": "🚗 Yahduuji — {{amount}} e kala {{goal}} yahduuji",
+      "shareText": "Naatu MMD Delivery 🚗🍔\\n\\nKode am: {{code}}\\nJokkol: {{link}}\\n\\nWinndito e fuɗɗu yahde!",
+      "showAllRewards": "Rewards fow",
+      "status": {
+        "earnedShort": "Heɓaama",
+        "friendHasDaysToComplete": "Sehil maa ena jogii {{days}} ñalɗi ngam timminde paande mum caggal jaɓgol noddaandu maa."
+      },
+      "validForDaysAfterFriendSignup": "Moƴƴi {{days}} ñalɗi caggal nde sehil maa winnditii."
+    },
+    "about": {
+      "appVersion": "App: Yamre {{version}}",
+      "body": "MMD Delivery ina seŋa restoraaji, kiliyeeɓe e dooɓooɓe jeyaaɓe e palatfoorm neldol newiiɗo. Mahiraa e karallaagal hesere ngam sarwiis yaawɗo, kisal e hoolniiɗo.",
+      "company": "Fedde: MMD Delivery",
+      "madeWith": "Waɗaa e ❤️ ngam dooɓooɓe",
+      "package": "Pakke: {{id}}",
+      "social": "Rewindo min",
+      "tagline": "Seŋaande dooɓooɓe, restoraaji e kiliyeeɓe"
+    },
+    "arrival": {
+      "dropoffBody": "Tabit jaɓorde, ndeen uddit cariiɗe njamndi ngam timminde.",
+      "dropoffLabel": "JAƁORDE",
+      "dropoffTitle": "Yettii e jaɓorde",
+      "openDetails": "Uddit cariiɗe njamndi",
+      "pickupBody": "Tabit nokku kawral, ndeen uddit cariiɗe njamndi ngam jokkude.",
+      "pickupLabel": "FUƊƊORDE",
+      "pickupTitle": "Arii e pickup"
+    },
+    "benefits": {
+      "badge": {
+        "active": "Ena golle",
+        "available": "Woodi"
+      },
+      "progress": "Ƴellitaare",
+      "tabs": {
+        "boosts": "Ɓeydagol promo",
+        "payout": "Payout estimate"
+      },
+      "boostSubtitle": {
+        "percent": "Heɓ +{value}% e geɓal dooɓoowo maa.",
+        "perOrder": "Bonus ɓeydaama: +${value} e yahdu kala nelaaɗo."
+      },
+      "challenge": {
+        "progress": "Yahrugol: {value}",
+        "reward": "Njoɓdi: {amount}"
+      },
+      "alert": {
+        "boostSelected": {
+          "body": "Hurmingol e sahaa (DB) = yolnde aroore."
+        }
+      },
+      "footer": "Seŋaaɗo e Supabase: boosts hurminiiɗi + kewuuji bonus + caɗeele + yuɓɓugol limtaaɗo."
+    },
+    "chat": {
+      "actions": {
+        "image": "📷 Natal",
+        "send": "📤 Neldu"
+      },
+      "empty": {
+        "body": "Fuɗɗu yeewtere les ɗoo",
+        "title": "Alaa peeje tawo"
+      },
+      "loading": "Nana loowa peeje…",
+      "missing": {
+        "goBack": "Rutto",
+        "orderBody": "Ndee njamndi ina waawi haɗtaama walla heɓotaako kadi.",
+        "orderTitle": "Yamiroore yiyaaka",
+        "subtitle": "Wallude",
+        "title": "Ɓataama"
+      },
+      "orderSubtitle": "Yamiroore #{{id}}",
+      "placeholder": "Winndu mesasu…",
+      "privateBanner": "Yeewtere cuuɗiinde e {{role}}",
+      "receipt": {
+        "delivered": "Hokkaa ✓"
+      },
+      "titlePrefix": "Dooɓoowo",
+      "withTitle": "Yeewtere e {{role}}"
+    },
+    "help": {
+      "callErrorBody": "Horiima udditde app telefon.",
+      "callErrorTitle": "Téléphone",
+      "callNow": "Nodda jooni",
+      "chatOpenError": "Horiima udditde yeewtere ballal admin.",
+      "chatSupport": "Ballal yeewtere",
+      "chatSupportSub": "Jokkondir e ballal admin MMD.",
+      "emailBody": "Jam MMD Ballal,\\n\\nMi soklii ballal e:\\n\\nID njamndi:\\nCaɗeele:\\nTelefon:\\n\\nA jaaraama.",
+      "emailErrorBody": "Horiima udditde app iimeel e ngal kaɓirgal.",
+      "emailSubject": "Ballal dooɓoowo MMD Delivery",
+      "emailSupport": "Ballal iimeel",
+      "emailSupportSubShort": "Neldu cariiɗe, nataaluuji yaynirde, walla ID njamndi.",
+      "emergency": "Kattanɗe",
+      "emergencyConfirmBody": "So kaaɗe e sahaa walla kaaɗe safaara/polis/yiite, noddu 911. So caɗeele neldol wonaa kaaɗe, huutoro yeewtere walla iimeel.",
+      "emergencyConfirmTitle": "Ballal kaaɗe",
+      "emergencySub": "Caɗeele neldol walla kisal e sahaa.",
+      "faq": {
+        "cashoutAShort": "Ƴeew Stripe hurminii e nattugol yettii famɗude.",
+        "cashoutQ": "Hol ko waɗi mi waawaa ƴettude?",
+        "documentsAShort": "Yahu Konto, timmin dokimaaɗe e yuɓɓugol.",
+        "documentsQShort": "Konto timmaani?",
+        "gpsAShort": "Ƴeew duŋagol nokkuure, accu app udditii.",
+        "gpsQShort": "GPS hesɗitaaki?",
+        "orderAShort": "Uddit njamndi, huutoro yeewtere, hollo e ID njamndi.",
+        "orderQShort": "Njamndi ena e caɗeele?"
+      },
+      "faqSection": "FAQ",
+      "footerTextShort": "Heɓnu ID njamndi, natal yaynirde, limre telefon, e haala juutɗo.",
+      "footerTitle": "Hade jokkondirde e ballal",
+      "heroLabel": "BALLAL DOOƁOOWO MMD",
+      "heroSubShort": "Heɓ ballal e njamndi, yuɓɓugol, konto, kisal.",
+      "heroTitle": "Hol no min mbaawi wallude?",
+      "reportIssue": "Hollo caɗeele",
+      "reportIssueBody": "Jooni, jokkondir e ballal e iimeel e ID njamndi e cariiɗe.",
+      "reportIssueSubShort": "Caɗeele njamndi, yoɓgol, GPS.",
+      "reportIssueTitle": "Hollo caɗeele",
+      "socialSection": "Rewindo MMD Delivery",
+      "subtitleShort": "Ballal, FAQ e kaaɗe",
+      "supportSection": "Wallude",
+      "title": "Ballal",
+      "emailErrorTitle": "Iimeel"
+    },
+    "language": {
+      "searchPlaceholder": "Seet ɗemngal…",
+      "supportedNote": "✅ Ɗemɗe 6 jaɓaaɗe tan ina kolliraa ɗoo."
+    },
+    "onboarding": {
+      "continue": "Jokku to Jaɓɓorgo",
+      "go": {
+        "profile": "Profil e dokimaaɗe",
+        "profileHint": "Neɗɗankaagal, jamiroore, kisal oto",
+        "services": "Sarwiisji am",
+        "servicesHint": "Ñamri, pakke, taksi",
+        "vehicles": "Mootor am",
+        "vehiclesNeed": "Ɓeydu oto / moto",
+        "vehiclesOk": "Laanaaji teeltaama",
+        "wallet": "Kaalis / Stripe Connect",
+        "walletNeed": "Teelte ina waɗɗii",
+        "walletOk": "Yuɓɓugol hepii"
+      },
+      "loadTimeout": "Horiima loowde teelte. Ƴeew seŋaande maa e eto ɓawto.",
+      "next": {
+        "docs": "Timmin dokimaaɗe maa",
+        "payout": "Hurmin Stripe Connect (Kaalis)",
+        "ready": "Hepii — rutto to Jaɓɓorgo",
+        "vehicle": "Ɓeydu e hurmin mootor"
+      },
+      "progress": "Ƴellitaare",
+      "title": "Teelte dooɓoowo",
+      "transport": "Fannu mootor"
+    },
+    "opps": {
+      "alerts": {
+        "joinFailed": "Horiima naatde."
+      },
+      "emptyTitle": "Alaa fartaŋŋe hannde"
+    },
+    "orderDetails": {
+      "actions": {
+        "backupNavigation": "Cuɓoraaɗe cukkal",
+        "googleDropoff": "Jaɓorde Google / Apple",
+        "googlePickup": "Fuɗɗorde Google / Apple",
+        "mmdNavigation": "Feññinde MMD",
+        "mmdNavigationDropoff": "Laawol to kiliyee",
+        "mmdNavigationPickup": "Laawol to fuɗɗorde",
+        "wazeDropoff": "Jaɓorde Waze",
+        "wazePickup": "Fuɗɗorde Waze"
+      },
+      "cancel": {
+        "confirm": "Eey, haɗtu",
+        "error": "Horiima haɗtude yahdu ndee.",
+        "unavailableTitle": "Haɗtugol heɓotaako",
+        "unavailableBody": "A waawi haɗtude tan hade fuɗɗorde, so yahdu nana jaɓaandi walla hebbaandi.",
+        "title": "Haɗtu yahdu nduu?",
+        "body": "So a haɗtii jooni, a ittee e ndee yahdu e ina waawi dokkeede dooɓoowo goɗɗo.",
+        "successTitle": "Yahdu haɗtaama",
+        "successBody": "A ittaa e ndee yahdu. Dooɓoowo goɗɗo waawi ɓeŋtude ɗum jooni.",
+        "cardTitle": "Aɗa sokli haɗtude?",
+        "cardBody": "A waawi haɗtude hade fuɗɗorde. Yahdu nduu waɗete woodnde e dooɓoowo goɗɗo.",
+        "button": "Haɗtu ndee yahdu"
+      },
+      "communication": {
+        "call": "Noddu",
+        "callClosed": "Noddaandu daaƴaa e ndee njamndi.",
+        "callUnavailableTitle": "Noddaandu heɓotaako",
+        "client": "Kiliyee",
+        "message": "Mesasu",
+        "restaurant": "Restoraa",
+        "support": "Ballal MMD",
+        "title": "Jokkondiral",
+        "noRestaurant": "Ndee yahdu fuɗɗorde/jaɓorde alaa restoraa noddeteeɗo.",
+        "driverPhoneMissing": "Limoore telefon dooɓoowo maa ŋatnii. Ɓeydu ɗum e profil maa hade maa huutoraade noddaandu cuuɗaaɗo.",
+        "targetPhoneMissing": "Limoore telefon {{target}} ŋatnii e ndee njamndi.",
+        "callFailed": "Horiima fuɗɗude noddaandu jooni.",
+        "chatClosed": "Ɓatakuuji koɗaa e ndee njamndi.",
+        "noRestaurantMessage": "Ndee yahdu fuɗɗorde/jaɓorde alaa restoraa jokkondirteɗo.",
+        "hint": "Noddu walla neldu ɓatakuure kiliyee, restoraa, walla ballal MMD tawa a holliraani limoore maa goonga.",
+        "clientProfile": "Profil kiliyee jokkondirɗo e ndee yahdu",
+        "restaurantProfile": "Profil restoraa jokkondirɗo e ndee njamndi"
+      },
+      "dropoffLocationDetails": "Cariiɗe jaɓorde kiliyee",
+      "earnings": {
+        "estimateTitle": "Njoɓdi (yahdu)"
+      },
+      "header": {
+        "order": "Odaare",
+        "tripTitle": "Yahdu #{{id}}"
+      },
+      "locationRequired": "Duŋagol nokkuure wajibi ngam timminde ndee yahdu.",
+      "map": {
+        "dropoffGeneric": "Jaɓorde",
+        "pickupGeneric": "Fuɗɗorde"
+      },
+      "modal": {
+        "hintDropoffOtp": "Naamndu keɓoowo kode neldol. Tappirde udditoto e hoore mum — alaa foto wajibi.",
+        "hintPickupOtp": "Naamndu kode fuɗɗorde. Tappirde udditoto e hoore mum — alaa foto wajibi."
+      },
+      "navigation": {
+        "unavailableTitle": "Feññinde heɓotaako",
+        "mustAcceptFirst": "Jaɓ ndee yahdu adan hade maa fuɗɗude yiiltugol MMD."
+      },
+      "notAllowed": "Ndee yahdu heɓotaako e ndee konto dooɓoowo.",
+      "notFoundBody": "Ndee njamndi woodaaki walla heɓotaako kadi.",
+      "photo": {
+        "permissionTitle": "Kamera",
+        "preparingBody": "Sabbo haa foto hepii hade tabitinde.",
+        "tooLarge": "Nataal ɓurtii mawnude. Ñamndu goɗɗo famɗo.",
+        "readError": "Horiima tarde nataal. Ñamndu goɗɗo hesɗo.",
+        "permissionBody": "Yamir kamera ngam ñaamndude nataal seedee."
+      },
+      "profile": {
+        "loading": "Nana loowa profil…"
+      },
+      "status": {
+        "pd_dispatched": "E laawol to keɓoowo",
+        "pd_pending": "Nana wadi driver",
+        "pd_accepted": "Fuɗɗorde nana sabbii tabitinal",
+        "pd_prepared": "Fuɗɗorde nana sabbii tabitinal",
+        "pd_ready": "Fuɗɗorde hebbii tabitineede",
+        "picked_up": "Pakke ɓettaa — e laawol"
+      },
+      "steps": {
+        "dropoffPoint": "Livraison",
+        "pickupPoint": "Fuɗɗorde",
+        "stops": "Dartorɗe"
+      },
+      "summary": {
+        "transportTitle": "Ƴeewndo yahdu"
+      },
+      "taxi": {
+        "completedBody": "Yahdu taksi waɗaa timmii.",
+        "completedTitle": "Yahdu timmii",
+        "completeFailed": "Horiima timminde yahdu taksi.",
+        "pickupCodeLength": "Naatnu kode fuɗɗorde 4 limte ummoraade e kiliyee."
+      },
+      "title": "Cariiɗe njamndi",
+      "tokenMissing": "Token sahaa naatgol ŋatnii.",
+      "verify": {
+        "autoHintPd": "Butoŋe hurminoto e hoore mum e sahaa moƴƴo e dow xaalis.",
+        "completeRide": "Timmin yahdu",
+        "dropoffBtnPd": "Ƴeew kode neldol",
+        "dropoffNotReady": "Ƴeewndo neldol udditoto caggal tabitinal fuɗɗorde (xaalis: picked_up).",
+        "pickupBtnPd": "Verify code pickup",
+        "pickupNotReady": "Ƴeewndo fuɗɗorde udditoto so a rokkaa e yahdu hepii ngam fuɗɗorde (xaalis: ready / dispatched).",
+        "taxiDropoffNotReady": "Timmin yahdu udditoto caggal ƴeewndo kode fuɗɗorde (xaalis: in_progress).",
+        "taxiPickupNotReady": "Ƴeewndo fuɗɗorde udditoto caggal jaɓgol yahdu taksi (xaalis: accepted / driver_arrived)."
+      },
+      "wazeOpenError": "Horiima udditde Waze e ndee telefon.",
+      "sessionError": "Horiima heɓde naatgol.",
+      "pickupConfirmError": "Tabitinal fuɗɗorde horiima.",
+      "deliveryConfirmError": "Tabitinal neldugol horiima."
+    },
+    "privacy": {
+      "heroTitle": "Keɓe maa kisnaama",
+      "intro": "E MMD Delivery, min ƴeewa sutura maa e goonga. Min mooftata keɓe ɗe ngam neldol kisal e yaawngol tan. Kabaruuji maa mooftaa e kisal e yuɓɓee e teelte amen tiiɗɗe."
+    },
+    "revenue": {
+      "average": "Hakkunde / yahdu",
+      "bank": "Banke e yuɓɓugol",
+      "bank_hint": "Jokkondir konte banke maa",
+      "details": {
+        "auth": {
+          "body": "Naatu no dooɓoowo ngam yiyde njoɓdi maa."
+        },
+        "breakdown": {
+          "viewHistory": "Ƴeew tarikh njoɓdi",
+          "viewLastTripPrice": "Ƴeew cariiɗe njoɓdi yahdu"
+        },
+        "calc": {
+          "body": "E kawral/E yahdu ummorii e RPC get_driver_stats(from_ts,to_ts). Yahduuji = hokkaa. Poŋte = limoore yahduuji.",
+          "link": "Hol no min limirta limtooje"
+        },
+        "completed": {
+          "empty": "Alaa yahdu hokkaande e ndee sahaa.",
+          "emptyShort": "Alaa yahduuji"
+        },
+        "list": {
+          "netTipLine": "Njoɓdi net: {{net}} · Njeɗu: {{tip}}"
+        },
+        "shareText": "ID: {{id}}\\nÑalngu: {{date}} {{time}}\\nNjoɓdi net: {{net}}\\nNjeɗu: {{tip}}\\nTotal: {{total}}\\nRestoraa: {{restaurant}}"
+      },
+      "history": {
+        "auth": {
+          "body": "Naatu no dooɓoowo ngam yiyde tarikh njoɓdi maa."
+        },
+        "list": {
+          "empty": "Alaa trips delivered e ndee periode.",
+          "emptySub": "Neldol timmiiɗi ina feeña ɗoo.",
+          "netTipLine": "Njoɓdi net: {{net}} · Njeɗu: {{tip}}"
+        },
+        "summary": {
+          "net": "Njoɓdi net",
+          "period": "Sahaa:",
+          "tips": "Dokke"
+        }
+      },
+      "no_food_trips_title": "Alaa yahduuji ñaamri/pakke",
+      "no_trips_hint": "Alaa yahduuji hokkaaɗi e ndee sahaa. Neldol timmiiɗi ina feeña ɗoo so hokkaama.",
+      "no_trips_title": "Alaa yahduuji",
+      "taxi_only_hint": "Njoɓdi taksi ndee sahaa ina hollira dow. Sahaa ñaamri e pakke ina feeña ɗoo so hokkaama.",
+      "taxi_paid": "Yaltinaa to Connect",
+      "taxi_pending": "Yaltin Connect nana sabbii",
+      "taxi_rides": "Yahduuji timmiiɗi",
+      "taxi_title": "Njoɓdi taksi",
+      "taxi_total": "Taksi fow",
+      "taxi_transfer_hint": "Nana sabbii = nana habbo yaltin palatfoorm→Connect. Yaltinaa = SCT timmii (yuɓɓugol banke ko cron alarba)."
+    },
+    "security": {
+      "passwordPlaceholder": "Mot de passe"
+    },
+    "tabs": {
+      "home": "Galle",
+      "inbox": "Ɓataaje",
+      "menu": "Menu",
+      "revenue": "Njoɓdi"
+    },
+    "tax": {
+      "badges": {
+        "available": "Woodi"
+      },
+      "buttons": {
+        "monthlySummary": "Ƴeewndo lewru (PDF)",
+        "w9": "W-9 (Form + PDF)",
+        "weeklySummary": "Ƴeewndo yontere (PDF)"
+      },
+      "countryNotSupported": "Ndee dokimaa woodi e US tan jooni.",
+      "overview": {
+        "status": {
+          "configured": "Teeltaama"
+        },
+        "withholding": {
+          "no": "Alaa"
+        }
+      },
+      "sections": {
+        "documents": "Dokimaaɗe taxes"
+      },
+      "verifyFirst": "Ƴeew konto maa adan.",
+      "year": {
+        "future": {
+          "body": "Ndee hitaande timmaani tawo. Min mbaylata to hitaande ɓennunde.",
+          "title": "Timmii tawo"
+        }
+      },
+      "yearlySummary": {
+        "note": "Tintinol: Aawte ina mbaawi hesɗitinde download_count e last_downloaded_at."
       }
+    },
+    "waitTimer": {
+      "cameraTitle": "Kamera wajibi",
+      "freeRemaining": "Sahaa docki heddiiɗo",
+      "freeWait": "Sabbo docki",
+      "lateFee": "Njoɓdiiji",
+      "loadFailed": "Xaalis heɓotaako",
+      "locationTitle": "Nokkuure wajibi",
+      "noShowConfirm": "Eey, haɗtu",
+      "sessionExpired": "Session gasii",
+      "tooFarTitle": "Woɗɗii e nokku",
+      "networkError": "Seŋaande jaaɓaani. Eto kadi.",
+      "locationBody": "Hurmin nokkuure ngam tabitinde artagol maa (≤ 50 m).",
+      "tooFarBody": "Yah nder 50 m ngam tabitinde artagol GPS e fuɗɗude waktu.",
+      "arrivalBlockedTitle": "Artagol haɗaama",
+      "cameraBody": "Yamir kamera ngam ñaamndude jaɓorde e damal.",
+      "depositOkTitle": "Jaɓorde yamiraama",
+      "depositOkBody": "Nataal danndaama. A waawi timminde neldugol e ndee seedee.",
+      "noShowTitle": "Haɗtu tawa alaa tattee",
+      "noShowBody": "Kiliyee artaaki tabitinaama e waktu. Tabitin haɗtugol?",
+      "title": "Waktu sabbaade kiliyee",
+      "arrivedCta": "Mi arti",
+      "leaveAtDoorDisabled": "Kiliyee yamiraani accude e damal.",
+      "depositCta": "Jaɓor e nataal",
+      "noShowCta": "Haɗtu tawa alaa tattee (artaaki)"
     }
   },
   "restaurant": {
@@ -1663,7 +2878,13 @@
         "newClients": "Kliyan keso",
         "loyalClients": "Kliyan fiduɗo",
         "repeatOrders": "Commandes repetées"
-      }
+      },
+      "connectBank": "Seŋo konto banke",
+      "homeMenuTitle": "Menu restoraa",
+      "liveMapFull": "Golle kartal",
+      "loadingSubtitle": "Nana aawtoo keɓe restoraa maa",
+      "loadingTitle": "Nana loowa tablol yamiroore…",
+      "unableToLoad": "Horiima loowde"
     },
     "financial": {
       "title": "Nokku kaalis",
@@ -1683,7 +2904,17 @@
       "lastPayoutDate": "Ñalnde yuɓɓugol sakkitiiɗo",
       "monthlyStatements": "Relevés lewru kala",
       "noStatements": "Alaa relevés tawo.",
-      "taxDocuments": "Dokimaaɗe taxes"
+      "taxDocuments": "Dokimaaɗe taxes",
+      "apiMissing": "API_BASE_URL ŋatnii. Ƴeew teelte API production maa.",
+      "errorTitle": "Horiima loowde",
+      "loadingSubtitle": "Nana aawtoo ƴeewndo kaalis maa",
+      "loadingTitle": "Nana loowa kaalis…",
+      "noData": "Ƴeewndo kaalis heɓotaako. Eto ɓawto.",
+      "overview": "Ƴeewndo kaalis",
+      "overviewSubtitle": "Njoɓdi net e njoɓdiiji ndee sahaa suɓaande.",
+      "sessionExpired": "Sahaa naatgol gasii. Naatu kadi ngam yiyde nokku kaalis.",
+      "viewEarnings": "Ƴeew njoɓdi",
+      "viewWallet": "Ƴeew kaalis"
     },
     "wallet": {
       "title": "Portefeuille restoraa",
@@ -1699,7 +2930,17 @@
       "recentTransactions": "Golle cakkitiiɗe",
       "cashoutUnavailable": "Ƴettugol hebɓaaki",
       "cashoutRequested": "Ƴettugol ñaagaama",
-      "cashoutRules": "Les {{min}} • ƴettugol 1 / ñalnde"
+      "cashoutRules": "Les {{min}} • ƴettugol 1 / ñalnde",
+      "awaitingHint": "Nana sabbii yaltin: {{amount}}",
+      "cashoutAmount": "Njoɓdi: {{amount}}",
+      "cashoutConfirmBody": "Ƴettu nattugol maa fow woodɗo: {{amount}}.\\n\\nFamɗude {{min}} • ƴettugol 1 / ñalnde.",
+      "cashoutConfirmTitle": "Ƴettugol xaalis jaawɗum",
+      "errorBody": "Horiima loowde golle kaalis.",
+      "errorTitle": "Juume kaalis",
+      "lastPayoutAt": "Yuɓɓugol cakkitiiɗo {{when}}",
+      "loadingSubtitle": "Nana aawtoo keɓe nattugol maa",
+      "loadingTitle": "Nana loowa kaalis…",
+      "paidOutHint": "Yuɓɓaa: {{amount}}"
     },
     "automation": {
       "errorTitle": "Juumre",
@@ -1716,14 +2957,14 @@
       "loadingSubtitle": "Nana ƴetta cuɓaaɗe automation maa",
       "infoTitle": "Jaɓgol automatik e print kuuɗe",
       "infoBody": "Toppito no njamndi hesɗi njaɓirtee e nde njaltee.",
-      "autoAccept": "Auto-accept new orders",
-      "autoPrint": "Auto-print on accept",
-      "soundAlert": "Sound alert",
+      "autoAccept": "Jaɓtu e hoore njamndi kese",
+      "autoPrint": "Winndito e hoore so jaɓaama",
+      "soundAlert": "Jeertingol daande",
       "prepTime": "Default Prep Time",
       "prepMinutes": "{{mins}} min",
-      "saving": "Saving…",
-      "saveSettings": "Save Settings",
-      "testPrint": "Test print"
+      "saving": "Nana dannda…",
+      "saveSettings": "Danndu teelte",
+      "testPrint": "Jiiɓannde winndito"
     },
     "autoPrint": {
       "title": "Imprimer",
@@ -1739,12 +2980,33 @@
       "alerts": {
         "logoPickFailed": "Horiima suɓaade logo.",
         "coverPickFailed": "Horiima suɓaade foto hoore.",
-        "documentPickFailed": "Horiima suɓaade dokimaa."
-      }
+        "documentPickFailed": "Horiima suɓaade dokimaa.",
+        "permissionTitle": "Duŋagol",
+        "permissionPhotos": "Yamir naatgol nataaluuji ngam suɓaade logo restoraa.",
+        "permissionPhotosCover": "Yamir naatgol nataaluuji ngam suɓaade ɓoggol restoraa.",
+        "requiredFields": "Heɓɓin innde, telefon, ñiiɓirde, wuro, kode postaal, e fannu ñaamdu."
+      },
+      "cover": {
+        "addShort": "Ɓeydu",
+        "subtitle": "Banner holliraa kiliyeeɓe e hello restoraa.",
+        "title": "Natal cover"
+      },
+      "docs": {
+        "id": "Karte ID",
+        "license": "Jamiroore",
+        "none": "Alaa fayl suɓaa",
+        "tax": "Dokimaa kootu"
+      },
+      "logo": {
+        "subtitle": "Yiyete e kiliyeeɓe, dooɓooɓe, e yeewtere.",
+        "title": "Logo / Foto"
+      },
+      "offerings": "Ɗaɓɓe"
     },
     "menu": {
       "alerts": {
-        "actionFailed": "Ngal golle alaa jooni."
+        "actionFailed": "Ngal golle alaa jooni.",
+        "createFailed": "Sosde horiima."
       },
       "addCategory": "+ Ɓeydu fannu",
       "noCategories": "Alaa pecce",
@@ -1766,14 +3028,71 @@
       "add": "Ɓeydu",
       "title": "Menu",
       "loadingTitle": "Nana loowa menu...",
-      "loadingSubtitle": "Nana ƴetta geɗe menu maa"
+      "loadingSubtitle": "Nana ƴetta geɗe menu maa",
+      "categories": {
+        "deleteConfirm": "Kaake e ndee fannu waɗoto alaa fannu. Jokku?",
+        "deleteTitle": "Momtu fannu",
+        "duplicate": "Ndee fannu woodi kisa.",
+        "invalid": "Fannu moƴƴaani."
+      },
+      "items": {
+        "deleteTitle": "Momtu njeeygu",
+        "invalidOptions": "Cuɓoraaɗe moƴƴaani.",
+        "invalidStock": "Stook moƴƴaani (limoore timmunde walla meere).",
+        "deleteConfirm": "Momtu ndee njeeygu?"
+      }
     },
     "dashboard": {
-      "availabilityUpdateFailed": "Horiima waylude staatus restoraa on."
+      "availabilityUpdateFailed": "Horiima waylude staatus restoraa on.",
+      "aiDispatch": "AI neldugol",
+      "aiDriversReady": "AI neldugol: dooɓooɓe ɓadiiɓe ena ngoodi. Jokku njamndi hepiiɗi.",
+      "aiHighDemand": "AI neldugol: ɗaɓɓaande toownde yiytaama. Addu njamndi hepiiɗi e ñaaw prep times.",
+      "aiNeedDrivers": "AI neldugol: njamndi ena golle, kono alaa dooɓooɓe ɓadiiɓe yiytaa tawo.",
+      "aiOffline": "AI neldugol dartinaama so restoraa ala e kawral.",
+      "aiStable": "AI neldugol: ɗaɓɓaande ena salii. Kartal nana rewinda ɗaɓɓe kese e sahaa.",
+      "busyConfirm": "Dartin njamndi kese tawa a heddii udditii?",
+      "busyOff": "Saha cukki",
+      "busyOffConfirm": "Fuɗɗito njamndi kese?",
+      "busyTitle": "Saha cukki",
+      "driversNearby": "Dogooɓe ɓadiiɓe",
+      "goOfflineConfirm": "Dartin keɓugol njamndi kese jooni?",
+      "goOfflineTitle": "Yaltu e ligne",
+      "goOnlineConfirm": "Fuɗɗu keɓugol njamndi kese jooni?",
+      "goOnlineTitle": "Naat e ligne",
+      "newFoodOrder": "Njamndi ñaamri hesere",
+      "ordersToday": "Commandes hannde",
+      "pendingOrders": "Njamndi nana sabbii",
+      "revenueToday": "Njeɗdi hannde",
+      "setupRequiredTitle": "Profil timmaani",
+      "surgeZone": "Diiwaan ɓeydagol njoɓdi",
+      "title": "Tablol restoraa",
+      "busyRequiresOnline": "Naatu e kawral hade maa hurminde ngonka cuɓiiɗo.",
+      "busyOffTitle": "Ngonka cuɓiiɗo gasii",
+      "setupRequiredBody": "Heɓɓin innde restoraa, ñiiɓirde, e toɓɓe GPS hade maa naatde e kawral."
     },
     "orders": {
       "statusUpdateFailed": "Horiima hesɗitinde staatus jeyi ngan ({{status}}).",
-      "rejectFailed": "Horiima salaade jeyi ngan ({{status}})."
+      "rejectFailed": "Horiima salaade jeyi ngan ({{status}}).",
+      "alertBody": "Njamndi #{{id}} nana sabbii — tappu ngam ƴeewde",
+      "alertOpen": "Udditii",
+      "alertTitle": "Commande keso",
+      "cardMeta": "{{count}} kaake • {{total}}",
+      "emptyBody": "Njamndi kese ina feeña ɗoo e hoore mum",
+      "emptyTitle": "Alaa njamndi gollotooɗi",
+      "loadingOrders": "Nana loowa njamndi…",
+      "loadingOrdersSubtitle": "Nana aawtoo njamndi maa",
+      "noProfile": "Konto restoraa heɓaaka.",
+      "openOrder": "Njamndi {{id}}, {{status}}, {{meta}}",
+      "rejectConfirm": "Haɗu commande oo?",
+      "rejectTitle": "Haɗu commande",
+      "title": "Odaaje",
+      "updateFailed": "Horiima hesɗitinde njamndi.",
+      "errors": {
+        "invalidActor": "Naatgol restoraa moƴƴaani. Naatu kadi, ndeen eto.",
+        "orderNotFound": "Njamndi heɓaaka e ndee restoraa.",
+        "invalidTransition": "Ndee njamndi waylii ngonka kisa. Hesɗitin doggol.",
+        "acceptExpired": "Waktu jaɓgol gasii. A waawaa jaɓde ndee njamndi kadi."
+      }
     },
     "connect": {
       "cta": {
@@ -1807,11 +3126,182 @@
     "earnings": {
       "stripe": {
         "bankKicker": "Njoɓdi banke",
-        "moreInfoNeeded": "Stripe ena sokli tawo kabaruuji njiylawu walla banke."
+        "moreInfoNeeded": "Stripe ena sokli tawo kabaruuji njiylawu walla banke.",
+        "blockedReason": "Daliilu: {{reason}}",
+        "heldLine": "{{amount}} nana sabbii haa Stripe Connect timma. Yoɓaaka tawo."
+      },
+      "debug": {
+        "noSession": "Alaa sahaa naatgol. Naatu adan.",
+        "copiedTitle": "Token nattaama ✅",
+        "copiedBody": "Fuɗɗoode: {{a}}...\\nJoofirde: ...{{b}}",
+        "fail": "Horiima heɓde naatgol."
+      },
+      "errorBody": "Horiima loowde njoɓdi. Eto ɓawto.",
+      "errors": {
+        "openStripe": "Horiima udditde Stripe Connect."
+      },
+      "errorTitle": "Horiima loowde",
+      "fetchError": "Horiima loowde earnings.",
+      "filters": {
+        "thisMonth": "Ndee lewru",
+        "prevMonth": "Lewru ɓennundu"
+      },
+      "header": {
+        "title": "Njoɓdi"
+      },
+      "loadingSubtitle": "Nana aawtoo keɓe njoɓdi maa",
+      "loadingTitle": "Nana loowa njoɓdi…",
+      "mustLogin": "Naatu no restoraa ngam yiyde njoɓdi maa.",
+      "recentOrders": "Njamndi cakkitiiɗi",
+      "thisMonth": "Ndee lewru",
+      "thisWeek": "Ndee yontere",
+      "today": "Hannde",
+      "todayMetaBlocked": "{{n}} njamndi • yuɓɓugol daaƴaa haa Stripe Connect",
+      "todayMetaReady": "{{n}} njamndi • yuɓɓugol hurminaa",
+      "list": {
+        "empty": "Alaa njamndi nelaaɗi tawo."
       }
     },
     "ads": {
       "loading": "Nana loowa yeewtere"
+    },
+    "auth": {
+      "errors": {
+        "accountWrongRole": "Ndee konto wonaa konto restoraa.",
+        "restaurantNameRequired": "❌ Innde restoraa wajibi",
+        "accountIsDriver": "Ndee konto winnditaama dooɓoowo. Naatu e taƴre Dooɓoowo.",
+        "accountIsClient": "Ndee konto winnditaama kiliyee. Naatu e taƴre Kiliyee.",
+        "notRestaurantAccount": "Ndee konto heɓɓinaaka restoraa tawo.",
+        "restaurantAddressRequired": "Innde restoraa e ñiiɓirde timmunde ina ɗaɓɓi.",
+        "sessionNotCreated": "Naatgol sosaaka. Eto kadi.",
+        "userNotCreated": "Konto sosaama, kono kuutoro heɓotaako.",
+        "emailRequiredForReset": "❌ Naatnu iimeel maa hade maa ɗaɓɓude hesɗitinal.",
+        "resetFailed": "❌ Horiima neldude iimeel:"
+      },
+      "fields": {
+        "restaurantAddress": "Ñiiɓirde timmunde",
+        "restaurantName": "Innde restoraa"
+      },
+      "placeholders": {
+        "restaurantAddress": "Misal: 123 Main St, New York, NY 10001",
+        "restaurantName": "Misal: Fouta Halal"
+      },
+      "terms": {
+        "prefix": "Mi jaɓii"
+      },
+      "success": {
+        "createdCheckEmail": "✅ Konto sosaama. Ƴeew iimeel maa, ndeen naatu.",
+        "resetEmailSent": "✅ Iimeel neldaama. Uddit jokkol ngam waylude finnde maa."
+      }
+    },
+    "financialCenter": {
+      "title": "Nokku kaalis"
+    },
+    "gate": {
+      "timeoutBody": "Laylaytol nattii walla heɓotaako. A waawi etude kadi walla ruttude to naatgol.",
+      "timeoutTitle": "Horiima udditde nokku restoraa"
+    },
+    "home": {
+      "brandSubtitle": "Livraison",
+      "filter": {
+        "title": "Seɗɗo kartal"
+      },
+      "loadingSubtitle": "Nana heɓna tablol maa",
+      "loadingTitle": "Nana loowa restoraa…",
+      "map": {
+        "busyTitle": "Saha cukki",
+        "layers": "Kelle",
+        "liveTitle": "Kartal golle e sahaa",
+        "opsSubtitle": "Dooɓooɓe ɓadiiɓe • Njamndi nana sabbii yiyete",
+        "recenter": "Ruttin",
+        "refresh": "Hesabu",
+        "zoomIn": "Zoom +",
+        "zoomOut": "Zoom −"
+      },
+      "menu": "Menu",
+      "notifications": "Jangirɗe",
+      "selection": {
+        "driver": "Dooɓoowo",
+        "driverActive": "E neldugol",
+        "inDelivery": "E neldugol",
+        "order": "Odaare",
+        "restaurant": "Restoraa",
+        "yourRestaurant": "Restoraa maa"
+      },
+      "tabs": {
+        "menu": "Menu"
+      },
+      "live": "E sahaa"
+    },
+    "language": {
+      "chooseHint": "Suuɓo ɗemngal app",
+      "supportedNote": "Ɗemɗe 6 jaɓaaɗe tan ina kolliraa ɗoo.",
+      "searchPlaceholder": "Search (English, Français, Español...)"
+    },
+    "platformUnavailable": "Njamndi kese heɓotaako e nokkuure restoraa maa jooni.",
+    "security": {
+      "changePassword": "Waylu finnde",
+      "confirmLabel": "Tabit finnde",
+      "confirmPlaceholder": "Tabit finnde hesere",
+      "dangerZone": "Nokku kaaɗal",
+      "deleteHint": "Momtu konto maa e keɓe fow haa duumii.",
+      "errorTitle": "Juumre",
+      "genericError": "Horiima hesɗitinde mot de passe.",
+      "hide": "Suuɗ",
+      "min8": "Finnde foti waɗde hooreeje 8 famɗi.",
+      "mismatch": "Finndeeji ɗiɗi ɗii njahdaaki.",
+      "newPasswordLabel": "Finnde hesere",
+      "newPasswordPlaceholder": "Naatnu finnde hesere",
+      "passwordTitle": "Mot de passe",
+      "save": "Danndu finnde",
+      "sessionBody": "Sahaa naatgol maa ŋatnii. Naatu kadi.",
+      "sessionTitle": "Sahaa naatgol",
+      "show": "Hollu",
+      "successBody": "Finnde maa hesɗitinaama e moƴƴere.",
+      "successTitle": "Finnde hesɗitinaama",
+      "title": "Kisal"
+    },
+    "signOut": {
+      "hint": "Joofnu sahaa naatgol e ngal kaɓirgal. A waawi naatde kadi kala sahaa.",
+      "sectionTitle": "Sahaa naatgol"
+    },
+    "tax": {
+      "completeProfile": "Timmin profil",
+      "downloading": "Nana aawtoo…",
+      "downloadPdf": "Awlu PDF",
+      "downloadReady": "A waawi aawtaade ciimtol PDF lewru.",
+      "errorBody": "Horiima loowde ƴeewndo kootu. Eto ɓawto.",
+      "errors": {
+        "fetchFailed": "Horiima loowde ƴeewndo kootu. Eto ɓawto.",
+        "noSession": "Naatgol heɓaaka. Naatu kadi, ndeen eto.",
+        "restaurantOnly": "Ndee hello ko konte restoraa tan.",
+        "noRestaurantProfile": "Profil restoraa heɓaaka. Heɓɓin profil restoraa maa.",
+        "unknown": "Juumre anndaaka waɗii.",
+        "noSignedUrl": "Jokkol ɗowgol PDF heɓaaka.",
+        "cannotOpenPdf": "Horiima udditde jokkol PDF."
+      },
+      "errorTitle": "Juume kootu",
+      "loadingSubtitle": "Nana aawtoo ƴeewndo kootu maa",
+      "loadingTitle": "Nana loowa keɓe kootu…",
+      "pill": {
+        "month": "Lewru",
+        "quarter": "Trimester",
+        "year": "Hitaande"
+      },
+      "platformFeesLine": "Njoɓdi palatfoorm {{amount}}",
+      "profileComplete": "Profil timmii",
+      "profileIncomplete": "Profil timmaani",
+      "profileIncompleteNote": "Timmin profil restoraa hade sosde dokimaaɗe laawol.",
+      "quarterLabel": "Q{{q}} {{year}}",
+      "summaryComplete": "Ƴeewndo timmii",
+      "taxableSales": "Njeeygu kootu",
+      "titleShort": "Kootuuji",
+      "weekLabel": "Yontere {{w}} · {{year}}"
+    },
+    "orderDetails": {
+      "actions": {
+        "print": "Winndito"
+      }
     }
   },
   "roleSelect": {
@@ -1850,6 +3340,17 @@
       "permission": "Horiima naatde e profil maa. Yaltu, naat kadi, walla jokkondir e ballal.",
       "server": "Sarwiis profil hebɓaaki e sahaa. Fuɗɗit e sahaa seeɗa.",
       "unknown": "Horiima ƴeewtaade profil maa. Fuɗɗit."
+    },
+    "adminTitle": "Admin",
+    "driverSuspendedBody": "Konto dooɓoowo maa daaƴaama. Jokkondir e support MMD Delivery.",
+    "driverSuspendedTitle": "Konto daaƴaama",
+    "sessionExpiredTitle": "Session gasii",
+    "signInAgain": "Naatu kadi",
+    "wrongRoleTitle": "Konto naatii kisa",
+    "wrongRoleBody": "Ndee konto winnditaama {{role}}. Yaltu so a yiɗii huutoraade darnde woɗnde.",
+    "adminBody": "Ndee ko konto admin. Huutoro heɓɓitere admin ngam yuɓɓinde MMD Delivery.",
+    "errors": {
+      "openRoleFailed": "Horiima udditde ndee darnde jooni."
     }
   },
   "finance": {
@@ -2000,6 +3501,39 @@
         "walletCredit": "Credit portefeuille",
         "tip": "Dokkal"
       }
+    },
+    "actions": {
+      "accept": "Jaɓu",
+      "acceptConfirm": "Aɗa yiɗi jaɓde ndee njamndi?",
+      "acceptTitle": "Jaɓ njamndi",
+      "refuse": "Salaa",
+      "rejectConfirm": "Aɗa yiɗi salade ndee njamndi?",
+      "rejectTitle": "Haɗu commande"
+    },
+    "card": {
+      "acceptWithin": "⏱️ Jaɓ nder",
+      "expired": "Yahrii"
+    },
+    "errors": {
+      "cancel": "Horiima haɗtude ndee njamndi.",
+      "notFound": "Order heɓaaka.",
+      "restaurantOnly": "Ndee hello ko konte restoraa tan.",
+      "notAllowed": "A alaa naatgol e ndee njamndi.",
+      "awaitingPayment": "Ndee njamndi yoɓaaka tawo e yiyaaka.",
+      "notFoodOrder": "Ndee wonaa njamndi restoraa.",
+      "update": "Horiima hesɗitinde ngonka."
+    },
+    "status": {
+      "acceptedLower": "jaɓaama",
+      "canceledLower": "haɗtaama",
+      "deliveredLower": "hokkaa",
+      "dispatchedLower": "nelaa",
+      "expiredLower": "gasii",
+      "pending": "Nana e ɗoo",
+      "pendingLower": "nana sabbii",
+      "preparedLower": "heɓnaama",
+      "readyLower": "hepii",
+      "readyPickup": "Hepii"
     }
   },
   "payment": {
@@ -2077,11 +3611,11 @@
     "hintPin": "Tappu karte ngam waɗde pin laaɓɗo. Sifo nokkuure ngam dognoowo yiytima maa.",
     "mapUnavailable": "Karte alaa. Teeltu EXPO_PUBLIC_MAPBOX_TOKEN ngam huutoraade.",
     "useGps": "Huutoro GPS am jooni",
-    "gpsAccuracy": "GPS accuracy: ~{{meters}} m · Pin: {{lat}}, {{lng}}",
-    "pinSource": "Pin: {{lat}}, {{lng}} · source: {{source}}",
+    "gpsAccuracy": "Tagoore GPS: ~{{meters}} m · Pin: {{lat}}, {{lng}}",
+    "pinSource": "Pin: {{lat}}, {{lng}} · iwdi: {{source}}",
     "pinConfirmed": "Pin tabitinaama",
     "confirmPin": "Tabitin nokkuure pin",
-    "zoneLabel": "Zone ({{code}})",
+    "zoneLabel": "Diiwaan ({{code}})",
     "streetNumber": "Limngal laawol *",
     "streetNumberPlaceholder": "123",
     "city": "Wuro *",
@@ -2096,7 +3630,7 @@
     "quartierPlaceholder": "Lambanyi",
     "landmarkSearch": "Yiylagol landmark",
     "landmarkSearchRequired": "Yiylagol landmark *",
-    "landmarkPlaceholder": "Station Total, mosquée, marché...",
+    "landmarkPlaceholder": "Station Total, juulirde, luumo...",
     "formattedAddress": "Adresse formatée (suɓaande)",
     "formattedAddressPlaceholder": "Innde laawol walla nokku so anndaa",
     "directions": "Sifo nokkuure maa laaɓnde *",
@@ -2185,7 +3719,53 @@
     }
   },
   "common": {
-    "unknownError": "Juumre anndaaka."
+    "unknownError": "Juumre anndaaka.",
+    "accept": "Jaɓu",
+    "all": "Fof",
+    "client": "Kiliyee",
+    "copy": "Natto",
+    "dash": "—",
+    "done": "Timmii",
+    "driver": "Dooɓoowo",
+    "ellipsis": "…",
+    "errors": {
+      "unknown": "Juumre anndaaka"
+    },
+    "info": "Info",
+    "infoTitle": "Info",
+    "keepOrder": "Ñiiɓnu njamndi",
+    "mustBeLoggedIn": "Ina foti a naatii.",
+    "notLoggedIn": "A naataaki.",
+    "password": "Mot de passe",
+    "payment": {
+      "title": "Njoɓdi"
+    },
+    "permission": {
+      "title": "Duŋagol",
+      "camera": "Yamir kamera ngam ƴettude nataal."
+    },
+    "profile": {
+      "address": "Adresse",
+      "avgRating": "ñiɓal hakkunde",
+      "city": "Wuro",
+      "dateOfBirth": "Ñalnde jibinannde",
+      "emergencyPhone": "Téléphone urgence",
+      "placeholderAddress": "Adresse",
+      "placeholderCity": "Wuro",
+      "placeholderEmergencyPhone": "Ex: 9170000000",
+      "placeholderState": "NJ",
+      "placeholderZip": "07030",
+      "ratingsCount": "ñiɓe",
+      "state": "État",
+      "zip": "Code postal"
+    },
+    "reject": "Haɗu",
+    "restaurant": "Restoraa",
+    "seeAll": "Ƴeew fow",
+    "session": "Sahaa naatgol",
+    "somethingWentWrong": "Huunde juume waɗi",
+    "thanks": "A jaaraama",
+    "unavailable": "Hebɓaaki"
   },
   "notifications": {
     "inbox": {
@@ -2333,7 +3913,8 @@
       "missingConfigBody": "URL API teeltaa.",
       "estimateFailedTitle": "Ƴeewndo woorii",
       "createdTitle": "Ñaagol sosaama",
-      "createdBody": "Ñaagol neldol sosaama. Ñoƴ Yoɓ jooni ngam timminde njoɓdi."
+      "createdBody": "Ñaagol neldol sosaama. Ñoƴ Yoɓ jooni ngam timminde njoɓdi.",
+      "scopeBody": "Hurmin nokkuure ngam suɓaade ñiiɓirde neldol e luumo maa."
     },
     "errors": {
       "estimateGeneric": "Horiima hiisde ƴeewndo neldol jooni.",
@@ -2346,7 +3927,8 @@
       "loginRequiredPay": "A foti naatde ngam yoɓde.",
       "createFailed": "Horiima sosde ñaagol.",
       "missingCoords": "Koolaaɗe ƴettugol e neldol ŋatnii.",
-      "quoteRequired": "Hiis ƴeewndo hade maa sosde ñaagol."
+      "quoteRequired": "Hiis ƴeewndo hade maa sosde ñaagol.",
+      "unavailableInArea": "Sarwiis neldol heɓotaako e ndee diiwaan tawo."
     },
     "payment": {
       "title": "Njoɓdi",
@@ -2450,5 +4032,154 @@
   },
   "social": {
     "a11y": "Laylaye renndo MMD Delivery"
+  },
+  "account": {
+    "delete": {
+      "bulletAccess": "Yaltugol e sahaa e haɗde naatgol caggal",
+      "bulletKeep": "Njamndi, yahduuji, yoɓe, yuɓɓugol e dokimaaɗe kootu ina ñiiɓnee so laawol ɗaɓɓii",
+      "bulletPii": "Innde, telefon, iimeel, ñiiɓirɗe e nataaluuji profil ina cuuɗee",
+      "bulletPush": "Tokenuuji push e kaɓirɗe ina momtee",
+      "confirmAction": "Momtu konto am",
+      "confirmLead": "Naatnu finnde maa e winndu DELETE ngam tabitinde.",
+      "continue": "Jokku",
+      "doneBody": "Keɓe maa cuuɗaama. A yaltinaama. Dokimaaɗe kaalis ɗe laawol ɗaɓɓii ñiiɓnaama.",
+      "doneTitle": "Konto momtaama",
+      "failedTitle": "Momtugol horiima",
+      "finalBody": "Ɗum waawaa ruttude. A majjata naatgol e sahaa.",
+      "finalTitle": "Momtu haa duumii?",
+      "lead": "Aɗa e momtude konto {{role}} maa e MMD Delivery haa duumii.",
+      "passwordPlaceholder": "Mot de passe jooni",
+      "rowHint": "Momtu konto maa haa duumii",
+      "title": "Momtu konto",
+      "typeDelete": "Winndu \"DELETE\"",
+      "whatHappens": "Ko waɗata"
+    }
+  },
+  "brand": {
+    "tagline": "Min neldat e ɓernde ❤️"
+  },
+  "calls": {
+    "connected": {
+      "end": "Dartin noddaandu",
+      "endA11y": "Dartin noddaandu",
+      "nativeHint": "Haal e telefon. Dartin noddaandu ina dartina session Twilio. Muumɗin e haalaowo ina yuɓɓee e telefon.",
+      "subtitle": "Seŋaande",
+      "title": "Noddaandu nana ndee",
+      "withRole": "Noddaandu e {{role}}"
+    },
+    "incoming": {
+      "accept": "Jaɓu",
+      "acceptA11y": "Jaɓ noddaandu",
+      "decline": "Salaa",
+      "declineA11y": "Sala noddaandu",
+      "fromRole": "{{role}} nana nodda",
+      "nativeHint": "Jaɓ ina dartina ŋiŋa e app. Jaab noddaandu telefon ngam haalde.",
+      "relatedOrder": "Golle jokkondirɗe",
+      "subtitle": "Noddaandu nana arta…",
+      "title": "Noddaandu nana arta"
+    },
+    "role": {
+      "caller": "Noddoowo",
+      "customer": "Kiliyaŋke",
+      "driver": "Dooɓoowo",
+      "restaurant": "Restoraa",
+      "support": "Wallude"
+    }
+  },
+  "delivery_requests": {
+    "status": {
+      "paid_pending": "Yoɓaama • Nana sabbii dooɓoowo",
+      "processing_pending": "Yoɓgol nana yuɓɓee",
+      "unpaid": "Yoɓaaka"
+    }
+  },
+  "legal": {
+    "openPrivacy": "Teelte sutura",
+    "openSupport": "Wallude",
+    "openTerms": "Sarɗiiji sarwiis",
+    "privacy": "Teelte sutura",
+    "signupNotice": "So a sosi konto a jaɓii Sarɗiiji e Teelte sutura amen.",
+    "terms": "Sarɗiiji"
+  },
+  "loyalty": {
+    "apply": "OK",
+    "balance": "Poŋte maa",
+    "codeFailed": "Kode moƴƴaani.",
+    "confirm": "Tabitin",
+    "confirmTitle": "Waylu poŋte am",
+    "convertDone": "Waylugol cakkitiiɗo timmii. Waylu kadi so a jogii poŋte seeɗa tan.",
+    "converting": "…",
+    "creditBalance": "Kerdit woodɗo: {{amount}}",
+    "creditExpiry": "Kerdit gasata {{date}}",
+    "enterCode": "Naatnu kode noddaandu",
+    "errorBody": "Ƴeew seŋaande maa e eto ɓawto.",
+    "errorTitle": "Horiima loowde hoolaare",
+    "history": "Tarikh poŋte",
+    "mmdPlusCta": "Lulngo — nafoore Ñamri, Neldol, Taksi e Luumo",
+    "mmdPlusOpen": "Naatu / Yuɓɓu lulngo →",
+    "needMore": "A soklii ɓeydaare",
+    "pointsValue": "{{points}} poŋte = {{amount}}",
+    "promotionsCta": "Kode promo, kupoŋ e ɗaɓɓe e hoore mum",
+    "redeem": "Huutoro",
+    "referral": "Parrainage",
+    "rewardCredit": "Kerdit MMD",
+    "rewardCreditDesc": "Waylu {{points}} poŋte to {{amount}} kerdit duka",
+    "rewardsTitle": "Njeenaaje woodɗe",
+    "share": "Noddu sehilaaɓe",
+    "tierLine": "Tawtoraaɗo {{tier}} • {{lifetime}} poŋte nguurndam",
+    "tierMax": "Darnde toownde yettaama",
+    "tierProgress": "{{remaining}} poŋte to {{next}}",
+    "title": "Njeenaaje MMD",
+    "loadFailed": "Horiima loowde.",
+    "convertSuccess": "Waylugol moƴƴii. Kredit MMD maa ɓeydaama.",
+    "convertFailed": "Waylugol horiima.",
+    "confirmMessage": "Waylu {{points}} toɓɓe e {{amount}} kredit MMD? Ɗum waawaa ruttude.",
+    "shareMessage": "Naatu MMD Delivery e heɓ njoɓdi: {{link}}",
+    "codeApplied": "Kode noddaandu danndaama.",
+    "referralCounts": "{{rewarded}} njoɓaa • {{pending}} nana sabbii",
+    "referralPending": "Kode maa woodoto njaaɗi.",
+    "noActivity": "Alaa golle tawo."
+  },
+  "orders": {
+    "status": {
+      "accepted": "Jaɓaama",
+      "acceptedRestaurant": "Jaɓaama",
+      "canceled": "Haɗtaama",
+      "delivered": "Heɓnaama",
+      "dispatched": "Ena e laawol",
+      "pending": "Nana e ɗoo",
+      "pendingRestaurant": "Nana e ɗoo",
+      "prepared": "Nana heɓna",
+      "ready": "Hepii",
+      "readyWaitingDriver": "Hepii (nana sabbii dooɓoowo)"
+    }
+  },
+  "restaurants": {
+    "chat": {
+      "empty": {
+        "body": "Fuɗɗu yeewtere e kiliyee walla dooɓoowo.",
+        "title": "Alaa peeje"
+      },
+      "loading": "Nana loowa yeewtere…",
+      "missing": {
+        "body": "Ndee yamiroore horiima yiyeede.",
+        "goBack": "Rutto",
+        "title": "Yamiroore yiyaaka"
+      },
+      "placeholder": "Winndu mesasu…",
+      "send": "Neldu",
+      "subtitle": "Yeewtere njamndi",
+      "title": "Ɓataama",
+      "titlePrefix": "Restoraa"
+    }
+  },
+  "shared": {
+    "cancel": "Haɗ",
+    "roles": {
+      "admin": "Ballal MMD",
+      "client": "Kiliyee",
+      "driver": "Dooɓoowo",
+      "restaurant": "Restoraa"
+    }
   }
 }
