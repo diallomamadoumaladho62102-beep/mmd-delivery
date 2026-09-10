@@ -100,6 +100,10 @@ export function initMobileSentry(): boolean {
       enableInExpoDevelopment: false,
       debug: false,
       sendDefaultPii: false,
+      // Keep iOS App Hang detection on. The call_sessions hang is fixed in
+      // IncomingMaskedCallHost / incomingMaskedCallWatch — do not raise the
+      // timeout or disable this to hide stalls.
+      enableAppHangTracking: true,
       environment:
         String(
           (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.APP_ENV ??

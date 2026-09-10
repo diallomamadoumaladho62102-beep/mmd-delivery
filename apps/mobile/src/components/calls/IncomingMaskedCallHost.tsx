@@ -1,22 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppState, Modal, Pressable, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
 import { API_BASE_URL } from "../../lib/apiBase";
 import { mmdAudio } from "../../lib/mmdAudio";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../../lib/supabaseRealtime";
+import {
+  INCOMING_CALL_POLL_MS,
+  callSessionsRealtimeFilter,
+  createIncomingCallFetchGate,
+  filterIncomingCallSessions,
+  incomingCallSessionsEqual,
+  shouldFetchIncomingCallsOnAuthEvent,
+  shouldWatchIncomingCalls,
+  type IncomingCallSessionRow,
+} from "../../lib/incomingMaskedCallWatch";
 
-type IncomingSession = {
-  id: string;
-  caller_role: string | null;
-  target_role: string | null;
-  status: string | null;
-  order_id: string | null;
-};
-
-function isIncomingStatus(status: string | null): boolean {
-  const normalized = String(status ?? "").trim().toLowerCase();
-  return ["active", "ringing", "queued", "initiated"].includes(normalized);
-}
+type IncomingSession = IncomingCallSessionRow;
 
 function formatElapsed(startedMs: number, nowMs: number): string {
   if (nowMs < startedMs) return "00:00";
@@ -38,31 +41,40 @@ export default function IncomingMaskedCallHost() {
   const [connectedAt, setConnectedAt] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [actingId, setActingId] = useState<string | null>(null);
+  const fetchGate = useRef(createIncomingCallFetchGate()).current;
+  const incomingRef = useRef<IncomingSession[]>([]);
 
-  const load = useCallback(async (uid: string) => {
-    const { data } = await supabase
-      .from("call_sessions")
-      .select("id, caller_role, target_role, status, order_id, expires_at, ended_at")
-      .eq("target_user_id", uid)
-      .order("created_at", { ascending: false })
-      .limit(10);
-    const rows = ((data ?? []) as Array<IncomingSession & { expires_at?: string | null; ended_at?: string | null }>)
-      .filter((row) => {
-        if (!isIncomingStatus(row.status) || row.ended_at) return false;
-        if (!row.expires_at) return true;
-        const expires = new Date(row.expires_at).getTime();
-        return Number.isFinite(expires) && expires > Date.now();
-      });
+  const applyIncoming = useCallback((rows: IncomingSession[]) => {
+    if (incomingCallSessionsEqual(incomingRef.current, rows)) return;
+    incomingRef.current = rows;
     setIncoming(rows);
-    setConnected((current) => {
-      if (!current) return null;
-      const stillOpen = (data ?? []).some((row) => {
-        const session = row as IncomingSession & { ended_at?: string | null };
-        return session.id === current.id && !session.ended_at;
-      });
-      return stillOpen ? current : null;
-    });
   }, []);
+
+  const load = useCallback(
+    async (uid: string, force = false) => {
+      if (!shouldWatchIncomingCalls(AppState.currentState)) return;
+      await fetchGate.run(async () => {
+        const { data } = await supabase
+          .from("call_sessions")
+          .select("id, caller_role, target_role, status, order_id, expires_at, ended_at")
+          .eq("target_user_id", uid)
+          .order("created_at", { ascending: false })
+          .limit(10);
+        const rows = filterIncomingCallSessions(
+          (data ?? []) as IncomingSession[],
+        );
+        applyIncoming(rows);
+        setConnected((current) => {
+          if (!current) return null;
+          const stillOpen = ((data ?? []) as IncomingSession[]).some(
+            (row) => row.id === current.id && !row.ended_at,
+          );
+          return stillOpen ? current : null;
+        });
+      }, force);
+    },
+    [applyIncoming, fetchGate],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -70,15 +82,19 @@ export default function IncomingMaskedCallHost() {
       const uid = data.session?.user?.id ?? null;
       if (cancelled) return;
       setUserId(uid);
-      if (uid) void load(uid);
+      if (uid) void load(uid, true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       const uid = session?.user?.id ?? null;
       setUserId(uid);
-      if (uid) void load(uid);
-      else {
+      if (!uid) {
+        incomingRef.current = [];
         setIncoming([]);
         setConnected(null);
+        return;
+      }
+      if (shouldFetchIncomingCallsOnAuthEvent(event)) {
+        void load(uid, true);
       }
     });
     return () => {
@@ -89,20 +105,29 @@ export default function IncomingMaskedCallHost() {
 
   useEffect(() => {
     if (!userId) return;
-    const poll = setInterval(() => void load(userId), 4000);
-    const channel = supabase
-      .channel("masked-incoming-calls")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "call_sessions" },
-        () => {
+    const poll = setInterval(() => {
+      if (!shouldWatchIncomingCalls(AppState.currentState)) return;
+      void load(userId);
+    }, INCOMING_CALL_POLL_MS);
+    const channel = subscribePostgresChannel(`masked-incoming-calls-${userId}`, [
+      {
+        event: "*",
+        table: "call_sessions",
+        filter: callSessionsRealtimeFilter(userId),
+        callback: () => {
+          if (!shouldWatchIncomingCalls(AppState.currentState)) return;
           void load(userId);
         },
-      )
-      .subscribe();
+      },
+    ]);
+    const appStateSub = AppState.addEventListener("change", (state) => {
+      if (shouldWatchIncomingCalls(state)) void load(userId, true);
+    });
     return () => {
       clearInterval(poll);
-      void supabase.removeChannel(channel);
+      appStateSub.remove();
+      fetchGate.dispose();
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [load, userId]);
 
@@ -174,7 +199,7 @@ export default function IncomingMaskedCallHost() {
     } finally {
       setActingId(null);
       setConnected(null);
-      if (userId) void load(userId);
+      if (userId) void load(userId, true);
     }
   }
 
@@ -196,7 +221,7 @@ export default function IncomingMaskedCallHost() {
       setActingId(null);
       setConnected(null);
       setConnectedAt(null);
-      if (userId) void load(userId);
+      if (userId) void load(userId, true);
     }
   }
 

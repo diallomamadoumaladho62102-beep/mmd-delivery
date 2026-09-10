@@ -67,12 +67,10 @@ class MmdAudioService {
 
   async init(): Promise<void> {
     if (this.initialized) {
-      // Re-assert mode on every init call after first — cheap insurance for iOS.
-      try {
-        await this.activateSession();
-      } catch {
-        // keep previous initialized flag; playback paths will retry
-      }
+      // Do not re-enter setAudioModeAsync on every play/ring. That native
+      // UIKit hop was part of the iOS App Hang path when incoming-call
+      // state flickered. Foreground resume and playWithSessionRetry still
+      // re-activate the session when it is actually needed.
       return;
     }
 
