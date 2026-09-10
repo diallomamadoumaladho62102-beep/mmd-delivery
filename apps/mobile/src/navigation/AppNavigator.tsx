@@ -824,7 +824,11 @@ export function AppNavigator({
 
         const {
           data: { user },
-        } = await supabase.auth.getUser();
+        } = await withTimeout(
+          supabase.auth.getUser(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "nav_getUser",
+        );
 
         const lat = Number(addr?.latitude ?? addr?.lat);
         const lng = Number(addr?.longitude ?? addr?.lng);
@@ -1156,7 +1160,11 @@ export function AppNavigator({
 
     const subscribeDriverProfile = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "nav_driver_profile_getSession",
+        );
         const uid = data.session?.user?.id ?? null;
         if (!alive || !uid) return;
         if (profileUserId === uid && profileChannel) return;
@@ -1195,7 +1203,11 @@ export function AppNavigator({
 
     const syncRestaurantAlert = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "nav_role_alert_getSession",
+        );
         const uid = data.session?.user?.id ?? null;
         if (!alive || !uid) {
           await stopRestaurantOrderAlertService();

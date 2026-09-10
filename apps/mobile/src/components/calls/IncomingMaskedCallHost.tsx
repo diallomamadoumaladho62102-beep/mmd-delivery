@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
 import { API_BASE_URL } from "../../lib/apiBase";
 import { mmdAudio } from "../../lib/mmdAudio";
+import { BOOT_AUTH_TIMEOUT_MS, withTimeout } from "../../lib/bootFailOpen";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -78,12 +79,20 @@ export default function IncomingMaskedCallHost() {
 
   useEffect(() => {
     let cancelled = false;
-    void supabase.auth.getSession().then(({ data }) => {
-      const uid = data.session?.user?.id ?? null;
-      if (cancelled) return;
-      setUserId(uid);
-      if (uid) void load(uid, true);
-    });
+    void withTimeout(
+      supabase.auth.getSession(),
+      BOOT_AUTH_TIMEOUT_MS,
+      "incoming_getSession",
+    )
+      .then(({ data }) => {
+        const uid = data.session?.user?.id ?? null;
+        if (cancelled) return;
+        setUserId(uid);
+        if (uid) void load(uid, true);
+      })
+      .catch((error) => {
+        console.log("incoming getSession fail-open:", error);
+      });
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       const uid = session?.user?.id ?? null;
       setUserId(uid);

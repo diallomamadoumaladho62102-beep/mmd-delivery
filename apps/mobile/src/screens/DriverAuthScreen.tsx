@@ -28,6 +28,7 @@ import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
 import {
   AUTH_ACTION_TIMEOUT_MS,
+  BOOT_AUTH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
 import {
@@ -424,74 +425,99 @@ export function DriverAuthScreen() {
     const code = referralCode.trim();
     if (code.length < 4) return;
 
-    const { data, error } = await supabase.rpc("accept_referral_code", {
-      p_code: code,
-    });
-
-    if (error) {
-      console.log("accept_referral_code error", error);
-      return;
-    }
-
-    if (data && (data as { ok?: boolean; error?: string }).ok === false) {
-      console.log(
-        "referral not applied:",
-        (data as { ok?: boolean; error?: string }).error
+    try {
+      const { data, error } = await withTimeout(
+        Promise.resolve(
+          supabase.rpc("accept_referral_code", {
+            p_code: code,
+          }),
+        ),
+        BOOT_AUTH_TIMEOUT_MS,
+        "driver_referral",
       );
+
+      if (error) {
+        console.log("accept_referral_code error", error);
+        return;
+      }
+
+      if (data && (data as { ok?: boolean; error?: string }).ok === false) {
+        console.log(
+          "referral not applied:",
+          (data as { ok?: boolean; error?: string }).error
+        );
+      }
+    } catch (e) {
+      console.log("driver referral fail-open", e);
     }
   }, [referralCode]);
 
   const routeAfterAuth = useCallback(async () => {
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u?.user?.id;
-    if (!uid) return;
-
-    const { data: prof, error } = await supabase
-      .from("driver_profiles")
-      .select("user_id,status")
-      .eq("user_id", uid)
-      .maybeSingle();
-
-    if (error) {
-      console.log("driver_profiles check error", error);
-      navigation.replace("DriverOnboarding");
-      return;
-    }
-
-    const status = (prof as { user_id?: string; status?: DriverStatus } | null)
-      ?.status;
-
-    if (status === "approved") {
-      navigation.replace("DriverTabs");
-      return;
-    }
-
-    if (status === "pending" || status === "incomplete" || status === "rejected") {
-      navigation.replace("DriverOnboarding");
-      return;
-    }
-
-    if (status === "suspended" || status === "disabled") {
-      Alert.alert(
-        status === "disabled"
-          ? t("driver.auth.alert.accountDisabledTitle", "Account disabled")
-          : t("driver.auth.alert.accountSuspendedTitle", "Account suspended"),
-        status === "disabled"
-          ? t(
-              "driver.auth.alert.accountDisabledBody",
-              "Your driver account is disabled. Contact MMD Delivery support.",
-            )
-          : t(
-              "driver.auth.alert.accountSuspendedBody",
-              "Your driver account is suspended. Contact MMD Delivery support.",
-            ),
+    try {
+      const { data: u } = await withTimeout(
+        supabase.auth.getUser(),
+        BOOT_AUTH_TIMEOUT_MS,
+        "driver_route_getUser",
       );
-      await clearSelectedRole();
-      await supabase.auth.signOut();
-      return;
-    }
+      const uid = u?.user?.id;
+      if (!uid) return;
 
-    navigation.replace("DriverOnboarding");
+      const { data: prof, error } = await withTimeout(
+        Promise.resolve(
+          supabase
+            .from("driver_profiles")
+            .select("user_id,status")
+            .eq("user_id", uid)
+            .maybeSingle(),
+        ),
+        BOOT_AUTH_TIMEOUT_MS,
+        "driver_route_profile",
+      );
+
+      if (error) {
+        console.log("driver_profiles check error", error);
+        navigation.replace("DriverOnboarding");
+        return;
+      }
+
+      const status = (prof as { user_id?: string; status?: DriverStatus } | null)
+        ?.status;
+
+      if (status === "approved") {
+        navigation.replace("DriverTabs");
+        return;
+      }
+
+      if (status === "pending" || status === "incomplete" || status === "rejected") {
+        navigation.replace("DriverOnboarding");
+        return;
+      }
+
+      if (status === "suspended" || status === "disabled") {
+        Alert.alert(
+          status === "disabled"
+            ? t("driver.auth.alert.accountDisabledTitle", "Account disabled")
+            : t("driver.auth.alert.accountSuspendedTitle", "Account suspended"),
+          status === "disabled"
+            ? t(
+                "driver.auth.alert.accountDisabledBody",
+                "Your driver account is disabled. Contact MMD Delivery support.",
+              )
+            : t(
+                "driver.auth.alert.accountSuspendedBody",
+                "Your driver account is suspended. Contact MMD Delivery support.",
+              ),
+        );
+        await clearSelectedRole();
+        await supabase.auth.signOut();
+        return;
+      }
+
+      navigation.replace("DriverOnboarding");
+    } catch (e) {
+      console.log("routeAfterAuth fail-open", e);
+      navigation.replace("DriverOnboarding");
+    }
   }, [navigation, t]);
 
   useEffect(() => {
@@ -499,7 +525,11 @@ export function DriverAuthScreen() {
 
     const run = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await withTimeout(
+          supabase.auth.getSession(),
+          BOOT_AUTH_TIMEOUT_MS,
+          "driver_boot_getSession",
+        );
         if (!mounted) return;
 
         if (data?.session?.user) {
@@ -538,7 +568,11 @@ export function DriverAuthScreen() {
         return;
       }
 
-      const { data: userData } = await supabase.auth.getUser();
+      const { data: userData } = await withTimeout(
+        supabase.auth.getUser(),
+        AUTH_ACTION_TIMEOUT_MS,
+        "driver_getUser",
+      );
 
       if (!userData.user?.email_confirmed_at) {
         Alert.alert(

@@ -254,12 +254,16 @@ export function RestaurantAuthScreen() {
       }
 
       if (data.user?.id) {
-        await ensureRestaurantAccount({
-          userId: data.user.id,
-          email: e,
-          createRestaurantProfileIfMissing: false,
-          allowCreateRestaurantRole: false,
-        });
+        await withTimeout(
+          ensureRestaurantAccount({
+            userId: data.user.id,
+            email: e,
+            createRestaurantProfileIfMissing: false,
+            allowCreateRestaurantRole: false,
+          }),
+          AUTH_ACTION_TIMEOUT_MS,
+          "restaurant_ensureAccount",
+        );
       }
 
       setMsg(t("restaurant.auth.success.signedIn", "Signed in ✅"));

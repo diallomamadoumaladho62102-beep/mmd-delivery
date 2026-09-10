@@ -13,6 +13,7 @@ assert.match(auth, /AUTH_ACTION_TIMEOUT_MS/);
 assert.match(auth, /restaurant_signIn/);
 assert.match(auth, /restaurant_signUp/);
 assert.match(auth, /restaurant_resetPassword/);
+assert.match(auth, /restaurant_ensureAccount/);
 assert.match(auth, /resetPasswordForEmail/);
 assert.match(auth, /validatePassword/);
 assert.match(auth, /setLoading\(true\)/);

@@ -27,7 +27,7 @@ import {
   userMessageForProfileGateKind,
 } from "../lib/roleSelectProfileGate";
 import { logTechnicalError } from "../lib/userFacingError";
-import { BOOT_AUTH_TIMEOUT_MS, withTimeout } from "../lib/bootFailOpen";
+import { BOOT_AUTH_TIMEOUT_MS, AUTH_ACTION_TIMEOUT_MS, withTimeout } from "../lib/bootFailOpen";
 import { useTranslation } from "react-i18next";
 import {
   MMD_BLUE,
@@ -544,7 +544,19 @@ export function RoleSelectScreen() {
         return;
       }
 
-      await routeLoggedInUser(role, session.user.id);
+      try {
+        await withTimeout(
+          routeLoggedInUser(role, session.user.id),
+          AUTH_ACTION_TIMEOUT_MS,
+          "roleSelect_routeLoggedIn",
+        );
+      } catch (routeErr) {
+        console.log("RoleSelect route fail-open:", routeErr);
+        if (role === "client") navigation.navigate("ClientHome");
+        else if (role === "driver") navigation.navigate("DriverOnboarding");
+        else if (role === "restaurant") navigation.navigate("RestaurantGate");
+        else navigation.navigate("SellerGate");
+      }
     } catch (e: any) {
       console.log("RoleSelect handlePress error:", e);
 

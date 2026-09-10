@@ -31,6 +31,7 @@ import { toUserFacingError } from "../lib/userFacingError";
 import { resolvePostAuthRoute } from "../lib/authRole";
 import {
   AUTH_ACTION_TIMEOUT_MS,
+  BOOT_AUTH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
 import {
@@ -345,7 +346,13 @@ export function ClientAuthScreen() {
         );
       }
 
-      await applyReferralIfAny();
+      await withTimeout(
+        applyReferralIfAny(),
+        BOOT_AUTH_TIMEOUT_MS,
+        "client_login_referral",
+      ).catch((err) => {
+        console.log("referral fail-open:", err);
+      });
 
       const postAuthRoute = await resolvePostAuthRoute();
       navigation.reset({
@@ -640,8 +647,20 @@ export function ClientAuthScreen() {
         }
       }
 
-      await saveClientProfile({ userId, email: e, avatarUrl, signupCountry });
-      await applyReferralIfAny();
+      await withTimeout(
+        saveClientProfile({ userId, email: e, avatarUrl, signupCountry }),
+        AUTH_ACTION_TIMEOUT_MS,
+        "client_saveProfile",
+      ).catch((err) => {
+        console.log("saveClientProfile fail-open:", err);
+      });
+      await withTimeout(
+        applyReferralIfAny(),
+        BOOT_AUTH_TIMEOUT_MS,
+        "client_signup_referral",
+      ).catch((err) => {
+        console.log("referral fail-open:", err);
+      });
 
       if (!data.session) {
         Alert.alert(

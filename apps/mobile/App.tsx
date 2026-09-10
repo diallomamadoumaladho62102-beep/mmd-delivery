@@ -134,7 +134,10 @@ function App(): React.JSX.Element {
 
     try {
       setupNotifications();
-      void mmdAudio.init();
+      // Do not activate expo-av audio here. setAudioModeAsync is a UIKit hop;
+      // on iOS 26 it can stall the main thread so Splash timers never fire
+      // (Apple 2.1(a) indefinite login + Sentry App Hang).
+      // Playback paths activate the session on first ring/play.
     } catch (error) {
       reportBootError("setup-notifications", error);
     }

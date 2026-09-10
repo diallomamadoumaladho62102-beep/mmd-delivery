@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Constants from "expo-constants";
 import { AppNavigator } from "../navigation/AppNavigator";
 import { supabase } from "./supabase";
+import { BOOT_AUTH_TIMEOUT_MS, withTimeout } from "./bootFailOpen";
 
 type StripeGateProps = {
   initialRouteName?: string;
@@ -112,9 +113,17 @@ export default function StripeGate({ initialRouteName }: StripeGateProps) {
 
   useEffect(() => {
     let alive = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (alive) setHasSession(Boolean(data.session));
-    });
+    void withTimeout(
+      supabase.auth.getSession(),
+      BOOT_AUTH_TIMEOUT_MS,
+      "stripe_getSession",
+    )
+      .then(({ data }) => {
+        if (alive) setHasSession(Boolean(data.session));
+      })
+      .catch(() => {
+        if (alive) setHasSession(false);
+      });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setHasSession(Boolean(session));
     });

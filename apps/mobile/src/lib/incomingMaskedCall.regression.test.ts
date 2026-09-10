@@ -28,6 +28,7 @@ assert.match(host, /callSessionsRealtimeFilter/);
 assert.match(host, /INCOMING_CALL_POLL_MS/);
 assert.match(host, /shouldFetchIncomingCallsOnAuthEvent/);
 assert.match(host, /shouldWatchIncomingCalls/);
+assert.match(host, /incoming_getSession/);
 assert.match(host, /createIncomingCallFetchGate/);
 assert.doesNotMatch(host, /setInterval\(\(\) => void load\(userId\), 4000\)/);
 assert.match(host, /filter:\s*callSessionsRealtimeFilter\(userId\)/);

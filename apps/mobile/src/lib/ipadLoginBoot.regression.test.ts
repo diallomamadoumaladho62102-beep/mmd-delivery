@@ -63,6 +63,7 @@ test("App.tsx uses boot fail-open for fonts and auth", () => {
   assert.match(src, /BOOT_FONT_TIMEOUT_MS/);
   assert.match(src, /withTimeout/);
   assert.match(src, /fontError/);
+  assert.doesNotMatch(src, /void mmdAudio\.init\(/);
 });
 
 test("AppRootShell has import timeout fail-open", () => {
