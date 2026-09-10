@@ -180,7 +180,8 @@
     "settings": "Paramètres",
     "no": "Non",
     "delete": "Supprimer",
-    "view": "Voir"
+    "view": "Voir",
+    "optional": "Optionnel"
   },
   "shared": {
     "common": {
@@ -212,10 +213,23 @@
         "imageNotFoundOnPhone": "Fichier image introuvable sur le téléphone.",
         "imageEmptyOnPhone": "Fichier image vide (0 bytes) sur le téléphone.",
         "base64ReadFailedEmpty": "Lecture base64 échouée (vide).",
-        "arrayBufferZeroBytes": "Conversion ArrayBuffer a produit 0 bytes."
+        "arrayBufferZeroBytes": "Conversion ArrayBuffer a produit 0 bytes.",
+        "accessDeniedTitle": "Accès refusé",
+        "accessDeniedUi": "Tu ne peux pas ouvrir cette discussion.",
+        "invalidOrderId": "Commande invalide.",
+        "invalidOrderIdTitle": "Discussion indisponible",
+        "invalidOrderIdUi": "Cette discussion n’est pas disponible.",
+        "notAllowed": "Tu n’es pas autorisé à faire cela.",
+        "unsupportedImage": "Format d’image non pris en charge.",
+        "imageTooLarge": "Cette image est trop grande.",
+        "messageTooLong": "Ce message est trop long.",
+        "notAuthenticated": "Tu dois être connecté.",
+        "deleteOwnOnly": "Tu ne peux supprimer que tes propres messages."
       },
       "header": {
-        "subtitle": "Messages & pièces jointes"
+        "subtitle": "Messages & pièces jointes",
+        "title": "Discussion",
+        "privateWith": "Conversation avec"
       },
       "empty": "Aucun message pour le moment.",
       "heic": {
@@ -236,6 +250,15 @@
       },
       "placeholders": {
         "message": "Écrire un message…"
+      },
+      "sender": {
+        "you": "Toi",
+        "unknown": "Participant"
+      },
+      "receipt": {
+        "read": "Lu",
+        "sent": "Envoyé",
+        "delivered": "Distribué"
       }
     }
   },

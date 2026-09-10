@@ -2,6 +2,14 @@
  * Locale strings for the platform-wide i18n consistency pass.
  * Consumed by patch-i18n-locale-gaps.mjs (deep-merge; overwrites English leftovers).
  */
+import {
+  authLoginRequired,
+  clientNewOrder,
+  clientRestaurantMenu,
+  commonOptional,
+  payAndConfirm,
+  sharedOrderChatGaps,
+} from "./i18n-client-checkout-catalog.mjs";
 const SMS_EN =
   "I agree to receive automated informational and transactional text messages from MMD Delivery about my account, verification, orders, deliveries, package deliveries, taxi rides, and customer support. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to cancel and HELP for help. Optional.";
 
@@ -602,11 +610,13 @@ function deliveryRequest(lang) {
         calculate: "Calculate delivery price",
         create: "Create delivery request",
         payNow: "Pay now",
+        payAndConfirm: payAndConfirm("en"),
       },
       created: {
         paidCardTitle: "Paid delivery request",
         cardTitle: "Delivery request created",
         payHint: "You can continue to secure payment.",
+        paidHint: "Payment confirmed. Drivers can now see your request.",
       },
     },
     fr: {
@@ -664,11 +674,13 @@ function deliveryRequest(lang) {
         calculate: "Calculer le prix de livraison",
         create: "Créer la demande de livraison",
         payNow: "Payer maintenant",
+        payAndConfirm: payAndConfirm("fr"),
       },
       created: {
         paidCardTitle: "Demande de livraison payée",
         cardTitle: "Demande de livraison créée",
         payHint: "Tu peux maintenant continuer vers le paiement sécurisé.",
+        paidHint: "Paiement confirmé. Les chauffeurs peuvent maintenant voir ta demande.",
       },
     },
     es: {
@@ -725,11 +737,13 @@ function deliveryRequest(lang) {
         calculate: "Calcular precio de entrega",
         create: "Crear solicitud de entrega",
         payNow: "Pagar ahora",
+        payAndConfirm: payAndConfirm("es"),
       },
       created: {
         paidCardTitle: "Solicitud de entrega pagada",
         cardTitle: "Solicitud de entrega creada",
         payHint: "Puedes continuar al pago seguro.",
+        paidHint: "Pago confirmado. Los conductores ya pueden ver tu solicitud.",
       },
     },
     ar: {
@@ -786,11 +800,13 @@ function deliveryRequest(lang) {
         calculate: "حساب سعر التوصيل",
         create: "إنشاء طلب التوصيل",
         payNow: "ادفع الآن",
+        payAndConfirm: payAndConfirm("ar"),
       },
       created: {
         paidCardTitle: "طلب توصيل مدفوع",
         cardTitle: "تم إنشاء طلب التوصيل",
         payHint: "يمكنك المتابعة إلى الدفع الآمن.",
+        paidHint: "تم تأكيد الدفع. يمكن للسائقين رؤية طلبك الآن.",
       },
     },
     zh: {
@@ -847,11 +863,13 @@ function deliveryRequest(lang) {
         calculate: "计算配送价格",
         create: "创建配送请求",
         payNow: "立即支付",
+        payAndConfirm: payAndConfirm("zh"),
       },
       created: {
         paidCardTitle: "已支付的配送请求",
         cardTitle: "配送请求已创建",
         payHint: "你可以继续进行安全支付。",
+        paidHint: "付款已确认。司机现在可以看到你的请求。",
       },
     },
     ff: {
@@ -908,11 +926,13 @@ function deliveryRequest(lang) {
         calculate: "Hiis njoɓdi neldol",
         create: "Sos ñaagol neldol",
         payNow: "Yoɓ jooni",
+        payAndConfirm: payAndConfirm("ff"),
       },
       created: {
         paidCardTitle: "Ñaagol neldol yoɓaangol",
         cardTitle: "Ñaagol neldol sosaama",
         payHint: "A waawi jokkude e njoɓdi kisndam.",
+        paidHint: "Njoɓdi jaɓaama. Dogginooɓe mbaawi yiyde ñaagol maa jooni.",
       },
     },
   };
@@ -2430,7 +2450,10 @@ function extrasFor(lang) {
       restaurants,
       home: { tabs },
       delivery: { tabs: { track } },
+      newOrder: clientNewOrder(lang),
     },
+    clientRestaurantMenu: clientRestaurantMenu(lang),
+    auth: authLoginRequired(lang),
     restaurant: {
       connect: { cta: connectCta(lang) },
       earnings: { stripe: earningsStripe },
@@ -3125,7 +3148,8 @@ function extrasFor(lang) {
 
 export const COMMON_GAPS = {
   en: {
-    common: { save: "Save", retry: "Retry" },
+    common: { save: "Save", retry: "Retry", optional: commonOptional("en") },
+    shared: { orderChat: sharedOrderChatGaps("en") },
     boot: {
       loadingMmd: "Loading MMD…",
       nativeUnavailable: "Native module / navigation unavailable",
@@ -3144,7 +3168,8 @@ export const COMMON_GAPS = {
     },
   },
   fr: {
-    common: { save: "Enregistrer", retry: "Réessayer" },
+    common: { save: "Enregistrer", retry: "Réessayer", optional: commonOptional("fr") },
+    shared: { orderChat: sharedOrderChatGaps("fr") },
     boot: {
       loadingMmd: "Chargement MMD…",
       nativeUnavailable: "Module natif / navigation indisponible",
@@ -3164,7 +3189,8 @@ export const COMMON_GAPS = {
     },
   },
   es: {
-    common: { save: "Guardar", retry: "Reintentar" },
+    common: { save: "Guardar", retry: "Reintentar", optional: commonOptional("es") },
+    shared: { orderChat: sharedOrderChatGaps("es") },
     boot: {
       loadingMmd: "Cargando MMD…",
       nativeUnavailable: "Módulo nativo / navegación no disponible",
@@ -3184,7 +3210,8 @@ export const COMMON_GAPS = {
     },
   },
   ar: {
-    common: { save: "حفظ", retry: "إعادة المحاولة" },
+    common: { save: "حفظ", retry: "إعادة المحاولة", optional: commonOptional("ar") },
+    shared: { orderChat: sharedOrderChatGaps("ar") },
     boot: {
       loadingMmd: "جارٍ تحميل MMD…",
       nativeUnavailable: "الوحدة الأصلية / التنقل غير متاح",
@@ -3203,7 +3230,8 @@ export const COMMON_GAPS = {
     },
   },
   zh: {
-    common: { save: "保存", retry: "重试" },
+    common: { save: "保存", retry: "重试", optional: commonOptional("zh") },
+    shared: { orderChat: sharedOrderChatGaps("zh") },
     boot: {
       loadingMmd: "正在加载 MMD…",
       nativeUnavailable: "原生模块 / 导航不可用",
@@ -3222,7 +3250,8 @@ export const COMMON_GAPS = {
     },
   },
   ff: {
-    common: { save: "Danndu", retry: "Fuɗɗit" },
+    common: { save: "Danndu", retry: "Fuɗɗit", optional: commonOptional("ff") },
+    shared: { orderChat: sharedOrderChatGaps("ff") },
     boot: {
       loadingMmd: "Nana loowa MMD…",
       nativeUnavailable: "Module native / navigation heɓotaako",

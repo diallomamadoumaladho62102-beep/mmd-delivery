@@ -908,6 +908,100 @@
       "tabs": {
         "track": "Rewindo"
       }
+    },
+    "newOrder": {
+      "title": "Njamndi hesere",
+      "alerts": {
+        "missingFieldsTitle": "Galleeji ŋattaaɗi",
+        "missingConfigTitle": "Teelte ŋattaaɗe",
+        "blockedTitle": "Njamndi ko haɗaaɗo",
+        "verifyAddressTitle": "Ñiiɓirde ina sokli ƴeewndo",
+        "missingCoordsTitle": "Coords ŋattaaɗi",
+        "loginRequiredTitle": "Naatgol wajibi",
+        "createdTitle": "Njamndi sosaama",
+        "missingOrderTitle": "Njamndi ŋattaaɗo",
+        "paymentSuccessTitle": "Njoɓdi moƴƴii",
+        "paymentTitle": "Njoɓdi",
+        "incompleteAddressBody": "Naatnu ñiiɓirɗe ɓurɗe timmude hade hiisde.",
+        "missingConfigBody": "URL API teeltaaka.",
+        "loginRequiredBody": "Naat hade sosde njamndi.",
+        "createdBody": "Njamndi maa sosaama. A waawi jooni pennude Yoɓ jooni.",
+        "createFirst": "Sos njamndi so tawii, ndeen a waawi yoɓde.",
+        "paymentPendingBody": "A jaaraama. Stripe jaɓii njoɓdi. Njamndi maa wonata yoɓaango so yahii.",
+        "paymentConfirmedBody": "A jaaraama. Njoɓdi maa jaɓaama. Restoraa waawi jaɓde njamndi jooni.",
+        "invalidGps": "Coords GPS moƴƴaani. Hiit ƴeewndo.",
+        "missingCoordsBody": "Hiit ƴeewndo ngam heɓde coords GPS hade sosde njamndi.",
+        "missingFieldsBody": "Naatnu ñiiɓirde ƴettugol e ñiiɓirde neldol.",
+        "distanceTooFar": "Woɗɗude ɓurnde.\n\nSafru ñiiɓirde.",
+        "fillAddressesFirst": "Hebbin ñiiɓirɗe ƴettugol e neldol so tawii.",
+        "incompleteAddressCreateBody": "Naatnu ñiiɓirde timmunde hade jokkude.",
+        "missingOrderBody": "Sos njamndi so tawii, ndeen a waawi yoɓde.",
+        "paymentSuccessBody": "A jaaraama. Njoɓdi maa jaɓaama. Restoraa waawi jaɓde njamndi jooni."
+      },
+      "errors": {
+        "paymentFailed": "Njoɓdi hebɓaaki oo sahaa.",
+        "tooFarOrImprecise": "Woɗɗude ɓurnde walla ñiiɓirde laaɓaani. Ƴeewto laawol, ZIP, wuro e diiwaan.",
+        "noRouteFound": "Alaa laawol tawaangol hakkunde ɗee ñiiɓirɗe. Ƴeewto ñiiɓirde gaaɗo.",
+        "networkFailed": "Horiima heɓde sarworde oo sahaa. Ƴeewto laylayol ndeen fuɗɗit.",
+        "timeout": "Ñaagol ƴeewndo ɓuri juutude. Fuɗɗit so yahii.",
+        "noRestaurantSelected": "Alaa restoraa suɓaama. Rutto e doggol ngol suɓo restoraa.",
+        "restaurantUnavailable": "Oo restoraa hebɓaaki njamndi oo sahaa.",
+        "restaurantMissingOwner": "Oo restoraa alaa jom moƴƴo tawo.",
+        "restaurantMissingLocation": "Oo restoraa alaa ñiiɓirde GPS moƴƴunde tawo. Foti timminde profil mum hade keɓde njamndi.",
+        "invalidJsonResponse": "Jaabawol moƴƴaani ummoraade e sarwiis woɗɗude.",
+        "invalidMapboxDistanceEta": "Jaabawol woɗɗude/waktu moƴƴaani ummoraade e Mapbox.",
+        "createFailed": "Horiima sosde njamndi oo sahaa.",
+        "sessionExpired": "Session timmii. Naat kadi ndeen fuɗɗit.",
+        "estimateFailed": "Horiima hiisde ƴeewndo neldol oo sahaa.",
+        "distanceTooFarWithMiles": "Woɗɗude ɓurnde ({{miles}} mi). Ƴeewto ñiiɓirde.",
+        "missingSession": "Session timmii. Naat kadi ndeen fuɗɗit."
+      },
+      "cards": {
+        "autoEstimate": "Ƴeewndo otomatik"
+      },
+      "status": {
+        "calculating": "Nana hiisa…",
+        "autoCalculating": "Hiisgol otomatik ena yaha…",
+        "estimateReady": "Ƴeewndo hebiima.",
+        "waitingCompleteAddress": "Ena fadoto ñiiɓirde timmunde."
+      },
+      "labels": {
+        "eta": "Waktu ƴeewndo",
+        "distance": "Woɗɗude",
+        "itemsSubtotal": "Les-total geɗe",
+        "taxes": "Njoɓdi laamu",
+        "fee": "Njoɓdi neldol",
+        "finalTotal": "Kalaa timmuɗo",
+        "pickupGps": "GPS ƴettugol",
+        "dropoffGps": "GPS neldol"
+      },
+      "section": {
+        "addresses": "Ñiiɓirɗe neldol",
+        "estimateTitle": "Ƴeewndo neldol (MMD Delivery)"
+      },
+      "fields": {
+        "pickupLabel": "Ñiiɓirde ƴettugol",
+        "dropoffLabel": "Ñiiɓirde neldol",
+        "pickupLockedHint": "Ñiiɓirde restoraa hebbinaama e hoore mum.",
+        "dropoffPlaceholder": "Yeru: ñiiɓirde kiliyee"
+      },
+      "checkout": {
+        "title": "Checkout",
+        "stepEstimate": "Ƴeewndo otomatik",
+        "stepCreate": "Sos njamndi",
+        "stepPay": "Yoɓ e Stripe"
+      },
+      "actions": {
+        "creating": "Nana sosa njamndi…",
+        "create": "Jaɓ tee sos njamndi MMD",
+        "paying": "Njoɓdi ena yaha…",
+        "payNow": "Yoɓ jooni"
+      },
+      "subtitle": "Naatnu ñiiɓirɗe ƴettugol e neldol. Neldol huutoroto njoɓdi wootere e lowre.",
+      "hints": {
+        "autoEstimate": "Ƴeewndo fuɗɗoto e hoore mum caggal njaaweere seeɗa so ñiiɓirde yi’ete timmunde.",
+        "checkoutSteps": "1) Ƴeewndo → 2) Sos njamndi → 3) Yoɓ e Stripe."
+      }
     }
   },
   "location": {
@@ -950,7 +1044,9 @@
       "updateFailed": "Horiima hesɗitinde mot de passe.",
       "checkingSession": "Nana yeeɓee session…",
       "errorTitle": "Juumre"
-    }
+    },
+    "loginRequiredTitle": "Naatgol wajibi",
+    "loginRequiredBody": "Naat hade sosde njamndi."
   },
   "driver": {
     "w9": {
@@ -1771,11 +1867,97 @@
   "clientRestaurantMenu": {
     "createOrderError": "Horiima sosde odaare jooni.",
     "errors": {
-      "deliveryShareInvalid": "Njoɓdi livraison alaa jooni. Ete kadi walla jokkondir e support."
+      "deliveryShareInvalid": "Njoɓdi livraison alaa jooni. Ete kadi walla jokkondir e support.",
+      "missingRestaurantId": "Restoraa yiytaaka. Rutto e doggol restoraaji ndeen fuɗɗit.",
+      "restaurantUnavailable": "Oo restoraa hebɓaaki walla ñiiɓirde GPS mum teeltaaka tawo."
     },
     "addresses": {
       "pickupLabel": "Ñiiɓirde ƴettugol (restoraa / fuɗɗoode)",
-      "deliveryLabel": "Ñiiɓirde bakkagol (kiliyaŋke)"
+      "deliveryLabel": "Ñiiɓirde bakkagol (kiliyaŋke)",
+      "title": "Ñiiɓirɗe neldol",
+      "dropoffLabel": "Ñiiɓirde neldol (kiliyee)",
+      "pickupPlaceholder": "Yeru: 686 Vermont St Brooklyn NY 11207",
+      "dropoffPlaceholder": "Yeru: 1112 Flatbush Ave Brooklyn NY 11226",
+      "pickupLockedHint": "Ñiiɓirde restoraa hebbinaama e hoore mum.",
+      "estimating": "Nana hiisa neldol e hoore mum…",
+      "estimateReady": "Ƴeewndo neldol hebiima.",
+      "autoEstimateHint": "Ƴeewndo fuɗɗoto e hoore mum so ñiiɓirde timmii."
+    },
+    "header": {
+      "subtitle": "Yiy menu oo ɓeyd ñaamdu e njamndi MMD maa."
+    },
+    "loadMenuError": "Horiima loowde menu restoraa oo sahaa.",
+    "estimateError": "Horiima hiisde ƴeewndo neldol oo sahaa.",
+    "cartEmptyTitle": "Panier ɓolɗo",
+    "cartEmptyEstimate": "Ɓeydu ñaamdu gooto so a hiisata neldol.",
+    "cartEmptyCreate": "Ɓeydu ñaamdu gooto e njamndi maa.",
+    "missingFieldsTitle": "Galleeji ŋattaaɗi",
+    "missingFieldsEstimate": "Naatnu ñiiɓirde restoraa e ñiiɓirde neldol.",
+    "missingFieldsCreate": "Naatnu ñiiɓirde ƴettugol e ñiiɓirde neldol.",
+    "incompleteAddressTitle": "Ñiiɓirde timmaani",
+    "incompleteAddressBody": "Naatnu ñiiɓirde ɓurnde timmude hade hiisde neldol.",
+    "missingConfigTitle": "Teelte ŋattaaɗe",
+    "missingConfigBody": "URL API teeltaaka.",
+    "missingCoordsTitle": "Coords ŋattaaɗi",
+    "missingCoordsBody": "Hiit ƴeewndo ngam heɓde coords GPS hade sosde njamndi.",
+    "orderBlockedTitle": "Njamndi ko haɗaaɗo",
+    "orderBlockedBody": "Woɗɗude ɓurnde ({{miles}} mi).\n\nSafru ñiiɓirde (ZIP / wuro / diiwaan).",
+    "verifyAddressTitle": "Ñiiɓirde ina sokli ƴeewndo",
+    "verifyAddressBody": "Woɗɗude juutunde: {{miles}} mi.\n\nƳeewto ZIP, wuro e diiwaan.\nYeru: \"Brooklyn NY 11226\".",
+    "estimate": {
+      "errors": {
+        "generic": "Horiima hiisde neldol oo sahaa.",
+        "tooFarOrImprecise": "Gaaɗo ɓuri woɗɗude walla ñiiɓirde laaɓaani. Ƴeewto laawol, ZIP, wuro e diiwaan.",
+        "noRoute": "Alaa laawol neldol tawaangol ngam ndee gaaɗo. Ƴeewto ñiiɓirde.",
+        "timeout": "Ñaagol ƴeewndo ɓuri juutude. Fuɗɗit.",
+        "invalidResponse": "Jaabawol moƴƴaani ummoraade e sarwiis ƴeewndo neldol.",
+        "invalidApiResponse": "Jaabawol moƴƴaani ummoraade e sarwiis woɗɗude.",
+        "invalidDistanceEta": "Woɗɗude walla waktu ƴeewndo moƴƴaani ummoraade e sarwiis.",
+        "invalidMapboxDistanceEta": "Jaabawol woɗɗude/waktu moƴƴaani ummoraade e Mapbox.",
+        "distanceTooLarge": "Woɗɗude ɓurnde ({{miles}} mi). Ƴeewto ZIP, wuro e diiwaan."
+      }
+    },
+    "menu": {
+      "title": "Menu restoraa",
+      "loading": "Nana loowa menu…",
+      "empty": "Alaa ñaamdu tawo. Restoraa oo teeltaaki menu MMD mum.",
+      "add": "Ɓeydu",
+      "itemUnavailable": "Ndee ñaamdu hebɓaaki tawo."
+    },
+    "leaveAtDoor": {
+      "title": "Accu e damal",
+      "hint": "Yamira dogginoowo accude njamndi e damal caggal njaaweere ɓurnde (nataal ina waɗɗii)."
+    },
+    "summary": {
+      "distance": "Woɗɗude",
+      "eta": "Waktu ƴeewndo",
+      "fee": "Njoɓdi neldol",
+      "pickupGps": "GPS ƴettugol",
+      "dropoffGps": "GPS neldol"
+    },
+    "cart": {
+      "title": "Panier",
+      "empty": "Panier maa ɓolii. Ɓeydu ñaamdu ummoraade e menu.",
+      "perUnit": "/ gooto"
+    },
+    "options": {
+      "title": "Cuɓe",
+      "add": "Ɓeydu e cuɓe"
+    },
+    "totals": {
+      "subtotal": "Les-total",
+      "taxLabel": "Njoɓdi laamu",
+      "totalNoDelivery": "Kalaa (alaa neldol)",
+      "serviceFee": "Njoɓdi sarwiis",
+      "finalTotal": "Kalaa timmuɗo"
+    },
+    "create": {
+      "paying": "Njoɓdi ena yaha…",
+      "confirm": "Yoɓ tee jaɓ njamndi MMD"
+    },
+    "payment": {
+      "title": "Njoɓdi",
+      "notCompleted": "Njoɓdi timmaani. Alaa njamndi sosaa."
     }
   },
   "order": {
@@ -2126,12 +2308,14 @@
     "actions": {
       "calculate": "Hiis njoɓdi neldol",
       "create": "Sos ñaagol neldol",
-      "payNow": "Yoɓ jooni"
+      "payNow": "Yoɓ jooni",
+      "payAndConfirm": "Yoɓ tee jaɓ neldol"
     },
     "created": {
       "paidCardTitle": "Ñaagol neldol yoɓaangol",
       "cardTitle": "Ñaagol neldol sosaama",
-      "payHint": "A waawi jokkude e njoɓdi kisndam."
+      "payHint": "A waawi jokkude e njoɓdi kisndam.",
+      "paidHint": "Njoɓdi jaɓaama. Dogginooɓe mbaawi yiyde ñaagol maa jooni."
     },
     "alerts": {
       "scopeTitle": "Luumo hebɓaaki",

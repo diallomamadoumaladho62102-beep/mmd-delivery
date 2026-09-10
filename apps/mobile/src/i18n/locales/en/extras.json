@@ -926,6 +926,100 @@
       "tabs": {
         "track": "Track"
       }
+    },
+    "newOrder": {
+      "title": "New order",
+      "alerts": {
+        "missingFieldsTitle": "Missing fields",
+        "missingConfigTitle": "Missing configuration",
+        "blockedTitle": "Order blocked",
+        "verifyAddressTitle": "Address to verify",
+        "missingCoordsTitle": "Missing coordinates",
+        "loginRequiredTitle": "Sign in required",
+        "createdTitle": "Order created",
+        "missingOrderTitle": "Missing order",
+        "paymentSuccessTitle": "Payment successful",
+        "paymentTitle": "Payment",
+        "incompleteAddressBody": "Enter more complete addresses before calculating delivery.",
+        "missingConfigBody": "The API base URL is not configured.",
+        "loginRequiredBody": "Please sign in before creating an order.",
+        "createdBody": "Your order was created. You can now tap Pay now.",
+        "createFirst": "Create the order first, then you can pay.",
+        "paymentPendingBody": "Thank you. Stripe confirmed payment. The order will be marked paid shortly.",
+        "paymentConfirmedBody": "Thank you. Your payment is confirmed. The restaurant can now accept the order.",
+        "invalidGps": "Invalid GPS coordinates. Recalculate the estimate.",
+        "missingCoordsBody": "Recalculate the estimate to get GPS coordinates before creating the order.",
+        "missingFieldsBody": "Enter the pickup address and the delivery address.",
+        "distanceTooFar": "Distance is too far.\n\nFix the address (ZIP / city / state).",
+        "fillAddressesFirst": "Fill in the pickup and delivery addresses first.",
+        "incompleteAddressCreateBody": "Enter a complete address before continuing.",
+        "missingOrderBody": "Create the order first, then you can pay.",
+        "paymentSuccessBody": "Thank you. Your payment is confirmed. The restaurant can now accept the order."
+      },
+      "errors": {
+        "paymentFailed": "Payment is unavailable right now.",
+        "tooFarOrImprecise": "Distance is too far or the address is not precise enough. Check the street, ZIP, city, and state.",
+        "noRouteFound": "No route was found between these addresses. Check the destination address.",
+        "networkFailed": "Unable to reach the server right now. Check your network and try again.",
+        "timeout": "The estimate request took too long. Try again in a moment.",
+        "noRestaurantSelected": "No restaurant selected. Go back to the list and choose a restaurant.",
+        "restaurantUnavailable": "This restaurant is not available for orders right now.",
+        "restaurantMissingOwner": "This restaurant does not have a valid owner yet.",
+        "restaurantMissingLocation": "This restaurant does not have a valid GPS address yet. It must complete its profile before receiving orders.",
+        "invalidJsonResponse": "Invalid response from the distance service.",
+        "invalidMapboxDistanceEta": "Invalid distance or time response from Mapbox.",
+        "createFailed": "Unable to create the order right now.",
+        "sessionExpired": "Session expired. Sign in again and try once more.",
+        "estimateFailed": "Unable to calculate the delivery estimate right now.",
+        "distanceTooFarWithMiles": "Distance is too far ({{miles}} mi). Check the address.",
+        "missingSession": "Session expired. Sign in again and try once more."
+      },
+      "cards": {
+        "autoEstimate": "Auto estimate"
+      },
+      "status": {
+        "calculating": "Calculating…",
+        "autoCalculating": "Automatic calculation in progress…",
+        "estimateReady": "Estimate ready.",
+        "waitingCompleteAddress": "Waiting for a complete address."
+      },
+      "labels": {
+        "eta": "Estimated time",
+        "distance": "Distance",
+        "itemsSubtotal": "Items subtotal",
+        "taxes": "Tax",
+        "fee": "Delivery fee",
+        "finalTotal": "Final total",
+        "pickupGps": "Pickup GPS",
+        "dropoffGps": "Dropoff GPS"
+      },
+      "section": {
+        "addresses": "Delivery addresses",
+        "estimateTitle": "Delivery estimate (MMD Delivery)"
+      },
+      "fields": {
+        "pickupLabel": "Pickup address",
+        "dropoffLabel": "Delivery address",
+        "pickupLockedHint": "Restaurant address filled in automatically.",
+        "dropoffPlaceholder": "Ex: customer address"
+      },
+      "checkout": {
+        "title": "Checkout",
+        "stepEstimate": "Automatic estimate",
+        "stepCreate": "Create the order",
+        "stepPay": "Pay with Stripe"
+      },
+      "actions": {
+        "creating": "Creating order…",
+        "create": "Confirm and create the MMD order",
+        "paying": "Payment in progress…",
+        "payNow": "Pay now"
+      },
+      "subtitle": "Enter pickup and dropoff addresses. Delivery uses the same pricing as the website.",
+      "hints": {
+        "autoEstimate": "The estimate starts automatically after a short pause when the address looks complete.",
+        "checkoutSteps": "1) Estimate → 2) Create the order → 3) Pay with Stripe."
+      }
     }
   },
   "location": {
@@ -968,7 +1062,9 @@
       "updateFailed": "Unable to update password.",
       "checkingSession": "Checking session…",
       "errorTitle": "Error"
-    }
+    },
+    "loginRequiredTitle": "Sign in required",
+    "loginRequiredBody": "Please sign in before creating an order."
   },
   "driver": {
     "profile": {
@@ -1739,11 +1835,97 @@
   "clientRestaurantMenu": {
     "createOrderError": "Unable to create the order right now.",
     "errors": {
-      "deliveryShareInvalid": "Delivery pricing is temporarily unavailable. Please try again later or contact support."
+      "deliveryShareInvalid": "Delivery pricing is temporarily unavailable. Please try again later or contact support.",
+      "missingRestaurantId": "Restaurant not found. Go back to the restaurant list and try again.",
+      "restaurantUnavailable": "This restaurant is unavailable or its GPS address is not set yet."
     },
     "addresses": {
       "pickupLabel": "Pickup address (restaurant / start point)",
-      "deliveryLabel": "Delivery address (customer)"
+      "deliveryLabel": "Delivery address (customer)",
+      "title": "Delivery addresses",
+      "dropoffLabel": "Delivery address (customer)",
+      "pickupPlaceholder": "Ex: 686 Vermont St Brooklyn NY 11207",
+      "dropoffPlaceholder": "Ex: 1112 Flatbush Ave Brooklyn NY 11226",
+      "pickupLockedHint": "Restaurant address filled in automatically.",
+      "estimating": "Calculating delivery automatically…",
+      "estimateReady": "Delivery estimate ready.",
+      "autoEstimateHint": "The estimate starts automatically when the address is complete."
+    },
+    "header": {
+      "subtitle": "Browse the menu and add dishes to your MMD order."
+    },
+    "loadMenuError": "Unable to load this restaurant menu right now.",
+    "estimateError": "Unable to calculate the delivery estimate right now.",
+    "cartEmptyTitle": "Empty cart",
+    "cartEmptyEstimate": "Add at least one dish before estimating delivery.",
+    "cartEmptyCreate": "Add at least one dish to your order.",
+    "missingFieldsTitle": "Missing fields",
+    "missingFieldsEstimate": "Enter the restaurant pickup address and the delivery address.",
+    "missingFieldsCreate": "Enter the pickup address and the delivery address.",
+    "incompleteAddressTitle": "Incomplete address",
+    "incompleteAddressBody": "Enter a more complete address before calculating delivery.",
+    "missingConfigTitle": "Missing configuration",
+    "missingConfigBody": "The API base URL is not configured.",
+    "missingCoordsTitle": "Missing coordinates",
+    "missingCoordsBody": "Recalculate the estimate to get GPS coordinates before creating the order.",
+    "orderBlockedTitle": "Order blocked",
+    "orderBlockedBody": "Distance is too far ({{miles}} mi).\n\nFix the address (ZIP / city / state).",
+    "verifyAddressTitle": "Address to verify",
+    "verifyAddressBody": "Very long distance: {{miles}} mi.\n\nCheck the ZIP, city, and state.\nEx: \"Brooklyn NY 11226\".",
+    "estimate": {
+      "errors": {
+        "generic": "Unable to calculate delivery right now.",
+        "tooFarOrImprecise": "Destination is too far or the address is not precise enough. Check the street, ZIP, city, and state.",
+        "noRoute": "No delivery route was found for this destination. Check the address.",
+        "timeout": "The estimate request took too long. Try again.",
+        "invalidResponse": "Invalid response from the delivery estimate service.",
+        "invalidApiResponse": "Invalid response from the distance service.",
+        "invalidDistanceEta": "Invalid distance or ETA received from the estimate service.",
+        "invalidMapboxDistanceEta": "Invalid distance or time response from Mapbox.",
+        "distanceTooLarge": "Distance is too far ({{miles}} mi). Check the ZIP, city, and state."
+      }
+    },
+    "menu": {
+      "title": "Restaurant menu",
+      "loading": "Loading menu…",
+      "empty": "No dishes yet. This restaurant has not configured its MMD menu.",
+      "add": "Add",
+      "itemUnavailable": "This dish is no longer available."
+    },
+    "leaveAtDoor": {
+      "title": "Leave at the door",
+      "hint": "Allows the driver to leave the order at the door after the maximum wait (photo required)."
+    },
+    "summary": {
+      "distance": "Distance",
+      "eta": "Estimated time",
+      "fee": "Delivery fee",
+      "pickupGps": "Pickup GPS",
+      "dropoffGps": "Dropoff GPS"
+    },
+    "cart": {
+      "title": "Cart",
+      "empty": "Your cart is empty. Add dishes from the menu.",
+      "perUnit": "/ each"
+    },
+    "options": {
+      "title": "Options",
+      "add": "Add with options"
+    },
+    "totals": {
+      "subtotal": "Subtotal",
+      "taxLabel": "Tax",
+      "totalNoDelivery": "Total (before delivery)",
+      "serviceFee": "Service fee",
+      "finalTotal": "Final total"
+    },
+    "create": {
+      "paying": "Payment in progress…",
+      "confirm": "Pay and confirm the MMD order"
+    },
+    "payment": {
+      "title": "Payment",
+      "notCompleted": "Payment was not completed. No order was created."
     }
   },
   "order": {
@@ -2073,12 +2255,14 @@
     "actions": {
       "calculate": "Calculate delivery price",
       "create": "Create delivery request",
-      "payNow": "Pay now"
+      "payNow": "Pay now",
+      "payAndConfirm": "Pay and confirm delivery"
     },
     "created": {
       "paidCardTitle": "Paid delivery request",
       "cardTitle": "Delivery request created",
-      "payHint": "You can continue to secure payment."
+      "payHint": "You can continue to secure payment.",
+      "paidHint": "Payment confirmed. Drivers can now see your request."
     },
     "alerts": {
       "scopeTitle": "Market unavailable",

@@ -192,7 +192,7 @@ function money(value: number | null, currency = "USD") {
 function getFriendlyEstimateError(message: string | undefined, tr: (key: string, fallback: string) => string) {
   const msg = (message ?? "").trim();
   if (!msg) {
-    return tr("deliveryRequest.errors.estimateGeneric", "Impossible de calculer l’estimation de livraison pour le moment.");
+    return tr("deliveryRequest.errors.estimateGeneric", "Unable to calculate the delivery estimate right now.");
   }
 
   const lower = msg.toLowerCase();
@@ -202,19 +202,19 @@ function getFriendlyEstimateError(message: string | undefined, tr: (key: string,
     lower.includes("network request failed") ||
     lower.includes("network")
   ) {
-    return tr("deliveryRequest.errors.networkEstimate", "Erreur réseau pendant le calcul de l’estimation.");
+    return tr("deliveryRequest.errors.networkEstimate", "Network error while calculating the estimate.");
   }
 
   if (lower.includes("timeout") || lower.includes("aborted")) {
-    return tr("deliveryRequest.errors.estimateTimeout", "La demande d’estimation a pris trop de temps. Réessaie.");
+    return tr("deliveryRequest.errors.estimateTimeout", "The estimate request took too long. Try again.");
   }
 
   if (lower.includes("distance too far")) {
-    return tr("deliveryRequest.errors.distanceTooLarge", "Distance trop grande. Vérifie les deux adresses.");
+    return tr("deliveryRequest.errors.distanceTooLarge", "Distance is too large. Check both addresses.");
   }
 
   if (lower.includes("route exceeds maximum distance limitation")) {
-    return tr("deliveryRequest.errors.distanceTooLargeOrImprecise", "Distance trop grande ou adresse pas assez précise. Vérifie la rue, le ZIP code, la ville et l’État.");
+    return tr("deliveryRequest.errors.distanceTooLargeOrImprecise", "Distance is too large or the address is not precise enough. Check street, ZIP, city, and state.");
   }
 
   return msg;
@@ -483,17 +483,17 @@ export function DeliveryRequestScreen() {
     const dropoff = normalizeAddress(dropoffAddress);
 
     if (!pickup) {
-      Alert.alert(tr("deliveryRequest.alerts.missingPickupTitle", "Pickup manquant"), tr("deliveryRequest.alerts.missingPickupBody", "Entre l’adresse pickup."));
+      Alert.alert(tr("deliveryRequest.alerts.missingPickupTitle", "Missing pickup"), tr("deliveryRequest.alerts.missingPickupBody", "Enter the pickup address."));
       return false;
     }
 
     if (!dropoff && !dropoffLocationId) {
-      Alert.alert(tr("deliveryRequest.alerts.missingDropoffTitle", "Dropoff manquant"), tr("deliveryRequest.alerts.missingDropoffBody", "Entre l’adresse dropoff."));
+      Alert.alert(tr("deliveryRequest.alerts.missingDropoffTitle", "Missing dropoff"), tr("deliveryRequest.alerts.missingDropoffBody", "Enter the dropoff address."));
       return false;
     }
 
     if (!looksLikeCompleteAddress(pickup)) {
-      Alert.alert(tr("deliveryRequest.alerts.incompleteAddressTitle", "Adresse incomplète"), tr("deliveryRequest.alerts.incompleteAddressBody", "Entre des adresses pickup et dropoff complètes."));
+      Alert.alert(tr("deliveryRequest.alerts.incompleteAddressTitle", "Incomplete address"), tr("deliveryRequest.alerts.incompleteAddressBody", "Enter complete pickup and dropoff addresses."));
       return false;
     }
 
@@ -501,12 +501,12 @@ export function DeliveryRequestScreen() {
       ? Boolean(dropoffCoords)
       : looksLikeCompleteAddress(dropoff);
     if (!dropoffOk) {
-      Alert.alert(tr("deliveryRequest.alerts.incompleteAddressTitle", "Adresse incomplète"), tr("deliveryRequest.alerts.incompleteAddressBody", "Entre des adresses pickup et dropoff complètes."));
+      Alert.alert(tr("deliveryRequest.alerts.incompleteAddressTitle", "Incomplete address"), tr("deliveryRequest.alerts.incompleteAddressBody", "Enter complete pickup and dropoff addresses."));
       return false;
     }
 
     if (requestType === "package" && !cleanText(description)) {
-      Alert.alert(tr("deliveryRequest.alerts.missingDescriptionTitle", "Description manquante"), tr("deliveryRequest.alerts.missingDescriptionBody", "Décris ce qui doit être livré."));
+      Alert.alert(tr("deliveryRequest.alerts.missingDescriptionTitle", "Missing description"), tr("deliveryRequest.alerts.missingDescriptionBody", "Describe what should be delivered."));
       return false;
     }
 
@@ -522,7 +522,7 @@ export function DeliveryRequestScreen() {
       if (!pickupValue || !dropoffValue) {
         resetEstimateState();
         if (!silent) {
-          Alert.alert(tr("deliveryRequest.alerts.missingFieldsTitle", "Champs manquants"), tr("deliveryRequest.alerts.missingFieldsBody", "Remplis d’abord les adresses pickup et dropoff."));
+          Alert.alert(tr("deliveryRequest.alerts.missingFieldsTitle", "Missing fields"), tr("deliveryRequest.alerts.missingFieldsBody", "Fill in pickup and dropoff addresses first."));
         }
         return false;
       }
@@ -530,7 +530,7 @@ export function DeliveryRequestScreen() {
       if (!looksLikeCompleteAddress(pickupValue) || !looksLikeCompleteAddress(dropoffValue)) {
         resetEstimateState();
         if (!silent) {
-          Alert.alert(tr("deliveryRequest.alerts.incompleteAddressTitle", "Adresse incomplète"), tr("deliveryRequest.alerts.incompleteAddressBody", "Entre des adresses pickup et dropoff complètes."));
+          Alert.alert(tr("deliveryRequest.alerts.incompleteAddressTitle", "Incomplete address"), tr("deliveryRequest.alerts.incompleteAddressBody", "Enter complete pickup and dropoff addresses."));
         }
         return false;
       }
@@ -539,8 +539,8 @@ export function DeliveryRequestScreen() {
         resetEstimateState();
         if (!silent) {
           Alert.alert(
-            tr("deliveryRequest.alerts.missingConfigTitle", "Configuration manquante"),
-            tr("deliveryRequest.alerts.missingConfigBody", "API_BASE_URL n’est pas configurée. Configure EXPO_PUBLIC_API_URL_PROD (via getApiBaseUrl).")
+            tr("deliveryRequest.alerts.missingConfigTitle", "Missing configuration"),
+            tr("deliveryRequest.alerts.missingConfigBody", "The API base URL is not configured.")
           );
         }
         return false;
@@ -588,7 +588,7 @@ export function DeliveryRequestScreen() {
           resetEstimateState();
           setEstimateError(friendly);
           if (!silent) {
-            Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimation échouée"), friendly);
+            Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimate failed"), friendly);
           }
           return false;
         }
@@ -611,11 +611,11 @@ export function DeliveryRequestScreen() {
           typeof tMinutes !== "number" ||
           Number.isNaN(tMinutes)
         ) {
-          const friendly = tr("deliveryRequest.errors.invalidDistanceTime", "Réponse distance/temps invalide depuis l’API d’estimation.");
+          const friendly = tr("deliveryRequest.errors.invalidDistanceTime", "Invalid distance/time response from the estimate API.");
           resetEstimateState();
           setEstimateError(friendly);
           if (!silent) {
-            Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimation échouée"), friendly);
+            Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimate failed"), friendly);
           }
           return false;
         }
@@ -664,12 +664,12 @@ export function DeliveryRequestScreen() {
         ) {
           const friendly = tr(
             "deliveryRequest.errors.missingCoords",
-            "Impossible de confirmer les coordonnées GPS. Vérifie les adresses."
+            "Unable to confirm GPS coordinates. Check the addresses."
           );
           resetEstimateState();
           setEstimateError(friendly);
           if (!silent) {
-            Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimation échouée"), friendly);
+            Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimate failed"), friendly);
           }
           return false;
         }
@@ -727,7 +727,7 @@ export function DeliveryRequestScreen() {
         }
 
         const friendly = getFriendlyEstimateError(
-          toUserFacingError(e, tr("deliveryRequest.errors.estimateGeneric", "Impossible de calculer l'estimation.")),
+          toUserFacingError(e, tr("deliveryRequest.errors.estimateGeneric", "Unable to calculate the delivery estimate right now.")),
           tr
         );
 
@@ -735,7 +735,7 @@ export function DeliveryRequestScreen() {
         setEstimateError(friendly);
 
         if (!silent) {
-          Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimation échouée"), friendly);
+          Alert.alert(tr("deliveryRequest.alerts.estimateFailedTitle", "Estimate failed"), friendly);
         }
 
         return false;
@@ -843,7 +843,7 @@ export function DeliveryRequestScreen() {
     if (submitting) return;
     if (deliveryBlocked) {
       Alert.alert(
-        tr("common.error.title", "Erreur"),
+        tr("common.errorTitle", "Error"),
         deliveryBlockedMessage
       );
       return;
@@ -864,7 +864,7 @@ export function DeliveryRequestScreen() {
 
       const user = sessionData?.session?.user;
       if (!user) {
-        throw new Error(tr("deliveryRequest.errors.loginRequiredCreate", "Tu dois être connecté pour créer une demande de livraison."));
+        throw new Error(tr("deliveryRequest.errors.loginRequiredCreate", "You must be signed in to create a delivery request."));
       }
 
       const safePickup = normalizeAddress(pickupAddress);
@@ -884,7 +884,7 @@ export function DeliveryRequestScreen() {
         throw new Error(
           tr(
             "deliveryRequest.errors.missingCoords",
-            "Merci de refaire l’estimation pour récupérer les coordonnées GPS."
+            "Recalculate the estimate to get GPS coordinates."
           )
         );
       }
@@ -926,8 +926,8 @@ export function DeliveryRequestScreen() {
         setRequestPaid(false);
 
         Alert.alert(
-          tr("deliveryRequest.alerts.createdTitle", "Demande créée ✅"),
-          tr("deliveryRequest.alerts.createdBody", "Demande de livraison créée. Appuie sur Payer maintenant pour finaliser le paiement.")
+          tr("deliveryRequest.alerts.createdTitle", "Request created"),
+          tr("deliveryRequest.alerts.createdBody", "Delivery request created. Tap Pay now to complete payment.")
         );
 
         console.log("delivery_requests created:", deliveryRequestId);
@@ -939,9 +939,7 @@ export function DeliveryRequestScreen() {
         : 0;
       if (!(expectedQuoteTotalCents > 0)) {
         throw new Error(
-          tr(
-            "deliveryRequest.errors.quoteRequired",
-            "Le devis serveur est requis avant le paiement. Recalcule l’estimation."
+          tr("deliveryRequest.errors.quoteRequired", "Calculate the estimate before creating the request."
           )
         );
       }
@@ -958,7 +956,7 @@ export function DeliveryRequestScreen() {
       if (!checkout?.ok || !checkout?.url || !checkout?.delivery_checkout_id) {
         throw new Error(
           String(checkout?.error ?? checkout?.message ?? "").trim() ||
-            tr("deliveryRequest.errors.createFailed", "Impossible de créer la demande.")
+            tr("deliveryRequest.errors.createFailed", "Unable to create the request.")
         );
       }
 
@@ -999,10 +997,10 @@ export function DeliveryRequestScreen() {
 
       if (!paidOk) {
         Alert.alert(
-          tr("deliveryRequest.payment.title", "Paiement"),
+          tr("deliveryRequest.payment.title", "Payment"),
           tr(
             "deliveryRequest.payment.notCompletedNoRequest",
-            "Le paiement n’a pas été terminé. Aucune demande de livraison n’a été créée."
+            "Payment was not completed. No delivery request was created."
           )
         );
         return;
@@ -1019,14 +1017,14 @@ export function DeliveryRequestScreen() {
       }
 
       Alert.alert(
-        tr("deliveryRequest.payment.successTitle", "Paiement réussi ✅"),
+        tr("deliveryRequest.payment.successTitle", "Payment successful"),
         orderId
-          ? tr("deliveryRequest.payment.successOrderVisible", "Ton paiement est confirmé et la commande est maintenant visible pour les chauffeurs.")
-          : tr("deliveryRequest.payment.successBody", "Ton paiement est confirmé.")
+          ? tr("deliveryRequest.payment.successOrderVisible", "Your payment is confirmed and the order is now visible to drivers.")
+          : tr("deliveryRequest.payment.successBody", "Your payment is confirmed.")
       );
     } catch (e: unknown) {
       console.error("❌ create request error:", e);
-      Alert.alert(tr("common.error", "Erreur"), toUserFacingError(e, tr("deliveryRequest.errors.createFailed", "Impossible de créer la demande.")));
+      Alert.alert(tr("common.error", "Error"), toUserFacingError(e, tr("deliveryRequest.errors.createFailed", "Unable to create the request.")));
     } finally {
       setSubmitting(false);
     }
@@ -1061,7 +1059,7 @@ export function DeliveryRequestScreen() {
 
     try {
       if (!lastCreatedId) {
-        Alert.alert(tr("deliveryRequest.payment.title", "Paiement"), tr("deliveryRequest.payment.createFirst", "Crée d’abord la demande de livraison."));
+        Alert.alert(tr("deliveryRequest.payment.title", "Payment"), tr("deliveryRequest.payment.createFirst", "Create the delivery request first."));
         return;
       }
 
@@ -1075,7 +1073,7 @@ export function DeliveryRequestScreen() {
       const accessToken = sessionData?.session?.access_token;
 
       if (!user || !accessToken) {
-        throw new Error(tr("deliveryRequest.errors.loginRequiredPay", "Tu dois être connecté pour payer."));
+        throw new Error(tr("deliveryRequest.errors.loginRequiredPay", "You must be signed in to pay."));
       }
 
       if (market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)) {
@@ -1101,8 +1099,8 @@ export function DeliveryRequestScreen() {
 
       if (!paid) {
         Alert.alert(
-          tr("deliveryRequest.payment.pendingTitle", "Paiement en attente"),
-          tr("deliveryRequest.payment.pendingBody", "Le paiement a commencé, mais la confirmation est encore en attente. Le chauffeur ne verra pas la commande tant que le paiement n’est pas confirmé.")
+          tr("deliveryRequest.payment.pendingTitle", "Payment pending"),
+          tr("deliveryRequest.payment.pendingBody", "Payment started, but confirmation is still pending. Drivers will not see the order until payment is confirmed.")
         );
         return;
       }
@@ -1112,15 +1110,15 @@ export function DeliveryRequestScreen() {
       setRequestPaid(true);
 
       Alert.alert(
-        tr("deliveryRequest.payment.successTitle", "Paiement réussi ✅"),
+        tr("deliveryRequest.payment.successTitle", "Payment successful"),
         orderId
-          ? tr("deliveryRequest.payment.successOrderVisible", "Ton paiement est confirmé et la commande est maintenant visible pour les chauffeurs.")
-          : tr("deliveryRequest.payment.successBody", "Ton paiement est confirmé.")
+          ? tr("deliveryRequest.payment.successOrderVisible", "Your payment is confirmed and the order is now visible to drivers.")
+          : tr("deliveryRequest.payment.successBody", "Your payment is confirmed.")
       );
     } catch (e: unknown) {
       const message =
-        toUserFacingError(e, tr("deliveryRequest.payment.unableToStart", "Impossible de démarrer le paiement pour le moment."));
-      Alert.alert(tr("deliveryRequest.payment.errorTitle", "Erreur de paiement"), message);
+        toUserFacingError(e, tr("deliveryRequest.payment.unableToStart", "Unable to start payment right now."));
+      Alert.alert(tr("deliveryRequest.payment.errorTitle", "Payment error"), message);
     } finally {
       setPaying(false);
     }
@@ -1139,7 +1137,7 @@ export function DeliveryRequestScreen() {
         const user = sessionData?.session?.user;
         const accessToken = sessionData?.session?.access_token;
         if (!user || !accessToken) {
-          throw new Error(tr("deliveryRequest.errors.loginRequiredPay", "Tu dois être connecté pour payer."));
+          throw new Error(tr("deliveryRequest.errors.loginRequiredPay", "You must be signed in to pay."));
         }
 
         const result = await startLocalPaymentForMethod(accessToken, {
@@ -1152,11 +1150,9 @@ export function DeliveryRequestScreen() {
         const paid = result.paid || (await waitForDeliveryPayment(lastCreatedId));
         if (!paid) {
           Alert.alert(
-            tr("deliveryRequest.payment.pendingTitle", "Paiement en attente"),
+            tr("deliveryRequest.payment.pendingTitle", "Payment pending"),
             result.error ??
-              tr(
-                "deliveryRequest.payment.pendingBody",
-                "Le paiement a commencé, mais la confirmation est encore en attente. Le chauffeur ne verra pas la commande tant que le paiement n’est pas confirmé."
+              tr("deliveryRequest.payment.pendingBody", "Payment started, but confirmation is still pending. Drivers will not see the order until payment is confirmed."
               )
           );
           return;
@@ -1165,20 +1161,18 @@ export function DeliveryRequestScreen() {
         const orderId = await createOrderFromPaidDeliveryRequest(lastCreatedId, user.id);
         setRequestPaid(true);
         Alert.alert(
-          tr("deliveryRequest.payment.successTitle", "Paiement réussi ✅"),
+          tr("deliveryRequest.payment.successTitle", "Payment successful"),
           orderId
-            ? tr(
-                "deliveryRequest.payment.successOrderVisible",
-                "Ton paiement est confirmé et la commande est maintenant visible pour les chauffeurs."
+            ? tr("deliveryRequest.payment.successOrderVisible", "Your payment is confirmed and the order is now visible to drivers."
               )
-            : tr("deliveryRequest.payment.successBody", "Ton paiement est confirmé.")
+            : tr("deliveryRequest.payment.successBody", "Your payment is confirmed.")
         );
       } catch (e: unknown) {
         const message =
           e instanceof Error
             ? e.message
-            : tr("deliveryRequest.payment.unableToStart", "Impossible de démarrer le paiement pour le moment.");
-        Alert.alert(tr("deliveryRequest.payment.errorTitle", "Erreur de paiement"), message);
+            : tr("deliveryRequest.payment.unableToStart", "Unable to start payment right now.");
+        Alert.alert(tr("deliveryRequest.payment.errorTitle", "Payment error"), message);
       } finally {
         setPaying(false);
       }
@@ -1324,7 +1318,7 @@ export function DeliveryRequestScreen() {
 
           <View>
             <Text style={sectionTitleStyle}>
-              {tr("deliveryRequest.details.title", "Delivery Details")}
+              {tr("deliveryRequest.details.title", "Delivery details")}
             </Text>
 
             <View
@@ -1476,7 +1470,7 @@ export function DeliveryRequestScreen() {
             <TextInput
               value={pickupContactName}
               onChangeText={setPickupContactName}
-              placeholder={tr("common.optional", "Optionnel")}
+              placeholder={tr("common.optional", "Optional")}
               placeholderTextColor={MMD_MUTED_70}
               style={inputStyle}
             />
@@ -1489,7 +1483,7 @@ export function DeliveryRequestScreen() {
             <TextInput
               value={pickupPhone}
               onChangeText={setPickupPhone}
-              placeholder={tr("common.optional", "Optionnel")}
+              placeholder={tr("common.optional", "Optional")}
               placeholderTextColor={MMD_MUTED_70}
               keyboardType="phone-pad"
               style={inputStyle}
@@ -1503,7 +1497,7 @@ export function DeliveryRequestScreen() {
             <TextInput
               value={dropoffContactName}
               onChangeText={setDropoffContactName}
-              placeholder={tr("common.optional", "Optionnel")}
+              placeholder={tr("common.optional", "Optional")}
               placeholderTextColor={MMD_MUTED_70}
               style={inputStyle}
             />
@@ -1516,7 +1510,7 @@ export function DeliveryRequestScreen() {
             <TextInput
               value={dropoffPhone}
               onChangeText={setDropoffPhone}
-              placeholder={tr("common.optional", "Optionnel")}
+              placeholder={tr("common.optional", "Optional")}
               placeholderTextColor={MMD_MUTED_70}
               keyboardType="phone-pad"
               style={inputStyle}
@@ -1526,16 +1520,16 @@ export function DeliveryRequestScreen() {
             <View>
             <Text style={fieldLabelStyle}>
               {requestType === "ride"
-                ? tr("deliveryRequest.fields.rideNotes", "Notes pour la course")
-                : tr("deliveryRequest.fields.packageDescription", "Description du colis")}
+                ? tr("deliveryRequest.fields.rideNotes", "Ride notes")
+                : tr("deliveryRequest.fields.packageDescription", "Package description")}
             </Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
               placeholder={
                 requestType === "ride"
-                  ? tr("deliveryRequest.fields.rideNotesPlaceholder", "Notes optionnelles pour la course")
-                  : tr("deliveryRequest.fields.packageDescriptionPlaceholder", "Décris le colis")
+                  ? tr("deliveryRequest.fields.rideNotesPlaceholder", "Optional notes for the ride")
+                  : tr("deliveryRequest.fields.packageDescriptionPlaceholder", "Describe the package")
               }
               placeholderTextColor={MMD_MUTED_70}
               multiline
@@ -1553,7 +1547,7 @@ export function DeliveryRequestScreen() {
 
           <View>
             <Text style={sectionTitleStyle}>
-              {tr("deliveryRequest.pricing.title", "Price Summary")}
+              {tr("deliveryRequest.pricing.title", "Price summary")}
             </Text>
 
           <View
@@ -1567,11 +1561,11 @@ export function DeliveryRequestScreen() {
           >
             {pricingLoading ? (
               <Text style={{ color: MMD_GOLD_BRIGHT, fontSize: 14, fontFamily: MMD_FONT.regular }}>
-                {tr("deliveryRequest.pricing.loading", "Chargement des prix admin...")}
+                {tr("deliveryRequest.pricing.loading", "Loading prices…")}
               </Text>
             ) : estimating ? (
               <Text style={{ color: MMD_GOLD_BRIGHT, fontSize: 14, fontFamily: MMD_FONT.regular }}>
-                {tr("deliveryRequest.pricing.calculating", "Calcul de l’estimation...")}
+                {tr("deliveryRequest.pricing.calculating", "Calculating estimate…")}
               </Text>
             ) : estimateError ? (
               <Text style={{ color: "#FCA5A5", fontSize: 14, lineHeight: 21, fontFamily: MMD_FONT.regular }}>
@@ -1590,7 +1584,7 @@ export function DeliveryRequestScreen() {
                   }}
                 >
                   <Text style={{ color: MMD_WHITE, fontSize: 14, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-                    {tr("deliveryRequest.pricing.ready", "Estimation ready")}
+                    {tr("deliveryRequest.pricing.ready", "Estimate ready")}
                   </Text>
                 </View>
 
@@ -1685,8 +1679,8 @@ export function DeliveryRequestScreen() {
             >
               <Text style={{ color: "#86EFAC", fontSize: 14, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
                 {requestPaid
-                  ? tr("deliveryRequest.created.paidCardTitle", "Demande de livraison payée")
-                  : tr("deliveryRequest.created.cardTitle", "Demande de livraison créée")}
+                  ? tr("deliveryRequest.created.paidCardTitle", "Paid delivery request")
+                  : tr("deliveryRequest.created.cardTitle", "Delivery request created")}
               </Text>
               <Text style={{ color: "#D1FAE5", fontSize: 13, marginTop: 6, fontFamily: MMD_FONT.regular }}>
                 ID: {lastCreatedId.slice(0, 8)}
@@ -1695,9 +1689,9 @@ export function DeliveryRequestScreen() {
                 {requestPaid
                   ? tr(
                       "deliveryRequest.created.paidHint",
-                      "Paiement confirmé. Les chauffeurs peuvent maintenant voir ta demande."
+                      "Payment confirmed. Drivers can now see your request."
                     )
-                  : tr("deliveryRequest.created.payHint", "Tu peux maintenant continuer vers le paiement sécurisé.")}
+                  : tr("deliveryRequest.created.payHint", "You can continue to secure payment.")}
               </Text>
             </View>
           ) : null}
@@ -1730,7 +1724,7 @@ export function DeliveryRequestScreen() {
                   fontFamily: MMD_FONT.bold,
                 }}
               >
-                {tr("deliveryRequest.actions.calculate", "Calculer le prix de livraison")}
+                {tr("deliveryRequest.actions.calculate", "Calculate delivery price")}
               </Text>
             )}
           </TouchableOpacity>
@@ -1768,10 +1762,8 @@ export function DeliveryRequestScreen() {
                 }}
               >
                 {market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)
-                  ? tr("deliveryRequest.actions.create", "Créer la demande de livraison")
-                  : tr(
-                      "deliveryRequest.actions.payAndConfirm",
-                      "Payer et confirmer la livraison"
+                  ? tr("deliveryRequest.actions.create", "Create delivery request")
+                  : tr("deliveryRequest.actions.payAndConfirm", "Pay and confirm delivery"
                     )}
               </Text>
             )}
@@ -1802,7 +1794,7 @@ export function DeliveryRequestScreen() {
                   fontFamily: MMD_FONT.bold,
                 }}
               >
-                {tr("deliveryRequest.actions.payNow", "Payer maintenant")}
+                {tr("deliveryRequest.actions.payNow", "Pay now")}
               </Text>
             )}
           </TouchableOpacity>
@@ -1831,7 +1823,7 @@ export function DeliveryRequestScreen() {
                 fontFamily: MMD_FONT.bold,
               }}
             >
-                {tr("common.back", "Retour")}
+                {tr("common.back", "Back")}
               </Text>
           </TouchableOpacity>
           </View>
@@ -1841,7 +1833,7 @@ export function DeliveryRequestScreen() {
     </SafeAreaView>
     <PaymentMethodPicker
       visible={paymentPickerVisible}
-      title={tr("deliveryRequest.payment.title", "Paiement")}
+      title={tr("deliveryRequest.payment.title", "Payment")}
       methods={paymentMethods}
       loading={loadingPaymentMethods}
       onClose={() => setPaymentPickerVisible(false)}

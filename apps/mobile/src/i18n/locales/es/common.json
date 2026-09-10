@@ -214,7 +214,8 @@
     "edit": "Editar",
     "delete": "Eliminar",
     "view": "Ver",
-    "save": "Guardar"
+    "save": "Guardar",
+    "optional": "Opcional"
   },
   "shared": {
     "common": {
@@ -246,10 +247,23 @@
         "imageNotFoundOnPhone": "Archivo de imagen no encontrado en el teléfono.",
         "imageEmptyOnPhone": "El archivo de imagen está vacío (0 bytes) en el teléfono.",
         "base64ReadFailedEmpty": "Fallo al leer Base64 (vacío).",
-        "arrayBufferZeroBytes": "La conversión a ArrayBuffer produjo 0 bytes."
+        "arrayBufferZeroBytes": "La conversión a ArrayBuffer produjo 0 bytes.",
+        "accessDeniedTitle": "Acceso denegado",
+        "accessDeniedUi": "No puedes abrir esta conversación.",
+        "invalidOrderId": "Pedido no válido.",
+        "invalidOrderIdTitle": "Chat no disponible",
+        "invalidOrderIdUi": "Esta conversación no está disponible.",
+        "notAllowed": "No tienes permiso para esto.",
+        "unsupportedImage": "Formato de imagen no compatible.",
+        "imageTooLarge": "Esta imagen es demasiado grande.",
+        "messageTooLong": "Este mensaje es demasiado largo.",
+        "notAuthenticated": "Debes iniciar sesión.",
+        "deleteOwnOnly": "Solo puedes eliminar tus propios mensajes."
       },
       "header": {
-        "subtitle": "Mensajes y archivos adjuntos"
+        "subtitle": "Mensajes y archivos adjuntos",
+        "title": "Chat",
+        "privateWith": "Conversación con"
       },
       "empty": "Aún no hay mensajes.",
       "heic": {
@@ -270,6 +284,15 @@
       },
       "placeholders": {
         "message": "Escribe un mensaje…"
+      },
+      "sender": {
+        "you": "Tú",
+        "unknown": "Participante"
+      },
+      "receipt": {
+        "read": "Leído",
+        "sent": "Enviado",
+        "delivered": "Entregado"
       }
     }
   },

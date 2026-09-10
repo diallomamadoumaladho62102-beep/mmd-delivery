@@ -236,37 +236,29 @@ function normalizeRestaurantItem(row: any): RestaurantItem | null {
 
 function getFriendlyEstimateError(
   message: string | undefined,
-  tr: (key: string, fallback: string) => string
+  tr: (key: string, fallback: string, options?: Record<string, unknown>) => string
 ) {
   const raw = String(message || "").trim();
 
   if (!raw) {
-    return tr(
-      "clientRestaurantMenu.estimate.errors.generic",
-      "Impossible de calculer la livraison pour le moment."
+    return tr("clientRestaurantMenu.estimate.errors.generic", "Unable to calculate delivery right now."
     );
   }
 
   const lower = raw.toLowerCase();
 
   if (lower.includes("route exceeds maximum distance limitation")) {
-    return tr(
-      "clientRestaurantMenu.estimate.errors.tooFarOrImprecise",
-      "Destination trop éloignée ou adresse pas assez précise. Vérifie la rue, le ZIP code, la ville et l’État."
+    return tr("clientRestaurantMenu.estimate.errors.tooFarOrImprecise", "Destination is too far or the address is not precise enough. Check the street, ZIP, city, and state."
     );
   }
 
   if (lower.includes("aucune route trouvée") || lower.includes("no route")) {
-    return tr(
-      "clientRestaurantMenu.estimate.errors.noRoute",
-      "Aucun itinéraire de livraison trouvé pour cette destination. Vérifie l’adresse."
+    return tr("clientRestaurantMenu.estimate.errors.noRoute", "No delivery route was found for this destination. Check the address."
     );
   }
 
   if (lower.includes("abort") || lower.includes("timed out")) {
-    return tr(
-      "clientRestaurantMenu.estimate.errors.timeout",
-      "La demande d’estimation a pris trop de temps. Réessaie."
+    return tr("clientRestaurantMenu.estimate.errors.timeout", "The estimate request took too long. Try again."
     );
   }
 
@@ -277,7 +269,8 @@ export function ClientRestaurantMenuScreen() {
   const { t } = useTranslation();
 
   const tr = useCallback(
-    (key: string, fallback: string) => t(key, { defaultValue: fallback }),
+    (key: string, fallback: string, options?: Record<string, unknown>) =>
+      String(t(key, { defaultValue: fallback, ...options })),
     [t]
   );
 
@@ -342,10 +335,8 @@ export function ClientRestaurantMenuScreen() {
   useEffect(() => {
     if (!restaurantId) {
       Alert.alert(
-        tr("common.error.title", "Erreur"),
-        tr(
-          "clientRestaurantMenu.errors.missingRestaurantId",
-          "Restaurant introuvable. Retourne à la liste des restaurants puis réessaie."
+        tr("common.errorTitle", "Error"),
+        tr("clientRestaurantMenu.errors.missingRestaurantId", "Restaurant not found. Go back to the restaurant list and try again."
         )
       );
     }
@@ -403,10 +394,8 @@ export function ClientRestaurantMenuScreen() {
             setItems([]);
             resetEstimateState();
             Alert.alert(
-              tr("common.error.title", "Erreur"),
-              tr(
-                "clientRestaurantMenu.errors.restaurantUnavailable",
-                "Ce restaurant n’est pas disponible ou son adresse GPS n’est pas encore configurée."
+              tr("common.errorTitle", "Error"),
+              tr("clientRestaurantMenu.errors.restaurantUnavailable", "This restaurant is unavailable or its GPS address is not set yet."
               )
             );
           }
@@ -474,10 +463,8 @@ export function ClientRestaurantMenuScreen() {
           setRestaurantProfile(null);
           setItems([]);
           Alert.alert(
-            tr("common.error.title", "Erreur"),
-            tr(
-              "clientRestaurantMenu.loadMenuError",
-              "Impossible de charger le menu de ce restaurant pour le moment."
+            tr("common.errorTitle", "Error"),
+            tr("clientRestaurantMenu.loadMenuError", "Unable to load this restaurant menu right now."
             )
           );
         }
@@ -512,10 +499,8 @@ export function ClientRestaurantMenuScreen() {
 
     if (!item.is_available || price <= 0) {
       Alert.alert(
-        tr("common.error.title", "Erreur"),
-        tr(
-          "clientRestaurantMenu.menu.itemUnavailable",
-          "Ce plat n’est plus disponible pour le moment."
+        tr("common.errorTitle", "Error"),
+        tr("clientRestaurantMenu.menu.itemUnavailable", "This dish is no longer available."
         )
       );
       return;
@@ -651,10 +636,8 @@ export function ClientRestaurantMenuScreen() {
 
     if (!restaurantProfile) {
       Alert.alert(
-        tr("common.error.title", "Erreur"),
-        tr(
-          "clientRestaurantMenu.errors.restaurantUnavailable",
-          "Ce restaurant n’est pas disponible ou son adresse GPS n’est pas encore configurée."
+        tr("common.errorTitle", "Error"),
+        tr("clientRestaurantMenu.errors.restaurantUnavailable", "This restaurant is unavailable or its GPS address is not set yet."
         )
       );
       return;
@@ -663,8 +646,8 @@ export function ClientRestaurantMenuScreen() {
     if (cart.length === 0) {
       if (!silent) {
         Alert.alert(
-          tr("clientRestaurantMenu.cartEmptyTitle", "Panier vide"),
-          tr("clientRestaurantMenu.cartEmptyEstimate", "Ajoute au moins un plat avant l’estimation.")
+          tr("clientRestaurantMenu.cartEmptyTitle", "Empty cart"),
+          tr("clientRestaurantMenu.cartEmptyEstimate", "Add at least one dish before estimating delivery.")
         );
       }
       return false;
@@ -673,10 +656,8 @@ export function ClientRestaurantMenuScreen() {
     if (!pickupValue || !dropoffValue) {
       if (!silent) {
         Alert.alert(
-          tr("clientRestaurantMenu.missingFieldsTitle", "Champs manquants"),
-          tr(
-            "clientRestaurantMenu.missingFieldsEstimate",
-            "Merci de saisir l’adresse pickup (restaurant) et l’adresse de livraison."
+          tr("clientRestaurantMenu.missingFieldsTitle", "Missing fields"),
+          tr("clientRestaurantMenu.missingFieldsEstimate", "Enter the restaurant pickup address and the delivery address."
           )
         );
       }
@@ -686,10 +667,8 @@ export function ClientRestaurantMenuScreen() {
     if (!isAddressReady(pickupValue) || !isAddressReady(dropoffValue)) {
       if (!silent) {
         Alert.alert(
-          tr("clientRestaurantMenu.incompleteAddressTitle", "Adresse incomplète"),
-          tr(
-            "clientRestaurantMenu.incompleteAddressBody",
-            "Merci de saisir une adresse plus complète avant de calculer la livraison."
+          tr("clientRestaurantMenu.incompleteAddressTitle", "Incomplete address"),
+          tr("clientRestaurantMenu.incompleteAddressBody", "Enter a more complete address before calculating delivery."
           )
         );
       }
@@ -701,8 +680,8 @@ export function ClientRestaurantMenuScreen() {
     if (!apiBaseUrl) {
       if (!silent) {
         Alert.alert(
-          tr("clientRestaurantMenu.missingConfigTitle", "Configuration manquante"),
-          tr("clientRestaurantMenu.missingConfigBody", "API_BASE_URL n’est pas configurée.")
+          tr("clientRestaurantMenu.missingConfigTitle", "Missing configuration"),
+          tr("clientRestaurantMenu.missingConfigBody", "The API base URL is not configured.")
         );
       }
       return false;
@@ -750,11 +729,9 @@ export function ClientRestaurantMenuScreen() {
 
         if (!silent) {
           Alert.alert(
-            tr("common.error.title", "Erreur"),
+            tr("common.errorTitle", "Error"),
             apiErrorMessage ||
-              tr(
-                "clientRestaurantMenu.estimateError",
-                "Impossible de calculer l’estimation de livraison pour le moment."
+              tr("clientRestaurantMenu.estimateError", "Unable to calculate the delivery estimate right now."
               )
           );
         }
@@ -765,18 +742,14 @@ export function ClientRestaurantMenuScreen() {
       if (!json) {
         resetEstimateState();
         setEstimateError(
-          tr(
-            "clientRestaurantMenu.estimate.errors.invalidResponse",
-            "Réponse invalide du service d’estimation de livraison."
+          tr("clientRestaurantMenu.estimate.errors.invalidResponse", "Invalid response from the delivery estimate service."
           )
         );
 
         if (!silent) {
           Alert.alert(
-            tr("common.error.title", "Erreur"),
-            tr(
-            "clientRestaurantMenu.estimate.errors.invalidApiResponse",
-            "Réponse invalide depuis /api/mapbox/compute-distance."
+            tr("common.errorTitle", "Error"),
+            tr("clientRestaurantMenu.estimate.errors.invalidApiResponse", "Invalid response from the distance service."
           )
           );
         }
@@ -797,18 +770,14 @@ export function ClientRestaurantMenuScreen() {
       ) {
         resetEstimateState();
         setEstimateError(
-          tr(
-            "clientRestaurantMenu.estimate.errors.invalidDistanceEta",
-            "Distance ou temps estimé invalide reçu depuis le service d’estimation."
+          tr("clientRestaurantMenu.estimate.errors.invalidDistanceEta", "Invalid distance or ETA received from the estimate service."
           )
         );
 
         if (!silent) {
           Alert.alert(
-            tr("common.error.title", "Erreur"),
-            tr(
-            "clientRestaurantMenu.estimate.errors.invalidMapboxDistanceEta",
-            "Réponse distance/temps invalide depuis l’API Mapbox."
+            tr("common.errorTitle", "Error"),
+            tr("clientRestaurantMenu.estimate.errors.invalidMapboxDistanceEta", "Invalid distance or time response from Mapbox."
           )
           );
         }
@@ -821,20 +790,18 @@ export function ClientRestaurantMenuScreen() {
         setEstimateError(
           tr(
             "clientRestaurantMenu.estimate.errors.distanceTooLarge",
-            `Distance trop grande (${dMiles.toFixed(
-              2
-            )} mi). Vérifie le ZIP code, la ville et l’État.`
+            "Distance is too far ({{miles}} mi). Check the ZIP, city, and state.",
+            { miles: dMiles.toFixed(2) }
           )
         );
 
         if (!silent) {
           Alert.alert(
-            tr("clientRestaurantMenu.orderBlockedTitle", "Commande bloquée"),
+            tr("clientRestaurantMenu.orderBlockedTitle", "Order blocked"),
             tr(
               "clientRestaurantMenu.orderBlockedBody",
-              `Distance trop grande (${dMiles.toFixed(
-                2
-              )} mi).\n\nCorrige l'adresse (ZIP / ville / État).`
+              "Distance is too far ({{miles}} mi).\n\nFix the address (ZIP / city / state).",
+              { miles: dMiles.toFixed(2) }
             )
           );
         }
@@ -897,12 +864,11 @@ export function ClientRestaurantMenuScreen() {
       const WARN_MILES = 40;
       if (dMiles > WARN_MILES && !silent) {
         Alert.alert(
-          tr("clientRestaurantMenu.verifyAddressTitle", "⚠️ Adresse à vérifier"),
+          tr("clientRestaurantMenu.verifyAddressTitle", "Address to verify"),
           tr(
             "clientRestaurantMenu.verifyAddressBody",
-            `Distance très grande: ${dMiles.toFixed(
-              2
-            )} mi.\n\nVérifie le ZIP, la ville et l'État.\nEx: "Brooklyn NY 11226".`
+            "Very long distance: {{miles}} mi.\n\nCheck the ZIP, city, and state.\nEx: \"Brooklyn NY 11226\".",
+            { miles: dMiles.toFixed(2) }
           )
         );
       }
@@ -920,15 +886,11 @@ export function ClientRestaurantMenuScreen() {
         String(err?.message || "").toLowerCase().includes("timed out");
 
       const message = timeoutLike
-        ? tr(
-          "clientRestaurantMenu.estimate.errors.timeout",
-          "La demande d’estimation a pris trop de temps. Réessaie."
+        ? tr("clientRestaurantMenu.estimate.errors.timeout", "The estimate request took too long. Try again."
         )
         : getFriendlyEstimateError(
             err?.message ??
-              tr(
-                "clientRestaurantMenu.estimateError",
-                "Impossible de calculer l’estimation de livraison pour le moment."
+              tr("clientRestaurantMenu.estimateError", "Unable to calculate the delivery estimate right now."
               ),
             tr
           );
@@ -937,7 +899,7 @@ export function ClientRestaurantMenuScreen() {
       setEstimateError(message);
 
       if (!silent) {
-        Alert.alert(tr("common.error.title", "Erreur"), message);
+        Alert.alert(tr("common.errorTitle", "Error"), message);
       }
 
       return false;
@@ -997,10 +959,8 @@ export function ClientRestaurantMenuScreen() {
   async function handleCreateOrder() {
     if (!restaurantId) {
       Alert.alert(
-        tr("common.error.title", "Erreur"),
-        tr(
-          "clientRestaurantMenu.errors.missingRestaurantId",
-          "Restaurant introuvable. Retourne à la liste des restaurants puis réessaie."
+        tr("common.errorTitle", "Error"),
+        tr("clientRestaurantMenu.errors.missingRestaurantId", "Restaurant not found. Go back to the restaurant list and try again."
         )
       );
       return;
@@ -1008,18 +968,16 @@ export function ClientRestaurantMenuScreen() {
 
     if (cart.length === 0) {
       Alert.alert(
-        tr("clientRestaurantMenu.cartEmptyTitle", "Panier vide"),
-        tr("clientRestaurantMenu.cartEmptyCreate", "Ajoute au moins un plat à ta commande.")
+        tr("clientRestaurantMenu.cartEmptyTitle", "Empty cart"),
+        tr("clientRestaurantMenu.cartEmptyCreate", "Add at least one dish to your order.")
       );
       return;
     }
 
     if (!normalizeAddress(pickup) || !normalizeAddress(dropoff)) {
       Alert.alert(
-        tr("clientRestaurantMenu.missingFieldsTitle", "Champs manquants"),
-        tr(
-          "clientRestaurantMenu.missingFieldsCreate",
-          "Merci de saisir l’adresse pickup et l’adresse de livraison."
+        tr("clientRestaurantMenu.missingFieldsTitle", "Missing fields"),
+        tr("clientRestaurantMenu.missingFieldsCreate", "Enter the pickup address and the delivery address."
         )
       );
       return;
@@ -1027,10 +985,8 @@ export function ClientRestaurantMenuScreen() {
 
     if (!isAddressReady(pickup) || !isAddressReady(dropoff)) {
       Alert.alert(
-        tr("clientRestaurantMenu.incompleteAddressTitle", "Adresse incomplète"),
-        tr(
-          "clientRestaurantMenu.incompleteAddressBody",
-          "Merci de saisir une adresse plus complète avant de créer la commande."
+        tr("clientRestaurantMenu.incompleteAddressTitle", "Incomplete address"),
+        tr("clientRestaurantMenu.incompleteAddressBody", "Enter a more complete address before calculating delivery."
         )
       );
       return;
@@ -1043,10 +999,8 @@ export function ClientRestaurantMenuScreen() {
 
     if (!pickupCoords || !dropoffCoords) {
       Alert.alert(
-        tr("clientRestaurantMenu.missingCoordsTitle", "Coords manquantes"),
-        tr(
-          "clientRestaurantMenu.missingCoordsBody",
-          "Merci de refaire l’estimation pour récupérer les coordonnées GPS avant de créer la commande."
+        tr("clientRestaurantMenu.missingCoordsTitle", "Missing coordinates"),
+        tr("clientRestaurantMenu.missingCoordsBody", "Recalculate the estimate to get GPS coordinates before creating the order."
         )
       );
       return;
@@ -1061,8 +1015,8 @@ export function ClientRestaurantMenuScreen() {
 
       if (!sessionData.session) {
         Alert.alert(
-          tr("auth.loginRequiredTitle", "Connexion requise"),
-          tr("auth.loginRequiredBody", "Merci de te connecter avant de créer une commande.")
+          tr("auth.loginRequiredTitle", "Sign in required"),
+          tr("auth.loginRequiredBody", "Please sign in before creating an order.")
         );
         return;
       }
@@ -1071,9 +1025,7 @@ export function ClientRestaurantMenuScreen() {
 
       if (!activeRestaurantProfile) {
         throw new Error(
-          tr(
-            "clientRestaurantMenu.errors.restaurantUnavailable",
-            "Ce restaurant n’est pas disponible ou son adresse GPS n’est pas encore configurée."
+          tr("clientRestaurantMenu.errors.restaurantUnavailable", "This restaurant is unavailable or its GPS address is not set yet."
           )
         );
       }
@@ -1135,7 +1087,7 @@ export function ClientRestaurantMenuScreen() {
           String(checkout?.error ?? checkout?.message ?? "").trim() ||
             tr(
               "clientRestaurantMenu.createOrderError",
-              "Impossible de créer la commande pour le moment."
+              "Unable to create the order right now."
             )
         );
       }
@@ -1175,10 +1127,8 @@ export function ClientRestaurantMenuScreen() {
 
       if (!paidOk) {
         Alert.alert(
-          tr("clientRestaurantMenu.payment.title", "Paiement"),
-          tr(
-            "clientRestaurantMenu.payment.notCompleted",
-            "Le paiement n’a pas été terminé. Aucune commande n’a été créée."
+          tr("clientRestaurantMenu.payment.title", "Payment"),
+          tr("clientRestaurantMenu.payment.notCompleted", "Payment was not completed. No order was created."
           )
         );
         return;
@@ -1209,17 +1159,17 @@ export function ClientRestaurantMenuScreen() {
         /must be provided together/i.test(rawMessage)
           ? tr(
               "clientRestaurantMenu.errors.deliveryShareInvalid",
-              "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support."
+              "Delivery pricing is temporarily unavailable. Please try again later or contact support."
             )
           : toUserFacingError(
               err,
               tr(
                 "clientRestaurantMenu.createOrderError",
-                "Impossible de créer la commande pour le moment."
+                "Unable to create the order right now."
               )
             );
 
-      Alert.alert(tr("common.error.title", "Erreur"), userMessage);
+      Alert.alert(tr("common.errorTitle", "Error"), userMessage);
     } finally {
       setCreating(false);
     }
@@ -1242,9 +1192,7 @@ export function ClientRestaurantMenuScreen() {
       <StatusBar barStyle="light-content" />
       <ScreenHeader
         title={restaurantProfile?.restaurant_name || restaurantName}
-        subtitle={tr(
-          "clientRestaurantMenu.header.subtitle",
-          "Parcours le menu et ajoute des plats à ta commande MMD."
+        subtitle={tr("clientRestaurantMenu.header.subtitle", "Browse the menu and add dishes to your MMD order."
         )}
         fallbackRoute="ClientRestaurantList"
         variant="brand"
@@ -1303,21 +1251,19 @@ export function ClientRestaurantMenuScreen() {
               fontFamily: MMD_FONT.bold,
             }}
           >
-            {tr("clientRestaurantMenu.menu.title", "Menu du restaurant")}
+            {tr("clientRestaurantMenu.menu.title", "Restaurant menu")}
           </Text>
 
           {loading ? (
             <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 16 }}>
               <ActivityIndicator size="small" color={MMD_GOLD_BRIGHT} />
               <Text style={{ marginTop: 8, color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-                {tr("clientRestaurantMenu.menu.loading", "Chargement du menu…")}
+                {tr("clientRestaurantMenu.menu.loading", "Loading menu…")}
               </Text>
             </View>
           ) : items.length === 0 ? (
             <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-              {tr(
-                "clientRestaurantMenu.menu.empty",
-                "Aucun plat pour l’instant. Le restaurant n’a pas encore configuré son menu dans MMD Delivery."
+              {tr("clientRestaurantMenu.menu.empty", "No dishes yet. This restaurant has not configured its MMD menu."
               )}
             </Text>
           ) : (
@@ -1400,7 +1346,7 @@ export function ClientRestaurantMenuScreen() {
 
                     <TouchableOpacity
                       accessibilityRole="button"
-                      accessibilityLabel={`${tr("clientRestaurantMenu.menu.add", "Ajouter")} ${item.name}`}
+                      accessibilityLabel={`${tr("clientRestaurantMenu.menu.add", "Add")} ${item.name}`}
                       onPress={() => addToCart(item)}
                       style={{
                         backgroundColor: ADD_PURPLE,
@@ -1419,7 +1365,7 @@ export function ClientRestaurantMenuScreen() {
                           fontFamily: MMD_FONT.bold,
                         }}
                       >
-                        {tr("clientRestaurantMenu.menu.add", "Ajouter")}
+                        {tr("clientRestaurantMenu.menu.add", "Add")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1450,14 +1396,12 @@ export function ClientRestaurantMenuScreen() {
               marginBottom: 0,
             }}
           >
-            {tr("clientRestaurantMenu.addresses.title", "Adresses pour la livraison")}
+            {tr("clientRestaurantMenu.addresses.title", "Delivery addresses")}
           </Text>
 
           <View style={{ marginBottom: 0, gap: 4 }}>
             <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
-              {tr(
-                "clientRestaurantMenu.addresses.pickupLabel",
-                "Pickup address (restaurant / start point)"
+              {tr("clientRestaurantMenu.addresses.pickupLabel", "Pickup address (restaurant / start point)"
               )}
             </Text>
 
@@ -1465,9 +1409,7 @@ export function ClientRestaurantMenuScreen() {
               value={pickup}
               onChangeText={setPickup}
               editable={!pickupLocked}
-              placeholder={tr(
-                "clientRestaurantMenu.addresses.pickupPlaceholder",
-                "Ex : 686 Vermont St Brooklyn NY 11207"
+              placeholder={tr("clientRestaurantMenu.addresses.pickupPlaceholder", "Ex: 686 Vermont St Brooklyn NY 11207"
               )}
               placeholderTextColor={MMD_MUTED}
               style={{
@@ -1487,9 +1429,7 @@ export function ClientRestaurantMenuScreen() {
 
             {pickupLocked && (
               <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-                {tr(
-                  "clientRestaurantMenu.addresses.pickupLockedHint",
-                  "Adresse du restaurant remplie automatiquement."
+                {tr("clientRestaurantMenu.addresses.pickupLockedHint", "Restaurant address filled in automatically."
                 )}
               </Text>
             )}
@@ -1497,15 +1437,13 @@ export function ClientRestaurantMenuScreen() {
 
           <View style={{ gap: 4 }}>
             <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
-              {tr("clientRestaurantMenu.addresses.dropoffLabel", "Adresse de livraison (client)")}
+              {tr("clientRestaurantMenu.addresses.dropoffLabel", "Delivery address (customer)")}
             </Text>
 
             <TextInput
               value={dropoff}
               onChangeText={setDropoff}
-              placeholder={tr(
-                "clientRestaurantMenu.addresses.dropoffPlaceholder",
-                "Ex : 1112 Flatbush Ave Brooklyn NY 11226"
+              placeholder={tr("clientRestaurantMenu.addresses.dropoffPlaceholder", "Ex: 1112 Flatbush Ave Brooklyn NY 11226"
               )}
               placeholderTextColor={MMD_MUTED}
               autoCapitalize="words"
@@ -1539,12 +1477,10 @@ export function ClientRestaurantMenuScreen() {
           >
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={{ color: MMD_WHITE, fontSize: 14, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-                {tr("clientRestaurantMenu.leaveAtDoor.title", "Laisser devant la porte")}
+                {tr("clientRestaurantMenu.leaveAtDoor.title", "Leave at the door")}
               </Text>
               <Text style={{ color: MMD_MUTED, fontSize: 13, marginTop: 4, lineHeight: 18, fontFamily: MMD_FONT.regular }}>
-                {tr(
-                  "clientRestaurantMenu.leaveAtDoor.hint",
-                  "Autorise le livreur à déposer la commande devant la porte après l’attente maximale (photo obligatoire)."
+                {tr("clientRestaurantMenu.leaveAtDoor.hint", "Allows the driver to leave the order at the door after the maximum wait (photo required)."
                 )}
               </Text>
             </View>
@@ -1578,9 +1514,7 @@ export function ClientRestaurantMenuScreen() {
                       marginLeft: 8,
                     }}
                   >
-                    {tr(
-                      "clientRestaurantMenu.addresses.estimating",
-                      "Calcul automatique de la livraison..."
+                    {tr("clientRestaurantMenu.addresses.estimating", "Calculating delivery automatically…"
                     )}
                   </Text>
                 </>
@@ -1590,16 +1524,12 @@ export function ClientRestaurantMenuScreen() {
                 </Text>
               ) : distanceMiles != null && etaMinutes != null && deliveryFee != null ? (
                 <Text style={{ color: "#4DE58C", fontSize: 14, fontWeight: "600", fontFamily: MMD_FONT.semibold }}>
-                  {tr(
-                    "clientRestaurantMenu.addresses.estimateReady",
-                    "Estimation de livraison prête."
+                  {tr("clientRestaurantMenu.addresses.estimateReady", "Delivery estimate ready."
                   )}
                 </Text>
               ) : (
                 <Text style={{ color: MMD_MUTED, fontSize: 14, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
-                  {tr(
-                    "clientRestaurantMenu.addresses.autoEstimateHint",
-                    "L’estimation se lance automatiquement quand l’adresse est complète."
+                  {tr("clientRestaurantMenu.addresses.autoEstimateHint", "The estimate starts automatically when the address is complete."
                   )}
                 </Text>
               )}
@@ -1615,14 +1545,14 @@ export function ClientRestaurantMenuScreen() {
                 </Text>
 
                 <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 4 }}>
-                  {tr("clientRestaurantMenu.summary.eta", "Temps estimé")} :{" "}
+                  {tr("clientRestaurantMenu.summary.eta", "Estimated time")} :{" "}
                   <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>
                     {etaMinutes != null ? `${Math.round(etaMinutes)} min` : "—"}
                   </Text>
                 </Text>
 
                 <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 4 }}>
-                  {tr("clientRestaurantMenu.summary.fee", "Frais de livraison")} :{" "}
+                  {tr("clientRestaurantMenu.summary.fee", "Delivery fee")} :{" "}
                   <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
                     {displayDeliveryFee != null ? `${money(displayDeliveryFee)} ${currency}` : "—"}
                   </Text>
@@ -1664,7 +1594,7 @@ export function ClientRestaurantMenuScreen() {
               fontFamily: MMD_FONT.bold,
             }}
           >
-            {tr("clientRestaurantMenu.cart.title", "Panier")}
+            {tr("clientRestaurantMenu.cart.title", "Cart")}
           </Text>
           {optionPickerItem ? (
             <View
@@ -1720,7 +1650,7 @@ export function ClientRestaurantMenuScreen() {
                   style={{ minHeight: 44, justifyContent: "center" }}
                 >
                   <Text style={{ color: MMD_MUTED }}>
-                    {tr("common.cancel", "Annuler")}
+                    {tr("common.cancel", "Cancel")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1734,7 +1664,7 @@ export function ClientRestaurantMenuScreen() {
                   style={{ minHeight: 44, justifyContent: "center" }}
                 >
                   <Text style={{ color: "#4DE58C", fontFamily: MMD_FONT.semibold }}>
-                    {tr("clientRestaurantMenu.options.add", "Ajouter")}
+                    {tr("clientRestaurantMenu.options.add", "Add with options")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1743,9 +1673,7 @@ export function ClientRestaurantMenuScreen() {
 
           {cart.length === 0 ? (
             <Text style={{ color: MMD_MUTED, fontSize: 15, fontFamily: MMD_FONT.regular }}>
-              {tr(
-                "clientRestaurantMenu.cart.empty",
-                "Ton panier est vide. Ajoute des plats depuis le menu."
+              {tr("clientRestaurantMenu.cart.empty", "Your cart is empty. Add dishes from the menu."
               )}
             </Text>
           ) : (
@@ -1801,7 +1729,7 @@ export function ClientRestaurantMenuScreen() {
 
                     <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 4 }}>
                       {money(item.unit_price)} {currency}{" "}
-                      {tr("clientRestaurantMenu.cart.perUnit", "/ unité")}
+                      {tr("clientRestaurantMenu.cart.perUnit", "/ each")}
                     </Text>
                   </View>
 
@@ -1857,7 +1785,7 @@ export function ClientRestaurantMenuScreen() {
 
                     <TouchableOpacity onPress={() => removeFromCart(item.lineKey)} style={{ marginTop: 4 }}>
                       <Text style={{ color: "#F97373", fontSize: 11, fontWeight: "700" }}>
-                        {tr("common.delete", "Supprimer")}
+                        {tr("common.delete", "Delete")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1867,7 +1795,7 @@ export function ClientRestaurantMenuScreen() {
               <View style={{ marginTop: 12 }}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                   <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                    {tr("clientRestaurantMenu.totals.subtotal", "Sous-total")}
+                    {tr("clientRestaurantMenu.totals.subtotal", "Subtotal")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
                     {money(displaySubtotal)} {currency}
@@ -1876,7 +1804,7 @@ export function ClientRestaurantMenuScreen() {
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                   <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                    {tr("clientRestaurantMenu.totals.taxLabel", "Taxes")} ({displayTaxRatePct.toFixed(2)}%)
+                    {tr("clientRestaurantMenu.totals.taxLabel", "Tax")} ({displayTaxRatePct.toFixed(2)}%)
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
                     {money(displayTax)} {currency}
@@ -1885,7 +1813,7 @@ export function ClientRestaurantMenuScreen() {
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                   <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                    {tr("clientRestaurantMenu.totals.totalNoDelivery", "Total (hors livraison)")}
+                    {tr("clientRestaurantMenu.totals.totalNoDelivery", "Total (before delivery)")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
                     {money(roundMoney(displaySubtotal + displayTax))} {currency}
@@ -1894,7 +1822,7 @@ export function ClientRestaurantMenuScreen() {
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                   <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                    {tr("clientRestaurantMenu.summary.fee", "Frais de livraison")}
+                    {tr("clientRestaurantMenu.summary.fee", "Delivery fee")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
                     {displayDeliveryFee != null ? `${money(displayDeliveryFee)} ${currency}` : "—"}
@@ -1903,7 +1831,7 @@ export function ClientRestaurantMenuScreen() {
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                   <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                    {tr("clientRestaurantMenu.totals.serviceFee", "Frais de service")}
+                    {tr("clientRestaurantMenu.totals.serviceFee", "Service fee")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
                     {money(displayServiceFee)} {currency}
@@ -1912,7 +1840,7 @@ export function ClientRestaurantMenuScreen() {
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>
-                    {tr("clientRestaurantMenu.totals.finalTotal", "Total final")}
+                    {tr("clientRestaurantMenu.totals.finalTotal", "Final total")}
                   </Text>
                   <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>
                     {money(displayGrandTotal)} {currency}
@@ -1950,8 +1878,8 @@ export function ClientRestaurantMenuScreen() {
             }}
           >
             {creating
-              ? tr("clientRestaurantMenu.create.paying", "Paiement en cours…")
-              : tr("clientRestaurantMenu.create.confirm", "Payer et confirmer la commande MMD")}
+              ? tr("clientRestaurantMenu.create.paying", "Payment in progress…")
+              : tr("clientRestaurantMenu.create.confirm", "Pay and confirm the MMD order")}
           </Text>
         </TouchableOpacity>
       </ScrollView>

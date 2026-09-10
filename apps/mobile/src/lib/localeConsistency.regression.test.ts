@@ -59,6 +59,12 @@ const REQUIRED: Array<{ file: "common" | "extras"; key: string }> = [
   { file: "extras", key: "restaurant.connect.cta.ready_for_payouts.title" },
   { file: "extras", key: "restaurant.wallet.recentTransactions" },
   { file: "extras", key: "deliveryRequest.type.title" },
+  { file: "extras", key: "deliveryRequest.actions.payAndConfirm" },
+  { file: "extras", key: "deliveryRequest.pricing.title" },
+  { file: "extras", key: "clientRestaurantMenu.addresses.title" },
+  { file: "extras", key: "clientRestaurantMenu.cart.title" },
+  { file: "extras", key: "clientRestaurantMenu.create.confirm" },
+  { file: "common", key: "common.optional" },
   { file: "extras", key: "payments.stripeConnect.status.ready_for_payouts" },
   { file: "common", key: "client.home.tabs.orders" },
   { file: "common", key: "client.delivery.tabs.track" },
@@ -142,6 +148,16 @@ for (const lang of ["fr", "es", "ar", "zh", "ff"] as const) {
     String(get(load(lang, "extras"), "restaurant.connect.cta.ready_for_payouts.action") ?? ""),
     "Manage Payouts",
     `${lang} Stripe manage payouts CTA must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "deliveryRequest.actions.payAndConfirm") ?? ""),
+    "Pay and confirm delivery",
+    `${lang} payAndConfirm must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "clientRestaurantMenu.addresses.pickupLabel") ?? ""),
+    "Pickup address (restaurant / start point)",
+    `${lang} restaurant pickupLabel must be translated`,
   );
 }
 

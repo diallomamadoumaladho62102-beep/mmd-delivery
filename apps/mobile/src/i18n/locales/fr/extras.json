@@ -867,6 +867,100 @@
       "tabs": {
         "track": "Suivi"
       }
+    },
+    "newOrder": {
+      "title": "Nouvelle commande",
+      "alerts": {
+        "missingFieldsTitle": "Champs manquants",
+        "missingConfigTitle": "Configuration manquante",
+        "blockedTitle": "Commande bloquée",
+        "verifyAddressTitle": "Adresse à vérifier",
+        "missingCoordsTitle": "Coordonnées manquantes",
+        "loginRequiredTitle": "Connexion requise",
+        "createdTitle": "Commande créée",
+        "missingOrderTitle": "Commande manquante",
+        "paymentSuccessTitle": "Paiement réussi",
+        "paymentTitle": "Paiement",
+        "incompleteAddressBody": "Saisis des adresses plus complètes avant le calcul.",
+        "missingConfigBody": "L’URL de l’API n’est pas configurée.",
+        "loginRequiredBody": "Connecte-toi avant de créer une commande.",
+        "createdBody": "Ta commande a bien été créée. Tu peux maintenant appuyer sur Payer maintenant.",
+        "createFirst": "Crée d’abord la commande, ensuite tu pourras payer.",
+        "paymentPendingBody": "Merci. Stripe a confirmé le paiement. La commande sera marquée payée sous peu.",
+        "paymentConfirmedBody": "Merci. Ton paiement est confirmé. Le restaurant pourra accepter la commande.",
+        "invalidGps": "Coordonnées GPS invalides. Relance l’estimation.",
+        "missingCoordsBody": "Relance l’estimation pour récupérer les coordonnées GPS avant de créer la commande.",
+        "missingFieldsBody": "Saisis l’adresse de retrait et l’adresse de livraison.",
+        "distanceTooFar": "Distance trop grande.\n\nCorrige l’adresse (code postal / ville / État).",
+        "fillAddressesFirst": "Remplis d’abord les adresses de retrait et de livraison.",
+        "incompleteAddressCreateBody": "Saisis une adresse complète avant de continuer.",
+        "missingOrderBody": "Crée d’abord la commande, ensuite tu pourras payer.",
+        "paymentSuccessBody": "Merci. Ton paiement est confirmé. Le restaurant pourra accepter la commande."
+      },
+      "errors": {
+        "paymentFailed": "Paiement impossible pour le moment.",
+        "tooFarOrImprecise": "Distance trop grande ou adresse trop imprécise. Vérifie la rue, le code postal, la ville et l’État.",
+        "noRouteFound": "Aucune route trouvée entre ces adresses. Vérifie l’adresse de destination.",
+        "networkFailed": "Impossible de joindre le serveur pour le moment. Vérifie le réseau puis réessaie.",
+        "timeout": "La requête d’estimation a pris trop de temps. Réessaie dans un instant.",
+        "noRestaurantSelected": "Aucun restaurant sélectionné. Retourne à la liste et choisis un restaurant.",
+        "restaurantUnavailable": "Ce restaurant n’est pas disponible pour les commandes actuellement.",
+        "restaurantMissingOwner": "Ce restaurant n’a pas encore un propriétaire valide.",
+        "restaurantMissingLocation": "Ce restaurant n’a pas encore une adresse GPS valide. Il doit compléter son profil avant de recevoir des commandes.",
+        "invalidJsonResponse": "Réponse invalide du service de distance.",
+        "invalidMapboxDistanceEta": "Réponse distance/temps invalide depuis l’API Mapbox.",
+        "createFailed": "Impossible de créer la commande pour le moment.",
+        "sessionExpired": "Session expirée. Reconnecte-toi puis réessaie.",
+        "estimateFailed": "Impossible de calculer l’estimation de livraison pour le moment.",
+        "distanceTooFarWithMiles": "Distance trop grande ({{miles}} mi). Vérifie l’adresse.",
+        "missingSession": "Session expirée. Reconnecte-toi puis réessaie."
+      },
+      "cards": {
+        "autoEstimate": "Estimation auto"
+      },
+      "status": {
+        "calculating": "Calcul…",
+        "autoCalculating": "Calcul automatique en cours…",
+        "estimateReady": "Estimation prête.",
+        "waitingCompleteAddress": "En attente d’une adresse complète."
+      },
+      "labels": {
+        "eta": "Temps estimé",
+        "distance": "Distance",
+        "itemsSubtotal": "Sous-total articles",
+        "taxes": "Taxes",
+        "fee": "Frais de livraison",
+        "finalTotal": "Total final",
+        "pickupGps": "GPS de retrait",
+        "dropoffGps": "GPS de livraison"
+      },
+      "section": {
+        "addresses": "Adresses de la livraison",
+        "estimateTitle": "Estimation de livraison (MMD Delivery)"
+      },
+      "fields": {
+        "pickupLabel": "Adresse de retrait",
+        "dropoffLabel": "Adresse de livraison",
+        "pickupLockedHint": "Adresse du restaurant remplie automatiquement.",
+        "dropoffPlaceholder": "Ex. : adresse du client"
+      },
+      "checkout": {
+        "title": "Paiement",
+        "stepEstimate": "Estimation automatique",
+        "stepCreate": "Créer la commande",
+        "stepPay": "Payer avec Stripe"
+      },
+      "actions": {
+        "creating": "Création de la commande…",
+        "create": "Confirmer et créer la commande MMD",
+        "paying": "Paiement en cours…",
+        "payNow": "Payer maintenant"
+      },
+      "subtitle": "Saisis les adresses de retrait et de livraison. La livraison utilise la même formule que sur le site.",
+      "hints": {
+        "autoEstimate": "L’estimation démarre automatiquement après une courte pause quand l’adresse paraît complète.",
+        "checkoutSteps": "1) Estime → 2) Crée la commande → 3) Paye avec Stripe."
+      }
     }
   },
   "location": {
@@ -909,7 +1003,9 @@
       "updateFailed": "Impossible de mettre à jour le mot de passe.",
       "checkingSession": "Vérification de la session…",
       "errorTitle": "Erreur"
-    }
+    },
+    "loginRequiredTitle": "Connexion requise",
+    "loginRequiredBody": "Connecte-toi avant de créer une commande."
   },
   "driver": {
     "w9": {
@@ -1819,11 +1915,97 @@
   "clientRestaurantMenu": {
     "createOrderError": "Impossible de créer la commande pour le moment.",
     "errors": {
-      "deliveryShareInvalid": "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support."
+      "deliveryShareInvalid": "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.",
+      "missingRestaurantId": "Restaurant introuvable. Retourne à la liste des restaurants puis réessaie.",
+      "restaurantUnavailable": "Ce restaurant n’est pas disponible ou son adresse GPS n’est pas encore configurée."
     },
     "addresses": {
       "pickupLabel": "Adresse de retrait (restaurant / point de départ)",
-      "deliveryLabel": "Adresse de livraison (client)"
+      "deliveryLabel": "Adresse de livraison (client)",
+      "title": "Adresses pour la livraison",
+      "dropoffLabel": "Adresse de livraison (client)",
+      "pickupPlaceholder": "Ex. : 686 Vermont St Brooklyn NY 11207",
+      "dropoffPlaceholder": "Ex. : 1112 Flatbush Ave Brooklyn NY 11226",
+      "pickupLockedHint": "Adresse du restaurant remplie automatiquement.",
+      "estimating": "Calcul automatique de la livraison…",
+      "estimateReady": "Estimation de livraison prête.",
+      "autoEstimateHint": "L’estimation se lance automatiquement quand l’adresse est complète."
+    },
+    "header": {
+      "subtitle": "Parcours le menu et ajoute des plats à ta commande MMD."
+    },
+    "loadMenuError": "Impossible de charger le menu de ce restaurant pour le moment.",
+    "estimateError": "Impossible de calculer l’estimation de livraison pour le moment.",
+    "cartEmptyTitle": "Panier vide",
+    "cartEmptyEstimate": "Ajoute au moins un plat avant l’estimation.",
+    "cartEmptyCreate": "Ajoute au moins un plat à ta commande.",
+    "missingFieldsTitle": "Champs manquants",
+    "missingFieldsEstimate": "Saisis l’adresse du restaurant et l’adresse de livraison.",
+    "missingFieldsCreate": "Saisis l’adresse de retrait et l’adresse de livraison.",
+    "incompleteAddressTitle": "Adresse incomplète",
+    "incompleteAddressBody": "Saisis une adresse plus complète avant de calculer la livraison.",
+    "missingConfigTitle": "Configuration manquante",
+    "missingConfigBody": "L’URL de l’API n’est pas configurée.",
+    "missingCoordsTitle": "Coordonnées manquantes",
+    "missingCoordsBody": "Relance l’estimation pour récupérer les coordonnées GPS avant de créer la commande.",
+    "orderBlockedTitle": "Commande bloquée",
+    "orderBlockedBody": "Distance trop grande ({{miles}} mi).\n\nCorrige l’adresse (code postal / ville / État).",
+    "verifyAddressTitle": "Adresse à vérifier",
+    "verifyAddressBody": "Distance très grande : {{miles}} mi.\n\nVérifie le code postal, la ville et l’État.\nEx. : « Brooklyn NY 11226 ».",
+    "estimate": {
+      "errors": {
+        "generic": "Impossible de calculer la livraison pour le moment.",
+        "tooFarOrImprecise": "Destination trop éloignée ou adresse pas assez précise. Vérifie la rue, le code postal, la ville et l’État.",
+        "noRoute": "Aucun itinéraire de livraison trouvé pour cette destination. Vérifie l’adresse.",
+        "timeout": "La demande d’estimation a pris trop de temps. Réessaie.",
+        "invalidResponse": "Réponse invalide du service d’estimation de livraison.",
+        "invalidApiResponse": "Réponse invalide du service de distance.",
+        "invalidDistanceEta": "Distance ou temps estimé invalide reçu depuis le service d’estimation.",
+        "invalidMapboxDistanceEta": "Réponse distance/temps invalide depuis l’API Mapbox.",
+        "distanceTooLarge": "Distance trop grande ({{miles}} mi). Vérifie le code postal, la ville et l’État."
+      }
+    },
+    "menu": {
+      "title": "Menu du restaurant",
+      "loading": "Chargement du menu…",
+      "empty": "Aucun plat pour l’instant. Le restaurant n’a pas encore configuré son menu dans MMD Delivery.",
+      "add": "Ajouter",
+      "itemUnavailable": "Ce plat n’est plus disponible pour le moment."
+    },
+    "leaveAtDoor": {
+      "title": "Laisser devant la porte",
+      "hint": "Autorise le livreur à déposer la commande devant la porte après l’attente maximale (photo obligatoire)."
+    },
+    "summary": {
+      "distance": "Distance",
+      "eta": "Temps estimé",
+      "fee": "Frais de livraison",
+      "pickupGps": "GPS de retrait",
+      "dropoffGps": "GPS de livraison"
+    },
+    "cart": {
+      "title": "Panier",
+      "empty": "Ton panier est vide. Ajoute des plats depuis le menu.",
+      "perUnit": "/ unité"
+    },
+    "options": {
+      "title": "Options",
+      "add": "Ajouter avec options"
+    },
+    "totals": {
+      "subtotal": "Sous-total",
+      "taxLabel": "Taxes",
+      "totalNoDelivery": "Total (hors livraison)",
+      "serviceFee": "Frais de service",
+      "finalTotal": "Total final"
+    },
+    "create": {
+      "paying": "Paiement en cours…",
+      "confirm": "Payer et confirmer la commande MMD"
+    },
+    "payment": {
+      "title": "Paiement",
+      "notCompleted": "Le paiement n’a pas été terminé. Aucune commande n’a été créée."
     }
   },
   "order": {
@@ -2229,12 +2411,14 @@
     "actions": {
       "calculate": "Calculer le prix de livraison",
       "create": "Créer la demande de livraison",
-      "payNow": "Payer maintenant"
+      "payNow": "Payer maintenant",
+      "payAndConfirm": "Payer et confirmer la livraison"
     },
     "created": {
       "paidCardTitle": "Demande de livraison payée",
       "cardTitle": "Demande de livraison créée",
-      "payHint": "Tu peux maintenant continuer vers le paiement sécurisé."
+      "payHint": "Tu peux maintenant continuer vers le paiement sécurisé.",
+      "paidHint": "Paiement confirmé. Les chauffeurs peuvent maintenant voir ta demande."
     },
     "alerts": {
       "scopeTitle": "Marché indisponible",

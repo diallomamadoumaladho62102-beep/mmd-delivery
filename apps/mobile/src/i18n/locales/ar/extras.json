@@ -857,6 +857,100 @@
       "tabs": {
         "track": "التتبع"
       }
+    },
+    "newOrder": {
+      "title": "طلب جديد",
+      "alerts": {
+        "missingFieldsTitle": "حقول ناقصة",
+        "missingConfigTitle": "إعداد ناقص",
+        "blockedTitle": "الطلب محظور",
+        "verifyAddressTitle": "عنوان يحتاج تحققًا",
+        "missingCoordsTitle": "الإحداثيات ناقصة",
+        "loginRequiredTitle": "يلزم تسجيل الدخول",
+        "createdTitle": "تم إنشاء الطلب",
+        "missingOrderTitle": "الطلب ناقص",
+        "paymentSuccessTitle": "تم الدفع بنجاح",
+        "paymentTitle": "الدفع",
+        "incompleteAddressBody": "أدخل عناوين أكثر اكتمالًا قبل الحساب.",
+        "missingConfigBody": "لم يُضبط عنوان واجهة البرمجة.",
+        "loginRequiredBody": "سجّل الدخول قبل إنشاء طلب.",
+        "createdBody": "تم إنشاء طلبك. يمكنك الآن الضغط على ادفع الآن.",
+        "createFirst": "أنشئ الطلب أولًا ثم يمكنك الدفع.",
+        "paymentPendingBody": "شكرًا. أكّد Stripe الدفع. سيُعلَّم الطلب مدفوعًا قريبًا.",
+        "paymentConfirmedBody": "شكرًا. تم تأكيد الدفع. يمكن للمطعم قبول الطلب الآن.",
+        "invalidGps": "إحداثيات GPS غير صالحة. أعد حساب التقدير.",
+        "missingCoordsBody": "أعد حساب التقدير للحصول على إحداثيات GPS قبل إنشاء الطلب.",
+        "missingFieldsBody": "أدخل عنوان الاستلام وعنوان التسليم.",
+        "distanceTooFar": "المسافة كبيرة جدًا.\n\nصحّح العنوان.",
+        "fillAddressesFirst": "املأ عنواني الاستلام والتسليم أولًا.",
+        "incompleteAddressCreateBody": "أدخل عنوانًا كاملًا قبل المتابعة.",
+        "missingOrderBody": "أنشئ الطلب أولًا ثم يمكنك الدفع.",
+        "paymentSuccessBody": "شكرًا. تم تأكيد الدفع. يمكن للمطعم قبول الطلب الآن."
+      },
+      "errors": {
+        "paymentFailed": "الدفع غير متاح الآن.",
+        "tooFarOrImprecise": "المسافة كبيرة جدًا أو العنوان غير دقيق. تحقق من الشارع والرمز البريدي والمدينة والولاية.",
+        "noRouteFound": "لم يُعثر على مسار بين هذه العناوين. تحقق من عنوان الوجهة.",
+        "networkFailed": "تعذر الوصول إلى الخادم الآن. تحقق من الشبكة ثم أعد المحاولة.",
+        "timeout": "استغرق طلب التقدير وقتًا طويلًا. أعد المحاولة بعد لحظة.",
+        "noRestaurantSelected": "لم يُحدد مطعم. ارجع إلى القائمة واختر مطعمًا.",
+        "restaurantUnavailable": "هذا المطعم غير متاح للطلبات الآن.",
+        "restaurantMissingOwner": "هذا المطعم ليس له مالك صالح بعد.",
+        "restaurantMissingLocation": "هذا المطعم ليس له عنوان GPS صالح بعد. يجب إكمال الملف قبل استلام الطلبات.",
+        "invalidJsonResponse": "استجابة غير صالحة من خدمة المسافة.",
+        "invalidMapboxDistanceEta": "استجابة مسافة/وقت غير صالحة من Mapbox.",
+        "createFailed": "تعذر إنشاء الطلب الآن.",
+        "sessionExpired": "انتهت الجلسة. سجّل الدخول ثم أعد المحاولة.",
+        "estimateFailed": "تعذر حساب تقدير التوصيل الآن.",
+        "distanceTooFarWithMiles": "المسافة كبيرة جدًا ({{miles}} ميل). تحقق من العنوان.",
+        "missingSession": "انتهت الجلسة. سجّل الدخول ثم أعد المحاولة."
+      },
+      "cards": {
+        "autoEstimate": "تقدير تلقائي"
+      },
+      "status": {
+        "calculating": "جارٍ الحساب…",
+        "autoCalculating": "الحساب التلقائي قيد التنفيذ…",
+        "estimateReady": "التقدير جاهز.",
+        "waitingCompleteAddress": "بانتظار عنوان كامل."
+      },
+      "labels": {
+        "eta": "الوقت التقديري",
+        "distance": "المسافة",
+        "itemsSubtotal": "مجموع الأصناف الفرعي",
+        "taxes": "الضريبة",
+        "fee": "رسوم التوصيل",
+        "finalTotal": "الإجمالي النهائي",
+        "pickupGps": "GPS الاستلام",
+        "dropoffGps": "GPS التسليم"
+      },
+      "section": {
+        "addresses": "عناوين التوصيل",
+        "estimateTitle": "تقدير التوصيل (MMD Delivery)"
+      },
+      "fields": {
+        "pickupLabel": "عنوان الاستلام",
+        "dropoffLabel": "عنوان التسليم",
+        "pickupLockedHint": "يُملأ عنوان المطعم تلقائيًا.",
+        "dropoffPlaceholder": "مثال: عنوان العميل"
+      },
+      "checkout": {
+        "title": "إتمام الطلب",
+        "stepEstimate": "تقدير تلقائي",
+        "stepCreate": "إنشاء الطلب",
+        "stepPay": "ادفع عبر Stripe"
+      },
+      "actions": {
+        "creating": "جارٍ إنشاء الطلب…",
+        "create": "أكّد وأنشئ طلب MMD",
+        "paying": "الدفع قيد التنفيذ…",
+        "payNow": "ادفع الآن"
+      },
+      "subtitle": "أدخل عناوين الاستلام والتسليم. يستخدم التوصيل نفس التسعير كما في الموقع.",
+      "hints": {
+        "autoEstimate": "يبدأ التقدير تلقائيًا بعد توقف قصير عندما يبدو العنوان مكتملًا.",
+        "checkoutSteps": "1) قدّر → 2) أنشئ الطلب → 3) ادفع عبر Stripe."
+      }
     }
   },
   "location": {
@@ -899,7 +993,9 @@
       "updateFailed": "تعذّر تحديث كلمة المرور.",
       "checkingSession": "جارٍ التحقق من الجلسة…",
       "errorTitle": "خطأ"
-    }
+    },
+    "loginRequiredTitle": "يلزم تسجيل الدخول",
+    "loginRequiredBody": "سجّل الدخول قبل إنشاء طلب."
   },
   "driver": {
     "w9": {
@@ -1720,11 +1816,97 @@
   "clientRestaurantMenu": {
     "createOrderError": "تعذّر إنشاء الطلب الآن.",
     "errors": {
-      "deliveryShareInvalid": "أسعار التوصيل غير متاحة مؤقتًا. حاول لاحقًا أو اتصل بالدعم."
+      "deliveryShareInvalid": "أسعار التوصيل غير متاحة مؤقتًا. حاول لاحقًا أو اتصل بالدعم.",
+      "missingRestaurantId": "المطعم غير موجود. ارجع إلى قائمة المطاعم ثم أعد المحاولة.",
+      "restaurantUnavailable": "هذا المطعم غير متاح أو لم يُضبط عنوانه على GPS بعد."
     },
     "addresses": {
       "pickupLabel": "عنوان الاستلام (المطعم / نقطة البداية)",
-      "deliveryLabel": "عنوان التسليم (العميل)"
+      "deliveryLabel": "عنوان التسليم (العميل)",
+      "title": "عناوين التوصيل",
+      "dropoffLabel": "عنوان التسليم (العميل)",
+      "pickupPlaceholder": "مثال: 686 Vermont St Brooklyn NY 11207",
+      "dropoffPlaceholder": "مثال: 1112 Flatbush Ave Brooklyn NY 11226",
+      "pickupLockedHint": "يُملأ عنوان المطعم تلقائيًا.",
+      "estimating": "جارٍ حساب التوصيل تلقائيًا…",
+      "estimateReady": "تقدير التوصيل جاهز.",
+      "autoEstimateHint": "يبدأ التقدير تلقائيًا عندما يكتمل العنوان."
+    },
+    "header": {
+      "subtitle": "تصفح القائمة وأضف أطباقًا إلى طلب MMD."
+    },
+    "loadMenuError": "تعذر تحميل قائمة هذا المطعم الآن.",
+    "estimateError": "تعذر حساب تقدير التوصيل الآن.",
+    "cartEmptyTitle": "السلة فارغة",
+    "cartEmptyEstimate": "أضف طبقًا واحدًا على الأقل قبل تقدير التوصيل.",
+    "cartEmptyCreate": "أضف طبقًا واحدًا على الأقل إلى طلبك.",
+    "missingFieldsTitle": "حقول ناقصة",
+    "missingFieldsEstimate": "أدخل عنوان استلام المطعم وعنوان التسليم.",
+    "missingFieldsCreate": "أدخل عنوان الاستلام وعنوان التسليم.",
+    "incompleteAddressTitle": "عنوان غير مكتمل",
+    "incompleteAddressBody": "أدخل عنوانًا أكمل قبل حساب التوصيل.",
+    "missingConfigTitle": "إعداد ناقص",
+    "missingConfigBody": "لم يُضبط عنوان واجهة البرمجة.",
+    "missingCoordsTitle": "الإحداثيات ناقصة",
+    "missingCoordsBody": "أعد حساب التقدير للحصول على إحداثيات GPS قبل إنشاء الطلب.",
+    "orderBlockedTitle": "الطلب محظور",
+    "orderBlockedBody": "المسافة كبيرة جدًا ({{miles}} ميل).\n\nصحّح العنوان (الرمز البريدي / المدينة / الولاية).",
+    "verifyAddressTitle": "عنوان يحتاج تحققًا",
+    "verifyAddressBody": "مسافة طويلة جدًا: {{miles}} ميل.\n\nتحقق من الرمز البريدي والمدينة والولاية.\nمثال: \"Brooklyn NY 11226\".",
+    "estimate": {
+      "errors": {
+        "generic": "تعذر حساب التوصيل الآن.",
+        "tooFarOrImprecise": "الوجهة بعيدة جدًا أو العنوان غير دقيق. تحقق من الشارع والرمز البريدي والمدينة والولاية.",
+        "noRoute": "لم يُعثر على مسار توصيل لهذه الوجهة. تحقق من العنوان.",
+        "timeout": "استغرق طلب التقدير وقتًا طويلًا. أعد المحاولة.",
+        "invalidResponse": "استجابة غير صالحة من خدمة تقدير التوصيل.",
+        "invalidApiResponse": "استجابة غير صالحة من خدمة المسافة.",
+        "invalidDistanceEta": "مسافة أو وقت وصول غير صالح من خدمة التقدير.",
+        "invalidMapboxDistanceEta": "استجابة مسافة/وقت غير صالحة من Mapbox.",
+        "distanceTooLarge": "المسافة كبيرة جدًا ({{miles}} ميل). تحقق من الرمز البريدي والمدينة والولاية."
+      }
+    },
+    "menu": {
+      "title": "قائمة المطعم",
+      "loading": "جارٍ تحميل القائمة…",
+      "empty": "لا توجد أطباق بعد. لم يضبط هذا المطعم قائمته في MMD.",
+      "add": "إضافة",
+      "itemUnavailable": "هذا الطبق لم يعد متاحًا."
+    },
+    "leaveAtDoor": {
+      "title": "الترك عند الباب",
+      "hint": "يسمح للسائق بترك الطلب عند الباب بعد أقصى انتظار (الصورة مطلوبة)."
+    },
+    "summary": {
+      "distance": "المسافة",
+      "eta": "الوقت التقديري",
+      "fee": "رسوم التوصيل",
+      "pickupGps": "GPS الاستلام",
+      "dropoffGps": "GPS التسليم"
+    },
+    "cart": {
+      "title": "السلة",
+      "empty": "سلتك فارغة. أضف أطباقًا من القائمة.",
+      "perUnit": "/ للقطعة"
+    },
+    "options": {
+      "title": "خيارات",
+      "add": "إضافة مع الخيارات"
+    },
+    "totals": {
+      "subtotal": "المجموع الفرعي",
+      "taxLabel": "الضريبة",
+      "totalNoDelivery": "الإجمالي (بدون التوصيل)",
+      "serviceFee": "رسوم الخدمة",
+      "finalTotal": "الإجمالي النهائي"
+    },
+    "create": {
+      "paying": "الدفع قيد التنفيذ…",
+      "confirm": "ادفع وأكّد طلب MMD"
+    },
+    "payment": {
+      "title": "الدفع",
+      "notCompleted": "لم يكتمل الدفع. لم يُنشأ أي طلب."
     }
   },
   "order": {
@@ -2075,12 +2257,14 @@
     "actions": {
       "calculate": "حساب سعر التوصيل",
       "create": "إنشاء طلب التوصيل",
-      "payNow": "ادفع الآن"
+      "payNow": "ادفع الآن",
+      "payAndConfirm": "ادفع وأكّد التوصيل"
     },
     "created": {
       "paidCardTitle": "طلب توصيل مدفوع",
       "cardTitle": "تم إنشاء طلب التوصيل",
-      "payHint": "يمكنك المتابعة إلى الدفع الآمن."
+      "payHint": "يمكنك المتابعة إلى الدفع الآمن.",
+      "paidHint": "تم تأكيد الدفع. يمكن للسائقين رؤية طلبك الآن."
     },
     "alerts": {
       "scopeTitle": "السوق غير متاح",

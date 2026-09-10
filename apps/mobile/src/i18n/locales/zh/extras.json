@@ -857,6 +857,100 @@
       "tabs": {
         "track": "跟踪"
       }
+    },
+    "newOrder": {
+      "title": "新订单",
+      "alerts": {
+        "missingFieldsTitle": "缺少字段",
+        "missingConfigTitle": "缺少配置",
+        "blockedTitle": "订单已阻止",
+        "verifyAddressTitle": "请核对地址",
+        "missingCoordsTitle": "缺少坐标",
+        "loginRequiredTitle": "需要登录",
+        "createdTitle": "订单已创建",
+        "missingOrderTitle": "缺少订单",
+        "paymentSuccessTitle": "付款成功",
+        "paymentTitle": "付款",
+        "incompleteAddressBody": "请输入更完整的地址后再计算。",
+        "missingConfigBody": "未配置 API 基础地址。",
+        "loginRequiredBody": "请先登录再创建订单。",
+        "createdBody": "订单已创建。现在可以点按立即支付。",
+        "createFirst": "请先创建订单，然后才能付款。",
+        "paymentPendingBody": "谢谢。Stripe 已确认付款。订单稍后会标记为已支付。",
+        "paymentConfirmedBody": "谢谢。付款已确认。餐厅现在可以接受订单。",
+        "invalidGps": "GPS 坐标无效。请重新估价。",
+        "missingCoordsBody": "请重新估算以获取 GPS 坐标，然后再创建订单。",
+        "missingFieldsBody": "请输入取餐地址和送餐地址。",
+        "distanceTooFar": "距离过远。\n\n请修正地址。",
+        "fillAddressesFirst": "请先填写取餐和送餐地址。",
+        "incompleteAddressCreateBody": "请先输入完整地址再继续。",
+        "missingOrderBody": "请先创建订单，然后才能付款。",
+        "paymentSuccessBody": "谢谢。付款已确认。餐厅现在可以接受订单。"
+      },
+      "errors": {
+        "paymentFailed": "目前无法付款。",
+        "tooFarOrImprecise": "距离过远或地址不够精确。请核对街道、邮编、城市和州。",
+        "noRouteFound": "未找到这些地址之间的路线。请核对目的地地址。",
+        "networkFailed": "目前无法连接服务器。请检查网络后重试。",
+        "timeout": "估价请求超时。请稍后再试。",
+        "noRestaurantSelected": "未选择餐厅。请返回列表并选择一家餐厅。",
+        "restaurantUnavailable": "这家餐厅目前无法接单。",
+        "restaurantMissingOwner": "这家餐厅尚无有效所有者。",
+        "restaurantMissingLocation": "这家餐厅尚无有效 GPS 地址。必须先完善资料才能接单。",
+        "invalidJsonResponse": "距离服务返回无效响应。",
+        "invalidMapboxDistanceEta": "Mapbox 返回的距离或时间无效。",
+        "createFailed": "目前无法创建订单。",
+        "sessionExpired": "会话已过期。请重新登录后再试。",
+        "estimateFailed": "目前无法计算配送估价。",
+        "distanceTooFarWithMiles": "距离过远（{{miles}} 英里）。请核对地址。",
+        "missingSession": "会话已过期。请重新登录后再试。"
+      },
+      "cards": {
+        "autoEstimate": "自动估价"
+      },
+      "status": {
+        "calculating": "正在计算…",
+        "autoCalculating": "正在自动计算…",
+        "estimateReady": "估价已就绪。",
+        "waitingCompleteAddress": "等待完整地址。"
+      },
+      "labels": {
+        "eta": "预计时间",
+        "distance": "距离",
+        "itemsSubtotal": "商品小计",
+        "taxes": "税费",
+        "fee": "配送费",
+        "finalTotal": "最终合计",
+        "pickupGps": "取餐 GPS",
+        "dropoffGps": "送餐 GPS"
+      },
+      "section": {
+        "addresses": "配送地址",
+        "estimateTitle": "配送估价（MMD Delivery）"
+      },
+      "fields": {
+        "pickupLabel": "取餐地址",
+        "dropoffLabel": "送餐地址",
+        "pickupLockedHint": "餐厅地址已自动填写。",
+        "dropoffPlaceholder": "例如：客户地址"
+      },
+      "checkout": {
+        "title": "结账",
+        "stepEstimate": "自动估价",
+        "stepCreate": "创建订单",
+        "stepPay": "使用 Stripe 付款"
+      },
+      "actions": {
+        "creating": "正在创建订单…",
+        "create": "确认并创建 MMD 订单",
+        "paying": "正在付款…",
+        "payNow": "立即支付"
+      },
+      "subtitle": "输入取餐和送餐地址。配送计价与网站相同。",
+      "hints": {
+        "autoEstimate": "当地址看起来完整时，稍等片刻会自动开始估价。",
+        "checkoutSteps": "1）估价 → 2）创建订单 → 3）用 Stripe 付款。"
+      }
     }
   },
   "location": {
@@ -899,7 +993,9 @@
       "updateFailed": "无法更新密码。",
       "checkingSession": "正在检查会话…",
       "errorTitle": "错误"
-    }
+    },
+    "loginRequiredTitle": "需要登录",
+    "loginRequiredBody": "请先登录再创建订单。"
   },
   "driver": {
     "w9": {
@@ -1905,11 +2001,97 @@
   "clientRestaurantMenu": {
     "createOrderError": "暂时无法创建订单。",
     "errors": {
-      "deliveryShareInvalid": "配送价格暂时不可用。请稍后重试或联系支持。"
+      "deliveryShareInvalid": "配送价格暂时不可用。请稍后重试或联系支持。",
+      "missingRestaurantId": "未找到餐厅。请返回餐厅列表后重试。",
+      "restaurantUnavailable": "这家餐厅不可用，或其 GPS 地址尚未设置。"
     },
     "addresses": {
       "pickupLabel": "取餐地址（餐厅 / 起点）",
-      "deliveryLabel": "送餐地址（客户）"
+      "deliveryLabel": "送餐地址（客户）",
+      "title": "配送地址",
+      "dropoffLabel": "送餐地址（客户）",
+      "pickupPlaceholder": "例如：686 Vermont St Brooklyn NY 11207",
+      "dropoffPlaceholder": "例如：1112 Flatbush Ave Brooklyn NY 11226",
+      "pickupLockedHint": "餐厅地址已自动填写。",
+      "estimating": "正在自动计算配送…",
+      "estimateReady": "配送估价已就绪。",
+      "autoEstimateHint": "地址完整后会自动开始估价。"
+    },
+    "header": {
+      "subtitle": "浏览菜单并将菜品加入你的 MMD 订单。"
+    },
+    "loadMenuError": "目前无法加载这家餐厅的菜单。",
+    "estimateError": "目前无法计算配送估价。",
+    "cartEmptyTitle": "购物车为空",
+    "cartEmptyEstimate": "请先添加至少一道菜再估算配送。",
+    "cartEmptyCreate": "请至少向订单添加一道菜。",
+    "missingFieldsTitle": "缺少字段",
+    "missingFieldsEstimate": "请输入餐厅取餐地址和送餐地址。",
+    "missingFieldsCreate": "请输入取餐地址和送餐地址。",
+    "incompleteAddressTitle": "地址不完整",
+    "incompleteAddressBody": "请输入更完整的地址后再计算配送。",
+    "missingConfigTitle": "缺少配置",
+    "missingConfigBody": "未配置 API 基础地址。",
+    "missingCoordsTitle": "缺少坐标",
+    "missingCoordsBody": "请重新估算以获取 GPS 坐标，然后再创建订单。",
+    "orderBlockedTitle": "订单已阻止",
+    "orderBlockedBody": "距离过远（{{miles}} 英里）。\n\n请修正地址（邮编 / 城市 / 州）。",
+    "verifyAddressTitle": "请核对地址",
+    "verifyAddressBody": "距离很远：{{miles}} 英里。\n\n请核对邮编、城市和州。\n例如：\"Brooklyn NY 11226\"。",
+    "estimate": {
+      "errors": {
+        "generic": "目前无法计算配送。",
+        "tooFarOrImprecise": "目的地过远或地址不够精确。请核对街道、邮编、城市和州。",
+        "noRoute": "未找到通往该目的地的配送路线。请核对地址。",
+        "timeout": "估价请求超时。请重试。",
+        "invalidResponse": "配送估价服务返回无效响应。",
+        "invalidApiResponse": "距离服务返回无效响应。",
+        "invalidDistanceEta": "估价服务返回的距离或预计时间无效。",
+        "invalidMapboxDistanceEta": "Mapbox 返回的距离或时间无效。",
+        "distanceTooLarge": "距离过远（{{miles}} 英里）。请核对邮编、城市和州。"
+      }
+    },
+    "menu": {
+      "title": "餐厅菜单",
+      "loading": "正在加载菜单…",
+      "empty": "暂无菜品。这家餐厅尚未配置 MMD 菜单。",
+      "add": "添加",
+      "itemUnavailable": "这道菜暂时不可用。"
+    },
+    "leaveAtDoor": {
+      "title": "放在门口",
+      "hint": "允许骑手在最长等待后将订单放在门口（必须拍照）。"
+    },
+    "summary": {
+      "distance": "距离",
+      "eta": "预计时间",
+      "fee": "配送费",
+      "pickupGps": "取餐 GPS",
+      "dropoffGps": "送餐 GPS"
+    },
+    "cart": {
+      "title": "购物车",
+      "empty": "购物车为空。请从菜单添加菜品。",
+      "perUnit": "/ 份"
+    },
+    "options": {
+      "title": "选项",
+      "add": "添加并选择选项"
+    },
+    "totals": {
+      "subtotal": "小计",
+      "taxLabel": "税费",
+      "totalNoDelivery": "合计（不含配送）",
+      "serviceFee": "服务费",
+      "finalTotal": "最终合计"
+    },
+    "create": {
+      "paying": "正在付款…",
+      "confirm": "支付并确认 MMD 订单"
+    },
+    "payment": {
+      "title": "付款",
+      "notCompleted": "付款未完成。未创建订单。"
     }
   },
   "order": {
@@ -2260,12 +2442,14 @@
     "actions": {
       "calculate": "计算配送价格",
       "create": "创建配送请求",
-      "payNow": "立即支付"
+      "payNow": "立即支付",
+      "payAndConfirm": "支付并确认配送"
     },
     "created": {
       "paidCardTitle": "已支付的配送请求",
       "cardTitle": "配送请求已创建",
-      "payHint": "你可以继续进行安全支付。"
+      "payHint": "你可以继续进行安全支付。",
+      "paidHint": "付款已确认。司机现在可以看到你的请求。"
     },
     "alerts": {
       "scopeTitle": "该市场暂不可用",

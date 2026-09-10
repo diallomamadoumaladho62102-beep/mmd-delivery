@@ -150,30 +150,22 @@ function getFriendlyEstimateError(
   if (!text) return fallback;
 
   if (lower.includes("route exceeds maximum distance limitation")) {
-    return t(
-      "client.newOrder.errors.tooFarOrImprecise",
-      "Distance trop grande ou adresse trop imprécise. Vérifie la rue, le ZIP code, la ville et l’État."
+    return t("client.newOrder.errors.tooFarOrImprecise", "Distance is too far or the address is not precise enough. Check the street, ZIP, city, and state."
     );
   }
 
   if (lower.includes("aucune route trouvée") || lower.includes("no route")) {
-    return t(
-      "client.newOrder.errors.noRouteFound",
-      "Aucune route trouvée entre ces adresses. Vérifie l’adresse de destination."
+    return t("client.newOrder.errors.noRouteFound", "No route was found between these addresses. Check the destination address."
     );
   }
 
   if (lower.includes("network request failed")) {
-    return t(
-      "client.newOrder.errors.networkFailed",
-      "Impossible de joindre le serveur pour le moment. Vérifie le réseau local puis réessaie."
+    return t("client.newOrder.errors.networkFailed", "Unable to reach the server right now. Check your network and try again."
     );
   }
 
   if (lower.includes("timed out") || lower.includes("abort")) {
-    return t(
-      "client.newOrder.errors.timeout",
-      "La requête d’estimation a pris trop de temps. Réessaie dans un instant."
+    return t("client.newOrder.errors.timeout", "The estimate request took too long. Try again in a moment."
     );
   }
 
@@ -353,9 +345,7 @@ export function ClientNewOrderScreen() {
   }> {
     if (!restaurantIdFromParams) {
       throw new Error(
-        t(
-          "client.newOrder.errors.noRestaurantSelected",
-          "Aucun restaurant sélectionné. Retourne à la liste des restaurants et choisis un restaurant."
+        t("client.newOrder.errors.noRestaurantSelected", "No restaurant selected. Go back to the list and choose a restaurant."
         )
       );
     }
@@ -377,9 +367,7 @@ export function ClientNewOrderScreen() {
 
     if (!rp) {
       throw new Error(
-        t(
-          "client.newOrder.errors.restaurantUnavailable",
-          "Ce restaurant n’est pas disponible pour les commandes actuellement."
+        t("client.newOrder.errors.restaurantUnavailable", "This restaurant is not available for orders right now."
         )
       );
     }
@@ -391,18 +379,14 @@ export function ClientNewOrderScreen() {
 
     if (!restaurantUserId) {
       throw new Error(
-        t(
-          "client.newOrder.errors.restaurantMissingOwner",
-          "Ce restaurant n’a pas encore un propriétaire valide."
+        t("client.newOrder.errors.restaurantMissingOwner", "This restaurant does not have a valid owner yet."
         )
       );
     }
 
     if (!restaurantAddress || !hasValidCoordinate(restaurantLat, restaurantLng)) {
       throw new Error(
-        t(
-          "client.newOrder.errors.restaurantMissingLocation",
-          "Ce restaurant n’a pas encore une adresse GPS valide. Il doit compléter son profil avant de recevoir des commandes."
+        t("client.newOrder.errors.restaurantMissingLocation", "This restaurant does not have a valid GPS address yet. It must complete its profile before receiving orders."
         )
       );
     }
@@ -452,10 +436,10 @@ export function ClientNewOrderScreen() {
     if (!pickupValue || !dropoffValue) {
       if (!silent) {
         Alert.alert(
-          t("client.newOrder.alerts.missingFieldsTitle", "Champs manquants"),
+          t("client.newOrder.alerts.missingFieldsTitle", "Missing fields"),
           t(
             "client.newOrder.alerts.missingFieldsBody",
-            "Merci de remplir l’adresse pickup et l’adresse de livraison."
+            "Enter the pickup address and the delivery address."
           )
         );
       }
@@ -468,10 +452,8 @@ export function ClientNewOrderScreen() {
     ) {
       if (!silent) {
         Alert.alert(
-          t("client.newOrder.alerts.missingFieldsTitle", "Adresse incomplète"),
-          t(
-            "client.newOrder.alerts.incompleteAddressBody",
-            "Merci de saisir des adresses plus complètes avant le calcul."
+          t("client.newOrder.alerts.missingFieldsTitle", "Missing fields"),
+          t("client.newOrder.alerts.incompleteAddressBody", "Enter more complete addresses before calculating delivery."
           )
         );
       }
@@ -483,10 +465,8 @@ export function ClientNewOrderScreen() {
     if (!apiBaseUrl) {
       if (!silent) {
         Alert.alert(
-          t("client.newOrder.alerts.missingConfigTitle", "Configuration manquante"),
-          t(
-            "client.newOrder.alerts.missingConfigBody",
-            "API_BASE_URL n’est pas configurée. Configure EXPO_PUBLIC_API_URL_PROD (via getApiBaseUrl)."
+          t("client.newOrder.alerts.missingConfigTitle", "Missing configuration"),
+          t("client.newOrder.alerts.missingConfigBody", "The API base URL is not configured."
           )
         );
       }
@@ -533,7 +513,7 @@ export function ClientNewOrderScreen() {
           apiError,
           t(
             "client.newOrder.errors.estimateFailed",
-            "Impossible de calculer l’estimation de livraison pour le moment."
+            "Unable to calculate the delivery estimate right now."
           ),
           t
         );
@@ -549,24 +529,26 @@ export function ClientNewOrderScreen() {
             dm != null
               ? t(
                   "client.newOrder.errors.distanceTooFarWithMiles",
-                  `Distance trop grande (${dm.toFixed(2)} mi). Vérifie l’adresse.`
+                  { defaultValue: "Distance is too far ({{miles}} mi). Check the address.", miles: dm.toFixed(2) }
                 )
               : friendly
           );
 
           if (!silent) {
             Alert.alert(
-              t("client.newOrder.alerts.blockedTitle", "Commande bloquée"),
+              t("client.newOrder.alerts.blockedTitle", "Order blocked"),
               dm != null
                 ? t(
                     "client.newOrder.alerts.distanceTooFarWithMiles",
-                    `Distance trop grande (${dm.toFixed(
-                      2
-                    )} mi).\n\nCorrige l'adresse (ZIP / ville / État).`
+                    {
+                      defaultValue:
+                        "Distance is too far ({{miles}} mi).\n\nFix the address (ZIP / city / state).",
+                      miles: dm.toFixed(2),
+                    }
                   )
                 : t(
                     "client.newOrder.alerts.distanceTooFar",
-                    "Distance trop grande.\n\nCorrige l'adresse (ZIP / ville / État)."
+                    "Distance is too far.\n\nFix the address (ZIP / city / state)."
                   )
             );
           }
@@ -578,7 +560,7 @@ export function ClientNewOrderScreen() {
         setEstimateError(friendly);
 
         if (!silent) {
-          Alert.alert(t("common.error", "Erreur"), friendly);
+          Alert.alert(t("common.error", "Error"), friendly);
         }
 
         return false;
@@ -587,14 +569,14 @@ export function ClientNewOrderScreen() {
       if (!json) {
         const friendly = t(
           "client.newOrder.errors.invalidJson",
-          "Réponse invalide depuis /api/mapbox/compute-distance (pas du JSON)."
+          "Invalid response from the distance service."
         );
 
         resetEstimateState();
         setEstimateError(friendly);
 
         if (!silent) {
-          Alert.alert(t("common.error", "Erreur"), friendly);
+          Alert.alert(t("common.error", "Error"), friendly);
         }
 
         return false;
@@ -613,14 +595,14 @@ export function ClientNewOrderScreen() {
       ) {
         const friendly = t(
           "client.newOrder.errors.invalidDistanceTime",
-          "Réponse distance/temps invalide depuis l’API Mapbox."
+          "Invalid distance or time response from Mapbox."
         );
 
         resetEstimateState();
         setEstimateError(friendly);
 
         if (!silent) {
-          Alert.alert(t("common.error", "Erreur"), friendly);
+          Alert.alert(t("common.error", "Error"), friendly);
         }
 
         return false;
@@ -633,18 +615,20 @@ export function ClientNewOrderScreen() {
         setEstimateError(
           t(
             "client.newOrder.errors.distanceTooFarWithMiles",
-            `Distance trop grande (${dMiles.toFixed(2)} mi). Vérifie l’adresse.`
+            { defaultValue: "Distance is too far ({{miles}} mi). Check the address.", miles: dMiles.toFixed(2) }
           )
         );
 
         if (!silent) {
           Alert.alert(
-            t("client.newOrder.alerts.blockedTitle", "Commande bloquée"),
+            t("client.newOrder.alerts.blockedTitle", "Order blocked"),
             t(
               "client.newOrder.alerts.distanceTooFarWithMiles",
-              `Distance trop grande (${dMiles.toFixed(
-                2
-              )} mi).\n\nCorrige l'adresse (ZIP / ville / État).`
+              {
+                defaultValue:
+                  "Distance is too far ({{miles}} mi).\n\nFix the address (ZIP / city / state).",
+                miles: dMiles.toFixed(2),
+              }
             )
           );
         }
@@ -656,12 +640,14 @@ export function ClientNewOrderScreen() {
 
       if (dMiles > WARN_MILES && !silent) {
         Alert.alert(
-          t("client.newOrder.alerts.verifyAddressTitle", "⚠️ Adresse à vérifier"),
+          t("client.newOrder.alerts.verifyAddressTitle", "Address to verify"),
           t(
             "client.newOrder.alerts.verifyAddressBody",
-            `Distance très grande: ${dMiles.toFixed(
-              2
-            )} mi.\n\nVérifie le ZIP, la ville et l'État.\nEx: "Brooklyn NY 11226".`
+            {
+              defaultValue:
+                "Very long distance: {{miles}} mi.\n\nCheck the ZIP, city, and state.\nEx: \"Brooklyn NY 11226\".",
+              miles: dMiles.toFixed(2),
+            }
           )
         );
       }
@@ -739,15 +725,13 @@ export function ClientNewOrderScreen() {
         String(err?.message || "").toLowerCase().includes("timed out");
 
       const friendly = timeoutLike
-        ? t(
-          "client.newOrder.errors.networkFailed",
-          "Impossible de joindre le serveur pour le moment. Vérifie le réseau local puis réessaie."
+        ? t("client.newOrder.errors.networkFailed", "Unable to reach the server right now. Check your network and try again."
         )
         : getFriendlyEstimateError(
             err?.message,
             t(
               "client.newOrder.errors.estimateFailed",
-              "Impossible de calculer l’estimation de livraison pour le moment."
+              "Unable to calculate the delivery estimate right now."
             ),
             t
           );
@@ -756,7 +740,7 @@ export function ClientNewOrderScreen() {
       setEstimateError(friendly);
 
       if (!silent) {
-        Alert.alert(t("common.error", "Erreur"), friendly);
+        Alert.alert(t("common.error", "Error"), friendly);
       }
 
       return false;
@@ -819,10 +803,10 @@ export function ClientNewOrderScreen() {
 
     if (!pickupValue || !dropoffValue) {
       Alert.alert(
-        t("client.newOrder.alerts.missingFieldsTitle", "Champs manquants"),
+        t("client.newOrder.alerts.missingFieldsTitle", "Missing fields"),
         t(
           "client.newOrder.alerts.fillAddressesFirst",
-          "Merci de remplir d’abord les adresses pickup et livraison."
+          "Fill in the pickup and delivery addresses first."
         )
       );
       return;
@@ -833,10 +817,10 @@ export function ClientNewOrderScreen() {
       !looksLikeCompleteAddress(dropoffValue)
     ) {
       Alert.alert(
-        t("client.newOrder.alerts.missingFieldsTitle", "Adresse incomplète"),
+        t("client.newOrder.alerts.missingFieldsTitle", "Missing fields"),
         t(
           "client.newOrder.alerts.incompleteAddressCreateBody",
-          "Merci d’écrire une adresse complète avant de continuer."
+          "Enter a complete address before continuing."
         )
       );
       return;
@@ -849,10 +833,8 @@ export function ClientNewOrderScreen() {
 
     if (!pickupCoords || !dropoffCoords) {
       Alert.alert(
-        t("client.newOrder.alerts.missingCoordsTitle", "Coordonnées manquantes"),
-        t(
-          "client.newOrder.alerts.missingCoordsBody",
-          "Merci de refaire l’estimation pour récupérer les coordonnées GPS avant de créer la commande."
+        t("client.newOrder.alerts.missingCoordsTitle", "Missing coordinates"),
+        t("client.newOrder.alerts.missingCoordsBody", "Recalculate the estimate to get GPS coordinates before creating the order."
         )
       );
       return;
@@ -863,10 +845,10 @@ export function ClientNewOrderScreen() {
       !hasValidCoordinate(dropoffCoords.lat, dropoffCoords.lng)
     ) {
       Alert.alert(
-        t("client.newOrder.alerts.missingCoordsTitle", "Coordonnées manquantes"),
+        t("client.newOrder.alerts.missingCoordsTitle", "Missing coordinates"),
         t(
           "client.newOrder.errors.invalidGps",
-          "Coordonnées GPS invalides. Refais l’estimation."
+          "Invalid GPS coordinates. Recalculate the estimate."
         )
       );
       return;
@@ -880,10 +862,8 @@ export function ClientNewOrderScreen() {
       if (sessionError) throw sessionError;
       if (!sessionData.session) {
         Alert.alert(
-          t("client.newOrder.alerts.loginRequiredTitle", "Connexion requise"),
-          t(
-            "client.newOrder.alerts.loginRequiredBody",
-            "Merci de te connecter avant de créer une commande."
+          t("client.newOrder.alerts.loginRequiredTitle", "Sign in required"),
+          t("client.newOrder.alerts.loginRequiredBody", "Please sign in before creating an order."
           )
         );
         return;
@@ -978,23 +958,22 @@ export function ClientNewOrderScreen() {
       setNewOrderId(createdOrderId);
 
       Alert.alert(
-        t("client.newOrder.alerts.createdTitle", "Commande créée ✅"),
+        t("client.newOrder.alerts.createdTitle", "Order created"),
         t(
           "client.newOrder.alerts.createdBody",
-          `Ta commande a bien été créée.\n\nID : ${createdOrderId?.slice(
-            0,
-            8
-          )}…\n\nTu peux maintenant appuyer sur “Payer maintenant”.`
+          {
+            defaultValue:
+              "Your order was created.\n\nID: {{id}}…\n\nYou can now tap Pay now.",
+            id: createdOrderId?.slice(0, 8),
+          }
         )
       );
     } catch (err: any) {
       console.error("Erreur création commande mobile:", err);
       Alert.alert(
-        t("common.error", "Erreur"),
+        t("common.error", "Error"),
         err?.message ??
-          t(
-            "client.newOrder.errors.createFailed",
-            "Impossible de créer la commande pour le moment."
+          t("client.newOrder.errors.createFailed", "Unable to create the order right now."
           )
       );
     } finally {
@@ -1005,10 +984,10 @@ export function ClientNewOrderScreen() {
   async function handlePayNow() {
     if (!newOrderId) {
       Alert.alert(
-        t("client.newOrder.alerts.missingOrderTitle", "Commande manquante"),
+        t("client.newOrder.alerts.missingOrderTitle", "Missing order"),
         t(
           "client.newOrder.alerts.missingOrderBody",
-          "Crée d’abord la commande (bouton bleu), ensuite tu pourras payer."
+          "Create the order first, then you can pay."
         )
       );
       return;
@@ -1016,10 +995,8 @@ export function ClientNewOrderScreen() {
 
     if (!cleanApiBaseUrl()) {
       Alert.alert(
-        t("client.newOrder.alerts.missingConfigTitle", "Configuration manquante"),
-        t(
-          "client.newOrder.alerts.missingConfigBody",
-          "API_BASE_URL n’est pas configurée. Configure EXPO_PUBLIC_API_URL_PROD (via getApiBaseUrl)."
+        t("client.newOrder.alerts.missingConfigTitle", "Missing configuration"),
+        t("client.newOrder.alerts.missingConfigBody", "The API base URL is not configured."
         )
       );
       return;
@@ -1038,7 +1015,7 @@ export function ClientNewOrderScreen() {
         throw new Error(
           t(
             "client.newOrder.errors.missingSession",
-            "Session expirée. Reconnecte-toi puis réessaie."
+            "Session expired. Sign in again and try once more."
           )
         );
       }
@@ -1050,10 +1027,10 @@ export function ClientNewOrderScreen() {
 
       if (!confirm.ok) {
         Alert.alert(
-          t("client.newOrder.alerts.paymentSuccessTitle", "Paiement réussi ✅"),
+          t("client.newOrder.alerts.paymentSuccessTitle", "Payment successful"),
           t(
             "client.newOrder.alerts.paymentSuccessBodyWarn",
-            "Merci ! Ton paiement Stripe est confirmé.\n\n⚠️ Le serveur n’a pas encore enregistré la commande comme payée. Elle le sera sous peu via Stripe, ou réessaie dans quelques secondes."
+            "Thank you. Stripe confirmed payment. The order will be marked paid shortly via Stripe, or try again in a few seconds."
           ),
           [{ text: t("common.ok", "OK"), onPress: () => navigation.goBack() }]
         );
@@ -1061,19 +1038,19 @@ export function ClientNewOrderScreen() {
       }
 
       Alert.alert(
-        t("client.newOrder.alerts.paymentSuccessTitle", "Paiement réussi ✅"),
+        t("client.newOrder.alerts.paymentSuccessTitle", "Payment successful"),
         t(
           "client.newOrder.alerts.paymentSuccessBody",
-          "Merci ! Ton paiement est confirmé. Le restaurant pourra accepter la commande."
+          "Thank you. Your payment is confirmed. The restaurant can now accept the order."
         ),
         [{ text: t("common.ok", "OK"), onPress: () => navigation.goBack() }]
       );
     } catch (err: any) {
       console.error("Erreur paiement PaymentSheet:", err);
       Alert.alert(
-        t("client.newOrder.alerts.paymentTitle", "Paiement"),
+        t("client.newOrder.alerts.paymentTitle", "Payment"),
         err?.message ??
-          t("client.newOrder.errors.paymentFailed", "Paiement impossible pour le moment.")
+          t("client.newOrder.errors.paymentFailed", "Payment is unavailable right now.")
       );
     } finally {
       setPaying(false);
@@ -1085,10 +1062,8 @@ export function ClientNewOrderScreen() {
       <StatusBar barStyle="light-content" />
 
       <ScreenHeader
-        title={t("client.newOrder.title", "Nouvelle commande")}
-        subtitle={t(
-          "client.newOrder.subtitle",
-          "Saisie des adresses pickup / dropoff (mobile MMD Delivery) avec la même formule que sur le site web."
+        title={t("client.newOrder.title", "New order")}
+        subtitle={t("client.newOrder.subtitle", "Enter pickup and dropoff addresses. Delivery uses the same pricing as the website."
         )}
         fallbackRoute="ClientHome"
         variant="brand"
@@ -1158,10 +1133,10 @@ export function ClientNewOrderScreen() {
               >
                 <Text style={{ fontSize: 18, marginBottom: 8 }}>📦</Text>
                 <Text style={{ color: "#D1D5DB", fontSize: 12 }}>
-                  {t("client.newOrder.cards.autoEstimate", "Estimation auto")}
+                  {t("client.newOrder.cards.autoEstimate", "Auto estimate")}
                 </Text>
                 <Text style={{ color: "white", fontSize: 16, fontWeight: "900", marginTop: 4 }}>
-                  {loading ? t("client.newOrder.status.calculating", "Calcul...") : money(deliveryFee)}
+                  {loading ? t("client.newOrder.status.calculating", "Calculating…") : money(deliveryFee)}
                 </Text>
               </View>
 
@@ -1177,7 +1152,7 @@ export function ClientNewOrderScreen() {
               >
                 <Text style={{ fontSize: 18, marginBottom: 8 }}>⏱️</Text>
                 <Text style={{ color: "#D1D5DB", fontSize: 12 }}>
-                  {t("client.newOrder.labels.eta", "Temps estimé")}
+                  {t("client.newOrder.labels.eta", "Estimated time")}
                 </Text>
                 <Text style={{ color: "white", fontSize: 16, fontWeight: "900", marginTop: 4 }}>
                   {loading ? "..." : statValue(orderSummary.eta, " min")}
@@ -1223,12 +1198,12 @@ export function ClientNewOrderScreen() {
                   marginBottom: 12,
                 }}
               >
-                {t("client.newOrder.section.addresses", "Adresses de la livraison")}
+                {t("client.newOrder.section.addresses", "Delivery addresses")}
               </Text>
 
               <View style={{ marginBottom: 14 }}>
                 <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 6 }}>
-                  {t("client.newOrder.fields.pickupLabel", "Adresse pickup")}
+                  {t("client.newOrder.fields.pickupLabel", "Pickup address")}
                 </Text>
                 <TextInput
                   value={pickup}
@@ -1257,9 +1232,7 @@ export function ClientNewOrderScreen() {
                 />
                 {pickupLocked && (
                   <Text style={{ color: "#D9D9E5", fontSize: 13, marginTop: 6, fontFamily: MMD_FONT.regular }}>
-                    {t(
-                      "client.newOrder.fields.pickupLockedHint",
-                      "Adresse restaurant remplie automatiquement."
+                    {t("client.newOrder.fields.pickupLockedHint", "Restaurant address filled in automatically."
                     )}
                   </Text>
                 )}
@@ -1267,14 +1240,12 @@ export function ClientNewOrderScreen() {
 
               <View style={{ marginBottom: 6 }}>
                 <Text style={{ color: MMD_WHITE, fontSize: 15, marginBottom: 6, fontFamily: MMD_FONT.semibold, fontWeight: "600" }}>
-                  {t("client.newOrder.fields.dropoffLabel", "Adresse de livraison")}
+                  {t("client.newOrder.fields.dropoffLabel", "Delivery address")}
                 </Text>
                 <TextInput
                   value={dropoff}
                   onChangeText={setDropoff}
-                  placeholder={t(
-                    "client.newOrder.fields.dropoffPlaceholder",
-                    "Ex: Adresse du client"
+                  placeholder={t("client.newOrder.fields.dropoffPlaceholder", "Ex: customer address"
                   )}
                   placeholderTextColor="#B2B2BF"
                   autoCapitalize="words"
@@ -1302,9 +1273,7 @@ export function ClientNewOrderScreen() {
                   lineHeight: 16,
                 }}
               >
-                {t(
-                  "client.newOrder.hints.autoEstimate",
-                  "L’estimation démarre automatiquement après une courte pause quand l’adresse paraît complète."
+                {t("client.newOrder.hints.autoEstimate", "The estimate starts automatically after a short pause when the address looks complete."
                 )}
               </Text>
             </View>
@@ -1330,7 +1299,7 @@ export function ClientNewOrderScreen() {
               >
                 {t(
                   "client.newOrder.section.estimateTitle",
-                  "Estimation livraison (MMD Delivery)"
+                  "Delivery estimate (MMD Delivery)"
                 )}
               </Text>
 
@@ -1338,7 +1307,7 @@ export function ClientNewOrderScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
                   <ActivityIndicator size="small" color={MMD_GOLD_BRIGHT} />
                   <Text style={{ color: "#4DE58C", fontSize: 15, fontWeight: "600", fontFamily: MMD_FONT.semibold, marginLeft: 8 }}>
-                    {t("client.newOrder.status.autoCalculating", "Calcul automatique en cours...")}
+                    {t("client.newOrder.status.autoCalculating", "Automatic calculation in progress…")}
                   </Text>
                 </View>
               ) : estimateError ? (
@@ -1348,8 +1317,8 @@ export function ClientNewOrderScreen() {
               ) : (
                 <Text style={{ color: "#4DE58C", fontSize: 15, fontWeight: "600", fontFamily: MMD_FONT.semibold, marginBottom: 8 }}>
                   {distanceMiles != null && etaMinutes != null && deliveryFee != null
-                    ? t("client.newOrder.status.estimateReady", "Estimation prête.")
-                    : t("client.newOrder.status.waitingCompleteAddress", "En attente d’une adresse complète.")}
+                    ? t("client.newOrder.status.estimateReady", "Estimate ready.")
+                    : t("client.newOrder.status.waitingCompleteAddress", "Waiting for a complete address.")}
                 </Text>
               )}
 
@@ -1362,35 +1331,35 @@ export function ClientNewOrderScreen() {
                 </Text>
 
                 <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                  {t("client.newOrder.labels.eta", "Temps estimé")} :{" "}
+                  {t("client.newOrder.labels.eta", "Estimated time")} :{" "}
                   <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>
                     {etaMinutes != null ? `${Math.round(etaMinutes)} min` : "—"}
                   </Text>
                 </Text>
 
                 <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                  {t("client.newOrder.labels.itemsSubtotal", "Sous-total articles")} :{" "}
+                  {t("client.newOrder.labels.itemsSubtotal", "Items subtotal")} :{" "}
                   <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>
                     {money(orderSummary.itemsSubtotal)}
                   </Text>
                 </Text>
 
                 <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                  {t("client.newOrder.labels.taxes", "Taxes")} :{" "}
+                  {t("client.newOrder.labels.taxes", "Tax")} :{" "}
                   <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>
                     {money(orderSummary.taxAmount)}
                   </Text>
                 </Text>
 
                 <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                  {t("client.newOrder.labels.fee", "Frais de livraison")} :{" "}
+                  {t("client.newOrder.labels.fee", "Delivery fee")} :{" "}
                   <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
                     {deliveryFee != null ? `${deliveryFee.toFixed(2)} USD` : "—"}
                   </Text>
                 </Text>
 
                 <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-                  {t("client.newOrder.labels.finalTotal", "Total final")} :{" "}
+                  {t("client.newOrder.labels.finalTotal", "Final total")} :{" "}
                   <Text style={{ color: "#FFFFFF", fontWeight: "900" }}>
                     {money(orderSummary.finalTotal)}
                   </Text>
@@ -1430,7 +1399,7 @@ export function ClientNewOrderScreen() {
                   marginBottom: 12,
                 }}
               >
-                {t("client.newOrder.checkout.title", "Checkout flow")}
+                {t("client.newOrder.checkout.title", "Checkout")}
               </Text>
 
               <View style={{ gap: 10 }}>
@@ -1457,7 +1426,7 @@ export function ClientNewOrderScreen() {
                     <Text style={{ color: "white", fontWeight: "900" }}>1</Text>
                   </View>
                   <Text style={{ color: "#D1D5DB", fontSize: 13 }}>
-                    {t("client.newOrder.checkout.stepEstimate", "Estimation automatique")}
+                    {t("client.newOrder.checkout.stepEstimate", "Automatic estimate")}
                   </Text>
                 </View>
 
@@ -1481,7 +1450,7 @@ export function ClientNewOrderScreen() {
                     <Text style={{ color: "white", fontWeight: "900" }}>2</Text>
                   </View>
                   <Text style={{ color: "#D1D5DB", fontSize: 13 }}>
-                    {t("client.newOrder.checkout.stepCreate", "Créer la commande")}
+                    {t("client.newOrder.checkout.stepCreate", "Create the order")}
                   </Text>
                 </View>
 
@@ -1505,7 +1474,7 @@ export function ClientNewOrderScreen() {
                     <Text style={{ color: "white", fontWeight: "900" }}>3</Text>
                   </View>
                   <Text style={{ color: "#D1D5DB", fontSize: 13 }}>
-                    {t("client.newOrder.checkout.stepPay", "Payer avec Stripe")}
+                    {t("client.newOrder.checkout.stepPay", "Pay with Stripe")}
                   </Text>
                 </View>
               </View>
@@ -1538,8 +1507,8 @@ export function ClientNewOrderScreen() {
                 }}
               >
                 {creating
-                  ? t("client.newOrder.actions.creating", "Création commande...")
-                  : t("client.newOrder.actions.create", "Confirmer et créer la commande MMD")}
+                  ? t("client.newOrder.actions.creating", "Creating order…")
+                  : t("client.newOrder.actions.create", "Confirm and create the MMD order")}
               </Text>
             </TouchableOpacity>
 
@@ -1571,8 +1540,8 @@ export function ClientNewOrderScreen() {
                 }}
               >
                 {paying
-                  ? t("client.newOrder.actions.paying", "Paiement en cours...")
-                  : t("client.newOrder.actions.payNow", "Payer maintenant 💳")}
+                  ? t("client.newOrder.actions.paying", "Payment in progress…")
+                  : t("client.newOrder.actions.payNow", "Pay now")}
               </Text>
             </TouchableOpacity>
 
@@ -1587,7 +1556,7 @@ export function ClientNewOrderScreen() {
             >
               {t(
                 "client.newOrder.footer.steps",
-                "1) Estime → 2) Crée la commande → 3) Paye avec Stripe PaymentSheet."
+                "1) Estimate → 2) Create the order → 3) Pay with Stripe."
               )}
             </Text>
           </View>

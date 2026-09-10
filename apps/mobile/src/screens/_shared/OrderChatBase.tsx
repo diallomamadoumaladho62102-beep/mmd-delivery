@@ -646,9 +646,9 @@ export function OrderChatBaseScreen(props: {
       console.log("load chat error:", e);
 
       Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        t("shared.orderChat.alerts.errorTitle", "Error"),
         e?.message ??
-          t("shared.orderChat.alerts.loadFailed", "Impossible de charger la discussion.")
+          t("shared.orderChat.alerts.loadFailed", "Unable to load the chat.")
       );
     } finally {
       setLoading(false);
@@ -701,10 +701,8 @@ export function OrderChatBaseScreen(props: {
 
       if (!perm.granted) {
         Alert.alert(
-          t("shared.orderChat.alerts.permissionTitle", "Permission requise"),
-          t(
-            "shared.orderChat.alerts.permissionGalleryBody",
-            "Autorise l'accès à la galerie pour envoyer une image."
+          t("shared.orderChat.alerts.permissionTitle", "Permission required"),
+          t("shared.orderChat.alerts.permissionGalleryBody", "Allow access to the gallery to send an image."
           )
         );
         return;
@@ -728,9 +726,9 @@ export function OrderChatBaseScreen(props: {
       console.log("pickImage error:", e);
 
       Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        t("shared.orderChat.alerts.errorTitle", "Error"),
         e?.message ??
-          t("shared.orderChat.alerts.pickImageFailed", "Impossible de sélectionner l'image.")
+          t("shared.orderChat.alerts.pickImageFailed", "Unable to pick the image.")
       );
     }
   }, [t]);
@@ -740,9 +738,7 @@ export function OrderChatBaseScreen(props: {
 
     if (!orderId || !isValidOrderId) {
       throw new Error(
-        t(
-          "shared.orderChat.errors.invalidOrderId",
-          "Conversation invalide : cette discussion doit être liée à une vraie commande."
+        t("shared.orderChat.errors.invalidOrderId", "Invalid order."
         )
       );
     }
@@ -751,9 +747,7 @@ export function OrderChatBaseScreen(props: {
 
     if (!access.canAccess || !access.userId) {
       throw new Error(
-        t(
-          "shared.orderChat.errors.notAllowed",
-          "Tu n’as pas accès à cette discussion."
+        t("shared.orderChat.errors.notAllowed", "You are not allowed to do this."
         )
       );
     }
@@ -765,7 +759,7 @@ export function OrderChatBaseScreen(props: {
 
     if (!isAllowedImageExt(ext)) {
       throw new Error(
-        t("shared.orderChat.errors.unsupportedImage", "Format d'image non supporté.")
+        t("shared.orderChat.errors.unsupportedImage", "Unsupported image format.")
       );
     }
 
@@ -790,9 +784,7 @@ export function OrderChatBaseScreen(props: {
 
     if (!info.exists) {
       throw new Error(
-        t(
-          "shared.orderChat.errors.imageNotFoundOnPhone",
-          "Fichier image introuvable sur le téléphone."
+        t("shared.orderChat.errors.imageNotFoundOnPhone", "Image file not found on the phone."
         )
       );
     }
@@ -801,15 +793,13 @@ export function OrderChatBaseScreen(props: {
 
     if (!size || size <= 0) {
       throw new Error(
-        t("shared.orderChat.errors.imageEmptyOnPhone", "Fichier image vide sur le téléphone.")
+        t("shared.orderChat.errors.imageEmptyOnPhone", "Image file is empty on the phone.")
       );
     }
 
     if (size > MAX_IMAGE_SIZE_BYTES) {
       throw new Error(
-        t(
-          "shared.orderChat.errors.imageTooLarge",
-          "L'image est trop volumineuse. Choisis une image plus légère."
+        t("shared.orderChat.errors.imageTooLarge", "This image is too large."
         )
       );
     }
@@ -820,7 +810,7 @@ export function OrderChatBaseScreen(props: {
 
     if (!base64 || base64.length < 10) {
       throw new Error(
-        t("shared.orderChat.errors.base64ReadFailedEmpty", "Lecture base64 échouée.")
+        t("shared.orderChat.errors.base64ReadFailedEmpty", "Base64 read failed.")
       );
     }
 
@@ -828,7 +818,7 @@ export function OrderChatBaseScreen(props: {
 
     if (bytes.byteLength <= 0) {
       throw new Error(
-        t("shared.orderChat.errors.arrayBufferZeroBytes", "Conversion image invalide.")
+        t("shared.orderChat.errors.arrayBufferZeroBytes", "Invalid image conversion.")
       );
     }
 
@@ -854,10 +844,8 @@ export function OrderChatBaseScreen(props: {
 
     if (text.trim().length > MAX_MESSAGE_LENGTH) {
       Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        t(
-          "shared.orderChat.errors.messageTooLong",
-          "Message trop long. Réduis le texte avant d’envoyer."
+        t("shared.orderChat.alerts.errorTitle", "Error"),
+        t("shared.orderChat.errors.messageTooLong", "This message is too long."
         )
       );
       return;
@@ -866,10 +854,8 @@ export function OrderChatBaseScreen(props: {
 
     if (!isValidOrderId) {
       Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        t(
-          "shared.orderChat.errors.invalidOrderId",
-          "Conversation invalide : cette discussion doit être liée à une vraie commande."
+        t("shared.orderChat.alerts.errorTitle", "Error"),
+        t("shared.orderChat.errors.invalidOrderId", "Invalid order."
         )
       );
       return;
@@ -882,18 +868,14 @@ export function OrderChatBaseScreen(props: {
 
       if (!access.userId) {
         throw new Error(
-          t(
-            "shared.orderChat.errors.notAuthenticated",
-            "Tu dois être connecté pour envoyer un message."
+          t("shared.orderChat.errors.notAuthenticated", "You must be signed in."
           )
         );
       }
 
       if (!access.canAccess) {
         throw new Error(
-          t(
-            "shared.orderChat.errors.notAllowed",
-            "Tu n’as pas accès à cette discussion."
+          t("shared.orderChat.errors.notAllowed", "You are not allowed to do this."
           )
         );
       }
@@ -936,9 +918,9 @@ export function OrderChatBaseScreen(props: {
       console.log("send chat error:", e);
 
       Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        t("shared.orderChat.alerts.errorTitle", "Error"),
         e?.message ??
-          t("shared.orderChat.alerts.sendFailed", "Impossible d'envoyer le message.")
+          t("shared.orderChat.alerts.sendFailed", "Unable to send the message.")
       );
     } finally {
       setSending(false);
@@ -967,9 +949,7 @@ export function OrderChatBaseScreen(props: {
 
         if (!access.canAccess || !access.userId) {
           throw new Error(
-            t(
-              "shared.orderChat.errors.notAllowed",
-              "Tu n’as pas accès à cette discussion."
+            t("shared.orderChat.errors.notAllowed", "You are not allowed to do this."
             )
           );
         }
@@ -1007,9 +987,9 @@ export function OrderChatBaseScreen(props: {
         console.log("delete chat error:", e);
 
         Alert.alert(
-          t("shared.orderChat.alerts.errorTitle", "Erreur"),
+          t("shared.orderChat.alerts.errorTitle", "Error"),
           e?.message ??
-            t("shared.orderChat.alerts.deleteFailed", "Impossible de supprimer le message.")
+            t("shared.orderChat.alerts.deleteFailed", "Unable to delete the message.")
         );
       }
     },
@@ -1119,13 +1099,11 @@ export function OrderChatBaseScreen(props: {
 
         <View style={{ paddingHorizontal: 16, flex: 1 }}>
         <Text style={{ color: MMD_WHITE, marginTop: 16, fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
-          {t("shared.orderChat.errors.invalidOrderIdTitle", "Discussion indisponible")}
+          {t("shared.orderChat.errors.invalidOrderIdTitle", "Chat unavailable")}
         </Text>
 
         <Text style={{ color: MMD_TEXT_MUTED_BLUE, marginTop: 8, lineHeight: 20, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-          {t(
-            "shared.orderChat.errors.invalidOrderIdUi",
-            "Cette discussion doit être ouverte depuis une vraie commande. Le support général sera corrigé séparément pour ne plus envoyer orderId = support."
+          {t("shared.orderChat.errors.invalidOrderIdUi", "This conversation is unavailable."
           )}
         </Text>
         </View>
@@ -1156,13 +1134,11 @@ export function OrderChatBaseScreen(props: {
 
         <View style={{ paddingHorizontal: 16, flex: 1 }}>
         <Text style={{ color: "#FCA5A5", marginTop: 16, fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
-          {t("shared.orderChat.errors.accessDeniedTitle", "Accès refusé")}
+          {t("shared.orderChat.errors.accessDeniedTitle", "Access denied")}
         </Text>
 
         <Text style={{ color: MMD_TEXT_MUTED_BLUE, marginTop: 8, lineHeight: 20, fontWeight: "700", fontFamily: MMD_FONT.bold }}>
-          {t(
-            "shared.orderChat.errors.accessDeniedUi",
-            "Tu ne peux pas ouvrir cette discussion avec ce compte ou cette commande est déjà terminée."
+          {t("shared.orderChat.errors.accessDeniedUi", "You cannot open this conversation."
           )}
         </Text>
         </View>
@@ -1400,9 +1376,7 @@ export function OrderChatBaseScreen(props: {
                               fontSize: 11,
                             }}
                           >
-                            {t(
-                              "shared.orderChat.heic.oldMessageTitle",
-                              "Image HEIC détectée — peut ne pas s'afficher."
+                            {t("shared.orderChat.heic.oldMessageTitle", "HEIC image detected (old message) — it may not render in the app."
                             )}
                           </Text>
                         ) : null}
@@ -1411,17 +1385,13 @@ export function OrderChatBaseScreen(props: {
                           <TouchableOpacity
                             onPress={() =>
                               Alert.alert(
-                                t(
-                                  "shared.orderChat.actions.deleteTitle",
-                                  "Supprimer"
+                                t("shared.orderChat.actions.deleteTitle", "Delete"
                                 ),
-                                t(
-                                  "shared.orderChat.actions.deleteConfirm",
-                                  "Tu veux supprimer ce message ?"
+                                t("shared.orderChat.actions.deleteConfirm", "Do you want to delete this message?"
                                 ),
                                 [
                                   {
-                                    text: t("shared.common.cancel", "Annuler"),
+                                    text: t("shared.common.cancel", "Cancel"),
                                     style: "cancel",
                                   },
                                   {
@@ -1446,9 +1416,7 @@ export function OrderChatBaseScreen(props: {
                                 fontFamily: MMD_FONT.bold,
                               }}
                             >
-                              {t(
-                                "shared.orderChat.actions.deleteLower",
-                                "supprimer"
+                              {t("shared.orderChat.actions.deleteLower", "delete"
                               )}
                             </Text>
                           </TouchableOpacity>
@@ -1480,9 +1448,7 @@ export function OrderChatBaseScreen(props: {
                       marginBottom: 6,
                     }}
                   >
-                    {t(
-                      "shared.orderChat.image.selectedPrefix",
-                      "Image sélectionnée :"
+                    {t("shared.orderChat.image.selectedPrefix", "Selected image: "
                     )}{" "}
                     {pickedImage.fileName}
                   </Text>
@@ -1507,7 +1473,7 @@ export function OrderChatBaseScreen(props: {
                         fontWeight: "700",
                       }}
                     >
-                      {t("shared.orderChat.image.remove", "Retirer l'image")}
+                      {t("shared.orderChat.image.remove", "Remove image")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1596,7 +1562,7 @@ export function OrderChatBaseScreen(props: {
                     }}
                   >
                     {sending
-                      ? t("shared.orderChat.actions.sending", "Envoi...")
+                      ? t("shared.orderChat.actions.sending", "Sending…")
                       : t("driver.chat.actions.send", "📤 Send")}
                   </Text>
                 </TouchableOpacity>
@@ -1814,9 +1780,7 @@ export function OrderChatBaseScreen(props: {
                               fontSize: 11,
                             }}
                           >
-                            {t(
-                              "shared.orderChat.heic.oldMessageTitle",
-                              "Image HEIC détectée — peut ne pas s'afficher."
+                            {t("shared.orderChat.heic.oldMessageTitle", "HEIC image detected (old message) — it may not render in the app."
                             )}
                           </Text>
                         ) : null}
@@ -1825,17 +1789,13 @@ export function OrderChatBaseScreen(props: {
                           <TouchableOpacity
                             onPress={() =>
                               Alert.alert(
-                                t(
-                                  "shared.orderChat.actions.deleteTitle",
-                                  "Supprimer"
+                                t("shared.orderChat.actions.deleteTitle", "Delete"
                                 ),
-                                t(
-                                  "shared.orderChat.actions.deleteConfirm",
-                                  "Tu veux supprimer ce message ?"
+                                t("shared.orderChat.actions.deleteConfirm", "Do you want to delete this message?"
                                 ),
                                 [
                                   {
-                                    text: t("shared.common.cancel", "Annuler"),
+                                    text: t("shared.common.cancel", "Cancel"),
                                     style: "cancel",
                                   },
                                   {
@@ -1857,9 +1817,7 @@ export function OrderChatBaseScreen(props: {
                                 fontFamily: MMD_FONT.bold,
                               }}
                             >
-                              {t(
-                                "shared.orderChat.actions.deleteLower",
-                                "supprimer"
+                              {t("shared.orderChat.actions.deleteLower", "delete"
                               )}
                             </Text>
                           </TouchableOpacity>
@@ -1904,7 +1862,7 @@ export function OrderChatBaseScreen(props: {
                         fontWeight: "700",
                       }}
                     >
-                      {t("shared.orderChat.image.remove", "Retirer l'image")}
+                      {t("shared.orderChat.image.remove", "Remove image")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1964,7 +1922,7 @@ export function OrderChatBaseScreen(props: {
                     }}
                   >
                     {sending
-                      ? t("shared.orderChat.actions.sending", "Envoi...")
+                      ? t("shared.orderChat.actions.sending", "Sending…")
                       : t("restaurants.chat.send", "Send")}
                   </Text>
                 </TouchableOpacity>
@@ -1980,7 +1938,7 @@ export function OrderChatBaseScreen(props: {
     <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={title}
-        subtitle={t("shared.orderChat.header.subtitle", "Messages & pièces jointes")}
+        subtitle={t("shared.orderChat.header.subtitle", "Messages & attachments")}
         onBack={onBack}
         variant="dark"
         rightSlot={
@@ -2000,7 +1958,7 @@ export function OrderChatBaseScreen(props: {
             <Text style={{ color: MMD_TEXT, fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
               {loading
                 ? t("shared.common.loadingEllipsis", "...")
-                : t("shared.common.refresh", "Rafraîchir")}
+                : t("shared.common.refresh", "Refresh")}
             </Text>
           </TouchableOpacity>
         }
@@ -2013,7 +1971,7 @@ export function OrderChatBaseScreen(props: {
             ellipsizeMode="tail"
             style={{ color: MMD_LINK_BLUE, fontWeight: "800", fontSize: 11, fontFamily: MMD_FONT.extrabold }}
           >
-            {t("shared.orderChat.header.privateWith", "Conversation avec")}{" "}
+            {t("shared.orderChat.header.privateWith", "Conversation with")}{" "}
             {targetRoleLabel(targetRole, t)}
           </Text>
         </View>
@@ -2024,7 +1982,7 @@ export function OrderChatBaseScreen(props: {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 }}>
             <ActivityIndicator color={MMD_WHITE} />
             <Text style={{ color: MMD_TEXT_MUTED_BLUE, fontWeight: "800", fontFamily: MMD_FONT.extrabold }}>
-              {t("shared.common.loading", "Chargement...")}
+              {t("shared.common.loading", "Loading…")}
             </Text>
           </View>
         ) : null}
@@ -2046,7 +2004,7 @@ export function OrderChatBaseScreen(props: {
         >
           {rows.length === 0 ? (
             <Text style={{ color: MMD_TEXT_MUTED_BLUE, fontFamily: MMD_FONT.bold, fontWeight: "700" }}>
-              {t("shared.orderChat.empty", "Aucun message pour le moment.")}
+              {t("shared.orderChat.empty", "No messages yet.")}
             </Text>
           ) : (
             rows.map((r) => {
@@ -2223,9 +2181,7 @@ export function OrderChatBaseScreen(props: {
                     {!r._signedUrl && isHeicMessage ? (
                       <View style={{ marginTop: 10 }}>
                         <Text style={{ color: "#FCA5A5", fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
-                          {t(
-                            "shared.orderChat.heic.oldMessageTitle",
-                            "Image HEIC détectée — peut ne pas s'afficher."
+                          {t("shared.orderChat.heic.oldMessageTitle", "HEIC image detected (old message) — it may not render in the app."
                           )}
                         </Text>
                       </View>
@@ -2235,10 +2191,10 @@ export function OrderChatBaseScreen(props: {
                       <TouchableOpacity
                         onPress={() =>
                           Alert.alert(
-                            t("shared.orderChat.actions.deleteTitle", "Supprimer"),
-                            t("shared.orderChat.actions.deleteConfirm", "Tu veux supprimer ce message ?"),
+                            t("shared.orderChat.actions.deleteTitle", "Delete"),
+                            t("shared.orderChat.actions.deleteConfirm", "Do you want to delete this message?"),
                             [
-                              { text: t("shared.common.cancel", "Annuler"), style: "cancel" },
+                              { text: t("shared.common.cancel", "Cancel"), style: "cancel" },
                               {
                                 text: t("shared.common.delete", "Supprimer"),
                                 style: "destructive",
@@ -2250,7 +2206,7 @@ export function OrderChatBaseScreen(props: {
                         style={{ marginTop: 8, alignSelf: isMine ? "flex-end" : "flex-start" }}
                       >
                         <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 12, fontFamily: MMD_FONT.extrabold }}>
-                          {t("shared.orderChat.actions.deleteLower", "supprimer")}
+                          {t("shared.orderChat.actions.deleteLower", "delete")}
                         </Text>
                       </TouchableOpacity>
                     ) : null}
@@ -2276,7 +2232,7 @@ export function OrderChatBaseScreen(props: {
           {pickedImage ? (
             <View style={{ marginBottom: 10 }}>
               <Text style={{ color: MMD_TEXT_MUTED_BLUE, fontWeight: "800", marginBottom: 8, fontFamily: MMD_FONT.extrabold }}>
-                {t("shared.orderChat.image.selectedPrefix", "Image sélectionnée :")}{" "}
+                {t("shared.orderChat.image.selectedPrefix", "Selected image: ")}{" "}
                 {pickedImage.fileName}
               </Text>
 
@@ -2293,7 +2249,7 @@ export function OrderChatBaseScreen(props: {
 
               <TouchableOpacity onPress={() => setPickedImage(null)} style={{ marginTop: 8 }}>
                 <Text style={{ color: "#FCA5A5", fontWeight: "900", fontFamily: MMD_FONT.extrabold }}>
-                  {t("shared.orderChat.image.remove", "Retirer l'image")}
+                  {t("shared.orderChat.image.remove", "Remove image")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -2302,7 +2258,7 @@ export function OrderChatBaseScreen(props: {
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder={t("shared.orderChat.placeholders.message", "Écrire un message...")}
+            placeholder={t("shared.orderChat.placeholders.message", "Write a message…")}
             placeholderTextColor={MMD_LINK_BLUE}
             multiline
             style={{
@@ -2359,8 +2315,8 @@ export function OrderChatBaseScreen(props: {
             >
               <Text style={{ color: MMD_TEXT, fontWeight: "900", fontFamily: MMD_FONT.extrabold, fontSize: 14 }}>
                 {sending
-                  ? t("shared.orderChat.actions.sending", "Envoi...")
-                  : t("shared.orderChat.actions.send", "Envoyer")}
+                  ? t("shared.orderChat.actions.sending", "Sending…")
+                  : t("shared.orderChat.actions.send", "Send")}
               </Text>
             </TouchableOpacity>
           </View>

@@ -214,7 +214,8 @@
     "edit": "编辑",
     "delete": "删除",
     "view": "查看",
-    "save": "保存"
+    "save": "保存",
+    "optional": "可选"
   },
   "shared": {
     "common": {
@@ -246,10 +247,23 @@
         "imageNotFoundOnPhone": "手机中未找到图片文件。",
         "imageEmptyOnPhone": "手机上的图片文件为空（0 字节）。",
         "base64ReadFailedEmpty": "Base64 读取失败（空）。",
-        "arrayBufferZeroBytes": "ArrayBuffer 转换结果为 0 字节。"
+        "arrayBufferZeroBytes": "ArrayBuffer 转换结果为 0 字节。",
+        "accessDeniedTitle": "拒绝访问",
+        "accessDeniedUi": "你无法打开此对话。",
+        "invalidOrderId": "订单无效。",
+        "invalidOrderIdTitle": "聊天不可用",
+        "invalidOrderIdUi": "此对话不可用。",
+        "notAllowed": "你无权执行此操作。",
+        "unsupportedImage": "不支持的图片格式。",
+        "imageTooLarge": "这张图片太大。",
+        "messageTooLong": "这条消息太长。",
+        "notAuthenticated": "你必须先登录。",
+        "deleteOwnOnly": "你只能删除自己的消息。"
       },
       "header": {
-        "subtitle": "消息与附件"
+        "subtitle": "消息与附件",
+        "title": "聊天",
+        "privateWith": "对话对象"
       },
       "empty": "暂无消息。",
       "heic": {
@@ -270,6 +284,15 @@
       },
       "placeholders": {
         "message": "输入消息…"
+      },
+      "sender": {
+        "you": "你",
+        "unknown": "参与者"
+      },
+      "receipt": {
+        "read": "已读",
+        "sent": "已发送",
+        "delivered": "已送达"
       }
     }
   },

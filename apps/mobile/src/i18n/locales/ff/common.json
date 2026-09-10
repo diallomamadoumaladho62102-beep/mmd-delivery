@@ -214,7 +214,8 @@
     "edit": "Waylu",
     "delete": "Momtu",
     "view": "Ƴeew",
-    "save": "Danndu"
+    "save": "Danndu",
+    "optional": "Wonaa waɗɗi"
   },
   "shared": {
     "common": {
@@ -246,10 +247,23 @@
         "imageNotFoundOnPhone": "Fayl foto heɓaaka e phone.",
         "imageEmptyOnPhone": "Fayl foto ko 0 bytes e phone.",
         "base64ReadFailedEmpty": "Jaŋtogol Base64 firlitii (meere).",
-        "arrayBufferZeroBytes": "ArrayBuffer wayla ndee hokkataa 0 bytes."
+        "arrayBufferZeroBytes": "ArrayBuffer wayla ndee hokkataa 0 bytes.",
+        "accessDeniedTitle": "Naatgol ko haɗaaɗo",
+        "accessDeniedUi": "A waawaa udditde ndee yeewtere.",
+        "invalidOrderId": "Njamndi moƴƴaani.",
+        "invalidOrderIdTitle": "Yeewtere hebɓaaki",
+        "invalidOrderIdUi": "Ndee yeewtere hebɓaaki.",
+        "notAllowed": "A yamiraaka waɗde ɗum.",
+        "unsupportedImage": "Fannu nataal jaɓaaka.",
+        "imageTooLarge": "Ndee natal ɓuri mawnude.",
+        "messageTooLong": "Ndee mesasu ɓuri juutude.",
+        "notAuthenticated": "A foti naatde.",
+        "deleteOwnOnly": "A waawi momtude mesasuuji maa tan."
       },
       "header": {
-        "subtitle": "Peeje & attachments"
+        "subtitle": "Peeje & attachments",
+        "title": "Yeewtere",
+        "privateWith": "Yeewtere e"
       },
       "empty": "Alaa peeje tawo.",
       "heic": {
@@ -270,6 +284,15 @@
       },
       "placeholders": {
         "message": "Winndu peeje…"
+      },
+      "sender": {
+        "you": "Aan",
+        "unknown": "Tawtoraaɗo"
+      },
+      "receipt": {
+        "read": "Tarɗaa",
+        "sent": "Nelaa",
+        "delivered": "Neldaama"
       }
     }
   },

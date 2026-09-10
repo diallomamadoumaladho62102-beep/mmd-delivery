@@ -214,7 +214,8 @@
     "edit": "تعديل",
     "delete": "حذف",
     "view": "عرض",
-    "save": "حفظ"
+    "save": "حفظ",
+    "optional": "اختياري"
   },
   "shared": {
     "common": {
@@ -246,10 +247,23 @@
         "imageNotFoundOnPhone": "ملف الصورة غير موجود على الهاتف.",
         "imageEmptyOnPhone": "ملف الصورة فارغ (0 بايت) على الهاتف.",
         "base64ReadFailedEmpty": "فشل قراءة Base64 (فارغ).",
-        "arrayBufferZeroBytes": "تحويل ArrayBuffer أنتج 0 بايت."
+        "arrayBufferZeroBytes": "تحويل ArrayBuffer أنتج 0 بايت.",
+        "accessDeniedTitle": "تم رفض الوصول",
+        "accessDeniedUi": "لا يمكنك فتح هذه المحادثة.",
+        "invalidOrderId": "طلب غير صالح.",
+        "invalidOrderIdTitle": "المحادثة غير متاحة",
+        "invalidOrderIdUi": "هذه المحادثة غير متاحة.",
+        "notAllowed": "غير مسموح لك بذلك.",
+        "unsupportedImage": "تنسيق الصورة غير مدعوم.",
+        "imageTooLarge": "هذه الصورة كبيرة جدًا.",
+        "messageTooLong": "هذه الرسالة طويلة جدًا.",
+        "notAuthenticated": "يجب تسجيل الدخول.",
+        "deleteOwnOnly": "يمكنك حذف رسائلك فقط."
       },
       "header": {
-        "subtitle": "الرسائل والمرفقات"
+        "subtitle": "الرسائل والمرفقات",
+        "title": "محادثة",
+        "privateWith": "محادثة مع"
       },
       "empty": "لا توجد رسائل حتى الآن.",
       "heic": {
@@ -270,6 +284,15 @@
       },
       "placeholders": {
         "message": "اكتب رسالة…"
+      },
+      "sender": {
+        "you": "أنت",
+        "unknown": "مشارك"
+      },
+      "receipt": {
+        "read": "مقروء",
+        "sent": "أُرسل",
+        "delivered": "تم التسليم"
       }
     }
   },
