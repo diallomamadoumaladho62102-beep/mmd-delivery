@@ -3909,12 +3909,30 @@
         "sttFallback": "Voice input is using automatic language detection for this app language.",
         "state": {
           "idle": "Voice idle",
+          "connecting": "Connecting",
           "listening": "Listening",
           "processing": "Processing your voice",
+          "thinking": "Thinking",
           "replyReady": "Reply available",
           "speaking": "Reading the reply",
           "micError": "Microphone error",
-          "micDenied": "Microphone permission denied"
+          "micDenied": "Microphone permission denied",
+          "error": "Voice error",
+          "ended": "Conversation ended"
+        },
+        "ride": {
+          "badge": "AI",
+          "labelIdle": "Talk with MMD AI",
+          "labelConnecting": "Connecting to MMD AI",
+          "labelListening": "MMD AI is listening",
+          "labelThinking": "MMD AI is thinking",
+          "labelSpeaking": "MMD AI is speaking",
+          "labelError": "MMD AI voice error. Try again",
+          "labelEnded": "MMD AI conversation ended",
+          "hintIdle": "Starts a voice conversation with MMD AI",
+          "hintListening": "Double tap when you are done speaking",
+          "hintBargeIn": "Double tap to interrupt MMD AI and speak",
+          "hintRetry": "Double tap to try again"
         }
       },
       "confirm": {

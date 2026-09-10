@@ -55,6 +55,7 @@ import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
 import { useLiveTripEta } from "../hooks/useLiveTripEta";
 import { LiveTripMap } from "../components/tracking/LiveTripMap";
 import { LiveEtaBanner } from "../components/tracking/LiveEtaBanner";
+import { ClientRideMmdAiVoiceHost } from "../components/tracking/ClientRideMmdAiVoiceHost";
 import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { startMaskedCall } from "../lib/maskedCall";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
@@ -2530,6 +2531,13 @@ export function ClientOrderDetailsScreen() {
         onClose={() => setPaymentPickerVisible(false)}
         onSelect={handleLocalPaymentSelection}
       />
+      {order?.id && order.driver_id && !isFinalStatus(order.status) ? (
+        <ClientRideMmdAiVoiceHost
+          screen="ClientOrderDetails"
+          source="food_ride_voice"
+          orderId={String(order.id)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -4082,12 +4082,30 @@
         "sttFallback": "此应用语言的语音输入使用自动检测。",
         "state": {
           "idle": "语音空闲",
+          "connecting": "正在连接",
           "listening": "正在聆听",
           "processing": "正在处理你的语音",
+          "thinking": "正在思考",
           "replyReady": "回复已就绪",
           "speaking": "正在朗读回复",
           "micError": "麦克风错误",
-          "micDenied": "麦克风权限被拒绝"
+          "micDenied": "麦克风权限被拒绝",
+          "error": "语音错误",
+          "ended": "对话已结束"
+        },
+        "ride": {
+          "badge": "AI",
+          "labelIdle": "与 MMD AI 通话",
+          "labelConnecting": "正在连接 MMD AI",
+          "labelListening": "MMD AI 正在聆听",
+          "labelThinking": "MMD AI 正在思考",
+          "labelSpeaking": "MMD AI 正在说话",
+          "labelError": "MMD AI 语音出错，请重试",
+          "labelEnded": "MMD AI 对话已结束",
+          "hintIdle": "开始与 MMD AI 的语音对话",
+          "hintListening": "说完后请点按两次",
+          "hintBargeIn": "点按两次可打断 MMD AI 并开始说话",
+          "hintRetry": "点按两次以重试"
         }
       },
       "confirm": {

@@ -3911,12 +3911,30 @@
         "sttFallback": "La entrada de voz usa detección automática para este idioma.",
         "state": {
           "idle": "Voz inactiva",
+          "connecting": "Conectando",
           "listening": "Escuchando",
           "processing": "Procesando tu voz",
+          "thinking": "Pensando",
           "replyReady": "Respuesta disponible",
           "speaking": "Leyendo la respuesta",
           "micError": "Error de micrófono",
-          "micDenied": "Permiso de micrófono denegado"
+          "micDenied": "Permiso de micrófono denegado",
+          "error": "Error de voz",
+          "ended": "Conversación terminada"
+        },
+        "ride": {
+          "badge": "AI",
+          "labelIdle": "Hablar con MMD AI",
+          "labelConnecting": "Conectando con MMD AI",
+          "labelListening": "MMD AI está escuchando",
+          "labelThinking": "MMD AI está pensando",
+          "labelSpeaking": "MMD AI está hablando",
+          "labelError": "Error de voz de MMD AI. Reintentar",
+          "labelEnded": "Conversación con MMD AI terminada",
+          "hintIdle": "Inicia una conversación de voz con MMD AI",
+          "hintListening": "Toca dos veces cuando hayas terminado de hablar",
+          "hintBargeIn": "Toca dos veces para interrumpir a MMD AI y hablar",
+          "hintRetry": "Toca dos veces para intentarlo de nuevo"
         }
       },
       "confirm": {

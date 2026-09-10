@@ -1,9 +1,46 @@
-import { Audio } from "expo-av";
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import { API_BASE_URL } from "./apiBase";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  BOOT_AUTH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { MmdAiApiError } from "./mmdAiApi";
 import { supabase } from "./supabase";
 
+export const VOICE_LISTEN_MAX_MS = 12_000;
+export const VOICE_SILENCE_AFTER_SPEECH_MS = 1_200;
+export const VOICE_SPEECH_METER_DB = -35;
+
 let activeRecording: Audio.Recording | null = null;
+let audioMode: "idle" | "record" | "playback" = "idle";
+
+async function setRecordMode(): Promise<void> {
+  if (audioMode === "record") return;
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: true,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+    interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+    playThroughEarpieceAndroid: false,
+  });
+  audioMode = "record";
+}
+
+async function setPlaybackMode(): Promise<void> {
+  if (audioMode === "playback") return;
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+    playThroughEarpieceAndroid: false,
+  });
+  audioMode = "playback";
+}
 
 export async function getMicrophonePermission(): Promise<{
   granted: boolean;
@@ -26,14 +63,13 @@ export async function startMmdAiRecording(): Promise<void> {
     await stopMmdAiRecording();
   }
 
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
-  });
+  await setRecordMode();
 
   const recording = new Audio.Recording();
-  await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+  await recording.prepareToRecordAsync({
+    ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+  });
   await recording.startAsync();
   activeRecording = recording;
 }
@@ -43,9 +79,17 @@ export async function stopMmdAiRecording(): Promise<string | null> {
   activeRecording = null;
   if (!recording) return null;
   try {
-    await recording.stopAndUnloadAsync();
-    return recording.getURI();
+    recording.setOnRecordingStatusUpdate(null);
   } catch {
+    // ignore
+  }
+  try {
+    await recording.stopAndUnloadAsync();
+    const uri = recording.getURI();
+    await setPlaybackMode();
+    return uri;
+  } catch {
+    await setPlaybackMode().catch(() => undefined);
     return null;
   }
 }
@@ -55,17 +99,87 @@ export async function cancelMmdAiRecording(): Promise<void> {
   activeRecording = null;
   if (!recording) return;
   try {
+    recording.setOnRecordingStatusUpdate(null);
+  } catch {
+    // ignore
+  }
+  try {
     await recording.stopAndUnloadAsync();
   } catch {
     // ignore
   }
+  await setPlaybackMode().catch(() => undefined);
+}
+
+let listenStopHandler: (() => void) | null = null;
+
+/** Ends the current listen turn early (client tapped “done speaking”). */
+export function requestStopMmdAiListen(): void {
+  listenStopHandler?.();
+}
+
+export async function listenUntilSilence(): Promise<string | null> {
+  await startMmdAiRecording();
+  const recording = activeRecording;
+  if (!recording) return null;
+
+  return await new Promise((resolve) => {
+    let heardSpeech = false;
+    let silenceStartedAt: number | null = null;
+    let finished = false;
+
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      listenStopHandler = null;
+      clearTimeout(maxTimer);
+      try {
+        recording.setOnRecordingStatusUpdate(null);
+      } catch {
+        // ignore
+      }
+      void stopMmdAiRecording().then(resolve);
+    };
+
+    listenStopHandler = finish;
+    const maxTimer = setTimeout(finish, VOICE_LISTEN_MAX_MS);
+
+    try {
+      const rec = recording as Audio.Recording & {
+        setProgressUpdateInterval?: (ms: number) => void;
+      };
+      rec.setProgressUpdateInterval?.(200);
+    } catch {
+      // Metering still works on the default interval when this API is missing.
+    }
+
+    recording.setOnRecordingStatusUpdate((status) => {
+      if (finished || !status.isRecording) return;
+      const now = Date.now();
+      const db = typeof status.metering === "number" ? status.metering : -160;
+      if (db > VOICE_SPEECH_METER_DB) {
+        heardSpeech = true;
+        silenceStartedAt = null;
+        return;
+      }
+      if (!heardSpeech) return;
+      if (silenceStartedAt == null) silenceStartedAt = now;
+      if (now - silenceStartedAt >= VOICE_SILENCE_AFTER_SPEECH_MS) {
+        finish();
+      }
+    });
+  });
 }
 
 export async function transcribeMmdAiAudio(params: {
   uri: string;
   locale: string;
 }): Promise<string> {
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    BOOT_AUTH_TIMEOUT_MS,
+    "mmd_ai_transcribe_getSession",
+  );
   if (error) throw error;
   const token = data.session?.access_token;
   if (!token) {
@@ -80,11 +194,16 @@ export async function transcribeMmdAiAudio(params: {
     type: "audio/m4a",
   } as unknown as Blob);
 
-  const res = await fetch(`${String(API_BASE_URL).replace(/\/$/, "")}/api/ai/transcribe`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
-  });
+  const res = await fetchWithTimeout(
+    `${String(API_BASE_URL).replace(/\/$/, "")}/api/ai/transcribe`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    },
+    AUTH_ACTION_TIMEOUT_MS,
+    "mmd_ai_transcribe",
+  );
 
   const out = (await res.json().catch(() => null)) as
     | { ok: true; text: string }

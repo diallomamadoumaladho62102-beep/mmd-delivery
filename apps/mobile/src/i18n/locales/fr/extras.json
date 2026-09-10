@@ -4063,12 +4063,30 @@
         "sttFallback": "La reconnaissance vocale utilise la détection automatique pour cette langue.",
         "state": {
           "idle": "Vocal inactif",
+          "connecting": "Connexion",
           "listening": "Écoute en cours",
           "processing": "Traitement de votre voix",
+          "thinking": "Réflexion",
           "replyReady": "Réponse disponible",
           "speaking": "Lecture de la réponse",
           "micError": "Erreur microphone",
-          "micDenied": "Permission microphone refusée"
+          "micDenied": "Permission microphone refusée",
+          "error": "Erreur vocale",
+          "ended": "Conversation terminée"
+        },
+        "ride": {
+          "badge": "AI",
+          "labelIdle": "Parler avec MMD AI",
+          "labelConnecting": "Connexion à MMD AI",
+          "labelListening": "MMD AI écoute",
+          "labelThinking": "MMD AI réfléchit",
+          "labelSpeaking": "MMD AI parle",
+          "labelError": "Erreur vocale MMD AI. Réessayer",
+          "labelEnded": "Conversation MMD AI terminée",
+          "hintIdle": "Démarre une conversation vocale avec MMD AI",
+          "hintListening": "Touchez deux fois lorsque vous avez fini de parler",
+          "hintBargeIn": "Touchez deux fois pour interrompre MMD AI et parler",
+          "hintRetry": "Touchez deux fois pour réessayer"
         }
       },
       "confirm": {

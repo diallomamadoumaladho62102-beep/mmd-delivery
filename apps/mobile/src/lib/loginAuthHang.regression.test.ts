@@ -27,6 +27,7 @@ const home = read("src/screens/ClientHomeScreen.tsx");
 const incoming = read("src/components/calls/IncomingMaskedCallHost.tsx");
 const sentry = read("src/lib/sentry.ts");
 const signOut = read("src/lib/signOutToRoleSelect.ts");
+const aiApi = read("src/lib/mmdAiApi.ts");
 
 assert.match(app, /withTimeout\(\s*supabase\.auth\.getSession\(\)/);
 assert.match(app, /BOOT_AUTH_TIMEOUT_MS/);
@@ -82,5 +83,9 @@ assert.doesNotMatch(sentry, /enableAppHangTracking:\s*false/);
 
 assert.match(signOut, /AUTH_ACTION_TIMEOUT_MS/);
 assert.match(signOut, /withTimeout/);
+
+assert.match(aiApi, /mmd_ai_getSession/);
+assert.match(aiApi, /mmd_ai_chat/);
+assert.match(aiApi, /fetchWithTimeout/);
 
 console.log("loginAuthHang.regression.test.ts OK");

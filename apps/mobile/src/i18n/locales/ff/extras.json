@@ -3968,12 +3968,30 @@
         "sttFallback": "Naatnal daande huutortoo yiytugol automatik ngam ɗemngal ngal.",
         "state": {
           "idle": "Daande wonaa e golle",
+          "connecting": "Nana seŋa",
           "listening": "Nana heɗa",
           "processing": "Nana huutoroo daande maa",
+          "thinking": "Nana miijoo",
           "replyReady": "Jaabawol heɓii",
           "speaking": "Nana jannga jaabawol",
           "micError": "Juumre mikoro",
-          "micDenied": "YAMIROORE mikoro saliima"
+          "micDenied": "YAMIROORE mikoro saliima",
+          "error": "Juumre daande",
+          "ended": "Yeewtere joofi"
+        },
+        "ride": {
+          "badge": "AI",
+          "labelIdle": "Haala e MMD AI",
+          "labelConnecting": "Nana seŋa e MMD AI",
+          "labelListening": "MMD AI ina heɗa",
+          "labelThinking": "MMD AI ina miijoo",
+          "labelSpeaking": "MMD AI ina haala",
+          "labelError": "Juumre daande MMD AI. Fuɗɗito",
+          "labelEnded": "Yeewtere MMD AI joofi",
+          "hintIdle": "Fuɗɗo yeewtere daande e MMD AI",
+          "hintListening": "Tappu laabi ɗiɗi so a timmii haalde",
+          "hintBargeIn": "Tappu laabi ɗiɗi ngam dartinde MMD AI e haalde",
+          "hintRetry": "Tappu laabi ɗiɗi ngam fuɗɗitaade"
         }
       },
       "confirm": {

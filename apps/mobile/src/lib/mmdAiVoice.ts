@@ -5,6 +5,8 @@ import {
   type AiTtsLanguage,
 } from "./mmdAiVoiceLanguages";
 
+const SPEAK_MAX_MS = 60_000;
+
 let cachedDeviceLanguages: string[] | null = null;
 
 export async function loadDeviceTtsLanguages(): Promise<string[]> {
@@ -32,10 +34,23 @@ export async function speakMmdAiReply(
 
   try {
     await Speech.stop();
-    Speech.speak(clean, {
-      language: picked.language,
-      pitch: 1,
-      rate: 0.94,
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(finish, SPEAK_MAX_MS);
+      Speech.speak(clean, {
+        language: picked.language,
+        pitch: 1,
+        rate: 0.94,
+        onDone: finish,
+        onStopped: finish,
+        onError: finish,
+      });
     });
   } catch {
     // Voice must never crash chat.

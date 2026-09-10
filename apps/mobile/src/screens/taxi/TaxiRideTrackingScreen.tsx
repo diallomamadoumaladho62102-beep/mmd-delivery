@@ -66,6 +66,7 @@ import { TripRouteCard } from "../../components/tracking/TripRouteCard";
 import { DriverProfileCard } from "../../components/tracking/DriverProfileCard";
 import { SafetyAudioCard } from "../../components/tracking/SafetyAudioCard";
 import { TrackingBottomActions } from "../../components/tracking/TrackingBottomActions";
+import { ClientRideMmdAiVoiceHost } from "../../components/tracking/ClientRideMmdAiVoiceHost";
 import { ClientServiceBottomNav } from "../../components/navigation/ClientServiceBottomNav";
 import { VerificationCodeCard } from "../../components/shared/VerificationCodeCard";
 import { toCoordinatePoint } from "../../lib/coordinates";
@@ -1366,6 +1367,16 @@ export default function TaxiRideTrackingScreen() {
           </View>
         </Pressable>
       </Modal>
+      {showDriverCard &&
+      rideId &&
+      status !== "completed" ? (
+        <ClientRideMmdAiVoiceHost
+          screen="TaxiRideTracking"
+          source="taxi_ride_voice"
+          rideId={String(rideId)}
+          mapHeight={mapHeight}
+        />
+      ) : null}
       <ClientServiceBottomNav
         active="track"
         appearance="glass"

@@ -35,6 +35,7 @@ import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { useSmoothedDriverMarker } from "../hooks/useSmoothedDriverMarker";
 import { LiveTripMap } from "../components/tracking/LiveTripMap";
 import { LiveEtaBanner } from "../components/tracking/LiveEtaBanner";
+import { ClientRideMmdAiVoiceHost } from "../components/tracking/ClientRideMmdAiVoiceHost";
 import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { toCoordinatePoint } from "../lib/coordinates";
 import { getApiBaseUrl } from "../lib/apiBase";
@@ -1890,6 +1891,14 @@ export function ClientDeliveryRequestDetailsScreen() {
         </ScrollView>
       )}
       <ClientServiceBottomNav active="track" appearance="glass" accent="green" layout="edge" />
+      {isLive ? (
+        <ClientRideMmdAiVoiceHost
+          screen="ClientDeliveryRequestDetails"
+          source="delivery_ride_voice"
+          orderId={data?.orderId ? String(data.orderId) : undefined}
+          rideId={data?.requestId ? String(data.requestId) : undefined}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

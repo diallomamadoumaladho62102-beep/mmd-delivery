@@ -4,7 +4,12 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
 import { API_BASE_URL } from "../../lib/apiBase";
 import { mmdAudio } from "../../lib/mmdAudio";
-import { BOOT_AUTH_TIMEOUT_MS, withTimeout } from "../../lib/bootFailOpen";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  BOOT_AUTH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "../../lib/bootFailOpen";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -186,17 +191,26 @@ export default function IncomingMaskedCallHost() {
   }, [connected, current, roleLabel, t]);
 
   async function postAction(sessionId: string, action: "decline" | "end") {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await withTimeout(
+      supabase.auth.getSession(),
+      BOOT_AUTH_TIMEOUT_MS,
+      "incoming_action_getSession",
+    );
     const token = data.session?.access_token;
     if (!token) return;
-    await fetch(`${String(API_BASE_URL ?? "").replace(/\/+$/, "")}/api/twilio/calls/action`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
+    await fetchWithTimeout(
+      `${String(API_BASE_URL ?? "").replace(/\/+$/, "")}/api/twilio/calls/action`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId, action }),
       },
-      body: JSON.stringify({ sessionId, action }),
-    });
+      AUTH_ACTION_TIMEOUT_MS,
+      "incoming_call_action",
+    );
   }
 
   async function decline() {

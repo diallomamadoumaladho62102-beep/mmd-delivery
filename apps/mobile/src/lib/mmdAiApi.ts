@@ -1,4 +1,10 @@
 import { API_BASE_URL } from "./apiBase";
+import {
+  AUTH_ACTION_TIMEOUT_MS,
+  BOOT_AUTH_TIMEOUT_MS,
+  fetchWithTimeout,
+  withTimeout,
+} from "./bootFailOpen";
 import { supabase } from "./supabase";
 
 export type AiChatHistoryTurn = {
@@ -82,7 +88,11 @@ export class MmdAiApiError extends Error {
 }
 
 async function getAuthHeaders() {
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    BOOT_AUTH_TIMEOUT_MS,
+    "mmd_ai_getSession",
+  );
   if (error) throw error;
 
   const token = data.session?.access_token;
@@ -101,11 +111,16 @@ function baseUrl() {
 }
 
 export async function postAiChat(input: AiChatInput): Promise<AiChatSuccess> {
-  const res = await fetch(`${baseUrl()}/api/ai/chat`, {
-    method: "POST",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(input),
-  });
+  const res = await fetchWithTimeout(
+    `${baseUrl()}/api/ai/chat`,
+    {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(input),
+    },
+    AUTH_ACTION_TIMEOUT_MS,
+    "mmd_ai_chat",
+  );
 
   const out = (await res.json().catch(() => null)) as AiChatSuccess | AiChatError | null;
 

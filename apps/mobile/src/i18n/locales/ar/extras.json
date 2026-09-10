@@ -3911,12 +3911,30 @@
         "sttFallback": "الإدخال الصوتي يستخدم الاكتشاف التلقائي لهذه اللغة.",
         "state": {
           "idle": "الصوت غير نشط",
+          "connecting": "جارٍ الاتصال",
           "listening": "جارٍ الاستماع",
           "processing": "جارٍ معالجة صوتك",
+          "thinking": "جارٍ التفكير",
           "replyReady": "الرد متاح",
           "speaking": "جارٍ قراءة الرد",
           "micError": "خطأ في الميكروفون",
-          "micDenied": "تم رفض إذن الميكروفون"
+          "micDenied": "تم رفض إذن الميكروفون",
+          "error": "خطأ صوتي",
+          "ended": "انتهت المحادثة"
+        },
+        "ride": {
+          "badge": "AI",
+          "labelIdle": "التحدث مع MMD AI",
+          "labelConnecting": "جارٍ الاتصال بـ MMD AI",
+          "labelListening": "MMD AI يستمع",
+          "labelThinking": "MMD AI يفكر",
+          "labelSpeaking": "MMD AI يتحدث",
+          "labelError": "خطأ صوتي في MMD AI. أعد المحاولة",
+          "labelEnded": "انتهت محادثة MMD AI",
+          "hintIdle": "يبدأ محادثة صوتية مع MMD AI",
+          "hintListening": "انقر مرتين عند الانتهاء من الكلام",
+          "hintBargeIn": "انقر مرتين لمقاطعة MMD AI والتحدث",
+          "hintRetry": "انقر مرتين للمحاولة مرة أخرى"
         }
       },
       "confirm": {
