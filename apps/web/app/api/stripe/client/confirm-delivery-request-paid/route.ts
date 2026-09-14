@@ -21,7 +21,7 @@ import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryReso
 import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import { resolveDeliveryRequestAmountCents } from "@/lib/deliveryRequestAmountCents";
 import { materializePaidDeliveryRequestFromQuoteCheckout } from "@/lib/delivery/deliveryCheckoutFromQuote";
-import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
+import { getStripeAmountFromCheckoutSession, getStripeAmountFromPaymentIntent } from "@/lib/taxiStripeWebhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -399,6 +399,78 @@ async function confirmDeliveryQuoteCheckoutPaid(params: {
     String(params.sessionId ?? "").trim() ||
     String(intent.stripe_checkout_session_id ?? "").trim() ||
     null;
+  const storedPaymentIntentId = String(intent.stripe_payment_intent_id ?? "").trim() || null;
+
+  if (!sessionId && storedPaymentIntentId) {
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(storedPaymentIntentId);
+    } catch (e: unknown) {
+      return json(
+        {
+          ok: false,
+          error: e instanceof Error ? e.message : "stripe_payment_intent_retrieve_failed",
+          delivery_checkout_id: params.deliveryCheckoutId,
+        },
+        502,
+      );
+    }
+
+    if (String(paymentIntent.status).toLowerCase() !== "succeeded") {
+      return json(
+        {
+          ok: false,
+          error: "Stripe payment not confirmed yet",
+          delivery_checkout_id: params.deliveryCheckoutId,
+          payment_intent_status: paymentIntent.status,
+        },
+        409,
+      );
+    }
+
+    const result = await materializePaidDeliveryRequestFromQuoteCheckout({
+      supabaseAdmin: params.supabaseAdmin,
+      deliveryCheckoutId: params.deliveryCheckoutId,
+      sessionId: null,
+      paymentIntentId: paymentIntent.id,
+      expectedAmountCents: getStripeAmountFromPaymentIntent(paymentIntent),
+      source: "confirm-delivery-request-paid:quote_apple_pay",
+      paymentIntent,
+    });
+
+    if (result.ok === false) {
+      const err = result.error;
+      return json(
+        {
+          ok: false,
+          error: err,
+          delivery_checkout_id: params.deliveryCheckoutId,
+        },
+        err.includes("not_succeeded") || err === "amount_mismatch" ? 409 : 500,
+      );
+    }
+
+    const deliveryRequestId = result.delivery_request_id;
+    const syncResult = await syncPaidDeliveryRequestOrder(
+      params.supabaseAdmin,
+      deliveryRequestId,
+      params.userId,
+    );
+
+    return json({
+      ok: true,
+      already: result.already_paid === true,
+      already_paid: result.already_paid === true,
+      stripe_paid: true,
+      payment_status: "paid",
+      delivery_request_id: deliveryRequestId,
+      deliveryRequestId,
+      delivery_checkout_id: params.deliveryCheckoutId,
+      pay_then_create: true,
+      created: result.created === true,
+      order_id: syncResult.ok ? syncResult.orderId : null,
+    });
+  }
 
   if (!sessionId) {
     return json(

@@ -32,7 +32,9 @@ import {
 import { mmdAudio } from "../lib/mmdAudio";
 import * as WebBrowser from "expo-web-browser";
 import { openStripeCheckout } from "../lib/stripe";
-import { payOrderWithPaymentSheet, payTipWithPaymentSheet } from "../utils/stripe";
+import { payOrderWithPaymentSheet, payTipWithPaymentSheet, payOrderWithApplePay } from "../utils/stripe";
+import { ClientCheckoutPaymentMethods } from "../components/checkout/ClientCheckoutPaymentMethods";
+import { useApplePayAvailable } from "../hooks/useApplePayAvailable";
 import { confirmOrderPaid } from "../../lib/payments";
 import { PaymentMethodPicker } from "../components/PaymentMethodPicker";
 import {
@@ -378,6 +380,7 @@ function getCameraForCoords(coords: LatLng[]) {
 
 export function ClientOrderDetailsScreen() {
   const { t, i18n } = useTranslation();
+  const applePayAvailable = useApplePayAvailable();
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
@@ -1053,6 +1056,69 @@ export function ClientOrderDetailsScreen() {
     } catch (e: any) {
       if (isMountedRef.current) setPaymentPending(false);
       Alert.alert(paymentTitle, toUserFacingError(e, ts("client.orderDetails.paymentError", "Payment error.")));
+    } finally {
+      if (isMountedRef.current) setPaying(false);
+    }
+  }
+
+  async function handleApplePay() {
+    if (!order?.id || paying || verifyingPay || paymentPending || canceling) return;
+
+    if (isFinalStatus(order.status)) {
+      Alert.alert(
+        paymentTitle,
+        ts("client.orderDetails.paymentClosed", "Payment is closed for this order.")
+      );
+      return;
+    }
+
+    const currentStatus = normalizePaymentStatus(order.payment_status);
+    if (currentStatus === "paid") {
+      Alert.alert(paymentTitle, ts("client.orderDetails.alreadyPaid", "Already paid ✅"));
+      return;
+    }
+
+    try {
+      setPaying(true);
+      setPaymentPending(false);
+
+      const { data, error } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (error) console.warn("getSession error (handleApplePay) =", error.message);
+      if (!accessToken) {
+        throw new Error(ts("client.orderDetails.mustBeLoggedInToPay", "You must be logged in to pay."));
+      }
+
+      const applePaid = await payOrderWithApplePay(order.id);
+      if (!applePaid) return;
+
+      const confirmSheet = await confirmOrderPaid(order.id, accessToken, {
+        attempts: 3,
+        timeoutMs: 12000,
+      });
+      await fetchOrder();
+      const latestPaid = await fetchPaymentStatusOnly();
+      if (confirmSheet.ok || latestPaid === "paid") {
+        void mmdAudio.play("paymentSuccess");
+        Alert.alert(
+          paymentTitle,
+          `${ts("client.orderDetails.paymentConfirmed", "Payment confirmed")} ✅`
+        );
+        return;
+      }
+
+      Alert.alert(
+        paymentTitle,
+        ts(
+          "client.orderDetails.paymentSheetPendingConfirm",
+          "Payment received. Your order will be marked paid shortly via Stripe. Pull to refresh in a few seconds — do not pay again."
+        )
+      );
+    } catch (e: unknown) {
+      Alert.alert(
+        paymentTitle,
+        toUserFacingError(e, ts("client.orderDetails.paymentError", "Payment error."))
+      );
     } finally {
       if (isMountedRef.current) setPaying(false);
     }
@@ -2463,6 +2529,7 @@ export function ClientOrderDetailsScreen() {
 
             {canPay && (
               <View style={{ marginTop: 16 }}>
+                {shouldOfferLocalMobileMoney(inferCountryCode({ currency: order.currency })) ? (
                 <TouchableOpacity
                   onPress={handlePay}
                   disabled={paying || verifyingPay || paymentPending}
@@ -2490,6 +2557,15 @@ export function ClientOrderDetailsScreen() {
                     </Text>
                   )}
                 </TouchableOpacity>
+                ) : (
+                <ClientCheckoutPaymentMethods
+                  disabled={paying || verifyingPay || paymentPending}
+                  loading={paying || verifyingPay}
+                  applePayAvailable={applePayAvailable}
+                  onPayWithCard={() => void handlePay()}
+                  onPayWithApplePay={() => void handleApplePay()}
+                />
+                )}
 
                 <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 10, lineHeight: 16 }}>
                   🔒 {ts("client.orderDetails.stripeHint", "Secure payment by Stripe (Web Checkout).")}

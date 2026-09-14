@@ -6,8 +6,10 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
-import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
-import { requirePaymentIntentSucceeded } from "@/lib/requirePaymentIntentSucceeded";
+import {
+  PAYMENT_METADATA_SCHEMA_VERSION,
+  requirePaymentIntentSucceeded,
+} from "@/lib/requirePaymentIntentSucceeded";
 import { scheduleTaxiRideDispatchIfEligible } from "@/lib/taxiSharedRideDispatch";
 import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBridge";
 import { enqueueTaxiPaidFailOpen } from "@/lib/finance/financeEvents";
@@ -21,6 +23,7 @@ import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { captureEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import { finalizeTaxiPromotionAfterPaidMaterialize } from "@/lib/taxi/taxiQuoteCheckoutDiscounts";
+import { STRIPE_APPLE_PAY_MERCHANT_COUNTRY_CODE } from "@/lib/stripeNativeApplePay";
 
 export const TAXI_QUOTE_CHECKOUT_TTL_MS = 30 * 60 * 1000;
 
@@ -236,6 +239,89 @@ export async function openTaxiQuoteCheckoutSession(params: {
     .eq("id", params.intentId);
 
   return { ok: true, url: session.url, sessionId: session.id };
+}
+
+export async function openTaxiQuoteNativePaymentIntent(params: {
+  supabaseAdmin: SupabaseClient;
+  intentId: string;
+  userId: string;
+  snapshot: TaxiCheckoutIntentSnapshot;
+}): Promise<
+  | {
+      ok: true;
+      clientSecret: string;
+      paymentIntentId: string;
+      amount: number;
+      currency: string;
+      merchantCountryCode: string;
+    }
+  | { ok: false; error: string; status?: number }
+> {
+  const currency = String(params.snapshot.currency ?? "USD").toUpperCase();
+  const currencyCheck = assertTaxiCheckoutCurrencyAllowed(currency);
+  if (currencyCheck.ok === false) {
+    return { ok: false, error: currencyCheck.error, status: 400 };
+  }
+  const stripeGate = assertStripeCheckoutAllowed(params.snapshot.country_code);
+  if (stripeGate.ok === false) {
+    return { ok: false, error: stripeGate.message, status: 403 };
+  }
+
+  const amountCents = alignTaxiAmountCentsForZeroDecimal(
+    currency,
+    params.snapshot.amount_cents,
+  );
+  if (!amountCents || amountCents <= 0) {
+    return { ok: false, error: "invalid_amount", status: 400 };
+  }
+
+  const stripeAmount = toStripeAmount(currency, amountCents);
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: stripeAmount,
+      currency: currency.toLowerCase(),
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+        service_type: "taxi",
+        module: "taxi",
+        quote_checkout_id: params.intentId,
+        user_id: params.userId,
+        amount_cents: String(amountCents),
+        currency,
+        source_route: "create-taxi-quote-checkout-session:apple_pay",
+      },
+    },
+    {
+      idempotencyKey: `taxi_quote_pi_${params.intentId}_${amountCents}_${currency}`.slice(
+        0,
+        255,
+      ),
+    },
+  );
+
+  const clientSecret = String(paymentIntent.client_secret ?? "").trim();
+  if (!clientSecret) {
+    return { ok: false, error: "payment_intent_missing_client_secret", status: 500 };
+  }
+
+  await params.supabaseAdmin
+    .from("taxi_checkout_intents")
+    .update({
+      status: "checkout_open",
+      stripe_payment_intent_id: paymentIntent.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", params.intentId);
+
+  return {
+    ok: true,
+    clientSecret,
+    paymentIntentId: paymentIntent.id,
+    amount: paymentIntent.amount,
+    currency: paymentIntent.currency,
+    merchantCountryCode: STRIPE_APPLE_PAY_MERCHANT_COUNTRY_CODE,
+  };
 }
 
 function toPositiveInt(value: unknown): number {

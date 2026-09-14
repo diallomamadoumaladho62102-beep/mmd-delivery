@@ -36,6 +36,10 @@ import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { shouldOfferLocalMobileMoney } from "../lib/localPayments";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
+import { ClientCheckoutPaymentMethods } from "../components/checkout/ClientCheckoutPaymentMethods";
+import { useApplePayAvailable } from "../hooks/useApplePayAvailable";
+import { parseServerPaymentIntentPayload } from "../lib/applePayCheckout";
+import { confirmApplePayPaymentIntent } from "../utils/stripe";
 import {
   extrasCentsFromOptions,
   foodCartLineKey,
@@ -276,6 +280,7 @@ export function ClientRestaurantMenuScreen() {
 
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
+  const applePayAvailable = useApplePayAvailable();
 
   const routeParams = route.params as Route["params"] & {
     restaurantAddress?: string;
@@ -956,7 +961,7 @@ export function ClientRestaurantMenuScreen() {
     };
   }, []);
 
-  async function handleCreateOrder() {
+  async function handleCreateOrder(method: "card" | "apple_pay" = "card") {
     if (!restaurantId) {
       Alert.alert(
         tr("common.errorTitle", "Error"),
@@ -1079,8 +1084,86 @@ export function ClientRestaurantMenuScreen() {
             ? { expectedQuoteTotalCents }
             : {}),
         },
-        scope
+        scope,
+        method === "apple_pay" ? { nativeWallet: "apple_pay" } : undefined
       );
+
+      if (method === "apple_pay") {
+        const foodCheckoutId = String(checkout?.food_checkout_id ?? "").trim();
+        const parsed = parseServerPaymentIntentPayload(checkout);
+        if (!checkout?.ok || !foodCheckoutId || !parsed.clientSecret || !parsed.stripeAmount) {
+          if (parsed.alreadyPaid) {
+            const paidOrderId = String(checkout?.order_id ?? checkout?.orderId ?? "").trim();
+            if (paidOrderId) {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "ClientOrderDetails", params: { orderId: paidOrderId } }],
+              });
+              return;
+            }
+          }
+          throw new Error(
+            String(checkout?.error ?? checkout?.message ?? "").trim() ||
+              tr(
+                "clientRestaurantMenu.createOrderError",
+                "Unable to create the order right now."
+              )
+          );
+        }
+
+        await confirmApplePayPaymentIntent({
+          clientSecret: parsed.clientSecret,
+          merchantCountryCode: parsed.merchantCountryCode,
+          currencyCode: parsed.currencyCode,
+          stripeAmount: parsed.stripeAmount,
+          logScope: "payments.foodApplePay",
+        });
+
+        let confirmResult: {
+          ok?: boolean;
+          already?: boolean;
+          already_paid?: boolean;
+          order_id?: string;
+          orderId?: string;
+          payment_status?: string;
+          db_status?: string;
+        } | null = null;
+        let confirmThrew = false;
+        try {
+          confirmResult = await confirmFoodQuoteCheckoutPaid(foodCheckoutId);
+        } catch {
+          confirmThrew = true;
+        }
+
+        const orderId = String(
+          confirmResult?.order_id ?? confirmResult?.orderId ?? ""
+        ).trim();
+        const paidOk =
+          !confirmThrew &&
+          Boolean(orderId) &&
+          (confirmResult?.ok === true ||
+            confirmResult?.already === true ||
+            confirmResult?.already_paid === true ||
+            String(confirmResult?.payment_status ?? confirmResult?.db_status ?? "")
+              .toLowerCase() === "paid");
+
+        if (!paidOk) {
+          Alert.alert(
+            tr("clientRestaurantMenu.payment.title", "Payment"),
+            tr(
+              "client.orderDetails.paymentSheetPendingConfirm",
+              "Payment received. Your order will be marked paid shortly via Stripe. Pull to refresh in a few seconds — do not pay again."
+            )
+          );
+          return;
+        }
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "ClientOrderDetails", params: { orderId } }],
+        });
+        return;
+      }
 
       if (!checkout?.ok || !checkout?.url || !checkout?.food_checkout_id) {
         throw new Error(
@@ -1851,37 +1934,47 @@ export function ClientRestaurantMenuScreen() {
           )}
         </View>
 
-        <TouchableOpacity
-          onPress={handleCreateOrder}
-          disabled={!canCreateOrder}
-          style={{
-            backgroundColor: CTA_GOLD,
-            borderRadius: 14,
-            paddingVertical: 14,
-            paddingHorizontal: 16,
-            alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "center",
-            marginBottom: 12,
-            minHeight: 44,
-            opacity: canCreateOrder ? 1 : 0.55,
-          }}
-        >
-          {creating && <ActivityIndicator color={MMD_NAVY} />}
-          <Text
+        {market.countryCode && shouldOfferLocalMobileMoney(market.countryCode) ? (
+          <TouchableOpacity
+            onPress={() => void handleCreateOrder("card")}
+            disabled={!canCreateOrder}
             style={{
-              color: MMD_NAVY,
-              fontSize: 16,
-              fontWeight: "700",
-              fontFamily: MMD_FONT.bold,
-              marginLeft: creating ? 8 : 0,
+              backgroundColor: CTA_GOLD,
+              borderRadius: 14,
+              paddingVertical: 14,
+              paddingHorizontal: 16,
+              alignItems: "center",
+              flexDirection: "row",
+              justifyContent: "center",
+              marginBottom: 12,
+              minHeight: 44,
+              opacity: canCreateOrder ? 1 : 0.55,
             }}
           >
-            {creating
-              ? tr("clientRestaurantMenu.create.paying", "Payment in progress…")
-              : tr("clientRestaurantMenu.create.confirm", "Pay and confirm the MMD order")}
-          </Text>
-        </TouchableOpacity>
+            {creating && <ActivityIndicator color={MMD_NAVY} />}
+            <Text
+              style={{
+                color: MMD_NAVY,
+                fontSize: 16,
+                fontWeight: "700",
+                fontFamily: MMD_FONT.bold,
+                marginLeft: creating ? 8 : 0,
+              }}
+            >
+              {creating
+                ? tr("clientRestaurantMenu.create.paying", "Payment in progress…")
+                : tr("clientRestaurantMenu.create.confirm", "Pay and confirm the MMD order")}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <ClientCheckoutPaymentMethods
+            disabled={!canCreateOrder}
+            loading={creating}
+            applePayAvailable={applePayAvailable}
+            onPayWithCard={() => void handleCreateOrder("card")}
+            onPayWithApplePay={() => void handleCreateOrder("apple_pay")}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );

@@ -19,6 +19,10 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import * as WebBrowser from "expo-web-browser";
+import { ClientCheckoutPaymentMethods } from "../../components/checkout/ClientCheckoutPaymentMethods";
+import { useApplePayAvailable } from "../../hooks/useApplePayAvailable";
+import { parseServerPaymentIntentPayload } from "../../lib/applePayCheckout";
+import { confirmApplePayPaymentIntent } from "../../utils/stripe";
 import {
   confirmTaxiQuoteCheckoutPaid,
   createTaxiRide,
@@ -94,6 +98,7 @@ export default function TaxiQuoteScreen() {
   const route = useRoute<QuoteRoute>();
   const params = route.params ?? ({} as QuoteRoute["params"]);
   const { t, i18n } = useTranslation();
+  const applePayAvailable = useApplePayAvailable();
   const [paying, setPaying] = useState(false);
   const payingRef = useRef(false);
   const quoteRequestIdRef = useRef(0);
@@ -381,7 +386,7 @@ export default function TaxiQuoteScreen() {
     }
   }
 
-  async function handleConfirmAndPay() {
+  async function handleConfirmAndPay(method: "card" | "apple_pay" = "card") {
     if (paying || payingRef.current || !quoteState) return;
     const hasCoords = hasGeocodedCoords;
     const hasLocationIds = Boolean(pickupLocationId && dropoffLocationId);
@@ -484,7 +489,63 @@ export default function TaxiQuoteScreen() {
         returnMode: params.returnMode,
         returnWaitMinutes: params.returnWaitMinutes,
         returnScheduledAt: params.returnScheduledAt,
+        ...(method === "apple_pay" ? { nativeWallet: "apple_pay" as const } : {}),
       });
+
+      if (method === "apple_pay") {
+        const quoteCheckoutId = String(checkout?.quote_checkout_id ?? "").trim();
+        const parsed = parseServerPaymentIntentPayload(checkout);
+        if (!checkout?.ok || !quoteCheckoutId || !parsed.clientSecret || !parsed.stripeAmount) {
+          throw new Error(checkout?.error ?? t("taxi.quote.checkoutMissing", "Checkout is unavailable"));
+        }
+
+        await confirmApplePayPaymentIntent({
+          clientSecret: parsed.clientSecret,
+          merchantCountryCode: parsed.merchantCountryCode,
+          currencyCode: parsed.currencyCode,
+          stripeAmount: parsed.stripeAmount,
+          logScope: "payments.taxiApplePay",
+        });
+
+        let confirmResult: {
+          ok?: boolean;
+          already_paid?: boolean;
+          payment_status?: string;
+          taxi_ride_id?: string;
+        } | null = null;
+        let confirmThrew = false;
+        try {
+          confirmResult = await confirmTaxiQuoteCheckoutPaid(quoteCheckoutId);
+        } catch {
+          confirmThrew = true;
+        }
+
+        const next = nextActionAfterCheckoutReturn({ confirmResult, confirmThrew });
+        if (next !== "go_tracking") {
+          Alert.alert(
+            t("taxi.quote.payment", "Payment"),
+            t(
+              "client.orderDetails.paymentSheetPendingConfirm",
+              "Payment received. Your order will be marked paid shortly via Stripe. Pull to refresh in a few seconds — do not pay again."
+            )
+          );
+          return;
+        }
+
+        const rideId = String(confirmResult?.taxi_ride_id ?? "").trim();
+        if (!rideId) {
+          Alert.alert(
+            t("taxi.quote.payment", "Payment"),
+            t(
+              "taxi.quote.rideNotReady",
+              "Payment confirmed but the ride is not ready yet. Please refresh your rides list.",
+            ),
+          );
+          return;
+        }
+        navigation.replace("TaxiRideTracking", { rideId });
+        return;
+      }
 
       if (!checkout?.ok || !checkout?.url || !checkout?.quote_checkout_id) {
         throw new Error(checkout?.error ?? t("taxi.quote.checkoutMissing", "Checkout is unavailable"));
@@ -892,8 +953,9 @@ export default function TaxiQuoteScreen() {
           </View>
         ) : null}
 
+        {shouldOfferLocalMobileMoney(countryCode) || !quoteState ? (
         <TouchableOpacity
-          onPress={handleConfirmAndPay}
+          onPress={() => void handleConfirmAndPay("card")}
           disabled={paying || !quoteState}
           style={[
             styles.cta,
@@ -918,6 +980,15 @@ export default function TaxiQuoteScreen() {
             </>
           )}
         </TouchableOpacity>
+        ) : (
+        <ClientCheckoutPaymentMethods
+          disabled={paying || !quoteState}
+          loading={paying}
+          applePayAvailable={applePayAvailable}
+          onPayWithCard={() => void handleConfirmAndPay("card")}
+          onPayWithApplePay={() => void handleConfirmAndPay("apple_pay")}
+        />
+        )}
       </ScrollView>
       <ClientServiceBottomNav active="home" appearance="glass" />
     </SafeAreaView>

@@ -3671,6 +3671,15 @@
       "walletPayUnavailable": "此设备不支持钱包支付。请使用银行卡。"
     }
   },
+  "checkout": {
+    "payment": {
+      "title": "付款",
+      "card": "银行卡",
+      "applePay": "Apple Pay",
+      "canceled": "已取消 Apple Pay。未扣款。",
+      "failed": "Apple Pay 未能完成付款。请重试或改用银行卡。"
+    }
+  },
   "promotions": {
     "title": "促销",
     "codeAcceptedWithDiscount": "优惠码已接受（−{{orderDiscount}} / 配送 −{{deliveryDiscount}}）。实际金额将在结账时计算。",

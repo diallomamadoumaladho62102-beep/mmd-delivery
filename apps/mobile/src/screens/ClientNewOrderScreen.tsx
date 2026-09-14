@@ -22,7 +22,9 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { confirmOrderPaid } from "../../lib/payments";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
-import { payOrderWithPaymentSheet } from "../utils/stripe";
+import { payOrderWithPaymentSheet, payOrderWithApplePay } from "../utils/stripe";
+import { ClientCheckoutPaymentMethods } from "../components/checkout/ClientCheckoutPaymentMethods";
+import { useApplePayAvailable } from "../hooks/useApplePayAvailable";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
 import {
@@ -217,6 +219,7 @@ export function ClientNewOrderScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<any>();
   const { t } = useTranslation();
+  const applePayAvailable = useApplePayAvailable();
   const { width, height } = useWindowDimensions();
   const logoSize = mmdLogoSizeCompact(width, height);
   const safeBack = useSafeBackNavigation("ClientHome");
@@ -1057,6 +1060,72 @@ export function ClientNewOrderScreen() {
     }
   }
 
+  async function handleApplePayNow() {
+    if (!newOrderId) {
+      Alert.alert(
+        t("client.newOrder.alerts.missingOrderTitle", "Missing order"),
+        t(
+          "client.newOrder.alerts.missingOrderBody",
+          "Create the order first, then you can pay."
+        )
+      );
+      return;
+    }
+
+    try {
+      setPaying(true);
+      await payOrderWithApplePay(newOrderId);
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token?.trim() ?? "";
+
+      if (sessionError || !accessToken) {
+        throw new Error(
+          t(
+            "client.newOrder.errors.missingSession",
+            "Session expired. Sign in again and try once more."
+          )
+        );
+      }
+
+      const confirm = await confirmOrderPaid(newOrderId, accessToken, {
+        attempts: 3,
+        timeoutMs: 12000,
+      });
+
+      if (!confirm.ok) {
+        Alert.alert(
+          t("client.newOrder.alerts.paymentSuccessTitle", "Payment successful"),
+          t(
+            "client.newOrder.alerts.paymentSuccessBodyWarn",
+            "Thank you. Stripe confirmed payment. The order will be marked paid shortly via Stripe, or try again in a few seconds."
+          ),
+          [{ text: t("common.ok", "OK"), onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+
+      Alert.alert(
+        t("client.newOrder.alerts.paymentSuccessTitle", "Payment successful"),
+        t(
+          "client.newOrder.alerts.paymentSuccessBody",
+          "Thank you. Your payment is confirmed. The restaurant can now accept the order."
+        ),
+        [{ text: t("common.ok", "OK"), onPress: () => navigation.goBack() }]
+      );
+    } catch (err: unknown) {
+      Alert.alert(
+        t("client.newOrder.alerts.paymentTitle", "Payment"),
+        err instanceof Error
+          ? err.message
+          : t("client.newOrder.errors.paymentFailed", "Payment is unavailable right now.")
+      );
+    } finally {
+      setPaying(false);
+    }
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
@@ -1512,6 +1581,15 @@ export function ClientNewOrderScreen() {
               </Text>
             </TouchableOpacity>
 
+            {canPay ? (
+            <ClientCheckoutPaymentMethods
+              disabled={!canPay || paying}
+              loading={paying}
+              applePayAvailable={applePayAvailable}
+              onPayWithCard={() => void handlePayNow()}
+              onPayWithApplePay={() => void handleApplePayNow()}
+            />
+            ) : (
             <TouchableOpacity
               onPress={handlePayNow}
               disabled={!canPay}
@@ -1544,6 +1622,7 @@ export function ClientNewOrderScreen() {
                   : t("client.newOrder.actions.payNow", "Pay now")}
               </Text>
             </TouchableOpacity>
+            )}
 
             <Text
               style={{

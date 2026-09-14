@@ -147,7 +147,8 @@ export async function createFoodOrder(
 /** Pay-then-create: Stripe Checkout from quote — no orders row until paid. */
 export function startFoodCheckoutFromQuote(
   payload: CreateFoodOrderPayload & { expectedQuoteTotalCents?: number },
-  scope?: { countryCode?: string | null; lat?: number; lng?: number }
+  scope?: { countryCode?: string | null; lat?: number; lng?: number },
+  opts?: { nativeWallet?: "apple_pay" },
 ) {
   return foodOrderFetch(
     "/api/stripe/client/create-food-quote-checkout-session",
@@ -164,6 +165,7 @@ export function startFoodCheckoutFromQuote(
       promo_code: payload.promo_code,
       leave_at_door: payload.leave_at_door,
       expectedQuoteTotalCents: payload.expectedQuoteTotalCents,
+      ...(opts?.nativeWallet ? { native_wallet: opts.nativeWallet } : {}),
     },
     scope
   );

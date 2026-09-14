@@ -188,6 +188,9 @@ Deno.serve(async (req) => {
       ok: true,
       paymentIntentId: paymentIntent.id,
       clientSecret: paymentIntent.client_secret,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      merchantCountryCode: "US",
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

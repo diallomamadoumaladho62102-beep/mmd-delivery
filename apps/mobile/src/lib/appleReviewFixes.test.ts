@@ -313,4 +313,30 @@ test("RoleSelect exposes explicit Log in entry for App Review", () => {
   assert.match(src, /justifyContent:\s*"flex-start"/);
 });
 
+test("Apple Pay merchant id and entitlement remain configured", () => {
+  const config = read("app.config.ts");
+  assert.match(config, /merchant\.com\.maladho2025\.mmddelivery/);
+  assert.match(config, /com\.apple\.developer\.in-app-payments/);
+  const gate = read("apps/mobile/src/lib/StripeGate.tsx");
+  assert.match(gate, /merchantIdentifier="merchant\.com\.maladho2025\.mmddelivery"/);
+});
+
+test("client checkout exposes Card and native Apple Pay", () => {
+  const methods = read(
+    "apps/mobile/src/components/checkout/ClientCheckoutPaymentMethods.tsx",
+  );
+  assert.match(methods, /checkout\.payment\.card/);
+  assert.match(methods, /PlatformPayButton/);
+  const stripe = read("apps/mobile/src/utils/stripe.ts");
+  assert.match(stripe, /confirmPlatformPayPayment/);
+  assert.match(stripe, /payOrderWithPaymentSheet/);
+  assert.match(stripe, /payOrderWithApplePay/);
+  const food = read("apps/mobile/src/screens/ClientRestaurantMenuScreen.tsx");
+  const delivery = read("apps/mobile/src/screens/DeliveryRequestScreen.tsx");
+  const taxi = read("apps/mobile/src/screens/taxi/TaxiQuoteScreen.tsx");
+  assert.match(food, /ClientCheckoutPaymentMethods/);
+  assert.match(delivery, /ClientCheckoutPaymentMethods/);
+  assert.match(taxi, /ClientCheckoutPaymentMethods/);
+});
+
 console.log("appleReviewFixes tests passed");

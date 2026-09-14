@@ -3599,6 +3599,15 @@
       "walletPayUnavailable": "Le paiement portefeuille n'est pas disponible sur cet appareil. Veuillez utiliser une carte."
     }
   },
+  "checkout": {
+    "payment": {
+      "title": "Paiement",
+      "card": "Carte bancaire",
+      "applePay": "Apple Pay",
+      "canceled": "Apple Pay a été annulé. Aucun paiement n'a été effectué.",
+      "failed": "Apple Pay n'a pas pu finaliser le paiement. Réessayez ou utilisez une carte."
+    }
+  },
   "promotions": {
     "title": "Promotions",
     "codeAcceptedWithDiscount": "Code accepté (−{{orderDiscount}} / −{{deliveryDiscount}} livraison). Le montant exact est appliqué au paiement.",

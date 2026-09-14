@@ -6,6 +6,11 @@ import i18n from "../i18n";
 import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
 import {
+  buildApplePayCartItems,
+  mapApplePayConfirmOutcome,
+  parseServerPaymentIntentPayload,
+} from "../lib/applePayCheckout";
+import {
   isTechnicalErrorMessage,
   logTechnicalError,
   toUserFacingError,
@@ -889,6 +894,7 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
     asNonEmptyString(d?.merchant_country_code) ??
     "US";
 
+  const parsed = parseServerPaymentIntentPayload(d);
   const paymentSheetOptions: Record<string, unknown> = {
     merchantDisplayName: "MMD Delivery",
     paymentIntentClientSecret: clientSecret,
@@ -903,7 +909,17 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
           ? await stripeNative.isPlatformPaySupported()
           : true;
       if (supported) {
-        paymentSheetOptions.applePay = { merchantCountryCode };
+        paymentSheetOptions.applePay = {
+          merchantCountryCode,
+          ...(parsed.stripeAmount
+            ? {
+                cartItems: buildApplePayCartItems({
+                  currency: parsed.currencyCode,
+                  stripeAmount: parsed.stripeAmount,
+                }),
+              }
+            : {}),
+        };
       }
     } catch {
       // Continue with card-only PaymentSheet.
@@ -935,6 +951,153 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
   }
 
   return true;
+}
+
+/**
+ * Confirm a server-created PaymentIntent with the native Apple Pay sheet.
+ * Never treats sheet presentation as paid — Stripe PI status is required.
+ */
+export async function confirmApplePayPaymentIntent(params: {
+  clientSecret: string;
+  merchantCountryCode: string;
+  currencyCode: string;
+  stripeAmount: number;
+  label?: string;
+  logScope?: string;
+}): Promise<boolean> {
+  if (Platform.OS === "ios" && isExpoGo()) {
+    Alert.alert(
+      i18n.t(
+        "payment.stripe.paymentUnavailableExpoGoTitle",
+        "Payment unavailable on iPhone (Expo Go)",
+      ),
+      i18n.t(
+        "payment.stripe.paymentUnavailableExpoGoBody",
+        "Native Stripe payment requires a development build or a real iOS build. Expo Go is not enough for a real payment test.",
+      ),
+    );
+    return false;
+  }
+
+  const stripeNative = await import("@stripe/stripe-react-native");
+  if (typeof stripeNative.confirmPlatformPayPayment !== "function") {
+    throw new Error(
+      i18n.t(
+        "payment.stripe.applePayUnavailableBody",
+        "Apple Pay is not available for this app build. You can pay with a card, or ask support to verify Apple Pay Merchant ID configuration.",
+      ),
+    );
+  }
+
+  const confirm = await stripeNative.confirmPlatformPayPayment(params.clientSecret, {
+    applePay: {
+      merchantCountryCode: params.merchantCountryCode,
+      currencyCode: params.currencyCode.toUpperCase(),
+      cartItems: buildApplePayCartItems({
+        label: params.label,
+        currency: params.currencyCode,
+        stripeAmount: params.stripeAmount,
+      }).map((item) => ({
+        ...item,
+        paymentType: stripeNative.PlatformPay.PaymentType.Immediate,
+      })),
+    },
+  });
+
+  const outcome = mapApplePayConfirmOutcome({
+    errorCode: confirm.error?.code,
+    errorMessage: confirm.error?.message,
+    paymentIntentStatus: confirm.paymentIntent?.status,
+  });
+
+  if (outcome === "canceled") {
+    throw new Error(
+      i18n.t("checkout.payment.canceled", "Apple Pay was canceled. No payment was taken."),
+    );
+  }
+  if (outcome !== "succeeded") {
+    logTechnicalError(
+      `${params.logScope ?? "payments.applePay"}.confirmPlatformPayPayment`,
+      confirm.error ?? { status: confirm.paymentIntent?.status },
+    );
+    throw new Error(
+      mapStripePaymentError(
+        confirm.error ?? {
+          message: i18n.t(
+            "checkout.payment.failed",
+            "Apple Pay could not complete the payment. Try again or use a card.",
+          ),
+        },
+      ),
+    );
+  }
+
+  return true;
+}
+
+export async function payOrderWithApplePay(orderId: string): Promise<boolean> {
+  const normalizedOrderId = orderId?.trim();
+  if (!normalizedOrderId) {
+    throw new Error("orderId manquant.");
+  }
+
+  if (Platform.OS === "ios" && isExpoGo()) {
+    Alert.alert(
+      i18n.t(
+        "payment.stripe.paymentUnavailableExpoGoTitle",
+        "Payment unavailable on iPhone (Expo Go)",
+      ),
+      i18n.t(
+        "payment.stripe.paymentUnavailableExpoGoBody",
+        "Native Stripe payment requires a development build or a real iOS build. Expo Go is not enough for a real payment test.",
+      ),
+    );
+    return false;
+  }
+
+  const { data, error } = await supabase.functions.invoke("create_payment_intent", {
+    body: {
+      orderId: normalizedOrderId,
+      order_id: normalizedOrderId,
+    },
+  });
+
+  if (error) {
+    logTechnicalError("payments.create_payment_intent.applePay", error, {
+      orderId: normalizedOrderId,
+    });
+    throw new Error(
+      toUserFacingError(
+        error,
+        i18n.t(
+          "payment.stripe.initFailed",
+          "The payment could not be started. Please try again in a few moments.",
+        ),
+      ),
+    );
+  }
+
+  const parsed = parseServerPaymentIntentPayload(data);
+  if (parsed.alreadyPaid) return true;
+  if (!parsed.clientSecret || !parsed.stripeAmount) {
+    throw new Error(
+      toUserFacingError(
+        null,
+        i18n.t(
+          "payment.stripe.initFailed",
+          "The payment could not be started. Please try again in a few moments.",
+        ),
+      ),
+    );
+  }
+
+  return confirmApplePayPaymentIntent({
+    clientSecret: parsed.clientSecret,
+    merchantCountryCode: parsed.merchantCountryCode,
+    currencyCode: parsed.currencyCode,
+    stripeAmount: parsed.stripeAmount,
+    logScope: "payments.orderApplePay",
+  });
 }
 
 export async function startCheckoutForDeliveryRequest(

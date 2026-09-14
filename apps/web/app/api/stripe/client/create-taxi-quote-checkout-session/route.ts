@@ -37,8 +37,10 @@ import { buildTaxiFareComponentsDoc } from "@/lib/taxi/taxiFareComponents";
 import {
   createTaxiCheckoutIntent,
   openTaxiQuoteCheckoutSession,
+  openTaxiQuoteNativePaymentIntent,
   type TaxiCheckoutIntentSnapshot,
 } from "@/lib/taxi/taxiCheckoutFromQuote";
+import { isNativeApplePayRequest } from "@/lib/stripeNativeApplePay";
 import { quoteRideFinalSot } from "@/lib/pricingEngine";
 import {
   resolveTaxiCheckoutDiscounts,
@@ -96,6 +98,10 @@ type Body = {
   return_wait_minutes?: number;
   returnScheduledAt?: string;
   return_scheduled_at?: string;
+  native_wallet?: string;
+  nativeWallet?: string;
+  payment_ui?: string;
+  paymentUi?: string;
 };
 
 function parseClientPreferences(body: Body): {
@@ -643,6 +649,42 @@ export async function POST(req: NextRequest) {
     });
     if (intent.ok === false) {
       return taxiJson({ ok: false, error: intent.error }, 500);
+    }
+
+    if (isNativeApplePayRequest(body)) {
+      const native = await openTaxiQuoteNativePaymentIntent({
+        supabaseAdmin: auth.supabaseAdmin,
+        intentId: intent.intentId,
+        userId: auth.user.id,
+        snapshot,
+      });
+      if (native.ok === false) {
+        return taxiJson(
+          { ok: false, error: native.error },
+          native.status ?? 500,
+        );
+      }
+      return taxiJson({
+        ok: true,
+        pay_then_create: true,
+        native_wallet: "apple_pay",
+        quote_checkout_id: intent.intentId,
+        session_id: null,
+        url: null,
+        client_secret: native.clientSecret,
+        payment_intent_id: native.paymentIntentId,
+        amount: native.amount,
+        stripe_amount: native.amount,
+        amount_cents: netTotalCents,
+        charge_path: "engine",
+        engine_quote_snapshot_id: null,
+        currency: native.currency,
+        merchant_country_code: native.merchantCountryCode,
+        taxi_ride_id: null,
+        discount_cents: discounts.promo_discount_cents,
+        marketing_discount_cents: discounts.marketing_discount_cents,
+        promo_code: discounts.promo_code,
+      });
     }
 
     const checkout = await openTaxiQuoteCheckoutSession({

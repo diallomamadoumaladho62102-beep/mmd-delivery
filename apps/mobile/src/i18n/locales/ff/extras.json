@@ -3557,6 +3557,15 @@
       "walletPayUnavailable": "Wallet njoɓdi heɓaaka. Huutoro kartal."
     }
   },
+  "checkout": {
+    "payment": {
+      "title": "Njoɓdi",
+      "card": "Kartal",
+      "applePay": "Apple Pay",
+      "canceled": "Apple Pay haɗtaa. Njoɓdi waɗaaka.",
+      "failed": "Apple Pay waawaa timminde njoɓdi. Eto kadi walla huutoro kartal."
+    }
+  },
   "promotions": {
     "title": "Promotions",
     "codeAcceptedWithDiscount": "Code jaɓaama (−{{orderDiscount}} / −{{deliveryDiscount}} livraison). Njoɓdi laaɓtungo ina hollira e yoɓgol.",

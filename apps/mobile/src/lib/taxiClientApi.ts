@@ -305,6 +305,7 @@ export function startTaxiCheckoutFromQuote(
     ambiancePreference?: "quiet" | "music" | "conversation" | "none";
     businessAccountId?: string;
     businessTripType?: "personal" | "business";
+    nativeWallet?: "apple_pay";
   },
 ) {
   return taxiPost("/api/stripe/client/create-taxi-quote-checkout-session", {
@@ -335,6 +336,7 @@ export function startTaxiCheckoutFromQuote(
     returnMode: input.returnMode,
     returnWaitMinutes: input.returnWaitMinutes,
     returnScheduledAt: input.returnScheduledAt,
+    ...(input.nativeWallet ? { native_wallet: input.nativeWallet } : {}),
   });
 }
 

@@ -22,7 +22,7 @@ import {
 import { ORDER_CONFIRM_PAID_SELECT } from "@/lib/orderPaymentSelect";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { materializePaidFoodOrderFromQuoteCheckout } from "@/lib/food/foodCheckoutFromQuote";
-import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
+import { getStripeAmountFromCheckoutSession, getStripeAmountFromPaymentIntent } from "@/lib/taxiStripeWebhook";
 import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 export const runtime = "nodejs";
@@ -286,6 +286,70 @@ async function confirmFoodQuoteCheckoutPaid(params: {
     String(params.sessionId ?? "").trim() ||
     String(intent.stripe_checkout_session_id ?? "").trim() ||
     null;
+  const storedPaymentIntentId = String(intent.stripe_payment_intent_id ?? "").trim() || null;
+
+  if (!sessionId && storedPaymentIntentId) {
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(storedPaymentIntentId);
+    } catch (e: unknown) {
+      return json(
+        {
+          ok: false,
+          error: e instanceof Error ? e.message : "stripe_payment_intent_retrieve_failed",
+          food_checkout_id: params.foodCheckoutId,
+        },
+        502,
+      );
+    }
+
+    if (String(paymentIntent.status).toLowerCase() !== "succeeded") {
+      return json(
+        {
+          ok: false,
+          error: "Stripe payment not confirmed yet",
+          food_checkout_id: params.foodCheckoutId,
+          payment_intent_status: paymentIntent.status,
+        },
+        409,
+      );
+    }
+
+    const result = await materializePaidFoodOrderFromQuoteCheckout({
+      supabaseAdmin: params.supabaseAdmin,
+      foodCheckoutId: params.foodCheckoutId,
+      sessionId: null,
+      paymentIntentId: paymentIntent.id,
+      expectedAmountCents: getStripeAmountFromPaymentIntent(paymentIntent),
+      source: "confirm-paid:food_quote_apple_pay",
+      paymentIntent,
+    });
+
+    if (result.ok === false) {
+      const err = result.error;
+      return json(
+        {
+          ok: false,
+          error: err,
+          food_checkout_id: params.foodCheckoutId,
+        },
+        err.includes("not_succeeded") || err === "amount_mismatch" ? 409 : 500,
+      );
+    }
+
+    return json({
+      ok: true,
+      already: result.already_paid === true,
+      already_paid: result.already_paid === true,
+      payment_status: "paid",
+      db_status: "paid",
+      order_id: result.order_id,
+      orderId: result.order_id,
+      food_checkout_id: params.foodCheckoutId,
+      pay_then_create: true,
+      created: result.created === true,
+    });
+  }
 
   if (!sessionId) {
     return json(

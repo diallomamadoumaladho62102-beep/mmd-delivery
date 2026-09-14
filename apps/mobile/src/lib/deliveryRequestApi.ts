@@ -134,7 +134,8 @@ export async function createDeliveryRequest(
 /** Pay-then-create: Stripe Checkout from quote — no delivery_requests row until paid. */
 export function startDeliveryCheckoutFromQuote(
   payload: CreateDeliveryRequestPayload & { expectedQuoteTotalCents?: number },
-  scope?: { countryCode?: string | null; lat?: number; lng?: number }
+  scope?: { countryCode?: string | null; lat?: number; lng?: number },
+  opts?: { nativeWallet?: "apple_pay" },
 ) {
   return deliveryRequestFetch(
     "/api/stripe/client/create-delivery-quote-checkout-session",
@@ -156,6 +157,7 @@ export function startDeliveryCheckoutFromQuote(
       promo_code: payload.promo_code,
       leave_at_door: payload.leave_at_door,
       expectedQuoteTotalCents: payload.expectedQuoteTotalCents,
+      ...(opts?.nativeWallet ? { native_wallet: opts.nativeWallet } : {}),
     },
     scope
   );

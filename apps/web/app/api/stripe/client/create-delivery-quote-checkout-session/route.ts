@@ -14,8 +14,10 @@ import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 import {
   createDeliveryCheckoutIntent,
   openDeliveryQuoteCheckoutSession,
+  openDeliveryQuoteNativePaymentIntent,
   type DeliveryCheckoutIntentSnapshot,
 } from "@/lib/delivery/deliveryCheckoutFromQuote";
+import { isNativeApplePayRequest } from "@/lib/stripeNativeApplePay";
 import { quotePackageSot } from "@/lib/pricingEngine";
 import { routeDistanceLimitUserMessage } from "@/lib/routeDistanceLimits";
 
@@ -125,6 +127,39 @@ export async function POST(req: NextRequest) {
     });
     if (intent.ok === false) {
       return mmdLocationJson({ ok: false, error: intent.error }, 500);
+    }
+
+    if (isNativeApplePayRequest(rawBody)) {
+      const native = await openDeliveryQuoteNativePaymentIntent({
+        supabaseAdmin: auth.supabaseAdmin,
+        intentId: intent.intentId,
+        userId: auth.user.id,
+        snapshot,
+      });
+      if (native.ok === false) {
+        return mmdLocationJson(
+          { ok: false, error: native.error },
+          native.status ?? 500,
+        );
+      }
+      return mmdLocationJson({
+        ok: true,
+        pay_then_create: true,
+        native_wallet: "apple_pay",
+        delivery_checkout_id: intent.intentId,
+        session_id: null,
+        url: null,
+        client_secret: native.clientSecret,
+        payment_intent_id: native.paymentIntentId,
+        amount: native.amount,
+        stripe_amount: native.amount,
+        amount_cents: amountCents,
+        currency: native.currency,
+        merchant_country_code: native.merchantCountryCode,
+        delivery_request_id: null,
+        charge_path: "engine",
+        pricing_snapshot_id: null,
+      });
     }
 
     const checkout = await openDeliveryQuoteCheckoutSession({

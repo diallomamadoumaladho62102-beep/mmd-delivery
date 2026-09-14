@@ -3500,6 +3500,15 @@
       "walletPayUnavailable": "الدفع بالمحفظة غير متاح. يرجى استخدام بطاقة."
     }
   },
+  "checkout": {
+    "payment": {
+      "title": "الدفع",
+      "card": "بطاقة",
+      "applePay": "Apple Pay",
+      "canceled": "تم إلغاء Apple Pay. لم يتم أخذ أي دفعة.",
+      "failed": "تعذر إكمال الدفع عبر Apple Pay. أعد المحاولة أو استخدم بطاقة."
+    }
+  },
   "promotions": {
     "title": "العروض",
     "codeAcceptedWithDiscount": "تم قبول الرمز (−{{orderDiscount}} / −{{deliveryDiscount}} للتوصيل). يُطبَّق المبلغ الدقيق عند الدفع.",

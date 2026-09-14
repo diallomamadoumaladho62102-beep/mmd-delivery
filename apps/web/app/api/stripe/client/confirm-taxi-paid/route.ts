@@ -17,7 +17,7 @@ import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBridge";
 import { enqueueTaxiPaidFailOpen } from "@/lib/finance/financeEvents";
 import { materializePaidTaxiRideFromQuoteCheckout } from "@/lib/taxi/taxiCheckoutFromQuote";
-import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
+import { getStripeAmountFromCheckoutSession, getStripeAmountFromPaymentIntent } from "@/lib/taxiStripeWebhook";
 import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 
 export const runtime = "nodejs";
@@ -180,6 +180,69 @@ async function confirmQuoteCheckoutPaid(params: {
     String(params.sessionId ?? "").trim() ||
     String(intent.stripe_checkout_session_id ?? "").trim() ||
     null;
+  const storedPaymentIntentId = String(intent.stripe_payment_intent_id ?? "").trim() || null;
+
+  if (!sessionId && storedPaymentIntentId) {
+    let paymentIntent;
+    try {
+      paymentIntent = await stripe.paymentIntents.retrieve(storedPaymentIntentId);
+    } catch (e: unknown) {
+      return taxiJson(
+        {
+          ok: false,
+          error: e instanceof Error ? e.message : "stripe_payment_intent_retrieve_failed",
+          quote_checkout_id: params.quoteCheckoutId,
+        },
+        502,
+      );
+    }
+
+    if (String(paymentIntent.status).toLowerCase() !== "succeeded") {
+      return taxiJson(
+        {
+          ok: false,
+          error: "Stripe payment not confirmed yet",
+          quote_checkout_id: params.quoteCheckoutId,
+          payment_intent_status: paymentIntent.status,
+        },
+        409,
+      );
+    }
+
+    const result = await materializePaidTaxiRideFromQuoteCheckout({
+      supabaseAdmin: params.supabaseAdmin,
+      quoteCheckoutId: params.quoteCheckoutId,
+      sessionId: null,
+      paymentIntentId: paymentIntent.id,
+      expectedAmountCents: getStripeAmountFromPaymentIntent(paymentIntent),
+      expectedCurrency: paymentIntent.currency,
+      source: "confirm-taxi-paid:quote_apple_pay",
+      paymentIntent,
+    });
+
+    if (result.ok === false) {
+      const err = result.error;
+      return taxiJson(
+        {
+          ok: false,
+          error: err,
+          quote_checkout_id: params.quoteCheckoutId,
+        },
+        err.includes("not_succeeded") || err === "amount_mismatch" ? 409 : 500,
+      );
+    }
+
+    return taxiJson({
+      ok: true,
+      already: result.already_paid === true,
+      already_paid: result.already_paid === true,
+      payment_status: "paid",
+      taxi_ride_id: result.taxi_ride_id,
+      quote_checkout_id: params.quoteCheckoutId,
+      pay_then_create: true,
+      created: result.created === true,
+    });
+  }
 
   if (!sessionId) {
     return taxiJson(

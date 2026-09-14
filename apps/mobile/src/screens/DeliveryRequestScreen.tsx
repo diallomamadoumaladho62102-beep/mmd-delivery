@@ -22,7 +22,10 @@ import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import * as WebBrowser from "expo-web-browser";
-import { startCheckoutForDeliveryRequest } from "../utils/stripe";
+import { startCheckoutForDeliveryRequest, confirmApplePayPaymentIntent } from "../utils/stripe";
+import { ClientCheckoutPaymentMethods } from "../components/checkout/ClientCheckoutPaymentMethods";
+import { useApplePayAvailable } from "../hooks/useApplePayAvailable";
+import { parseServerPaymentIntentPayload } from "../lib/applePayCheckout";
 import { PaymentMethodPicker } from "../components/PaymentMethodPicker";
 import { type PaymentMethodOption } from "../lib/paymentMethodsApi";
 import {
@@ -243,6 +246,7 @@ export function DeliveryRequestScreen() {
   const insets = useSafeAreaInsets();
   const safeBack = useSafeBackNavigation("ClientHome");
   const { t, i18n } = useTranslation();
+  const applePayAvailable = useApplePayAvailable();
 
   const tr = useCallback(
     (key: string, fallback: string) => String(t(key, { defaultValue: fallback })),
@@ -839,7 +843,7 @@ export function DeliveryRequestScreen() {
     [market.countryCode, dropoffCoords]
   );
 
-  const handleCreateRequest = useCallback(async () => {
+  const handleCreateRequest = useCallback(async (method: "card" | "apple_pay" = "card") => {
     if (submitting) return;
     if (deliveryBlocked) {
       Alert.alert(
@@ -950,8 +954,84 @@ export function DeliveryRequestScreen() {
           ...requestPayload,
           expectedQuoteTotalCents,
         },
-        scope
+        scope,
+        method === "apple_pay" ? { nativeWallet: "apple_pay" } : undefined
       );
+
+      if (method === "apple_pay") {
+        const deliveryCheckoutId = String(checkout?.delivery_checkout_id ?? "").trim();
+        const parsed = parseServerPaymentIntentPayload(checkout);
+        if (!checkout?.ok || !deliveryCheckoutId || !parsed.clientSecret || !parsed.stripeAmount) {
+          throw new Error(
+            String(checkout?.error ?? checkout?.message ?? "").trim() ||
+              tr("deliveryRequest.errors.createFailed", "Unable to create the request.")
+          );
+        }
+
+        await confirmApplePayPaymentIntent({
+          clientSecret: parsed.clientSecret,
+          merchantCountryCode: parsed.merchantCountryCode,
+          currencyCode: parsed.currencyCode,
+          stripeAmount: parsed.stripeAmount,
+          logScope: "payments.deliveryApplePay",
+        });
+
+        let confirmResult: {
+          ok?: boolean;
+          already?: boolean;
+          already_paid?: boolean;
+          stripe_paid?: boolean;
+          delivery_request_id?: string;
+          payment_status?: string;
+        } | null = null;
+        let confirmThrew = false;
+        try {
+          confirmResult = await confirmDeliveryQuoteCheckoutPaid(deliveryCheckoutId);
+        } catch {
+          confirmThrew = true;
+        }
+
+        const deliveryRequestId = String(
+          confirmResult?.delivery_request_id ?? ""
+        ).trim();
+        const paidOk =
+          !confirmThrew &&
+          Boolean(deliveryRequestId) &&
+          (confirmResult?.ok === true ||
+            confirmResult?.already === true ||
+            confirmResult?.already_paid === true ||
+            confirmResult?.stripe_paid === true ||
+            String(confirmResult?.payment_status ?? "").toLowerCase() === "paid");
+
+        if (!paidOk) {
+          Alert.alert(
+            tr("deliveryRequest.payment.title", "Payment"),
+            tr(
+              "client.orderDetails.paymentSheetPendingConfirm",
+              "Payment received. Your order will be marked paid shortly via Stripe. Pull to refresh in a few seconds — do not pay again."
+            )
+          );
+          return;
+        }
+
+        setLastCreatedId(deliveryRequestId);
+        setRequestPaid(true);
+
+        let orderId: string | null = null;
+        try {
+          orderId = await createOrderFromPaidDeliveryRequest(deliveryRequestId, user.id);
+        } catch (syncErr) {
+          console.warn("delivery sync-order after apple pay:", syncErr);
+        }
+
+        Alert.alert(
+          tr("deliveryRequest.payment.successTitle", "Payment successful"),
+          orderId
+            ? tr("deliveryRequest.payment.successOrderVisible", "Your payment is confirmed and the order is now visible to drivers.")
+            : tr("deliveryRequest.payment.successBody", "Your payment is confirmed.")
+        );
+        return;
+      }
 
       if (!checkout?.ok || !checkout?.url || !checkout?.delivery_checkout_id) {
         throw new Error(
@@ -1729,8 +1809,9 @@ export function DeliveryRequestScreen() {
             )}
           </TouchableOpacity>
 
+          {market.countryCode && shouldOfferLocalMobileMoney(market.countryCode) ? (
           <TouchableOpacity
-            onPress={handleCreateRequest}
+            onPress={() => void handleCreateRequest("card")}
             activeOpacity={0.9}
             disabled={submitting || estimating || pricingLoading || paying}
             style={{
@@ -1761,13 +1842,26 @@ export function DeliveryRequestScreen() {
                   fontFamily: MMD_FONT.bold,
                 }}
               >
-                {market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)
-                  ? tr("deliveryRequest.actions.create", "Create delivery request")
-                  : tr("deliveryRequest.actions.payAndConfirm", "Pay and confirm delivery"
-                    )}
+                {tr("deliveryRequest.actions.create", "Create delivery request")}
               </Text>
             )}
           </TouchableOpacity>
+          ) : (
+          <View
+            accessibilityLabel={tr(
+              "deliveryRequest.actions.payAndConfirm",
+              "Pay and confirm delivery"
+            )}
+          >
+          <ClientCheckoutPaymentMethods
+            disabled={submitting || estimating || pricingLoading || paying}
+            loading={submitting}
+            applePayAvailable={applePayAvailable}
+            onPayWithCard={() => void handleCreateRequest("card")}
+            onPayWithApplePay={() => void handleCreateRequest("apple_pay")}
+          />
+          </View>
+          )}
 
           {market.countryCode && shouldOfferLocalMobileMoney(market.countryCode) ? (
           <TouchableOpacity

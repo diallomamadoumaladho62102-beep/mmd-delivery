@@ -3500,6 +3500,15 @@
       "walletPayUnavailable": "El pago con billetera no está disponible. Usa una tarjeta."
     }
   },
+  "checkout": {
+    "payment": {
+      "title": "Pago",
+      "card": "Tarjeta",
+      "applePay": "Apple Pay",
+      "canceled": "Se canceló Apple Pay. No se realizó ningún pago.",
+      "failed": "Apple Pay no pudo completar el pago. Inténtalo de nuevo o usa una tarjeta."
+    }
+  },
   "promotions": {
     "title": "Promociones",
     "codeAcceptedWithDiscount": "Código aceptado (−{{orderDiscount}} / −{{deliveryDiscount}} envío). El importe exacto se aplica al pagar.",

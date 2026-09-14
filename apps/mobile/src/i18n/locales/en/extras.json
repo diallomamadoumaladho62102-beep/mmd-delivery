@@ -902,6 +902,15 @@
       "walletPayUnavailable": "Wallet pay is unavailable on this device. Please use a card."
     }
   },
+  "checkout": {
+    "payment": {
+      "title": "Payment",
+      "card": "Card",
+      "applePay": "Apple Pay",
+      "canceled": "Apple Pay was canceled. No payment was taken.",
+      "failed": "Apple Pay could not complete the payment. Try again or use a card."
+    }
+  },
   "finance": {
     "event": {
       "payment": "Payment",
