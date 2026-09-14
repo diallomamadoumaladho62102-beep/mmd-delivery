@@ -8,6 +8,7 @@
 import { buildOverpassQuery, mapOsmElements, type OsmElement } from "./osmSafetyMapping.ts";
 import {
   OVERPASS_MAX_ATTEMPTS,
+  OVERPASS_REQUEST_HEADERS,
   OVERPASS_TIMEOUT_MS,
   isRetryableOverpassStatus,
   overpassBackoffMs,
@@ -43,7 +44,7 @@ async function fetchOverpass(
       // whole Edge Function wall-clock budget (150s).
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "text/plain", "User-Agent": "MMD-Delivery/road-safety" },
+        headers: OVERPASS_REQUEST_HEADERS,
         body: query,
         signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS),
       });

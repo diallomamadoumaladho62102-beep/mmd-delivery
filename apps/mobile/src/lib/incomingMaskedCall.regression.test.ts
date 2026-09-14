@@ -14,6 +14,7 @@ const nav = fs.readFileSync(
 );
 const sentry = fs.readFileSync(path.join(here, "./sentry.ts"), "utf8");
 const audio = fs.readFileSync(path.join(here, "./mmdAudio.ts"), "utf8");
+const watch = fs.readFileSync(path.join(here, "./incomingMaskedCallWatch.ts"), "utf8");
 
 assert.match(host, /accessibilityLabel=\{t\("calls.incoming.acceptA11y"/);
 assert.match(host, /accessibilityLabel=\{t\("calls.incoming.declineA11y"/);
@@ -27,6 +28,7 @@ assert.match(nav, /IncomingMaskedCallHost/);
 assert.match(host, /callSessionsRealtimeFilter/);
 assert.match(host, /INCOMING_CALL_POLL_MS/);
 assert.match(host, /shouldFetchIncomingCallsOnAuthEvent/);
+assert.match(watch, /TOKEN_REFRESHED/);
 assert.match(host, /shouldWatchIncomingCalls/);
 assert.match(host, /incoming_getSession/);
 assert.match(host, /incoming_action_getSession/);

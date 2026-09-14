@@ -11,7 +11,9 @@ import {
 import {
   OVERPASS_ENDPOINTS,
   OVERPASS_MAX_ATTEMPTS,
+  OVERPASS_REQUEST_HEADERS,
   OVERPASS_TIMEOUT_MS,
+  OVERPASS_USER_AGENT,
   isRetryableOverpassStatus,
   overpassBackoffMs,
   overpassEndpointForAttempt,
@@ -87,8 +89,17 @@ assert(OVERPASS_MAX_ATTEMPTS >= 5, "enough retries for 504");
 assert(OVERPASS_TIMEOUT_MS <= 20_000, "timeout fits edge wall-clock");
 assert(isRetryableOverpassStatus(504) === true, "504 retryable");
 assert(isRetryableOverpassStatus(429) === true, "429 retryable");
+assert(isRetryableOverpassStatus(406) === true, "406 retry other mirrors");
 assert(isRetryableOverpassStatus(403) === true, "403 retry other mirrors");
 assert(isRetryableOverpassStatus(404) === false, "404 definitive");
+assert(
+  OVERPASS_USER_AGENT.includes("mmddelivery.com"),
+  "Overpass UA identifies MMD with contact host",
+);
+assert(
+  OVERPASS_REQUEST_HEADERS.Accept === "application/json",
+  "Overpass Accept is JSON",
+);
 assert(overpassBackoffMs(0) >= 2000, "backoff starts at 2s");
 assert(overpassBackoffMs(3) <= 16000, "backoff capped");
 assert(

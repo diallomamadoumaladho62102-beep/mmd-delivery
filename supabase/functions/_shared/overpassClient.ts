@@ -18,14 +18,26 @@ export const OVERPASS_MAX_ATTEMPTS = 5;
 /** Per-request cap. Five attempts must stay under the 150s Edge wall-clock. */
 export const OVERPASS_TIMEOUT_MS = 20_000;
 
+/** Identifies this script to Overpass (required; generic/missing UA → HTTP 406). */
+export const OVERPASS_USER_AGENT =
+  "MMD-Delivery/road-safety (https://www.mmddelivery.com; support@mmddelivery.com)";
+
+export const OVERPASS_REQUEST_HEADERS: Record<string, string> = {
+  Accept: "application/json",
+  "Content-Type": "text/plain",
+  "User-Agent": OVERPASS_USER_AGENT,
+  Referer: "https://www.mmddelivery.com/",
+};
+
 export function overpassEndpointForAttempt(attempt: number): string {
   return OVERPASS_ENDPOINTS[attempt % OVERPASS_ENDPOINTS.length];
 }
 
-/** 429 / 5xx / timeout-class statuses are transient; 4xx otherwise is definitive. */
+/** 429 / 406 / 5xx / timeout-class statuses are transient; other 4xx is definitive. */
 export function isRetryableOverpassStatus(status: number): boolean {
   return (
     status === 403 ||
+    status === 406 ||
     status === 408 ||
     status === 425 ||
     status === 429 ||
