@@ -66,4 +66,22 @@ export async function recordWaitLateFeeLedgerEntries(
       entity_id: input.entityId,
     },
   });
+
+  try {
+    const { recordMinimumPayEarningsLine } = await import(
+      "@/lib/minimumPay/recordEarningsLine"
+    );
+    await recordMinimumPayEarningsLine(supabaseAdmin, {
+      driverId: input.driverUserId,
+      sourceType: "wait_fee",
+      sourceId: input.referenceId,
+      amountCents: input.feeCents,
+      currency: input.currency,
+    });
+  } catch (earnErr) {
+    console.warn(
+      "[waitTimerLateFeeBridge] minimum-pay earnings line fail-open",
+      earnErr instanceof Error ? earnErr.message : earnErr
+    );
+  }
 }

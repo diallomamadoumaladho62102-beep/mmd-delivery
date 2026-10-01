@@ -178,6 +178,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         label: "Commissions",
         permission: "commissions.read",
       },
+      {
+        href: "/admin/minimum-pay",
+        label: "Minimum Pay",
+        permission: "minimum_pay.read",
+      },
       { href: "/admin/pricing", label: "Pricing", permission: "pricing.read" },
       {
         href: "/admin/taxi-pricing",

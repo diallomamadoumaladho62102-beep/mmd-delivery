@@ -138,6 +138,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "payouts.read",
   },
   {
+    href: "/admin/minimum-pay",
+    title: "Minimum Pay",
+    description: "Engine settings, versioned rules, pay periods and adjustments",
+    permission: "minimum_pay.read",
+  },
+  {
     href: "/admin/stripe",
     title: "Stripe",
     description: "Webhooks, PaymentIntents et monitoring sync",

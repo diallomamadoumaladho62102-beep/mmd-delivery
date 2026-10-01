@@ -367,6 +367,16 @@ export function canManagePlatformLaunch(role: UserRole | null): boolean {
   return hasPermission(role, "platform_launch.manage");
 }
 
+export function canReadMinimumPay(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "minimum_pay.read");
+}
+
+export function canManageMinimumPay(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "minimum_pay.manage");
+}
+
 export function canReadMmdAi(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "mmd_ai.read");

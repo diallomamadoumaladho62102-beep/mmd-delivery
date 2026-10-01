@@ -173,6 +173,58 @@ test("Taxi Pricing is hidden without taxi_pricing.read", () => {
   assert.equal(hrefs.includes("/admin/taxi-pricing"), false);
 });
 
+test("Minimum Pay appears in Finance for founder and finance_admin", () => {
+  const founder = navHrefs("super_admin", true);
+  assert.equal(
+    founder.includes("/admin/minimum-pay"),
+    true,
+    "founder should see Minimum Pay",
+  );
+  const finance = navHrefs("finance_admin", false);
+  assert.equal(
+    finance.includes("/admin/minimum-pay"),
+    true,
+    "finance_admin has minimum_pay.read",
+  );
+});
+
+test("Minimum Pay sits in Finance after Commissions with minimum_pay.read", () => {
+  const finance = ADMIN_NAV_GROUPS.find((g) => g.id === "finance");
+  assert.ok(finance, "finance group exists");
+  const hrefs = finance!.items.map((i) => i.href);
+  const commissionsIdx = hrefs.indexOf("/admin/commission-engine");
+  const minPayIdx = hrefs.indexOf("/admin/minimum-pay");
+  assert.ok(commissionsIdx >= 0, "Commissions present");
+  assert.ok(minPayIdx >= 0, "Minimum Pay present");
+  assert.ok(minPayIdx === commissionsIdx + 1, "Minimum Pay immediately after Commissions");
+  const item = finance!.items[minPayIdx]!;
+  assert.equal(item.label, "Minimum Pay");
+  assert.equal(item.permission, "minimum_pay.read");
+});
+
+test("Minimum Pay is hidden without minimum_pay.read", () => {
+  const groups = filterNavGroups({
+    role: "operations_admin",
+    isFounder: false,
+    hasPermission: (permission) =>
+      permission === "hub.access" ||
+      permission === "finance.read" ||
+      permission === "payouts.read",
+  });
+  const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+  assert.equal(hrefs.includes("/admin/minimum-pay"), false);
+});
+
+test("hub Minimum Pay link stays aligned with sidebar", () => {
+  const hub = ADMIN_HUB_LINKS.find((l) => l.href === "/admin/minimum-pay");
+  assert.ok(hub, "hub includes Minimum Pay");
+  assert.equal(hub!.permission, "minimum_pay.read");
+  assert.equal(
+    navHrefs("super_admin", true).includes("/admin/minimum-pay"),
+    true,
+  );
+});
+
 test("Taxi Monitoring appears in Launch for founder", () => {
   const hrefs = navHrefs("super_admin", true);
   assert.equal(hrefs.includes("/admin/taxi-monitoring"), true);

@@ -1674,6 +1674,25 @@ export async function POST(req: NextRequest) {
           .eq("id", packageRefId)
           .or("driver_paid_out.is.null,driver_paid_out.eq.false");
       }
+
+      try {
+        const { recordMinimumPayEarningsLine } = await import(
+          "@/lib/minimumPay/recordEarningsLine"
+        );
+        await recordMinimumPayEarningsLine(supabaseAdmin, {
+          driverId: String(order.driver_id),
+          sourceType: "delivery_share",
+          sourceId: String(order.id),
+          amountCents: Math.trunc(Number(amount) || 0),
+          currency: payout.currency ? String(payout.currency) : order.currency ? String(order.currency) : undefined,
+          occurredAt: nowIso,
+        });
+      } catch (earnErr) {
+        console.warn("[transfers/run] minimum-pay earnings line fail-open", {
+          order_id: order.id,
+          message: earnErr instanceof Error ? earnErr.message : earnErr,
+        });
+      }
     }
 
     return json({

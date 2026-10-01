@@ -278,6 +278,25 @@ export async function executeDriverTipTransfer(
     );
   }
 
+  try {
+    const { recordMinimumPayEarningsLine } = await import(
+      "@/lib/minimumPay/recordEarningsLine"
+    );
+    await recordMinimumPayEarningsLine(supabaseAdmin, {
+      driverId: String(order.driver_id),
+      sourceType: "tip",
+      sourceId: String(order.id),
+      amountCents: tipCents,
+      currency: order.currency ? String(order.currency) : undefined,
+    });
+  } catch (earnErr) {
+    console.warn(
+      "[executeDriverTipTransfer] minimum-pay earnings line fail-open",
+      order.id,
+      earnErr instanceof Error ? earnErr.message : earnErr
+    );
+  }
+
   return {
     ok: true,
     already_transferred: false,

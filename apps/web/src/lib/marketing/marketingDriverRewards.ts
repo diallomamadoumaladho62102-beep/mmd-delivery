@@ -33,6 +33,32 @@ export async function payDriverMarketingProgress(
   if (error) return { ok: false, error: error.message };
   const result = (data ?? {}) as Record<string, unknown>;
 
+  if (result.ok && result.rewarded) {
+    try {
+      const { recordMinimumPayEarningsLine } = await import(
+        "@/lib/minimumPay/recordEarningsLine"
+      );
+      const { data: progRow } = await supabaseAdmin
+        .from("marketing_driver_progress")
+        .select("driver_user_id")
+        .eq("id", params.progressId)
+        .maybeSingle();
+      if (progRow?.driver_user_id) {
+        await recordMinimumPayEarningsLine(supabaseAdmin, {
+          driverId: String(progRow.driver_user_id),
+          sourceType: "marketing_bonus",
+          sourceId: params.progressId,
+          amountCents: Math.trunc(Number(result.amount_cents ?? result.reward_cents ?? 0)),
+        });
+      }
+    } catch (earnErr) {
+      console.warn(
+        "[marketingDriverRewards] minimum-pay earnings line fail-open",
+        earnErr instanceof Error ? earnErr.message : earnErr
+      );
+    }
+  }
+
   if (params.notify !== false && result.ok && result.rewarded) {
     const { data: prog } = await supabaseAdmin
       .from("marketing_driver_progress")

@@ -20,6 +20,14 @@ test("isHobbySafeDailyCron rejects sub-daily expressions", () => {
   assert.equal(isHobbySafeDailyCron("0 */2 * * *"), false);
 });
 
+test("daily-ops includes the minimum-pay closer without activating payments", () => {
+  const dailyOps = readFileSync(
+    join(process.cwd(), "app/api/cron/daily-ops/route.ts"),
+    "utf8"
+  );
+  assert.match(dailyOps, /\/api\/cron\/nyc-minimum-pay/);
+});
+
 test("vercel.json exposes exactly two Hobby-safe daily crons", () => {
   const root = join(process.cwd(), "vercel.json");
   const web = join(process.cwd(), "vercel.json");

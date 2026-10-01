@@ -51,6 +51,13 @@ const NAV: Record<string, Record<Exclude<WebLocale, "en">, string>> = {
     ff: "Jeytaare ala",
   },
   Commissions: { fr: "Commissions", es: "Comisiones", ar: "العمولات", zh: "佣金", ff: "Komisiyoŋji" },
+  "Minimum Pay": {
+    fr: "Rémunération minimale",
+    es: "Pago mínimo",
+    ar: "الحد الأدنى للأجر",
+    zh: "最低报酬",
+    ff: "Njoɓdi les",
+  },
   Pricing: { fr: "Tarification", es: "Precios", ar: "التسعير", zh: "定价", ff: "Njoɓdi njaru" },
   "Taxi Pricing": { fr: "Tarifs taxi", es: "Precios taxi", ar: "تسعير التاكسي", zh: "出租车定价", ff: "Njoɓdi taksi" },
   "Taxi Taxes": { fr: "Taxes taxi", es: "Impuestos taxi", ar: "الضرائب", zh: "出租车税费", ff: "Taxes taksi" },
