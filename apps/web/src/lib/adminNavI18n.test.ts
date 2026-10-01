@@ -32,6 +32,15 @@ test("every admin nav label has translations for all 6 locales", () => {
   }
 });
 
+test("Minimum Pay nav label is localized in all MMD languages", () => {
+  assert.equal(adminNavLabel("Minimum Pay", "en"), "Minimum Pay");
+  assert.equal(adminNavLabel("Minimum Pay", "fr"), "Rémunération minimale");
+  assert.equal(adminNavLabel("Minimum Pay", "es"), "Pago mínimo");
+  assert.equal(adminNavLabel("Minimum Pay", "ar"), "الحد الأدنى للأجر");
+  assert.equal(adminNavLabel("Minimum Pay", "zh"), "最低报酬");
+  assert.equal(adminNavLabel("Minimum Pay", "ff"), "Njoɓdi les");
+});
+
 test("AdminShell wires web locale + adminNavI18n", () => {
   const dir = dirname(fileURLToPath(import.meta.url));
   const shell = readFileSync(join(dir, "../components/AdminShell.tsx"), "utf8");

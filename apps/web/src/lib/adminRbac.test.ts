@@ -165,6 +165,17 @@ test("only admin manages administrators; support/finance keep scoped perms", () 
   assert.equal(hasPermission("finance", "marketing.manage"), false);
 });
 
+test("minimum pay is limited to super_admin and finance_admin", () => {
+  assert.equal(hasPermission("super_admin", "minimum_pay.read"), true);
+  assert.equal(hasPermission("super_admin", "minimum_pay.manage"), true);
+  assert.equal(hasPermission("finance_admin", "minimum_pay.read"), true);
+  assert.equal(hasPermission("finance_admin", "minimum_pay.manage"), true);
+  assert.equal(hasPermission("operations_admin", "minimum_pay.read"), false);
+  assert.equal(hasPermission("operations_admin", "minimum_pay.manage"), false);
+  assert.equal(hasPermission("support_admin", "minimum_pay.read"), false);
+  assert.equal(hasPermission("review_admin", "minimum_pay.read"), false);
+});
+
 test("creatable staff roles include support and finance (canonical)", () => {
   assert.ok(CREATABLE_STAFF_ROLES.includes("support_admin"));
   assert.ok(CREATABLE_STAFF_ROLES.includes("finance_admin"));

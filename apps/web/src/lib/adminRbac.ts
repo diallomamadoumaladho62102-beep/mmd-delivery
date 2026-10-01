@@ -70,6 +70,8 @@ export type AdminPermission =
   | "finance.accounts.manage"
   | "finance.disputes.manage"
   | "finance.audit.read"
+  | "minimum_pay.read"
+  | "minimum_pay.manage"
   | "pricing.read"
   | "pricing.write"
   | "taxi_rides.read"
@@ -173,6 +175,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "finance.accounts.manage",
     "finance.disputes.manage",
     "finance.audit.read",
+    "minimum_pay.read",
+    "minimum_pay.manage",
     "pricing.read",
     "pricing.write",
     "taxi_rides.read",
@@ -309,6 +313,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "finance.accounts.manage",
     "finance.disputes.manage",
     "finance.audit.read",
+    "minimum_pay.read",
+    "minimum_pay.manage",
     "taxi_pricing.read",
     "taxi_payouts.read",
     "taxi_payouts.manage",
