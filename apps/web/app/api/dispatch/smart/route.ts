@@ -182,6 +182,11 @@ export async function POST(req: NextRequest) {
       Math.max(Number(body.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS), 10),
       600
     );
+    const excludeDriverIds = new Set(
+      (Array.isArray(body.excludeDriverIds) ? body.excludeDriverIds : [])
+        .map((id: unknown) => String(id ?? "").trim())
+        .filter(Boolean)
+    );
 
     if (!orderId) {
       return json({ error: "Missing orderId" }, 400);
@@ -404,6 +409,7 @@ export async function POST(req: NextRequest) {
         const driverId = String(loc.driver_id);
         const profile = profileByUserId.get(driverId);
         if (!profile || !serviceEnabledDriverIds.has(driverId)) return null;
+        if (excludeDriverIds.has(driverId)) return null;
 
         const lat = toNumber(loc.lat);
         const lng = toNumber(loc.lng);

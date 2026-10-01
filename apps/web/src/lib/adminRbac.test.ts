@@ -176,6 +176,17 @@ test("minimum pay is limited to super_admin and finance_admin", () => {
   assert.equal(hasPermission("review_admin", "minimum_pay.read"), false);
 });
 
+test("driver integrity is separated from finance", () => {
+  assert.equal(hasPermission("super_admin", "driver_integrity.read"), true);
+  assert.equal(hasPermission("operations_admin", "driver_integrity.manage"), true);
+  assert.equal(hasPermission("operations_admin", "driver_integrity.review"), true);
+  assert.equal(hasPermission("support_admin", "driver_integrity.read"), true);
+  assert.equal(hasPermission("support_admin", "driver_integrity.manage"), false);
+  assert.equal(hasPermission("review_admin", "driver_integrity.review"), true);
+  assert.equal(hasPermission("review_admin", "driver_integrity.manage"), false);
+  assert.equal(hasPermission("finance_admin", "driver_integrity.read"), false);
+});
+
 test("creatable staff roles include support and finance (canonical)", () => {
   assert.ok(CREATABLE_STAFF_ROLES.includes("support_admin"));
   assert.ok(CREATABLE_STAFF_ROLES.includes("finance_admin"));

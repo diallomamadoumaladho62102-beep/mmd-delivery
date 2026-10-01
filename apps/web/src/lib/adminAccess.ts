@@ -377,6 +377,21 @@ export function canManageMinimumPay(role: UserRole | null): boolean {
   return hasPermission(role, "minimum_pay.manage");
 }
 
+export function canReadDriverIntegrity(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "driver_integrity.read");
+}
+
+export function canManageDriverIntegrity(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "driver_integrity.manage");
+}
+
+export function canReviewDriverIntegrity(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "driver_integrity.review");
+}
+
 export function canReadMmdAi(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "mmd_ai.read");

@@ -72,6 +72,9 @@ export type AdminPermission =
   | "finance.audit.read"
   | "minimum_pay.read"
   | "minimum_pay.manage"
+  | "driver_integrity.read"
+  | "driver_integrity.manage"
+  | "driver_integrity.review"
   | "pricing.read"
   | "pricing.write"
   | "taxi_rides.read"
@@ -177,6 +180,9 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "finance.audit.read",
     "minimum_pay.read",
     "minimum_pay.manage",
+    "driver_integrity.read",
+    "driver_integrity.manage",
+    "driver_integrity.review",
     "pricing.read",
     "pricing.write",
     "taxi_rides.read",
@@ -278,6 +284,9 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "finance.transactions.read",
     "finance.partners.read",
     "supervision.read",
+    "driver_integrity.read",
+    "driver_integrity.manage",
+    "driver_integrity.review",
   ]),
   finance_admin: new Set<AdminPermission>([
     "hub.access",
@@ -363,6 +372,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     // Support: transaction lookup only — no global P&L / ledger / exports.
     "finance.transactions.lookup",
     "supervision.read",
+    "driver_integrity.read",
   ]),
   review_admin: new Set<AdminPermission>([
     "hub.access",
@@ -376,6 +386,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "finance.reports.read",
     "finance.export",
     "finance.audit.read",
+    "driver_integrity.read",
+    "driver_integrity.review",
   ]),
 };
 

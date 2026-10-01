@@ -130,6 +130,9 @@ export async function POST(req: NextRequest) {
       deliveryRequestId,
       wave: requestedWave,
       locationFreshMinutes,
+      excludeDriverIds: Array.isArray(body.excludeDriverIds)
+        ? body.excludeDriverIds.map((id: unknown) => String(id ?? "").trim()).filter(Boolean)
+        : [],
     });
 
     if (!result.ok) {

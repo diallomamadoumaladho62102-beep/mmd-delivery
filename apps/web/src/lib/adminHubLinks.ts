@@ -144,6 +144,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "minimum_pay.read",
   },
   {
+    href: "/admin/driver-integrity",
+    title: "Driver Integrity",
+    description: "Warnings, no-progress review, reassignment and disputes",
+    permission: "driver_integrity.read",
+  },
+  {
     href: "/admin/stripe",
     title: "Stripe",
     description: "Webhooks, PaymentIntents et monitoring sync",

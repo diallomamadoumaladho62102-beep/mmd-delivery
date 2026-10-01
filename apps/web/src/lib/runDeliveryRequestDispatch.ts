@@ -93,13 +93,18 @@ export async function runDeliveryRequestDispatch(params: {
   deliveryRequestId: string;
   wave?: number;
   locationFreshMinutes?: number;
+  excludeDriverIds?: string[];
 }): Promise<RunDeliveryRequestDispatchResult> {
   const {
     supabase,
     deliveryRequestId,
     wave: requestedWave = 1,
     locationFreshMinutes = 20,
+    excludeDriverIds = [],
   } = params;
+  const excluded = new Set(
+    excludeDriverIds.map((id) => String(id ?? "").trim()).filter(Boolean)
+  );
 
   const wave = Math.min(Math.max(requestedWave, 1), 3);
   const waveConfig = DISPATCH_WAVES[wave] ?? DISPATCH_WAVES[1];
@@ -350,6 +355,7 @@ export async function runDeliveryRequestDispatch(params: {
   const nearbyCandidates = (locations ?? [])
     .map((loc: { driver_id: string; lat: unknown; lng: unknown }) => {
       const driverId = String(loc.driver_id);
+      if (excluded.has(driverId)) return null;
       if (!profileByUserId.has(driverId) || !serviceEnabledDriverIds.has(driverId)) {
         return null;
       }
