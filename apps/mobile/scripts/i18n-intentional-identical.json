@@ -18,6 +18,7 @@
   "ZIP": ["*"],
   "Marketplace": ["*"],
   "Apple": ["*"],
+  "Apple Pay": ["*"],
   "Google": ["*"],
   "Uber": ["*"],
   "Email": ["*"],
