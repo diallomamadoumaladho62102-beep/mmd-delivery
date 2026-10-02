@@ -92,7 +92,7 @@ test("ready_to_dial creates a session and never leaks phones", async () => {
     supabase: supabase as never,
     adminUserId: "admin",
     driverId: "driver",
-    entityType: "food_order",
+    entityType: "order",
     entityId: "order-1",
   });
   assert.equal(first.ok, true);
@@ -114,7 +114,7 @@ test("double click reuses the active session", async () => {
     supabase: supabase as never,
     adminUserId: "admin",
     driverId: "driver",
-    entityType: "food_order" as const,
+    entityType: "order" as const,
     entityId: "order-1",
   };
   const first = await startMaskedAdminDriverCall(input);
@@ -135,7 +135,7 @@ test("missing admin phone fails closed without a session", async () => {
     supabase: supabase as never,
     adminUserId: "admin",
     driverId: "driver",
-    entityType: "food_order",
+    entityType: "order",
     entityId: "order-1",
   });
   assert.equal(result.ok, false);
@@ -154,7 +154,7 @@ test("missing driver phone fails closed without a session", async () => {
     supabase: supabase as never,
     adminUserId: "admin",
     driverId: "driver",
-    entityType: "food_order",
+    entityType: "order",
     entityId: "order-1",
   });
   assert.equal(result.ok, false);
