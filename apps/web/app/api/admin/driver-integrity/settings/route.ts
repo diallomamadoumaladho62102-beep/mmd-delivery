@@ -99,6 +99,18 @@ export async function PATCH(request: NextRequest) {
         }
       }
     }
+    if ("engine_start_at" in body) {
+      const raw = body.engine_start_at;
+      if (raw == null || raw === "") {
+        patch.engine_start_at = null;
+      } else {
+        const iso = new Date(String(raw)).toISOString();
+        if (Number.isNaN(Date.parse(iso))) {
+          return json({ ok: false, error: "invalid_engine_start" }, 400);
+        }
+        patch.engine_start_at = iso;
+      }
+    }
     if (body.impossible_speed_threshold_mps !== undefined) {
       if (body.impossible_speed_threshold_mps === null || body.impossible_speed_threshold_mps === "") {
         patch.impossible_speed_threshold_mps = null;

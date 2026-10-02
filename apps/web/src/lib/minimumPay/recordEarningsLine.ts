@@ -6,6 +6,35 @@ import {
 } from "./engineGate";
 import { loadMinimumPaySettings } from "./settingsStore";
 
+async function skipTestFinancialSource(
+  supabase: SupabaseClient,
+  sourceType: string,
+  sourceId: string
+): Promise<string | null> {
+  const id = String(sourceId ?? "").trim();
+  if (!id) return "source_id_required";
+  const kind = String(sourceType ?? "").trim();
+  const table =
+    kind === "delivery_share" || kind === "food_order" || kind === "order"
+      ? "orders"
+      : kind === "delivery_request" || kind === "package"
+        ? "delivery_requests"
+        : kind === "taxi" || kind === "taxi_ride"
+          ? "taxi_rides"
+          : null;
+  if (!table) return null;
+  const { data } = await supabase
+    .from(table)
+    .select("is_test, archived_at, hidden_from_user")
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) return null;
+  if (data.is_test === true) return "test_source_excluded";
+  if (data.archived_at) return "archived_source_excluded";
+  if (data.hidden_from_user === true) return "hidden_source_excluded";
+  return null;
+}
+
 export async function recordMinimumPayEarningsLine(
   supabase: SupabaseClient,
   input: {
@@ -27,6 +56,12 @@ export async function recordMinimumPayEarningsLine(
   if (!isTimestampOnOrAfterStart(settings, occurredAt)) {
     return { ok: true, skipped: "before_engine_start" };
   }
+  const testSkip = await skipTestFinancialSource(
+    supabase,
+    input.sourceType,
+    input.sourceId
+  );
+  if (testSkip) return { ok: true, skipped: testSkip };
 
   const currency = String(input.currency ?? settings.defaultCurrency ?? "")
     .trim()
