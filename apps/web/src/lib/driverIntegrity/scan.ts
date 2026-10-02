@@ -397,9 +397,11 @@ async function scanEntity(
     return;
   }
 
+  // Never mark reassigned until the RPC commits. Eligibility/RPC failure
+  // must leave the incident in its prior warning/review state.
   const nextStatus =
     warning.action === "reassign"
-      ? "reassigned"
+      ? incident?.status ?? "final_warning"
       : warning.action === "open_review"
         ? "review"
         : warning.action === "final_warning"
@@ -507,12 +509,11 @@ async function scanEntity(
       });
       return;
     }
+    if (payload?.idempotent === true) {
+      counters.duplicates += 1;
+      return;
+    }
     counters.reassigned += 1;
-    await recordEvent(supabase, upserted.id, "DRIVER_ORDER_REASSIGNED", {
-      original_driver_id: assignment.driverId,
-      original_driver_accepted_at: assignment.driverAcceptedAt,
-      preserved: true,
-    });
     await maybeRedispatch(
       origin,
       assignment.entityType,

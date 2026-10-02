@@ -13,6 +13,7 @@ import { filterDriverIdsByServicePreference } from "@/lib/driverServiceDispatchF
 import { filterDeliveryCandidatesByCapacityAndRoute } from "@/lib/driverMissionCapacity";
 import { pushText } from "@/lib/pushCopy";
 import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
+import { mergeReassignmentExclusions } from "@/lib/driverIntegrity/reassignmentExclusions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -182,10 +183,10 @@ export async function POST(req: NextRequest) {
       Math.max(Number(body.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS), 10),
       600
     );
-    const excludeDriverIds = new Set(
+    const excludeDriverIds = new Set<string>(
       (Array.isArray(body.excludeDriverIds) ? body.excludeDriverIds : [])
         .map((id: unknown) => String(id ?? "").trim())
-        .filter(Boolean)
+        .filter((id: string) => Boolean(id))
     );
 
     if (!orderId) {
@@ -213,6 +214,8 @@ export async function POST(req: NextRequest) {
 
     if (orderError) return json({ error: orderError.message }, 500);
     if (!order) return json({ error: "Order not found" }, 404);
+
+    await mergeReassignmentExclusions(supabase, "order", orderId, excludeDriverIds);
 
     const scopeResult = assertUserMayDispatchOrder({
       access: accessResult.access,

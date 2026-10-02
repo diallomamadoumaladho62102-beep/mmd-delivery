@@ -22,6 +22,22 @@ const hardening = readFileSync(
   join(webRoot, "../../supabase/migrations/20261207120000_pre_shadow_hardening.sql"),
   "utf8"
 );
+const reassignmentHardening = readFileSync(
+  join(webRoot, "../../supabase/migrations/20261207130000_pre_shadow_reassignment_hardening.sql"),
+  "utf8"
+);
+const cronRoute = readFileSync(
+  join(webRoot, "app/api/cron/driver-integrity/route.ts"),
+  "utf8"
+);
+const smartDispatch = readFileSync(
+  join(webRoot, "app/api/dispatch/smart/route.ts"),
+  "utf8"
+);
+const drDispatch = readFileSync(
+  join(webRoot, "src/lib/runDeliveryRequestDispatch.ts"),
+  "utf8"
+);
 const scan = readFileSync(join(webRoot, "src/lib/driverIntegrity/scan.ts"), "utf8");
 const waitApi = readFileSync(join(webRoot, "app/api/driver/integrity/wait-reason/route.ts"), "utf8");
 const disputeApi = readFileSync(join(webRoot, "app/api/driver/integrity/dispute/route.ts"), "utf8");
@@ -101,6 +117,37 @@ test("wait/dispute APIs never accept client timestamps", () => {
   assert.match(disputeApi, /forbidden/);
   assert.match(disputeApi, /already_submitted/);
   assert.match(disputeApi, /incident_closed/);
+});
+
+test("scan never marks an incident reassigned before the RPC commits", () => {
+  assert.doesNotMatch(
+    scan,
+    /warning\.action === "reassign"\s*\?\s*"reassigned"/
+  );
+  assert.match(scan, /payload\?\.idempotent === true/);
+  assert.match(scan, /DRIVER_ORDER_REASSIGN_BLOCKED/);
+  assert.doesNotMatch(
+    scan,
+    /counters\.reassigned \+= 1;\s*await recordEvent\([\s\S]*DRIVER_ORDER_REASSIGNED/
+  );
+});
+
+test("order and delivery-request RPCs persist unique exclusions", () => {
+  assert.match(reassignmentHardening, /values \('order', p_order_id/);
+  assert.match(reassignmentHardening, /values \('delivery_request', p_request_id/);
+  assert.match(reassignmentHardening, /on conflict \(entity_type, entity_id, driver_id\) do nothing/);
+  assert.match(reassignmentHardening, /drop policy if exists driver_wait_reasons_driver_insert/);
+  assert.match(reassignmentHardening, /drop policy if exists driver_trip_disputes_driver_insert/);
+  assert.doesNotMatch(reassignmentHardening, /monitoring_enabled\s*=\s*true/);
+  assert.doesNotMatch(reassignmentHardening, /driver_accepted_at\s*=\s*null/);
+});
+
+test("dispatch and cron honor exclusions, timeouts, and lock-safe status", () => {
+  assert.match(smartDispatch, /mergeReassignmentExclusions/);
+  assert.match(drDispatch, /mergeReassignmentExclusions/);
+  assert.match(cronRoute, /buildCronSupabaseAdmin/);
+  assert.match(cronRoute, /CRON_SUPABASE_TIMEOUT_MS/);
+  assert.match(cronRoute, /maxDuration = 60/);
 });
 
 test("marketplace reassignment is atomic and excludes previous driver", () => {

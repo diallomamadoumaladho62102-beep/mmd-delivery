@@ -17,6 +17,7 @@ import {
 import { filterDeliveryCandidatesByCapacityAndRoute } from "@/lib/driverMissionCapacity";
 import { pushText } from "@/lib/pushCopy";
 import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
+import { mergeReassignmentExclusions } from "@/lib/driverIntegrity/reassignmentExclusions";
 
 const DISPATCH_WAVES = DELIVERY_REQUEST_DISPATCH_WAVES;
 
@@ -104,6 +105,12 @@ export async function runDeliveryRequestDispatch(params: {
   } = params;
   const excluded = new Set(
     excludeDriverIds.map((id) => String(id ?? "").trim()).filter(Boolean)
+  );
+  await mergeReassignmentExclusions(
+    supabase,
+    "delivery_request",
+    deliveryRequestId,
+    excluded
   );
 
   const wave = Math.min(Math.max(requestedWave, 1), 3);
