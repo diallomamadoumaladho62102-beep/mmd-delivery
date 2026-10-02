@@ -18,6 +18,7 @@ import type {
 } from "./types";
 import { parseWaitReasonCode } from "./waitReasons";
 import { decideWarningAction } from "./warningPolicy";
+import { DRIVER_INTEGRITY_LOCK_TTL_SECONDS } from "./schedulerCadence";
 
 type ScanCounters = {
   skipped: boolean;
@@ -542,7 +543,7 @@ export async function runDriverIntegrityScan(
   }
 
   const lock = await acquireCronJobLock(supabase, "driver_integrity_scan", {
-    ttlSeconds: 240,
+    ttlSeconds: DRIVER_INTEGRITY_LOCK_TTL_SECONDS,
   });
   if (lock.ok === false) {
     return {

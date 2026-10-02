@@ -10,6 +10,12 @@ import { evaluateReassignmentEligibility } from "./reassignmentPolicy";
 import { DEFAULT_DRIVER_INTEGRITY_SETTINGS } from "./types";
 import { voiceContactNeverExposesDriverPhone } from "./voiceContact";
 import { failClosedScanSkipReason } from "./engineGate";
+import {
+  DRIVER_INTEGRITY_CRON_EXPRESSION,
+  DRIVER_INTEGRITY_LOCK_TTL_SECONDS,
+  isSupportedGithubActionsSchedule,
+  lockTtlFitsSchedule,
+} from "./schedulerCadence";
 
 const webRoot = process.cwd();
 const hardening = readFileSync(
@@ -120,25 +126,33 @@ test("trip_time_intervals are per assignment attempt", () => {
   assert.doesNotMatch(hardening, /update public\.trip_time_intervals[\s\S]*started_at\s*=/);
 });
 
-test("scheduler is dedicated and faster than the 10-minute dispatch bundle", () => {
-  assert.match(cronYml, /\*\/2 \* \* \* \*/);
+test("scheduler uses GitHub-supported 5-minute cadence, not an unsupported 2-minute tick", () => {
+  assert.equal(DRIVER_INTEGRITY_CRON_EXPRESSION, "*/5 * * * *");
+  assert.equal(isSupportedGithubActionsSchedule("*/2 * * * *"), false);
+  assert.equal(isSupportedGithubActionsSchedule("*/5 * * * *"), true);
+  assert.ok(lockTtlFitsSchedule(DRIVER_INTEGRITY_LOCK_TTL_SECONDS));
+  assert.match(cronYml, /\*\/5 \* \* \* \*/);
+  assert.doesNotMatch(cronYml, /\*\/2 \* \* \* \*/);
   assert.match(cronYml, /production-driver-integrity-cron/);
   assert.doesNotMatch(dispatchScript, /\/api\/cron\/driver-integrity/);
   assert.match(dispatchYml, /\*\/10 \* \* \* \*/);
   assert.match(scan, /acquireCronJobLock/);
+  assert.match(scan, /DRIVER_INTEGRITY_LOCK_TTL_SECONDS/);
   assert.match(scan, /failClosedScanSkipReason/);
+  assert.doesNotMatch(scan, /ttlSeconds:\s*120/);
 });
 
 test("flags remain fail-closed in default settings and scan", () => {
   const skip = failClosedScanSkipReason(DEFAULT_DRIVER_INTEGRITY_SETTINGS);
   assert.ok(skip);
-  assert.match(scan, /ttlSeconds: 240/);
 });
 
 test("voice contact never exposes driver phone", () => {
   assert.equal(voiceContactNeverExposesDriverPhone(), true);
   assert.match(contactApi, /driver_phone_exposed: false/);
   assert.match(contactApi, /channel === "voice"/);
+  assert.match(contactApi, /assertStaffPermission\("driver_integrity.manage"/);
+  assert.match(contactApi, /assertStaffPermission\("driver_integrity.read"/);
   assert.doesNotMatch(contactApi, /target_phone/);
   assert.doesNotMatch(contactApi, /caller_phone/);
 });
