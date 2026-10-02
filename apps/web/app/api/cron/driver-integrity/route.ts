@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
-import { createClient } from "@supabase/supabase-js";
+import { buildCronSupabaseAdmin } from "@/lib/cronSupabase";
+import { CRON_SUPABASE_TIMEOUT_MS } from "@/lib/cronTimeouts";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import { runDriverIntegrityScan } from "@/lib/driverIntegrity/scan";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -16,11 +18,7 @@ async function run(request: NextRequest) {
     return json({ error: "Unauthorized" }, 401);
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!,
-    { auth: { persistSession: false } }
-  );
+  const supabase = buildCronSupabaseAdmin(CRON_SUPABASE_TIMEOUT_MS);
 
   try {
     const result = await runDriverIntegrityScan(supabase, {

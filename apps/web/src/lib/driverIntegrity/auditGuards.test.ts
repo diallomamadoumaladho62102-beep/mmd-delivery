@@ -74,6 +74,8 @@ test("admin settings API is RBAC protected", () => {
 
 test("cron requires CRON_SECRET style auth", () => {
   assert.match(cron, /isAuthorizedCronRequest/);
+  assert.match(cron, /buildCronSupabaseAdmin/);
+  assert.match(cron, /maxDuration = 60/);
 });
 
 test("V1 deliveryFee file is not modified by this phase", () => {

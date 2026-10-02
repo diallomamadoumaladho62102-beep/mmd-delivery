@@ -18,6 +18,7 @@ import type {
 } from "./types";
 import { parseWaitReasonCode } from "./waitReasons";
 import { decideWarningAction } from "./warningPolicy";
+import { DRIVER_INTEGRITY_LOCK_TTL_SECONDS } from "./schedulerCadence";
 
 type ScanCounters = {
   skipped: boolean;
@@ -396,9 +397,11 @@ async function scanEntity(
     return;
   }
 
+  // Never mark reassigned until the RPC commits. Eligibility/RPC failure
+  // must leave the incident in its prior warning/review state.
   const nextStatus =
     warning.action === "reassign"
-      ? "reassigned"
+      ? incident?.status ?? "final_warning"
       : warning.action === "open_review"
         ? "review"
         : warning.action === "final_warning"
@@ -506,12 +509,11 @@ async function scanEntity(
       });
       return;
     }
+    if (payload?.idempotent === true) {
+      counters.duplicates += 1;
+      return;
+    }
     counters.reassigned += 1;
-    await recordEvent(supabase, upserted.id, "DRIVER_ORDER_REASSIGNED", {
-      original_driver_id: assignment.driverId,
-      original_driver_accepted_at: assignment.driverAcceptedAt,
-      preserved: true,
-    });
     await maybeRedispatch(
       origin,
       assignment.entityType,
@@ -542,7 +544,7 @@ export async function runDriverIntegrityScan(
   }
 
   const lock = await acquireCronJobLock(supabase, "driver_integrity_scan", {
-    ttlSeconds: 240,
+    ttlSeconds: DRIVER_INTEGRITY_LOCK_TTL_SECONDS,
   });
   if (lock.ok === false) {
     return {

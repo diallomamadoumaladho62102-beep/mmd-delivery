@@ -2,8 +2,9 @@ name: Production driver integrity cron
 
 on:
   schedule:
-    # Infrastructure cadence only. Business thresholds stay in Admin settings.
-    - cron: "*/2 * * * *"
+    # GitHub Actions shortest supported interval is 5 minutes.
+    # Business thresholds stay in Admin; the scan uses server timestamps.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 concurrency:
