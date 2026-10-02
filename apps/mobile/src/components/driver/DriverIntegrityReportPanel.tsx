@@ -23,24 +23,10 @@ type Props = {
   entityId: string;
 };
 
-const WAIT_FALLBACK: Record<string, string> = {
-  restaurant_delay: "Restaurant delay",
-  order_issue: "Order issue",
-  traffic: "Traffic",
-  gps_issue: "GPS issue",
-  technical_issue: "Technical issue",
-  vehicle_issue: "Vehicle issue",
-  safety_issue: "Safety issue",
-  other: "Other",
-};
-
-const DISPUTE_FALLBACK: Record<string, string> = {
-  restaurant: "Restaurant",
-  wait: "Wait",
-  gps: "GPS",
-  technical: "Technical",
-  other: "Other",
-};
+function labelOrCode(translated: string, key: string, code: string): string {
+  if (!translated || translated === key) return code;
+  return translated;
+}
 
 function isNetworkError(message: string): boolean {
   return /network|fetch|timeout|failed to fetch|connection|not authenticated/i.test(message);
@@ -63,8 +49,7 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
   const [explanation, setExplanation] = useState("");
 
   const tr = useCallback(
-    (key: string, fallback: string, vars?: Record<string, unknown>) =>
-      String(t(key, { defaultValue: fallback, ...(vars ?? {}) })),
+    (key: string, vars?: Record<string, unknown>) => String(t(key, vars)),
     [t]
   );
 
@@ -85,11 +70,11 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
       ]);
       if (!mountedRef.current) return;
       if (wait.ok === false && wait.error === "forbidden") {
-        setError(tr("driver.integrity.unauthorized", "You cannot report this trip."));
+        setError(tr("driver.integrity.unauthorized"));
         return;
       }
-      setWaitReasons(wait.reasons ?? Object.keys(WAIT_FALLBACK));
-      setDisputeReasons(dispute.reasons ?? Object.keys(DISPUTE_FALLBACK));
+      setWaitReasons(wait.reasons ?? []);
+      setDisputeReasons(dispute.reasons ?? []);
       setCurrentWait(wait.current?.reason_code ?? null);
       setCurrentDispute(dispute.current?.reason_code ?? null);
       setIncidentClosed(Boolean(dispute.incident_closed));
@@ -98,7 +83,7 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
       const message = toUserFacingError(e, String(e));
       setError(
         isNetworkError(message)
-          ? tr("driver.integrity.networkError", "Unstable connection. Try again.")
+          ? tr("driver.integrity.networkError")
           : message
       );
     } finally {
@@ -126,20 +111,15 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
       setCurrentWait(selectedWait);
       Alert.alert(
         result.already_submitted
-          ? tr("driver.integrity.alreadySubmittedTitle", "Already submitted")
-          : tr("driver.integrity.waitSubmittedTitle", "Wait reason sent"),
-        tr(
-          "driver.integrity.waitSubmittedBody",
-          "Your reason was recorded. Trip times were not changed."
-        )
+          ? tr("driver.integrity.alreadySubmittedTitle")
+          : tr("driver.integrity.waitSubmittedTitle"),
+        tr("driver.integrity.waitSubmittedBody")
       );
     } catch (e) {
       if (!mountedRef.current) return;
       const message = toUserFacingError(e, String(e));
       setError(
-        isNetworkError(message)
-          ? tr("driver.integrity.networkError", "Unstable connection. Try again.")
-          : message
+        isNetworkError(message) ? tr("driver.integrity.networkError") : message
       );
     } finally {
       submittingRef.current = false;
@@ -150,7 +130,7 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
   async function onSubmitDispute() {
     if (!selectedDispute || submittingRef.current) return;
     if (incidentClosed) {
-      setError(tr("driver.integrity.incidentClosed", "This trip review is already closed."));
+      setError(tr("driver.integrity.incidentClosed"));
       return;
     }
     submittingRef.current = true;
@@ -167,24 +147,21 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
       setCurrentDispute(selectedDispute);
       Alert.alert(
         result.already_submitted
-          ? tr("driver.integrity.alreadySubmittedTitle", "Already submitted")
-          : tr("driver.integrity.disputeSubmittedTitle", "Dispute opened"),
-        tr(
-          "driver.integrity.disputeSubmittedBody",
-          "Your dispute was recorded. Earnings and trip times were not changed."
-        )
+          ? tr("driver.integrity.alreadySubmittedTitle")
+          : tr("driver.integrity.disputeSubmittedTitle"),
+        tr("driver.integrity.disputeSubmittedBody")
       );
     } catch (e) {
       if (!mountedRef.current) return;
       const err = e as { code?: string; message?: string };
       if (err.code === "incident_closed") {
         setIncidentClosed(true);
-        setError(tr("driver.integrity.incidentClosed", "This trip review is already closed."));
+        setError(tr("driver.integrity.incidentClosed"));
       } else {
         const message = toUserFacingError(e, String(e));
         setError(
           isNetworkError(message)
-            ? tr("driver.integrity.networkError", "Unstable connection. Try again.")
+            ? tr("driver.integrity.networkError")
             : message
         );
       }
@@ -198,29 +175,29 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
     <View
       style={styles.card}
       accessibilityRole="summary"
-      accessibilityLabel={tr("driver.integrity.title", "Trip report")}
+      accessibilityLabel={tr("driver.integrity.title")}
     >
-      <Text style={styles.title}>{tr("driver.integrity.title", "Report a wait or dispute")}</Text>
-      <Text style={styles.hint}>
-        {tr(
-          "driver.integrity.hint",
-          "Choose a reason from the official list. You cannot change trip times or earnings."
-        )}
-      </Text>
+      <Text style={styles.title}>{tr("driver.integrity.title")}</Text>
+      <Text style={styles.hint}>{tr("driver.integrity.hint")}</Text>
 
       {currentWait ? (
         <Text style={styles.status}>
-          {tr("driver.integrity.currentWait", "Current wait reason: {{reason}}", {
-            reason: tr(`driver.integrity.wait.${currentWait}`, WAIT_FALLBACK[currentWait] ?? currentWait),
+          {tr("driver.integrity.currentWait", {
+            reason: labelOrCode(
+              tr(`driver.integrity.wait.${currentWait}`),
+              `driver.integrity.wait.${currentWait}`,
+              currentWait
+            ),
           })}
         </Text>
       ) : null}
       {currentDispute ? (
         <Text style={styles.status}>
-          {tr("driver.integrity.currentDispute", "Dispute on file: {{reason}}", {
-            reason: tr(
+          {tr("driver.integrity.currentDispute", {
+            reason: labelOrCode(
+              tr(`driver.integrity.dispute.${currentDispute}`),
               `driver.integrity.dispute.${currentDispute}`,
-              DISPUTE_FALLBACK[currentDispute] ?? currentDispute
+              currentDispute
             ),
           })}
         </Text>
@@ -231,15 +208,15 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
         <Pressable
           onPress={() => void refresh()}
           accessibilityRole="button"
-          accessibilityLabel={tr("driver.integrity.retry", "Try again")}
+          accessibilityLabel={tr("driver.integrity.retry")}
           style={styles.retry}
         >
           <Text style={styles.retryText}>{error}</Text>
-          <Text style={styles.retryAction}>{tr("driver.integrity.retry", "Try again")}</Text>
+          <Text style={styles.retryAction}>{tr("driver.integrity.retry")}</Text>
         </Pressable>
       ) : null}
 
-      <Text style={styles.section}>{tr("driver.integrity.waitSection", "Wait reason")}</Text>
+      <Text style={styles.section}>{tr("driver.integrity.waitSection")}</Text>
       <View style={styles.chips}>
         {waitReasons.map((code) => (
           <Pressable
@@ -248,11 +225,19 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
             disabled={Boolean(submitting)}
             accessibilityRole="button"
             accessibilityState={{ selected: selectedWait === code }}
-            accessibilityLabel={tr(`driver.integrity.wait.${code}`, WAIT_FALLBACK[code] ?? code)}
+            accessibilityLabel={labelOrCode(
+              tr(`driver.integrity.wait.${code}`),
+              `driver.integrity.wait.${code}`,
+              code
+            )}
             style={[styles.chip, selectedWait === code ? styles.chipOn : null]}
           >
             <Text style={[styles.chipText, selectedWait === code ? styles.chipTextOn : null]}>
-              {tr(`driver.integrity.wait.${code}`, WAIT_FALLBACK[code] ?? code)}
+              {labelOrCode(
+                tr(`driver.integrity.wait.${code}`),
+                `driver.integrity.wait.${code}`,
+                code
+              )}
             </Text>
           </Pressable>
         ))}
@@ -261,19 +246,17 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
         onPress={() => void onSubmitWait()}
         disabled={!selectedWait || Boolean(submitting)}
         accessibilityRole="button"
-        accessibilityLabel={tr("driver.integrity.submitWait", "Submit wait reason")}
+        accessibilityLabel={tr("driver.integrity.submitWait")}
         style={[styles.button, !selectedWait || submitting ? styles.buttonDisabled : null]}
       >
         {submitting === "wait" ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>
-            {tr("driver.integrity.submitWait", "Submit wait reason")}
-          </Text>
+          <Text style={styles.buttonText}>{tr("driver.integrity.submitWait")}</Text>
         )}
       </Pressable>
 
-      <Text style={styles.section}>{tr("driver.integrity.disputeSection", "Open a dispute")}</Text>
+      <Text style={styles.section}>{tr("driver.integrity.disputeSection")}</Text>
       <View style={styles.chips}>
         {disputeReasons.map((code) => (
           <Pressable
@@ -282,11 +265,19 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
             disabled={Boolean(submitting) || incidentClosed}
             accessibilityRole="button"
             accessibilityState={{ selected: selectedDispute === code, disabled: incidentClosed }}
-            accessibilityLabel={tr(`driver.integrity.dispute.${code}`, DISPUTE_FALLBACK[code] ?? code)}
+            accessibilityLabel={labelOrCode(
+              tr(`driver.integrity.dispute.${code}`),
+              `driver.integrity.dispute.${code}`,
+              code
+            )}
             style={[styles.chip, selectedDispute === code ? styles.chipOn : null]}
           >
             <Text style={[styles.chipText, selectedDispute === code ? styles.chipTextOn : null]}>
-              {tr(`driver.integrity.dispute.${code}`, DISPUTE_FALLBACK[code] ?? code)}
+              {labelOrCode(
+                tr(`driver.integrity.dispute.${code}`),
+                `driver.integrity.dispute.${code}`,
+                code
+              )}
             </Text>
           </Pressable>
         ))}
@@ -294,9 +285,9 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
       <TextInput
         value={explanation}
         onChangeText={setExplanation}
-        placeholder={tr("driver.integrity.explanation", "Optional explanation")}
+        placeholder={tr("driver.integrity.explanation")}
         placeholderTextColor="#94A3B8"
-        accessibilityLabel={tr("driver.integrity.explanation", "Optional explanation")}
+        accessibilityLabel={tr("driver.integrity.explanation")}
         multiline
         style={styles.input}
       />
@@ -304,7 +295,7 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
         onPress={() => void onSubmitDispute()}
         disabled={!selectedDispute || Boolean(submitting) || incidentClosed}
         accessibilityRole="button"
-        accessibilityLabel={tr("driver.integrity.submitDispute", "Submit dispute")}
+        accessibilityLabel={tr("driver.integrity.submitDispute")}
         style={[
           styles.button,
           !selectedDispute || submitting || incidentClosed ? styles.buttonDisabled : null,
@@ -313,9 +304,7 @@ export function DriverIntegrityReportPanel({ entityType, entityId }: Props) {
         {submitting === "dispute" ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>
-            {tr("driver.integrity.submitDispute", "Submit dispute")}
-          </Text>
+          <Text style={styles.buttonText}>{tr("driver.integrity.submitDispute")}</Text>
         )}
       </Pressable>
     </View>

@@ -107,9 +107,15 @@ export async function POST(request: NextRequest) {
     }
 
     let pushed = false;
-    let voice: { callSessionId: string | null; result: string; error?: string } = {
+    let voice: {
+      callSessionId: string | null;
+      result: string;
+      error?: string;
+      proxyNumber: string | null;
+    } = {
       callSessionId: null,
       result: "logged",
+      proxyNumber: null,
     };
 
     if (channel === "push") {
@@ -133,7 +139,37 @@ export async function POST(request: NextRequest) {
         callSessionId: started.callSessionId,
         result: started.result,
         error: started.error,
+        proxyNumber: started.proxyNumber,
       };
+      if (!started.ok) {
+        await writeAdminAuditServer({
+          supabaseAdmin: supabase,
+          adminUserId: session.userId,
+          action: "driver_integrity_contact",
+          targetType: "driver",
+          targetId: driverId,
+          metadata: {
+            incidentId,
+            reason,
+            channel,
+            voice_result: started.result,
+            error: started.error,
+          },
+          request,
+        });
+        return json(
+          {
+            ok: false,
+            error: started.error ?? "voice_failed",
+            channel,
+            voice_result: started.result,
+            call_session_id: started.callSessionId,
+            proxy_number: null,
+            driver_phone_exposed: false,
+          },
+          409
+        );
+      }
     }
 
     const { data } = await supabase
@@ -190,6 +226,7 @@ export async function POST(request: NextRequest) {
       pushed,
       voice_result: voice.result,
       call_session_id: voice.callSessionId,
+      proxy_number: voice.proxyNumber,
       driver_phone_exposed: false,
     });
   } catch (e) {

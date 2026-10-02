@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { buildCronSupabaseAdmin } from "@/lib/cronSupabase";
-import { CRON_SUPABASE_TIMEOUT_MS } from "@/lib/cronTimeouts";
+import { CRON_JOB_BUDGET_MS, CRON_SUPABASE_TIMEOUT_MS } from "@/lib/cronTimeouts";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import { runDriverIntegrityScan } from "@/lib/driverIntegrity/scan";
 
@@ -21,8 +21,11 @@ async function run(request: NextRequest) {
   const supabase = buildCronSupabaseAdmin(CRON_SUPABASE_TIMEOUT_MS);
 
   try {
+    const startedMs = Date.now();
     const result = await runDriverIntegrityScan(supabase, {
       origin: getDispatchSiteOrigin(),
+      startedMs,
+      budgetMs: CRON_JOB_BUDGET_MS,
     });
     return json({ ok: true, ...result, ran_at: new Date().toISOString() });
   } catch (e: unknown) {

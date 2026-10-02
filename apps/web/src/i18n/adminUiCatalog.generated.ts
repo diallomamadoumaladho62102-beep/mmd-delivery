@@ -19560,5 +19560,21 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "ar": "اتصال صوتي لنزاهة السائق",
     "zh": "司机诚信语音联系",
     "ff": "Jokkondiral daande laaɓal dogoowo"
+  },
+  "Unable to start the masked call": {
+    "en": "Unable to start the masked call",
+    "fr": "Impossible de démarrer l’appel masqué",
+    "es": "No se pudo iniciar la llamada enmascarada",
+    "ar": "تعذر بدء المكالمة المقنعة",
+    "zh": "无法开始隐藏号码通话",
+    "ff": "Horiima fuɗɗude noddaandu suuɗaande"
+  },
+  "Dial the masked MMD number now. The driver phone is never shown.": {
+    "en": "Dial the masked MMD number now. The driver phone is never shown.",
+    "fr": "Composez maintenant le numéro masqué MMD. Le téléphone du chauffeur n’est jamais affiché.",
+    "es": "Marque ahora el número enmascarado de MMD. El teléfono del conductor nunca se muestra.",
+    "ar": "اطلب الآن رقم MMD المقنع. لا يُعرض هاتف السائق أبدًا.",
+    "zh": "请立即拨打 MMD 隐藏号码。永不显示司机电话。",
+    "ff": "Noddu jooni limngal MMD suuɗangal. Telefon dogoowo holliraaka hay sahaa."
   }
 } as const;

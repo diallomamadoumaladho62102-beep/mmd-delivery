@@ -26,6 +26,19 @@ const reassignmentHardening = readFileSync(
   join(webRoot, "../../supabase/migrations/20261207130000_pre_shadow_reassignment_hardening.sql"),
   "utf8"
 );
+const deliveryHardening = readFileSync(
+  join(webRoot, "../../supabase/migrations/20261207140000_delivery_system_hardening.sql"),
+  "utf8"
+);
+const cronRunner = readFileSync(
+  join(webRoot, "../../scripts/run-production-driver-integrity-cron.mjs"),
+  "utf8"
+);
+const adminIntegrity = readFileSync(
+  join(webRoot, "app/admin/driver-integrity/page.tsx"),
+  "utf8"
+);
+const cancelApi = readFileSync(join(webRoot, "app/api/orders/cancel/route.ts"), "utf8");
 const cronRoute = readFileSync(
   join(webRoot, "app/api/cron/driver-integrity/route.ts"),
   "utf8"
@@ -148,6 +161,46 @@ test("dispatch and cron honor exclusions, timeouts, and lock-safe status", () =>
   assert.match(cronRoute, /buildCronSupabaseAdmin/);
   assert.match(cronRoute, /CRON_SUPABASE_TIMEOUT_MS/);
   assert.match(cronRoute, /maxDuration = 60/);
+  assert.match(cronRoute, /CRON_JOB_BUDGET_MS/);
+  assert.match(cronRunner, /58_000/);
+  assert.doesNotMatch(cronRunner, /90_000/);
+});
+
+test("accept RPCs reject excluded drivers and pickup requires dispatched", () => {
+  assert.match(deliveryHardening, /driver_integrity_is_excluded\('order'/);
+  assert.match(deliveryHardening, /driver_integrity_is_excluded\('delivery_request'/);
+  assert.match(deliveryHardening, /message', 'driver_excluded'/);
+  assert.match(deliveryHardening, /lower\(coalesce\(status, ''\)\) = 'dispatched'/);
+  assert.doesNotMatch(deliveryHardening, /in \('dispatched', 'ready'\)/);
+  assert.match(deliveryHardening, /driver_integrity_scan_cursors/);
+  assert.doesNotMatch(deliveryHardening, /monitoring_enabled\s*=\s*true/);
+});
+
+test("scan paginates with keyset cursor instead of a hard 50-row cap", () => {
+  assert.match(scan, /DRIVER_INTEGRITY_SCAN_PAGE_SIZE/);
+  assert.match(scan, /keysetFilter/);
+  assert.match(scan, /truncated/);
+  assert.doesNotMatch(scan, /\.limit\(50\)/);
+});
+
+test("voice contact returns a masked proxy and the admin must dial it", () => {
+  assert.match(contactApi, /proxy_number/);
+  assert.match(contactApi, /voice_failed/);
+  assert.match(adminIntegrity, /tel:\$\{proxy\}/);
+  assert.match(adminIntegrity, /Dial the masked MMD number now/);
+  assert.doesNotMatch(contactApi, /target_phone/);
+});
+
+test("driver cancel expires pending offers before redispatch", () => {
+  assert.match(cancelApi, /expirePendingDriverOrderOffers/);
+  const driverBlock = cancelApi.split("DRIVER CANCEL")[1] ?? "";
+  assert.match(driverBlock, /expirePendingDriverOrderOffers/);
+});
+
+test("mobile integrity panel does not hide missing keys behind English defaultValue", () => {
+  assert.doesNotMatch(mobilePanel, /defaultValue:/);
+  assert.doesNotMatch(mobilePanel, /WAIT_FALLBACK/);
+  assert.doesNotMatch(mobilePanel, /Restaurant delay/);
 });
 
 test("marketplace reassignment is atomic and excludes previous driver", () => {
@@ -197,6 +250,7 @@ test("flags remain fail-closed in default settings and scan", () => {
 test("voice contact never exposes driver phone", () => {
   assert.equal(voiceContactNeverExposesDriverPhone(), true);
   assert.match(contactApi, /driver_phone_exposed: false/);
+  assert.match(contactApi, /proxy_number/);
   assert.match(contactApi, /channel === "voice"/);
   assert.match(contactApi, /assertStaffPermission\("driver_integrity.manage"/);
   assert.match(contactApi, /assertStaffPermission\("driver_integrity.read"/);

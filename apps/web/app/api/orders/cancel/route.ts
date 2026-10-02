@@ -892,6 +892,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      await expirePendingDriverOrderOffers(supabaseAdmin, orderId);
+
       const smartDispatch = await triggerSmartDispatchForOrder({
         origin: req.nextUrl.origin,
         orderId,

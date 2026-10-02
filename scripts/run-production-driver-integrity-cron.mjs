@@ -13,7 +13,7 @@ const siteUrl = String(
 const cronSecret = String(process.env.CRON_SECRET ?? "").trim();
 const fetchTimeoutMs = Math.max(
   5_000,
-  Number(process.env.CRON_FETCH_TIMEOUT_MS ?? 90_000) || 90_000
+  Number(process.env.CRON_FETCH_TIMEOUT_MS ?? 58_000) || 58_000
 );
 
 function fail(message) {
