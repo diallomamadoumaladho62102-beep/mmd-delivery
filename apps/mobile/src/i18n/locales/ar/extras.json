@@ -1636,6 +1636,43 @@
       "confirmDelivered": "تأكيد تسليم Marketplace",
       "updateFailed": "تعذر تحديث توصيل Marketplace."
     },
+    "integrity": {
+      "title": "الإبلاغ عن انتظار أو نزاع",
+      "hint": "اختر سببًا من القائمة الرسمية. لا يمكنك تغيير الأوقات أو الأرباح.",
+      "waitSection": "سبب الانتظار",
+      "disputeSection": "فتح نزاع",
+      "explanation": "شرح اختياري",
+      "submitWait": "إرسال سبب الانتظار",
+      "submitDispute": "إرسال النزاع",
+      "retry": "إعادة المحاولة",
+      "networkError": "اتصال غير مستقر. حاول مرة أخرى.",
+      "unauthorized": "لا يمكنك الإبلاغ عن هذه الرحلة.",
+      "alreadySubmittedTitle": "تم الإرسال مسبقًا",
+      "waitSubmittedTitle": "تم إرسال سبب الانتظار",
+      "waitSubmittedBody": "سُجّل السبب. لم تتغير أوقات الرحلة.",
+      "disputeSubmittedTitle": "تم فتح النزاع",
+      "disputeSubmittedBody": "سُجّل النزاع. الأرباح والأوقات لم تتغير.",
+      "incidentClosed": "هذه المراجعة مغلقة بالفعل.",
+      "currentWait": "سبب الانتظار الحالي: {{reason}}",
+      "currentDispute": "نزاع مسجّل: {{reason}}",
+      "wait": {
+        "restaurant_delay": "تأخير المطعم",
+        "order_issue": "مشكلة في الطلب",
+        "traffic": "ازدحام مروري",
+        "gps_issue": "مشكلة GPS",
+        "technical_issue": "مشكلة تقنية",
+        "vehicle_issue": "مشكلة المركبة",
+        "safety_issue": "مشكلة سلامة",
+        "other": "أخرى"
+      },
+      "dispute": {
+        "restaurant": "مطعم",
+        "wait": "انتظار",
+        "gps": "GPS",
+        "technical": "تقني",
+        "other": "أخرى"
+      }
+    },
     "home": {
       "kind": {
         "marketplace": "توصيل Marketplace",

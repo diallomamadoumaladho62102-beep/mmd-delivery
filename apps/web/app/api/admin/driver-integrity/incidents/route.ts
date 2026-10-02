@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     if (error) return json({ ok: false, error: "incidents_load_failed" }, 500);
 
     const ids = (data ?? []).map((row) => String(row.id));
+    const entityIds = (data ?? []).map((row) => String(row.entity_id));
     const { data: warnings } = ids.length
       ? await supabase
           .from("driver_integrity_warnings")
@@ -42,10 +43,32 @@ export async function GET(request: NextRequest) {
           .in("incident_id", ids)
       : { data: [] as Array<Record<string, unknown>> };
 
+    const { data: waitReasons } = entityIds.length
+      ? await supabase
+          .from("driver_wait_reasons")
+          .select("id,entity_type,entity_id,driver_id,reason_code,created_at,incident_id")
+          .in("entity_id", entityIds)
+          .order("created_at", { ascending: false })
+          .limit(400)
+      : { data: [] as Array<Record<string, unknown>> };
+
+    const { data: assignmentHistory } = entityIds.length
+      ? await supabase
+          .from("trip_time_intervals")
+          .select(
+            "id,entity_type,entity_id,driver_id,assignment_seq,started_at,ended_at,end_reason"
+          )
+          .in("entity_id", entityIds)
+          .order("assignment_seq", { ascending: true })
+          .limit(400)
+      : { data: [] as Array<Record<string, unknown>> };
+
     return json({
       ok: true,
       incidents: data ?? [],
       warnings: warnings ?? [],
+      wait_reasons: waitReasons ?? [],
+      assignment_history: assignmentHistory ?? [],
     });
   } catch (e) {
     const status = e instanceof AdminAccessError ? e.status : 500;

@@ -8,6 +8,10 @@ const migration = readFileSync(
   join(webRoot, "../../supabase/migrations/20261206120000_driver_integrity_anti_abuse.sql"),
   "utf8"
 );
+const hardening = readFileSync(
+  join(webRoot, "../../supabase/migrations/20261207120000_pre_shadow_hardening.sql"),
+  "utf8"
+);
 const scan = readFileSync(join(webRoot, "src/lib/driverIntegrity/scan.ts"), "utf8");
 const settingsApi = readFileSync(
   join(webRoot, "app/api/admin/driver-integrity/settings/route.ts"),
@@ -87,4 +91,10 @@ test("no 10-minute stop-pay rule exists", () => {
   assert.doesNotMatch(scan, /wait > 10/);
   assert.doesNotMatch(migration, /stop pay/);
   assert.doesNotMatch(scan, /automaticFraud = true/);
+});
+
+test("hardening keeps marketplace RPC service_role-only and flags off", () => {
+  assert.match(hardening, /revoke all on function public\.driver_integrity_reassign_marketplace_job/);
+  assert.match(hardening, /grant execute on function public\.driver_integrity_reassign_marketplace_job[\s\S]*to service_role/);
+  assert.doesNotMatch(hardening, /monitoring_enabled\s*=\s*true/);
 });

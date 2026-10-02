@@ -73,6 +73,16 @@ function statusLabel(t: (s: string) => string, status: string): string {
     vehicle_issue: t("Vehicle issue"),
     safety_issue: t("Safety issue"),
     other: t("Other"),
+    restaurant: t("Restaurant"),
+    wait: t("Wait"),
+    gps: t("GPS"),
+    technical: t("Technical issue"),
+    push: t("Push"),
+    voice: t("Voice"),
+    initiated: t("Initiated"),
+    sent: t("Sent"),
+    failed: t("Failed"),
+    logged: t("Logged"),
   };
   return map[status] ?? status;
 }
@@ -91,10 +101,14 @@ function DriverIntegrityInner() {
   const [reviews, setReviews] = useState<Array<Record<string, unknown>>>([]);
   const [disputes, setDisputes] = useState<Array<Record<string, unknown>>>([]);
   const [contacts, setContacts] = useState<Array<Record<string, unknown>>>([]);
+  const [waitReasons, setWaitReasons] = useState<Array<Record<string, unknown>>>([]);
+  const [assignmentHistory, setAssignmentHistory] = useState<Array<Record<string, unknown>>>([]);
   const [reason, setReason] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [contactDriverId, setContactDriverId] = useState("");
   const [contactReason, setContactReason] = useState("");
+  const [contactIncidentId, setContactIncidentId] = useState("");
+  const [contactChannel, setContactChannel] = useState<"push" | "voice">("push");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -123,6 +137,8 @@ function DriverIntegrityInner() {
     setReviews(reviewsJson.reviews ?? []);
     setDisputes(disputesJson.disputes ?? []);
     setContacts(contactsJson.contacts ?? []);
+    setWaitReasons(incidentsJson.wait_reasons ?? []);
+    setAssignmentHistory(incidentsJson.assignment_history ?? []);
     setLoading(false);
   }, [statusFilter, t]);
 
@@ -202,7 +218,9 @@ function DriverIntegrityInner() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         driver_id: contactDriverId,
+        incident_id: contactIncidentId || undefined,
         reason: contactReason,
+        channel: contactChannel,
       }),
     });
     const json = await res.json();
@@ -210,9 +228,37 @@ function DriverIntegrityInner() {
       setError(errorMessage(t, String(json.error ?? "")));
       return;
     }
-    setNotice(t("Saved"));
+    setNotice(
+      contactChannel === "voice"
+        ? t("Masked voice contact recorded. Driver phone is never shown.")
+        : t("Saved")
+    );
     setContactDriverId("");
     setContactReason("");
+    setContactIncidentId("");
+    await load();
+  }
+
+  async function voiceContactIncident(incident: Record<string, unknown>) {
+    setError(null);
+    const res = await adminFetch("/api/admin/driver-integrity/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        driver_id: String(incident.original_driver_id ?? ""),
+        incident_id: String(incident.id ?? ""),
+        entity_type: String(incident.entity_type ?? ""),
+        entity_id: String(incident.entity_id ?? ""),
+        reason: reason || t("Driver Integrity voice contact"),
+        channel: "voice",
+      }),
+    });
+    const json = await res.json();
+    if (!json.ok) {
+      setError(errorMessage(t, String(json.error ?? "")));
+      return;
+    }
+    setNotice(t("Masked voice contact recorded. Driver phone is never shown."));
     await load();
   }
 
@@ -323,7 +369,7 @@ function DriverIntegrityInner() {
                     <td className="font-mono text-xs">{String(row.original_driver_id)}</td>
                     <td className="font-mono text-xs">{String(row.entity_id)}</td>
                     <td>{statusLabel(t, String(row.severity))}</td>
-                    <td>
+                    <td className="space-x-3">
                       {canReview ? (
                         <button
                           type="button"
@@ -333,12 +379,48 @@ function DriverIntegrityInner() {
                           {t("Open review")}
                         </button>
                       ) : null}
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          className="text-sm text-slate-700 underline"
+                          onClick={() => void voiceContactIncident(row)}
+                        >
+                          {t("Start masked call")}
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {waitReasons.length ? (
+            <div className="mt-6">
+              <h2 className="mb-2 font-medium">{t("Wait reasons")}</h2>
+              <ul className="space-y-1 text-sm">
+                {waitReasons.map((row) => (
+                  <li key={String(row.id)}>
+                    {statusLabel(t, String(row.reason_code))} — {String(row.entity_id)} —{" "}
+                    {String(row.created_at ?? "")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {assignmentHistory.length ? (
+            <div className="mt-6">
+              <h2 className="mb-2 font-medium">{t("Assignment history")}</h2>
+              <ul className="space-y-1 text-sm">
+                {assignmentHistory.map((row) => (
+                  <li key={String(row.id)}>
+                    #{String(row.assignment_seq ?? 1)} {String(row.entity_type)} {String(row.entity_id)} —{" "}
+                    {String(row.started_at ?? "")} → {String(row.ended_at ?? t("Open"))} (
+                    {statusLabel(t, String(row.end_reason ?? "open"))})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {loading ? <p className="mt-3 text-sm">{t("Loading…")}</p> : null}
         </section>
       ) : null}
@@ -388,12 +470,29 @@ function DriverIntegrityInner() {
           {canEdit ? (
             <form onSubmit={contactDriver} className="space-y-3">
               <h2 className="font-medium">{t("Contact driver")}</h2>
+              <p className="text-xs text-slate-500">
+                {t("Masked voice contact recorded. Driver phone is never shown.")}
+              </p>
               <input
                 className={INPUT}
                 value={contactDriverId}
                 onChange={(e) => setContactDriverId(e.target.value)}
                 placeholder={t("Driver")}
               />
+              <input
+                className={INPUT}
+                value={contactIncidentId}
+                onChange={(e) => setContactIncidentId(e.target.value)}
+                placeholder={t("Incident")}
+              />
+              <select
+                className={INPUT}
+                value={contactChannel}
+                onChange={(e) => setContactChannel(e.target.value === "voice" ? "voice" : "push")}
+              >
+                <option value="push">{t("Push")}</option>
+                <option value="voice">{t("Voice")}</option>
+              </select>
               <textarea
                 className={INPUT}
                 value={contactReason}
@@ -401,14 +500,24 @@ function DriverIntegrityInner() {
                 placeholder={t("Reason")}
               />
               <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">
-                {t("Send")}
+                {contactChannel === "voice" ? t("Start masked call") : t("Send")}
               </button>
             </form>
           ) : null}
           <ul className="space-y-2 text-sm">
             {contacts.map((row) => (
-              <li key={String(row.id)}>
-                {String(row.created_at)} — {String(row.channel)} — {String(row.reason ?? "")}
+              <li key={String(row.id)} className="rounded-xl border border-slate-100 p-3">
+                <p>
+                  {statusLabel(t, String(row.channel))} · {statusLabel(t, String(row.result ?? "logged"))}
+                </p>
+                <p className="text-xs text-slate-500">{String(row.created_at)}</p>
+                <p className="text-xs">{t("Admin")}: {String(row.admin_user_id ?? "")}</p>
+                <p className="text-xs">{t("Driver")}: {String(row.driver_id ?? "")}</p>
+                <p className="text-xs">{t("Incident")}: {String(row.incident_id ?? "—")}</p>
+                <p className="text-xs">
+                  {t("Trip")}: {String(row.entity_type ?? "—")} {String(row.entity_id ?? "")}
+                </p>
+                <p className="text-xs">{t("Reason")}: {String(row.reason ?? "")}</p>
               </li>
             ))}
           </ul>

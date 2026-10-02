@@ -1646,6 +1646,43 @@
       "confirmDelivered": "Confirmer la livraison marketplace",
       "updateFailed": "Impossible de mettre à jour la livraison marketplace."
     },
+    "integrity": {
+      "title": "Signaler une attente ou un litige",
+      "hint": "Choisissez une raison officielle. Vous ne pouvez pas modifier les horaires ni les gains.",
+      "waitSection": "Raison d’attente",
+      "disputeSection": "Ouvrir un litige",
+      "explanation": "Explication facultative",
+      "submitWait": "Envoyer la raison d’attente",
+      "submitDispute": "Envoyer le litige",
+      "retry": "Réessayer",
+      "networkError": "Connexion instable. Réessayez.",
+      "unauthorized": "Vous ne pouvez pas signaler cette course.",
+      "alreadySubmittedTitle": "Déjà envoyé",
+      "waitSubmittedTitle": "Raison d’attente envoyée",
+      "waitSubmittedBody": "Votre raison a été enregistrée. Les horaires n’ont pas changé.",
+      "disputeSubmittedTitle": "Litige ouvert",
+      "disputeSubmittedBody": "Votre litige a été enregistré. Gains et horaires inchangés.",
+      "incidentClosed": "Cette revue est déjà close.",
+      "currentWait": "Raison d’attente actuelle : {{reason}}",
+      "currentDispute": "Litige enregistré : {{reason}}",
+      "wait": {
+        "restaurant_delay": "Retard restaurant",
+        "order_issue": "Problème de commande",
+        "traffic": "Circulation",
+        "gps_issue": "Problème GPS",
+        "technical_issue": "Problème technique",
+        "vehicle_issue": "Problème véhicule",
+        "safety_issue": "Problème de sécurité",
+        "other": "Autre"
+      },
+      "dispute": {
+        "restaurant": "Restaurant",
+        "wait": "Attente",
+        "gps": "GPS",
+        "technical": "Technique",
+        "other": "Autre"
+      }
+    },
     "home": {
       "kind": {
         "marketplace": "Livraison marketplace",

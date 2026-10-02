@@ -1636,6 +1636,43 @@
       "confirmDelivered": "确认 Marketplace 送达",
       "updateFailed": "无法更新 Marketplace 配送。"
     },
+    "integrity": {
+      "title": "报告等待或争议",
+      "hint": "请从官方列表选择原因。您无法更改行程时间或收入。",
+      "waitSection": "等待原因",
+      "disputeSection": "提出争议",
+      "explanation": "可选说明",
+      "submitWait": "提交等待原因",
+      "submitDispute": "提交争议",
+      "retry": "重试",
+      "networkError": "网络不稳定，请重试。",
+      "unauthorized": "您无法报告此行程。",
+      "alreadySubmittedTitle": "已提交",
+      "waitSubmittedTitle": "等待原因已发送",
+      "waitSubmittedBody": "原因已记录。行程时间未更改。",
+      "disputeSubmittedTitle": "争议已开启",
+      "disputeSubmittedBody": "争议已记录。收入和行程时间未更改。",
+      "incidentClosed": "此审核已关闭。",
+      "currentWait": "当前等待原因：{{reason}}",
+      "currentDispute": "已有争议：{{reason}}",
+      "wait": {
+        "restaurant_delay": "餐厅延误",
+        "order_issue": "订单问题",
+        "traffic": "交通拥堵",
+        "gps_issue": "GPS 问题",
+        "technical_issue": "技术问题",
+        "vehicle_issue": "车辆问题",
+        "safety_issue": "安全问题",
+        "other": "其他"
+      },
+      "dispute": {
+        "restaurant": "餐厅",
+        "wait": "等待",
+        "gps": "GPS",
+        "technical": "技术",
+        "other": "其他"
+      }
+    },
     "home": {
       "kind": {
         "marketplace": "Marketplace 配送",

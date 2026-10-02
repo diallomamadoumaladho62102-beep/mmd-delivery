@@ -1636,6 +1636,43 @@
       "confirmDelivered": "Confirmar entrega marketplace",
       "updateFailed": "No se pudo actualizar la entrega marketplace."
     },
+    "integrity": {
+      "title": "Informar espera o disputa",
+      "hint": "Elija un motivo oficial. No puede cambiar horarios ni ganancias.",
+      "waitSection": "Motivo de espera",
+      "disputeSection": "Abrir una disputa",
+      "explanation": "Explicación opcional",
+      "submitWait": "Enviar motivo de espera",
+      "submitDispute": "Enviar disputa",
+      "retry": "Reintentar",
+      "networkError": "Conexión inestable. Inténtelo de nuevo.",
+      "unauthorized": "No puede informar este viaje.",
+      "alreadySubmittedTitle": "Ya enviado",
+      "waitSubmittedTitle": "Motivo de espera enviado",
+      "waitSubmittedBody": "Su motivo quedó registrado. Los horarios no cambiaron.",
+      "disputeSubmittedTitle": "Disputa abierta",
+      "disputeSubmittedBody": "Su disputa quedó registrada. Ganancias y horarios no cambiaron.",
+      "incidentClosed": "Esta revisión ya está cerrada.",
+      "currentWait": "Motivo de espera actual: {{reason}}",
+      "currentDispute": "Disputa registrada: {{reason}}",
+      "wait": {
+        "restaurant_delay": "Retraso del restaurante",
+        "order_issue": "Problema del pedido",
+        "traffic": "Tráfico",
+        "gps_issue": "Problema de GPS",
+        "technical_issue": "Problema técnico",
+        "vehicle_issue": "Problema del vehículo",
+        "safety_issue": "Problema de seguridad",
+        "other": "Otro"
+      },
+      "dispute": {
+        "restaurant": "Restaurante",
+        "wait": "Espera",
+        "gps": "GPS",
+        "technical": "Técnico",
+        "other": "Otro"
+      }
+    },
     "home": {
       "kind": {
         "marketplace": "Entrega marketplace",

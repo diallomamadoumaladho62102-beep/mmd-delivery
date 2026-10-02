@@ -21,7 +21,6 @@ const cronPaths = [
   "/api/cron/retry-delivery-request-dispatch",
   "/api/cron/taxi-scheduled-dispatch",
   "/api/cron/taxi-active-ride-compliance",
-  "/api/cron/driver-integrity",
 ];
 
 function fail(message) {

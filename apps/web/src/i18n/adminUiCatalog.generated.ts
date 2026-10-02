@@ -192,6 +192,7 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "en": "Status"
   },
   "Failed": {
+    "en": "Failed",
     "fr": "Échec",
     "es": "Fallido",
     "ar": "فشل",
@@ -2054,6 +2055,7 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "ff": "Adres hoolkisaama"
   },
   "Admin": {
+    "en": "Admin",
     "fr": "Administratrice",
     "es": "Administradora",
     "ar": "مسؤل",
@@ -9700,6 +9702,7 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "ff": "Daande"
   },
   "Voice": {
+    "en": "Voice",
     "fr": "Voix",
     "es": "Voz",
     "ar": "صوت",
@@ -19469,5 +19472,93 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "ar": "معلومة",
     "zh": "信息",
     "ff": "Humpito"
+  },
+  "Wait": {
+    "en": "Wait",
+    "fr": "Attente",
+    "es": "Espera",
+    "ar": "انتظار",
+    "zh": "等待",
+    "ff": "Fadde"
+  },
+  "GPS": {
+    "en": "GPS",
+    "fr": "GPS",
+    "es": "GPS",
+    "ar": "GPS",
+    "zh": "GPS",
+    "ff": "GPS"
+  },
+  "Push": {
+    "en": "Push",
+    "fr": "Notification",
+    "es": "Notificación",
+    "ar": "إشعار",
+    "zh": "推送",
+    "ff": "Tintin"
+  },
+  "Initiated": {
+    "en": "Initiated",
+    "fr": "Lancé",
+    "es": "Iniciado",
+    "ar": "تم البدء",
+    "zh": "已发起",
+    "ff": "Fuɗɗaama"
+  },
+  "Logged": {
+    "en": "Logged",
+    "fr": "Journalisé",
+    "es": "Registrado",
+    "ar": "مسجّل",
+    "zh": "已记录",
+    "ff": "Winndaa"
+  },
+  "Incident": {
+    "en": "Incident",
+    "fr": "Incident",
+    "es": "Incidente",
+    "ar": "حادثة",
+    "zh": "事件",
+    "ff": "Ciftol"
+  },
+  "Wait reasons": {
+    "en": "Wait reasons",
+    "fr": "Raisons d’attente",
+    "es": "Motivos de espera",
+    "ar": "أسباب الانتظار",
+    "zh": "等待原因",
+    "ff": "Daliiluuji fadde"
+  },
+  "Assignment history": {
+    "en": "Assignment history",
+    "fr": "Historique d’assignation",
+    "es": "Historial de asignación",
+    "ar": "سجل الإسناد",
+    "zh": "分配历史",
+    "ff": "Tariih rokkaade"
+  },
+  "Start masked call": {
+    "en": "Start masked call",
+    "fr": "Lancer un appel masqué",
+    "es": "Iniciar llamada enmascarada",
+    "ar": "بدء مكالمة مقنعة",
+    "zh": "开始隐藏号码通话",
+    "ff": "Fuɗɗo noddaango suuɗaaɗo"
+  },
+  "Masked voice contact recorded. Driver phone is never shown.": {
+    "en": "Masked voice contact recorded. Driver phone is never shown.",
+    "fr": "Contact vocal masqué enregistré. Le numéro du chauffeur n’est jamais affiché.",
+    "es": "Contacto de voz enmascarado registrado. El teléfono del conductor nunca se muestra.",
+    "ar": "تم تسجيل اتصال صوتي مقنع. لا يُعرض رقم السائق أبدًا.",
+    "zh": "已记录隐藏号码语音联系。永不显示司机电话。",
+    "ff": "Jokkondiral daande suuɗaaɗo winndaa. Telefon dogoowo holliraaka hay sahaa."
+  },
+  "Driver Integrity voice contact": {
+    "en": "Driver Integrity voice contact",
+    "fr": "Contact vocal Intégrité chauffeur",
+    "es": "Contacto de voz de integridad",
+    "ar": "اتصال صوتي لنزاهة السائق",
+    "zh": "司机诚信语音联系",
+    "ff": "Jokkondiral daande laaɓal dogoowo"
   }
 } as const;

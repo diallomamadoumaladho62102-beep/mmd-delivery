@@ -1687,6 +1687,43 @@
       "confirmDelivered": "Tabitin livraison Marketplace",
       "updateFailed": "Horiima hesɗitinde livraison Marketplace."
     },
+    "integrity": {
+      "title": "Humpito fadde walla luural",
+      "hint": "Suɓo daliilu e doggol laawol. A waawaa waylude waktuuji yahdu walla njoɓdi.",
+      "waitSection": "Daliilu fadde",
+      "disputeSection": "Uddit luural",
+      "explanation": "Cifagol cuɓaaɗo",
+      "submitWait": "Neldu daliilu fadde",
+      "submitDispute": "Neldu luural",
+      "retry": "Fuɗɗito",
+      "networkError": "Jokkondiral jaɓɓaaki. Fuɗɗito.",
+      "unauthorized": "A waawaa humpitoo ndee yahdu.",
+      "alreadySubmittedTitle": "Nelaaɗo kisa",
+      "waitSubmittedTitle": "Daliilu fadde nelaa",
+      "waitSubmittedBody": "Daliilu maa winndaa. Waktuuji yahdu mbaylaaka.",
+      "disputeSubmittedTitle": "Luural udditaama",
+      "disputeSubmittedBody": "Luural maa winndaa. Njoɓdi e waktuuji mbaylaaka.",
+      "incidentClosed": "Ndee ƴeewndo uddaama kisa.",
+      "currentWait": "Daliilu fadde jooni: {{reason}}",
+      "currentDispute": "Luural winndaaɗo: {{reason}}",
+      "wait": {
+        "restaurant_delay": "Ñaawo restoran",
+        "order_issue": "Caɗeele odaare",
+        "traffic": "Trafic laawol",
+        "gps_issue": "Caɗeele GPS",
+        "technical_issue": "Caɗeele karallaagal",
+        "vehicle_issue": "Caɗeele oto",
+        "safety_issue": "Caɗeele hisnol",
+        "other": "Goɗɗum"
+      },
+      "dispute": {
+        "restaurant": "Restoran",
+        "wait": "Fadde",
+        "gps": "GPS",
+        "technical": "Karallaagal",
+        "other": "Goɗɗum"
+      }
+    },
     "home": {
       "kind": {
         "marketplace": "Livraison Marketplace",
