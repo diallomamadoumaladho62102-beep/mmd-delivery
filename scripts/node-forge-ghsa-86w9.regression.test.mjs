@@ -7,7 +7,7 @@
  */
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..");
@@ -53,17 +53,30 @@ test("vendor rsa.js contains the nested DigestAlgorithm length check", () => {
   assert.match(rsa, /\(\('parameters' in capture\) \? 2 : 1\)/);
 });
 
-test("require('node-forge') still loads for Expo CLI / code-signing", () => {
-  const forge = require("node-forge");
+test("vendored node-forge still loads for Expo CLI / code-signing", () => {
+  const forge = require(join(ROOT, "vendor", "node-forge", "lib", "index.js"));
   assert.equal(typeof forge.pki.rsa.setPublicKey, "function");
   assert.equal(typeof forge.md.sha256.create, "function");
   const md = forge.md.sha256.create();
   md.update("mmd");
   assert.equal(md.digest().toHex().length, 64);
+  const expoCli = join(ROOT, "node_modules", "@expo", "cli");
+  if (existsSync(join(expoCli, "package.json"))) {
+    const resolved = require.resolve("node-forge", { paths: [expoCli] });
+    const resolvedRoot = join(resolved, "..", "..");
+    const resolvedPkg = JSON.parse(
+      readFileSync(join(resolvedRoot, "package.json"), "utf8"),
+    );
+    assert.equal(resolvedPkg.version, "1.4.1");
+    assert.match(
+      readFileSync(join(resolvedRoot, "lib", "rsa.js"), "utf8"),
+      /CVE-2026-85393/,
+    );
+  }
 });
 
 test("CVE-2026-85393 nested DigestAlgorithm garbage is rejected", () => {
-  const forge = require("node-forge");
+  const forge = require(join(ROOT, "vendor", "node-forge", "lib", "index.js"));
   // Vectors from digitalbazaar/forge#1152 (same N/e as tests/unit/rsa.js).
   const N = new forge.jsbn.BigInteger(
     "E932AC92252F585B3A80A4DD76A897C8B7652952FE788F6EC8DD640587A1EE56" +
