@@ -539,7 +539,8 @@ function keysetFilter(cursor: ScanCursor): string | null {
 async function fetchScanPage(
   supabase: SupabaseClient,
   entityType: DriverIntegrityEntityType,
-  cursor: ScanCursor
+  cursor: ScanCursor,
+  engineStartAt: string
 ): Promise<Array<Record<string, unknown>>> {
   const filter = keysetFilter(cursor);
   const run = async (withCursor: boolean) => {
@@ -549,6 +550,7 @@ async function fetchScanPage(
         .select("id,status,assigned_driver_id,driver_accepted_at")
         .not("assigned_driver_id", "is", null)
         .not("driver_accepted_at", "is", null)
+        .gte("driver_accepted_at", engineStartAt)
         .eq("status", "dispatch_assigned")
         .order("driver_accepted_at", { ascending: true })
         .order("id", { ascending: true })
@@ -562,8 +564,11 @@ async function fetchScanPage(
         .select(
           "id,status,driver_id,driver_accepted_at,picked_up_at,delivered_at,cancelled_at"
         )
+        .eq("is_test", false)
+        .is("archived_at", null)
         .not("driver_id", "is", null)
         .not("driver_accepted_at", "is", null)
+        .gte("driver_accepted_at", engineStartAt)
         .is("picked_up_at", null)
         .is("delivered_at", null)
         .is("cancelled_at", null)
@@ -579,8 +584,11 @@ async function fetchScanPage(
       .select(
         "id,status,driver_id,driver_accepted_at,picked_up_at,delivered_at,cancelled_at"
       )
+      .eq("is_test", false)
+      .is("archived_at", null)
       .not("driver_id", "is", null)
       .not("driver_accepted_at", "is", null)
+      .gte("driver_accepted_at", engineStartAt)
       .is("picked_up_at", null)
       .is("delivered_at", null)
       .is("cancelled_at", null)
@@ -695,7 +703,12 @@ export async function runDriverIntegrityScan(
         break;
       }
       const cursor = await loadScanCursor(supabase, entityType);
-      const rows = await fetchScanPage(supabase, entityType, cursor);
+      const rows = await fetchScanPage(
+        supabase,
+        entityType,
+        cursor,
+        String(settings.engineStartAt)
+      );
       const mapped = rows.map((row) => ({
         id: row.id,
         status: row.status,

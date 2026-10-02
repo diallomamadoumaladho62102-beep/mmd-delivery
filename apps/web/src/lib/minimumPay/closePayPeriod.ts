@@ -39,7 +39,7 @@ async function refreshTripEligibility(
     entity_id: string;
   },
   countyCodes: string[]
-): Promise<{ eligible: boolean }> {
+): Promise<{ eligible: boolean; reason?: string }> {
   let pickupLat: unknown = null;
   let pickupLng: unknown = null;
   let dropoffLat: unknown = null;
@@ -48,9 +48,25 @@ async function refreshTripEligibility(
   if (interval.entity_type === "order") {
     const { data } = await supabase
       .from("orders")
-      .select("pickup_lat, pickup_lng, dropoff_lat, dropoff_lng")
+      .select(
+        "pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, is_test, archived_at, hidden_from_user"
+      )
       .eq("id", interval.entity_id)
       .maybeSingle();
+    if (
+      data?.is_test === true ||
+      data?.archived_at ||
+      data?.hidden_from_user === true
+    ) {
+      await supabase
+        .from("trip_time_intervals")
+        .update({
+          eligible: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", interval.id);
+      return { eligible: false, reason: "test_or_archived_source" };
+    }
     pickupLat = data?.pickup_lat;
     pickupLng = data?.pickup_lng;
     dropoffLat = data?.dropoff_lat;
@@ -58,9 +74,25 @@ async function refreshTripEligibility(
   } else if (interval.entity_type === "delivery_request") {
     const { data } = await supabase
       .from("delivery_requests")
-      .select("pickup_lat, pickup_lng, dropoff_lat, dropoff_lng")
+      .select(
+        "pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, is_test, archived_at, hidden_from_user"
+      )
       .eq("id", interval.entity_id)
       .maybeSingle();
+    if (
+      data?.is_test === true ||
+      data?.archived_at ||
+      data?.hidden_from_user === true
+    ) {
+      await supabase
+        .from("trip_time_intervals")
+        .update({
+          eligible: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", interval.id);
+      return { eligible: false, reason: "test_or_archived_source" };
+    }
     pickupLat = data?.pickup_lat;
     pickupLng = data?.pickup_lng;
     dropoffLat = data?.dropoff_lat;

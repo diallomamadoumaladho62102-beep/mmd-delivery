@@ -22,6 +22,7 @@ export function mapIntegritySettingsRow(
     contactEnabled: asBool(row.contact_enabled),
     reviewEnabled: asBool(row.review_enabled),
     sanctionWorkflowEnabled: asBool(row.sanction_workflow_enabled),
+    engineStartAt: row.engine_start_at ? String(row.engine_start_at) : null,
     driverAcceptanceWarningAfterSeconds: asPositiveInt(
       row.driver_acceptance_warning_after_seconds
     ),

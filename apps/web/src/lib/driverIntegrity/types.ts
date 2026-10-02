@@ -97,6 +97,7 @@ export type DriverIntegritySettings = {
   contactEnabled: boolean;
   reviewEnabled: boolean;
   sanctionWorkflowEnabled: boolean;
+  engineStartAt: string | null;
   driverAcceptanceWarningAfterSeconds: number | null;
   driverNoProgressReassignmentAfterSeconds: number | null;
   driverPickupProgressWarningAfterSeconds: number | null;
@@ -151,6 +152,7 @@ export const DEFAULT_DRIVER_INTEGRITY_SETTINGS: DriverIntegritySettings = {
   contactEnabled: false,
   reviewEnabled: false,
   sanctionWorkflowEnabled: false,
+  engineStartAt: null,
   driverAcceptanceWarningAfterSeconds: null,
   driverNoProgressReassignmentAfterSeconds: null,
   driverPickupProgressWarningAfterSeconds: null,

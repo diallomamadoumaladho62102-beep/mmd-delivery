@@ -75,6 +75,7 @@ export function failClosedScanSkipReason(
   settings: DriverIntegritySettings
 ): string | null {
   if (!monitoringIsActive(settings)) return "monitoring_disabled";
+  if (!settings.engineStartAt) return "engine_start_required";
   return null;
 }
 
