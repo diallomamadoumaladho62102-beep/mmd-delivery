@@ -19,6 +19,13 @@ import type {
 import { parseWaitReasonCode } from "./waitReasons";
 import { decideWarningAction } from "./warningPolicy";
 import { DRIVER_INTEGRITY_LOCK_TTL_SECONDS } from "./schedulerCadence";
+import {
+  DRIVER_INTEGRITY_SCAN_PAGE_SIZE,
+  loadScanCursor,
+  saveScanCursor,
+  type ScanCursor,
+} from "./scanCursor";
+import { CRON_JOB_BUDGET_MS, isDeadlineApproaching } from "@/lib/cronTimeouts";
 
 type ScanCounters = {
   skipped: boolean;
@@ -30,6 +37,7 @@ type ScanCounters = {
   reviewsOpened: number;
   incidentsUpserted: number;
   duplicates: number;
+  truncated: boolean;
 };
 
 function asIsoMs(value: unknown): number | null {
@@ -523,97 +531,50 @@ async function scanEntity(
   }
 }
 
-export async function runDriverIntegrityScan(
+function keysetFilter(cursor: ScanCursor): string | null {
+  if (!cursor.lastAcceptedAt || !cursor.lastId) return null;
+  return `driver_accepted_at.gt.${cursor.lastAcceptedAt},and(driver_accepted_at.eq.${cursor.lastAcceptedAt},id.gt.${cursor.lastId})`;
+}
+
+async function fetchScanPage(
   supabase: SupabaseClient,
-  opts?: { origin?: string | null; nowMs?: number }
-): Promise<ScanCounters> {
-  const settings = await loadDriverIntegritySettings(supabase);
-  const skip = failClosedScanSkipReason(settings);
-  if (skip) {
-    return {
-      skipped: true,
-      skipReason: skip,
-      scanned: 0,
-      warnings: 0,
-      finalWarnings: 0,
-      reassigned: 0,
-      reviewsOpened: 0,
-      incidentsUpserted: 0,
-      duplicates: 0,
-    };
-  }
-
-  const lock = await acquireCronJobLock(supabase, "driver_integrity_scan", {
-    ttlSeconds: DRIVER_INTEGRITY_LOCK_TTL_SECONDS,
-  });
-  if (lock.ok === false) {
-    return {
-      skipped: true,
-      skipReason: "lock_busy",
-      scanned: 0,
-      warnings: 0,
-      finalWarnings: 0,
-      reassigned: 0,
-      reviewsOpened: 0,
-      incidentsUpserted: 0,
-      duplicates: 0,
-    };
-  }
-
-  const lockedBy = lock.lockedBy;
-
-  const counters: ScanCounters = {
-    skipped: false,
-    skipReason: null,
-    scanned: 0,
-    warnings: 0,
-    finalWarnings: 0,
-    reassigned: 0,
-    reviewsOpened: 0,
-    incidentsUpserted: 0,
-    duplicates: 0,
-  };
-  const nowMs = opts?.nowMs ?? Date.now();
-  const origin = opts?.origin ?? null;
-
-  try {
-    const { data: orders } = await supabase
-      .from("orders")
-      .select(
-        "id,status,driver_id,driver_accepted_at,picked_up_at,delivered_at,cancelled_at"
-      )
-      .not("driver_id", "is", null)
-      .not("driver_accepted_at", "is", null)
-      .is("picked_up_at", null)
-      .is("delivered_at", null)
-      .is("cancelled_at", null)
-      .eq("status", "dispatched")
-      .limit(50);
-
-    for (const order of orders ?? []) {
-      await scanEntity(
-        supabase,
-        settings,
-        {
-          entityType: "order",
-          entityId: String(order.id),
-          driverId: String(order.driver_id),
-          status: String(order.status),
-          driverAcceptedAt: order.driver_accepted_at
-            ? String(order.driver_accepted_at)
-            : null,
-          pickedUpAt: order.picked_up_at ? String(order.picked_up_at) : null,
-          deliveredAt: order.delivered_at ? String(order.delivered_at) : null,
-          cancelledAt: order.cancelled_at ? String(order.cancelled_at) : null,
-          alreadyReassigned: false,
-        },
-        nowMs,
-        origin,
-        counters
-      );
+  entityType: DriverIntegrityEntityType,
+  cursor: ScanCursor
+): Promise<Array<Record<string, unknown>>> {
+  const filter = keysetFilter(cursor);
+  const run = async (withCursor: boolean) => {
+    if (entityType === "marketplace_job") {
+      let q = supabase
+        .from("marketplace_delivery_jobs")
+        .select("id,status,assigned_driver_id,driver_accepted_at")
+        .not("assigned_driver_id", "is", null)
+        .not("driver_accepted_at", "is", null)
+        .eq("status", "dispatch_assigned")
+        .order("driver_accepted_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(DRIVER_INTEGRITY_SCAN_PAGE_SIZE);
+      if (withCursor && filter) q = q.or(filter);
+      return q;
     }
-
-    const { data: requests } = await supabase
+    if (entityType === "order") {
+      let q = supabase
+        .from("orders")
+        .select(
+          "id,status,driver_id,driver_accepted_at,picked_up_at,delivered_at,cancelled_at"
+        )
+        .not("driver_id", "is", null)
+        .not("driver_accepted_at", "is", null)
+        .is("picked_up_at", null)
+        .is("delivered_at", null)
+        .is("cancelled_at", null)
+        .eq("status", "dispatched")
+        .order("driver_accepted_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(DRIVER_INTEGRITY_SCAN_PAGE_SIZE);
+      if (withCursor && filter) q = q.or(filter);
+      return q;
+    }
+    let q = supabase
       .from("delivery_requests")
       .select(
         "id,status,driver_id,driver_accepted_at,picked_up_at,delivered_at,cancelled_at"
@@ -624,60 +585,142 @@ export async function runDriverIntegrityScan(
       .is("delivered_at", null)
       .is("cancelled_at", null)
       .eq("status", "dispatched")
-      .limit(50);
+      .order("driver_accepted_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(DRIVER_INTEGRITY_SCAN_PAGE_SIZE);
+    if (withCursor && filter) q = q.or(filter);
+    return q;
+  };
 
-    for (const request of requests ?? []) {
-      await scanEntity(
-        supabase,
-        settings,
-        {
-          entityType: "delivery_request",
-          entityId: String(request.id),
-          driverId: String(request.driver_id),
-          status: String(request.status),
-          driverAcceptedAt: request.driver_accepted_at
-            ? String(request.driver_accepted_at)
-            : null,
-          pickedUpAt: request.picked_up_at ? String(request.picked_up_at) : null,
-          deliveredAt: request.delivered_at ? String(request.delivered_at) : null,
-          cancelledAt: request.cancelled_at ? String(request.cancelled_at) : null,
-          alreadyReassigned: false,
-        },
-        nowMs,
-        origin,
-        counters
-      );
+  const first = await run(true);
+  if ((first.data ?? []).length > 0) return first.data as Array<Record<string, unknown>>;
+  if (!filter) return [];
+  const wrapped = await run(false);
+  return (wrapped.data ?? []) as Array<Record<string, unknown>>;
+}
+
+function emptyCounters(skipReason: string | null, skipped: boolean): ScanCounters {
+  return {
+    skipped,
+    skipReason,
+    scanned: 0,
+    warnings: 0,
+    finalWarnings: 0,
+    reassigned: 0,
+    reviewsOpened: 0,
+    incidentsUpserted: 0,
+    duplicates: 0,
+    truncated: false,
+  };
+}
+
+async function scanPagedAssignments(
+  supabase: SupabaseClient,
+  settings: DriverIntegritySettings,
+  entityType: DriverIntegrityEntityType,
+  rows: Array<{
+    id: unknown;
+    status: unknown;
+    driverId: unknown;
+    driverAcceptedAt: unknown;
+    pickedUpAt?: unknown;
+    deliveredAt?: unknown;
+    cancelledAt?: unknown;
+  }>,
+  nowMs: number,
+  origin: string | null,
+  counters: ScanCounters,
+  startedMs: number,
+  budgetMs: number
+): Promise<ScanCursor | null> {
+  let last: ScanCursor | null = null;
+  for (const row of rows) {
+    if (isDeadlineApproaching(startedMs, budgetMs)) {
+      counters.truncated = true;
+      break;
     }
+    const acceptedAt = row.driverAcceptedAt ? String(row.driverAcceptedAt) : "";
+    const id = String(row.id);
+    await scanEntity(
+      supabase,
+      settings,
+      {
+        entityType,
+        entityId: id,
+        driverId: String(row.driverId),
+        status: String(row.status),
+        driverAcceptedAt: acceptedAt || null,
+        pickedUpAt: row.pickedUpAt ? String(row.pickedUpAt) : null,
+        deliveredAt: row.deliveredAt ? String(row.deliveredAt) : null,
+        cancelledAt: row.cancelledAt ? String(row.cancelledAt) : null,
+        alreadyReassigned: false,
+      },
+      nowMs,
+      origin,
+      counters
+    );
+    last = { lastAcceptedAt: acceptedAt || null, lastId: id };
+  }
+  return last;
+}
 
-    const { data: jobs } = await supabase
-      .from("marketplace_delivery_jobs")
-      .select("id,status,assigned_driver_id,driver_accepted_at")
-      .not("assigned_driver_id", "is", null)
-      .not("driver_accepted_at", "is", null)
-      .eq("status", "dispatch_assigned")
-      .limit(50);
+export async function runDriverIntegrityScan(
+  supabase: SupabaseClient,
+  opts?: { origin?: string | null; nowMs?: number; startedMs?: number; budgetMs?: number }
+): Promise<ScanCounters> {
+  const settings = await loadDriverIntegritySettings(supabase);
+  const skip = failClosedScanSkipReason(settings);
+  if (skip) return emptyCounters(skip, true);
 
-    for (const job of jobs ?? []) {
-      await scanEntity(
+  const lock = await acquireCronJobLock(supabase, "driver_integrity_scan", {
+    ttlSeconds: DRIVER_INTEGRITY_LOCK_TTL_SECONDS,
+  });
+  if (lock.ok === false) return emptyCounters("lock_busy", true);
+
+  const lockedBy = lock.lockedBy;
+  const counters = emptyCounters(null, false);
+  const nowMs = opts?.nowMs ?? Date.now();
+  const origin = opts?.origin ?? null;
+  const startedMs = opts?.startedMs ?? Date.now();
+  const budgetMs = opts?.budgetMs ?? CRON_JOB_BUDGET_MS;
+
+  try {
+    for (const entityType of [
+      "order",
+      "delivery_request",
+      "marketplace_job",
+    ] as const) {
+      if (isDeadlineApproaching(startedMs, budgetMs)) {
+        counters.truncated = true;
+        break;
+      }
+      const cursor = await loadScanCursor(supabase, entityType);
+      const rows = await fetchScanPage(supabase, entityType, cursor);
+      const mapped = rows.map((row) => ({
+        id: row.id,
+        status: row.status,
+        driverId:
+          entityType === "marketplace_job"
+            ? row.assigned_driver_id
+            : row.driver_id,
+        driverAcceptedAt: row.driver_accepted_at,
+        pickedUpAt: row.picked_up_at,
+        deliveredAt: row.delivered_at,
+        cancelledAt: row.cancelled_at,
+      }));
+
+      const last = await scanPagedAssignments(
         supabase,
         settings,
-        {
-          entityType: "marketplace_job",
-          entityId: String(job.id),
-          driverId: String(job.assigned_driver_id),
-          status: String(job.status),
-          driverAcceptedAt: job.driver_accepted_at
-            ? String(job.driver_accepted_at)
-            : null,
-          pickedUpAt: null,
-          deliveredAt: null,
-          cancelledAt: null,
-          alreadyReassigned: false,
-        },
+        entityType,
+        mapped,
         nowMs,
         origin,
-        counters
+        counters,
+        startedMs,
+        budgetMs
       );
+      if (last) await saveScanCursor(supabase, entityType, last);
     }
   } finally {
     await releaseCronJobLock(supabase, "driver_integrity_scan", lockedBy);

@@ -13,4 +13,5 @@ export * from "./assignmentOwnership";
 export * from "./voiceContact";
 export * from "./schedulerCadence";
 export * from "./reassignmentExclusions";
+export * from "./scanCursor";
 export * from "./timestampGuards";

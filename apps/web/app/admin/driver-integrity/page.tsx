@@ -42,6 +42,10 @@ function errorMessage(t: (s: string) => string, code: string): string {
     invalid_threshold: t("Invalid threshold"),
     contact_disabled: t("Contact driver is disabled"),
     invalid_transition: t("Invalid status"),
+    voice_failed: t("Unable to start the masked call"),
+    proxy_unavailable: t("Unable to start the masked call"),
+    admin_phone_unavailable: t("Unable to start the masked call"),
+    driver_phone_unavailable: t("Unable to start the masked call"),
   };
   return map[code] ?? t("Unable to complete this action");
 }
@@ -228,11 +232,18 @@ function DriverIntegrityInner() {
       setError(errorMessage(t, String(json.error ?? "")));
       return;
     }
-    setNotice(
-      contactChannel === "voice"
-        ? t("Masked voice contact recorded. Driver phone is never shown.")
-        : t("Saved")
-    );
+    if (contactChannel === "voice") {
+      const proxy = String(json.proxy_number ?? "").trim();
+      if (proxy) {
+        window.location.href = `tel:${proxy}`;
+        setNotice(t("Dial the masked MMD number now. The driver phone is never shown."));
+      } else {
+        setError(errorMessage(t, "voice_failed"));
+        return;
+      }
+    } else {
+      setNotice(t("Saved"));
+    }
     setContactDriverId("");
     setContactReason("");
     setContactIncidentId("");
@@ -258,7 +269,13 @@ function DriverIntegrityInner() {
       setError(errorMessage(t, String(json.error ?? "")));
       return;
     }
-    setNotice(t("Masked voice contact recorded. Driver phone is never shown."));
+    const proxy = String(json.proxy_number ?? "").trim();
+    if (!proxy) {
+      setError(errorMessage(t, String(json.error ?? "voice_failed")));
+      return;
+    }
+    window.location.href = `tel:${proxy}`;
+    setNotice(t("Dial the masked MMD number now. The driver phone is never shown."));
     await load();
   }
 
