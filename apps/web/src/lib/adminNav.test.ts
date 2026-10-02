@@ -225,6 +225,17 @@ test("hub Minimum Pay link stays aligned with sidebar", () => {
   );
 });
 
+test("Driver Integrity sits in Safety with dedicated permission", () => {
+  const safety = ADMIN_NAV_GROUPS.find((g) => g.id === "safety");
+  assert.ok(safety);
+  const item = safety!.items.find((i) => i.href === "/admin/driver-integrity");
+  assert.ok(item);
+  assert.equal(item!.permission, "driver_integrity.read");
+  assert.equal(navHrefs("super_admin", true).includes("/admin/driver-integrity"), true);
+  assert.equal(navHrefs("operations_admin", false).includes("/admin/driver-integrity"), true);
+  assert.equal(navHrefs("finance_admin", false).includes("/admin/driver-integrity"), false);
+});
+
 test("Taxi Monitoring appears in Launch for founder", () => {
   const hrefs = navHrefs("super_admin", true);
   assert.equal(hrefs.includes("/admin/taxi-monitoring"), true);

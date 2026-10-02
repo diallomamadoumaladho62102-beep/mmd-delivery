@@ -247,6 +247,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         permission: "taxi_drivers.read",
       },
       { href: "/admin/audit", label: "Audit", permission: "audit.read" },
+      {
+        href: "/admin/driver-integrity",
+        label: "Driver Integrity",
+        permission: "driver_integrity.read",
+      },
     ],
   },
   {

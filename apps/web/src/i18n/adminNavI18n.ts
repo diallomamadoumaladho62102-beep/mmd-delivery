@@ -35,6 +35,7 @@ const NAV: Record<string, Record<Exclude<WebLocale, "en">, string>> = {
   "Driver Vehicles": { fr: "Véhicules chauffeurs", es: "Vehículos de conductores", ar: "مركبات السائقين", zh: "司机车辆", ff: "Otooji dogooɓe" },
   "Taxi Driver Quality": { fr: "Qualité chauffeurs taxi", es: "Calidad conductores taxi", ar: "جودة سائقي التاكسي", zh: "出租车司机质量", ff: "Kalite dogooɓe taksi" },
   "Driver Identity": { fr: "Identité chauffeur", es: "Identidad del conductor", ar: "هوية السائق", zh: "司机身份", ff: "Neɗɗankaagal dogoowo" },
+  "Driver Integrity": { fr: "Intégrité chauffeur", es: "Integridad del conductor", ar: "نزاهة السائق", zh: "司机诚信", ff: "Laaɓal dogoowo" },
   "Stripe Identity": { fr: "Stripe Identity", es: "Stripe Identity", ar: "Stripe Identity", zh: "Stripe Identity", ff: "Stripe Identity" },
   Restaurants: { fr: "Restaurants", es: "Restaurantes", ar: "المطاعم", zh: "餐厅", ff: "Restoraŋji" },
   "Restaurant Automation": { fr: "Automatisation restaurant", es: "Automatización restaurante", ar: "أتمتة المطعم", zh: "餐厅自动化", ff: "Otomatisaasiyoŋ restoraŋ" },

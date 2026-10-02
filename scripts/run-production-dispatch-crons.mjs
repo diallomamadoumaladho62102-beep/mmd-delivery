@@ -21,7 +21,7 @@ const cronPaths = [
   "/api/cron/retry-delivery-request-dispatch",
   "/api/cron/taxi-scheduled-dispatch",
   "/api/cron/taxi-active-ride-compliance",
-  // process-finance moved to production-finance-cron.yml (hourly) to cut Hobby Fluid CPU.
+  "/api/cron/driver-integrity",
 ];
 
 function fail(message) {

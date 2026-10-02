@@ -677,6 +677,30 @@ export const PUSH_CATALOG = {
     { title: "MMD+ 已取消", body: "您的 MMD+ 订阅已取消。如适用，当前周期结束前仍可使用。" },
     { title: "MMD+ haaltinaama", body: "Abonma MMD+ maa haaltinaama. A moofta naatgol haa joofirde waktu oo so woodi." },
   ),
+  driver_integrity_warning: L(
+    { title: "Delivery update", body: "We have not detected progress on this delivery. If you are having a problem, please report it." },
+    { title: "Mise à jour de livraison", body: "Nous n’avons détecté aucune progression sur cette livraison. Si vous rencontrez un problème, veuillez le signaler." },
+    { title: "Actualización de entrega", body: "No hemos detectado progreso en esta entrega. Si tienes un problema, infórmalo." },
+    { title: "تحديث التوصيل", body: "لم نرصد أي تقدم في هذا التوصيل. إذا واجهت مشكلة، يرجى الإبلاغ عنها." },
+    { title: "配送更新", body: "我们尚未检测到此配送的进展。如遇问题，请报告。" },
+    { title: "Kesɗitinal neldugol", body: "Min njiyaani yahdu e ndee neldugol. So a heɓii caɗeele, janghin ɗum." },
+  ),
+  driver_integrity_final_warning: L(
+    { title: "Delivery update", body: "We still have not detected progress. This delivery may be reassigned if no progress or valid reason is recorded." },
+    { title: "Mise à jour de livraison", body: "Nous n’avons toujours pas détecté de progression. La livraison peut être réattribuée si aucune progression ou raison valable n’est enregistrée." },
+    { title: "Actualización de entrega", body: "Aún no hemos detectado progreso. Esta entrega puede reasignarse si no se registra progreso o un motivo válido." },
+    { title: "تحديث التوصيل", body: "ما زلنا لم نرصد أي تقدم. قد تُعاد إسناد هذه التوصيلة إذا لم يُسجَّل تقدم أو سبب وجيه." },
+    { title: "配送更新", body: "仍未检测到进展。若未记录进展或有效原因，此配送可能会被改派。" },
+    { title: "Kesɗitinal neldugol", body: "Min njiyaani yahdu haa jooni. Ndee neldugol waawi rokkeede woɗɗo so alaa yahdu walla daliilu moƴƴo." },
+  ),
+  driver_integrity_admin_contact: L(
+    { title: "Message from MMD", body: "Please open the app. Support needs to reach you about a current delivery." },
+    { title: "Message de MMD", body: "Veuillez ouvrir l’application. Le support doit vous joindre au sujet d’une livraison en cours." },
+    { title: "Mensaje de MMD", body: "Abre la aplicación. Soporte necesita contactarte por una entrega en curso." },
+    { title: "رسالة من MMD", body: "يرجى فتح التطبيق. يحتاج الدعم إلى التواصل معك بشأن توصيل جارٍ." },
+    { title: "来自 MMD 的消息", body: "请打开应用。客服需要就当前配送与您联系。" },
+    { title: "Ɓataku MMD", body: "Uddit jaaɓnirgal. Support ina haani haalde e maa baɗte neldugol wonaande." },
+  ),
 } as const;
 
 export type PushCopyKey = keyof typeof PUSH_CATALOG;
