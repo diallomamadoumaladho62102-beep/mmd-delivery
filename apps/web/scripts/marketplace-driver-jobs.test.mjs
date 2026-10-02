@@ -16,6 +16,8 @@ const service = fs.readFileSync(
 assert.match(service, /dispatch_ready/);
 assert.match(service, /assertApprovedDriver/);
 assert.match(service, /marketplace_available/);
+assert.match(service, /driver_integrity_reassignment_exclusions/);
+assert.match(service, /driver_excluded/);
 
 const route = fs.readFileSync(
   path.join(repoRoot, "apps/web/app/api/driver/marketplace-jobs/route.ts"),

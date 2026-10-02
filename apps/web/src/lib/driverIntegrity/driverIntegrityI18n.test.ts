@@ -33,6 +33,10 @@ const REQUIRED = [
   "Monitoring enabled",
   "Warning notifications enabled",
   "Automatic reassignment enabled",
+  "Start masked call",
+  "Wait reasons",
+  "Assignment history",
+  "Voice",
 ];
 
 test("admin page uses useAdminT and has no hardcoded warning copy", () => {

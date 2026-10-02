@@ -1,6 +1,7 @@
 export const DRIVER_INTEGRITY_ENTITY_TYPES = [
   "order",
   "delivery_request",
+  "marketplace_job",
 ] as const;
 export type DriverIntegrityEntityType =
   (typeof DRIVER_INTEGRITY_ENTITY_TYPES)[number];

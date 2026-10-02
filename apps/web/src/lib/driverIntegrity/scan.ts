@@ -140,6 +140,9 @@ async function maybeRedispatch(
       process.env.DISPATCH_INTERNAL_SECRET || process.env.CRON_SECRET || "",
   };
   if (!headers["x-dispatch-internal-secret"]) return;
+  if (entityType === "marketplace_job") {
+    return;
+  }
   if (entityType === "order") {
     await fetch(`${origin}/api/dispatch/smart`, {
       method: "POST",
@@ -219,31 +222,60 @@ async function scanEntity(
     assignment.driverId
   );
 
-  const { data: entityRow } = assignment.entityType === "order"
-    ? await supabase
-        .from("orders")
-        .select(
-          "driver_arrived_at,wait_timer_started_at,picked_up_at,delivered_at,cancelled_at,status,driver_id"
-        )
-        .eq("id", assignment.entityId)
-        .maybeSingle()
-    : await supabase
-        .from("delivery_requests")
-        .select(
-          "driver_arrived_at,wait_timer_started_at,picked_up_at,delivered_at,cancelled_at,status,driver_id"
-        )
-        .eq("id", assignment.entityId)
-        .maybeSingle();
+  const { data: entityRow } =
+    assignment.entityType === "marketplace_job"
+      ? await supabase
+          .from("marketplace_delivery_jobs")
+          .select("status,assigned_driver_id,driver_accepted_at,updated_at")
+          .eq("id", assignment.entityId)
+          .maybeSingle()
+      : assignment.entityType === "order"
+        ? await supabase
+            .from("orders")
+            .select(
+              "driver_arrived_at,wait_timer_started_at,picked_up_at,delivered_at,cancelled_at,status,driver_id"
+            )
+            .eq("id", assignment.entityId)
+            .maybeSingle()
+        : await supabase
+            .from("delivery_requests")
+            .select(
+              "driver_arrived_at,wait_timer_started_at,picked_up_at,delivered_at,cancelled_at,status,driver_id"
+            )
+            .eq("id", assignment.entityId)
+            .maybeSingle();
 
   const row = (entityRow ?? {}) as Record<string, unknown>;
+  const marketplaceStatus = String(row.status ?? assignment.status).toLowerCase();
+  const marketplacePickedUp =
+    assignment.entityType === "marketplace_job" &&
+    (marketplaceStatus === "picked_up" || marketplaceStatus === "delivered")
+      ? String(row.updated_at ?? "")
+      : null;
+  const marketplaceDelivered =
+    assignment.entityType === "marketplace_job" && marketplaceStatus === "delivered"
+      ? String(row.updated_at ?? "")
+      : null;
+  const marketplaceCancelled =
+    assignment.entityType === "marketplace_job" &&
+    (marketplaceStatus === "cancelled" || marketplaceStatus === "canceled")
+      ? String(row.updated_at ?? "")
+      : null;
+
   const signals: ProgressSignals = {
     driverAcceptedAtMs: acceptedMs,
     nowMs,
     arrivedAtMs: asIsoMs(row.driver_arrived_at),
     waitTimerStartedAtMs: asIsoMs(row.wait_timer_started_at),
-    pickedUpAtMs: asIsoMs(row.picked_up_at ?? assignment.pickedUpAt),
-    deliveredAtMs: asIsoMs(row.delivered_at ?? assignment.deliveredAt),
-    cancelledAtMs: asIsoMs(row.cancelled_at ?? assignment.cancelledAt),
+    pickedUpAtMs: asIsoMs(
+      row.picked_up_at ?? assignment.pickedUpAt ?? marketplacePickedUp
+    ),
+    deliveredAtMs: asIsoMs(
+      row.delivered_at ?? assignment.deliveredAt ?? marketplaceDelivered
+    ),
+    cancelledAtMs: asIsoMs(
+      row.cancelled_at ?? assignment.cancelledAt ?? marketplaceCancelled
+    ),
     locationUpdatedAtMs: currentGps?.atMs ?? null,
     metersFromAccept,
     gpsAvailable,
@@ -254,10 +286,21 @@ async function scanEntity(
   const liveAssignment: AssignmentSnapshot = {
     ...assignment,
     status: String(row.status ?? assignment.status),
-    driverId: String(row.driver_id ?? assignment.driverId),
-    pickedUpAt: (row.picked_up_at as string | null) ?? assignment.pickedUpAt,
-    deliveredAt: (row.delivered_at as string | null) ?? assignment.deliveredAt,
-    cancelledAt: (row.cancelled_at as string | null) ?? assignment.cancelledAt,
+    driverId: String(
+      row.assigned_driver_id ?? row.driver_id ?? assignment.driverId
+    ),
+    pickedUpAt:
+      (row.picked_up_at as string | null) ??
+      assignment.pickedUpAt ??
+      marketplacePickedUp,
+    deliveredAt:
+      (row.delivered_at as string | null) ??
+      assignment.deliveredAt ??
+      marketplaceDelivered,
+    cancelledAt:
+      (row.cancelled_at as string | null) ??
+      assignment.cancelledAt ??
+      marketplaceCancelled,
     alreadyReassigned: Boolean(incident?.reassigned_at),
   };
 
@@ -434,7 +477,9 @@ async function scanEntity(
     const rpc =
       assignment.entityType === "order"
         ? "driver_integrity_reassign_order"
-        : "driver_integrity_reassign_delivery_request";
+        : assignment.entityType === "marketplace_job"
+          ? "driver_integrity_reassign_marketplace_job"
+          : "driver_integrity_reassign_delivery_request";
     const args =
       assignment.entityType === "order"
         ? {
@@ -442,11 +487,17 @@ async function scanEntity(
             p_expected_driver_id: assignment.driverId,
             p_incident_id: upserted.id,
           }
-        : {
-            p_request_id: assignment.entityId,
-            p_expected_driver_id: assignment.driverId,
-            p_incident_id: upserted.id,
-          };
+        : assignment.entityType === "marketplace_job"
+          ? {
+              p_job_id: assignment.entityId,
+              p_expected_driver_id: assignment.driverId,
+              p_incident_id: upserted.id,
+            }
+          : {
+              p_request_id: assignment.entityId,
+              p_expected_driver_id: assignment.driverId,
+              p_incident_id: upserted.id,
+            };
     const { data, error } = await supabase.rpc(rpc, args);
     const payload = data as Record<string, unknown> | null;
     if (error || payload?.ok !== true) {
@@ -588,6 +639,37 @@ export async function runDriverIntegrityScan(
           pickedUpAt: request.picked_up_at ? String(request.picked_up_at) : null,
           deliveredAt: request.delivered_at ? String(request.delivered_at) : null,
           cancelledAt: request.cancelled_at ? String(request.cancelled_at) : null,
+          alreadyReassigned: false,
+        },
+        nowMs,
+        origin,
+        counters
+      );
+    }
+
+    const { data: jobs } = await supabase
+      .from("marketplace_delivery_jobs")
+      .select("id,status,assigned_driver_id,driver_accepted_at")
+      .not("assigned_driver_id", "is", null)
+      .not("driver_accepted_at", "is", null)
+      .eq("status", "dispatch_assigned")
+      .limit(50);
+
+    for (const job of jobs ?? []) {
+      await scanEntity(
+        supabase,
+        settings,
+        {
+          entityType: "marketplace_job",
+          entityId: String(job.id),
+          driverId: String(job.assigned_driver_id),
+          status: String(job.status),
+          driverAcceptedAt: job.driver_accepted_at
+            ? String(job.driver_accepted_at)
+            : null,
+          pickedUpAt: null,
+          deliveredAt: null,
+          cancelledAt: null,
           alreadyReassigned: false,
         },
         nowMs,

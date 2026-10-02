@@ -109,6 +109,15 @@ export async function listMarketplaceJobsForDriver(
 
   const countryCode = scopeCheck.countryCode?.trim().toUpperCase() ?? null;
 
+  const { data: excludedRows } = await supabaseAdmin
+    .from("driver_integrity_reassignment_exclusions")
+    .select("entity_id")
+    .eq("entity_type", "marketplace_job")
+    .eq("driver_id", driverUserId);
+  const excludedIds = new Set(
+    (excludedRows ?? []).map((row) => String(row.entity_id))
+  );
+
   const { data: availableRows, error: availableError } = await supabaseAdmin
     .from("marketplace_delivery_jobs")
     .select(JOB_SELECT)
@@ -140,7 +149,9 @@ export async function listMarketplaceJobsForDriver(
 
   return {
     ok: true,
-    available: filterCountry((availableRows ?? []) as Record<string, unknown>[]),
+    available: filterCountry((availableRows ?? []) as Record<string, unknown>[]).filter(
+      (job) => !excludedIds.has(job.id)
+    ),
     mine: filterCountry((mineRows ?? []) as Record<string, unknown>[]),
   };
 }
@@ -187,6 +198,17 @@ export async function acceptMarketplaceJobForDriver(
   const scopeCheck = await assertDriverMarketplaceEnabled(supabaseAdmin, params.driverUserId);
   if (scopeCheck.ok === false) {
     return { ok: false as const, error: scopeCheck.error };
+  }
+
+  const { data: excluded } = await supabaseAdmin
+    .from("driver_integrity_reassignment_exclusions")
+    .select("id")
+    .eq("entity_type", "marketplace_job")
+    .eq("entity_id", params.jobId)
+    .eq("driver_id", params.driverUserId)
+    .maybeSingle();
+  if (excluded) {
+    return { ok: false, error: "driver_excluded" };
   }
 
   const now = new Date().toISOString();

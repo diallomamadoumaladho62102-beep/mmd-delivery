@@ -1,0 +1,42 @@
+name: Production driver integrity cron
+
+on:
+  schedule:
+    # Infrastructure cadence only. Business thresholds stay in Admin settings.
+    - cron: "*/2 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: production-driver-integrity-cron
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  driver-integrity-cron:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
+      - name: Validate cron configuration
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::Missing GitHub repository secret CRON_SECRET."
+            exit 1
+          fi
+          echo "CRON_SECRET is configured (length ${#CRON_SECRET})."
+          echo "SITE_URL=${SITE_URL}"
+
+      - name: Run driver integrity scan
+        run: node scripts/run-production-driver-integrity-cron.mjs

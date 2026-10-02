@@ -49,6 +49,8 @@ import {
 } from "../lib/driverMarketplaceApi";
 import { applyMarketplaceCoordsToOrder } from "../lib/marketplaceDriverNavigation";
 import { DriverWaitTimerPanel } from "../components/driver/DriverWaitTimerPanel";
+import { DriverIntegrityReportPanel } from "../components/driver/DriverIntegrityReportPanel";
+import { resolveIntegrityEntityType } from "../lib/driverIntegrityApi";
 import { DriverBrandLoadingState } from "../components/driver/DriverBrandLoadingState";
 import { OtpDigitInput } from "../components/shared/OtpDigitInput";
 import {
@@ -3675,6 +3677,16 @@ export function DriverOrderDetailsScreen() {
             onDepositAuthorized={(proofPhotoUrl) => {
               if (proofPhotoUrl) setProofPhotoUri(proofPhotoUrl);
             }}
+          />
+        ) : null}
+
+        {order?.id && isAssignedDriver && !["delivered", "cancelled", "canceled"].includes(String(order.status).toLowerCase()) ? (
+          <DriverIntegrityReportPanel
+            entityType={resolveIntegrityEntityType({
+              sourceTable: getOrderSourceTable(order),
+              kind: String(order.kind ?? ""),
+            })}
+            entityId={order.id}
           />
         ) : null}
 

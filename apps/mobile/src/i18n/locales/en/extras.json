@@ -1692,6 +1692,43 @@
       "confirmDelivered": "Confirm marketplace delivered",
       "updateFailed": "Unable to update marketplace delivery."
     },
+    "integrity": {
+      "title": "Report a wait or dispute",
+      "hint": "Choose a reason from the official list. You cannot change trip times or earnings.",
+      "waitSection": "Wait reason",
+      "disputeSection": "Open a dispute",
+      "explanation": "Optional explanation",
+      "submitWait": "Submit wait reason",
+      "submitDispute": "Submit dispute",
+      "retry": "Try again",
+      "networkError": "Unstable connection. Try again.",
+      "unauthorized": "You cannot report this trip.",
+      "alreadySubmittedTitle": "Already submitted",
+      "waitSubmittedTitle": "Wait reason sent",
+      "waitSubmittedBody": "Your reason was recorded. Trip times were not changed.",
+      "disputeSubmittedTitle": "Dispute opened",
+      "disputeSubmittedBody": "Your dispute was recorded. Earnings and trip times were not changed.",
+      "incidentClosed": "This trip review is already closed.",
+      "currentWait": "Current wait reason: {{reason}}",
+      "currentDispute": "Dispute on file: {{reason}}",
+      "wait": {
+        "restaurant_delay": "Restaurant delay",
+        "order_issue": "Order issue",
+        "traffic": "Traffic",
+        "gps_issue": "GPS issue",
+        "technical_issue": "Technical issue",
+        "vehicle_issue": "Vehicle issue",
+        "safety_issue": "Safety issue",
+        "other": "Other"
+      },
+      "dispute": {
+        "restaurant": "Restaurant",
+        "wait": "Wait",
+        "gps": "GPS",
+        "technical": "Technical",
+        "other": "Other"
+      }
+    },
     "home": {
       "kind": {
         "marketplace": "Marketplace delivery",
