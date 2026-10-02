@@ -13,7 +13,7 @@ overrides:
   tar: '>=7.5.21'
   minimatch: '>=3.1.3'
   shell-quote: '>=1.9.0'
-  node-forge: '>=1.4.0'
+  node-forge: file:vendor/node-forge
   picomatch: '>=2.3.2'
   '@xmldom/xmldom': 0.8.15
   fast-uri: '>=4.1.4'
@@ -4939,8 +4939,8 @@ packages:
       encoding:
         optional: true
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@file:vendor/node-forge:
+    resolution: {directory: vendor/node-forge, type: directory}
     engines: {node: '>= 6.13.0'}
 
   node-int64@0.4.0:
@@ -6991,7 +6991,7 @@ snapshots:
       glob: 13.0.6
       lan-network: 0.2.1
       minimatch: 9.0.9
-      node-forge: 1.4.0
+      node-forge: file:vendor/node-forge
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.4
@@ -7066,7 +7066,7 @@ snapshots:
       glob: 13.0.6
       lan-network: 0.2.1
       minimatch: 10.2.5
-      node-forge: 1.4.0
+      node-forge: file:vendor/node-forge
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.4
@@ -7102,7 +7102,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: 1.4.0
+      node-forge: file:vendor/node-forge
 
   '@expo/config-plugins@54.0.4':
     dependencies:
@@ -11249,7 +11249,7 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  node-forge@1.4.0: {}
+  node-forge@file:vendor/node-forge: {}
 
   node-int64@0.4.0: {}
 

@@ -46,6 +46,7 @@ jobs:
           config: |
             paths-ignore:
               - '**/node_modules/**'
+              - 'vendor/**'
               - '**/.next/**'
               - '**/dist/**'
               - '**/coverage/**'
