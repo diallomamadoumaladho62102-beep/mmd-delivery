@@ -175,9 +175,12 @@ export async function approveFleetAllocationTransfer(
     };
   }
 
-  const failure = transfer.ok
-    ? transfer.reason
-    : transfer.error;
+  const failure =
+    transfer.ok === false
+      ? transfer.error
+      : transfer.skipped
+        ? transfer.reason
+        : "approval_failed";
   await supabase
     .from("minimum_pay_adjustments")
     .update({ status: "computed", updated_at: new Date().toISOString() })

@@ -65,17 +65,18 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    if (!result.ok) {
+    if (result.ok === false) {
+      const error = result.error;
       const status =
-        result.error === "adjustment_not_found"
+        error === "adjustment_not_found"
           ? 404
-          : result.error === "not_fleet_allocation" ||
-              result.error === "not_pending_approval" ||
-              result.error === "shadow_adjustment" ||
-              result.error === "zero_adjustment"
+          : error === "not_fleet_allocation" ||
+              error === "not_pending_approval" ||
+              error === "shadow_adjustment" ||
+              error === "zero_adjustment"
             ? 400
-            : result.error === "transfer_already_pending" ||
-                result.error === "approval_conflict"
+            : error === "transfer_already_pending" ||
+                error === "approval_conflict"
               ? 409
               : 400;
       return json(result, status);

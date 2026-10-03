@@ -162,7 +162,7 @@ test("TEST 3 authorized fleet approval can execute the existing Stripe path", as
   stripe.transfers.create = (async () => {
     stripeCalls += 1;
     return { id: "tr_fleet_manual_1" };
-  }) as typeof stripe.transfers.create;
+  }) as unknown as typeof stripe.transfers.create;
 
   const supabase = {
     from(table: string) {
@@ -321,7 +321,7 @@ test("TEST 5 approving the same fleet allocation twice does not create two Strip
   stripe.transfers.create = (async () => {
     stripeCalls += 1;
     return { id: "tr_should_not_run" };
-  }) as typeof stripe.transfers.create;
+  }) as unknown as typeof stripe.transfers.create;
 
   const supabase = {
     from(table: string) {
