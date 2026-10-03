@@ -54,6 +54,7 @@ export async function syncLinkedOrderAfterPickup(params: {
 
   const nowIso = new Date().toISOString();
   const updatePayload: Record<string, unknown> = {
+    status: "picked_up",
     picked_up_at: nowIso,
     updated_at: nowIso,
   };
@@ -124,6 +125,14 @@ export function mapDeliveryRpcError(errorCode: string): { status: number; messag
       return { status: 409, message: "Request status changed" };
     case "request_not_found":
       return { status: 404, message: "Delivery request not found" };
+    case "offer_required":
+    case "offer_not_found":
+    case "offer_not_available":
+      return { status: 409, message: "A pending offer is required to accept" };
+    case "mission_capacity_reached":
+      return { status: 409, message: "Driver mission capacity reached" };
+    case "package_service_disabled":
+      return { status: 403, message: "Package service is disabled" };
     default:
       return { status: 400, message: errorCode || "Request failed" };
   }

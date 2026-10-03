@@ -18,6 +18,7 @@ import { filterDeliveryCandidatesByCapacityAndRoute } from "@/lib/driverMissionC
 import { pushText } from "@/lib/pushCopy";
 import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
 import { mergeReassignmentExclusions } from "@/lib/driverIntegrity/reassignmentExclusions";
+import { isLiveVisibleTrip } from "@/lib/tripVisibility";
 
 const DISPATCH_WAVES = DELIVERY_REQUEST_DISPATCH_WAVES;
 
@@ -127,7 +128,7 @@ export async function runDeliveryRequestDispatch(params: {
   const { data: request, error: requestError } = await supabase
     .from("delivery_requests")
     .select(
-      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,created_by,client_user_id,dispatch_wave_1_started_at",
+      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,created_by,client_user_id,dispatch_wave_1_started_at,is_test,archived_at,hidden_from_user",
     )
     .eq("id", deliveryRequestId)
     .maybeSingle();
@@ -149,6 +150,17 @@ export async function runDeliveryRequestDispatch(params: {
       notified: 0,
       candidates: 0,
       error: "Delivery request not found",
+    };
+  }
+
+  if (!isLiveVisibleTrip(request)) {
+    return {
+      ok: false,
+      ...baseResult,
+      notified: 0,
+      candidates: 0,
+      message: "Delivery request is not a live production trip",
+      error: "test_or_archived_request",
     };
   }
 

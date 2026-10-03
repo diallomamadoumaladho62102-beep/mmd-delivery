@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  canAutomaticallyTransferMinimumPayKind,
   canRecordMinimumPayEvents,
   canTransferMinimumPayAdjustments,
   engineHasStarted,
+  fleetAllocationRequiresManualApproval,
   isTimestampOnOrAfterStart,
   settingsAreCompleteForPeriods,
 } from "./engineGate";
@@ -75,6 +77,10 @@ test("active + transfers_enabled can transfer after start", () => {
   const start = "2000-06-01T00:00:00.000Z";
   const cfg = settings({ mode: "active", engineStartAt: start, transfersEnabled: true });
   assert.equal(canTransferMinimumPayAdjustments(cfg, Date.parse(start) + 1000), true);
+  assert.equal(canAutomaticallyTransferMinimumPayKind("individual"), true);
+  assert.equal(canAutomaticallyTransferMinimumPayKind("fleet_allocation"), false);
+  assert.equal(fleetAllocationRequiresManualApproval("fleet_allocation"), true);
+  assert.equal(fleetAllocationRequiresManualApproval("individual"), false);
 });
 
 test("accept after engine_start records; accept before does not", () => {

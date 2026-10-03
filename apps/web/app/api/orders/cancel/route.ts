@@ -842,7 +842,8 @@ export async function POST(req: NextRequest) {
         return json({ error: "Forbidden: not assigned driver" }, 403);
       }
 
-      const driverCanCancel = status === "accepted" || status === "ready";
+      const driverCanCancel =
+        status === "accepted" || status === "ready" || status === "dispatched";
 
       if (!driverCanCancel) {
         return json(

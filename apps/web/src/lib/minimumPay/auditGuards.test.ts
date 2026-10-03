@@ -22,6 +22,10 @@ const periodsApi = readFileSync(
   join(webRoot, "app/api/admin/minimum-pay/periods/route.ts"),
   "utf8"
 );
+const adjustmentsApi = readFileSync(
+  join(webRoot, "app/api/admin/minimum-pay/adjustments/route.ts"),
+  "utf8"
+);
 const page = readFileSync(join(webRoot, "app/admin/minimum-pay/page.tsx"), "utf8");
 
 test("trip interval uses driver_accepted_at never restaurant accepted_at", () => {
@@ -61,7 +65,8 @@ test("SHADOW path never reaches stripe.transfers.create", () => {
   const gateBeforeStripe = transfer.indexOf("canTransferMinimumPayAdjustments");
   const stripeCall = transfer.indexOf("stripe.transfers.create");
   assert.ok(gateBeforeStripe >= 0 && stripeCall > gateBeforeStripe);
-  assert.match(closePay, /if \(mode === "shadow" \|\| !transferAllowed/);
+  assert.match(closePay, /mode !== "shadow"/);
+  assert.match(closePay, /if \(!automaticTransfer\) continue/);
 });
 
 test("duplicate reconciliation cannot rewrite a transferred adjustment", () => {
@@ -74,6 +79,8 @@ test("unauthorized Admin cannot change settings or reconcile", () => {
   assert.match(settingsApi, /super_admin_required/);
   assert.match(rulesApi, /assertStaffPermission\("minimum_pay.manage"/);
   assert.match(periodsApi, /assertStaffPermission\("minimum_pay.manage"/);
+  assert.match(adjustmentsApi, /assertStaffPermission\("minimum_pay.manage"/);
+  assert.match(adjustmentsApi, /approveFleetAllocationTransfer/);
   assert.match(page, /requiredPermission="minimum_pay.read"/);
   assert.doesNotMatch(settingsApi, /raw:\s*data/);
 });

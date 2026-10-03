@@ -14,6 +14,7 @@ import { filterDeliveryCandidatesByCapacityAndRoute } from "@/lib/driverMissionC
 import { pushText } from "@/lib/pushCopy";
 import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
 import { mergeReassignmentExclusions } from "@/lib/driverIntegrity/reassignmentExclusions";
+import { isLiveVisibleTrip } from "@/lib/tripVisibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -207,13 +208,16 @@ export async function POST(req: NextRequest) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select(
-        "id,kind,status,driver_id,restaurant_id,payment_status,restaurant_name,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,currency,dropoff_lat,dropoff_lng"
+        "id,kind,status,driver_id,restaurant_id,payment_status,restaurant_name,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,currency,dropoff_lat,dropoff_lng,is_test,archived_at,hidden_from_user"
       )
       .eq("id", orderId)
       .maybeSingle();
 
     if (orderError) return json({ error: orderError.message }, 500);
     if (!order) return json({ error: "Order not found" }, 404);
+    if (!isLiveVisibleTrip(order)) {
+      return json({ error: "test_or_archived_order" }, 404);
+    }
 
     await mergeReassignmentExclusions(supabase, "order", orderId, excludeDriverIds);
 

@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
-import { canTransferMinimumPayAdjustments } from "./engineGate";
+import {
+  canTransferMinimumPayAdjustments,
+  fleetAllocationRequiresManualApproval,
+} from "./engineGate";
 import { loadMinimumPaySettings } from "./settingsStore";
 
 export type NycMprTransferResult =
@@ -22,8 +25,22 @@ export async function executeNycMprAdjustmentTransfer(
     idempotencyKey: string;
     destinationAccountId: string;
     metadata: Record<string, string>;
+    kind?: string;
+    manualFleetApproval?: boolean;
   }
 ): Promise<NycMprTransferResult> {
+  const kind = String(input.kind ?? input.metadata.kind ?? "").trim();
+  if (
+    fleetAllocationRequiresManualApproval(kind) &&
+    input.manualFleetApproval !== true
+  ) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: "fleet_allocation_requires_manual_approval",
+    };
+  }
+
   const settings = await loadMinimumPaySettings(supabase);
   if (!settings) return { ok: true, skipped: true, reason: "settings_missing" };
   if (!canTransferMinimumPayAdjustments(settings, Date.now())) {

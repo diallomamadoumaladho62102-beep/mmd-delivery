@@ -5,6 +5,9 @@ import {
   mapDeliveryRpcError,
   type DeliveryRequestRpcResult,
 } from "@/lib/deliveryRequestDriver";
+import { getSupabaseAdminClient } from "@/lib/driverAcceptApi";
+import { expirePendingDeliveryRequestOffers } from "@/lib/expirePendingDriverOffers";
+import { triggerDeliveryRequestDispatch } from "@/lib/triggerDeliveryRequestDispatch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,7 +65,20 @@ export async function POST(req: NextRequest) {
       return json({ error: mapped.message }, mapped.status);
     }
 
-    return json({ ok: true, delivery_request_id: requestId, result });
+    const supabaseAdmin = getSupabaseAdminClient();
+    await expirePendingDeliveryRequestOffers(supabaseAdmin, requestId);
+    const smartDispatch = await triggerDeliveryRequestDispatch({
+      supabase: supabaseAdmin,
+      deliveryRequestId: requestId,
+    });
+
+    return json({
+      ok: true,
+      delivery_request_id: requestId,
+      result,
+      reassigned: true,
+      smartDispatch,
+    });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
     return json({ error: message }, 500);
