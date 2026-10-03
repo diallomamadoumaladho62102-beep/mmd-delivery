@@ -61,6 +61,18 @@ export function getDeliveryRequestOfferId(body: Record<string, unknown>): string
   );
 }
 
+export function getOptionalDeliveryRequestOfferId(
+  body: Record<string, unknown>,
+): string | null {
+  try {
+    return getDeliveryRequestOfferId(body);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "";
+    if (message.startsWith("Missing ")) return null;
+    throw e;
+  }
+}
+
 function getSupabaseUserClient(token: string): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);

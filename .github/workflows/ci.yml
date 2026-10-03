@@ -44,6 +44,9 @@ jobs:
       - name: Prove node-forge GHSA-86w9-cpqp-85rv vendor patch
         run: node scripts/node-forge-ghsa-86w9.regression.test.mjs
 
+      - name: Prove braces CVE-2026-93687 vendor patch
+        run: node scripts/braces-cve-2026-93687.regression.test.mjs
+
       - name: Verify Snyk inflight ignore policy scope
         run: node scripts/snyk-inflight-policy.regression.test.mjs
 

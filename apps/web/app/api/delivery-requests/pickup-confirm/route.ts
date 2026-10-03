@@ -8,6 +8,7 @@ import {
 } from "@/lib/deliveryRequestDriver";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
+import { notifyClientDeliveryRequestPickedUp } from "@/lib/clientPushNotifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     const supabaseAdmin = getAdminClient();
     const { data: requestGate, error: requestGateErr } = await supabaseAdmin
       .from("delivery_requests")
-      .select("id,currency,pickup_lat,pickup_lng")
+      .select("id,currency,pickup_lat,pickup_lng,created_by,client_user_id,pickup_address,dropoff_address")
       .eq("id", requestId)
       .maybeSingle();
 
@@ -116,6 +117,22 @@ export async function POST(req: NextRequest) {
       deliveryRequestId: requestId,
       proofPhotoUrl,
     });
+
+    try {
+      await notifyClientDeliveryRequestPickedUp({
+        supabaseAdmin,
+        userIds: [requestGate.client_user_id, requestGate.created_by],
+        deliveryRequestId: requestId,
+        pickupAddress: requestGate.pickup_address,
+        dropoffAddress: requestGate.dropoff_address,
+      });
+    } catch (notifyErr) {
+      console.error("[delivery-requests/pickup-confirm] client notification failed", {
+        delivery_request_id: requestId,
+        message:
+          notifyErr instanceof Error ? notifyErr.message : String(notifyErr),
+      });
+    }
 
     return json({
       ok: true,

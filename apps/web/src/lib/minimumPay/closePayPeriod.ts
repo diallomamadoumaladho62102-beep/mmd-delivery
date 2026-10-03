@@ -4,6 +4,7 @@ import {
   computeStandardMinimumPay,
 } from "./computeStandardMinimumPay";
 import {
+  canAutomaticallyTransferMinimumPayKind,
   canCalculateMinimumPay,
   canTransferMinimumPayAdjustments,
   settingsAreCompleteForPeriods,
@@ -399,10 +400,16 @@ export async function reconcileMinimumPayPeriod(
         (existing.status === "transferred" || existing.status === "transfer_pending");
       if (frozen) continue;
 
+      const automaticTransfer =
+        canAutomaticallyTransferMinimumPayKind(item.kind) &&
+        item.adjustment > 0 &&
+        transferAllowed &&
+        mode !== "shadow";
+
       const status =
         mode === "shadow"
           ? "shadowed"
-          : item.adjustment > 0 && transferAllowed
+          : automaticTransfer
             ? "transfer_pending"
             : "computed";
 
@@ -428,7 +435,7 @@ export async function reconcileMinimumPayPeriod(
         .single();
       if (saveErr) return { ok: false, error: saveErr.message };
 
-      if (mode === "shadow" || !transferAllowed || item.adjustment <= 0) continue;
+      if (!automaticTransfer) continue;
 
       const { data: profile } = await supabase
         .from("driver_profiles")
@@ -443,6 +450,7 @@ export async function reconcileMinimumPayPeriod(
         currency: String(settings.defaultCurrency ?? "").trim(),
         idempotencyKey,
         destinationAccountId: String(profile?.stripe_account_id ?? ""),
+        kind: item.kind,
         metadata: {
           pay_period_id: String(period.id),
           kind: item.kind,

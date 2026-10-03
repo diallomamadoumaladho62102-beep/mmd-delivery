@@ -103,6 +103,7 @@ type Order = {
   dropoff_lng: number | null;
   dropoff_location_id?: string | null;
   source_table?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
+  offer_id?: string | null;
 };
 
 type VerifyKind = "pickup" | "dropoff";
@@ -620,6 +621,7 @@ function mapDeliveryRequestToOrder(row: any): Order {
     dropoff_lng: toFiniteNumber(row?.dropoff_lng ?? row?.dropoff_lon ?? row?.dropoff_long ?? row?.dropoff_longitude),
     dropoff_location_id: row?.dropoff_location_id ?? null,
     source_table: "delivery_requests",
+    offer_id: row?.offer_id ?? null,
   };
 }
 
@@ -1055,6 +1057,24 @@ export function DriverOrderDetailsScreen() {
 
             if (error) throw error;
             if (data) nextOrder = mapDeliveryRequestToOrder(data);
+
+            if (nextOrder && uid) {
+              const { data: pendingOffer } = await supabase
+                .from("delivery_request_driver_offers")
+                .select("id")
+                .eq("delivery_request_id", orderId)
+                .eq("driver_id", uid)
+                .eq("status", "pending")
+                .gt("expires_at", new Date().toISOString())
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (pendingOffer?.id) {
+                nextOrder = { ...nextOrder, offer_id: String(pendingOffer.id) };
+              } else if (routeParams?.offer_id) {
+                nextOrder = { ...nextOrder, offer_id: String(routeParams.offer_id) };
+              }
+            }
           } else if (sourceTable === "taxi_rides") {
             const { data, error } = await supabase
               .from("taxi_rides")
@@ -1933,8 +1953,30 @@ export function DriverOrderDetailsScreen() {
       setAccepting(true);
 
       if (getOrderSourceTable(order) === "delivery_requests") {
-        const { acceptDeliveryRequest } = await import("../lib/deliveryRequestDriverApi");
-        await acceptDeliveryRequest(order.id);
+        let offerId = String(order.offer_id ?? routeParams?.offer_id ?? "").trim();
+        if (!offerId && myUserId) {
+          const { data: pendingOffer } = await supabase
+            .from("delivery_request_driver_offers")
+            .select("id")
+            .eq("delivery_request_id", order.id)
+            .eq("driver_id", myUserId)
+            .eq("status", "pending")
+            .gt("expires_at", new Date().toISOString())
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          offerId = String(pendingOffer?.id ?? "").trim();
+        }
+        if (!offerId) {
+          throw new Error(
+            t(
+              "driver.orderDetails.offerRequired",
+              "A pending offer is required to accept this delivery.",
+            ),
+          );
+        }
+        const { acceptDeliveryRequestOffer } = await import("../lib/driverOrderDriverApi");
+        await acceptDeliveryRequestOffer(offerId);
       } else if (getOrderSourceTable(order) === "marketplace_delivery_jobs") {
         await acceptDriverMarketplaceJob(order.id);
       } else {

@@ -58,9 +58,9 @@ function clientCanCancelWithFullRefund(status: string) {
   );
 }
 
-/** Driver assigned but not yet in transit pickup/dropoff → cancel, no refund. */
+/** Driver assigned but not yet picked up → cancel, no refund. */
 function clientCanCancelWithoutRefund(status: string) {
-  return status === "accepted";
+  return status === "accepted" || status === "dispatched";
 }
 
 function clientCanCancelStatus(status: string) {
@@ -376,11 +376,37 @@ export async function POST(req: NextRequest) {
             })
             .eq("id", linkedOrderId);
 
+          const samePaymentIntent =
+            String(linkedOrder.stripe_payment_intent_id ?? "").trim() &&
+            String(linkedOrder.stripe_payment_intent_id ?? "").trim() ===
+              String(requestRow.stripe_payment_intent_id ?? "").trim();
+
+          if (
+            refundPolicy === "FULL" &&
+            samePaymentIntent &&
+            stripeRefund &&
+            typeof stripeRefund === "object" &&
+            "refundId" in stripeRefund
+          ) {
+            await supabaseAdmin
+              .from("orders")
+              .update({
+                refund_status: "refunded",
+                stripe_refund_id: String(
+                  (stripeRefund as { refundId?: unknown }).refundId ?? ""
+                ),
+                stripe_refunded_at: canceledAt,
+                updated_at: canceledAt,
+              })
+              .eq("id", linkedOrderId);
+          }
+
           if (
             refundPolicy === "FULL" &&
             normalizeStatus(linkedOrder.payment_status) === "paid" &&
             !linkedOrder.stripe_refund_id &&
-            !linkedOrder.stripe_refunded_at
+            !linkedOrder.stripe_refunded_at &&
+            !samePaymentIntent
           ) {
             try {
               await refundStripePayment({

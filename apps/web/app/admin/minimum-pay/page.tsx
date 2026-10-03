@@ -68,6 +68,20 @@ function errorMessage(t: (s: string) => string, code: string): string {
     invalid_weekday: t("Invalid period start weekday"),
     period_start_weekday_required: t("Period start weekday is required"),
     engine_start_locked: t("Engine start cannot be changed after periods exist"),
+    adjustment_not_found: t("Adjustment not found"),
+    not_fleet_allocation: t("Only fleet allocations can be approved here"),
+    zero_adjustment: t("This fleet allocation has no amount to transfer"),
+    transfer_already_pending: t("This fleet allocation is already pending transfer"),
+    shadow_adjustment: t("Shadow adjustments cannot be transferred"),
+    not_pending_approval: t("This fleet allocation is not pending approval"),
+    approval_conflict: t("This fleet allocation was already claimed"),
+    already_transferred: t("This fleet allocation was already transferred"),
+    transfers_not_enabled: t("Real transfers are not enabled"),
+    connect_account_required: t("Driver Connect account is required"),
+    approval_failed: t("Unable to approve this fleet allocation"),
+    fleet_allocation_requires_manual_approval: t(
+      "Fleet allocation transfers require admin approval."
+    ),
   };
   return map[code] ?? t("Unable to complete this action");
 }
@@ -96,6 +110,22 @@ function kindLabel(t: (s: string) => string, kind: string): string {
   if (kind === "individual") return t("Individual");
   if (kind === "fleet_allocation") return t("Fleet allocation");
   return kind;
+}
+
+function isPendingFleetApproval(row: Record<string, unknown>): boolean {
+  return (
+    String(row.kind) === "fleet_allocation" &&
+    String(row.status) === "computed" &&
+    Math.trunc(Number(row.adjustment_cents) || 0) > 0
+  );
+}
+
+function adjustmentStatusLabel(
+  t: (s: string) => string,
+  row: Record<string, unknown>
+): string {
+  if (isPendingFleetApproval(row)) return t("Pending approval");
+  return statusLabel(t, String(row.status));
 }
 
 function MinimumPayInner() {
@@ -241,6 +271,39 @@ function MinimumPayInner() {
     setNotice(t("Due periods reconciled"));
     await load();
   }
+
+  async function approveFleetAllocation(adjustmentId: string) {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+    const http = await adminFetch("/api/admin/minimum-pay/adjustments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        adjustment_id: adjustmentId,
+        reason,
+      }),
+    });
+    const body = (await http.json().catch(() => ({}))) as Record<string, unknown>;
+    setLoading(false);
+    if (!http.ok || body.ok === false) {
+      setError(errorMessage(t, String(body.error ?? "approval_failed")));
+      return;
+    }
+    setNotice(
+      body.skipped
+        ? errorMessage(t, String(body.reason ?? "already_transferred"))
+        : t("Fleet allocation approved")
+    );
+    await load();
+  }
+
+  const pendingFleet = adjustments.filter(isPendingFleetApproval);
+  const visibleAdjustments = [...adjustments].sort((a, b) => {
+    const ap = isPendingFleetApproval(a) ? 0 : 1;
+    const bp = isPendingFleetApproval(b) ? 0 : 1;
+    return ap - bp;
+  });
 
   return (
     <div className="space-y-6">
@@ -596,17 +659,37 @@ function MinimumPayInner() {
       {tab === "adjustments" && (
         <section className={CARD}>
           <h2 className="text-lg font-semibold">{t("Adjustments")}</h2>
-          {adjustments.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-600">
+            {t("Fleet allocation transfers require admin approval.")}
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            {t("Pending fleet allocations must be reviewed before the NYC payment deadline.")}
+          </p>
+          {pendingFleet.length > 0 ? (
+            <p className="mt-2 text-sm font-medium text-amber-800">
+              {t("Pending approval")}: {pendingFleet.length}
+            </p>
+          ) : null}
+          {visibleAdjustments.length === 0 ? (
             <p className="mt-2 text-sm text-slate-500">{t("No adjustments yet")}</p>
           ) : (
             <ul className="mt-3 space-y-2 text-sm">
-              {adjustments.map((row) => (
+              {visibleAdjustments.map((row) => (
                 <li key={String(row.id)} className="rounded-lg border border-slate-100 px-3 py-2">
                   {kindLabel(t, String(row.kind))} · {String(row.adjustment_cents)} ·{" "}
-                  {statusLabel(t, String(row.status))}
+                  {adjustmentStatusLabel(t, row)}
                   <div className="text-slate-500">
                     {t("Required")}: {String(row.required_cents)} · {t("Eligible")}: {String(row.eligible_cents)}
                   </div>
+                  {canEdit && isPendingFleetApproval(row) ? (
+                    <button
+                      type="button"
+                      onClick={() => void approveFleetAllocation(String(row.id))}
+                      className="mt-2 rounded-xl bg-slate-900 px-3 py-1.5 text-sm text-white"
+                    >
+                      {t("Approve fleet transfer")}
+                    </button>
+                  ) : null}
                 </li>
               ))}
             </ul>

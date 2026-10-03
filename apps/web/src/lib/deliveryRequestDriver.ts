@@ -22,22 +22,37 @@ export function getDeliveryRequestId(body: Record<string, unknown>): string {
   return raw;
 }
 
-export async function findLinkedOrderId(
+export async function findLinkedPackageMirrorOrder<T extends { id?: string | null }>(
   supabaseAdmin: SupabaseClient,
-  deliveryRequestId: string
-): Promise<string | null> {
+  deliveryRequestId: string,
+  select = "id"
+): Promise<T | null> {
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .select("id")
+    .select(select)
     .eq("external_ref_id", deliveryRequestId)
     .eq("external_ref_type", "delivery_request")
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return data?.id ? String(data.id) : null;
+  return (data as unknown as T | null) ?? null;
+}
+
+export async function findLinkedOrderId(
+  supabaseAdmin: SupabaseClient,
+  deliveryRequestId: string
+): Promise<string | null> {
+  const row = await findLinkedPackageMirrorOrder<{ id?: string | null }>(
+    supabaseAdmin,
+    deliveryRequestId,
+    "id"
+  );
+  return row?.id ? String(row.id) : null;
 }
 
 export async function syncLinkedOrderAfterPickup(params: {
@@ -54,6 +69,7 @@ export async function syncLinkedOrderAfterPickup(params: {
 
   const nowIso = new Date().toISOString();
   const updatePayload: Record<string, unknown> = {
+    status: "picked_up",
     picked_up_at: nowIso,
     updated_at: nowIso,
   };
@@ -124,6 +140,14 @@ export function mapDeliveryRpcError(errorCode: string): { status: number; messag
       return { status: 409, message: "Request status changed" };
     case "request_not_found":
       return { status: 404, message: "Delivery request not found" };
+    case "offer_required":
+    case "offer_not_found":
+    case "offer_not_available":
+      return { status: 409, message: "A pending offer is required to accept" };
+    case "mission_capacity_reached":
+      return { status: 409, message: "Driver mission capacity reached" };
+    case "package_service_disabled":
+      return { status: 403, message: "Package service is disabled" };
     default:
       return { status: 400, message: errorCode || "Request failed" };
   }

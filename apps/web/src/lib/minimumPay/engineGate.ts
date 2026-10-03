@@ -46,6 +46,15 @@ export function canTransferMinimumPayAdjustments(
   );
 }
 
+/** Individual adjustments stay automatic. Fleet allocation never auto-transfers. */
+export function canAutomaticallyTransferMinimumPayKind(kind: string): boolean {
+  return String(kind ?? "").trim() === "individual";
+}
+
+export function fleetAllocationRequiresManualApproval(kind: string | undefined): boolean {
+  return String(kind ?? "").trim() === "fleet_allocation";
+}
+
 export function isTimestampOnOrAfterStart(
   settings: Pick<MinimumPayEngineSettings, "engineStartAt">,
   timestampIso: string

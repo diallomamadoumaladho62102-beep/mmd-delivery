@@ -280,6 +280,58 @@ export async function notifyClientOrderCancelled(params: {
   await sendExpoPushMessages(messages);
 }
 
+export function deliveryRequestPickupDedupKey(deliveryRequestId: string): string {
+  return `delivery_request_pickup:${String(deliveryRequestId).trim()}`;
+}
+
+export async function notifyClientDeliveryRequestPickedUp(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  deliveryRequestId: string;
+  pickupAddress?: string | null;
+  dropoffAddress?: string | null;
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const dedupKey = deliveryRequestPickupDedupKey(params.deliveryRequestId);
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) {
+    return;
+  }
+
+  const data = {
+    type: "pickup_confirmed",
+    delivery_request_id: params.deliveryRequestId,
+  };
+
+  const messages = tokens.map((target) => {
+    const copy = pushText("pickup_confirmed", target.locale, {
+      pickup: params.pickupAddress?.trim() || "pickup",
+      dropoff: params.dropoffAddress?.trim() || "dropoff",
+    });
+    return {
+      to: target.token,
+      sound: resolvePushSound(data.type),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
+
+  await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: String(messages[0]?.title ?? "Pickup confirmed"),
+    body: String(messages[0]?.body ?? ""),
+    data,
+    dedupKey,
+    sent: true,
+  });
+}
+
 export async function notifyClientDeliveryRequestCancelled(params: {
   supabaseAdmin: SupabaseClient;
   userIds: Array<string | null | undefined>;

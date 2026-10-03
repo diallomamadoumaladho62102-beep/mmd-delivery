@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DeliveryRequestPricingResult } from "@/lib/deliveryRequestServerPricing";
+import { findLinkedPackageMirrorOrder } from "@/lib/deliveryRequestDriver";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 import { roundPlatformMoney } from "@/lib/platformCurrency";
 import { quotePackageSot } from "@/lib/pricingEngine";
@@ -305,12 +306,17 @@ export async function syncPaidDeliveryRequestOrder(
     return { ok: false, error: "payment_not_confirmed" };
   }
 
-  const { data: existingOrder } = await supabaseAdmin
-    .from("orders")
-    .select("id, stripe_payment_intent_id, stripe_session_id, driver_id, driver_delivery_payout")
-    .eq("external_ref_id", deliveryRequestId)
-    .eq("external_ref_type", "delivery_request")
-    .maybeSingle();
+  const existingOrder = await findLinkedPackageMirrorOrder<{
+    id?: string | null;
+    stripe_payment_intent_id?: string | null;
+    stripe_session_id?: string | null;
+    driver_id?: string | null;
+    driver_delivery_payout?: number | null;
+  }>(
+    supabaseAdmin,
+    deliveryRequestId,
+    "id, stripe_payment_intent_id, stripe_session_id, driver_id, driver_delivery_payout",
+  );
 
   if (existingOrder?.id) {
     // Backfill SCT-critical fields if the mirror was created without them.
@@ -371,6 +377,14 @@ export async function syncPaidDeliveryRequestOrder(
     .single();
 
   if (orderError || !orderData?.id) {
+    const raced = await findLinkedPackageMirrorOrder<{ id?: string | null }>(
+      supabaseAdmin,
+      deliveryRequestId,
+      "id",
+    );
+    if (raced?.id) {
+      return { ok: true, orderId: String(raced.id) };
+    }
     return { ok: false, error: orderError?.message ?? "order_create_failed" };
   }
 

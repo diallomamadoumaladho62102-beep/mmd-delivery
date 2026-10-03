@@ -6,6 +6,7 @@
  * stay forever in Wallet awaiting_transfer_cents until this runs.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findLinkedPackageMirrorOrder } from "@/lib/deliveryRequestDriver";
 import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
 
 export type EnsurePackageDriverSctOrderResult =
@@ -93,14 +94,20 @@ export async function ensurePackageDriverSctOrder(
     String(delivery.status ?? "").toLowerCase() === "delivered";
   const nowIso = new Date().toISOString();
 
-  const { data: existingOrder } = await supabaseAdmin
-    .from("orders")
-    .select(
-      "id, driver_id, driver_delivery_payout, driver_transfer_id, stripe_payment_intent_id, stripe_session_id, status, payment_status",
-    )
-    .eq("external_ref_id", id)
-    .eq("external_ref_type", "delivery_request")
-    .maybeSingle();
+  const existingOrder = await findLinkedPackageMirrorOrder<{
+    id?: string | null;
+    driver_id?: string | null;
+    driver_delivery_payout?: number | null;
+    driver_transfer_id?: string | null;
+    stripe_payment_intent_id?: string | null;
+    stripe_session_id?: string | null;
+    status?: string | null;
+    payment_status?: string | null;
+  }>(
+    supabaseAdmin,
+    id,
+    "id, driver_id, driver_delivery_payout, driver_transfer_id, stripe_payment_intent_id, stripe_session_id, status, payment_status",
+  );
 
   if (existingOrder?.id) {
     const orderId = String(existingOrder.id);
@@ -223,6 +230,20 @@ export async function ensurePackageDriverSctOrder(
     .single();
 
   if (orderError || !orderData?.id) {
+    const raced = await findLinkedPackageMirrorOrder<{ id?: string | null }>(
+      supabaseAdmin,
+      id,
+      "id",
+    );
+    if (raced?.id) {
+      return {
+        ok: true,
+        orderId: String(raced.id),
+        created: false,
+        updated: false,
+        fundable: true,
+      };
+    }
     return {
       ok: false,
       error: orderError?.message ?? "order_create_failed",
@@ -313,12 +334,10 @@ export async function ensureOrphanPackageDriverSctOrders(
     if (!drId) continue;
 
     // Skip if a linked order already has a transfer (wallet should exclude via SoT).
-    const { data: linked } = await supabaseAdmin
-      .from("orders")
-      .select("id, driver_transfer_id")
-      .eq("external_ref_id", drId)
-      .eq("external_ref_type", "delivery_request")
-      .maybeSingle();
+    const linked = await findLinkedPackageMirrorOrder<{
+      id?: string | null;
+      driver_transfer_id?: string | null;
+    }>(supabaseAdmin, drId, "id, driver_transfer_id");
 
     if (linked?.driver_transfer_id) {
       await supabaseAdmin
