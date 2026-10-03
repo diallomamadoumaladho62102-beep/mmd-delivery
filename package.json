@@ -66,6 +66,7 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "babel-preset-expo": "~54.0.10",
+    "braces": "file:vendor/braces",
     "qrcode": "^1.5.4",
     "typescript": "5"
   },
