@@ -182,8 +182,7 @@ test("TEST 3 authorized fleet approval can execute the existing Stripe path", as
           select() {
             return this;
           },
-          eq(column: string, value: unknown) {
-            if (column === "id" && value !== store.id) store.id = store.id;
+          eq() {
             return this;
           },
           is() {

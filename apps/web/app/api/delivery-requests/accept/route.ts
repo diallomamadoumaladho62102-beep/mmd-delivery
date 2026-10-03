@@ -5,6 +5,7 @@ import {
 } from "@/lib/deliveryRequestDriver";
 import {
   driverAcceptJson,
+  getOptionalDeliveryRequestOfferId,
   getRpcRow,
   requireDriverAcceptUser,
 } from "@/lib/driverAcceptApi";
@@ -20,15 +21,17 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     let requestId = "";
+    let offeredId: string | null = null;
 
     try {
       requestId = getDeliveryRequestId(body as Record<string, unknown>);
+      offeredId = getOptionalDeliveryRequestOfferId(body as Record<string, unknown>);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Invalid request";
       return driverAcceptJson({ ok: false, error: message }, 400);
     }
 
-    const { data: offer, error: offerError } = await auth.supabaseAdmin
+    let offerQuery = auth.supabaseAdmin
       .from("delivery_request_driver_offers")
       .select("id, expires_at, status")
       .eq("delivery_request_id", requestId)
@@ -36,8 +39,13 @@ export async function POST(req: NextRequest) {
       .eq("status", "pending")
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+
+    if (offeredId) {
+      offerQuery = offerQuery.eq("id", offeredId);
+    }
+
+    const { data: offer, error: offerError } = await offerQuery.maybeSingle();
 
     if (offerError) {
       return driverAcceptJson({ ok: false, error: offerError.message }, 500);

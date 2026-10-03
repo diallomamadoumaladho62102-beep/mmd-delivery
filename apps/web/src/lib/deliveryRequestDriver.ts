@@ -22,22 +22,37 @@ export function getDeliveryRequestId(body: Record<string, unknown>): string {
   return raw;
 }
 
-export async function findLinkedOrderId(
+export async function findLinkedPackageMirrorOrder<T extends { id?: string | null }>(
   supabaseAdmin: SupabaseClient,
-  deliveryRequestId: string
-): Promise<string | null> {
+  deliveryRequestId: string,
+  select = "id"
+): Promise<T | null> {
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .select("id")
+    .select(select)
     .eq("external_ref_id", deliveryRequestId)
     .eq("external_ref_type", "delivery_request")
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return data?.id ? String(data.id) : null;
+  return (data as unknown as T | null) ?? null;
+}
+
+export async function findLinkedOrderId(
+  supabaseAdmin: SupabaseClient,
+  deliveryRequestId: string
+): Promise<string | null> {
+  const row = await findLinkedPackageMirrorOrder<{ id?: string | null }>(
+    supabaseAdmin,
+    deliveryRequestId,
+    "id"
+  );
+  return row?.id ? String(row.id) : null;
 }
 
 export async function syncLinkedOrderAfterPickup(params: {

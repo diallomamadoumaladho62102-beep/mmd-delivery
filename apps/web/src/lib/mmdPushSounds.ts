@@ -46,6 +46,8 @@ export function resolvePushSound(dataType?: string | null): string {
 
     case "order_paid":
     case "delivery_request_paid":
+    case "pickup_confirmed":
+    case "delivery_request_picked_up":
     case "client_update":
     case "driver_en_route":
     case "taxi_en_route":

@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  deliveryRequestPickupDedupKey,
   taxiDriverArrivedDedupKey,
   taxiDriverEtaDedupKey,
   taxiRideAcceptedDedupKey,
@@ -28,8 +29,19 @@ test("client push notifications use dedup + ETA helper", () => {
   const src = fs.readFileSync(path.join(dir, "clientPushNotifications.ts"), "utf8");
   assert.match(src, /notifyClientTaxiDriverEnRoute/);
   assert.match(src, /wasTaxiPushAlreadySent/);
-  assert.match(src, /Driver assigned/);
-  assert.match(src, /Your driver has arrived/);
+  assert.match(src, /notifyClientTaxiRideAccepted/);
+  assert.match(src, /notifyClientDriverArrived/);
+});
+
+test("package pickup push is idempotent", () => {
+  assert.equal(
+    deliveryRequestPickupDedupKey("dr-1"),
+    "delivery_request_pickup:dr-1",
+  );
+  const dir = path.dirname(fileURLToPath(import.meta.url));
+  const src = fs.readFileSync(path.join(dir, "clientPushNotifications.ts"), "utf8");
+  assert.match(src, /notifyClientDeliveryRequestPickedUp/);
+  assert.match(src, /deliveryRequestPickupDedupKey/);
 });
 
 test("taxi accept route sends assigned + ETA pushes", () => {

@@ -56,9 +56,31 @@ test("driver cancel expires stale offers before redispatch", () => {
 test("package accept cannot snipe without a pending offer", () => {
   assert.match(acceptDirect, /offer_required/);
   assert.match(acceptDirect, /driver_accept_delivery_request_offer/);
+  assert.match(acceptDirect, /getOptionalDeliveryRequestOfferId/);
   assert.doesNotMatch(acceptDirect, /driver_accept_delivery_request"/);
   assert.match(mpTripIsolation, /message', 'offer_required'/);
   assert.match(mpTripIsolation, /driver_accept_delivery_request_offer/);
+});
+
+test("package mirror order lookup is idempotent and survives duplicate rows", () => {
+  const driver = read("src/lib/deliveryRequestDriver.ts");
+  const ensure = read("src/lib/finance/ensurePackageDriverSctOrder.ts");
+  const sync = read("src/lib/deliveryRequestService.ts");
+  assert.match(driver, /findLinkedPackageMirrorOrder/);
+  assert.match(driver, /order\("created_at", \{ ascending: true \}\)/);
+  assert.match(driver, /\.limit\(1\)/);
+  assert.match(ensure, /findLinkedPackageMirrorOrder/);
+  assert.match(ensure, /raced/);
+  assert.match(sync, /findLinkedPackageMirrorOrder/);
+  assert.match(sync, /raced/);
+});
+
+test("package pickup notifies the client once", () => {
+  const pickup = read("app/api/delivery-requests/pickup-confirm/route.ts");
+  const push = read("src/lib/clientPushNotifications.ts");
+  assert.match(pickup, /notifyClientDeliveryRequestPickedUp/);
+  assert.match(push, /deliveryRequestPickupDedupKey/);
+  assert.match(push, /pickup_confirmed/);
 });
 
 test("client can cancel a dispatched package request and does not double-refund the same PI", () => {

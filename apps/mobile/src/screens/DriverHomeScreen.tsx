@@ -2156,6 +2156,7 @@ export function DriverHomeScreen() {
     navAny.navigate("DriverOrderDetails", {
       orderId: order.id,
       sourceTable: order.source_table ?? "orders",
+      offer_id: order.offer_id ?? null,
     });
   }, [navAny]);
 
@@ -2269,21 +2270,7 @@ export function DriverHomeScreen() {
         if (offer.offer_id) {
           if (offerSourceTable === "delivery_requests") {
             const { acceptDeliveryRequestOffer } = await import("../lib/driverOrderDriverApi");
-            try {
-              await acceptDeliveryRequestOffer(offer.offer_id);
-            } catch (apiErr: any) {
-              if (
-                apiErr?.message === "request_no_longer_available" ||
-                apiErr?.message === "offer_not_available"
-              ) {
-                const { acceptDeliveryRequest } = await import(
-                  "../lib/deliveryRequestDriverApi"
-                );
-                await acceptDeliveryRequest(orderId);
-              } else {
-                throw apiErr;
-              }
-            }
+            await acceptDeliveryRequestOffer(offer.offer_id);
           } else {
             const { acceptFoodOrderOffer } = await import("../lib/driverOrderDriverApi");
             const out = await acceptFoodOrderOffer(offer.offer_id);
@@ -2292,8 +2279,7 @@ export function DriverHomeScreen() {
             }
           }
         } else if (offerSourceTable === "delivery_requests") {
-          const { acceptDeliveryRequest } = await import("../lib/deliveryRequestDriverApi");
-          await acceptDeliveryRequest(orderId);
+          throw new Error(getOfferUnavailableMessage(t));
         } else if (offerSourceTable === "marketplace_delivery_jobs") {
           await acceptDriverMarketplaceJob(orderId);
         } else {
@@ -2314,6 +2300,7 @@ export function DriverHomeScreen() {
         navAny.navigate("DriverOrderDetails", {
           orderId,
           sourceTable: offerSourceTable,
+          offer_id: offer.offer_id ?? null,
         });
       } catch (e: any) {
         console.log("Erreur acceptation course:", e);
