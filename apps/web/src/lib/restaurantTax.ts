@@ -344,7 +344,7 @@ export async function getRestaurantTaxSummary(params: {
     supabase
       .from("restaurant_profiles")
       .select(
-        "user_id, restaurant_name, email, tax_id, address, city, postal_code, phone"
+        "user_id, restaurant_name, address, city, postal_code, phone"
       )
       .eq("user_id", restaurantUserId)
       .maybeSingle(),
@@ -371,7 +371,18 @@ export async function getRestaurantTaxSummary(params: {
     throw new Error(ordersError.message || "Failed to load restaurant orders");
   }
 
-  const profile = buildRestaurantTaxProfile(profileRow);
+  const { data: sensitiveRows } = await supabase.rpc(
+    "restaurant_profile_sensitive",
+    { p_user_id: restaurantUserId },
+  );
+  const sensitive = Array.isArray(sensitiveRows)
+    ? sensitiveRows[0] ?? null
+    : sensitiveRows ?? null;
+  const profile = buildRestaurantTaxProfile({
+    ...(profileRow ?? {}),
+    email: sensitive?.email ?? null,
+    tax_id: sensitive?.tax_id ?? null,
+  });
 
   const totals = computeRestaurantTotalsFromOrders({
     rows: Array.isArray(ordersData) ? ordersData : [],

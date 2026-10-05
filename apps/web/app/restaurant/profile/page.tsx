@@ -189,11 +189,20 @@ export default function RestaurantProfilePage() {
 
       if (!cancelled) setAccount(initialAccount);
 
-      const { data: rpRow, error: rpError } = await supabase
-        .from("restaurant_profiles")
-        .select("*")
-        .eq("user_id", uid)
-        .maybeSingle();
+      const [{ data: rpRow, error: rpError }, { data: sensitiveRows }] =
+        await Promise.all([
+          supabase
+            .from("restaurant_profiles")
+            .select(
+              "user_id, restaurant_name, phone, address, city, postal_code, cuisine_type, description, website, instagram, facebook, restaurant_logo_url, cover_image_url, offers_delivery, offers_pickup, offers_dine_in, opening_hours",
+            )
+            .eq("user_id", uid)
+            .maybeSingle(),
+          supabase.rpc("restaurant_profile_sensitive", { p_user_id: uid }),
+        ]);
+      const sensitive = Array.isArray(sensitiveRows)
+        ? sensitiveRows[0] ?? null
+        : sensitiveRows ?? null;
 
       if (rpError && rpError.code !== "PGRST116") {
         console.error(rpError);
@@ -222,14 +231,14 @@ export default function RestaurantProfilePage() {
         user_id: uid,
         restaurant_name: rpRow?.restaurant_name ?? "",
         phone: rpRow?.phone ?? "",
-        email: rpRow?.email ?? user.email ?? "",
+        email: sensitive?.email ?? user.email ?? "",
         address: rpRow?.address ?? "",
         city: rpRow?.city ?? "",
         postal_code: rpRow?.postal_code ?? "",
         cuisine_type: rpRow?.cuisine_type ?? "",
         description: rpRow?.description ?? "",
-        license_number: rpRow?.license_number ?? "",
-        tax_id: rpRow?.tax_id ?? "",
+        license_number: sensitive?.license_number ?? "",
+        tax_id: sensitive?.tax_id ?? "",
         website: rpRow?.website ?? "",
         instagram: rpRow?.instagram ?? "",
         facebook: rpRow?.facebook ?? "",

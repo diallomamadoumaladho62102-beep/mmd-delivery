@@ -276,20 +276,13 @@ export function RestaurantEarningsScreen() {
         logTechnicalError("restaurant.earnings.check_connect_status", connectErr);
       }
 
-      const { data, error } = await supabase
-        .from("restaurant_profiles")
-        .select(
-          [
-            "user_id",
-            "stripe_account_id",
-            "stripe_onboarding_status",
-            "stripe_charges_enabled",
-            "stripe_payouts_enabled",
-            "stripe_details_submitted",
-          ].join(",")
-        )
-        .eq("user_id", session.user.id)
-        .maybeSingle();
+      const { data: sensitiveRows, error } = await supabase.rpc(
+        "restaurant_profile_sensitive",
+        { p_user_id: session.user.id },
+      );
+      const data = Array.isArray(sensitiveRows)
+        ? sensitiveRows[0] ?? null
+        : sensitiveRows ?? null;
 
       if (error) throw error;
 

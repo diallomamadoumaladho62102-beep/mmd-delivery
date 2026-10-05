@@ -427,7 +427,7 @@ export default function AdminRestaurantsPage() {
         const { data: restaurantProfiles, error: rpError } = await supabase
           .from("restaurant_profiles")
           .select(
-            "user_id, restaurant_name, phone, email, address, city, postal_code, cuisine_type, license_number, tax_id, website, instagram, facebook, offers_delivery, offers_pickup, offers_dine_in, opening_hours, status"
+            "user_id, restaurant_name, phone, address, city, postal_code, cuisine_type, website, instagram, facebook, offers_delivery, offers_pickup, offers_dine_in, opening_hours, status"
           )
           .order("created_at", { ascending: false });
 
@@ -435,8 +435,38 @@ export default function AdminRestaurantsPage() {
           throw new Error(rpError.message);
         }
 
-        const typedRestaurantProfiles =
-          (restaurantProfiles ?? []) as RestaurantProfileRow[];
+        const { data: sensitiveRows } = await supabase.rpc(
+          "restaurant_profile_sensitive",
+          { p_user_id: null },
+        );
+        const sensitiveByUser = new Map<
+          string,
+          { email: string | null; tax_id: string | null; license_number: string | null }
+        >();
+        for (const row of (sensitiveRows ?? []) as Array<{
+          user_id: string;
+          email: string | null;
+          tax_id: string | null;
+          license_number: string | null;
+        }>) {
+          sensitiveByUser.set(row.user_id, {
+            email: row.email ?? null,
+            tax_id: row.tax_id ?? null,
+            license_number: row.license_number ?? null,
+          });
+        }
+
+        const typedRestaurantProfiles = (
+          (restaurantProfiles ?? []) as RestaurantProfileRow[]
+        ).map((row) => {
+          const sensitive = sensitiveByUser.get(row.user_id);
+          return {
+            ...row,
+            email: sensitive?.email ?? null,
+            tax_id: sensitive?.tax_id ?? null,
+            license_number: sensitive?.license_number ?? null,
+          };
+        });
 
         if (typedRestaurantProfiles.length === 0) {
           if (!cancelledRef?.cancelled) {
