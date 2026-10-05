@@ -14,7 +14,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { DriverWaitTimerPanel } from "./DriverWaitTimerPanel";
-import { TaxiSafetyRecordingPanel } from "../taxi/TaxiSafetyRecordingPanel";
 import { SafetyAudioCard } from "../tracking/SafetyAudioCard";
 import { OtpDigitInput } from "../shared/OtpDigitInput";
 import { formatDriverPayout } from "../../lib/taxiDriverApi";
@@ -48,6 +47,22 @@ type Props = {
 
 function formatStatus(status: string) {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function DriverTaxiSafetyVideo({ rideId }: { rideId: string }) {
+  // Load expo-camera only when an active ride is on screen.
+  // A top-level import makes DriverTabs fail to initialize when the native
+  // camera module is unavailable, and Metro then reports DriverTabs as undefined.
+  const { TaxiSafetyRecordingPanel } =
+    require("../taxi/TaxiSafetyRecordingPanel") as typeof import("../taxi/TaxiSafetyRecordingPanel");
+  return (
+    <TaxiSafetyRecordingPanel
+      rideId={rideId}
+      role="driver"
+      rideActive
+      premium
+    />
+  );
 }
 
 export function DriverTaxiActiveRideCard({
@@ -300,12 +315,7 @@ export function DriverTaxiActiveRideCard({
 
         <SafetyAudioCard rideId={rideId} rideActive role="driver" />
 
-        <TaxiSafetyRecordingPanel
-          rideId={rideId}
-          role="driver"
-          rideActive
-          premium
-        />
+        <DriverTaxiSafetyVideo rideId={rideId} />
 
         {status === "accepted" || status === "driver_arrived" ? (
           <View style={styles.waitWrap}>
