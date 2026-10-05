@@ -13,6 +13,11 @@ import {
 } from "@/lib/platformRouteGuards";
 import { stripe } from "@/lib/stripe";
 import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+} from "@/lib/supabaseEnv";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,16 +27,6 @@ type CancelRefund = "FULL" | "NONE" | "NOT_APPLICABLE" | "REQUIRED";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
-}
-
-function getEnv(name: string) {
-  const value = process.env[name];
-
-  if (!value) {
-    throw new Error(`Missing env: ${name}`);
-  }
-
-  return value;
 }
 
 function normalizeStatus(value: unknown) {
@@ -334,11 +329,7 @@ export async function POST(req: NextRequest) {
       return json({ error: "Missing orderId" }, 400);
     }
 
-    const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-    const supabaseAnonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
-
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabaseUser = createClient(getSupabaseUrl(), getSupabasePublishableKey(), {
       auth: { persistSession: false },
       global: {
         headers: {
@@ -356,9 +347,7 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid token" }, 401);
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false },
-    });
+    const supabaseAdmin = buildSupabaseAdminClient();
 
     const account = await assertProfileActive(supabaseAdmin, user.id);
     if (account.ok === false) {

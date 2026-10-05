@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+} from "@/lib/supabaseEnv";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveClientPlatformCountry } from "@/lib/platformCountryResolver";
 import { resolveErrandServerSubtotal } from "@/lib/errandServerPricing";
@@ -19,14 +23,6 @@ type ErrandCreateBody = {
   subtotal?: unknown;
   promoCode?: unknown;
 };
-
-function getEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`Missing env: ${name}`);
-  }
-  return value;
-}
 
 function toTrimmedString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -68,12 +64,9 @@ function jsonError(message: string, status: number) {
 
 export async function POST(req: Request) {
   try {
-    const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-    const supabaseAnonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-
     const cookieStore = await cookies();
 
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
       cookies: {
         getAll() {
           return cookieStore.getAll();
