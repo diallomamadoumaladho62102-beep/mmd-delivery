@@ -26,6 +26,7 @@ import {
   type ScanCursor,
 } from "./scanCursor";
 import { CRON_JOB_BUDGET_MS, isDeadlineApproaching } from "@/lib/cronTimeouts";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 
 type ScanCounters = {
   skipped: boolean;
@@ -143,6 +144,12 @@ async function maybeRedispatch(
   excludeDriverId: string
 ) {
   if (!origin) return;
+  let safeOrigin: string;
+  try {
+    safeOrigin = trustedInternalOrigin(origin);
+  } catch {
+    return;
+  }
   const headers = {
     "Content-Type": "application/json",
     "x-dispatch-internal-secret":
@@ -153,7 +160,7 @@ async function maybeRedispatch(
     return;
   }
   if (entityType === "order") {
-    await fetch(`${origin}/api/dispatch/smart`, {
+    await fetch(`${safeOrigin}/api/dispatch/smart`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -165,7 +172,7 @@ async function maybeRedispatch(
     }).catch(() => null);
     return;
   }
-  await fetch(`${origin}/api/dispatch/delivery-request`, {
+  await fetch(`${safeOrigin}/api/dispatch/delivery-request`, {
     method: "POST",
     headers,
     body: JSON.stringify({

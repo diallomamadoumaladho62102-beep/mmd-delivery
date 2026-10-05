@@ -13,6 +13,7 @@ import {
   orderVerticalForPlatformGate,
 } from "@/lib/platformRouteGuards";
 import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 import { bridgeStripeWalletFromPaidOrder } from "@/lib/stripeInboundWalletBridge";
 import {
   requirePaymentIntentSucceeded,
@@ -769,7 +770,7 @@ export async function POST(req: NextRequest) {
         orderId,
         clientUserIds: [order.client_user_id, order.created_by, user.id],
         kind: order.kind,
-        dispatchOrigin: req.nextUrl.origin,
+        dispatchOrigin: trustedInternalOrigin(req.nextUrl.origin),
       });
 
       const { enqueuePaymentSucceededAndProcessBatch } = await import(
@@ -988,7 +989,7 @@ export async function POST(req: NextRequest) {
       orderId,
       clientUserIds: [order.client_user_id, order.created_by, user.id],
       kind: order.kind,
-      dispatchOrigin: req.nextUrl.origin,
+      dispatchOrigin: trustedInternalOrigin(req.nextUrl.origin),
     });
 
     const { enqueuePaymentSucceededAndProcessBatch } = await import(

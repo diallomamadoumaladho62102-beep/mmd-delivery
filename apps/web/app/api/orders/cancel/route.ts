@@ -6,6 +6,7 @@ import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import { expirePendingDriverOrderOffers } from "@/lib/expirePendingDriverOffers";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 import {
   gateOrderPlatformFeature,
   orderVerticalForPlatformGate,
@@ -896,7 +897,7 @@ export async function POST(req: NextRequest) {
       await expirePendingDriverOrderOffers(supabaseAdmin, orderId);
 
       const smartDispatch = await triggerSmartDispatchForOrder({
-        origin: req.nextUrl.origin,
+        origin: trustedInternalOrigin(req.nextUrl.origin),
         orderId,
       });
 

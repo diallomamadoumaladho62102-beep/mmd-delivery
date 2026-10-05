@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { createClient } from "@supabase/supabase-js";
-import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 import {
   dispatchDueTaxiScheduledRide,
   findDueTaxiScheduledRides,
@@ -31,7 +31,7 @@ async function runScheduledDispatch(request: NextRequest) {
     return json({ error: "Unauthorized" }, 401);
   }
 
-  const origin = getDispatchSiteOrigin() || request.nextUrl.origin;
+  const origin = trustedInternalOrigin(request.nextUrl.origin);
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!,

@@ -1,4 +1,5 @@
 import { buildDispatchInternalHeaders } from "@/lib/dispatchInternalAuth";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 
 export type SmartDispatchResult = {
   ok: boolean;
@@ -15,7 +16,7 @@ export async function triggerSmartDispatchForOrder(params: {
   const { origin, orderId, wave = 1 } = params;
 
   try {
-    const url = new URL("/api/dispatch/smart", origin);
+    const url = new URL("/api/dispatch/smart", trustedInternalOrigin(origin));
 
     const res = await fetch(url.toString(), {
       method: "POST",

@@ -90,7 +90,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const pdfBytes = await buildDriverIdentityInvestigationPdf(enriched);
     const filename = `driver-identity-${checkId.slice(0, 8)}.pdf`;
 
-    return new NextResponse(Buffer.from(pdfBytes), {
+    return new NextResponse(new Blob([new Uint8Array(Buffer.from(pdfBytes))]), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

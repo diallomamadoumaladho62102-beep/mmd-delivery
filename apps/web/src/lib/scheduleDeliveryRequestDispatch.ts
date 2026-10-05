@@ -1,5 +1,5 @@
 import { buildDispatchInternalHeaders } from "@/lib/dispatchInternalAuth";
-import { resolvePublicSiteOrigin } from "@/lib/productionSite";
+import { resolvePublicSiteOrigin, trustedInternalOrigin } from "@/lib/productionSite";
 
 export function getDispatchSiteOrigin(): string | null {
   try {
@@ -13,8 +13,15 @@ export function getDispatchSiteOrigin(): string | null {
 export function scheduleDeliveryRequestDispatch(params: {
   origin: string;
   deliveryRequestId: string;
-}) {
-  const { origin, deliveryRequestId } = params;
+}): boolean {
+  const deliveryRequestId = params.deliveryRequestId;
+  let origin: string;
+  try {
+    origin = trustedInternalOrigin(params.origin);
+  } catch {
+    console.error("[scheduleDeliveryRequestDispatch] skipped: untrusted origin");
+    return false;
+  }
   const headers = {
     "Content-Type": "application/json",
     ...buildDispatchInternalHeaders(),
@@ -24,7 +31,7 @@ export function scheduleDeliveryRequestDispatch(params: {
     console.log(
       "[scheduleDeliveryRequestDispatch] skipped: missing DISPATCH_INTERNAL_SECRET/CRON_SECRET"
     );
-    return;
+    return false;
   }
 
   void fetch(`${origin.replace(/\/$/, "")}/api/dispatch/delivery-request`, {
@@ -49,4 +56,5 @@ export function scheduleDeliveryRequestDispatch(params: {
         err,
       );
     });
+  return true;
 }

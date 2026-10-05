@@ -7,6 +7,7 @@ import {
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { dispatchDueTaxiScheduledRide } from "@/lib/taxiScheduledDispatch";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 import { isLiveVisibleTrip } from "@/lib/tripVisibility";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
       const result = await dispatchDueTaxiScheduledRide({
         supabase,
         scheduledId,
-        origin: request.nextUrl.origin,
+        origin: trustedInternalOrigin(request.nextUrl.origin),
       });
 
       await writeAdminAuditServer({

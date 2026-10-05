@@ -5,6 +5,7 @@ import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { withCronJobLock } from "@/lib/cronJobLock";
 import { applyLiveTripFilters } from "@/lib/tripVisibility";
 import { realMoneyBlockReason } from "@/lib/finance/realMoneyGuard";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -132,7 +133,7 @@ function getPreviousWeekWindowUtc(): {
 }
 
 function getOrigin(request: NextRequest) {
-  return request.nextUrl.origin;
+  return trustedInternalOrigin(request.nextUrl.origin);
 }
 
 function getIncomingBearerToken(request: NextRequest): string | null {

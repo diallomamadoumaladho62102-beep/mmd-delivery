@@ -15,6 +15,7 @@ import {
   pushText,
 } from "@/lib/pushCopy";
 import { normalizeAppLocale } from "@/lib/userLocale";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ type Body = {
 type RpcResult = {
   ok?: boolean;
   error?: string;
+  already_delivered?: boolean;
 };
 
 type OrderProofRow = {
@@ -267,7 +269,7 @@ function getInternalBaseUrl(req: NextRequest): string {
     return candidate;
   }
 
-  return req.nextUrl.origin.replace(/\/+$/, "");
+  return trustedInternalOrigin(req.nextUrl.origin).replace(/\/+$/, "");
 }
 
 async function persistDropoffProof(params: {
@@ -323,7 +325,9 @@ async function persistDropoffProof(params: {
         status: "delivered",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", existingOrder.external_ref_id);
+      .eq("id", existingOrder.external_ref_id)
+      .in("status", ["picked_up", "delivered"])
+      .not("driver_arrived_at", "is", null);
 
     if (requestErr) {
       throw new Error(
@@ -663,6 +667,15 @@ export async function POST(req: NextRequest) {
     if (!result?.ok) {
       const mapped = mapRpcFailureToHttp(result?.error || "");
       return json({ error: mapped.error }, mapped.status);
+    }
+
+    if (result.already_delivered === true) {
+      return json({
+        ok: true,
+        order_id: orderId,
+        already_delivered: true,
+        result,
+      });
     }
 
     if (proofPhotoUrl) {

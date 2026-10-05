@@ -7,6 +7,7 @@ import {
   getDeploymentSurface,
   isLegacyVercelOrigin,
   resolvePublicSiteOrigin,
+  trustedInternalOrigin,
   type PublicSiteEnv,
 } from "./productionSite";
 
@@ -162,5 +163,18 @@ assert(!isLegacyVercelOrigin(CANONICAL_SITE_ORIGIN), "canonical not legacy");
 assertThrows(() => {
   throw new PublicSiteOriginError("boom");
 }, "boom");
+
+assert(
+  trustedInternalOrigin("http://127.0.0.1:3000") === "http://127.0.0.1:3000",
+  "loopback origin preserved",
+);
+assert(
+  trustedInternalOrigin("http://localhost:3005") === "http://localhost:3005",
+  "localhost port preserved",
+);
+{
+  const external = trustedInternalOrigin("https://evil.example/api/stripe/transfers/run");
+  assert(!external.includes("evil.example"), `host header must not win: ${external}`);
+}
 
 console.log("productionSite tests passed");

@@ -203,6 +203,24 @@ export function resolvePublicSiteOrigin(
   return "http://localhost:3000";
 }
 
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+/**
+ * Origin for server-to-server calls back into this app.
+ * Loopback keeps the local port. Any other host ignores the request Host header.
+ */
+export function trustedInternalOrigin(requestOrigin: string): string {
+  try {
+    const parsed = new URL(requestOrigin);
+    if (LOOPBACK_HOSTS.has(parsed.hostname.toLowerCase())) {
+      return parsed.origin;
+    }
+  } catch {
+    // Fall through to the configured public origin.
+  }
+  return resolvePublicSiteOrigin();
+}
+
 function appendQuery(
   baseUrl: string,
   query?: Record<string, string | undefined | null>,

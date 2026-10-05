@@ -13,6 +13,7 @@ import {
   readCronBatchLimit,
 } from "@/lib/cronTimeouts";
 import { evaluateTaxiPayoutEligibility } from "@/lib/taxiPayoutEligibility";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 import {
   ensurePlatformManualPayoutSchedule,
   evaluatePlatformPayoutGuard,
@@ -285,7 +286,7 @@ async function handle(req: NextRequest) {
 
         // Live payout path only when batch eligible AND not forced dry gate.
         // Default when dry_run=false still requires all taxi-run eligibility.
-        const origin = req.nextUrl.origin;
+        const origin = trustedInternalOrigin(req.nextUrl.origin);
         const authHeader = req.headers.get("authorization") ?? "";
         const results: Array<Record<string, unknown>> = [];
         let paid = 0;

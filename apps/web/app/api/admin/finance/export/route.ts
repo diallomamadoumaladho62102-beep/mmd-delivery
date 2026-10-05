@@ -78,7 +78,9 @@ export async function POST(request: NextRequest) {
     else if (format === "excel") out = rowsToExcelCsv(rows);
     else out = rowsToCsv(rows);
 
-    return new NextResponse(out, {
+    const responseBody: BodyInit =
+      typeof out === "string" ? out : new Blob([new Uint8Array(out)]);
+    return new NextResponse(responseBody, {
       status: 200,
       headers: {
         "Content-Type": exportContentType(format),

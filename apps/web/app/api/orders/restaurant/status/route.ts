@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { transitionRestaurantOrderStatus } from "@/lib/restaurantOrderStatusService";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
       actorUserId: user.id,
       actorRole: "restaurant",
       source: "api/orders/restaurant/status",
-      dispatchOrigin: req.nextUrl.origin,
+      dispatchOrigin: trustedInternalOrigin(req.nextUrl.origin),
     });
 
     if (result.ok === false) {
