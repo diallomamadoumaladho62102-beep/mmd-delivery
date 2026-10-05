@@ -32,7 +32,6 @@ type Body = {
 type RpcResult = {
   ok?: boolean;
   error?: string;
-  already_delivered?: boolean;
 };
 
 type OrderProofRow = {
@@ -325,9 +324,7 @@ async function persistDropoffProof(params: {
         status: "delivered",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", existingOrder.external_ref_id)
-      .in("status", ["picked_up", "delivered"])
-      .not("driver_arrived_at", "is", null);
+      .eq("id", existingOrder.external_ref_id);
 
     if (requestErr) {
       throw new Error(
@@ -667,15 +664,6 @@ export async function POST(req: NextRequest) {
     if (!result?.ok) {
       const mapped = mapRpcFailureToHttp(result?.error || "");
       return json({ error: mapped.error }, mapped.status);
-    }
-
-    if (result.already_delivered === true) {
-      return json({
-        ok: true,
-        order_id: orderId,
-        already_delivered: true,
-        result,
-      });
     }
 
     if (proofPhotoUrl) {

@@ -175,15 +175,6 @@ export async function POST(req: NextRequest) {
 
     const result = (data ?? null) as DeliveryRequestRpcResult | null;
 
-    if (result?.ok && result.already_delivered === true) {
-      return json({
-        ok: true,
-        already_delivered: true,
-        delivery_request_id: requestId,
-        result,
-      });
-    }
-
     if (!result?.ok) {
       const errCode = String(result?.error ?? result?.message ?? "");
       // Already delivered: still run completion notifications (idempotent dedup).
