@@ -11,6 +11,10 @@ import {
 import { adjustUserPushBadge } from "@/lib/pushBadgeService";
 import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+} from "@/lib/supabaseEnv";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -27,17 +31,16 @@ function getBearerToken(req: NextRequest): string | null {
 }
 
 function getUserSupabase(token: string) {
-  const supabaseUrl =
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !anonKey) {
-    throw new Error("Missing Supabase public env");
-  }
-
-  return createClient(supabaseUrl, anonKey, {
+  // supabase-js 2.46.1 puts the API key in `apikey` and also defaults
+  // Authorization to that key. The user access token must stay in
+  // Authorization so a publishable key is never sent as a Bearer JWT.
+  return createClient(getSupabaseUrl(), getSupabasePublishableKey(), {
     auth: { persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
   });
 }
 

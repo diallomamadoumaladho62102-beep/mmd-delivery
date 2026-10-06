@@ -11,6 +11,7 @@ import { chargeWaitLateFeeIfEligible } from "@/lib/waitTimerLateFeeBilling";
 import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
 import { awardDeliveryRequestLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 import { notifyDeliveryRequestCompleted } from "@/lib/deliveryCompletionNotifications";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,7 +64,7 @@ async function triggerDriverPayoutForOrder(req: NextRequest, orderId: string) {
     return { ok: false, error: "Missing CRON_SECRET" };
   }
 
-  const endpoint = `${req.nextUrl.origin}/api/stripe/transfers/run`;
+  const endpoint = `${trustedInternalOrigin(req.nextUrl.origin)}/api/stripe/transfers/run`;
 
   const response = await fetch(endpoint, {
     method: "POST",

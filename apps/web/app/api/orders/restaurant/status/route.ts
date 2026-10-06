@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { transitionRestaurantOrderStatus } from "@/lib/restaurantOrderStatusService";
+import { trustedInternalOrigin } from "@/lib/productionSite";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+} from "@/lib/supabaseEnv";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,12 +26,6 @@ function getBearerToken(req: NextRequest) {
   const auth = req.headers.get("authorization") || "";
   if (!auth.startsWith("Bearer ")) return "";
   return auth.slice(7).trim();
-}
-
-function getEnv(name: string) {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
 }
 
 export async function POST(req: NextRequest) {
@@ -47,11 +47,7 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid status" }, 400);
     }
 
-    const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-    const supabaseAnonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
-
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabaseUser = createClient(getSupabaseUrl(), getSupabasePublishableKey(), {
       auth: { persistSession: false },
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
@@ -63,9 +59,7 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid token" }, 401);
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false },
-    });
+    const supabaseAdmin = buildSupabaseAdminClient();
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -97,7 +91,7 @@ export async function POST(req: NextRequest) {
       actorUserId: user.id,
       actorRole: "restaurant",
       source: "api/orders/restaurant/status",
-      dispatchOrigin: req.nextUrl.origin,
+      dispatchOrigin: trustedInternalOrigin(req.nextUrl.origin),
     });
 
     if (result.ok === false) {

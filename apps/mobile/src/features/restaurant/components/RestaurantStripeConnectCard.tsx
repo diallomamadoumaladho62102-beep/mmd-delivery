@@ -51,13 +51,19 @@ export function RestaurantStripeConnectCard({ heldAmountLabel }: Props) {
         logTechnicalError("restaurant.connect.check_connect_status", connectErr);
       }
 
-      const { data: profile } = await supabase
-        .from("restaurant_profiles")
-        .select(
-          "stripe_account_id,stripe_onboarding_status,stripe_charges_enabled,stripe_payouts_enabled,stripe_details_submitted",
-        )
-        .eq("user_id", session.user.id)
-        .maybeSingle();
+      const { data: sensitiveRows } = await supabase.rpc(
+        "restaurant_profile_sensitive",
+        { p_user_id: session.user.id },
+      );
+      const profile = (
+        Array.isArray(sensitiveRows) ? sensitiveRows[0] ?? null : sensitiveRows ?? null
+      ) as {
+        stripe_account_id?: string | null;
+        stripe_onboarding_status?: string | null;
+        stripe_charges_enabled?: boolean | null;
+        stripe_payouts_enabled?: boolean | null;
+        stripe_details_submitted?: boolean | null;
+      } | null;
 
       const connect = (connectData ?? {}) as Record<string, unknown>;
       const merged = {

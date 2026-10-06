@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import {
   AdminAccessError,
   assertCanManageOrders,
 } from "@/lib/adminServer";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { stripe } from "@/lib/stripe";
 
@@ -12,12 +12,6 @@ export const dynamic = "force-dynamic";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
-}
-
-function getEnv(name: string) {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
 }
 
 function nowIso() {
@@ -40,12 +34,7 @@ export async function POST(req: NextRequest) {
     const dryRun = body.dryRun !== false;
     const limit = Math.min(Math.max(Number(body.limit ?? 10), 1), 25);
 
-    const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-    const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false },
-    });
+    const supabaseAdmin = buildSupabaseAdminClient();
 
     const { data: orders, error: readError } = await supabaseAdmin
       .from("orders")

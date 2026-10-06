@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,8 +57,7 @@ export async function POST(req: NextRequest) {
     }
 
     const authHeader = extractBearerHeader(req);
-    const url = new URL(req.url);
-    const base = url.origin;
+    const base = trustedInternalOrigin(req.nextUrl.origin);
 
     const response = await fetch(
       `${base}/api/stripe/client/create-checkout-session`,

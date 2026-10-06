@@ -115,6 +115,8 @@ backups/
 **/.env.bak*
 **/*.env.bak*
 .env.bak*
+**/.env.local.backup
+**/*.env.local.backup
 docs/phase-integrate-e2e-report.txt
 scripts/phase-*.sh
 scripts/phase-*.mjs

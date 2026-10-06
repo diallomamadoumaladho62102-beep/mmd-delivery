@@ -81,7 +81,9 @@ export async function POST(request: NextRequest) {
     }
 
     const filename = exportFilename(moduleParam, format);
-    return new NextResponse(bodyOut, {
+    const responseBody: BodyInit =
+      typeof bodyOut === "string" ? bodyOut : new Blob([new Uint8Array(bodyOut)]);
+    return new NextResponse(responseBody, {
       status: 200,
       headers: {
         "Content-Type": exportContentType(format),

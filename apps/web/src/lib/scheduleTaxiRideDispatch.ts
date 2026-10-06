@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildDispatchInternalHeaders, getDispatchInternalSecret } from "@/lib/dispatchInternalAuth";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 
 export type TaxiDispatchTriggerResult = {
@@ -56,7 +57,7 @@ export async function triggerTaxiRideDispatch(params: {
   };
 
   try {
-    const res = await fetch(`${origin.replace(/\/$/, "")}/api/dispatch/taxi-ride`, {
+    const res = await fetch(`${trustedInternalOrigin(origin).replace(/\/$/, "")}/api/dispatch/taxi-ride`, {
       method: "POST",
       headers,
       body: JSON.stringify({ taxiRideId, taxi_ride_id: taxiRideId, wave }),

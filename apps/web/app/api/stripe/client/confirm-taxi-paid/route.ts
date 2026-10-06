@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { scheduleTaxiRideDispatchIfEligible } from "@/lib/taxiSharedRideDispatch";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 import {
   getSupabaseAdminClient,
   getSupabaseUserClient,
@@ -415,7 +416,7 @@ export async function POST(req: NextRequest) {
 
       await healTaxiPaidSideEffects({
         supabaseAdmin,
-        origin: req.nextUrl.origin,
+        origin: trustedInternalOrigin(req.nextUrl.origin),
         taxiRideId,
         ride,
         paymentIntentId: paymentIntentIdForBridge,
@@ -533,7 +534,7 @@ export async function POST(req: NextRequest) {
 
     await healTaxiPaidSideEffects({
       supabaseAdmin,
-      origin: req.nextUrl.origin,
+      origin: trustedInternalOrigin(req.nextUrl.origin),
       taxiRideId,
       ride,
       paymentIntentId: paymentIntentIdForBridge,

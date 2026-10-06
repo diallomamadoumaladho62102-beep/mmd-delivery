@@ -15,6 +15,7 @@ import {
   pushText,
 } from "@/lib/pushCopy";
 import { normalizeAppLocale } from "@/lib/userLocale";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -267,7 +268,7 @@ function getInternalBaseUrl(req: NextRequest): string {
     return candidate;
   }
 
-  return req.nextUrl.origin.replace(/\/+$/, "");
+  return trustedInternalOrigin(req.nextUrl.origin).replace(/\/+$/, "");
 }
 
 async function persistDropoffProof(params: {

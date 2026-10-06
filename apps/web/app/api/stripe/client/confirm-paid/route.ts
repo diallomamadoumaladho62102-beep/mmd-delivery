@@ -13,6 +13,7 @@ import {
   orderVerticalForPlatformGate,
 } from "@/lib/platformRouteGuards";
 import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
+import { trustedInternalOrigin } from "@/lib/productionSite";
 import { bridgeStripeWalletFromPaidOrder } from "@/lib/stripeInboundWalletBridge";
 import {
   requirePaymentIntentSucceeded,
@@ -24,6 +25,11 @@ import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { materializePaidFoodOrderFromQuoteCheckout } from "@/lib/food/foodCheckoutFromQuote";
 import { getStripeAmountFromCheckoutSession, getStripeAmountFromPaymentIntent } from "@/lib/taxiStripeWebhook";
 import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+} from "@/lib/supabaseEnv";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -186,19 +192,11 @@ function checkoutSessionOrderIdMatches(
   return candidates.includes(orderId);
 }
 
-function getRequiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value || !value.trim()) {
-    throw new Error(`Missing env (${name})`);
-  }
-  return value;
-}
-
 function getSupabaseUserClient(token: string): SupabaseClient {
-  const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const anonKey = getRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-
-  return createClient(supabaseUrl, anonKey, {
+  // supabase-js 2.46.1 puts the API key in `apikey` and also defaults
+  // Authorization to that key. The user access token must stay in
+  // Authorization so a publishable key is never sent as a Bearer JWT.
+  return createClient(getSupabaseUrl(), getSupabasePublishableKey(), {
     auth: { persistSession: false },
     global: {
       headers: {
@@ -206,23 +204,6 @@ function getSupabaseUserClient(token: string): SupabaseClient {
       },
     },
   });
-}
-
-function getSupabaseAdminClient(): {
-  supabase: SupabaseClient;
-  supabaseUrl: string;
-  serviceKey: string;
-} {
-  const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
-  const serviceKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
-
-  return {
-    supabase: createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false },
-    }),
-    supabaseUrl,
-    serviceKey,
-  };
 }
 
 async function parseBody(req: NextRequest): Promise<Body> {
@@ -430,23 +411,13 @@ async function confirmFoodQuoteCheckoutPaid(params: {
 }
 
 async function verifyOrderPaidState(opts: {
-  supabaseUrl: string;
-  serviceKey: string;
   orderId: string;
   expectedSessionId: string | null;
   expectedPaymentIntentId: string | null;
 }): Promise<VerifyPaidStateResult> {
-  const {
-    supabaseUrl,
-    serviceKey,
-    orderId,
-    expectedSessionId,
-    expectedPaymentIntentId,
-  } = opts;
+  const { orderId, expectedSessionId, expectedPaymentIntentId } = opts;
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false },
-  });
+  const supabaseAdmin = buildSupabaseAdminClient();
 
   const { data, error } = await supabaseAdmin
     .from("orders")
@@ -524,8 +495,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabaseUser = getSupabaseUserClient(token);
-    const { supabase: supabaseAdmin, supabaseUrl, serviceKey } =
-      getSupabaseAdminClient();
+    const supabaseAdmin = buildSupabaseAdminClient();
 
     const {
       data: userData,
@@ -724,8 +694,6 @@ export async function POST(req: NextRequest) {
       }
 
       const verified = await verifyOrderPaidState({
-        supabaseUrl,
-        serviceKey,
         orderId,
         expectedSessionId: null,
         expectedPaymentIntentId: paymentIntentIdOnOrder,
@@ -769,7 +737,7 @@ export async function POST(req: NextRequest) {
         orderId,
         clientUserIds: [order.client_user_id, order.created_by, user.id],
         kind: order.kind,
-        dispatchOrigin: req.nextUrl.origin,
+        dispatchOrigin: trustedInternalOrigin(req.nextUrl.origin),
       });
 
       const { enqueuePaymentSucceededAndProcessBatch } = await import(
@@ -943,8 +911,6 @@ export async function POST(req: NextRequest) {
     }
 
     const verified = await verifyOrderPaidState({
-      supabaseUrl,
-      serviceKey,
       orderId,
       expectedSessionId: order.stripe_session_id,
       expectedPaymentIntentId: paymentIntentId,
@@ -988,7 +954,7 @@ export async function POST(req: NextRequest) {
       orderId,
       clientUserIds: [order.client_user_id, order.created_by, user.id],
       kind: order.kind,
-      dispatchOrigin: req.nextUrl.origin,
+      dispatchOrigin: trustedInternalOrigin(req.nextUrl.origin),
     });
 
     const { enqueuePaymentSucceededAndProcessBatch } = await import(
