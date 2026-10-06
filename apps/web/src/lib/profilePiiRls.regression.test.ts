@@ -56,6 +56,10 @@ test("later migrations do not recreate the blanket restaurant profile read", () 
     .filter((name) => {
       const stamp = name.slice(0, 14);
       return /^\d{14}$/.test(stamp) && stamp > "20261211120000";
+    })
+    .filter((name) => {
+      const text = fs.readFileSync(path.join(dir, name), "utf8");
+      return /create policy\s+"Allow all users to read restaurant profiles"/i.test(text);
     });
   assert.deepEqual(later, []);
   const recreate = fs
