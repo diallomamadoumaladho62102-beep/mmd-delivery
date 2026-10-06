@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertCanReviewDrivers } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { notifyDriverStatusDecision } from "@/lib/driverReviewNotifications";
+import {
+  allowedSourceStatuses,
+  claimReviewTransition,
+  decisionNoteForStatus,
+  isDriverReviewTarget,
+  rejectionNoteError,
+  sanitizeDriverDecisionNote,
+  type DriverReviewTarget,
+} from "@/lib/driverReviewTransition";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { notifyDriverApprovedEmail } from "@/lib/transactionalEmails";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type DriverReviewStatus = "approved" | "rejected" | "suspended" | "disabled";
+type DriverReviewStatus = DriverReviewTarget;
 type DriverDocumentReviewStatus = "approved" | "rejected";
 
 type DriverReviewBody = {
@@ -58,16 +67,12 @@ type DriverProfileStatusUpdate = {
   documents_required: boolean;
   missing_requirements: string | null;
   is_online: boolean;
+  driver_decision_note: string | null;
   updated_at: string;
 };
 
 function isDriverReviewStatus(value: unknown): value is DriverReviewStatus {
-  return (
-    value === "approved" ||
-    value === "rejected" ||
-    value === "suspended" ||
-    value === "disabled"
-  );
+  return isDriverReviewTarget(value);
 }
 
 function isDocumentReviewStatus(
@@ -190,8 +195,9 @@ function buildDriverProfileStatusUpdate(params: {
   status: DriverReviewStatus;
   reviewedAt: string;
   missingRequirements: string[];
+  decisionNote: string | null;
 }): DriverProfileStatusUpdate {
-  const { status, reviewedAt, missingRequirements } = params;
+  const { status, reviewedAt, missingRequirements, decisionNote } = params;
 
   const documentsRequired = missingRequirements.length > 0;
   const missingRequirementsText = formatMissingRequirements(missingRequirements);
@@ -201,6 +207,7 @@ function buildDriverProfileStatusUpdate(params: {
     documents_required: documentsRequired,
     missing_requirements: missingRequirementsText,
     is_online: false,
+    driver_decision_note: decisionNote,
     updated_at: reviewedAt,
   };
 }
@@ -307,19 +314,31 @@ async function updateDriverProfileStatus(params: {
   status: DriverReviewStatus;
   reviewedAt: string;
   missingRequirements: string[];
-}): Promise<DriverProfileStatusUpdate> {
-  const { supabase, userId, status, reviewedAt, missingRequirements } = params;
+  decisionNote: string | null;
+  sourceStatuses: readonly string[];
+}): Promise<DriverProfileStatusUpdate | null> {
+  const {
+    supabase,
+    userId,
+    status,
+    reviewedAt,
+    missingRequirements,
+    decisionNote,
+    sourceStatuses,
+  } = params;
 
   const payload = buildDriverProfileStatusUpdate({
     status,
     reviewedAt,
     missingRequirements,
+    decisionNote,
   });
 
   const { data, error } = await supabase
     .from("driver_profiles")
     .update(payload)
     .eq("user_id", userId)
+    .in("status", [...sourceStatuses])
     .select("user_id")
     .maybeSingle();
 
@@ -327,9 +346,7 @@ async function updateDriverProfileStatus(params: {
     throw new Error(`Failed to update driver profile: ${error.message}`);
   }
 
-  if (!data) {
-    throw new Error("Driver profile not found.");
-  }
+  if (!data) return null;
 
   return payload;
 }
@@ -390,13 +407,41 @@ export async function POST(request: NextRequest) {
       return badRequest("Cannot approve driver with missing requirements.");
     }
 
+    const noteError = rejectionNoteError(status, reviewNotes);
+    if (noteError) {
+      return NextResponse.json({ ok: false, error: noteError }, { status: 400 });
+    }
+
+    const decisionNote = decisionNoteForStatus(
+      status,
+      sanitizeDriverDecisionNote(reviewNotes),
+    );
+    const sourceStatuses = allowedSourceStatuses(status);
     const profileUpdate = await updateDriverProfileStatus({
       supabase,
       userId,
       status,
       reviewedAt,
       missingRequirements,
+      decisionNote,
+      sourceStatuses,
     });
+
+    if (!profileUpdate) {
+      const { data: fresh } = await supabase
+        .from("driver_profiles")
+        .select("status")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const conflict = claimReviewTransition(
+        (fresh as { status?: string | null } | null)?.status,
+        status,
+      );
+      if (conflict.ok === false) {
+        return NextResponse.json({ ok: false, error: conflict.error }, { status: 409 });
+      }
+      return NextResponse.json({ ok: false, error: "review_conflict" }, { status: 409 });
+    }
 
     if (isDocumentReviewStatus(status)) {
       const documentUpdate = buildDriverDocumentUpdate({
@@ -425,7 +470,7 @@ export async function POST(request: NextRequest) {
         is_online: profileUpdate.is_online,
         documents_required: profileUpdate.documents_required,
         missing_requirements: profileUpdate.missing_requirements,
-        review_notes: reviewNotes.length > 0 ? reviewNotes : null,
+        driver_decision_note: decisionNote,
       },
       metadata: {
         reviewed_at: reviewedAt,
@@ -434,9 +479,14 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    if (status === "approved") {
-      await notifyDriverApprovedEmail({ supabaseAdmin: supabase, userId });
-    }
+    const decision = await notifyDriverStatusDecision({
+      supabaseAdmin: supabase,
+      userId,
+      status,
+      fromStatus: String(driverProfile.status ?? sourceStatuses[0] ?? "pending"),
+      reviewedAt,
+      decisionNote,
+    });
 
     return NextResponse.json(
       {
@@ -444,7 +494,8 @@ export async function POST(request: NextRequest) {
         userId,
         status,
         reviewedAt,
-        reviewNotes: reviewNotes.length > 0 ? reviewNotes : null,
+        reviewNotes: decisionNote,
+        notified: decision.notified,
         documentsRequired: profileUpdate.documents_required,
         missingRequirements,
         missingRequirementsText: profileUpdate.missing_requirements,

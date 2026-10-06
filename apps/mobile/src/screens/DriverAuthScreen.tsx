@@ -24,6 +24,7 @@ import { supabase } from "../lib/supabase";
 import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
 import { buildDriverProfileFromSignupMetadata } from "../lib/signupNavigation";
+import { notifyDriverApplicationPending } from "../lib/driverReviewClient";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
@@ -531,6 +532,7 @@ export function DriverAuthScreen() {
                 phone: restored.phone,
               })
               .eq("id", uid);
+            void notifyDriverApplicationPending();
           }
         }
       }
@@ -995,6 +997,8 @@ export function DriverAuthScreen() {
         );
         return;
       }
+
+      void notifyDriverApplicationPending();
 
       Alert.alert(
         t("driver.auth.alert.applicationSubmittedTitle", "Application submitted"),

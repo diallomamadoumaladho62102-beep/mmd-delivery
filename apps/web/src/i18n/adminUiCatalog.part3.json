@@ -4016,5 +4016,173 @@
     "ar": "لا يوجد ملف بائع لهذا الحساب. أنشئه في تطبيق الجوال ثم عُد إلى هنا.",
     "zh": "此账户没有卖家资料。请在手机应用中创建，然后返回此处。",
     "ff": "Alaa profil jeeyoowo e konte ndee. Sos ɗum e jaaɓngal mobile, rutto ɗoo."
+  },
+  "View Profile": {
+    "en": "View Profile",
+    "fr": "Voir le profil",
+    "es": "Ver perfil",
+    "ar": "عرض الملف",
+    "zh": "查看资料",
+    "ff": "Yiyto profil"
+  },
+  "History": {
+    "en": "History",
+    "fr": "Historique",
+    "es": "Historial",
+    "ar": "السجل",
+    "zh": "历史",
+    "ff": "Aslol"
+  },
+  "A rejection reason is required.": {
+    "en": "A rejection reason is required.",
+    "fr": "Une raison de rejet est obligatoire.",
+    "es": "El motivo del rechazo es obligatorio.",
+    "ar": "سبب الرفض مطلوب.",
+    "zh": "必须填写拒绝原因。",
+    "ff": "Daliilu salagol ena haani."
+  },
+  "This application was already reviewed.": {
+    "en": "This application was already reviewed.",
+    "fr": "Ce dossier a déjà été examiné.",
+    "es": "Esta solicitud ya fue revisada.",
+    "ar": "تمت مراجعة هذا الملف مسبقًا.",
+    "zh": "该申请已审核。",
+    "ff": "Ndee dossier yiytaama kala."
+  },
+  "Another review already changed this application.": {
+    "en": "Another review already changed this application.",
+    "fr": "Une autre revue a déjà modifié ce dossier.",
+    "es": "Otra revisión ya cambió esta solicitud.",
+    "ar": "غيّرت مراجعة أخرى هذا الملف.",
+    "zh": "另一次审核已更改该申请。",
+    "ff": "Ƴeewndo woɗngo waylii ndee dossier."
+  },
+  "Reason shown to the driver. Required when you reject.": {
+    "en": "Reason shown to the driver. Required when you reject.",
+    "fr": "Raison affichée au chauffeur. Obligatoire pour rejeter.",
+    "es": "Motivo visible para el conductor. Obligatorio al rechazar.",
+    "ar": "سبب يظهر للسائق. مطلوب عند الرفض.",
+    "zh": "向司机显示的原因。拒绝时必填。",
+    "ff": "Daliilu mo driwer yiyata. Ena haani so a salii."
+  },
+  "Cannot approve: missing required information or documents": {
+    "en": "Cannot approve: missing required information or documents",
+    "fr": "Impossible d'approuver : informations ou documents obligatoires manquants.",
+    "es": "No se puede aprobar: faltan datos o documentos obligatorios.",
+    "ar": "لا يمكن الموافقة: معلومات أو مستندات مطلوبة ناقصة.",
+    "zh": "无法批准：缺少必填信息或文件。",
+    "ff": "Jaɓde waawaa: kabaruuji walla dokke haani ŋakki."
+  },
+  "Application rejected": {
+    "en": "Application rejected",
+    "fr": "Dossier rejeté",
+    "es": "Solicitud rechazada",
+    "ar": "تم رفض الملف",
+    "zh": "申请已拒绝",
+    "ff": "Dossier salaama"
+  },
+  "Your driver application was rejected. Driver Home stays closed until a new review is approved.": {
+    "en": "Your driver application was rejected. Driver Home stays closed until a new review is approved.",
+    "fr": "Votre dossier chauffeur a été rejeté. L'accueil chauffeur reste fermé tant qu'une nouvelle revue n'est pas approuvée.",
+    "es": "Tu solicitud de conductor fue rechazada. El inicio del conductor permanece cerrado hasta que una nueva revisión sea aprobada.",
+    "ar": "تم رفض ملف السائق. تبقى الصفحة الرئيسية مغلقة إلى أن تُقبل مراجعة جديدة.",
+    "zh": "您的司机申请已被拒绝。在新的审核通过之前，司机首页保持关闭。",
+    "ff": "Dossier driwer maa salaama. Jaɓɓorgo driwer udditataa haa ƴeewndo hesere jaɓe."
+  },
+  "Your driver account is suspended. Driver Home stays closed.": {
+    "en": "Your driver account is suspended. Driver Home stays closed.",
+    "fr": "Votre compte chauffeur est suspendu. L'accueil chauffeur reste fermé.",
+    "es": "Tu cuenta de conductor está suspendida. El inicio del conductor permanece cerrado.",
+    "ar": "حساب السائق معلّق. تبقى الصفحة الرئيسية مغلقة.",
+    "zh": "您的司机账户已暂停。司机首页保持关闭。",
+    "ff": "Konte driwer maa sabbinaama. Jaɓɓorgo driwer uddaama."
+  },
+  "Your driver account is disabled. Driver Home stays closed.": {
+    "en": "Your driver account is disabled. Driver Home stays closed.",
+    "fr": "Votre compte chauffeur est désactivé. L'accueil chauffeur reste fermé.",
+    "es": "Tu cuenta de conductor está desactivada. El inicio del conductor permanece cerrado.",
+    "ar": "حساب السائق معطّل. تبقى الصفحة الرئيسية مغلقة.",
+    "zh": "您的司机账户已停用。司机首页保持关闭。",
+    "ff": "Konte driwer maa dartinaama. Jaɓɓorgo driwer uddaama."
+  },
+  "Decision reason": {
+    "en": "Decision reason",
+    "fr": "Raison de la décision",
+    "es": "Motivo de la decisión",
+    "ar": "سبب القرار",
+    "zh": "决定原因",
+    "ff": "Daliilu ƴeewndo"
+  },
+  "Update the rejected information, then submit again. Your account stays the same.": {
+    "en": "Update the rejected information, then submit again. Your account stays the same.",
+    "fr": "Corrigez les informations rejetées, puis renvoyez le dossier. Votre compte reste le même.",
+    "es": "Corrige la información rechazada y vuelve a enviarla. Tu cuenta sigue siendo la misma.",
+    "ar": "صحّح المعلومات المرفوضة ثم أعد الإرسال. يبقى حسابك نفسه.",
+    "zh": "请更正被拒绝的信息后重新提交。您的账户保持不变。",
+    "ff": "Moƴƴin kabaruuji salaama, ndeen neldu kadi. Account maa wonaa oo."
+  },
+  "Submit again": {
+    "en": "Submit again",
+    "fr": "Renvoyer le dossier",
+    "es": "Enviar de nuevo",
+    "ar": "إعادة الإرسال",
+    "zh": "重新提交",
+    "ff": "Neldu kadi"
+  },
+  "Could not submit again. Try once more.": {
+    "en": "Could not submit again. Try once more.",
+    "fr": "Impossible de renvoyer le dossier. Réessayez.",
+    "es": "No se pudo enviar de nuevo. Inténtalo otra vez.",
+    "ar": "تعذر إعادة الإرسال. حاول مرة أخرى.",
+    "zh": "无法重新提交。请再试一次。",
+    "ff": "Neldu kadi waawaa. Fuɗɗo kadi."
+  },
+  "Your application is pending review again.": {
+    "en": "Your application is pending review again.",
+    "fr": "Votre dossier est de nouveau en attente de revue.",
+    "es": "Tu solicitud vuelve a estar pendiente de revisión.",
+    "ar": "ملفك بانتظار المراجعة من جديد.",
+    "zh": "您的申请再次等待审核。",
+    "ff": "Dossier maa woni kadi e sabbu ƴeewndo."
+  },
+  "Driver approved successfully.": {
+    "en": "Driver approved successfully.",
+    "fr": "Chauffeur approuvé.",
+    "es": "Conductor aprobado.",
+    "ar": "تمت الموافقة على السائق.",
+    "zh": "司机已通过。",
+    "ff": "Driwer jaɓaama."
+  },
+  "Driver rejected successfully.": {
+    "en": "Driver rejected successfully.",
+    "fr": "Chauffeur rejeté.",
+    "es": "Conductor rechazado.",
+    "ar": "تم رفض السائق.",
+    "zh": "司机已拒绝。",
+    "ff": "Driwer salaama."
+  },
+  "Driver suspended successfully.": {
+    "en": "Driver suspended successfully.",
+    "fr": "Chauffeur suspendu.",
+    "es": "Conductor suspendido.",
+    "ar": "تم تعليق السائق.",
+    "zh": "司机已暂停。",
+    "ff": "Driwer sabbinaama."
+  },
+  "Driver disabled successfully.": {
+    "en": "Driver disabled successfully.",
+    "fr": "Chauffeur désactivé.",
+    "es": "Conductor desactivado.",
+    "ar": "تم تعطيل السائق.",
+    "zh": "司机已停用。",
+    "ff": "Driwer dartinaama."
+  },
+  "Update failed": {
+    "en": "Update failed",
+    "fr": "La mise à jour a échoué",
+    "es": "La actualización falló",
+    "ar": "فشل التحديث",
+    "zh": "更新失败",
+    "ff": "Kesɗitinal woorii"
   }
 }

@@ -257,7 +257,7 @@ function DriverOpsCard({
               className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm"
               value={noteDraft}
               onChange={(e) => onNoteChange(e.target.value)}
-              placeholder={t("Optional note for approve / reject…")}
+              placeholder={t("Reason shown to the driver. Required when you reject.")}
             />
           </div>
         ) : null}

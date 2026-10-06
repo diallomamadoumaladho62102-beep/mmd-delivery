@@ -35,6 +35,10 @@ import {
 } from "../lib/bootFailOpen";
 import { isApprovedDriverStatus } from "../lib/signupNavigation";
 import {
+  notifyDriverApplicationPending,
+  resubmitDriverApplication,
+} from "../lib/driverReviewClient";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_LINK_BLUE,
@@ -59,6 +63,8 @@ export function DriverOnboardingScreen() {
   const [savingMode, setSavingMode] = useState(false);
   const [transportMode, setTransportMode] = useState<TransportMode>("bike");
   const [driverStatus, setDriverStatus] = useState<string | null>(null);
+  const [decisionNote, setDecisionNote] = useState<string | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
   const [progress, setProgress] = useState<DriverSetupProgress>({
     progress: 0,
     vehicleOk: false,
@@ -94,12 +100,24 @@ export function DriverOnboardingScreen() {
 
           const { data: profile } = await supabase
             .from("driver_profiles")
-            .select("transport_mode, active_vehicle_id, stripe_onboarded, status")
+            .select(
+              "transport_mode, active_vehicle_id, stripe_onboarded, status, driver_decision_note",
+            )
             .or(`user_id.eq.${uid},id.eq.${uid}`)
             .maybeSingle();
-          setDriverStatus(
-            String((profile as { status?: string | null } | null)?.status ?? ""),
+          const status = String(
+            (profile as { status?: string | null } | null)?.status ?? "",
           );
+          setDriverStatus(status);
+          setDecisionNote(
+            String(
+              (profile as { driver_decision_note?: string | null } | null)
+                ?.driver_decision_note ?? "",
+            ).trim() || null,
+          );
+          if (status === "pending" || status === "incomplete") {
+            void notifyDriverApplicationPending();
+          }
 
           const tm = (String(profile?.transport_mode ?? "bike").toLowerCase() ||
             "bike") as TransportMode;
@@ -278,8 +296,61 @@ export function DriverOnboardingScreen() {
           onPress={() => navigation.navigate("DriverServices")}
         />
 
+        {driverStatus === "rejected" ? (
+          <View style={styles.hubRow}>
+            <Text style={styles.hubLabel}>
+              {t("driver.onboarding.rejectedTitle", "Application rejected")}
+            </Text>
+            <Text style={styles.hubHint}>
+              {t(
+                "driver.onboarding.rejectedBody",
+                "Your driver application was rejected. Driver Home stays closed until a new review is approved.",
+              )}
+            </Text>
+            {decisionNote ? (
+              <Text style={styles.hubHint}>
+                {t("driver.onboarding.rejectedReasonLabel", "Reason")}: {decisionNote}
+              </Text>
+            ) : null}
+            <Text style={styles.hubHint}>
+              {t(
+                "driver.onboarding.rejectedNextStep",
+                "Update the rejected information, then submit again. Your account stays the same.",
+              )}
+            </Text>
+          </View>
+        ) : null}
+
         <TouchableOpacity
           onPress={() => {
+            if (driverStatus === "rejected") {
+              if (resubmitting) return;
+              setResubmitting(true);
+              void resubmitDriverApplication()
+                .then((result) => {
+                  if (!result.ok) {
+                    Alert.alert(
+                      t("common.errorTitle", "Error"),
+                      t(
+                        "driver.onboarding.resubmitFailed",
+                        "Could not submit again. Try once more.",
+                      ),
+                    );
+                    return;
+                  }
+                  setDriverStatus("pending");
+                  setDecisionNote(null);
+                  Alert.alert(
+                    t("driver.onboarding.resubmitDoneTitle", "Application sent again"),
+                    t(
+                      "driver.onboarding.resubmitDoneBody",
+                      "Your application is pending review again.",
+                    ),
+                  );
+                })
+                .finally(() => setResubmitting(false));
+              return;
+            }
             if (!isApprovedDriverStatus(driverStatus)) {
               Alert.alert(
                 t("driver.onboarding.pendingApprovalTitle", "Approval pending"),
@@ -296,7 +367,9 @@ export function DriverOnboardingScreen() {
           activeOpacity={0.85}
         >
           <Text style={styles.ctaText}>
-            {t("driver.onboarding.continue", "Continue to Home")}
+            {driverStatus === "rejected"
+              ? t("driver.onboarding.resubmit", "Submit again")
+              : t("driver.onboarding.continue", "Continue to Home")}
           </Text>
         </TouchableOpacity>
       </ScrollView>

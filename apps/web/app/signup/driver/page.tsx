@@ -787,6 +787,15 @@ export default function SignupDriver() {
 
       setExistingDocs(refreshedDocs);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const pendingToken = sessionData.session?.access_token;
+      if (pendingToken) {
+        void fetch("/api/driver/pending-notice", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${pendingToken}` },
+        });
+      }
+
       setProfilePhotoFile(null);
       setIdFrontFile(null);
       setIdBackFile(null);

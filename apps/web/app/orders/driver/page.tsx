@@ -74,6 +74,7 @@ type DriverProfile = {
   plate_number?: string | null;
   license_number?: string | null;
   license_expiry?: string | null;
+  driver_decision_note?: string | null;
 };
 
 type DriverDocumentType =
@@ -199,6 +200,8 @@ export default function DriverOrdersDashboardPage() {
     Record<string, ClientProfile | null>
   >({});
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [resubmitting, setResubmitting] = useState(false);
+  const [decisionFlash, setDecisionFlash] = useState<string | null>(null);
 
   const missingRequirements = useMemo(() => {
     if (!driverProfile) return [];
@@ -292,7 +295,8 @@ export default function DriverOrdersDashboardPage() {
             status,
             documents_required,
             is_online,
-            missing_requirements
+            missing_requirements,
+            driver_decision_note
           `,
           )
           .eq("user_id", uid)
@@ -317,6 +321,18 @@ export default function DriverOrdersDashboardPage() {
 
       setDriverProfile((driverRow as DriverProfile | null) ?? null);
       setDriverDocuments((docsRow as DriverDocumentRow[] | null) ?? []);
+
+      const driverStatus = String((driverRow as DriverProfile | null)?.status ?? "");
+      if (driverStatus === "pending" || driverStatus === "incomplete") {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (token) {
+          void fetch("/api/driver/pending-notice", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
+      }
 
       if (!driverRow) {
         setAvailable([]);
@@ -538,6 +554,32 @@ export default function DriverOrdersDashboardPage() {
     alert(t("Course refusée. Tu peux en choisir une autre."));
   }
 
+  async function resubmitApplication() {
+    setResubmitting(true);
+    setDecisionFlash(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        setDecisionFlash(t("Could not submit again. Try once more."));
+        return;
+      }
+      const res = await fetch("/api/driver/resubmit", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean };
+      if (!res.ok || !json.ok) {
+        setDecisionFlash(t("Could not submit again. Try once more."));
+        return;
+      }
+      setDecisionFlash(t("Your application is pending review again."));
+      await load();
+    } finally {
+      setResubmitting(false);
+    }
+  }
+
   return (
     <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -608,6 +650,18 @@ export default function DriverOrdersDashboardPage() {
                 <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-amber-50 text-amber-700 border-amber-200">
                   {t("Profil à compléter")}
                 </span>
+              ) : driverProfile.status === "rejected" ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-red-50 text-red-700 border-red-200">
+                  {t("Application rejected")}
+                </span>
+              ) : driverProfile.status === "suspended" ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-slate-100 text-slate-700 border-slate-300">
+                  {t("Suspended")}
+                </span>
+              ) : driverProfile.status === "disabled" ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-slate-100 text-slate-700 border-slate-300">
+                  {t("Disabled")}
+                </span>
               ) : !isApproved ? (
                 <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">
                   {t("En attente d’approbation")}
@@ -621,6 +675,54 @@ export default function DriverOrdersDashboardPage() {
           </div>
         </section>
       )}
+
+      {driverProfile &&
+      (driverProfile.status === "rejected" ||
+        driverProfile.status === "suspended" ||
+        driverProfile.status === "disabled") ? (
+        <section className="rounded-xl border bg-white p-4 space-y-3">
+          <h2 className="text-base font-semibold">
+            {driverProfile.status === "rejected"
+              ? t("Application rejected")
+              : driverProfile.status === "suspended"
+                ? t("Suspended")
+                : t("Disabled")}
+          </h2>
+          <p className="text-sm text-gray-700">
+            {driverProfile.status === "rejected"
+              ? t(
+                  "Your driver application was rejected. Driver Home stays closed until a new review is approved.",
+                )
+              : driverProfile.status === "suspended"
+                ? t("Your driver account is suspended. Driver Home stays closed.")
+                : t("Your driver account is disabled. Driver Home stays closed.")}
+          </p>
+          {driverProfile.driver_decision_note ? (
+            <p className="text-sm text-gray-800">
+              <span className="font-semibold">{t("Decision reason")}: </span>
+              {driverProfile.driver_decision_note}
+            </p>
+          ) : null}
+          {driverProfile.status === "rejected" ? (
+            <p className="text-sm text-gray-700">
+              {t(
+                "Update the rejected information, then submit again. Your account stays the same.",
+              )}
+            </p>
+          ) : null}
+          {decisionFlash ? <p className="text-sm text-gray-700">{decisionFlash}</p> : null}
+          {driverProfile.status === "rejected" ? (
+            <button
+              type="button"
+              disabled={resubmitting}
+              onClick={() => void resubmitApplication()}
+              className="inline-flex px-3 py-2 rounded-lg bg-black text-white text-sm disabled:opacity-60"
+            >
+              {t("Submit again")}
+            </button>
+          ) : null}
+        </section>
+      ) : null}
 
       {loading && (
         <p className="text-sm text-gray-600">

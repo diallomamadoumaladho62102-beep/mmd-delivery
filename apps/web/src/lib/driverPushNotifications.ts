@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { driverDecisionPush } from "./driverReviewCopy";
+import type { DriverReviewTarget } from "./driverReviewTransition";
 import { resolvePushSound } from "./mmdPushSounds";
 import { pushText, type PushCopy } from "./pushCopy";
 import { normalizeAppLocale, type AppLocale } from "./userLocale";
@@ -295,4 +297,38 @@ export async function notifyDriverDocumentStatusChange(params: {
   }
 
   return 0;
+}
+
+/**
+ * Account decision push. Does not write driver_vehicle_notification_events.
+ * The payload must not open Driver Home by itself; the app refetches status.
+ */
+export async function notifyDriverAccountDecisionPush(params: {
+  supabaseAdmin: SupabaseClient;
+  userId: string;
+  status: DriverReviewTarget;
+  reason?: string | null;
+}): Promise<number> {
+  const tokens = await loadDriverExpoTokens(params.supabaseAdmin, params.userId);
+  if (tokens.length === 0) return 0;
+
+  const sound = resolvePushSound("driver_account_decision");
+  const messages = tokens.map((target) => {
+    const copy = driverDecisionPush(params.status, target.locale, params.reason);
+    return {
+      to: target.token,
+      sound,
+      title: copy.title,
+      body: copy.body,
+      priority: "high" as const,
+      channelId: "driver-alerts",
+      data: {
+        type: "driver_account_decision",
+        status: params.status,
+      },
+    };
+  });
+
+  await sendExpoPushMessages(messages);
+  return messages.length;
 }
