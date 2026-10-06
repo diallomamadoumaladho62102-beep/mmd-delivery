@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
+const repoRoot = path.resolve(process.cwd(), "../..");
+
 const sql = fs.readFileSync(
   path.join(
     process.cwd(),
@@ -31,4 +33,30 @@ test("restaurant tax, license, email, and Stripe fields are not publicly selecta
   assert.doesNotMatch(grant[1], /\bexpo_push_token\b/);
   assert.match(sql, /auth\.uid\(\) = p_user_id/);
   assert.match(sql, /is_staff_user\(auth\.uid\(\)\)/);
+});
+
+test("participant profile reads do not request another user's email", () => {
+  const files = [
+    "apps/mobile/src/screens/ClientOrderDetailsScreen.tsx",
+    "apps/mobile/src/screens/ClientDeliveryRequestDetailsScreen.tsx",
+    "apps/mobile/src/screens/DriverOrderDetailsScreen.tsx",
+    "apps/web/src/components/OrderItemsCard.tsx",
+  ];
+  for (const relative of files) {
+    const text = fs.readFileSync(path.join(repoRoot, relative), "utf8");
+    assert.doesNotMatch(text, /from\("profiles"\)[\s\S]{0,120}\.select\("[^"]*email/);
+  }
+});
+
+test("own profile still reads email, so a live column revoke would break shipped clients", () => {
+  const clientProfile = fs.readFileSync(
+    path.join(repoRoot, "apps/mobile/src/screens/ClientProfileScreen.tsx"),
+    "utf8",
+  );
+  const navigator = fs.readFileSync(
+    path.join(repoRoot, "apps/mobile/src/navigation/AppNavigator.tsx"),
+    "utf8",
+  );
+  assert.match(clientProfile, /\.select\("full_name, phone, phone_e164, phone_verified_at, email, avatar_url"\)/);
+  assert.match(navigator, /\.select\("email, phone_verified_at, phone, phone_e164"\)/);
 });
