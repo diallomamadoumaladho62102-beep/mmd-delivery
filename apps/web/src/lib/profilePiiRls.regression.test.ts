@@ -48,6 +48,35 @@ test("participant profile reads do not request another user's email", () => {
   }
 });
 
+test("later migrations do not recreate the blanket restaurant profile read", () => {
+  const dir = path.join(repoRoot, "supabase", "migrations");
+  const later = fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith(".sql"))
+    .filter((name) => {
+      const stamp = name.slice(0, 14);
+      return /^\d{14}$/.test(stamp) && stamp > "20261211120000";
+    });
+  assert.deepEqual(later, []);
+  const recreate = fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith(".sql"))
+    .filter((name) => {
+      const text = fs.readFileSync(path.join(dir, name), "utf8");
+      return /create policy\s+"Allow all users to read restaurant profiles"/i.test(text);
+    });
+  assert.deepEqual(recreate, []);
+});
+
+test("restaurant order contact reads phone and not email", () => {
+  const text = fs.readFileSync(
+    path.join(repoRoot, "apps/mobile/src/screens/RestaurantOrderDetailsScreen.tsx"),
+    "utf8",
+  );
+  assert.match(text, /\.select\("id, full_name, phone"\)/);
+  assert.doesNotMatch(text, /from\("profiles"\)[\s\S]{0,180}\.select\("[^"]*email/);
+});
+
 test("own profile still reads email, so a live column revoke would break shipped clients", () => {
   const clientProfile = fs.readFileSync(
     path.join(repoRoot, "apps/mobile/src/screens/ClientProfileScreen.tsx"),
