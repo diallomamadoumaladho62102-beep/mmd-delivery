@@ -2,7 +2,7 @@
 
 
 import { useAdminT } from "@/i18n/useAdminT";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
 import { validatePassword } from "@/lib/authValidation";
@@ -112,7 +112,7 @@ export default function SignupClientPage() {
   const [country, setCountry] = useState("US");
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -126,10 +126,6 @@ export default function SignupClientPage() {
       setMode("signup");
     }
 
-    return () => {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const title = useMemo(
@@ -442,10 +438,22 @@ export default function SignupClientPage() {
     }
   }
 
-  function onAvatarChange(file: File | null) {
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatarFile(file);
-    setAvatarPreview(file ? URL.createObjectURL(file) : null);
+  async function onAvatarChange(file: File | null) {
+    const canvas = avatarCanvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height);
+    if (!file || !file.type.startsWith("image/")) {
+      setAvatarFile(null);
+      return;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      if (canvas && context) context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      setAvatarFile(file);
+    } catch {
+      setAvatarFile(null);
+    }
   }
 
   return (
@@ -519,13 +527,15 @@ export default function SignupClientPage() {
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-200">{t("Photo de profil")}</label>
                 <div className="flex items-center gap-4">
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-950 text-2xl font-black text-slate-500">
-                    {avatarPreview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={avatarPreview} alt={t("Avatar preview")} className="h-full w-full object-cover" />
-                    ) : (
-                      "+"
-                    )}
+                  <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-950 text-2xl font-black text-slate-500">
+                    <canvas
+                      ref={avatarCanvasRef}
+                      width={80}
+                      height={80}
+                      aria-label={t("Avatar preview")}
+                      className={`h-full w-full ${avatarFile ? "block" : "hidden"}`}
+                    />
+                    {avatarFile ? null : "+"}
                   </div>
                   <input
                     type="file"

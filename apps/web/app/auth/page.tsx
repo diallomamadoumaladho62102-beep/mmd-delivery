@@ -19,6 +19,17 @@ function readNextPath(): string {
   return sanitizeInternalRedirectPath(next, "/dashboard");
 }
 
+function redirectIfSafeNext(next: string) {
+  if (
+    next.startsWith("/") &&
+    !next.startsWith("//") &&
+    !next.includes("://") &&
+    !next.includes("\\")
+  ) {
+    window.location.assign(next);
+  }
+}
+
 export default function AuthPage() {
   const { t } = useAdminT();
 
@@ -39,7 +50,7 @@ export default function AuthPage() {
       if (!mounted) return;
 
       if (data.session) {
-        window.location.href = readNextPath();
+        redirectIfSafeNext(readNextPath());
         return;
       }
 
@@ -50,7 +61,7 @@ export default function AuthPage() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        window.location.href = readNextPath();
+        redirectIfSafeNext(readNextPath());
       }
     });
 
