@@ -121,6 +121,8 @@
       "sharp": "0.35.4",
       "uuid": "11.1.1",
       "baseline-browser-mapping": ">=2.11.13",
+      "compression": ">=1.8.2",
+      "source-map-js": ">=1.2.2",
       "decode-uri-component": "file:vendor/decode-uri-component",
       "braces": "file:vendor/braces"
     }
