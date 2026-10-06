@@ -311,7 +311,10 @@ export default function SignupDriver() {
 
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
-        options: { emailRedirectTo: redirect },
+        options: {
+          emailRedirectTo: redirect,
+          data: { role: ROLE },
+        },
       });
 
       if (error) {
