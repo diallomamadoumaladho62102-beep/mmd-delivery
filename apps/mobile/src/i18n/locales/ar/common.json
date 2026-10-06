@@ -327,6 +327,7 @@
       "noAccount": "لا تملك حساباً؟",
       "password": "كلمة المرور",
       "passwordMin6": "الحد الأدنى 6 أحرف",
+      "passwordTooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
       "passwordPlaceholder": "كلمة المرور",
       "passwordTitle": "كلمة المرور",
       "permissionBody": "اسمح بالوصول للصور لاختيار صورة الملف.",

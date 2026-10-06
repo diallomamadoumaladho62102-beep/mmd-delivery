@@ -72,11 +72,17 @@ function isValidCoordinate(latitude: number, longitude: number) {
   );
 }
 
+class RestaurantAddressError extends Error {
+  constructor(readonly code: "required" | "not_found") {
+    super(code);
+  }
+}
+
 async function geocodeRestaurantAddress(address: string): Promise<GeocodedAddress> {
   const cleanAddress = cleanText(address);
 
   if (!cleanAddress) {
-    throw new Error("Adresse du restaurant obligatoire.");
+    throw new RestaurantAddressError("required");
   }
 
   const { geocodeAddressViaApi } = await import("../lib/serverGeocode");
@@ -86,9 +92,7 @@ async function geocodeRestaurantAddress(address: string): Promise<GeocodedAddres
   const longitude = result.longitude;
 
   if (!isValidCoordinate(latitude, longitude)) {
-    throw new Error(
-      "Adresse introuvable. Entre une adresse complète avec ville, État et ZIP code."
-    );
+    throw new RestaurantAddressError("not_found");
   }
 
   return {
@@ -270,7 +274,7 @@ export function RestaurantAuthScreen() {
     } catch (error: unknown) {
       setMsg(
         t("restaurant.auth.errors.signinFailed", "Login failed") +
-          getErrorMessage(error, "Erreur inconnue")
+          getErrorMessage(error, t("common.error", "Error"))
       );
     } finally {
       setLoading(false);
@@ -297,7 +301,12 @@ export function RestaurantAuthScreen() {
 
     const passwordError = validatePassword(p);
     if (passwordError) {
-      setMsg(passwordError);
+      setMsg(
+        t(
+          "client.auth.passwordTooShort",
+          "Password must be at least 8 characters.",
+        ),
+      );
       return;
     }
 
@@ -366,9 +375,23 @@ export function RestaurantAuthScreen() {
         t("restaurant.auth.success.createdAndSignedIn", "Account created and signed in ✅")
       );
     } catch (error: unknown) {
+      if (error instanceof RestaurantAddressError) {
+        setMsg(
+          error.code === "required"
+            ? t(
+                "restaurant.auth.errors.addressRequired",
+                "Restaurant address is required.",
+              )
+            : t(
+                "restaurant.auth.errors.addressNotFound",
+                "Address not found. Enter a full address with city, state, and ZIP code.",
+              ),
+        );
+        return;
+      }
       setMsg(
         t("restaurant.auth.errors.signupFailed", "Signup failed") +
-          getErrorMessage(error, "Erreur inconnue")
+          getErrorMessage(error, t("common.error", "Error"))
       );
     } finally {
       setLoading(false);
@@ -407,7 +430,7 @@ export function RestaurantAuthScreen() {
     } catch (error: unknown) {
       setMsg(
         t("restaurant.auth.errors.resetFailed", "❌ Unable to send the email:") +
-          getErrorMessage(error, "Erreur inconnue")
+          getErrorMessage(error, t("common.error", "Error"))
       );
     } finally {
       setLoading(false);

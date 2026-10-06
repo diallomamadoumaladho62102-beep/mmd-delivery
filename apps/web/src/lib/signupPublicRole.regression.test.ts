@@ -70,7 +70,32 @@ assert.match(clientSignup, /const ROLE = "client"/);
 assert.match(clientSignup, /role:\s*ROLE/);
 
 assert.match(clientAuth, /role:\s*"client"/);
-assert.match(roleSelect, /navigation\.navigate\("ClientAuth"\)/);
+assert.match(roleSelect, /setSelectedRole\("client"\)/);
+assert.match(roleSelect, /selectedSellerAppliesToProfile/);
+assert.doesNotMatch(
+  fs.readFileSync(
+    path.join(root, "apps/mobile/src/navigation/AppNavigator.tsx"),
+    "utf8",
+  ),
+  /if \(selectedRole === "seller"\) return "seller";/,
+);
+const signupLanding = fs.readFileSync(
+  path.join(root, "apps/web/app/signup/page.tsx"),
+  "utf8",
+);
+assert.match(signupLanding, /\/auth\?next=\/seller/);
+assert.match(signupLanding, /router\.push\("\/seller"\)/);
+assert.match(
+  fs.readFileSync(path.join(root, "apps/web/proxy.ts"), "utf8"),
+  /pathname = "\/signup"/,
+);
+assert.doesNotMatch(
+  fs.readFileSync(
+    path.join(root, "apps/web/src/lib/requireRestaurantWebSession.ts"),
+    "utf8",
+  ),
+  /choose-role/,
+);
 assert.match(sellerAuth, /public\.sellers/);
 assert.match(sellerAuth, /not by profiles\.role/);
 

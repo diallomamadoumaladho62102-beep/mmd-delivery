@@ -19702,5 +19702,781 @@
     "ar": "تعذرت الموافقة على تخصيص الأسطول هذا",
     "zh": "无法批准此车队分配",
     "ff": "Horiima jaɓde allocation fleet ndee"
+  },
+  "Connexion client": {
+    "en": "Client sign in",
+    "fr": "Connexion client",
+    "es": "Inicio de sesión de cliente",
+    "ar": "تسجيل دخول العميل",
+    "zh": "客户登录",
+    "ff": "Naatgol kiliyee"
+  },
+  "Créer un compte client": {
+    "en": "Create a client account",
+    "fr": "Créer un compte client",
+    "es": "Crear una cuenta de cliente",
+    "ar": "إنشاء حساب عميل",
+    "zh": "创建客户账户",
+    "ff": "Sos konte kiliyee"
+  },
+  "Connecte-toi avec ton compte client MMD.": {
+    "en": "Sign in with your MMD client account.",
+    "fr": "Connecte-toi avec ton compte client MMD.",
+    "es": "Entra con tu cuenta de cliente MMD.",
+    "ar": "سجّل الدخول بحساب العميل في MMD.",
+    "zh": "使用你的 MMD 客户账户登录。",
+    "ff": "Naatu e konte kiliyee MMD maa."
+  },
+  "Crée ton compte client, ajoute ton adresse et commence à commander.": {
+    "en": "Create your client account, add your address, and start ordering.",
+    "fr": "Crée ton compte client, ajoute ton adresse et commence à commander.",
+    "es": "Crea tu cuenta de cliente, añade tu dirección y empieza a pedir.",
+    "ar": "أنشئ حساب العميل، أضف عنوانك وابدأ الطلب.",
+    "zh": "创建客户账户，添加地址，然后开始下单。",
+    "ff": "Sos konte kiliyee, ɓeydu nder maa, puɗɗo njamdude."
+  },
+  "Email et mot de passe obligatoires.": {
+    "en": "Email and password are required.",
+    "fr": "Email et mot de passe obligatoires.",
+    "es": "El correo y la contraseña son obligatorios.",
+    "ar": "البريد وكلمة المرور مطلوبان.",
+    "zh": "邮箱和密码为必填项。",
+    "ff": "Iimeel e finnde ina naamndee."
+  },
+  "Connexion impossible.": {
+    "en": "Unable to sign in.",
+    "fr": "Connexion impossible.",
+    "es": "No se pudo iniciar sesión.",
+    "ar": "تعذّر تسجيل الدخول.",
+    "zh": "无法登录。",
+    "ff": "Horiima naatde."
+  },
+  "Session non créée. Réessaie.": {
+    "en": "Session was not created. Try again.",
+    "fr": "Session non créée. Réessaie.",
+    "es": "No se creó la sesión. Inténtalo de nuevo.",
+    "ar": "لم تُنشأ الجلسة. أعد المحاولة.",
+    "zh": "会话未创建。请重试。",
+    "ff": "Seŋre sosaaka. Fuɗɗito."
+  },
+  "Connexion réussie ✅": {
+    "en": "Signed in successfully.",
+    "fr": "Connexion réussie ✅",
+    "es": "Sesión iniciada.",
+    "ar": "تم تسجيل الدخول.",
+    "zh": "登录成功。",
+    "ff": "Naatgol waɗii."
+  },
+  "Entre ton email avant de demander la réinitialisation.": {
+    "en": "Enter your email before requesting a reset.",
+    "fr": "Entre ton email avant de demander la réinitialisation.",
+    "es": "Introduce tu correo antes de pedir el restablecimiento.",
+    "ar": "أدخل بريدك قبل طلب إعادة التعيين.",
+    "zh": "请求重置前请先输入邮箱。",
+    "ff": "Naatnu iimeel maa hade ɗaɓɓude hesɗitinal."
+  },
+  "Email envoyé ✅ Vérifie ta boîte email pour modifier ton mot de passe.": {
+    "en": "Email sent. Check your inbox to change your password.",
+    "fr": "Email envoyé ✅ Vérifie ta boîte email pour modifier ton mot de passe.",
+    "es": "Correo enviado. Revisa tu bandeja para cambiar la contraseña.",
+    "ar": "أُرسل البريد. راجع صندوقك لتغيير كلمة المرور.",
+    "zh": "邮件已发送。请查看收件箱以修改密码。",
+    "ff": "Iimeel neldaama. Yiyto inbox maa ngam waylude finnde."
+  },
+  "Impossible d’envoyer l’email.": {
+    "en": "Unable to send the email.",
+    "fr": "Impossible d’envoyer l’email.",
+    "es": "No se pudo enviar el correo.",
+    "ar": "تعذّر إرسال البريد.",
+    "zh": "无法发送邮件。",
+    "ff": "Horiima neldude iimeel."
+  },
+  "Le mot de passe doit contenir au moins 8 caractères.": {
+    "en": "Password must be at least 8 characters.",
+    "fr": "Le mot de passe doit contenir au moins 8 caractères.",
+    "es": "La contraseña debe tener al menos 8 caracteres.",
+    "ar": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+    "zh": "密码至少需要 8 个字符。",
+    "ff": "Finnde ina waɗɗi alkule 8 walla ɓurɗe."
+  },
+  "Merci de saisir ton nom complet.": {
+    "en": "Please enter your full name.",
+    "fr": "Merci de saisir ton nom complet.",
+    "es": "Introduce tu nombre completo.",
+    "ar": "يُرجى إدخال اسمك الكامل.",
+    "zh": "请输入你的全名。",
+    "ff": "Naatnu innde maa timmunde."
+  },
+  "Merci de saisir ton numéro de téléphone.": {
+    "en": "Please enter your phone number.",
+    "fr": "Merci de saisir ton numéro de téléphone.",
+    "es": "Introduce tu número de teléfono.",
+    "ar": "يُرجى إدخال رقم هاتفك.",
+    "zh": "请输入你的电话号码。",
+    "ff": "Naatnu limre telefon maa."
+  },
+  "Inscription impossible.": {
+    "en": "Unable to create the account.",
+    "fr": "Inscription impossible.",
+    "es": "No se pudo crear la cuenta.",
+    "ar": "تعذّر إنشاء الحساب.",
+    "zh": "无法创建账户。",
+    "ff": "Horiima sosde konte."
+  },
+  "Compte créé ✅ Connecte-toi maintenant.": {
+    "en": "Account created. Sign in now.",
+    "fr": "Compte créé ✅ Connecte-toi maintenant.",
+    "es": "Cuenta creada. Inicia sesión ahora.",
+    "ar": "تم إنشاء الحساب. سجّل الدخول الآن.",
+    "zh": "账户已创建。请立即登录。",
+    "ff": "Konte sosaama. Naatu jooni."
+  },
+  "Compte créé, mais la photo n’a pas été envoyée. Tu pourras l’ajouter plus tard.": {
+    "en": "Account created, but the photo was not uploaded. You can add it later.",
+    "fr": "Compte créé, mais la photo n’a pas été envoyée. Tu pourras l’ajouter plus tard.",
+    "es": "Cuenta creada, pero la foto no se subió. Podrás añadirla después.",
+    "ar": "تم إنشاء الحساب، لكن الصورة لم تُرفع. يمكنك إضافتها لاحقًا.",
+    "zh": "账户已创建，但照片未上传。你可以稍后添加。",
+    "ff": "Konte sosaama, kono natal neldaaka. A waawi ɓeydude ɗum caggal."
+  },
+  "Compte créé ✅ Vérifie ton email, puis connecte-toi.": {
+    "en": "Account created. Check your email, then sign in.",
+    "fr": "Compte créé ✅ Vérifie ton email, puis connecte-toi.",
+    "es": "Cuenta creada. Revisa tu correo y luego inicia sesión.",
+    "ar": "تم إنشاء الحساب. راجع بريدك ثم سجّل الدخول.",
+    "zh": "账户已创建。请查看邮箱后再登录。",
+    "ff": "Konte sosaama. Yiyto iimeel maa, rewti naatu."
+  },
+  "Compte client créé ✅": {
+    "en": "Client account created.",
+    "fr": "Compte client créé ✅",
+    "es": "Cuenta de cliente creada.",
+    "ar": "تم إنشاء حساب العميل.",
+    "zh": "客户账户已创建。",
+    "ff": "Konte kiliyee sosaama."
+  },
+  "Create your client account, save your main address, and order food, delivery and services from one modern platform.": {
+    "en": "Create your client account, save your main address, and order food, delivery and services from one modern platform.",
+    "fr": "Crée ton compte client, enregistre ton adresse principale, et commande repas, livraisons et services depuis une seule plateforme.",
+    "es": "Crea tu cuenta de cliente, guarda tu dirección principal y pide comida, entregas y servicios desde una sola plataforma.",
+    "ar": "أنشئ حساب العميل، احفظ عنوانك الرئيسي، واطلب الطعام والتوصيل والخدمات من منصة واحدة.",
+    "zh": "创建客户账户，保存主要地址，并在一个平台上订餐、配送和服务。",
+    "ff": "Sos konte kiliyee, danndu nder maa mawnde, njamdu ñaamdu, neldu e sarwiis en e platform wootere."
+  },
+  "Secure account": {
+    "en": "Secure account",
+    "fr": "Compte sécurisé",
+    "es": "Cuenta segura",
+    "ar": "حساب آمن",
+    "zh": "安全账户",
+    "ff": "Konte kisal"
+  },
+  "Saved address": {
+    "en": "Saved address",
+    "fr": "Adresse enregistrée",
+    "es": "Dirección guardada",
+    "ar": "عنوان محفوظ",
+    "zh": "已保存地址",
+    "ff": "Nder danndaande"
+  },
+  "Referral ready": {
+    "en": "Referral ready",
+    "fr": "Parrainage prêt",
+    "es": "Referido listo",
+    "ar": "الإحالة جاهزة",
+    "zh": "推荐已就绪",
+    "ff": "Referral hebii"
+  },
+  "Fast checkout": {
+    "en": "Fast checkout",
+    "fr": "Paiement rapide",
+    "es": "Pago rápido",
+    "ar": "دفع سريع",
+    "zh": "快速结账",
+    "ff": "Yoɓgol law"
+  },
+  "Avatar preview": {
+    "en": "Avatar preview",
+    "fr": "Aperçu de la photo",
+    "es": "Vista previa del avatar",
+    "ar": "معاينة الصورة",
+    "zh": "头像预览",
+    "ff": "Yiytol natal"
+  },
+  "I agree to receive automated informational and transactional text messages from MMD Delivery about my account, verification, orders, deliveries, package deliveries, taxi rides, and customer support. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to cancel and HELP for help. Optional — not required to create an account.": {
+    "en": "I agree to receive automated informational and transactional text messages from MMD Delivery about my account, verification, orders, deliveries, package deliveries, taxi rides, and customer support. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to cancel and HELP for help. Optional — not required to create an account.",
+    "fr": "J’accepte de recevoir des SMS automatiques d’information et de transaction de MMD Delivery au sujet de mon compte, de la vérification, des commandes, des livraisons, des colis, des courses taxi et du support. La fréquence varie. Des frais de message et de données peuvent s’appliquer. Le consentement n’est pas une condition d’achat. Réponds STOP pour annuler et HELP pour de l’aide. Facultatif — non requis pour créer un compte.",
+    "es": "Acepto recibir mensajes automáticos informativos y transaccionales de MMD Delivery sobre mi cuenta, verificación, pedidos, entregas, paquetes, viajes en taxi y soporte. La frecuencia varía. Pueden aplicarse tarifas de mensajes y datos. El consentimiento no es condición de compra. Responde STOP para cancelar y HELP para ayuda. Opcional: no es necesario para crear una cuenta.",
+    "ar": "أوافق على تلقي رسائل نصية آلية إعلامية ومعاملات من MMD Delivery عن حسابي والتحقق والطلبات والتوصيل والطرود ورحلات التاكسي والدعم. يختلف التكرار. قد تُطبق رسوم الرسائل والبيانات. الموافقة ليست شرطًا للشراء. أرسل STOP للإلغاء وHELP للمساعدة. اختياري — غير مطلوب لإنشاء حساب.",
+    "zh": "我同意接收 MMD Delivery 关于账户、验证、订单、配送、包裹、出租车行程和客户支持的自动信息与交易短信。发送频率不定。可能产生短信和数据费用。同意不是购买条件。回复 STOP 取消，回复 HELP 获取帮助。可选 — 创建账户不需要。",
+    "ff": "Mi jaɓii heɓde SMS automatic MMD Delivery baɗte konte am, tabitingol, njamndi, neldu, pakke, taksi e ballal. Keewal SMS ena wayloo. Njobdi SMS e keɓe ena waawi waɗde. Jaɓgol wonaa sarɗi soodgol. Jaabtu STOP ngam haaɗde e HELP ngam ballal. Cuɓol — waɗɗaani ngam sosde konte."
+  },
+  "you@email.com": {
+    "en": "you@email.com",
+    "fr": "toi@email.com",
+    "es": "tu@email.com",
+    "ar": "you@email.com",
+    "zh": "you@email.com",
+    "ff": "you@email.com"
+  },
+  "Cacher": {
+    "en": "Hide",
+    "fr": "Cacher",
+    "es": "Ocultar",
+    "ar": "إخفاء",
+    "zh": "隐藏",
+    "ff": "Suuɗ"
+  },
+  "Voir": {
+    "en": "Show",
+    "fr": "Voir",
+    "es": "Ver",
+    "ar": "إظهار",
+    "zh": "显示",
+    "ff": "Yiy"
+  },
+  "Chargement...": {
+    "en": "Loading...",
+    "fr": "Chargement...",
+    "es": "Cargando...",
+    "ar": "جارٍ التحميل...",
+    "zh": "加载中...",
+    "ff": "Nana loowa..."
+  },
+  "Créer mon compte client": {
+    "en": "Create my client account",
+    "fr": "Créer mon compte client",
+    "es": "Crear mi cuenta de cliente",
+    "ar": "إنشاء حساب العميل",
+    "zh": "创建我的客户账户",
+    "ff": "Sos konte kiliyee am"
+  },
+  "Je n’ai pas encore de compte": {
+    "en": "I do not have an account yet",
+    "fr": "Je n’ai pas encore de compte",
+    "es": "Aún no tengo cuenta",
+    "ar": "ليس لدي حساب بعد",
+    "zh": "我还没有账户",
+    "ff": "Mi alaa taw konte"
+  },
+  "J’ai déjà un compte": {
+    "en": "I already have an account",
+    "fr": "J’ai déjà un compte",
+    "es": "Ya tengo una cuenta",
+    "ar": "لدي حساب بالفعل",
+    "zh": "我已有账户",
+    "ff": "Mi woodi konte"
+  },
+  "Merci de saisir un email.": {
+    "en": "Please enter an email.",
+    "fr": "Merci de saisir un email.",
+    "es": "Introduce un correo.",
+    "ar": "يُرجى إدخال بريد إلكتروني.",
+    "zh": "请输入邮箱。",
+    "ff": "Naatnu iimeel."
+  },
+  "Lien magique envoyé. Ouvre ton email puis reviens sur cette page.": {
+    "en": "Magic link sent. Open your email, then return to this page.",
+    "fr": "Lien magique envoyé. Ouvre ton email puis reviens sur cette page.",
+    "es": "Enlace mágico enviado. Abre tu correo y vuelve a esta página.",
+    "ar": "أُرسل الرابط. افتح بريدك ثم عُد إلى هذه الصفحة.",
+    "zh": "魔法链接已发送。请打开邮箱后返回此页。",
+    "ff": "Jokkol neldaama. Uddit iimeel maa, rutto e hello ngoo."
+  },
+  "Erreur lors de l'envoi du lien.": {
+    "en": "Unable to send the link.",
+    "fr": "Erreur lors de l'envoi du lien.",
+    "es": "No se pudo enviar el enlace.",
+    "ar": "تعذّر إرسال الرابط.",
+    "zh": "无法发送链接。",
+    "ff": "Horiima neldude jokkol."
+  },
+  "Utilisateur non connecté.": {
+    "en": "You are not signed in.",
+    "fr": "Utilisateur non connecté.",
+    "es": "No has iniciado sesión.",
+    "ar": "لم تسجّل الدخول.",
+    "zh": "你尚未登录。",
+    "ff": "A naataani."
+  },
+  "Tu dois être connecté pour enregistrer ton profil.": {
+    "en": "You must be signed in to save your profile.",
+    "fr": "Tu dois être connecté pour enregistrer ton profil.",
+    "es": "Debes iniciar sesión para guardar tu perfil.",
+    "ar": "يجب تسجيل الدخول لحفظ ملفك.",
+    "zh": "必须登录后才能保存资料。",
+    "ff": "Aɗa waawi danndude profil so a naatii."
+  },
+  "Merci de saisir un numéro de téléphone d’urgence.": {
+    "en": "Please enter an emergency phone number.",
+    "fr": "Merci de saisir un numéro de téléphone d’urgence.",
+    "es": "Introduce un teléfono de emergencia.",
+    "ar": "يُرجى إدخال هاتف للطوارئ.",
+    "zh": "请输入紧急联系电话。",
+    "ff": "Naatnu telefon kaaɗe."
+  },
+  "Merci de saisir ton adresse.": {
+    "en": "Please enter your address.",
+    "fr": "Merci de saisir ton adresse.",
+    "es": "Introduce tu dirección.",
+    "ar": "يُرجى إدخال عنوانك.",
+    "zh": "请输入你的地址。",
+    "ff": "Naatnu nder maa."
+  },
+  "Merci de saisir ta ville.": {
+    "en": "Please enter your city.",
+    "fr": "Merci de saisir ta ville.",
+    "es": "Introduce tu ciudad.",
+    "ar": "يُرجى إدخال مدينتك.",
+    "zh": "请输入你的城市。",
+    "ff": "Naatnu wuro maa."
+  },
+  "Merci de saisir ton État.": {
+    "en": "Please enter your state.",
+    "fr": "Merci de saisir ton État.",
+    "es": "Introduce tu estado.",
+    "ar": "يُرجى إدخال الولاية.",
+    "zh": "请输入你的州。",
+    "ff": "Naatnu diiwaan maa."
+  },
+  "Merci de saisir ton ZIP code.": {
+    "en": "Please enter your ZIP code.",
+    "fr": "Merci de saisir ton ZIP code.",
+    "es": "Introduce tu código postal.",
+    "ar": "يُرجى إدخال الرمز البريدي.",
+    "zh": "请输入邮政编码。",
+    "ff": "Naatnu ZIP maa."
+  },
+  "Merci de saisir ta date de naissance.": {
+    "en": "Please enter your date of birth.",
+    "fr": "Merci de saisir ta date de naissance.",
+    "es": "Introduce tu fecha de nacimiento.",
+    "ar": "يُرجى إدخال تاريخ ميلادك.",
+    "zh": "请输入你的出生日期。",
+    "ff": "Naatnu ñalngu jibinannde maa."
+  },
+  "Merci de choisir le type de pièce d’identité.": {
+    "en": "Please choose the type of ID.",
+    "fr": "Merci de choisir le type de pièce d’identité.",
+    "es": "Elige el tipo de documento de identidad.",
+    "ar": "يُرجى اختيار نوع الهوية.",
+    "zh": "请选择证件类型。",
+    "ff": "Suɓo irin dokimaa neɗɗankaagal."
+  },
+  "Merci de saisir le numéro de la pièce d’identité.": {
+    "en": "Please enter the ID number.",
+    "fr": "Merci de saisir le numéro de la pièce d’identité.",
+    "es": "Introduce el número del documento.",
+    "ar": "يُرجى إدخال رقم الهوية.",
+    "zh": "请输入证件号码。",
+    "ff": "Naatnu limre dokimaa."
+  },
+  "Merci de saisir le pays d’émission de la pièce.": {
+    "en": "Please enter the country that issued the ID.",
+    "fr": "Merci de saisir le pays d’émission de la pièce.",
+    "es": "Introduce el país que emitió el documento.",
+    "ar": "يُرجى إدخال بلد إصدار الهوية.",
+    "zh": "请输入证件签发国家。",
+    "ff": "Naatnu leydi ndi rokki dokimaa."
+  },
+  "Merci d’ajouter une photo personnelle.": {
+    "en": "Please add a personal photo.",
+    "fr": "Merci d’ajouter une photo personnelle.",
+    "es": "Añade una foto personal.",
+    "ar": "يُرجى إضافة صورة شخصية.",
+    "zh": "请添加个人照片。",
+    "ff": "Ɓeydu natal maa."
+  },
+  "Merci d’ajouter la photo recto de la pièce d’identité.": {
+    "en": "Please add the front photo of the ID.",
+    "fr": "Merci d’ajouter la photo recto de la pièce d’identité.",
+    "es": "Añade la foto del anverso del documento.",
+    "ar": "يُرجى إضافة صورة وجه الهوية.",
+    "zh": "请添加证件正面照片。",
+    "ff": "Ɓeydu natal yeeso dokimaa."
+  },
+  "Merci d’ajouter la photo verso de la pièce d’identité.": {
+    "en": "Please add the back photo of the ID.",
+    "fr": "Merci d’ajouter la photo verso de la pièce d’identité.",
+    "es": "Añade la foto del reverso del documento.",
+    "ar": "يُرجى إضافة صورة ظهر الهوية.",
+    "zh": "请添加证件背面照片。",
+    "ff": "Ɓeydu natal caggal dokimaa."
+  },
+  "Merci de saisir le numéro du permis.": {
+    "en": "Please enter the license number.",
+    "fr": "Merci de saisir le numéro du permis.",
+    "es": "Introduce el número de licencia.",
+    "ar": "يُرجى إدخال رقم الرخصة.",
+    "zh": "请输入驾照号码。",
+    "ff": "Naatnu limre jamiroore."
+  },
+  "Merci de saisir la date d’expiration du permis.": {
+    "en": "Please enter the license expiration date.",
+    "fr": "Merci de saisir la date d’expiration du permis.",
+    "es": "Introduce la fecha de vencimiento de la licencia.",
+    "ar": "يُرجى إدخال تاريخ انتهاء الرخصة.",
+    "zh": "请输入驾照到期日。",
+    "ff": "Naatnu ñalngu joofgol jamiroore."
+  },
+  "Merci de saisir la marque du véhicule.": {
+    "en": "Please enter the vehicle make.",
+    "fr": "Merci de saisir la marque du véhicule.",
+    "es": "Introduce la marca del vehículo.",
+    "ar": "يُرجى إدخال ماركة المركبة.",
+    "zh": "请输入车辆品牌。",
+    "ff": "Naatnu marke oto."
+  },
+  "Merci de saisir le modèle du véhicule.": {
+    "en": "Please enter the vehicle model.",
+    "fr": "Merci de saisir le modèle du véhicule.",
+    "es": "Introduce el modelo del vehículo.",
+    "ar": "يُرجى إدخال طراز المركبة.",
+    "zh": "请输入车辆型号。",
+    "ff": "Naatnu model oto."
+  },
+  "Merci de saisir l’année du véhicule.": {
+    "en": "Please enter the vehicle year.",
+    "fr": "Merci de saisir l’année du véhicule.",
+    "es": "Introduce el año del vehículo.",
+    "ar": "يُرجى إدخال سنة المركبة.",
+    "zh": "请输入车辆年份。",
+    "ff": "Naatnu hitaande oto."
+  },
+  "Merci de saisir la couleur du véhicule.": {
+    "en": "Please enter the vehicle color.",
+    "fr": "Merci de saisir la couleur du véhicule.",
+    "es": "Introduce el color del vehículo.",
+    "ar": "يُرجى إدخال لون المركبة.",
+    "zh": "请输入车辆颜色。",
+    "ff": "Naatnu noone oto."
+  },
+  "Merci de saisir la plaque d’immatriculation.": {
+    "en": "Please enter the license plate.",
+    "fr": "Merci de saisir la plaque d’immatriculation.",
+    "es": "Introduce la matrícula.",
+    "ar": "يُرجى إدخال لوحة المركبة.",
+    "zh": "请输入车牌号。",
+    "ff": "Naatnu plate oto."
+  },
+  "Merci d’ajouter la photo recto du permis.": {
+    "en": "Please add the front photo of the license.",
+    "fr": "Merci d’ajouter la photo recto du permis.",
+    "es": "Añade la foto del anverso de la licencia.",
+    "ar": "يُرجى إضافة صورة وجه الرخصة.",
+    "zh": "请添加驾照正面照片。",
+    "ff": "Ɓeydu natal yeeso jamiroore."
+  },
+  "Merci d’ajouter la photo verso du permis.": {
+    "en": "Please add the back photo of the license.",
+    "fr": "Merci d’ajouter la photo verso du permis.",
+    "es": "Añade la foto del reverso de la licencia.",
+    "ar": "يُرجى إضافة صورة ظهر الرخصة.",
+    "zh": "请添加驾照背面照片。",
+    "ff": "Ɓeydu natal caggal jamiroore."
+  },
+  "Merci d’ajouter le document d’assurance.": {
+    "en": "Please add the insurance document.",
+    "fr": "Merci d’ajouter le document d’assurance.",
+    "es": "Añade el documento del seguro.",
+    "ar": "يُرجى إضافة وثيقة التأمين.",
+    "zh": "请添加保险文件。",
+    "ff": "Ɓeydu dokimaa kisal oto."
+  },
+  "Merci d’ajouter le document de registration.": {
+    "en": "Please add the registration document.",
+    "fr": "Merci d’ajouter le document de registration.",
+    "es": "Añade el documento de registro.",
+    "ar": "يُرجى إضافة وثيقة التسجيل.",
+    "zh": "请添加车辆登记文件。",
+    "ff": "Ɓeydu dokimaa registration."
+  },
+  "Profil chauffeur enregistré. Ton dossier est complet.": {
+    "en": "Driver profile saved. Your file is complete.",
+    "fr": "Profil chauffeur enregistré. Ton dossier est complet.",
+    "es": "Perfil de conductor guardado. Tu expediente está completo.",
+    "ar": "تم حفظ ملف السائق. ملفك مكتمل.",
+    "zh": "司机资料已保存。材料已齐全。",
+    "ff": "Profil dooɓoowo danndaama. Dosse maa timmii."
+  },
+  "Profil chauffeur enregistré. Il manque encore des informations ou documents.": {
+    "en": "Driver profile saved. Some information or documents are still missing.",
+    "fr": "Profil chauffeur enregistré. Il manque encore des informations ou documents.",
+    "es": "Perfil de conductor guardado. Aún faltan datos o documentos.",
+    "ar": "تم حفظ ملف السائق. ما زالت بعض المعلومات أو المستندات ناقصة.",
+    "zh": "司机资料已保存。仍缺少部分信息或文件。",
+    "ff": "Profil dooɓoowo danndaama. Keɓe walla dokimaaɗe ena ŋakki."
+  },
+  "Nouveau fichier prêt :": {
+    "en": "New file ready:",
+    "fr": "Nouveau fichier prêt :",
+    "es": "Archivo nuevo listo:",
+    "ar": "ملف جديد جاهز:",
+    "zh": "新文件已就绪：",
+    "ff": "Fiilde hesere hebii:"
+  },
+  "Déjà enregistré :": {
+    "en": "Already saved:",
+    "fr": "Déjà enregistré :",
+    "es": "Ya guardado:",
+    "ar": "محفوظ مسبقًا:",
+    "zh": "已保存：",
+    "ff": "Danndaama kisa:"
+  },
+  "Manquant :": {
+    "en": "Missing:",
+    "fr": "Manquant :",
+    "es": "Falta:",
+    "ar": "ناقص:",
+    "zh": "缺失：",
+    "ff": "Ena ŋakki:"
+  },
+  "Lien envoyé ✅": {
+    "en": "Link sent",
+    "fr": "Lien envoyé ✅",
+    "es": "Enlace enviado",
+    "ar": "تم إرسال الرابط",
+    "zh": "链接已发送",
+    "ff": "Jokkol neldaama"
+  },
+  "Enregistrement...": {
+    "en": "Saving...",
+    "fr": "Enregistrement...",
+    "es": "Guardando...",
+    "ar": "جارٍ الحفظ...",
+    "zh": "正在保存...",
+    "ff": "Nana danndoo..."
+  },
+  "Enregistrer mon profil chauffeur": {
+    "en": "Save my driver profile",
+    "fr": "Enregistrer mon profil chauffeur",
+    "es": "Guardar mi perfil de conductor",
+    "ar": "حفظ ملف السائق",
+    "zh": "保存我的司机资料",
+    "ff": "Danndu profil dooɓoowo am"
+  },
+  "Erreur lors du chargement du profil chauffeur.": {
+    "en": "Unable to load the driver profile.",
+    "fr": "Erreur lors du chargement du profil chauffeur.",
+    "es": "No se pudo cargar el perfil del conductor.",
+    "ar": "تعذّر تحميل ملف السائق.",
+    "zh": "无法加载司机资料。",
+    "ff": "Horiima loowde profil dooɓoowo."
+  },
+  "Erreur lors de l'enregistrement du profil chauffeur.": {
+    "en": "Unable to save the driver profile.",
+    "fr": "Erreur lors de l'enregistrement du profil chauffeur.",
+    "es": "No se pudo guardar el perfil del conductor.",
+    "ar": "تعذّر حفظ ملف السائق.",
+    "zh": "无法保存司机资料。",
+    "ff": "Horiima danndude profil dooɓoowo."
+  },
+  "Connexion Restaurant": {
+    "en": "Restaurant sign in",
+    "fr": "Connexion Restaurant",
+    "es": "Inicio de sesión del restaurante",
+    "ar": "تسجيل دخول المطعم",
+    "zh": "餐厅登录",
+    "ff": "Naatgol restoraa"
+  },
+  "Créer un compte Restaurant": {
+    "en": "Create a restaurant account",
+    "fr": "Créer un compte Restaurant",
+    "es": "Crear una cuenta de restaurante",
+    "ar": "إنشاء حساب مطعم",
+    "zh": "创建餐厅账户",
+    "ff": "Sos konte restoraa"
+  },
+  "Connecte-toi avec ton compte restaurant.": {
+    "en": "Sign in with your restaurant account.",
+    "fr": "Connecte-toi avec ton compte restaurant.",
+    "es": "Entra con tu cuenta de restaurante.",
+    "ar": "سجّل الدخول بحساب المطعم.",
+    "zh": "使用你的餐厅账户登录。",
+    "ff": "Naatu e konte restoraa maa."
+  },
+  "Crée ton compte restaurant puis complète ton profil.": {
+    "en": "Create your restaurant account, then complete your profile.",
+    "fr": "Crée ton compte restaurant puis complète ton profil.",
+    "es": "Crea tu cuenta de restaurante y completa tu perfil.",
+    "ar": "أنشئ حساب المطعم ثم أكمل ملفك.",
+    "zh": "创建餐厅账户，然后完善资料。",
+    "ff": "Sos konte restoraa, rewti timmin profil."
+  },
+  "Email obligatoire.": {
+    "en": "Email is required.",
+    "fr": "Email obligatoire.",
+    "es": "El correo es obligatorio.",
+    "ar": "البريد مطلوب.",
+    "zh": "邮箱为必填项。",
+    "ff": "Iimeel ena waɗɗi."
+  },
+  "Mot de passe obligatoire.": {
+    "en": "Password is required.",
+    "fr": "Mot de passe obligatoire.",
+    "es": "La contraseña es obligatoria.",
+    "ar": "كلمة المرور مطلوبة.",
+    "zh": "密码为必填项。",
+    "ff": "Finnde ena waɗɗi."
+  },
+  "Connecté ✅": {
+    "en": "Signed in.",
+    "fr": "Connecté ✅",
+    "es": "Conectado.",
+    "ar": "تم تسجيل الدخول.",
+    "zh": "已登录。",
+    "ff": "Naatii."
+  },
+  "Connexion impossible : ": {
+    "en": "Unable to sign in: ",
+    "fr": "Connexion impossible : ",
+    "es": "No se pudo iniciar sesión: ",
+    "ar": "تعذّر تسجيل الدخول: ",
+    "zh": "无法登录：",
+    "ff": "Horiima naatde: "
+  },
+  "Mot de passe trop court. Minimum 8 caractères.": {
+    "en": "Password is too short. Minimum 8 characters.",
+    "fr": "Mot de passe trop court. Minimum 8 caractères.",
+    "es": "Contraseña demasiado corta. Mínimo 8 caracteres.",
+    "ar": "كلمة المرور قصيرة جدًا. 8 أحرف على الأقل.",
+    "zh": "密码太短。至少 8 个字符。",
+    "ff": "Finnde ena juuti. Alkule 8 walla ɓurɗe."
+  },
+  "Compte créé, mais impossible de récupérer l’utilisateur.": {
+    "en": "Account created, but the user could not be loaded.",
+    "fr": "Compte créé, mais impossible de récupérer l’utilisateur.",
+    "es": "Cuenta creada, pero no se pudo cargar el usuario.",
+    "ar": "تم إنشاء الحساب، لكن تعذّر تحميل المستخدم.",
+    "zh": "账户已创建，但无法加载用户。",
+    "ff": "Konte sosaama, kono kuutoro heɓotaako."
+  },
+  "Compte créé ✅ Vérifie ton email puis connecte-toi.": {
+    "en": "Account created. Check your email, then sign in.",
+    "fr": "Compte créé ✅ Vérifie ton email puis connecte-toi.",
+    "es": "Cuenta creada. Revisa tu correo y entra.",
+    "ar": "تم إنشاء الحساب. راجع بريدك ثم سجّل الدخول.",
+    "zh": "账户已创建。请查看邮箱后登录。",
+    "ff": "Konte sosaama. Yiyto iimeel maa, rewti naatu."
+  },
+  "Compte restaurant créé et connecté ✅": {
+    "en": "Restaurant account created and signed in.",
+    "fr": "Compte restaurant créé et connecté ✅",
+    "es": "Cuenta de restaurante creada y conectada.",
+    "ar": "تم إنشاء حساب المطعم وتسجيل الدخول.",
+    "zh": "餐厅账户已创建并已登录。",
+    "ff": "Konte restoraa sosaama, naatgol waɗii."
+  },
+  "Création du compte impossible : ": {
+    "en": "Unable to create the account: ",
+    "fr": "Création du compte impossible : ",
+    "es": "No se pudo crear la cuenta: ",
+    "ar": "تعذّر إنشاء الحساب: ",
+    "zh": "无法创建账户：",
+    "ff": "Horiima sosde konte: "
+  },
+  "Email envoyé ✅ Clique sur le lien reçu pour modifier ton mot de passe.": {
+    "en": "Email sent. Open the link to change your password.",
+    "fr": "Email envoyé ✅ Clique sur le lien reçu pour modifier ton mot de passe.",
+    "es": "Correo enviado. Abre el enlace para cambiar tu contraseña.",
+    "ar": "أُرسل البريد. افتح الرابط لتغيير كلمة المرور.",
+    "zh": "邮件已发送。打开链接以修改密码。",
+    "ff": "Iimeel neldaama. Uddit jokkol ngam waylude finnde."
+  },
+  "Impossible d’envoyer l’email : ": {
+    "en": "Unable to send the email: ",
+    "fr": "Impossible d’envoyer l’email : ",
+    "es": "No se pudo enviar el correo: ",
+    "ar": "تعذّر إرسال البريد: ",
+    "zh": "无法发送邮件：",
+    "ff": "Horiima neldude iimeel: "
+  },
+  "Create your restaurant account, complete your profile, manage your menu, receive orders and prepare your business for payouts.": {
+    "en": "Create your restaurant account, complete your profile, manage your menu, receive orders and prepare your business for payouts.",
+    "fr": "Crée ton compte restaurant, complète ton profil, gère ton menu, reçois les commandes et prépare tes versements.",
+    "es": "Crea tu cuenta de restaurante, completa tu perfil, gestiona tu menú, recibe pedidos y prepara tus pagos.",
+    "ar": "أنشئ حساب المطعم، أكمل ملفك، أدِر قائمتك، استقبل الطلبات وجهّز المدفوعات.",
+    "zh": "创建餐厅账户，完善资料，管理菜单，接收订单并准备收款。",
+    "ff": "Sos konte restoraa, timmin profil, toppito menu, heɓ njamndi, hebliso yoɓol."
+  },
+  "Restaurant profile": {
+    "en": "Restaurant profile",
+    "fr": "Profil restaurant",
+    "es": "Perfil del restaurante",
+    "ar": "ملف المطعم",
+    "zh": "餐厅资料",
+    "ff": "Profil restoraa"
+  },
+  "Menu ready": {
+    "en": "Menu ready",
+    "fr": "Menu prêt",
+    "es": "Menú listo",
+    "ar": "القائمة جاهزة",
+    "zh": "菜单就绪",
+    "ff": "Menu hebii"
+  },
+  "Orders dashboard": {
+    "en": "Orders dashboard",
+    "fr": "Tableau des commandes",
+    "es": "Panel de pedidos",
+    "ar": "لوحة الطلبات",
+    "zh": "订单面板",
+    "ff": "Alluwal njamndi"
+  },
+  "Stripe payouts": {
+    "en": "Stripe payouts",
+    "fr": "Versements Stripe",
+    "es": "Pagos de Stripe",
+    "ar": "مدفوعات Stripe",
+    "zh": "Stripe 收款",
+    "ff": "Yoɓol Stripe"
+  },
+  "Mot de passe (min 8)": {
+    "en": "Password (min 8)",
+    "fr": "Mot de passe (min 8)",
+    "es": "Contraseña (mín. 8)",
+    "ar": "كلمة المرور (8 على الأقل)",
+    "zh": "密码（至少 8 位）",
+    "ff": "Finnde (8 walla ɓurɗe)"
+  },
+  "Je n’ai pas de compte → Créer un compte": {
+    "en": "I do not have an account → Create one",
+    "fr": "Je n’ai pas de compte → Créer un compte",
+    "es": "No tengo cuenta → Crear una",
+    "ar": "ليس لدي حساب → إنشاء حساب",
+    "zh": "我没有账户 → 创建账户",
+    "ff": "Mi alaa konte → Sos konte"
+  },
+  "J’ai déjà un compte → Se connecter": {
+    "en": "I already have an account → Sign in",
+    "fr": "J’ai déjà un compte → Se connecter",
+    "es": "Ya tengo cuenta → Entrar",
+    "ar": "لدي حساب → تسجيل الدخول",
+    "zh": "我已有账户 → 登录",
+    "ff": "Mi woodi konte → Naatu"
+  },
+  "Erreur inconnue.": {
+    "en": "Unknown error.",
+    "fr": "Erreur inconnue.",
+    "es": "Error desconocido.",
+    "ar": "خطأ غير معروف.",
+    "zh": "未知错误。",
+    "ff": "Juumre anndaaka."
+  },
+  "Vérifie ta boîte mail et clique sur le lien pour te connecter.": {
+    "en": "Check your inbox and open the link to sign in.",
+    "fr": "Vérifie ta boîte mail et clique sur le lien pour te connecter.",
+    "es": "Revisa tu bandeja y abre el enlace para entrar.",
+    "ar": "راجع صندوق البريد وافتح الرابط لتسجيل الدخول.",
+    "zh": "请查看收件箱并打开链接登录。",
+    "ff": "Yiyto iimeel maa, uddit jokkol ngam naatde."
+  },
+  "No seller profile found for this account. Create your seller profile in the mobile app, then return here.": {
+    "en": "No seller profile found for this account. Create your seller profile in the mobile app, then return here.",
+    "fr": "Aucun profil vendeur pour ce compte. Crée le profil vendeur dans l’application mobile, puis reviens ici.",
+    "es": "No hay perfil de vendedor para esta cuenta. Créalo en la aplicación móvil y vuelve aquí.",
+    "ar": "لا يوجد ملف بائع لهذا الحساب. أنشئه في تطبيق الجوال ثم عُد إلى هنا.",
+    "zh": "此账户没有卖家资料。请在手机应用中创建，然后返回此处。",
+    "ff": "Alaa profil jeeyoowo e konte ndee. Sos ɗum e jaaɓngal mobile, rutto ɗoo."
   }
 }

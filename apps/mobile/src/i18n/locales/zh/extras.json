@@ -1862,7 +1862,7 @@
         "accountExistsTitle": "账户已存在",
         "accountExistsBody": "该邮箱已注册账户。",
         "verifyEmailSignupTitle": "请验证邮箱",
-        "verifyEmailSignupBody": "登录前请确认您的邮箱。",
+        "verifyEmailSignupBody": "司机账户已创建，资料已保存。请确认邮箱后再登录。登录后继续完成设置。",
         "profileErrorTitle": "资料错误",
         "applicationSubmittedTitle": "申请已提交",
         "applicationSubmittedBody": "你的司机账户正在等待审核。"
@@ -2678,6 +2678,11 @@
     },
     "onboarding": {
       "continue": "继续前往首页",
+      "pendingApprovalTitle": "等待审核",
+      "pendingApprovalBody": "你的司机账户正在等待审核。审核通过后才会进入首页。",
+      "progressMeta": "车辆：{{vehicle}} · 文件：{{done}}/{{total}} · 结算：{{payout}}",
+      "vehicleMissing": "缺失",
+      "vehicleOk": "正常",
       "go": {
         "profile": "资料与文件",
         "profileHint": "身份、驾照、保险",
@@ -3332,6 +3337,8 @@
         "restaurantAddressRequired": "必须填写餐厅名称和完整地址。",
         "sessionNotCreated": "未能创建会话。请重试。",
         "userNotCreated": "账户已创建，但无法加载用户。",
+        "addressRequired": "餐厅地址为必填项。",
+        "addressNotFound": "找不到该地址。请输入包含城市、州和邮政编码的完整地址。",
         "emailRequiredForReset": "❌ 请求重置前请先输入邮箱。",
         "resetFailed": "❌ 无法发送邮件："
       },

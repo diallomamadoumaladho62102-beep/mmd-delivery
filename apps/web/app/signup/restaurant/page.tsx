@@ -82,16 +82,16 @@ export default function SignupRestaurantPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const title = useMemo(
-    () => (mode === "login" ? "Connexion Restaurant" : "Créer un compte Restaurant"),
-    [mode]
+    () => (mode === "login" ? t("Connexion Restaurant") : t("Créer un compte Restaurant")),
+    [mode, t]
   );
 
   const subtitle = useMemo(
     () =>
       mode === "login"
-        ? "Connecte-toi avec ton compte restaurant."
-        : "Crée ton compte restaurant puis complète ton profil.",
-    [mode]
+        ? t("Connecte-toi avec ton compte restaurant.")
+        : t("Crée ton compte restaurant puis complète ton profil."),
+    [mode, t]
   );
 
   async function signIn() {
@@ -104,12 +104,12 @@ export default function SignupRestaurantPage() {
     const p = password.trim();
 
     if (!e) {
-      setErr("Email obligatoire.");
+      setErr(t("Email obligatoire."));
       return;
     }
 
     if (!p) {
-      setErr("Mot de passe obligatoire.");
+      setErr(t("Mot de passe obligatoire."));
       return;
     }
 
@@ -122,7 +122,7 @@ export default function SignupRestaurantPage() {
       });
 
       if (error) throw new Error(error.message);
-      if (!data.session) throw new Error("Session non créée. Réessaie.");
+      if (!data.session) throw new Error(t("Session non créée. Réessaie."));
 
       const userId = data.user?.id;
 
@@ -134,10 +134,10 @@ export default function SignupRestaurantPage() {
         });
       }
 
-      setMessage("Connecté ✅");
+      setMessage(t("Connecté ✅"));
       window.location.href = "/restaurant/profile";
     } catch (error: unknown) {
-      setErr("Connexion impossible : " + getErrorMessage(error, "Erreur inconnue"));
+      setErr(t("Connexion impossible : ") + getErrorMessage(error, t("Erreur inconnue")));
     } finally {
       setLoading(false);
     }
@@ -153,18 +153,18 @@ export default function SignupRestaurantPage() {
     const p = password.trim();
 
     if (!e) {
-      setErr("Email obligatoire.");
+      setErr(t("Email obligatoire."));
       return;
     }
 
     if (!p) {
-      setErr("Mot de passe obligatoire.");
+      setErr(t("Mot de passe obligatoire."));
       return;
     }
 
     const passwordError = validatePassword(p);
     if (passwordError) {
-      setErr("Mot de passe trop court. Minimum 8 caractères.");
+      setErr(t("Mot de passe trop court. Minimum 8 caractères."));
       return;
     }
 
@@ -186,7 +186,7 @@ export default function SignupRestaurantPage() {
       const userId = data.user?.id;
 
       if (!userId) {
-        throw new Error("Compte créé, mais impossible de récupérer l’utilisateur.");
+        throw new Error(t("Compte créé, mais impossible de récupérer l’utilisateur."));
       }
 
       await ensureRestaurantAccount({
@@ -196,15 +196,15 @@ export default function SignupRestaurantPage() {
       });
 
       if (!data.session) {
-        setMessage("Compte créé ✅ Vérifie ton email puis connecte-toi.");
+        setMessage(t("Compte créé ✅ Vérifie ton email puis connecte-toi."));
         setMode("login");
         return;
       }
 
-      setMessage("Compte restaurant créé et connecté ✅");
+      setMessage(t("Compte restaurant créé et connecté ✅"));
       window.location.href = "/restaurant/profile";
     } catch (error: unknown) {
-      setErr("Création du compte impossible : " + getErrorMessage(error, "Erreur inconnue"));
+      setErr(t("Création du compte impossible : ") + getErrorMessage(error, t("Erreur inconnue")));
     } finally {
       setLoading(false);
     }
@@ -219,7 +219,7 @@ export default function SignupRestaurantPage() {
     const e = cleanEmail(email);
 
     if (!e) {
-      setErr("Entre ton email avant de demander la réinitialisation.");
+      setErr(t("Entre ton email avant de demander la réinitialisation."));
       return;
     }
 
@@ -231,9 +231,9 @@ export default function SignupRestaurantPage() {
       });
 
       if (error) throw new Error(error.message);
-      setMessage("Email envoyé ✅ Clique sur le lien reçu pour modifier ton mot de passe.");
+      setMessage(t("Email envoyé ✅ Clique sur le lien reçu pour modifier ton mot de passe."));
     } catch (error: unknown) {
-      setErr("Impossible d’envoyer l’email : " + getErrorMessage(error, "Erreur inconnue"));
+      setErr(t("Impossible d’envoyer l’email : ") + getErrorMessage(error, t("Erreur inconnue")));
     } finally {
       setLoading(false);
     }
@@ -255,16 +255,15 @@ export default function SignupRestaurantPage() {
           </h1>
 
           <p className="mt-5 max-w-xl text-lg font-semibold leading-8 text-slate-400">
-            Create your restaurant account, complete your profile, manage your menu,
-            receive orders and prepare your business for payouts.
+            {t("Create your restaurant account, complete your profile, manage your menu, receive orders and prepare your business for payouts.")}
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             {[
-              "Restaurant profile",
-              "Menu ready",
-              "Orders dashboard",
-              "Stripe payouts",
+              t("Restaurant profile"),
+              t("Menu ready"),
+              t("Orders dashboard"),
+              t("Stripe payouts"),
             ].map((item) => (
               <span
                 key={item}
@@ -342,7 +341,7 @@ export default function SignupRestaurantPage() {
                 <input
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder={t("Mot de passe (min 6)")}
+                  placeholder={t("Mot de passe (min 8)")}
                   type={showPassword ? "text" : "password"}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   disabled={loading}
@@ -354,7 +353,7 @@ export default function SignupRestaurantPage() {
                   onClick={() => setShowPassword((value) => !value)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-emerald-300 hover:text-emerald-200 disabled:opacity-60"
                 >
-                  {showPassword ? "Cacher" : "Voir"}
+                  {showPassword ? t("Cacher") : t("Voir")}
                 </button>
               </div>
             </div>
@@ -395,7 +394,7 @@ export default function SignupRestaurantPage() {
                 : "bg-sky-600 shadow-sky-950/50 hover:bg-sky-500"
             }`}
           >
-            {loading ? "Chargement..." : primaryLabel}
+            {loading ? t("Chargement...") : primaryLabel}
           </button>
 
           <button
@@ -409,8 +408,8 @@ export default function SignupRestaurantPage() {
             className="mt-4 w-full text-center text-sm font-extrabold text-sky-300 hover:text-sky-200 disabled:opacity-60"
           >
             {mode === "login"
-              ? "Je n’ai pas de compte → Créer un compte"
-              : "J’ai déjà un compte → Se connecter"}
+              ? t("Je n’ai pas de compte → Créer un compte")
+              : t("J’ai déjà un compte → Se connecter")}
           </button>
 
           <p className="mt-5 text-center text-xs font-bold leading-5 text-slate-500">

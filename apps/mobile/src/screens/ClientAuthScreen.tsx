@@ -547,7 +547,10 @@ export function ClientAuthScreen() {
 
     const passwordError = validatePassword(password.trim());
     if (passwordError) {
-      Alert.alert(t("client.auth.passwordTitle"), passwordError);
+      Alert.alert(
+        t("client.auth.passwordTitle"),
+        t("client.auth.passwordTooShort", "Password must be at least 8 characters."),
+      );
       return;
     }
 

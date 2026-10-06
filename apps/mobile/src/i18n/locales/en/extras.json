@@ -1877,7 +1877,7 @@
         "accountExistsTitle": "Account already exists",
         "accountExistsBody": "An account already exists with this email.",
         "verifyEmailSignupTitle": "Verify your email",
-        "verifyEmailSignupBody": "Confirm your email before logging in.",
+        "verifyEmailSignupBody": "Your driver account is created and your details are saved. Confirm your email, then sign in. Setup continues after you sign in.",
         "profileErrorTitle": "Profile error",
         "applicationSubmittedTitle": "Application submitted",
         "applicationSubmittedBody": "Your driver account is pending approval."
@@ -2590,6 +2590,11 @@
     },
     "onboarding": {
       "continue": "Continue to Home",
+      "pendingApprovalTitle": "Approval pending",
+      "pendingApprovalBody": "Your driver account is waiting for approval. Home opens after approval.",
+      "progressMeta": "Vehicle: {{vehicle}} · Docs: {{done}}/{{total}} · Payout: {{payout}}",
+      "vehicleMissing": "missing",
+      "vehicleOk": "OK",
       "go": {
         "profile": "Profile & Documents",
         "profileHint": "Identity, license, insurance",
@@ -3251,7 +3256,9 @@
         "restaurantAddressRequired": "Restaurant name and full address are required.",
         "restaurantNameRequired": "❌ Restaurant name required",
         "sessionNotCreated": "Session was not created. Try again.",
-        "userNotCreated": "Account created, but the user could not be loaded."
+        "userNotCreated": "Account created, but the user could not be loaded.",
+        "addressRequired": "Restaurant address is required.",
+        "addressNotFound": "Address not found. Enter a full address with city, state, and ZIP code."
       },
       "fields": {
         "restaurantAddress": "Full Address",

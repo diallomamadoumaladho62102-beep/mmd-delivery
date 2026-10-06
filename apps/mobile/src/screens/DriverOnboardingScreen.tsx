@@ -33,6 +33,7 @@ import {
   BOOT_AUTH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
+import { isApprovedDriverStatus } from "../lib/signupNavigation";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -57,6 +58,7 @@ export function DriverOnboardingScreen() {
   const [loading, setLoading] = useState(true);
   const [savingMode, setSavingMode] = useState(false);
   const [transportMode, setTransportMode] = useState<TransportMode>("bike");
+  const [driverStatus, setDriverStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState<DriverSetupProgress>({
     progress: 0,
     vehicleOk: false,
@@ -92,9 +94,12 @@ export function DriverOnboardingScreen() {
 
           const { data: profile } = await supabase
             .from("driver_profiles")
-            .select("transport_mode, active_vehicle_id, stripe_onboarded")
+            .select("transport_mode, active_vehicle_id, stripe_onboarded, status")
             .or(`user_id.eq.${uid},id.eq.${uid}`)
             .maybeSingle();
+          setDriverStatus(
+            String((profile as { status?: string | null } | null)?.status ?? ""),
+          );
 
           const tm = (String(profile?.transport_mode ?? "bike").toLowerCase() ||
             "bike") as TransportMode;
@@ -168,7 +173,7 @@ export function DriverOnboardingScreen() {
       <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
         <ScreenHeader
           title={t("driver.onboarding.title", "Driver Setup")}
-          fallbackRoute="DriverTabs"
+          fallbackRoute="RoleSelect"
           variant="dark"
         />
         <DriverBrandLoadingState title={t("driver.onboarding.title")} logoAtBottom />
@@ -180,7 +185,7 @@ export function DriverOnboardingScreen() {
     <SafeAreaView style={styles.root} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("driver.onboarding.title", "Driver Setup")}
-        fallbackRoute="DriverTabs"
+        fallbackRoute="RoleSelect"
         variant="dark"
       />
       <ScrollView
@@ -203,9 +208,18 @@ export function DriverOnboardingScreen() {
                   : t("driver.onboarding.next.ready", "Ready — return to Home")}
           </Text>
           <Text style={styles.progressMeta}>
-            Véhicule: {progress.vehicleOk ? "OK" : "manquant"} · Docs:{" "}
-            {progress.docsDone}/{progress.docsTotal} · Payout:{" "}
-            {progress.payoutOk ? "Ready" : "Setup required"}
+            {t("driver.onboarding.progressMeta", {
+              defaultValue:
+                "Vehicle: {{vehicle}} · Docs: {{done}}/{{total}} · Payout: {{payout}}",
+              vehicle: progress.vehicleOk
+                ? t("driver.onboarding.vehicleOk", "OK")
+                : t("driver.onboarding.vehicleMissing", "missing"),
+              done: progress.docsDone,
+              total: progress.docsTotal,
+              payout: progress.payoutOk
+                ? t("driver.onboarding.go.walletOk", "Payout ready")
+                : t("driver.onboarding.go.walletNeed", "Setup required"),
+            })}
           </Text>
         </View>
 
@@ -226,7 +240,7 @@ export function DriverOnboardingScreen() {
                 ]}
               >
                 <Text style={styles.modeLabel}>
-                  {mode === "car" ? "Car" : mode === "moto" ? "Motorcycle" : "Bicycle"}
+                  {t(`driver.auth.transport.${mode}`)}
                   {selected ? " ✓" : ""}
                 </Text>
               </TouchableOpacity>
@@ -265,7 +279,19 @@ export function DriverOnboardingScreen() {
         />
 
         <TouchableOpacity
-          onPress={() => navigation.navigate("DriverTabs")}
+          onPress={() => {
+            if (!isApprovedDriverStatus(driverStatus)) {
+              Alert.alert(
+                t("driver.onboarding.pendingApprovalTitle", "Approval pending"),
+                t(
+                  "driver.onboarding.pendingApprovalBody",
+                  "Your driver account is waiting for approval. Home opens after approval.",
+                ),
+              );
+              return;
+            }
+            navigation.navigate("DriverTabs");
+          }}
           style={styles.cta}
           activeOpacity={0.85}
         >

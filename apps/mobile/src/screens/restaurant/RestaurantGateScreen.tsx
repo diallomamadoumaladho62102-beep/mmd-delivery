@@ -9,6 +9,7 @@ import {
   withTimeout,
 } from "../../lib/bootFailOpen";
 import { MMD_BLUE, MMD_FONT, MMD_WHITE } from "../../theme/mmdUi";
+import { isApprovedDriverStatus } from "../../lib/signupNavigation";
 
 type Props = { navigation: any };
 
@@ -93,9 +94,18 @@ export default function RestaurantGateScreen({ navigation }: Props) {
               .toLowerCase();
 
             if (role === "driver") {
+              const { data: driverProfile } = await supabase
+                .from("driver_profiles")
+                .select("status")
+                .eq("user_id", user.id)
+                .maybeSingle();
+              if (!mounted) return;
+              const driverHome = isApprovedDriverStatus(
+                (driverProfile as { status?: string | null } | null)?.status,
+              );
               navigation.reset({
                 index: 0,
-                routes: [{ name: "DriverTabs" }],
+                routes: [{ name: driverHome ? "DriverTabs" : "DriverOnboarding" }],
               });
               return;
             }
