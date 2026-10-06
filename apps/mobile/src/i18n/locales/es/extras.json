@@ -1862,7 +1862,7 @@
         "accountExistsTitle": "La cuenta ya existe",
         "accountExistsBody": "Ya existe una cuenta con este correo.",
         "verifyEmailSignupTitle": "Verifica tu correo",
-        "verifyEmailSignupBody": "Confirma tu correo antes de iniciar sesión.",
+        "verifyEmailSignupBody": "Tu cuenta de conductor está creada y tus datos están guardados. Confirma tu correo y luego inicia sesión. La configuración continúa después de entrar.",
         "profileErrorTitle": "Error de perfil",
         "applicationSubmittedTitle": "Solicitud enviada",
         "applicationSubmittedBody": "Tu cuenta de conductor está pendiente de aprobación."
@@ -2501,6 +2501,19 @@
     },
     "onboarding": {
       "continue": "Continuar a Inicio",
+      "pendingApprovalTitle": "Aprobación pendiente",
+      "pendingApprovalBody": "Tu cuenta de conductor espera aprobación. El inicio se abre después de la aprobación.",
+      "rejectedTitle": "Solicitud rechazada",
+      "rejectedBody": "Tu solicitud de conductor fue rechazada. El inicio del conductor permanece cerrado hasta que una nueva revisión sea aprobada.",
+      "rejectedReasonLabel": "Motivo",
+      "rejectedNextStep": "Corrige la información rechazada y vuelve a enviarla. Tu cuenta sigue siendo la misma.",
+      "resubmit": "Enviar de nuevo",
+      "resubmitDoneTitle": "Solicitud enviada de nuevo",
+      "resubmitDoneBody": "Tu solicitud vuelve a estar pendiente de revisión.",
+      "resubmitFailed": "No se pudo enviar de nuevo. Inténtalo otra vez.",
+      "progressMeta": "Vehículo: {{vehicle}} · Documentos: {{done}}/{{total}} · Pago: {{payout}}",
+      "vehicleMissing": "falta",
+      "vehicleOk": "OK",
       "go": {
         "profile": "Perfil y documentos",
         "profileHint": "Identidad, licencia, seguro",
@@ -3161,6 +3174,8 @@
         "restaurantAddressRequired": "El nombre del restaurante y la dirección completa son obligatorios.",
         "sessionNotCreated": "No se creó la sesión. Inténtalo de nuevo.",
         "userNotCreated": "Cuenta creada, pero no se pudo cargar el usuario.",
+        "addressRequired": "La dirección del restaurante es obligatoria.",
+        "addressNotFound": "Dirección no encontrada. Introduce una dirección completa con ciudad, estado y código postal.",
         "emailRequiredForReset": "❌ Introduce tu correo antes de pedir un restablecimiento.",
         "resetFailed": "❌ No se pudo enviar el correo:"
       },

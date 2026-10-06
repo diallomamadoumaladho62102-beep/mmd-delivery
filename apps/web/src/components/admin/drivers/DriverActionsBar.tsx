@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useAdminT } from "@/i18n/useAdminT";
 import {
   driverStatusActions,
   type AdminDriverListItem,
@@ -20,6 +21,7 @@ export default function DriverActionsBar({
   onStatusAction: (status: DriverActionStatus) => void;
   onView: () => void;
 }) {
+  const { t } = useAdminT();
   const actions = driverStatusActions(driver.status, {
     canManage,
     missingCount: driver.computed_missing_requirements.length,
@@ -36,7 +38,7 @@ export default function DriverActionsBar({
               href={action.href}
               className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
-              {action.label}
+              {t(action.label)}
             </Link>
           );
         }
@@ -48,7 +50,7 @@ export default function DriverActionsBar({
               onClick={onView}
               className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
-              {action.label}
+              {t(action.label)}
             </button>
           );
         }
@@ -62,8 +64,8 @@ export default function DriverActionsBar({
             key={action.key}
             type="button"
             disabled={busy || action.disabled}
-            title={action.title}
-            aria-label={action.label}
+            title={action.title ? t(action.title) : undefined}
+            aria-label={t(action.label)}
             onClick={() => onStatusAction(action.status!)}
             className={[
               "inline-flex h-11 items-center justify-center rounded-xl px-3 text-sm font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:cursor-not-allowed disabled:opacity-50",
@@ -72,7 +74,7 @@ export default function DriverActionsBar({
                 : "border border-slate-900 bg-slate-900 text-white hover:bg-slate-800",
             ].join(" ")}
           >
-            {action.label}
+            {t(action.label)}
           </button>
         );
       })}

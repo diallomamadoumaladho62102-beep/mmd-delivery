@@ -5,11 +5,29 @@ import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseBrowser";
+import { sanitizeInternalRedirectPath } from "@/lib/authValidation";
 
 type ViewState = "idle" | "loading" | "success" | "error";
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function readNextPath(): string {
+  if (typeof window === "undefined") return "/dashboard";
+  const next = new URLSearchParams(window.location.search).get("next");
+  return sanitizeInternalRedirectPath(next, "/dashboard");
+}
+
+function redirectIfSafeNext(next: string) {
+  if (
+    next.startsWith("/") &&
+    !next.startsWith("//") &&
+    !next.includes("://") &&
+    !next.includes("\\")
+  ) {
+    window.location.assign(next);
+  }
 }
 
 export default function AuthPage() {
@@ -32,7 +50,7 @@ export default function AuthPage() {
       if (!mounted) return;
 
       if (data.session) {
-        window.location.href = "/dashboard";
+        redirectIfSafeNext(readNextPath());
         return;
       }
 
@@ -43,7 +61,7 @@ export default function AuthPage() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        window.location.href = "/dashboard";
+        redirectIfSafeNext(readNextPath());
       }
     });
 
@@ -69,9 +87,10 @@ export default function AuthPage() {
     setState("loading");
     setMessage("");
 
+    const nextPath = readNextPath();
     const redirectTo =
       typeof window !== "undefined"
-        ? `${window.location.origin}/auth/callback`
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
         : undefined;
 
     const { error } = await supabase.auth.signInWithOtp({

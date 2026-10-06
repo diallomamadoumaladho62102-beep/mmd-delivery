@@ -327,6 +327,7 @@
       "noAccount": "¿Aún no tienes cuenta?",
       "password": "Contraseña",
       "passwordMin6": "Mínimo 6 caracteres",
+      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
       "passwordPlaceholder": "Contraseña",
       "passwordTitle": "Contraseña",
       "permissionBody": "Permite acceso a fotos para elegir una foto de perfil.",

@@ -73,7 +73,7 @@ export default function SellerDashboardPage() {
       const userId = sessionData.session?.user?.id;
       const token = sessionData.session?.access_token;
       if (!userId) {
-        router.replace("/login");
+        router.replace("/auth?next=/seller");
         return;
       }
 
@@ -180,8 +180,7 @@ export default function SellerDashboardPage() {
       <main className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="text-2xl font-semibold text-slate-900">{t("Seller dashboard")}</h1>
         <p className="mt-3 text-slate-600">
-          No seller profile found for this account. Create your seller profile in the
-          mobile app, then return here.
+          {t("No seller profile found for this account. Create your seller profile in the mobile app, then return here.")}
         </p>
       </main>
     );

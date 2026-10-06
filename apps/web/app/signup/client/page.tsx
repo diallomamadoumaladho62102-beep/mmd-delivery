@@ -2,7 +2,7 @@
 
 
 import { useAdminT } from "@/i18n/useAdminT";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
 import { validatePassword } from "@/lib/authValidation";
@@ -112,7 +112,7 @@ export default function SignupClientPage() {
   const [country, setCountry] = useState("US");
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -126,23 +126,19 @@ export default function SignupClientPage() {
       setMode("signup");
     }
 
-    return () => {
-      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const title = useMemo(
-    () => (mode === "login" ? "Connexion client" : "Créer un compte client"),
-    [mode]
+    () => (mode === "login" ? t("Connexion client") : t("Créer un compte client")),
+    [mode, t]
   );
 
   const subtitle = useMemo(
     () =>
       mode === "login"
-        ? "Connecte-toi avec ton compte client MMD."
-        : "Crée ton compte client, ajoute ton adresse et commence à commander.",
-    [mode]
+        ? t("Connecte-toi avec ton compte client MMD.")
+        : t("Crée ton compte client, ajoute ton adresse et commence à commander."),
+    [mode, t]
   );
 
   async function applyReferralIfAny() {
@@ -284,7 +280,7 @@ export default function SignupClientPage() {
     const e = email.trim().toLowerCase();
 
     if (!e || !password.trim()) {
-      setErr("Email et mot de passe obligatoires.");
+      setErr(t("Email et mot de passe obligatoires."));
       return;
     }
 
@@ -296,15 +292,15 @@ export default function SignupClientPage() {
         password,
       });
 
-      if (error) throw new Error(error.message || "Connexion impossible.");
-      if (!data.session) throw new Error("Session non créée. Réessaie.");
+      if (error) throw new Error(error.message || t("Connexion impossible."));
+      if (!data.session) throw new Error(t("Session non créée. Réessaie."));
 
       await applyReferralIfAny();
-      setMessage("Connexion réussie ✅");
+      setMessage(t("Connexion réussie ✅"));
       window.location.href = "/orders/new";
     } catch (error) {
       console.error(error);
-      setErr(error instanceof Error ? error.message : "Connexion impossible.");
+      setErr(error instanceof Error ? error.message : t("Connexion impossible."));
     } finally {
       setLoading(false);
     }
@@ -316,7 +312,7 @@ export default function SignupClientPage() {
 
     const e = email.trim().toLowerCase();
     if (!e) {
-      setErr("Entre ton email avant de demander la réinitialisation.");
+      setErr(t("Entre ton email avant de demander la réinitialisation."));
       return;
     }
 
@@ -328,10 +324,10 @@ export default function SignupClientPage() {
       });
 
       if (error) throw new Error(error.message);
-      setMessage("Email envoyé ✅ Vérifie ta boîte email pour modifier ton mot de passe.");
+      setMessage(t("Email envoyé ✅ Vérifie ta boîte email pour modifier ton mot de passe."));
     } catch (error) {
       console.error(error);
-      setErr(error instanceof Error ? error.message : "Impossible d’envoyer l’email.");
+      setErr(error instanceof Error ? error.message : t("Impossible d’envoyer l’email."));
     } finally {
       setLoading(false);
     }
@@ -344,24 +340,24 @@ export default function SignupClientPage() {
     const e = email.trim().toLowerCase();
 
     if (!e || !password.trim()) {
-      setErr("Email et mot de passe obligatoires.");
+      setErr(t("Email et mot de passe obligatoires."));
       return;
     }
 
     const passwordError = validatePassword(password);
     if (passwordError) {
-      setErr("Le mot de passe doit contenir au moins 8 caractères.");
+      setErr(t("Le mot de passe doit contenir au moins 8 caractères."));
       return;
     }
 
     if (!trimOrEmpty(fullName)) {
-      setErr("Merci de saisir ton nom complet.");
+      setErr(t("Merci de saisir ton nom complet."));
       return;
     }
 
     const cleanedPhone = cleanPhone(phone);
     if (!cleanedPhone) {
-      setErr("Merci de saisir ton numéro de téléphone.");
+      setErr(t("Merci de saisir ton numéro de téléphone."));
       return;
     }
 
@@ -390,11 +386,11 @@ export default function SignupClientPage() {
         },
       });
 
-      if (error) throw new Error(error.message || "Inscription impossible.");
+      if (error) throw new Error(error.message || t("Inscription impossible."));
 
       const userId = data.user?.id;
       if (!userId) {
-        setMessage("Compte créé ✅ Connecte-toi maintenant.");
+        setMessage(t("Compte créé ✅ Connecte-toi maintenant."));
         setMode("login");
         return;
       }
@@ -407,7 +403,7 @@ export default function SignupClientPage() {
           avatarUrl = uploaded.path;
         } catch (error) {
           console.log("avatar upload error:", error);
-          setMessage("Compte créé, mais la photo n’a pas été envoyée. Tu pourras l’ajouter plus tard.");
+          setMessage(t("Compte créé, mais la photo n’a pas été envoyée. Tu pourras l’ajouter plus tard."));
         }
       }
 
@@ -427,25 +423,37 @@ export default function SignupClientPage() {
       }
 
       if (!data.session) {
-        setMessage("Compte créé ✅ Vérifie ton email, puis connecte-toi.");
+        setMessage(t("Compte créé ✅ Vérifie ton email, puis connecte-toi."));
         setMode("login");
         return;
       }
 
-      setMessage("Compte client créé ✅");
+      setMessage(t("Compte client créé ✅"));
       window.location.href = "/orders/new";
     } catch (error) {
       console.error(error);
-      setErr(error instanceof Error ? error.message : "Inscription impossible.");
+      setErr(error instanceof Error ? error.message : t("Inscription impossible."));
     } finally {
       setLoading(false);
     }
   }
 
-  function onAvatarChange(file: File | null) {
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatarFile(file);
-    setAvatarPreview(file ? URL.createObjectURL(file) : null);
+  async function onAvatarChange(file: File | null) {
+    const canvas = avatarCanvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height);
+    if (!file || !file.type.startsWith("image/")) {
+      setAvatarFile(null);
+      return;
+    }
+    try {
+      const bitmap = await createImageBitmap(file);
+      if (canvas && context) context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      setAvatarFile(file);
+    } catch {
+      setAvatarFile(null);
+    }
   }
 
   return (
@@ -462,12 +470,16 @@ export default function SignupClientPage() {
           </h1>
 
           <p className="mt-5 max-w-xl text-lg font-semibold leading-8 text-slate-400">
-            Create your client account, save your main address, and order food,
-            delivery and services from one modern platform.
+            {t("Create your client account, save your main address, and order food, delivery and services from one modern platform.")}
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            {["Secure account", "Saved address", "Referral ready", "Fast checkout"].map((item) => (
+            {[
+              t("Secure account"),
+              t("Saved address"),
+              t("Referral ready"),
+              t("Fast checkout"),
+            ].map((item) => (
               <span
                 key={item}
                 className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm font-extrabold text-slate-300"
@@ -515,13 +527,15 @@ export default function SignupClientPage() {
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-200">{t("Photo de profil")}</label>
                 <div className="flex items-center gap-4">
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-950 text-2xl font-black text-slate-500">
-                    {avatarPreview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={avatarPreview} alt="Avatar preview" className="h-full w-full object-cover" />
-                    ) : (
-                      "+"
-                    )}
+                  <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-950 text-2xl font-black text-slate-500">
+                    <canvas
+                      ref={avatarCanvasRef}
+                      width={80}
+                      height={80}
+                      aria-label={t("Avatar preview")}
+                      className={`h-full w-full ${avatarFile ? "block" : "hidden"}`}
+                    />
+                    {avatarFile ? null : "+"}
                   </div>
                   <input
                     type="file"
@@ -559,13 +573,7 @@ export default function SignupClientPage() {
                     onChange={(event) => setSmsConsent(event.target.checked)}
                   />
                   <span>
-                    I agree to receive automated informational and transactional
-                    text messages from MMD Delivery about my account,
-                    verification, orders, deliveries, package deliveries, taxi
-                    rides, and customer support. Message frequency varies.
-                    Message and data rates may apply. Consent is not a condition
-                    of purchase. Reply STOP to cancel and HELP for help. Optional
-                    — not required to create an account.{" "}
+                    {t("I agree to receive automated informational and transactional text messages from MMD Delivery about my account, verification, orders, deliveries, package deliveries, taxi rides, and customer support. Message frequency varies. Message and data rates may apply. Consent is not a condition of purchase. Reply STOP to cancel and HELP for help. Optional — not required to create an account.")}{" "}
                     <a className="text-blue-300 underline" href="/legal/sms">
                       {t("SMS program")}
                     </a>
@@ -645,7 +653,7 @@ export default function SignupClientPage() {
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="ton@email.com"
+                placeholder={t("you@email.com")}
                 type="email"
                 autoComplete="email"
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500"
@@ -670,7 +678,7 @@ export default function SignupClientPage() {
                   onClick={() => setShowPassword((value) => !value)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-blue-300 hover:text-blue-200 disabled:opacity-60"
                 >
-                  {showPassword ? "Cacher" : "Voir"}
+                  {showPassword ? t("Cacher") : t("Voir")}
                 </button>
               </div>
             </div>
@@ -707,7 +715,7 @@ export default function SignupClientPage() {
             disabled={loading}
             className="mt-6 w-full rounded-2xl bg-blue-600 px-5 py-4 text-base font-black text-white shadow-lg shadow-blue-950/50 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loading ? "Chargement..." : mode === "login" ? t("Se connecter") : "Créer mon compte client"}
+            {loading ? t("Chargement...") : mode === "login" ? t("Se connecter") : t("Créer mon compte client")}
           </button>
 
           <button
@@ -720,7 +728,7 @@ export default function SignupClientPage() {
             disabled={loading}
             className="mt-4 w-full text-center text-sm font-extrabold text-blue-300 hover:text-blue-200 disabled:opacity-60"
           >
-            {mode === "login" ? "Je n’ai pas encore de compte" : "J’ai déjà un compte"}
+            {mode === "login" ? t("Je n’ai pas encore de compte") : t("J’ai déjà un compte")}
           </button>
         </div>
       </section>

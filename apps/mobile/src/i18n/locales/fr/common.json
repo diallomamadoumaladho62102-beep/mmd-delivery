@@ -295,6 +295,7 @@
       "noAccount": "Pas encore de compte ?",
       "password": "Mot de passe",
       "passwordMin6": "Minimum 6 caractères",
+      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères.",
       "passwordPlaceholder": "Mot de passe",
       "passwordTitle": "Mot de passe",
       "permissionBody": "Autorise l’accès aux photos pour choisir une photo de profil.",

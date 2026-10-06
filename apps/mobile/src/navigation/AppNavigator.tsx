@@ -18,6 +18,10 @@ import {
 } from "../lib/accountStatus";
 import { supabase } from "../lib/supabase";
 import { getSelectedRole } from "../lib/authRole";
+import {
+  pendingDriverMayStayOn,
+  selectedSellerAppliesToProfile,
+} from "../lib/signupNavigation";
 import { isClientProfileComplete as scoreClientProfileComplete } from "../lib/profileCompleteness";
 import { withTimeout, BOOT_AUTH_TIMEOUT_MS } from "../lib/bootFailOpen";
 
@@ -566,7 +570,6 @@ export function AppNavigator({
 
   const resolveUserRole = React.useCallback(async (uid: string): Promise<AppRole> => {
     const selectedRole = normalizeAppRole(await getSelectedRole());
-    if (selectedRole === "seller") return "seller";
 
     try {
       const { data, error } = await supabase
@@ -582,6 +585,9 @@ export function AppNavigator({
         // surface via selected role (single auth user, no duplicates).
         if ((isFounder || dbRole === "admin") && selectedRole) {
           return selectedRole;
+        }
+        if (selectedRole === "seller" && selectedSellerAppliesToProfile(dbRole)) {
+          return "seller";
         }
         if (dbRole) return dbRole;
       } else {
@@ -988,7 +994,7 @@ export function AppNavigator({
           status === "rejected" ||
           status === null
         ) {
-          if (cur !== "DriverOnboarding") resetTo("DriverOnboarding");
+          if (!pendingDriverMayStayOn(cur)) resetTo("DriverOnboarding");
           return;
         }
 

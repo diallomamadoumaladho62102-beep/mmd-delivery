@@ -1913,7 +1913,7 @@
         "accountExistsTitle": "Konto ena woodi",
         "accountExistsBody": "Konto ena woodi e email oo.",
         "verifyEmailSignupTitle": "Tabit email maa",
-        "verifyEmailSignupBody": "Tabit email maa mbere a naata.",
+        "verifyEmailSignupBody": "Konto dooɓoowo maa sosaama, keɓe maa ndesndaama. Tabit iimeel maa, rewti naatu. Teeltol jokkataa caggal naatgol.",
         "profileErrorTitle": "Juumre profil",
         "applicationSubmittedTitle": "Ɗaɓɓitannde neldaama",
         "applicationSubmittedBody": "Konto dooɓoowo maa ena heddii jaɓgol."
@@ -2552,6 +2552,19 @@
     },
     "onboarding": {
       "continue": "Jokku to Jaɓɓorgo",
+      "pendingApprovalTitle": "Jaɓgol ena sabbii",
+      "pendingApprovalBody": "Konto dooɓoowo maa ena sabbii jaɓgol. Jaɓɓorgo udditataa caggal jaɓgol.",
+      "rejectedTitle": "Dossier salaama",
+      "rejectedBody": "Dossier driwer maa salaama. Jaɓɓorgo driwer udditataa haa ƴeewndo hesere jaɓe.",
+      "rejectedReasonLabel": "Daliilu",
+      "rejectedNextStep": "Moƴƴin kabaruuji salaama, ndeen neldu dossier oo kadi. Account maa wonaa oo.",
+      "resubmit": "Neldu kadi",
+      "resubmitDoneTitle": "Dossier neldii kadi",
+      "resubmitDoneBody": "Dossier maa woni kadi e sabbu ƴeewndo.",
+      "resubmitFailed": "Neldu kadi waawaa. Fuɗɗo kadi.",
+      "progressMeta": "Oto: {{vehicle}} · Dokimaaɗe: {{done}}/{{total}} · Yoɓgol: {{payout}}",
+      "vehicleMissing": "ena ŋakki",
+      "vehicleOk": "OK",
       "go": {
         "profile": "Profil e dokimaaɗe",
         "profileHint": "Neɗɗankaagal, jamiroore, kisal oto",
@@ -3212,6 +3225,8 @@
         "restaurantAddressRequired": "Innde restoraa e ñiiɓirde timmunde ina ɗaɓɓi.",
         "sessionNotCreated": "Naatgol sosaaka. Eto kadi.",
         "userNotCreated": "Konto sosaama, kono kuutoro heɓotaako.",
+        "addressRequired": "Nder restoraan ena waɗɗi.",
+        "addressNotFound": "Nder yiytaaka. Naatnu nder timmuɗo e wuro, diiwaan e ZIP.",
         "emailRequiredForReset": "❌ Naatnu iimeel maa hade maa ɗaɓɓude hesɗitinal.",
         "resetFailed": "❌ Horiima neldude iimeel:"
       },

@@ -100,7 +100,7 @@ export async function proxy(req: NextRequest) {
 
   if (prof?.role !== "restaurant") {
     const url = req.nextUrl.clone();
-    url.pathname = "/choose-role";
+    url.pathname = "/signup";
     url.search = "";
     return NextResponse.redirect(url);
   }

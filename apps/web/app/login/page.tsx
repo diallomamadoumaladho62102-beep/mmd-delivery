@@ -18,7 +18,7 @@ export default function LoginPage() {
     setErr(null);
 
     if (!email.trim()) {
-      setErr("Merci de saisir un email.");
+      setErr(t("Merci de saisir un email."));
       return;
     }
 
@@ -40,7 +40,7 @@ export default function LoginPage() {
         setSent(true);
       }
     } catch (e: any) {
-      setErr(e?.message ?? "Erreur inconnue.");
+      setErr(e?.message ?? t("Erreur inconnue."));
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ export default function LoginPage() {
       {sent ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
           {t("Le lien de connexion a été envoyé à")} <strong>{email}</strong>.{" "}
-          Vérifie ta boîte mail et clique sur le lien pour te connecter.
+          {t("Vérifie ta boîte mail et clique sur le lien pour te connecter.")}
         </div>
       ) : (
         <form className="space-y-3" onSubmit={handleLogin}>

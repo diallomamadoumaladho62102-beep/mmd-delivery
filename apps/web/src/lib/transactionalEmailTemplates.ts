@@ -270,7 +270,7 @@ export function driverApprovedEmail(params?: {
     headline: t.headline,
     bodyHtml: `<p>${escapeHtml(t.body)}</p>`,
     ctaLabel: t.cta,
-    ctaUrl: "https://mmddelivery.com/download",
+    ctaUrl: "https://mmddelivery.com/orders/driver",
   };
 }
 

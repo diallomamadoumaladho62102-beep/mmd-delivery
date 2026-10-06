@@ -1862,7 +1862,7 @@
         "accountExistsTitle": "الحساب موجود بالفعل",
         "accountExistsBody": "يوجد حساب بهذا البريد الإلكتروني بالفعل.",
         "verifyEmailSignupTitle": "تحقق من بريدك الإلكتروني",
-        "verifyEmailSignupBody": "أكّد بريدك الإلكتروني قبل تسجيل الدخول.",
+        "verifyEmailSignupBody": "تم إنشاء حساب السائق وحفظ بياناتك. أكّد بريدك ثم سجّل الدخول. يستمر الإعداد بعد تسجيل الدخول.",
         "profileErrorTitle": "خطأ في الملف الشخصي",
         "applicationSubmittedTitle": "تم إرسال الطلب",
         "applicationSubmittedBody": "حساب السائق الخاص بك في انتظار الموافقة."
@@ -2501,6 +2501,19 @@
     },
     "onboarding": {
       "continue": "المتابعة إلى الرئيسية",
+      "pendingApprovalTitle": "الموافقة قيد الانتظار",
+      "pendingApprovalBody": "حساب السائق بانتظار الموافقة. الصفحة الرئيسية تُفتح بعد الموافقة.",
+      "rejectedTitle": "تم رفض الملف",
+      "rejectedBody": "تم رفض ملف السائق. تبقى الصفحة الرئيسية مغلقة إلى أن تُقبل مراجعة جديدة.",
+      "rejectedReasonLabel": "السبب",
+      "rejectedNextStep": "صحّح المعلومات المرفوضة ثم أعد الإرسال. يبقى حسابك نفسه.",
+      "resubmit": "إعادة الإرسال",
+      "resubmitDoneTitle": "أُعيد إرسال الملف",
+      "resubmitDoneBody": "ملفك بانتظار المراجعة من جديد.",
+      "resubmitFailed": "تعذر إعادة الإرسال. حاول مرة أخرى.",
+      "progressMeta": "المركبة: {{vehicle}} · المستندات: {{done}}/{{total}} · الدفع: {{payout}}",
+      "vehicleMissing": "ناقص",
+      "vehicleOk": "OK",
       "go": {
         "profile": "الملف والمستندات",
         "profileHint": "الهوية والرخصة والتأمين",
@@ -3161,6 +3174,8 @@
         "restaurantAddressRequired": "اسم المطعم والعنوان الكامل مطلوبان.",
         "sessionNotCreated": "لم تُنشأ الجلسة. حاول مرة أخرى.",
         "userNotCreated": "أُنشئ الحساب، لكن تعذّر تحميل المستخدم.",
+        "addressRequired": "عنوان المطعم مطلوب.",
+        "addressNotFound": "العنوان غير موجود. أدخل عنواناً كاملاً مع المدينة والولاية والرمز البريدي.",
         "emailRequiredForReset": "❌ أدخل بريدك قبل طلب إعادة التعيين.",
         "resetFailed": "❌ تعذّر إرسال البريد:"
       },

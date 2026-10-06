@@ -23,6 +23,8 @@ import * as Linking from "expo-linking";
 import { supabase } from "../lib/supabase";
 import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
+import { buildDriverProfileFromSignupMetadata } from "../lib/signupNavigation";
+import { notifyDriverApplicationPending } from "../lib/driverReviewClient";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
@@ -513,6 +515,28 @@ export function DriverAuthScreen() {
         return;
       }
 
+      if (!prof) {
+        const restored = buildDriverProfileFromSignupMetadata(
+          uid,
+          (u.user?.user_metadata ?? null) as Record<string, unknown> | null,
+        );
+        if (restored) {
+          const { error: restoreError } = await supabase
+            .from("driver_profiles")
+            .upsert(restored, { onConflict: "user_id" });
+          if (!restoreError) {
+            await supabase
+              .from("profiles")
+              .update({
+                full_name: restored.full_name,
+                phone: restored.phone,
+              })
+              .eq("id", uid);
+            void notifyDriverApplicationPending();
+          }
+        }
+      }
+
       navigation.replace("DriverOnboarding");
     } catch (e) {
       console.log("routeAfterAuth fail-open", e);
@@ -869,6 +893,15 @@ export function DriverAuthScreen() {
             data: {
               full_name: cleanedFullName,
               role: "driver",
+              phone: cleanedPhone,
+              emergency_phone: cleanedEmergencyPhone,
+              address: cleanedAddress,
+              city: cleanedCity,
+              state: cleanedState,
+              zip_code: cleanedZipCode,
+              date_of_birth: cleanedDateOfBirth,
+              transport_mode: transportMode,
+              license_number: isBike ? null : cleanedLicenseNumber,
               referral_code: referralCode.trim().toUpperCase() || null,
             },
           },
@@ -896,7 +929,7 @@ export function DriverAuthScreen() {
       }
 
       const user = data?.user;
-      if (!user) {
+      if (!user || !data.session) {
         Alert.alert(
           t("driver.auth.alert.verifyEmailSignupTitle", "Verify your email"),
           t(
@@ -964,6 +997,8 @@ export function DriverAuthScreen() {
         );
         return;
       }
+
+      void notifyDriverApplicationPending();
 
       Alert.alert(
         t("driver.auth.alert.applicationSubmittedTitle", "Application submitted"),

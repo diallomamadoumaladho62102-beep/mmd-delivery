@@ -18,6 +18,10 @@ import {
   type DriverActionStatus,
   type DriverReviewStatus,
 } from "@/lib/adminDriverDisplay";
+import {
+  REJECTION_NOTE_MIN_LENGTH,
+  sanitizeDriverDecisionNote,
+} from "@/lib/driverReviewTransition";
 import { normalizeUserRole } from "@/lib/roles";
 import { supabase } from "@/lib/supabaseBrowser";
 import DriversList from "./DriversList";
@@ -225,9 +229,12 @@ export default function AdminDriversManager() {
         newStatus === "approved" &&
         target.computed_missing_requirements.length > 0
       ) {
-        setError(
-          "Impossible d’approuver ce chauffeur : il manque encore des informations ou documents obligatoires."
-        );
+        setError(t("Cannot approve: missing required information or documents"));
+        return;
+      }
+      const decisionNote = sanitizeDriverDecisionNote(noteDrafts[userId] ?? "");
+      if (newStatus === "rejected" && decisionNote.length < REJECTION_NOTE_MIN_LENGTH) {
+        setError(t("A rejection reason is required."));
         return;
       }
       const res = await adminFetch("/api/admin/drivers/review", {
@@ -236,13 +243,33 @@ export default function AdminDriversManager() {
         body: JSON.stringify({
           userId,
           status: newStatus,
-          reviewNotes: (noteDrafts[userId] ?? "").trim(),
+          reviewNotes: decisionNote,
         }),
       });
       const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || "Update failed");
+      if (!res.ok || !json.ok) {
+        const code = String(json.error ?? "");
+        if (code === "already_reviewed") {
+          throw new Error(t("This application was already reviewed."));
+        }
+        if (code === "review_conflict") {
+          throw new Error(t("Another review already changed this application."));
+        }
+        if (code === "rejection_reason_required") {
+          throw new Error(t("A rejection reason is required."));
+        }
+        throw new Error(json.error || t("Update failed"));
+      }
 
-      setOk(json.message || `Driver marked ${newStatus}`);
+      const success =
+        newStatus === "approved"
+          ? t("Driver approved successfully.")
+          : newStatus === "rejected"
+            ? t("Driver rejected successfully.")
+            : newStatus === "suspended"
+              ? t("Driver suspended successfully.")
+              : t("Driver disabled successfully.");
+      setOk(success);
       setItems((prev) =>
         sortDriversOps(
           prev.map((r) => {

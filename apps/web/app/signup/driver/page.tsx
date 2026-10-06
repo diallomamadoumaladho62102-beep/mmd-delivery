@@ -279,7 +279,7 @@ export default function SignupDriver() {
           setErr(
             toErrorMessage(
               error,
-              "Erreur lors du chargement du profil chauffeur.",
+              t("Erreur lors du chargement du profil chauffeur."),
             ),
           );
         }
@@ -303,7 +303,7 @@ export default function SignupDriver() {
 
     try {
       if (!email.trim()) {
-        setErr("Merci de saisir un email.");
+        setErr(t("Merci de saisir un email."));
         return;
       }
 
@@ -323,9 +323,9 @@ export default function SignupDriver() {
       }
 
       setSent(true);
-      setSuccess("Lien magique envoyé. Ouvre ton email puis reviens sur cette page.");
+      setSuccess(t("Lien magique envoyé. Ouvre ton email puis reviens sur cette page."));
     } catch (error: unknown) {
-      setErr(toErrorMessage(error, "Erreur lors de l'envoi du lien."));
+      setErr(toErrorMessage(error, t("Erreur lors de l'envoi du lien.")));
     }
   }
 
@@ -415,7 +415,7 @@ export default function SignupDriver() {
     },
   ) {
     if (!uid) {
-      throw new Error("Utilisateur non connecté.");
+      throw new Error(t("Utilisateur non connecté."));
     }
 
     const filePath = buildStoragePath(uid, docType, file);
@@ -453,7 +453,7 @@ export default function SignupDriver() {
       avatarUrl?: string | null;
     } = {},
   ) {
-    if (!uid) throw new Error("Utilisateur non connecté.");
+    if (!uid) throw new Error(t("Utilisateur non connecté."));
 
     const payload = {
       id: uid,
@@ -476,133 +476,133 @@ export default function SignupDriver() {
     setSuccess(null);
 
     if (!uid) {
-      setErr("Tu dois être connecté pour enregistrer ton profil.");
+      setErr(t("Tu dois être connecté pour enregistrer ton profil."));
       return;
     }
 
     if (!trimOrNull(fullName)) {
-      setErr("Merci de saisir ton nom complet.");
+      setErr(t("Merci de saisir ton nom complet."));
       return;
     }
 
     if (!trimOrNull(phone)) {
-      setErr("Merci de saisir ton numéro de téléphone.");
+      setErr(t("Merci de saisir ton numéro de téléphone."));
       return;
     }
 
     if (!trimOrNull(emergencyPhone)) {
-      setErr("Merci de saisir un numéro de téléphone d’urgence.");
+      setErr(t("Merci de saisir un numéro de téléphone d’urgence."));
       return;
     }
 
     if (!trimOrNull(address)) {
-      setErr("Merci de saisir ton adresse.");
+      setErr(t("Merci de saisir ton adresse."));
       return;
     }
 
     if (!trimOrNull(city)) {
-      setErr("Merci de saisir ta ville.");
+      setErr(t("Merci de saisir ta ville."));
       return;
     }
 
     if (!trimOrNull(stateValue)) {
-      setErr("Merci de saisir ton État.");
+      setErr(t("Merci de saisir ton État."));
       return;
     }
 
     if (!trimOrNull(normalizeZip(zipCode))) {
-      setErr("Merci de saisir ton ZIP code.");
+      setErr(t("Merci de saisir ton ZIP code."));
       return;
     }
 
     if (!trimOrNull(dateOfBirth)) {
-      setErr("Merci de saisir ta date de naissance.");
+      setErr(t("Merci de saisir ta date de naissance."));
       return;
     }
 
     if (!trimOrNull(idType)) {
-      setErr("Merci de choisir le type de pièce d’identité.");
+      setErr(t("Merci de choisir le type de pièce d’identité."));
       return;
     }
 
     if (!trimOrNull(idNumber)) {
-      setErr("Merci de saisir le numéro de la pièce d’identité.");
+      setErr(t("Merci de saisir le numéro de la pièce d’identité."));
       return;
     }
 
     if (!trimOrNull(idCountry)) {
-      setErr("Merci de saisir le pays d’émission de la pièce.");
+      setErr(t("Merci de saisir le pays d’émission de la pièce."));
       return;
     }
 
     if (!hasProfilePhoto) {
-      setErr("Merci d’ajouter une photo personnelle.");
+      setErr(t("Merci d’ajouter une photo personnelle."));
       return;
     }
 
     if (!hasIdFront) {
-      setErr("Merci d’ajouter la photo recto de la pièce d’identité.");
+      setErr(t("Merci d’ajouter la photo recto de la pièce d’identité."));
       return;
     }
 
     if (!hasIdBack) {
-      setErr("Merci d’ajouter la photo verso de la pièce d’identité.");
+      setErr(t("Merci d’ajouter la photo verso de la pièce d’identité."));
       return;
     }
 
     if (requiresMotorDocs) {
       if (!trimOrNull(licenseNumber)) {
-        setErr("Merci de saisir le numéro du permis.");
+        setErr(t("Merci de saisir le numéro du permis."));
         return;
       }
 
       if (!trimOrNull(licenseExpiry)) {
-        setErr("Merci de saisir la date d’expiration du permis.");
+        setErr(t("Merci de saisir la date d’expiration du permis."));
         return;
       }
 
       if (!trimOrNull(vehicleBrand)) {
-        setErr("Merci de saisir la marque du véhicule.");
+        setErr(t("Merci de saisir la marque du véhicule."));
         return;
       }
 
       if (!trimOrNull(vehicleModel)) {
-        setErr("Merci de saisir le modèle du véhicule.");
+        setErr(t("Merci de saisir le modèle du véhicule."));
         return;
       }
 
       if (!vehicleYear) {
-        setErr("Merci de saisir l’année du véhicule.");
+        setErr(t("Merci de saisir l’année du véhicule."));
         return;
       }
 
       if (!trimOrNull(vehicleColor)) {
-        setErr("Merci de saisir la couleur du véhicule.");
+        setErr(t("Merci de saisir la couleur du véhicule."));
         return;
       }
 
       if (!trimOrNull(plateNumber)) {
-        setErr("Merci de saisir la plaque d’immatriculation.");
+        setErr(t("Merci de saisir la plaque d’immatriculation."));
         return;
       }
 
       if (!hasLicenseFront) {
-        setErr("Merci d’ajouter la photo recto du permis.");
+        setErr(t("Merci d’ajouter la photo recto du permis."));
         return;
       }
 
       if (!hasLicenseBack) {
-        setErr("Merci d’ajouter la photo verso du permis.");
+        setErr(t("Merci d’ajouter la photo verso du permis."));
         return;
       }
 
       if (!hasInsurance) {
-        setErr("Merci d’ajouter le document d’assurance.");
+        setErr(t("Merci d’ajouter le document d’assurance."));
         return;
       }
 
       if (!hasRegistration) {
-        setErr("Merci d’ajouter le document de registration.");
+        setErr(t("Merci d’ajouter le document de registration."));
         return;
       }
     }
@@ -787,6 +787,15 @@ export default function SignupDriver() {
 
       setExistingDocs(refreshedDocs);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const pendingToken = sessionData.session?.access_token;
+      if (pendingToken) {
+        void fetch("/api/driver/pending-notice", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${pendingToken}` },
+        });
+      }
+
       setProfilePhotoFile(null);
       setIdFrontFile(null);
       setIdBackFile(null);
@@ -797,14 +806,14 @@ export default function SignupDriver() {
 
       setSuccess(
         isProfileComplete
-          ? "Profil chauffeur enregistré. Ton dossier est complet."
-          : "Profil chauffeur enregistré. Il manque encore des informations ou documents.",
+          ? t("Profil chauffeur enregistré. Ton dossier est complet.")
+          : t("Profil chauffeur enregistré. Il manque encore des informations ou documents."),
       );
     } catch (error: unknown) {
       setErr(
         toErrorMessage(
           error,
-          "Erreur lors de l'enregistrement du profil chauffeur.",
+          t("Erreur lors de l'enregistrement du profil chauffeur."),
         ),
       );
     } finally {
@@ -818,12 +827,12 @@ export default function SignupDriver() {
     pendingNew: boolean,
   ) {
     if (pendingNew) {
-      return <span className="text-xs text-green-700">Nouveau fichier prêt : {label}</span>;
+      return <span className="text-xs text-green-700">{t("Nouveau fichier prêt :")} {label}</span>;
     }
     if (hasExisting) {
-      return <span className="text-xs text-blue-700">Déjà enregistré : {label}</span>;
+      return <span className="text-xs text-blue-700">{t("Déjà enregistré :")} {label}</span>;
     }
-    return <span className="text-xs text-gray-500">Manquant : {label}</span>;
+    return <span className="text-xs text-gray-500">{t("Manquant :")} {label}</span>;
   }
 
   if (!uid) {
@@ -836,7 +845,7 @@ export default function SignupDriver() {
 
         <input
           className="w-full border rounded px-3 py-2"
-          placeholder="ton@email.com"
+          placeholder={t("you@email.com")}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -848,7 +857,7 @@ export default function SignupDriver() {
             className="px-3 py-2 rounded bg-black text-white text-sm"
             disabled={!email.trim() || sent}
           >
-            {sent ? "Lien envoyé ✅" : t("Envoyer le lien magique")}
+            {sent ? t("Lien envoyé ✅") : t("Envoyer le lien magique")}
           </button>
 
           <button
@@ -1199,7 +1208,7 @@ export default function SignupDriver() {
         className="px-4 py-3 rounded bg-black text-white w-full disabled:opacity-60"
         disabled={saving}
       >
-        {saving ? "Enregistrement..." : "Enregistrer mon profil chauffeur"}
+        {saving ? t("Enregistrement...") : t("Enregistrer mon profil chauffeur")}
       </button>
 
       {success && <div className="text-green-700 text-sm">{success}</div>}

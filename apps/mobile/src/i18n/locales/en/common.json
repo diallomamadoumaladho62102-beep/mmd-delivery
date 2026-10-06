@@ -329,6 +329,7 @@
       "noAccount": "No account yet?",
       "password": "Password",
       "passwordMin6": "Minimum 6 characters",
+      "passwordTooShort": "Password must be at least 8 characters.",
       "passwordPlaceholder": "Password",
       "passwordTitle": "Password",
       "permissionBody": "Allow access to photos to pick a profile picture.",

@@ -300,7 +300,8 @@
     "auth": {
       "showPassword": "Hollu",
       "hidePassword": "Suuɗ",
-      "forgotPassword": "A yejjitii finnde?"
+      "forgotPassword": "A yejjitii finnde?",
+      "passwordTooShort": "Finnde ina waɗɗi alkule 8 walla ɓurɗe."
     },
     "home": {
       "tabs": {

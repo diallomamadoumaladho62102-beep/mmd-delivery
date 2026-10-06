@@ -1872,7 +1872,7 @@
         "accountExistsTitle": "Compte déjà existant",
         "accountExistsBody": "Un compte existe déjà avec cet e-mail.",
         "verifyEmailSignupTitle": "Vérifie ton e-mail",
-        "verifyEmailSignupBody": "Confirme ton e-mail avant de te connecter.",
+        "verifyEmailSignupBody": "Ton compte chauffeur est créé et tes informations sont enregistrées. Confirme ton e-mail, puis connecte-toi. La configuration continue après la connexion.",
         "profileErrorTitle": "Erreur de profil",
         "applicationSubmittedTitle": "Candidature envoyée",
         "applicationSubmittedBody": "Ton compte chauffeur est en attente d'approbation."
@@ -2612,6 +2612,19 @@
     },
     "onboarding": {
       "continue": "Continuer vers l’accueil",
+      "pendingApprovalTitle": "Approbation en attente",
+      "pendingApprovalBody": "Ton compte chauffeur attend une approbation. L’accueil s’ouvre après approbation.",
+      "rejectedTitle": "Dossier rejeté",
+      "rejectedBody": "Ton dossier chauffeur a été rejeté. L’accueil chauffeur reste fermé tant qu’une nouvelle revue n’est pas approuvée.",
+      "rejectedReasonLabel": "Raison",
+      "rejectedNextStep": "Corrige les informations rejetées, puis renvoie le dossier. Ton compte reste le même.",
+      "resubmit": "Renvoyer le dossier",
+      "resubmitDoneTitle": "Dossier renvoyé",
+      "resubmitDoneBody": "Ton dossier est de nouveau en attente de revue.",
+      "resubmitFailed": "Impossible de renvoyer le dossier. Réessaie.",
+      "progressMeta": "Véhicule : {{vehicle}} · Documents : {{done}}/{{total}} · Versement : {{payout}}",
+      "vehicleMissing": "manquant",
+      "vehicleOk": "OK",
       "go": {
         "profile": "Profil et documents",
         "profileHint": "Identité, permis, assurance",
@@ -3273,7 +3286,9 @@
         "restaurantAddressRequired": "Nom et adresse complète du restaurant obligatoires.",
         "restaurantNameRequired": "❌ Nom du restaurant obligatoire",
         "sessionNotCreated": "Session non créée. Réessaie.",
-        "userNotCreated": "Compte créé, mais impossible de récupérer l’utilisateur."
+        "userNotCreated": "Compte créé, mais impossible de récupérer l’utilisateur.",
+        "addressRequired": "L’adresse du restaurant est obligatoire.",
+        "addressNotFound": "Adresse introuvable. Entre une adresse complète avec ville, État et code postal."
       },
       "fields": {
         "restaurantAddress": "Adresse complète",

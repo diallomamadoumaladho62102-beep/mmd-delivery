@@ -22,6 +22,7 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole, setSelectedRole } from "../lib/authRole";
+import { selectedSellerAppliesToProfile } from "../lib/signupNavigation";
 import {
   fetchOwnProfileForRoleGate,
   userMessageForProfileGateKind,
@@ -332,11 +333,6 @@ export function RoleSelectScreen() {
   );
 
   async function routeLoggedInUser(selectedRole: PublicRole, userId: string) {
-    if (selectedRole === "seller") {
-      navigation.navigate("SellerGate");
-      return;
-    }
-
     const gate = await fetchOwnProfileForRoleGate(supabase as any, userId);
 
     if (gate.ok === false) {
@@ -402,13 +398,22 @@ export function RoleSelectScreen() {
     const isFounder = profile?.is_founder === true;
     const canUseAnyPublicRole = isFounder || realRole === "admin";
 
+    if (
+      selectedRole === "seller" &&
+      (canUseAnyPublicRole || selectedSellerAppliesToProfile(realRole))
+    ) {
+      navigation.navigate("SellerGate");
+      return;
+    }
+
     if (realRole && realRole !== selectedRole && !canUseAnyPublicRole) {
+      const roleLabel = t(`roleSelect.roles.${realRole}`, realRole);
       Alert.alert(
         t("roleSelect.wrongRoleTitle", "Account already signed in"),
         t(
           "roleSelect.wrongRoleBody",
           "This account is registered as {{role}}. Sign out if you want to use another role.",
-          { role: realRole },
+          { role: roleLabel },
         ),
       );
 
@@ -678,7 +683,22 @@ export function RoleSelectScreen() {
 
                 <FadeIn delay={220}>
                   <Pressable
-                    onPress={() => navigation.navigate("ClientAuth")}
+                    onPress={() => {
+                      void (async () => {
+                        try {
+                          await setSelectedRole("client");
+                          const { data } = await supabase.auth.getSession();
+                          const userId = data.session?.user?.id;
+                          if (userId) {
+                            await routeLoggedInUser("client", userId);
+                            return;
+                          }
+                        } catch (loginEntryError) {
+                          console.log("RoleSelect login entry error:", loginEntryError);
+                        }
+                        navigation.navigate("ClientAuth");
+                      })();
+                    }}
                     style={({ pressed }) => [
                       styles.loginEntryBtn,
                       pressed && { opacity: 0.9 },

@@ -37,12 +37,12 @@ export default function SignupLanding() {
         return;
       }
 
-      router.push("/auth");
+      router.push("/auth?next=/seller");
       return;
     }
 
     if (role === "seller") {
-      router.push("/client");
+      router.push("/seller");
       return;
     }
 
