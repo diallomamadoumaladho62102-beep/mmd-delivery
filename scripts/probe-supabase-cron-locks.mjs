@@ -21,7 +21,7 @@ function load(p) {
 
 const e = load("apps/web/.env.vercel.production.local");
 const url = e.NEXT_PUBLIC_SUPABASE_URL;
-const key = e.SUPABASE_SERVICE_ROLE_KEY;
+const key = e.SUPABASE_SECRET_KEY;
 console.log(
   JSON.stringify({
     url_present: Boolean(url),

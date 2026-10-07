@@ -1,8 +1,10 @@
 /**
  * Supabase API key resolution for Next.js (web + API routes).
  *
- * Prefer new platform keys; fall back to legacy JWT names only temporarily
- * until Legacy API Keys are disabled in the Supabase Dashboard.
+ * Browser clients use NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY only.
+ * Privileged server clients use SUPABASE_SECRET_KEY only.
+ * Legacy JWT key names are not read. They stay enabled in Supabase until
+ * the published mobile binary no longer needs the legacy anon key.
  *
  * Never put sb_secret_* in NEXT_PUBLIC_* variables.
  */
@@ -26,16 +28,19 @@ export function getSupabaseUrl(): string {
   return url;
 }
 
-/** Public / browser / user-scoped clients (sb_publishable_* preferred). */
+function isSecretApiKey(key: string): boolean {
+  return key.startsWith("sb_") && key.indexOf("secret_") === 3;
+}
+
+/** Public / browser / user-scoped clients. */
 export function getSupabasePublishableKey(): string {
-  const key = firstNonEmpty(
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    process.env.SUPABASE_ANON_KEY
-  );
+  const key = firstNonEmpty(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
   if (!key) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  }
+  if (isSecretApiKey(key)) {
     throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or legacy NEXT_PUBLIC_SUPABASE_ANON_KEY)"
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY must not be a secret key"
     );
   }
   return key;
@@ -46,22 +51,12 @@ export function getSupabasePublishableKey(): string {
  * Must never be read from NEXT_PUBLIC_* / EXPO_PUBLIC_*.
  */
 export function getSupabaseSecretKey(): string {
-  const key = firstNonEmpty(
-    process.env.SUPABASE_SECRET_KEY,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  const key = firstNonEmpty(process.env.SUPABASE_SECRET_KEY);
   if (!key) {
-    throw new Error(
-      "Missing SUPABASE_SECRET_KEY (or legacy SUPABASE_SERVICE_ROLE_KEY)"
-    );
+    throw new Error("Missing SUPABASE_SECRET_KEY");
   }
-  if (key.startsWith("sb_publishable_") || key.startsWith("eyJ")) {
-    // Allow legacy JWT service_role during migration; reject publishable misuse.
-    if (key.startsWith("sb_publishable_")) {
-      throw new Error(
-        "SUPABASE_SECRET_KEY must be an sb_secret_* (or legacy service_role) key, not publishable"
-      );
-    }
+  if (key.startsWith("sb_publishable_")) {
+    throw new Error("SUPABASE_SECRET_KEY must not be a publishable key");
   }
   return key;
 }

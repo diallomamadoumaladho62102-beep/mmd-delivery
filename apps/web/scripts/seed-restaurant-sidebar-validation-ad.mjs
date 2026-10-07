@@ -45,7 +45,7 @@ function pngChunk(type, data) {
   return Buffer.concat([len, typeBuf, data, crcBuf]);
 }
 
-/** Procedural 400x200 PNG (no sharp) — soft brand-ish gradient + bar */
+/** Procedural 400x200 PNG (no sharp) ï¿½ soft brand-ish gradient + bar */
 function buildValidationPng(width = 400, height = 200) {
   const raw = Buffer.alloc((width * 4 + 1) * height);
   for (let y = 0; y < height; y++) {
@@ -55,7 +55,7 @@ function buildValidationPng(width = 400, height = 200) {
       const i = row + 1 + x * 4;
       const t = x / (width - 1);
       const u = y / (height - 1);
-      // deep teal ? charcoal (avoid purple/cream AI clichés)
+      // deep teal ? charcoal (avoid purple/cream AI clichï¿½s)
       const r = Math.round(18 + t * 40 + u * 10);
       const g = Math.round(90 + t * 50 - u * 20);
       const b = Math.round(110 - t * 30 + u * 20);
@@ -90,7 +90,7 @@ function loadCreativeBytes(logoPath) {
     throw new Error(`Missing creative source: ${logoPath}`);
   }
   const bytes = readFileSync(logoPath);
-  // Admin/CMS uploads reject oversized assets; logo is multi-MB — use procedural PNG.
+  // Admin/CMS uploads reject oversized assets; logo is multi-MB ï¿½ use procedural PNG.
   if (bytes.length > 500 * 1024) {
     const procedural = buildValidationPng(400, 200);
     console.log(
@@ -111,7 +111,7 @@ const env = {
 };
 
 const url = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL;
-const serviceKey = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceKey = env.SUPABASE_SECRET_KEY || env.SUPABASE_SECRET_KEY;
 if (!url || !serviceKey) {
   console.error("Missing SUPABASE URL or service role key in apps/web/.env.local");
   process.exit(1);
@@ -123,7 +123,7 @@ const supabase = createClient(url, serviceKey, {
 
 async function main() {
   const deactivate = process.argv.includes("--deactivate");
-  const title = "MMD Pro — Développez votre restaurant";
+  const title = "MMD Pro ï¿½ Dï¿½veloppez votre restaurant";
 
   if (deactivate) {
     const { data, error } = await supabase
@@ -163,7 +163,7 @@ async function main() {
       title,
       subtitle: "Outils premium pour restaurants partenaires MMD",
       image_url: imageUrl,
-      button_text: "Découvrir ?",
+      button_text: "Dï¿½couvrir ?",
       button_action: "https://www.mmddelivery.com",
       placement: "restaurant_sidebar",
       category: "Campagnes MMD",

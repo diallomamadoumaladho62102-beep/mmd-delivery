@@ -14,8 +14,8 @@ const apiBase = (
 ).replace(/\/$/, "");
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anon = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-const serviceKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
+const anon = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+const serviceKey = (process.env.SUPABASE_SECRET_KEY);
 
 const email = process.env.TEST_LOGIN_EMAIL;
 const password = process.env.TEST_LOGIN_PASSWORD;
@@ -36,7 +36,7 @@ async function authFetch(pathname, options = {}) {
 }
 
 async function main() {
-  if (!url || !anon) fail("Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (!url || !anon) fail("Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
   if (!email || !password) fail("Set TEST_LOGIN_EMAIL and TEST_LOGIN_PASSWORD in apps/web/.env.local");
 
   const supabase = createClient(url, anon);
@@ -156,7 +156,7 @@ async function main() {
       ok("Supabase table", table);
     }
   } else {
-    console.warn("WARN: SUPABASE_SERVICE_ROLE_KEY not set — skipping bucket/table checks");
+    console.warn("WARN: SUPABASE_SECRET_KEY not set — skipping bucket/table checks");
   }
 
   console.log("\nMMD Location Phase 1 smoke: ALL PASS\n");

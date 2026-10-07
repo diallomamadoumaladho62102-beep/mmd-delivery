@@ -114,8 +114,11 @@ async function main() {
     verdict: "FAIL",
   };
 
-  const anonKey =
-    String((process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ?? (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ?? "").trim();
+  const anonKey = String(
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      process.env.SUPABASE_PUBLISHABLE_KEY ||
+      ""
+  ).trim();
 
   for (const fn of EDGE_FUNCTIONS) {
     const probe = await probeEdge(fn, anonKey);

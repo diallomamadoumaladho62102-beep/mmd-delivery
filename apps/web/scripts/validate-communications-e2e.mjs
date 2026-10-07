@@ -73,7 +73,7 @@ async function main() {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey =
-    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.SUPABASE_SECRET_KEY;
   const authToken = String(process.env.TWILIO_AUTH_TOKEN ?? "").trim();
   const twilioNumber = String(
     process.env.TWILIO_PHONE_NUMBER ||
@@ -100,7 +100,7 @@ async function main() {
   );
 
   if (!supabaseUrl || !serviceKey) {
-    record("supabase_admin", "SKIP", "missing SUPABASE_SERVICE_ROLE_KEY");
+    record("supabase_admin", "SKIP", "missing SUPABASE_SECRET_KEY");
     writeReport();
     return;
   }

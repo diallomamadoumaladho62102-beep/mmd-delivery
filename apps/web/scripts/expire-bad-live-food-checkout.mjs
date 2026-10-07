@@ -45,7 +45,7 @@ async function main() {
   const { createClient } = await import("@supabase/supabase-js");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const service =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+    process.env.SUPABASE_SECRET_KEY;
   const admin = createClient(url, service, {
     auth: { persistSession: false, autoRefreshToken: false },
     realtime: { transport: ws },

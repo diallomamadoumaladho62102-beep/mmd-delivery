@@ -68,11 +68,11 @@ function json(body: Record<string, unknown>, status = 200) {
 
 function getSupabaseAdmin(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const serviceKey = (process.env.SUPABASE_SECRET_KEY);
 
   if (!supabaseUrl || !serviceKey) {
     throw new Error(
-      "Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY"
+      "Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SECRET_KEY"
     );
   }
 

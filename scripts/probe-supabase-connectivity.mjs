@@ -25,7 +25,7 @@ function loadEnv(path) {
 
 const env = loadEnv("apps/web/.env.vercel.production.local");
 const url = String(env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-const key = String(env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const key = String(env.SUPABASE_SECRET_KEY || "").trim();
 
 console.log(
   JSON.stringify({

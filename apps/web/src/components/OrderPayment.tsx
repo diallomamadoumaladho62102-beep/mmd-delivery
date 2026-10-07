@@ -76,7 +76,7 @@ export default function OrderPayment({ orderId }: { orderId: string }) {
     }
 
     // (If you ever enable manual updates in a protected admin-only environment,
-    // do it through a server endpoint using SUPABASE_SERVICE_ROLE_KEY, not via browser RPC.)
+    // do it through a privileged server endpoint, not via browser RPC.)
     setErr("Action désactivée.");
   }
 

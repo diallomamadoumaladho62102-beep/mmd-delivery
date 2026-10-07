@@ -10,8 +10,8 @@ import {
 
 
 const SUPABASE_URL = getEdgeSupabaseUrl();
-const SUPABASE_ANON_KEY = getEdgePublishableKey();
-const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
+const SUPABASE_PUBLISHABLE_KEY = getEdgePublishableKey();
+const SUPABASE_SECRET_KEY = getEdgeSecretKey();
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 
 function json(req: Request, data: unknown, status = 200) {
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       return json(req, { error: "Missing Authorization Bearer token" }, 401);
     }
 
-    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     // --- Admin client ---
     const supabaseAdmin = createClient(
       SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY,
+      SUPABASE_SECRET_KEY,
       { auth: { persistSession: false } }
     );
 

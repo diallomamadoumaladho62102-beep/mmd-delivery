@@ -10,7 +10,7 @@
  * Requires:
  *   STRIPE_SECRET_KEY
  *   NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
+ *   SUPABASE_SECRET_KEY
  */
 
 import Stripe from "stripe";
@@ -58,7 +58,7 @@ async function main() {
 
   const supabase = createClient(
     requiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    requiredEnv("SUPABASE_SECRET_KEY"),
     { auth: { persistSession: false } }
   );
 

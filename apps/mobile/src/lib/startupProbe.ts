@@ -25,9 +25,7 @@ export function logStartupProbe(phase: string): void {
       hasValue(extra.EXPO_PUBLIC_SUPABASE_URL),
     supabaseKey:
       hasValue(process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ||
-      hasValue(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) ||
-      hasValue(extra.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ||
-      hasValue(extra.EXPO_PUBLIC_SUPABASE_ANON_KEY),
+      hasValue(extra.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
     mapboxToken:
       hasValue(process.env.EXPO_PUBLIC_MAPBOX_TOKEN) ||
       hasValue(extra.EXPO_PUBLIC_MAPBOX_TOKEN),

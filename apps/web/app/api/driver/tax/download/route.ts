@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     // Prefer server env if present, otherwise fallback to NEXT_PUBLIC_ for compatibility
     const supabaseUrl =
       process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const serviceKey = (process.env.SUPABASE_SECRET_KEY);
 
     // Env (bucket + TTL)
     const envBucketRaw = process.env.TAX_PDF_BUCKET || DEFAULT_BUCKET;
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         {
           routeVersion: ROUTE_VERSION,
           error:
-            "Missing env (SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)",
+            "Missing env (SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SECRET_KEY)",
         },
         { status: 500 }
       );

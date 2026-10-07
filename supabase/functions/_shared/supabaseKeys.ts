@@ -1,9 +1,9 @@
 /**
  * Resolve Supabase keys inside Edge Functions.
  *
- * Prefer explicit singular names if present (usually blocked as reserved),
- * then platform-injected SUPABASE_*_KEYS JSON objects (keyed by name, e.g. "default"),
- * then legacy JWT env names (temporary until Legacy API Keys are disabled).
+ * Public clients use SUPABASE_PUBLISHABLE_KEY, then the platform bag
+ * SUPABASE_PUBLISHABLE_KEYS. Privileged clients use SUPABASE_SECRET_KEY,
+ * then SUPABASE_SECRET_KEYS. Legacy JWT env names are not read.
  *
  * Docs:
  * https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys
@@ -84,32 +84,32 @@ export function getEdgeSupabaseUrl(): string {
   return url;
 }
 
-/** Low-privilege key for user-scoped clients (publishable preferred). */
+/** Low-privilege key for user-scoped clients. */
 export function getEdgePublishableKey(): string {
   const key = firstNonEmpty(
     Deno.env.get("SUPABASE_PUBLISHABLE_KEY"),
-    pickFromKeysEnv(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS")),
-    Deno.env.get("SUPABASE_ANON_KEY")
+    pickFromKeysEnv(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS"))
   );
   if (!key) {
-    throw new Error(
-      "Missing SUPABASE_PUBLISHABLE_KEY / SUPABASE_PUBLISHABLE_KEYS / SUPABASE_ANON_KEY"
-    );
+    throw new Error("Missing SUPABASE_PUBLISHABLE_KEY or SUPABASE_PUBLISHABLE_KEYS");
+  }
+  if (key.startsWith("sb_secret_")) {
+    throw new Error("Edge publishable key must not be a secret key");
   }
   return key;
 }
 
-/** Privileged key for admin clients (secret preferred). */
+/** Privileged key for admin clients. */
 export function getEdgeSecretKey(): string {
   const key = firstNonEmpty(
     Deno.env.get("SUPABASE_SECRET_KEY"),
-    pickFromKeysEnv(Deno.env.get("SUPABASE_SECRET_KEYS")),
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    pickFromKeysEnv(Deno.env.get("SUPABASE_SECRET_KEYS"))
   );
   if (!key) {
-    throw new Error(
-      "Missing SUPABASE_SECRET_KEY / SUPABASE_SECRET_KEYS / SUPABASE_SERVICE_ROLE_KEY"
-    );
+    throw new Error("Missing SUPABASE_SECRET_KEY or SUPABASE_SECRET_KEYS");
+  }
+  if (key.startsWith("sb_publishable_")) {
+    throw new Error("Edge secret key must not be a publishable key");
   }
   return key;
 }
