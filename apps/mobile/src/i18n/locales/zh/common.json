@@ -919,6 +919,7 @@
       "acceptedTitle": "行程已接受 ✅",
       "acceptedBody": "你现在已被分配到该行程。",
       "acceptError": "暂时无法接受该行程。",
+      "offerRequired": "接受此配送需要一个待处理的派单。",
       "codeMissingTitle": "缺少验证码",
       "codeMissingBody": "请输入验证码。",
       "codeServerError": "验证验证码时服务器错误。",

@@ -59,16 +59,41 @@ function mergeDeep(base: unknown, override: unknown): unknown {
   return out;
 }
 
-function load(lang: string, file: "common" | "extras") {
+/** Catalogs resources.ts merges into the runtime bundle. Keep this list in lockstep with its imports. */
+const CATALOG_FILES = ["common", "extras", "cancellation"] as const;
+
+const resourceSrc = fs.readFileSync(path.join(root, "i18n", "resources.ts"), "utf8");
+const importedCatalogs = [
+  ...new Set(
+    [...resourceSrc.matchAll(/locales\/(?:en|fr|es|ar|zh|ff)\/([A-Za-z0-9_-]+)\.json/g)].map(
+      (match) => match[1],
+    ),
+  ),
+].sort();
+assert.deepEqual(
+  importedCatalogs,
+  [...CATALOG_FILES].sort(),
+  "fullScreenI18n must load every locale catalog imported by resources.ts",
+);
+
+function load(lang: string, file: (typeof CATALOG_FILES)[number]) {
   return JSON.parse(
     fs.readFileSync(path.join(locales, lang, `${file}.json`), "utf8"),
   ) as Record<string, unknown>;
 }
 
+function bundleFromCatalogs(lang: string) {
+  return CATALOG_FILES.reduce<unknown>(
+    (acc, file) => mergeDeep(acc, load(lang, file)),
+    {},
+  );
+}
+
 function bundle(lang: string) {
-  const en = mergeDeep(load("en", "common"), load("en", "extras"));
+  // Match resources.ts: English common → extras → cancellation, then the locale catalogs on top.
+  const en = bundleFromCatalogs("en");
   if (lang === "en") return flatten(en);
-  return flatten(mergeDeep(mergeDeep(en, load(lang, "common")), load(lang, "extras")));
+  return flatten(mergeDeep(en, bundleFromCatalogs(lang)));
 }
 
 function walk(dir: string, out: string[] = []) {

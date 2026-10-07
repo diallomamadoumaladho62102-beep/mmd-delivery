@@ -868,6 +868,7 @@
       "acceptedTitle": "Trip jaɓaama ✅",
       "acceptedBody": "Aɗa jooni ɗaɓɓaama e ndee trip.",
       "acceptError": "Horiima jaɓ trip jooni.",
+      "offerRequired": "Offre jokkondirnde ina haani ngam jaɓde ndee neldu.",
       "codeMissingTitle": "Code laata",
       "codeMissingBody": "Naatnu code verification.",
       "codeServerError": "Server juume e verification code.",

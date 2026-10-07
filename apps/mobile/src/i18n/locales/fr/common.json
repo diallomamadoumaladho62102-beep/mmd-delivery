@@ -895,6 +895,7 @@
       "acceptedTitle": "Course acceptée ✅",
       "acceptedBody": "Tu es maintenant assigné à cette course.",
       "acceptError": "Impossible d'accepter la course pour le moment.",
+      "offerRequired": "Une offre en attente est requise pour accepter cette livraison.",
       "codeMissingTitle": "Code manquant",
       "codeMissingBody": "Entre le code de vérification.",
       "codeServerError": "Erreur serveur pendant la vérification du code.",
