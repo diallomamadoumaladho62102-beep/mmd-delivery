@@ -62,10 +62,9 @@ function clientUserIdFromRow(row: Record<string, unknown>): string | null {
   return id || null;
 }
 
-async function findEntityByPaymentIntentOrCharge(
+async function findEntityByPaymentIntent(
   supabaseAdmin: SupabaseClient,
-  paymentIntentId: string | null,
-  _chargeId: string | null
+  paymentIntentId: string | null
 ): Promise<MatchedEntity | null> {
   if (!paymentIntentId) return null;
 
@@ -487,10 +486,9 @@ export async function syncStripeChargeDispute(params: {
     }
   }
 
-  const entity = await findEntityByPaymentIntentOrCharge(
+  const entity = await findEntityByPaymentIntent(
     supabaseAdmin,
-    paymentIntentId,
-    chargeId
+    paymentIntentId
   );
 
   const financeStatus = mapFinanceDisputeStatus(dispute.status);

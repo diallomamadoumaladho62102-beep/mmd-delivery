@@ -224,13 +224,32 @@ export const REF_NAV_MEASURE = {
  * Calibrage visuel progressif — dimensions écran uniquement.
  * N'affecte pas GPS, recalcul, split vert/cyan, ETA, instructions, HUD.
  */
+/**
+ * Figma Driver Map / Active — crop 3.5× versus the pre-calibration zoom.
+ * 1.4× is an abandoned framing and must not be restored.
+ * log2(3.5) ≈ 1.807 zoom levels wider than zoom 19.32.
+ */
+const DRIVER_NAV_MAP_CROP = 3.5;
+/** Figma route stroke on the 390-wide Active frame. */
+const NAV_ROUTE_TARGET_PX = 14;
+const NAV_ROUTE_FRAME_WIDTH = 390;
+
 export const NAV_VISUAL_CALIB = {
   /** Décalage zoom caméra (négatif = plus de carte Mapbox visible). */
-  zoomOffset: -1.85,
-  /** Multiplicateur largeur route vert + cyan (px écran). */
-  routeWidthScale: 0.58,
-  /** Multiplicateur largeur glow route (px écran). */
-  glowWidthScale: 0.58,
+  zoomOffset: -Math.log2(DRIVER_NAV_MAP_CROP),
+  /**
+   * Largeur route = 14 px sur un écran de 390 (frame Figma).
+   * scale = (14/390) / (19/472).
+   */
+  routeWidthScale:
+    NAV_ROUTE_TARGET_PX /
+    NAV_ROUTE_FRAME_WIDTH /
+    (REF_NAV_MEASURE.routeWidthRatio),
+  /** Glow suit la même largeur de trait que la route. */
+  glowWidthScale:
+    NAV_ROUTE_TARGET_PX /
+    NAV_ROUTE_FRAME_WIDTH /
+    (REF_NAV_MEASURE.routeWidthRatio),
   /** Multiplicateur largeur icône véhicule (px écran). */
   iconWidthScale: 0.68,
   /** Multiplicateur iconOffset visuel — masque jonction proportionnel à l'icône. */

@@ -4,6 +4,8 @@ export type DeliveryRequestRpcResult = {
   ok?: boolean;
   message?: string;
   error?: string;
+  already_delivered?: boolean;
+  already_picked_up?: boolean;
 };
 
 export function getDeliveryRequestId(body: Record<string, unknown>): string {

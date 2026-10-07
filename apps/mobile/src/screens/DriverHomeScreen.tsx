@@ -15,6 +15,7 @@ import {
   Alert,
   Platform,
   Animated,
+  Easing,
   PanResponder,
   AppState,
   StyleSheet,
@@ -45,6 +46,7 @@ import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { notifyTaxiOfferPushReceived } from "../lib/taxiPushEvents";
 import {
   getDriverOnlineStatus,
@@ -180,19 +182,28 @@ type ZoneDef = {
   };
 };
 
+/**
+ * Map crop versus the abandoned 1.4× framing (latitudeDelta 0.035 at zoom 13).
+ * Figma image crop is 1/3.5 on both axes.
+ */
+const DRIVER_MAP_CROP = 3.5;
+const DRIVER_MAP_CROP_ABANDONED = 1.4;
+const DRIVER_HOME_LATITUDE_DELTA = 0.035 * (DRIVER_MAP_CROP_ABANDONED / DRIVER_MAP_CROP);
+const DRIVER_HOME_ZOOM = 13 + Math.log2(DRIVER_MAP_CROP / DRIVER_MAP_CROP_ABANDONED);
+
 const ZONES: ZoneDef[] = [
   {
     name: "East New York",
     demand: "busy",
     multiplier: 1.3,
-    zoomDelta: 0.035,
+    zoomDelta: DRIVER_HOME_LATITUDE_DELTA,
     bounds: { minLat: 40.65, maxLat: 40.69, minLon: -73.9, maxLon: -73.84 },
   },
   {
     name: "Flatbush",
     demand: "busy",
     multiplier: 1.4,
-    zoomDelta: 0.035,
+    zoomDelta: DRIVER_HOME_LATITUDE_DELTA,
     bounds: { minLat: 40.63, maxLat: 40.66, minLon: -73.97, maxLon: -73.94 },
   },
   {
@@ -372,11 +383,11 @@ const SHEET_SCREEN_H = Dimensions.get("window").height;
 const SHEET_MIN_TRANSLATE_Y = 0;
 const SHEET_MID_TRANSLATE_Y = Math.round(SHEET_SCREEN_H * 0.30);
 /**
- * Higher translateY = sheet lower = more Mapbox visible.
- * ONLINE peek locked low (~30% sheet) so Mapbox stays the hero — matches validated capture.
+ * Figma resting position: the full panel stays on screen (no downward clip).
+ * Online height is capped in the sheet so the 3.5× map remains visible above it.
  */
-const SHEET_MAX_ONLINE_Y = Math.round(SHEET_SCREEN_H * 0.7);
-const SHEET_MAX_OFFLINE_Y = Math.round(SHEET_SCREEN_H * 0.42);
+const SHEET_MAX_ONLINE_Y = 0;
+const SHEET_MAX_OFFLINE_Y = 0;
 const SHEET_MAX_TRANSLATE_Y = SHEET_MAX_ONLINE_Y;
 
 // Bottom sheet production tuning:
@@ -594,6 +605,13 @@ function getOfferUnavailableMessage(t: any) {
     "driver.home.errors.offerUnavailable",
     "This offer is no longer available. It may have expired or been accepted by another driver.",
   );
+}
+
+function remainingOfferSeconds(expiresAt: string | null | undefined) {
+  if (!expiresAt) return 60;
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (!Number.isFinite(ms)) return 60;
+  return Math.max(0, Math.min(300, Math.ceil(ms / 1000)));
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -826,8 +844,8 @@ export function DriverHomeScreen() {
   const [region, setRegion] = useState({
     latitude: 40.650002,
     longitude: -73.949997,
-    latitudeDelta: 0.08,
-    longitudeDelta: 0.08,
+    latitudeDelta: DRIVER_HOME_LATITUDE_DELTA,
+    longitudeDelta: DRIVER_HOME_LATITUDE_DELTA,
   });
   const [hasLocation, setHasLocation] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -869,6 +887,7 @@ export function DriverHomeScreen() {
   /** One-shot resume navigation after cold start / kill+reopen (per active job id). */
   const resumedActiveJobKeyRef = useRef<string | null>(null);
   const lastOfferIdRef = useRef<string | null>(null);
+  const acceptingLockRef = useRef(false);
   const declinedOrderKeysRef = useRef<Set<string>>(new Set());
   const forceOnlinePreviewRef = useRef(false);
   const locationPermissionRequestRef = useRef<Promise<boolean> | null>(null);
@@ -1616,46 +1635,10 @@ export function DriverHomeScreen() {
           };
         });
 
-        // 1) Commandes disponibles depuis orders.
-        // orders.kind est un enum : errand | food | pickup_dropoff.
-        // On ne met jamais "delivery" ici, car delivery existe dans delivery_requests.
-        const { data: available, error: availableError } = await applyLiveTripFilters(
-          supabase
-            .from("orders")
-            .select(
-              `id, kind, status, created_at,
-             restaurant_name, pickup_address, dropoff_address,
-             distance_miles, delivery_fee, driver_delivery_payout, total,
-             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
-            ),
-        )
-          .in("status", ["pending", "ready"])
-          .is("driver_id", null)
-          .order("created_at", { ascending: false });
+        // Unassigned food jobs are loaded only from a live offer above.
+        // A global pending/ready board would show every job to every driver.
 
-        if (availableError) throw availableError;
-
-        // 2) Demandes MMD Delivery disponibles depuis delivery_requests.
-        // Ces demandes sont séparées de orders et doivent être chargées séparément.
-        const { data: deliveryAvailable, error: deliveryAvailableError } = await applyLiveTripFilters(
-          supabase
-            .from("delivery_requests")
-            .select(
-              `id,status,payment_status,driver_id,created_at,updated_at,
-             pickup_address,dropoff_address,
-             pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
-             distance_miles,eta_minutes,delivery_fee,total,currency,
-             driver_delivery_payout,platform_fee`
-            ),
-        )
-          .in("status", ["pending", "paid_pending", "processing_pending"])
-          .eq("payment_status", "paid")
-          .is("driver_id", null)
-          .order("created_at", { ascending: false });
-
-        if (deliveryAvailableError) throw deliveryAvailableError;
-
-        // 3) Commandes orders déjà assignées au driver (allowlist actifs uniquement).
+        // 2) Commandes orders déjà assignées au driver (allowlist actifs uniquement).
         const { data: mine, error: mineError } = await applyLiveTripFilters(
           supabase
             .from("orders")
@@ -1708,30 +1691,6 @@ export function DriverHomeScreen() {
 
         if (!mountedRef.current || fetchSeq !== fetchSeqRef.current) return;
 
-        const orderAvailable = ((available ?? []) as DriverOrder[]).map((order) => ({
-          ...order,
-          source_table: "orders" as const,
-        }));
-
-        const deliveryAvailableList: DriverOrder[] = ((deliveryAvailable ?? []) as any[]).map((request) => ({
-          id: String(request.id),
-          kind: "delivery",
-          status: String(request.status ?? "pending") as OrderStatus,
-          created_at: request.created_at ?? null,
-          restaurant_name: null,
-          pickup_address: request.pickup_address ?? null,
-          dropoff_address: request.dropoff_address ?? null,
-          distance_miles: toFiniteNumber(request.distance_miles),
-          delivery_fee: toFiniteNumber(request.delivery_fee),
-          driver_delivery_payout: getConfiguredDriverPayout(request),
-          total: toFiniteNumber(request.total),
-          pickup_lat: toFiniteNumber(request.pickup_lat),
-          pickup_lng: toFiniteNumber(request.pickup_lng),
-          dropoff_lat: toFiniteNumber(request.dropoff_lat),
-          dropoff_lng: toFiniteNumber(request.dropoff_lng),
-          source_table: "delivery_requests" as const,
-        }));
-
         const myOrderList = ((mine ?? []) as DriverOrder[]).map((order) => ({
           ...order,
           source_table: "orders" as const,
@@ -1762,8 +1721,6 @@ export function DriverHomeScreen() {
         const allAvailable = [
           ...pendingOrderOfferList,
           ...pendingDeliveryOfferList,
-          ...orderAvailable,
-          ...deliveryAvailableList,
           ...marketplaceAvailableList,
         ];
 
@@ -1836,10 +1793,15 @@ export function DriverHomeScreen() {
             const stillExists = visibleAvailable.find(
               (o) => getOrderCompositeKey(o) === getOrderCompositeKey(prev),
             );
-            if (stillExists) return stillExists;
+            if (stillExists) {
+              setCountdown(remainingOfferSeconds(stillExists.offer_expires_at));
+              return stillExists;
+            }
           }
           const nextOffer = visibleAvailable[0] ?? null;
-          if (!prev || getOrderCompositeKey(prev) !== getOrderCompositeKey(nextOffer)) setCountdown(60);
+          if (!prev || getOrderCompositeKey(prev) !== getOrderCompositeKey(nextOffer)) {
+            setCountdown(remainingOfferSeconds(nextOffer?.offer_expires_at));
+          }
           return nextOffer;
         });
       } catch (e: any) {
@@ -1954,7 +1916,7 @@ export function DriverHomeScreen() {
   }, [resumeOnlineSession]);
 
   useEffect(() => {
-    // Reconnect / foreground: refresh orders only. Never mutate availability.
+    // Foreground refresh of assigned jobs. Taxi refresh is registered after its ref exists.
     const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
       if (state !== "active") return;
       if (!isOnline) return;
@@ -2259,11 +2221,14 @@ export function DriverHomeScreen() {
 
   const handleAccept = useCallback(
     async (offer: DriverOrder) => {
+      if (acceptingLockRef.current) return;
+
       const orderId = offer.id;
       const offerSourceTable = offer.source_table ?? "orders";
       const offerKey = getOrderCompositeKey(offer);
 
       try {
+        acceptingLockRef.current = true;
         hapticSuccess();
         setAcceptingId(offerKey);
 
@@ -2278,16 +2243,10 @@ export function DriverHomeScreen() {
               throw new Error(out?.error ?? getOfferUnavailableMessage(t));
             }
           }
-        } else if (offerSourceTable === "delivery_requests") {
-          throw new Error(getOfferUnavailableMessage(t));
         } else if (offerSourceTable === "marketplace_delivery_jobs") {
           await acceptDriverMarketplaceJob(orderId);
         } else {
-          const { acceptReadyFoodOrder } = await import("../lib/driverOrderDriverApi");
-          await acceptReadyFoodOrder(orderId);
-
-          const { error: joinError } = await supabase.rpc("join_order", { p_order_id: orderId, p_role: "driver" });
-          if (joinError) console.log("join_order driver warning:", joinError);
+          throw new Error(getOfferUnavailableMessage(t));
         }
 
         await stopSound();
@@ -2306,9 +2265,13 @@ export function DriverHomeScreen() {
         console.log("Erreur acceptation course:", e);
         Alert.alert(
           t("shared.orderChat.alerts.errorTitle", "Error"),
-          e?.message ?? t("driver.home.errors.accept", "Unable to accept the trip."),
+          toUserFacingError(
+            e,
+            t("driver.home.errors.accept", "Unable to accept the trip."),
+          ),
         );
       } finally {
+        acceptingLockRef.current = false;
         setAcceptingId(null);
       }
     },
@@ -2316,6 +2279,8 @@ export function DriverHomeScreen() {
   );
 
   const handleDeclineActiveOffer = useCallback(async () => {
+    if (acceptingLockRef.current) return;
+    acceptingLockRef.current = true;
     hapticWarning();
 
     try {
@@ -2360,9 +2325,13 @@ export function DriverHomeScreen() {
       console.log("Erreur refus offre driver:", e);
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Error"),
-        e?.message ?? t("driver.home.errors.decline", "Unable to decline this offer."),
+        toUserFacingError(
+          e,
+          t("driver.home.errors.decline", "Unable to decline this offer."),
+        ),
       );
     } finally {
+      acceptingLockRef.current = false;
       await stopSound();
       setActiveOffer(null);
       setCountdown(60);
@@ -2423,7 +2392,12 @@ export function DriverHomeScreen() {
 
   useEffect(() => {
     const anim = Animated.loop(
-      Animated.timing(searchingAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+      Animated.timing(searchingAnim, {
+        toValue: 1,
+        duration: 2000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
     );
     anim.start();
     return () => anim.stop();
@@ -2790,8 +2764,16 @@ export function DriverHomeScreen() {
               },
             },
             {
-              event: "DELETE",
-              table: "taxi_rides",
+              event: "INSERT",
+              table: "taxi_offers",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => {
+                scheduleDriverOrdersRefresh(150);
+              },
+            },
+            {
+              event: "UPDATE",
+              table: "taxi_offers",
               filter: `driver_id=eq.${driverId}`,
               callback: () => {
                 void refreshActiveTaxiRide();
@@ -2799,6 +2781,12 @@ export function DriverHomeScreen() {
               },
             },
           ],
+          (status) => {
+            if (status === "SUBSCRIBED") {
+              void refreshActiveTaxiRide();
+              scheduleDriverOrdersRefresh(150);
+            }
+          },
         );
       } catch (e) {
         console.log("driver taxi_rides realtime error:", e);
@@ -2837,6 +2825,28 @@ export function DriverHomeScreen() {
   refreshActiveTaxiRideRef.current = refreshActiveTaxiRide;
 
   useEffect(() => {
+    // Missed realtime DELETE/UPDATE events are recovered here. Secret columns
+    // stay out of the publication, so this screen refetches instead of trusting
+    // a filtered delete payload.
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state !== "active") return;
+      void refreshActiveTaxiRideRef.current();
+    });
+    return () => sub.remove();
+  }, []);
+
+  const network = useNetworkStatus();
+  const prevHomeNetworkRef = useRef(network.quality);
+  useEffect(() => {
+    const prev = prevHomeNetworkRef.current;
+    prevHomeNetworkRef.current = network.quality;
+    if (prev !== "online" && network.quality === "online") {
+      void fetchDriverOrders(true);
+      void refreshActiveTaxiRideRef.current();
+    }
+  }, [fetchDriverOrders, network.quality]);
+
+  useEffect(() => {
     if (!hasLocation) return;
     void refreshAreaIntelligenceRef.current();
     const id = setInterval(() => {
@@ -2850,10 +2860,16 @@ export function DriverHomeScreen() {
     hapticLight();
     const latitude = driverLocation?.lat ?? region.latitude;
     const longitude = driverLocation?.lng ?? region.longitude;
-    setRegion((prev) => ({ ...prev, latitude, longitude, latitudeDelta: 0.035, longitudeDelta: 0.035 }));
+    setRegion((prev) => ({
+      ...prev,
+      latitude,
+      longitude,
+      latitudeDelta: DRIVER_HOME_LATITUDE_DELTA,
+      longitudeDelta: DRIVER_HOME_LATITUDE_DELTA,
+    }));
     cameraRef.current?.setCamera({
       centerCoordinate: [Number(longitude), Number(latitude)],
-      zoomLevel: 16,
+      zoomLevel: DRIVER_HOME_ZOOM,
       animationMode: "flyTo",
       animationDuration: 650,
     });
@@ -2870,7 +2886,7 @@ export function DriverHomeScreen() {
     if (best) {
       cameraRef.current?.setCamera({
         centerCoordinate: [best.lng, best.lat],
-        zoomLevel: 14.5,
+        zoomLevel: DRIVER_HOME_ZOOM,
         animationMode: "flyTo",
         animationDuration: 700,
       });
@@ -2907,7 +2923,7 @@ export function DriverHomeScreen() {
       (withPickup as any).pickup_longitude;
     cameraRef.current?.setCamera({
       centerCoordinate: [Number(lng), Number(withPickup.pickup_lat)],
-      zoomLevel: 14.5,
+      zoomLevel: DRIVER_HOME_ZOOM,
       animationMode: "flyTo",
       animationDuration: 700,
     });
@@ -2975,23 +2991,10 @@ export function DriverHomeScreen() {
   const liveDriversNearby = areaIntel?.drivers_nearby ?? 0;
   const liveRequestsNearby =
     areaIntel?.requests_nearby ?? availableOrders.length;
-  const offerPickupLng =
-    activeOffer?.pickup_lng ??
-    (activeOffer as any)?.pickup_lon ??
-    (activeOffer as any)?.pickup_long ??
-    (activeOffer as any)?.pickup_longitude ??
-    null;
-  const offerDropoffLng =
-    activeOffer?.dropoff_lng ??
-    (activeOffer as any)?.dropoff_lon ??
-    (activeOffer as any)?.dropoff_long ??
-    (activeOffer as any)?.dropoff_longitude ??
-    null;
-  const hasOfferPickup = activeOffer?.pickup_lat != null && offerPickupLng != null;
-  const hasOfferDropoff = activeOffer?.dropoff_lat != null && offerDropoffLng != null;
-
-  const searchPulseScale = searchingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.02, 1] });
-  const radarInnerScale = searchingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.08, 1] });
+  const radarSpin = searchingAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
   const topHudTranslateY = topHudAnim.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] });
   /** Incoming taxi offers or an in-progress taxi ride replace the browse sheet (not idle Taxi mode). */
   const taxiSurfaceActive =
@@ -3013,7 +3016,7 @@ export function DriverHomeScreen() {
           <Mapbox.UserLocation visible={false} />
           <Mapbox.Camera
             ref={cameraRef}
-            zoomLevel={13}
+            zoomLevel={DRIVER_HOME_ZOOM}
             centerCoordinate={[Number(region.longitude), Number(region.latitude)]}
             animationMode="flyTo"
             animationDuration={800}
@@ -3034,18 +3037,6 @@ export function DriverHomeScreen() {
               />
             </Mapbox.MarkerView>
           ) : null}
-
-          {activeOffer && hasOfferPickup && (
-            <Mapbox.PointAnnotation id="pickup-location" coordinate={[offerPickupLng as number, activeOffer.pickup_lat as number]}>
-              <View style={styles.pickupPin}><Text style={styles.pinText}>{t("driver.home.map.pickupTitle")}</Text></View>
-            </Mapbox.PointAnnotation>
-          )}
-
-          {activeOffer && hasOfferDropoff && (
-            <Mapbox.PointAnnotation id="dropoff-location" coordinate={[offerDropoffLng as number, activeOffer.dropoff_lat as number]}>
-              <View style={styles.dropoffPin}><Text style={styles.pinText}>{t("driver.home.map.dropoffTitle")}</Text></View>
-            </Mapbox.PointAnnotation>
-          )}
 
           {isOnline && areaIntel?.hotspots?.length ? (
             <Mapbox.ShapeSource
@@ -3231,11 +3222,11 @@ export function DriverHomeScreen() {
         </View>
 
         {gpsLoading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator color="#0F172A" />
-            <Text style={[styles.loadingText, { color: "#0F172A" }]}>
-              {t("driver.home.gps.locating", "Locating driver…")}
-            </Text>
+          <View pointerEvents="none" style={styles.loadingOverlay}>
+            <View style={styles.gpsBadge}>
+              <ActivityIndicator color="#A78BFA" />
+              <Text style={styles.gpsBadgeText}>{t("driver.home.gps.title")}</Text>
+            </View>
           </View>
         )}
 
@@ -3247,7 +3238,6 @@ export function DriverHomeScreen() {
               countdown={countdown}
               accepting={acceptingId === getOrderCompositeKey(activeOffer)}
               formatKind={formatKind}
-              formatDate={formatDate}
               onDecline={handleDeclineActiveOffer}
               onAccept={() => handleAccept(activeOffer)}
               bottomPadding={bottomPanelOffset}
@@ -3347,8 +3337,8 @@ export function DriverHomeScreen() {
                 jobs={premiumJobs}
                 jobsLoading={loading}
                 jobsError={error}
-                searchPulseStyle={{ transform: [{ scale: searchPulseScale }] }}
-                radarPulseStyle={{ transform: [{ scale: radarInnerScale }] }}
+                searchPulseStyle={undefined}
+                radarSpinStyle={{ transform: [{ rotate: radarSpin }] }}
                 bottomPadding={bottomPanelOffset}
               />
             </Animated.View>
@@ -3505,7 +3495,6 @@ function OfferCard({
   countdown,
   accepting,
   formatKind,
-  formatDate,
   onDecline,
   onAccept,
   bottomPadding,
@@ -3515,30 +3504,42 @@ function OfferCard({
   countdown: number;
   accepting: boolean;
   formatKind: (kind: OrderKind, restaurantName: string | null) => string;
-  formatDate: (iso: string | null) => string;
   onDecline: () => void;
   onAccept: () => void;
   bottomPadding: number;
   t: any;
 }) {
   const amount = getBestDriverAmount(offer);
+  const distanceLabel =
+    offer.distance_miles != null
+      ? `${offer.distance_miles.toFixed(2)} ${t("driver.home.mileUnit")}`
+      : "—";
   return (
     <View style={[styles.offerWrap, { paddingBottom: bottomPadding }]}>
       <View style={styles.offerCard}>
         <View style={styles.offerHeader}>
-          <Text style={styles.offerTitle}>{t("driver.home.offer.title", "New delivery available")}</Text>
-          <Text style={styles.countdown}>{countdown}s</Text>
+          <Text style={styles.offerTitle}>{t("driver.home.offer.title")}</Text>
+          <View style={styles.countdownPill}>
+            <Text style={styles.countdown}>{countdown}s</Text>
+          </View>
         </View>
-        <Text style={styles.orderKind}>{formatKind(offer.kind, offer.restaurant_name)}</Text>
-        <Text style={styles.offerAddress}>{t("driver.home.offer.pickup")} <Text style={styles.offerAddressStrong}>{offer.pickup_address ?? "—"}</Text></Text>
-        <Text style={styles.offerAddress}>{t("driver.home.offer.dropoff")} <Text style={styles.offerAddressStrong}>{offer.dropoff_address ?? "—"}</Text></Text>
+        <Text style={styles.offerKind}>{formatKind(offer.kind, offer.restaurant_name)}</Text>
+        <Text style={styles.offerAddress}>
+          {t("driver.home.offer.pickup")} {offer.pickup_address ?? "—"}
+        </Text>
+        <Text style={styles.offerAddress}>
+          {t("driver.home.offer.dropoff")} {offer.dropoff_address ?? "—"}
+        </Text>
         <View style={styles.offerStats}>
-          <Text style={styles.offerStat}>{t("driver.home.offer.distance")}: <Text style={styles.offerStatStrong}>{offer.distance_miles != null ? `${offer.distance_miles.toFixed(2)} mi` : "—"}</Text></Text>
+          <Text style={styles.offerStat}>
+            {t("driver.home.labels.distance")} {distanceLabel}
+          </Text>
           <Text style={styles.offerMoney}>{money(amount)}</Text>
         </View>
-        <Text style={styles.orderTime}>{formatDate(offer.created_at)}</Text>
         <View style={styles.offerActions}>
-          <TouchableOpacity onPress={onDecline} style={styles.declineButton}><Text style={styles.actionText}>{t("driver.home.ignore")}</Text></TouchableOpacity>
+          <TouchableOpacity onPress={onDecline} style={styles.declineButton}>
+            <Text style={styles.actionText}>{t("driver.home.ignore")}</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={onAccept} disabled={accepting} style={[styles.acceptButton, accepting && { opacity: 0.6 }]}>
             <Text style={styles.acceptText}>{accepting ? t("driver.home.accepting") : t("driver.home.offer.accept")}</Text>
           </TouchableOpacity>
@@ -3763,10 +3764,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,51,153,0.45)",
+    backgroundColor: "transparent",
     zIndex: 70,
   },
-  loadingText: { color: MMD_TEXT, marginTop: 8, fontWeight: "700", fontSize: 20 },
+  gpsBadge: {
+    width: 84,
+    minHeight: 72,
+    borderRadius: 8,
+    backgroundColor: MMD_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    gap: 6,
+  },
+  gpsBadgeText: { color: MMD_WHITE, fontSize: 20, fontWeight: "700" },
   pickupPin: { backgroundColor: "#F97316", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
   dropoffPin: { backgroundColor: "#3B82F6", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
   pinText: { color: "white", fontWeight: "800", fontSize: 11 },
@@ -3917,45 +3928,50 @@ const styles = StyleSheet.create({
   detailBlockSmall: { width: 48 },
   detailLabel: { color: "#64748B", fontSize: 10, fontWeight: "700" },
   detailValue: { color: "#E2E8F0", fontSize: 11, fontWeight: "700", marginTop: 3 },
-  offerWrap: { paddingHorizontal: 16 },
+  offerWrap: { paddingHorizontal: 12 },
   offerCard: {
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 18,
     backgroundColor: MMD_BLUE,
     borderWidth: 1.5,
     borderColor: MMD_STROKE,
-    gap: 8,
+    gap: 10,
+    minHeight: 300,
   },
-  offerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  offerTitle: { color: MMD_WHITE, fontSize: 18, fontWeight: "800" },
-  countdown: { color: "#F97316", fontSize: 24, fontWeight: "800" },
-  offerAddress: { color: "#94A3B8", fontSize: 12 },
-  offerAddressStrong: { color: "#94A3B8", fontWeight: "600" },
-  offerStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  offerStat: { color: "#94A3B8", fontSize: 12, fontWeight: "600" },
-  offerStatStrong: { color: "#94A3B8", fontWeight: "600" },
-  offerMoney: { color: "#4ADE80", fontSize: 22, fontWeight: "800" },
-  offerActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  offerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+  offerTitle: { color: MMD_WHITE, fontSize: 28, fontWeight: "800", flex: 1, textAlign: "left", lineHeight: 32 },
+  countdownPill: {
+    backgroundColor: "#F97316",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginTop: 4,
+  },
+  countdown: { color: MMD_WHITE, fontSize: 20, fontWeight: "800" },
+  offerKind: { color: "#93C5FD", fontSize: 20, fontWeight: "600", textAlign: "left" },
+  offerAddress: { color: MMD_WHITE, fontSize: 22, fontWeight: "700", textAlign: "left", lineHeight: 28 },
+  offerStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4, gap: 8 },
+  offerStat: { color: MMD_WHITE, fontSize: 22, fontWeight: "700", flex: 1, textAlign: "left" },
+  offerMoney: { color: "#4ADE80", fontSize: 28, fontWeight: "800" },
+  offerActions: { flexDirection: "row", gap: 12, marginTop: 8 },
   declineButton: {
     flex: 1,
-    height: 44,
+    height: 52,
     borderRadius: 999,
     backgroundColor: "#EF4444",
-    borderWidth: 1.5,
-    borderColor: MMD_STROKE,
     alignItems: "center",
     justifyContent: "center",
   },
   acceptButton: {
     flex: 1,
-    height: 44,
+    height: 52,
     borderRadius: 999,
     backgroundColor: GREEN,
-    borderWidth: 1.5,
-    borderColor: MMD_STROKE,
     alignItems: "center",
     justifyContent: "center",
   },
-  actionText: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
-  acceptText: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
+  actionText: { color: MMD_WHITE, fontSize: 18, fontWeight: "800" },
+  acceptText: { color: MMD_WHITE, fontSize: 18, fontWeight: "800" },
 });

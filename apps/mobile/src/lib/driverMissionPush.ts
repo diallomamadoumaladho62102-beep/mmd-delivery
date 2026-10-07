@@ -2,6 +2,7 @@ export type DriverMissionPushPayload = {
   type: string;
   orderId: string | null;
   deliveryRequestId: string | null;
+  offerId: string | null;
   taxiRideId: string | null;
 };
 
@@ -14,6 +15,7 @@ export function extractDriverMissionPushPayload(data: unknown): DriverMissionPus
     orderId: String(record.orderId ?? record.order_id ?? "").trim() || null,
     deliveryRequestId:
       String(record.deliveryRequestId ?? record.delivery_request_id ?? "").trim() || null,
+    offerId: String(record.offerId ?? record.offer_id ?? "").trim() || null,
     taxiRideId: String(record.taxiRideId ?? record.taxi_ride_id ?? "").trim() || null,
   };
 }
@@ -35,6 +37,7 @@ export function navigateToDriverMission(nav: NavRef, payload: DriverMissionPushP
     nav.navigate("DriverOrderDetails", {
       orderId: payload.orderId,
       sourceTable: "orders",
+      offer_id: payload.offerId,
     });
     return;
   }
@@ -43,6 +46,16 @@ export function navigateToDriverMission(nav: NavRef, payload: DriverMissionPushP
     nav.navigate("DriverOrderDetails", {
       orderId: payload.deliveryRequestId,
       sourceTable: "delivery_requests",
+      offer_id: payload.offerId,
+    });
+    return;
+  }
+
+  if (payload.type === "taxi_offer_dispatch" && payload.taxiRideId) {
+    nav.navigate("DriverOrderDetails", {
+      orderId: payload.taxiRideId,
+      sourceTable: "taxi_rides",
+      offer_id: payload.offerId,
     });
     return;
   }

@@ -139,6 +139,26 @@ test("Minimum Pay off cannot transfer", () => {
   );
 });
 
+test("dispatch push includes offer_id without inventing a new status", () => {
+  assert.match(drDispatch, /offer_id: offerIdByDriver/);
+  assert.match(drDispatch, /delivery_request_id: request\.id/);
+});
+
+test("pickup arrival is an event, not a new delivery status", () => {
+  const arrive = read("src/lib/deliveryDriverStageEvents.ts");
+  const route = read("app/api/delivery/arrive-pickup/route.ts");
+  const push = read("src/lib/clientPushNotifications.ts");
+  const copy = read("src/lib/pushCopy.ts");
+  assert.match(arrive, /driver_arrived_pickup/);
+  assert.match(arrive, /status !== "dispatched"/);
+  assert.doesNotMatch(arrive, /status:\s*"driver_arrived"/);
+  assert.match(route, /recordDeliveryPickupArrival/);
+  assert.match(push, /delivery_driver_arrived_pickup:/);
+  assert.match(copy, /driver_arrived_pickup:/);
+  assert.match(copy, /Votre chauffeur est arrivé au restaurant/);
+  assert.doesNotMatch(copy, /Votre chauffeur est arrivé — Your driver/);
+});
+
 test("money movers use stable idempotency keys", () => {
   assert.match(transfers, /idempotencyKey|idempotency/);
   assert.match(tip, /idempotencyKey/);

@@ -38,12 +38,15 @@ async function postDeliveryRequestApi(path: string, body: Record<string, unknown
 
 export function acceptDeliveryRequest(
   deliveryRequestId: string,
-  offerId?: string | null,
+  offerId: string,
 ) {
   const offer = String(offerId ?? "").trim();
+  if (!offer) {
+    return Promise.reject(new Error("offer_required"));
+  }
   return postDeliveryRequestApi("/api/delivery-requests/accept", {
     delivery_request_id: deliveryRequestId,
-    ...(offer ? { offer_id: offer } : {}),
+    offer_id: offer,
   });
 }
 

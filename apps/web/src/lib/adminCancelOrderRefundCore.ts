@@ -67,8 +67,9 @@ export async function adminCancelOrderRefundCore(params: {
   let stripeRefund: { id: string; status: string | null } | null = null;
   const alreadyRefunded =
     !!order.stripe_refund_id || !!order.stripe_refunded_at;
+  const paymentStatus = String(order.payment_status ?? "").toLowerCase();
   const canRefund =
-    order.payment_status === "paid" &&
+    paymentStatus === "paid" &&
     !!order.stripe_payment_intent_id &&
     !alreadyRefunded;
 
@@ -98,10 +99,14 @@ export async function adminCancelOrderRefundCore(params: {
       ? "refunded"
       : alreadyRefunded
         ? "refunded"
-        : order.payment_status === "paid"
+        : paymentStatus === "paid"
           ? "missing_payment_intent"
           : "not_paid",
   };
+
+  if (stripeRefund?.id || alreadyRefunded) {
+    updatePayload.payment_status = "refunded";
+  }
 
   if (stripeRefund?.id) {
     updatePayload.stripe_refund_id = stripeRefund.id;

@@ -220,9 +220,13 @@ async function markRefundedByPaymentIntent(
     reconcile_required: boolean;
   };
 }> {
-  const { data: rows, error } = await supabaseAdmin
+    const select =
+      table === "orders"
+        ? "id, stripe_refund_id, refund_status, payment_status, currency, external_ref_type"
+        : "id, stripe_refund_id, refund_status, payment_status, currency";
+    const { data: rows, error } = await supabaseAdmin
     .from(table)
-    .select("id, stripe_refund_id, refund_status, payment_status, currency")
+    .select(select)
     .eq("stripe_payment_intent_id", paymentIntentId)
     .limit(20);
 
@@ -245,16 +249,16 @@ async function markRefundedByPaymentIntent(
     const existingRefundId = String(
       (row as { stripe_refund_id?: string | null }).stripe_refund_id ?? "",
     ).trim();
+    const incomingRefundId = String(refundId ?? "").trim();
+    // Each Stripe refund id is booked once. A later partial refund still enqueues.
+    const isNewRefund = incomingRefundId
+      ? incomingRefundId !== existingRefundId
+      : !existingRefundId;
 
-    // Idempotent mark: skip DB patch when already stamped with this refund
-    // (or any refund id). Always re-run clawback — Stripe reverse is
-    // idempotent and failed recoveries must be re-attempted / re-recorded.
-    const needsMark = !existingRefundId;
-
-    if (needsMark) {
+    if (isNewRefund) {
       const patch: Record<string, unknown> = {
         refund_status: "refunded",
-        stripe_refund_id: refundId,
+        stripe_refund_id: incomingRefundId || refundId,
         stripe_refunded_at: refundedAt,
       };
 
@@ -309,6 +313,11 @@ async function markRefundedByPaymentIntent(
         );
       }
 
+      const packageMirror =
+        table === "orders" &&
+        String((row as { external_ref_type?: string | null }).external_ref_type ?? "") ===
+          "delivery_request";
+      if (!packageMirror) {
       try {
         const { enqueueRefundEvent } = await import("@/lib/finance/financeEvents");
         void enqueueRefundEvent({
@@ -325,6 +334,7 @@ async function markRefundedByPaymentIntent(
           "[finance] refund enqueue fail-open",
           e instanceof Error ? e.message : e
         );
+      }
       }
 
       updated.push(id);

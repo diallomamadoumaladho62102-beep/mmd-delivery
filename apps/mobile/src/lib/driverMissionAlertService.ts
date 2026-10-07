@@ -124,6 +124,7 @@ export async function startDriverMissionAlert(params: {
   type: string;
   orderId?: string | null;
   deliveryRequestId?: string | null;
+  offerId?: string | null;
   taxiRideId?: string | null;
   playLocalNotification?: boolean;
 }): Promise<void> {
@@ -150,7 +151,11 @@ export async function startDriverMissionAlert(params: {
       data: {
         type: params.type,
         deliveryRequestId: params.deliveryRequestId ?? null,
+        delivery_request_id: params.deliveryRequestId ?? null,
         orderId: params.orderId ?? null,
+        order_id: params.orderId ?? null,
+        offerId: params.offerId ?? null,
+        offer_id: params.offerId ?? null,
         taxiRideId: params.taxiRideId ?? null,
       },
     });
@@ -175,6 +180,7 @@ export function handleDriverMissionPushAlert(data: unknown): void {
     deliveryRequestId:
       String(record.deliveryRequestId ?? record.delivery_request_id ?? "").trim() ||
       null,
+    offerId: String(record.offerId ?? record.offer_id ?? "").trim() || null,
     taxiRideId:
       String(record.taxiRideId ?? record.taxi_ride_id ?? "").trim() || null,
     // Remote push already notified OS in background/locked; avoid duplicate local.

@@ -81,7 +81,9 @@ export async function findDeliveryRequestsNeedingDispatchRetry(
       offers?.[0]?.created_at ?? wave1StartedAt ?? request.updated_at ?? null;
 
     if (lastWave >= 3) continue;
-    if (!lastWaveAt || lastWaveAt > cutoffIso) continue;
+    // A paid request with no timestamp must still be retried. Skipping a null
+    // stamp would leave it undispatched forever.
+    if (lastWaveAt && lastWaveAt > cutoffIso) continue;
 
     results.push({
       id: requestId,

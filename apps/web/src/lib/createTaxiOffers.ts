@@ -15,7 +15,12 @@ export async function createTaxiOffers(params: {
   wave: number;
   isFavoriteDispatch?: boolean;
   premiumDriverOnly?: boolean;
-}): Promise<{ created: number; refreshed: number; skipped: number }> {
+}): Promise<{
+  created: number;
+  refreshed: number;
+  skipped: number;
+  offerIdsByDriver: Record<string, string>;
+}> {
   const {
     supabase,
     taxiRideId,
@@ -25,7 +30,7 @@ export async function createTaxiOffers(params: {
   } = params;
 
   if (candidates.length === 0) {
-    return { created: 0, refreshed: 0, skipped: 0 };
+    return { created: 0, refreshed: 0, skipped: 0, offerIdsByDriver: {} };
   }
 
   const now = new Date();
@@ -37,6 +42,7 @@ export async function createTaxiOffers(params: {
   let created = 0;
   let refreshed = 0;
   let skipped = 0;
+  const offerIdsByDriver: Record<string, string> = {};
 
   for (const candidate of candidates) {
     const driverId = String(candidate.driverId);
@@ -113,6 +119,7 @@ export async function createTaxiOffers(params: {
         skipped += 1;
       } else {
         refreshed += 1;
+        offerIdsByDriver[driverId] = String(existing.id);
       }
       continue;
     }
@@ -125,35 +132,46 @@ export async function createTaxiOffers(params: {
       .eq("status", "pending")
       .lte("expires_at", nowIso);
 
-    const { error: insertError } = await supabase.from("taxi_offers").insert({
-      ...offerRow,
-      created_at: nowIso,
-    });
+    const { data: inserted, error: insertError } = await supabase
+      .from("taxi_offers")
+      .insert({
+        ...offerRow,
+        created_at: nowIso,
+      })
+      .select("id")
+      .maybeSingle();
 
     if (insertError) {
       if (insertError.code === "23505") {
-        const { error: upsertError } = await supabase
+        const { data: conflictRow, error: upsertError } = await supabase
           .from("taxi_offers")
           .update(offerRow)
           .eq("taxi_ride_id", taxiRideId)
           .eq("driver_id", driverId)
-          .eq("wave", wave);
+          .eq("wave", wave)
+          .eq("status", "pending")
+          .select("id")
+          .maybeSingle();
 
-        if (upsertError) {
+        if (upsertError || !conflictRow?.id) {
           skipped += 1;
         } else {
           refreshed += 1;
+          offerIdsByDriver[driverId] = String(conflictRow.id);
         }
       } else {
         console.log("taxi_offers insert error:", insertError.message);
         skipped += 1;
       }
-    } else {
+    } else if (inserted?.id) {
       created += 1;
+      offerIdsByDriver[driverId] = String(inserted.id);
+    } else {
+      skipped += 1;
     }
   }
 
-  return { created, refreshed, skipped };
+  return { created, refreshed, skipped, offerIdsByDriver };
 }
 
 export function sortCandidatesForElectricPreference<T extends { driverId: string; distanceMiles: number }>(

@@ -37,10 +37,6 @@ export function acceptFoodOrderOffer(offerId: string) {
   return driverPost("/api/orders/offers/accept", { offer_id: offerId });
 }
 
-export function acceptReadyFoodOrder(orderId: string) {
-  return driverPost("/api/orders/accept-ready", { order_id: orderId });
-}
-
 export function acceptDeliveryRequestOffer(offerId: string) {
   return driverPost("/api/delivery-requests/offers/accept", { offer_id: offerId });
 }

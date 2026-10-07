@@ -53,6 +53,9 @@ export function isClientTaxiPushType(type: string): boolean {
     type === "ride_accepted" ||
     type === "driver_en_route" ||
     type === "taxi_ride_cancelled" ||
-    type === "driver_arrived"
+    type === "taxi_ride_completed" ||
+    type === "driver_arrived" ||
+    type === "wait_fee_started" ||
+    type === "wait_final_warning"
   );
 }

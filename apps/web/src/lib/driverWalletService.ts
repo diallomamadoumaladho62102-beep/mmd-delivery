@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { loadPayoutMethodsForRecipient } from "@/lib/payoutMethodRouting";
 import { fetchConnectUsdBalanceCents } from "@/lib/finance/connectUsdBalance";
 import { resolveManualCashoutFunding } from "@/lib/finance/resolveManualCashoutFunding";
 import {
@@ -355,13 +354,11 @@ export async function buildDriverWalletSummary(
     balanceCents,
     awaitingBeforeRetry,
     pendingPayoutTxCents,
-    payoutMethods,
     dayLimit,
   ] = await Promise.all([
     getWalletBalance(supabaseAdmin, "driver", driverUserId, currency),
     computeDriverAvailableCents(supabaseAdmin, driverUserId),
     computeDriverPendingPayoutTxCents(supabaseAdmin, driverUserId),
-    loadPayoutMethodsForRecipient(supabaseAdmin, countryCode, "driver"),
     isManualCashoutBlockedToday(supabaseAdmin, "driver", driverUserId),
   ]);
 
@@ -396,8 +393,6 @@ export async function buildDriverWalletSummary(
   const lastCashoutAt = dayLimit.lastCashoutAt;
   const rateLimit = { limited: dayLimit.blocked, lastCashoutAt: dayLimit.lastCashoutAt };
 
-  const defaultMethod =
-    payoutMethods.find((method) => method.available) ?? payoutMethods[0] ?? null;
   const minimumPayoutCents = 0;
 
   const stripeAccountId = profile?.stripe_account_id

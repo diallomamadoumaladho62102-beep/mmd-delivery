@@ -487,6 +487,20 @@ export async function runDeliveryRequestDispatch(params: {
     };
   }
 
+  const { data: pendingOffers } = await supabase
+    .from("delivery_request_driver_offers")
+    .select("id,driver_id")
+    .eq("delivery_request_id", deliveryRequestId)
+    .eq("status", "pending")
+    .in("driver_id", selectedDriverIds);
+
+  const offerIdByDriver = new Map(
+    ((pendingOffers ?? []) as Array<{ id: string; driver_id: string }>).map((row) => [
+      String(row.driver_id),
+      String(row.id),
+    ]),
+  );
+
   const uniqueTokens = Array.from(
     new Map(
       (tokens ?? [])
@@ -532,6 +546,8 @@ export async function runDeliveryRequestDispatch(params: {
         type: "delivery_request_dispatch",
         deliveryRequestId: request.id,
         delivery_request_id: request.id,
+        offerId: offerIdByDriver.get(tokenRow.user_id) ?? null,
+        offer_id: offerIdByDriver.get(tokenRow.user_id) ?? null,
         wave,
         screen: "DriverTabs",
       },

@@ -1,14 +1,21 @@
+import { AppState } from "react-native";
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import * as Speech from "expo-speech";
+import {
+  resolveNavigationTtsLanguage,
+  type AiTtsLanguage,
+} from "./mmdAiVoiceLanguages";
 import {
   beginInstructionCycle,
   canStartInstructionCycle,
   cancelInstructionPlayback,
   completeInstructionReading,
   createIdlePlaybackState,
-  isPlaybackActive,
+  playbackAfterFailedStart,
   shouldSpeakSecondReading,
   type InstructionPlaybackState,
 } from "./navigationVoicePlayback";
+import { createSpeechChain } from "./navigationSpeechChain";
 import {
   getLastNavigationSpeechAt,
   markNavigationSpeech,
@@ -26,7 +33,47 @@ export type { InstructionPlaybackPhase } from "./navigationVoicePlayback";
 
 const PROGRESS_VOICE_MS = 30_000;
 
-export type NavigationVoiceLanguage = "en-US" | "fr-FR";
+export type NavigationVoiceLanguage = AiTtsLanguage;
+
+/** One speech operation at a time so a late Speech.stop() cannot cancel the next utterance. */
+const speechChain = createSpeechChain();
+let navigationAudioReady = false;
+const failedStarts = new Map<string, number>();
+const MAX_FAILED_STARTS = 2;
+
+function enqueueSpeechOp(op: () => Promise<void>): Promise<void> {
+  return speechChain.enqueue(op);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function ensureNavigationAudioSession(): Promise<void> {
+  if (navigationAudioReady) return;
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    playsInSilentModeIOS: true,
+    staysActiveInBackground: false,
+    shouldDuckAndroid: true,
+    interruptionModeIOS: InterruptionModeIOS.DuckOthers,
+    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+    playThroughEarpieceAndroid: false,
+  });
+  navigationAudioReady = true;
+}
+
+AppState.addEventListener("change", (state) => {
+  if (state === "active") navigationAudioReady = false;
+});
+
+async function haltIfSpeaking(): Promise<void> {
+  const isSpeaking = Speech.isSpeakingAsync;
+  if (typeof isSpeaking !== "function") return;
+  if (!(await isSpeaking())) return;
+  await Speech.stop();
+  await delay(120);
+}
 
 type SpeakOptions = {
   language: NavigationVoiceLanguage;
@@ -58,15 +105,22 @@ function advanceAfterCompleteReading(
 
   playbackState = completeInstructionReading(playbackState);
 
-  if (shouldSpeakSecondReading(playbackState)) {
-    const text = playbackState.text;
-    const key = playbackState.instructionKey;
+  if (!shouldSpeakSecondReading(playbackState)) return;
+
+  const text = playbackState.text;
+  const key = playbackState.instructionKey;
+  void enqueueSpeechOp(async () => {
+    if (generation !== playbackGeneration) return;
+    await ensureNavigationAudioSession();
     speakOnce(text, {
       language,
-      onDone: () => advanceAfterCompleteReading(generation, language),
+      onDone: () => {
+        if (generation !== playbackGeneration) return;
+        markNavigationSpeech(text, key, Date.now());
+        advanceAfterCompleteReading(generation, language);
+      },
       onStopped: () => {
         if (generation !== playbackGeneration) return;
-        // Interrupted mid reading #2 — do not count as complete; stop cycle.
         playbackState = cancelInstructionPlayback(playbackState);
       },
       onError: () => {
@@ -74,11 +128,7 @@ function advanceAfterCompleteReading(
         playbackState = cancelInstructionPlayback(playbackState);
       },
     });
-    markNavigationSpeech(text, key, Date.now());
-    return;
-  }
-
-  // STOPPED after exactly two complete readings (or already stopped).
+  });
 }
 
 /**
@@ -95,77 +145,51 @@ export async function speakNavigation(
   language: NavigationVoiceLanguage = "en-US",
   instructionKey?: string,
 ): Promise<void> {
-  try {
-    const cleanText = text.trim();
-    if (!cleanText) return;
+  const cleanText = text.trim();
+  if (!cleanText) return;
 
-    const stableKey = (instructionKey ?? "").trim();
-    const now = Date.now();
+  const stableKey = (instructionKey ?? "").trim();
+  const now = Date.now();
 
-    // Progress / one-off lines without a stable key: keep legacy debounce.
-    if (!stableKey) {
-      if (shouldSkipTextRepeat(cleanText, force, undefined, now)) return;
-      markNavigationSpeech(cleanText, undefined, now);
-      playbackGeneration += 1;
-      const generation = playbackGeneration;
-      playbackState = createIdlePlaybackState();
-      await Speech.stop();
+  if (!stableKey) {
+    if (shouldSkipTextRepeat(cleanText, force, undefined, now)) return;
+  } else {
+    if (!canStartInstructionCycle(playbackState, stableKey)) return;
+    if (shouldSkipTextRepeat(cleanText, force, stableKey, now)) return;
+  }
+
+  playbackGeneration += 1;
+  const generation = playbackGeneration;
+  playbackState = stableKey
+    ? beginInstructionCycle(createIdlePlaybackState(), stableKey, cleanText)
+    : createIdlePlaybackState();
+
+  await enqueueSpeechOp(async () => {
+    if (generation !== playbackGeneration) return;
+    try {
+      await ensureNavigationAudioSession();
+      await haltIfSpeaking();
+      if (generation !== playbackGeneration) return;
+      if (!stableKey) markNavigationSpeech(cleanText, undefined, Date.now());
       speakOnce(cleanText, {
         language,
-        onDone: () => undefined,
-        onStopped: () => undefined,
-        onError: () => undefined,
+        onDone: () => {
+          if (generation !== playbackGeneration) return;
+          if (stableKey) {
+            failedStarts.delete(stableKey);
+            markNavigationSpeech(cleanText, stableKey, Date.now());
+          }
+          if (stableKey) advanceAfterCompleteReading(generation, language);
+        },
+        onStopped: () => failStart(generation, stableKey),
+        onError: () => failStart(generation, stableKey),
       });
-      void generation;
-      return;
+    } catch {
+      if (generation === playbackGeneration) {
+        playbackState = playbackAfterFailedStart(playbackState);
+      }
     }
-
-    // Same instruction already running or finished its two readings → ignore.
-    if (!canStartInstructionCycle(playbackState, stableKey)) {
-      return;
-    }
-
-    // Also honor ledger hard cap (defense in depth).
-    if (shouldSkipTextRepeat(cleanText, force, stableKey, now)) {
-      return;
-    }
-
-    const switching =
-      isPlaybackActive(playbackState) &&
-      playbackState.instructionKey !== stableKey;
-
-    playbackGeneration += 1;
-    const generation = playbackGeneration;
-    playbackState = beginInstructionCycle(
-      createIdlePlaybackState(),
-      stableKey,
-      cleanText,
-    );
-
-    if (switching) {
-      await Speech.stop();
-    } else {
-      // Ensure no leftover utterance from another subsystem.
-      await Speech.stop();
-    }
-
-    markNavigationSpeech(cleanText, stableKey, now);
-
-    speakOnce(cleanText, {
-      language,
-      onDone: () => advanceAfterCompleteReading(generation, language),
-      onStopped: () => {
-        if (generation !== playbackGeneration) return;
-        playbackState = cancelInstructionPlayback(playbackState);
-      },
-      onError: () => {
-        if (generation !== playbackGeneration) return;
-        playbackState = cancelInstructionPlayback(playbackState);
-      },
-    });
-  } catch {
-    // Voice must never crash navigation
-  }
+  });
 }
 
 /** Test/diagnostic access — not for UI. */
@@ -173,16 +197,32 @@ export function getNavigationVoicePlaybackState(): InstructionPlaybackState {
   return { ...playbackState };
 }
 
+function failStart(generation: number, stableKey: string): void {
+  if (generation !== playbackGeneration) return;
+  if (playbackState.completedReadings <= 0 && stableKey) {
+    const fails = (failedStarts.get(stableKey) ?? 0) + 1;
+    failedStarts.set(stableKey, fails);
+    if (fails >= MAX_FAILED_STARTS) {
+      playbackState = cancelInstructionPlayback(playbackState);
+      return;
+    }
+  }
+  playbackState = playbackAfterFailedStart(playbackState);
+}
+
 /** Reset playback + ledger (reroute / leave navigation). */
 export async function stopNavigationVoice(): Promise<void> {
-  try {
-    playbackGeneration += 1;
-    playbackState = createIdlePlaybackState();
-    await Speech.stop();
-    resetNavigationVoiceLedger();
-  } catch {
-    // ignore
-  }
+  playbackGeneration += 1;
+  playbackState = createIdlePlaybackState();
+  failedStarts.clear();
+  resetNavigationVoiceLedger();
+  await enqueueSpeechOp(async () => {
+    try {
+      await haltIfSpeaking();
+    } catch {
+      // ignore
+    }
+  });
 }
 
 export async function speakNavigationProgress(
@@ -197,30 +237,24 @@ export async function speakNavigationProgress(
 export async function speakArrival(
   stage: "pickup" | "dropoff",
   language: NavigationVoiceLanguage = "en-US",
+  text?: string,
 ): Promise<void> {
-  const text =
-    stage === "pickup"
-      ? language.startsWith("fr")
-        ? "Arrivée au point de collecte"
-        : "Arriving at pickup location"
-      : language.startsWith("fr")
-        ? "Arrivée à destination"
-        : "Arriving at destination";
-
-  await speakNavigation(text, true, language, `arrival:${stage}`);
+  const spoken = (text ?? "").trim();
+  if (!spoken) return;
+  await speakNavigation(spoken, true, language, `arrival:${stage}`);
 }
 
 export async function speakReroute(
   language: NavigationVoiceLanguage = "en-US",
+  text?: string,
 ): Promise<void> {
-  const text = language.startsWith("fr")
-    ? "Itinéraire recalculé"
-    : "Route recalculated";
-  await speakNavigation(text, true, language, "reroute");
+  const spoken = (text ?? "").trim();
+  if (!spoken) return;
+  await speakNavigation(spoken, true, language, "reroute");
 }
 
 export function resolveNavigationVoiceLanguage(
   appLanguage: string | undefined,
 ): NavigationVoiceLanguage {
-  return appLanguage?.toLowerCase().startsWith("fr") ? "fr-FR" : "en-US";
+  return resolveNavigationTtsLanguage(appLanguage);
 }

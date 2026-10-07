@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { runDeliveryRequestDispatch } from "@/lib/runDeliveryRequestDispatch";
+import {
+  runDeliveryRequestDispatch,
+  type RunDeliveryRequestDispatchResult,
+} from "@/lib/runDeliveryRequestDispatch";
 import {
   getDispatchSiteOrigin,
   scheduleDeliveryRequestDispatch,
@@ -9,24 +12,46 @@ import {
  * Primary post-payment dispatch path: run wave dispatch in-process (awaited).
  * HTTP schedule is only used as backup when the inline run fails.
  */
+export type DeliveryDispatchRunner = (params: {
+  supabase: SupabaseClient;
+  deliveryRequestId: string;
+  wave?: number;
+}) => Promise<RunDeliveryRequestDispatchResult>;
+
 export async function triggerDeliveryRequestDispatch(params: {
   supabase: SupabaseClient;
   deliveryRequestId: string;
   wave?: number;
   alsoScheduleHttpOnFailure?: boolean;
+  run?: DeliveryDispatchRunner;
 }) {
   const {
     supabase,
     deliveryRequestId,
     wave = 1,
     alsoScheduleHttpOnFailure = true,
+    run = runDeliveryRequestDispatch,
   } = params;
 
-  const result = await runDeliveryRequestDispatch({
-    supabase,
-    deliveryRequestId,
-    wave,
-  });
+  let result: RunDeliveryRequestDispatchResult;
+  try {
+    result = await run({
+      supabase,
+      deliveryRequestId,
+      wave,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    result = {
+      ok: false,
+      deliveryRequestId,
+      wave,
+      notified: 0,
+      candidates: 0,
+      maxMiles: 0,
+      error: message,
+    };
+  }
 
   console.log("[triggerDeliveryRequestDispatch] inline result", {
     delivery_request_id: deliveryRequestId,
@@ -39,12 +64,13 @@ export async function triggerDeliveryRequestDispatch(params: {
     offerStats: result.offerStats ?? null,
   });
 
+  let retryScheduled = false;
   if (alsoScheduleHttpOnFailure && !result.ok) {
     const origin = getDispatchSiteOrigin();
     if (origin) {
-      scheduleDeliveryRequestDispatch({ origin, deliveryRequestId });
+      retryScheduled = scheduleDeliveryRequestDispatch({ origin, deliveryRequestId });
     }
   }
 
-  return result;
+  return { ...result, retryScheduled };
 }

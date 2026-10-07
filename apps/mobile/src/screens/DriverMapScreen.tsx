@@ -353,8 +353,8 @@ export default function DriverMapScreen() {
 
   const handleReroute = useCallback(() => {
     if (!voiceEnabled) return;
-    void speakReroute(voiceLanguage);
-  }, [voiceEnabled, voiceLanguage]);
+    void speakReroute(voiceLanguage, t("driver.navVoice.reroute"));
+  }, [t, voiceEnabled, voiceLanguage]);
 
   const liveLocation = useDriverMapLocation(
     mapboxReady && !!trip && !previewMode && !navigationPaused,
@@ -976,19 +976,20 @@ export default function DriverMapScreen() {
 
     if (trip.stage === "pickup" && arrival.pickupArrived && !arrivalVoiceRef.current.pickup) {
       arrivalVoiceRef.current.pickup = true;
-      void speakArrival("pickup", voiceLanguage);
+      void speakArrival("pickup", voiceLanguage, t("driver.navVoice.arrivePickup"));
     } else if (
       trip.stage === "dropoff" &&
       arrival.dropoffArrived &&
       !arrivalVoiceRef.current.dropoff
     ) {
       arrivalVoiceRef.current.dropoff = true;
-      void speakArrival("dropoff", voiceLanguage);
+      void speakArrival("dropoff", voiceLanguage, t("driver.navVoice.arriveDropoff"));
     }
   }, [
     arrival.dropoffArrived,
     arrival.pickupArrived,
     navigationPaused,
+    t,
     trip,
     voiceEnabled,
     voiceLanguage,
@@ -1005,7 +1006,7 @@ export default function DriverMapScreen() {
       state: voiceTriggerStateRef.current,
       routeVersion,
       selection: maneuverSelection,
-      locale: navLocale,
+      locale: i18n.language,
     });
     voiceTriggerStateRef.current = navResult.state;
 
@@ -1014,7 +1015,7 @@ export default function DriverMapScreen() {
           state: safetyVoiceStateRef.current,
           routeVersion,
           events: projectedSafetyEvents,
-          locale: navLocale,
+          locale: i18n.language,
           thresholds: {
             far: roadSafety.config.announceFarMeters,
             near: roadSafety.config.announceNearMeters,
@@ -1054,6 +1055,7 @@ export default function DriverMapScreen() {
     }
   }, [
     destinationArrived,
+    i18n.language,
     maneuverSelection?.active.id,
     maneuverSelection?.distanceMeters,
     navLocale,

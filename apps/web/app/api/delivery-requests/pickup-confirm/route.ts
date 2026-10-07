@@ -107,6 +107,15 @@ export async function POST(req: NextRequest) {
 
     const result = (data ?? null) as DeliveryRequestRpcResult | null;
 
+    if (result?.ok && result.already_picked_up === true) {
+      return json({
+        ok: true,
+        already_picked_up: true,
+        delivery_request_id: requestId,
+        result,
+      });
+    }
+
     if (!result?.ok) {
       const mapped = mapDeliveryRpcError(result?.error ?? result?.message ?? "");
       return json({ error: mapped.message }, mapped.status);

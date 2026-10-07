@@ -85,7 +85,6 @@ const SELECT_FIELDS = [
   "restaurant_name",
   "pickup_address",
   "dropoff_address",
-  "pickup_code",
   "items_json",
   "leave_at_door",
   "payment_status",
@@ -302,6 +301,12 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
 
             validateOrder(data, uid);
             const nextOrder = data as unknown as Order;
+            const { data: codeRow } = await supabase.rpc(
+              "get_authorized_verification_codes",
+              { p_entity_type: "order", p_entity_id: orderId },
+            );
+            const codes = (codeRow ?? null) as { pickup_code?: string | null } | null;
+            nextOrder.pickup_code = codes?.pickup_code ?? null;
             setOrder(nextOrder);
             setNotFound(false);
             void loadClient(nextOrder.client_user_id ?? nextOrder.client_id);
@@ -657,8 +662,8 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
             />
           ) : null}
         </View>
-      <CancellationReasonHost />
       </ScrollView>
+      <CancellationReasonHost />
     </SafeAreaView>
   );
 }

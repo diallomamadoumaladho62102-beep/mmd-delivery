@@ -27,6 +27,7 @@ assert(period.currentPeriodStart === 1_700_000_100, "period start");
 assert(period.currentPeriodEnd === 1_700_086_500, "period end");
 assert(period.cancelAtPeriodEnd === true, "cancel at period end");
 assert(stripePeriodStartIso(sub)?.includes("2023"), "start iso");
+assert(stripePeriodEndIso(sub)?.includes("2023"), "end iso");
 
 const invoice = {
   subscription: "sub_test_1",

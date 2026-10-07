@@ -96,12 +96,26 @@ const ORDER_SELECT = `
   distance_miles,
   eta_minutes,
   delivery_fee,
-  pickup_code,
-  dropoff_code,
   user_id,
   restaurant_id,
   driver_id
 `;
+
+async function withVerificationCodes(order: Order): Promise<Order> {
+  const { data } = await supabase.rpc("get_authorized_verification_codes", {
+    p_entity_type: "order",
+    p_entity_id: order.id,
+  });
+  const codes = (data ?? {}) as {
+    pickup_code?: string | null;
+    dropoff_code?: string | null;
+  };
+  return {
+    ...order,
+    pickup_code: codes.pickup_code ?? null,
+    dropoff_code: codes.dropoff_code ?? null,
+  };
+}
 
 const statusLabel: Record<OrderStatus, string> = {
   pending: "En attente",
@@ -249,7 +263,7 @@ export default function OrderPage() {
       return;
     }
 
-    const nextOrder = data as Order;
+    const nextOrder = await withVerificationCodes(data as Order);
 
     setOrder(nextOrder);
     setDriverId(nextOrder.driver_id ?? null);
@@ -302,7 +316,7 @@ export default function OrderPage() {
         return;
       }
 
-      const typedOrder = orderRow as Order;
+      const typedOrder = await withVerificationCodes(orderRow as Order);
 
       const { data: membershipRows, error: membershipError } = await supabase
         .from("order_members")
@@ -682,7 +696,7 @@ export default function OrderPage() {
         throw refreshError ?? new Error("Impossible de recharger la commande.");
       }
 
-      const nextOrder = refreshed as Order;
+      const nextOrder = await withVerificationCodes(refreshed as Order);
 
       setOrder(nextOrder);
       setDriverId(nextOrder.driver_id ?? null);

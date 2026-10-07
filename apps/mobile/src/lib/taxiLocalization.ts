@@ -31,19 +31,16 @@ export const TAXI_COUNTRY_LABELS: Record<string, Record<TaxiLanguageCode, string
   MR: { en: "Mauritania", fr: "Mauritanie", es: "Mauritania", ar: "موريتانيا", zh: "毛里塔尼亚", ff: "Muritani" },
 };
 
-const UI_KEYS = [
-  "country",
-  "currency",
-  "estimate",
-  "subtotal",
-  "tax",
-  "platformFee",
-  "total",
-  "detectedCountry",
-  "estimatesIn",
-] as const;
-
-export type TaxiUiKey = (typeof UI_KEYS)[number];
+export type TaxiUiKey =
+  | "country"
+  | "currency"
+  | "estimate"
+  | "subtotal"
+  | "tax"
+  | "platformFee"
+  | "total"
+  | "detectedCountry"
+  | "estimatesIn";
 
 function activeAppLanguage(): TaxiLanguageCode {
   const raw = String(i18n.resolvedLanguage || i18n.language || "en").split("-")[0];

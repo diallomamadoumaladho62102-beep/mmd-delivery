@@ -141,7 +141,8 @@ async function assertActiveOrderProducts(
       serviceFeeConfig,
     }
   );
-  const { pe: _peMeta, ...totals } = pe;
+  const totals = { ...pe };
+  delete totals.pe;
   return {
     ...totals,
     pricing_engine_version: "marketplace_checkout_shadow_v2",

@@ -47,6 +47,18 @@ test("interpolations fill minutes and payout", () => {
   assert.match(payout.body, /12\.50/);
 });
 
+test("delivery pickup-arrival copy is one language per locale", () => {
+  const fr = pushText("driver_arrived_pickup", "fr");
+  const en = pushText("driver_arrived_pickup", "en");
+  assert.match(fr.title, /chauffeur/i);
+  assert.match(fr.body, /retrait|restaurant/i);
+  assert.doesNotMatch(fr.title, /Your driver/);
+  assert.doesNotMatch(fr.body, /Your driver/);
+  assert.match(en.title, /driver/i);
+  assert.doesNotMatch(en.title, /chauffeur/i);
+  assert.notEqual(fr.title, en.title);
+});
+
 test("new dispatch and compliance keys are localized", () => {
   assert.notEqual(pushText("delivery_offer", "en").title, pushText("delivery_offer", "ar").title);
   assert.match(pushText("delivery_offer_payout", "fr", { payout: "9.00" }).body, /9\.00/);

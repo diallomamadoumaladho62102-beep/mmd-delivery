@@ -15,7 +15,6 @@ import {
   type ActiveManeuverSelection,
   type RouteManeuver,
 } from "./navigationManeuvers";
-import { resolveNavigationLocale, type NavigationLocale } from "./navigationLocale";
 
 export type VoiceBucket = "500" | "200" | "immediate" | "arrival";
 
@@ -95,12 +94,9 @@ export function evaluateManeuverVoice(params: {
   state: VoiceTriggerState;
   routeVersion: string;
   selection: ActiveManeuverSelection | null;
-  locale: string | NavigationLocale;
+  locale: string;
 }): VoiceTriggerResult {
-  const locale =
-    typeof params.locale === "string"
-      ? resolveNavigationLocale(params.locale)
-      : params.locale;
+  const locale = params.locale;
 
   // Reroute (or first run) → reset all per-maneuver memory.
   let state = params.state;

@@ -178,6 +178,24 @@ type CancelOrderResponse = {
   error?: string;
 };
 
+async function loadAuthorizedCodes(
+  entityType: "order" | "delivery_request",
+  entityId: string,
+) {
+  const { data } = await supabase.rpc("get_authorized_verification_codes", {
+    p_entity_type: entityType,
+    p_entity_id: entityId,
+  });
+  const row = (data ?? {}) as {
+    pickup_code?: string | null;
+    dropoff_code?: string | null;
+  };
+  return {
+    pickup: toSafeString(row.pickup_code),
+    dropoff: toSafeString(row.dropoff_code),
+  };
+}
+
 function toSafeString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
@@ -482,8 +500,6 @@ export function ClientDeliveryRequestDetailsScreen() {
             delivery_fee,
             stripe_session_id,
             stripe_payment_intent_id,
-            pickup_code,
-            dropoff_code,
             picked_up_at,
             delivered_confirmed_at,
             pickup_photo_url,
@@ -502,6 +518,7 @@ export function ClientDeliveryRequestDetailsScreen() {
             if (directOrder) {
               const kind = normalizeKind(directOrder.kind);
               if (kind === "pickup_dropoff") {
+                const codes = await loadAuthorizedCodes("order", String(directOrder.id));
                 setData(
                   mapOrderToScreenData({
                     id: String(directOrder.id),
@@ -524,8 +541,8 @@ export function ClientDeliveryRequestDetailsScreen() {
                     stripe_payment_intent_id: toSafeString(
                       directOrder.stripe_payment_intent_id
                     ),
-                    pickup_code: toSafeString(directOrder.pickup_code),
-                    dropoff_code: toSafeString(directOrder.dropoff_code),
+                    pickup_code: codes.pickup,
+                    dropoff_code: codes.dropoff,
                     picked_up_at: toSafeString(directOrder.picked_up_at),
                     delivered_confirmed_at: toSafeString(
                       directOrder.delivered_confirmed_at
@@ -622,8 +639,6 @@ export function ClientDeliveryRequestDetailsScreen() {
             delivery_fee,
             stripe_session_id,
             stripe_payment_intent_id,
-            pickup_code,
-            dropoff_code,
             picked_up_at,
             delivered_confirmed_at,
             pickup_photo_url,
@@ -640,6 +655,7 @@ export function ClientDeliveryRequestDetailsScreen() {
             if (!alive) return;
 
             if (linkedOrder && normalizeKind(linkedOrder.kind) === "pickup_dropoff") {
+              const codes = await loadAuthorizedCodes("order", String(linkedOrder.id));
               setData(
                 mapOrderToScreenData(
                   {
@@ -663,8 +679,8 @@ export function ClientDeliveryRequestDetailsScreen() {
                     stripe_payment_intent_id: toSafeString(
                       linkedOrder.stripe_payment_intent_id
                     ),
-                    pickup_code: toSafeString(linkedOrder.pickup_code),
-                    dropoff_code: toSafeString(linkedOrder.dropoff_code),
+                    pickup_code: codes.pickup,
+                    dropoff_code: codes.dropoff,
                     picked_up_at: toSafeString(linkedOrder.picked_up_at),
                     delivered_confirmed_at: toSafeString(
                       linkedOrder.delivered_confirmed_at
@@ -681,7 +697,16 @@ export function ClientDeliveryRequestDetailsScreen() {
               return;
             }
 
-            setData(mapDeliveryRequestToScreenData(normalizedRequest));
+            const requestScreen = mapDeliveryRequestToScreenData(normalizedRequest);
+            const requestCodes = await loadAuthorizedCodes(
+              "delivery_request",
+              normalizedRequest.id,
+            );
+            setData({
+              ...requestScreen,
+              pickup_code: requestCodes.pickup,
+              dropoff_code: requestCodes.dropoff,
+            });
           })(),
           CLIENT_SCREEN_FETCH_TIMEOUT_MS,
           "client_delivery_request_details_load",
@@ -894,7 +919,23 @@ export function ClientDeliveryRequestDetailsScreen() {
 
   const canCancel = useMemo(() => {
     const status = normalizeStatus(data?.status);
-    return !!data && (status === "pending" || status === "paid_pending" || status === "processing_pending" || status === "accepted") && !canceling;
+    if (!data || canceling) return false;
+    const packageStatuses = [
+      "pending",
+      "paid_pending",
+      "processing_pending",
+      "accepted",
+      "dispatched",
+    ];
+    const foodStatuses = [
+      "pending",
+      "paid_pending",
+      "processing_pending",
+      "accepted",
+    ];
+    const isPackageRequest =
+      data.source === "delivery_request" || data.source === "linked_order_and_request";
+    return (isPackageRequest ? packageStatuses : foodStatuses).includes(status);
   }, [data, canceling]);
 
   const driverAvatarUri = normalizeAvatarUrl(driverProfile?.avatar_url);
@@ -962,7 +1003,20 @@ export function ClientDeliveryRequestDetailsScreen() {
     const status = normalizeStatus(data.status);
     const cancelTitle = t("client.deliveryRequest.cancelTrip", "Cancel trip");
 
-    if (!(status === "pending" || status === "paid_pending" || status === "processing_pending" || status === "accepted")) {
+    const isPackageRequest =
+      data.source === "delivery_request" || data.source === "linked_order_and_request";
+    const cancelAllowed = isPackageRequest
+      ? status === "pending" ||
+        status === "paid_pending" ||
+        status === "processing_pending" ||
+        status === "accepted" ||
+        status === "dispatched"
+      : status === "pending" ||
+        status === "paid_pending" ||
+        status === "processing_pending" ||
+        status === "accepted";
+
+    if (!cancelAllowed) {
       Alert.alert(
         cancelTitle,
         t(
@@ -1022,7 +1076,12 @@ export function ClientDeliveryRequestDetailsScreen() {
 
             let out: CancelOrderResponse;
 
-            if (data.orderId) {
+            if (isPackageRequest && data.requestId) {
+              const { cancelDeliveryRequestAsClient } = await import(
+                "../lib/deliveryRequestDriverApi"
+              );
+              out = (await cancelDeliveryRequestAsClient(data.requestId, choice)) as CancelOrderResponse;
+            } else if (data.orderId) {
               const endpoint = `${String(API_URL).replace(/\/$/, "")}/api/orders/cancel`;
               const res = await fetch(endpoint, {
                 method: "POST",
@@ -1043,10 +1102,9 @@ export function ClientDeliveryRequestDetailsScreen() {
                 throw new Error(out?.error || `Cancel failed (${res.status})`);
               }
             } else {
-              const { cancelDeliveryRequestAsClient } = await import(
-                "../lib/deliveryRequestDriverApi"
+              throw new Error(
+                t("client.deliveryRequest.cancelFailed", "Unable to cancel this trip."),
               );
-              out = (await cancelDeliveryRequestAsClient(data.requestId, choice)) as CancelOrderResponse;
             }
 
             await loadDetails({ silent: true });

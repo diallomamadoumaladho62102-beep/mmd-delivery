@@ -19,8 +19,12 @@ async function skipTestFinancialSource(
       ? "orders"
       : kind === "delivery_request" || kind === "package"
         ? "delivery_requests"
-        : kind === "taxi" || kind === "taxi_ride"
-          ? "taxi_rides"
+    : kind === "taxi" || kind === "taxi_ride"
+      ? "taxi_rides"
+      : kind === "marketplace_job" || kind === "marketplace_delivery_job"
+        ? "marketplace_delivery_jobs"
+        : kind === "seller_order"
+          ? "seller_orders"
           : null;
   if (!table) return null;
   const { data } = await supabase

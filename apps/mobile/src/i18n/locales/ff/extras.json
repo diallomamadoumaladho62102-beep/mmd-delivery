@@ -1740,6 +1740,11 @@
         "other": "Goɗɗum"
       }
     },
+    "navVoice": {
+      "arrivePickup": "A yottii nokku ƴettugol",
+      "arriveDropoff": "A yottii gartirde",
+      "reroute": "Laawol hesɗinaama"
+    },
     "home": {
       "kind": {
         "marketplace": "Livraison Marketplace",
@@ -1788,6 +1793,7 @@
       "toggleStatusFailed": "Horiima waylude staatus jooni.",
       "demand": "Ɗaɓɓaande",
       "miles": "Maayli",
+      "mileUnit": "mi",
       "ignore": "Faaytu",
       "accepting": "Nana jaɓa...",
       "premium": {
@@ -1824,7 +1830,9 @@
         "goBusyArea": "Yah to nokkuure cuuɗiinde",
         "goBusyAreaSub": "Yah to nokkuure ɗaɓɓaande toownde",
         "goOffline": "Yaltu laylaytol",
-        "goOfflineSub": "A dartat keɓgol ɗaɓɓaande"
+        "goOfflineSub": "A dartat keɓgol ɗaɓɓaande",
+        "nextRideTitle": "Yahgol maa garoowal",
+        "nextRideStatus": "Yiyngo ina jokku"
       },
       "busyArea": {
         "empty": "Alaa ɗaɓɓe udditiiɗe ɓadiiɗe e fuɗɗorde jooni.",
@@ -2611,6 +2619,7 @@
       "emptyTitle": "Alaa fartaŋŋe hannde"
     },
     "orderDetails": {
+      "offerRequired": "Yamiroore jokkondirde ena woodi ngam jaɓde neldu ndee.",
       "actions": {
         "backupNavigation": "Cuɓoraaɗe cukkal",
         "googleDropoff": "Jaɓorde Google / Apple",
@@ -2710,6 +2719,19 @@
       },
       "title": "Cariiɗe njamndi",
       "tokenMissing": "Token sahaa naatgol ŋatnii.",
+      "stage": {
+        "arrivedPickup": "Mi arii e pickup",
+        "arrivedPickupFood": "Mi arii e restoran",
+        "atPickup": "Arii e pickup",
+        "confirmPickup": "Odaare ƴettaama",
+        "confirmPickupPackage": "Pakke ƴettaama",
+        "inTransit": "E laawol",
+        "arrivedCustomer": "Mi arii",
+        "atCustomer": "Arii e jeyaaɗo",
+        "completeDelivery": "Livraison timmii",
+        "arriveFailed": "Horiima tabitinde arugol.",
+        "hint": "Tagoore livraison wonaande tan woodi."
+      },
       "verify": {
         "autoHintPd": "Butoŋe hurminoto e hoore mum e sahaa moƴƴo e dow xaalis.",
         "completeRide": "Timmin yahdu",
@@ -3749,8 +3771,8 @@
       "too_many_stops": "A waawi ɓeydude dartolji 3 tan.",
       "invalid_stop": "Ƴeew ndesndi dartol ngol, kisa fuɗɗito.",
       "confirmation_failed": "Yahaandu waawaa teeŋtineede. Fuɗɗito.",
-      "category_unavailable": "Ndee feccere heɓotaako. Suɓo goɗɗum.",
       "promotion_unavailable": "Ndee promo waawaa huutoreede. Jokku tawa promo walla eto kod goɗɗo.",
+      "category_unavailable": "Ndee feccere heɓotaako. Suɓo goɗɗum.",
       "card_declined": "Karte maa salaama. Yeeɓ kabaruuji maa walla huutoro karte goɗɗo.",
       "payment_intent_authentication_failure": "Tabitingol njoɓdi firlitii. Eto kadi walla huutoro karte goɗɗo.",
       "processing_error": "Njoɓdi timmaani. Tiiɗno eto kadi caggal seeɗa.",

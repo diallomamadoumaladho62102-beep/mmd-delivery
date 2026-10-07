@@ -71,6 +71,14 @@ function testEnglishAfterLanguageSwitch() {
     toUserFacingError(new Error("Request failed (500)")),
     "Something went wrong temporarily. Please try again.",
   );
+  assert.equal(
+    toUserFacingError({ error: "offer_required" }),
+    "This offer is no longer available. Refresh offers.",
+  );
+  assert.equal(
+    toUserFacingError(new Error("offer_expired")),
+    "This offer is no longer available. Refresh offers.",
+  );
 }
 
 function testExplicitFallbackStillWins() {

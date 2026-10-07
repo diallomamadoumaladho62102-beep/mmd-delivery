@@ -23,6 +23,16 @@ assert.match(
   "acceptDeliveryRequest includes offer_id when the driver has one",
 );
 assert.match(
+  api,
+  /if \(!offer\)/,
+  "legacy package accept refuses to send delivery_request_id alone",
+);
+assert.doesNotMatch(
+  api,
+  /\.\.\.\(offer \? \{ offer_id: offer \} : \{\}\)/,
+  "legacy package accept must not omit offer_id",
+);
+assert.match(
   offerApi,
   /\/api\/delivery-requests\/offers\/accept/,
   "dedicated package offer accept hits the offer endpoint",

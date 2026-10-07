@@ -34,10 +34,8 @@ function waypointKey(waypoints: LatLng[]): string {
   return waypoints.map((w) => `${round4(w.lat)},${round4(w.lng)}`).join(">");
 }
 
-export function opsRouteCacheKey(
-  missionId: string,
-  _waypoints?: LatLng[]
-): string {
+export function opsRouteCacheKey(missionId: string, waypoints?: LatLng[]): string {
+  void waypoints;
   return `ops-route:${missionId}`;
 }
 

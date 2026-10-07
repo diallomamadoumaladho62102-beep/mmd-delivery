@@ -528,36 +528,6 @@ export async function POST(req: NextRequest) {
       ).values()
     );
 
-    const payout =
-      toNumber(order.driver_delivery_payout) ??
-      toNumber(order.delivery_fee) ??
-      toNumber(order.total);
-
-    const messages = uniqueTokens.map((tokenRow: any) => {
-      const locale = normalizeAppLocale(tokenRow.locale);
-      const copy = payout
-        ? pushText("driver_offer_payout", locale, { payout: payout.toFixed(2) })
-        : pushText("driver_offer", locale);
-      return {
-        to: tokenRow.expo_push_token,
-        sound: resolvePushSoundForPlatform("driver_offer", tokenRow.platform),
-        channelId: DRIVER_MISSION_PUSH_CHANNEL,
-        title: copy.title,
-        body: copy.body,
-        data: {
-          type: "driver_offer",
-          orderId: order.id,
-          wave: requestedWave,
-          screen: "DriverTabs",
-        },
-        priority: "high",
-        // Wake suspended iOS apps so the Driver mission alert service can ring.
-        _contentAvailable: true,
-      };
-    });
-
-    const pushResult = await sendExpoPush(messages);
-
     const offerStats = await createDriverOrderOffers({
       supabase,
       order,
@@ -567,6 +537,41 @@ export async function POST(req: NextRequest) {
       })),
       wave: requestedWave,
     });
+
+    const payout =
+      toNumber(order.driver_delivery_payout) ??
+      toNumber(order.delivery_fee) ??
+      toNumber(order.total);
+
+    const messages = uniqueTokens.flatMap((tokenRow: any) => {
+      const offerId = offerStats.offerIdsByDriver[String(tokenRow.user_id)] ?? null;
+      if (!offerId) return [];
+      const locale = normalizeAppLocale(tokenRow.locale);
+      const copy = payout
+        ? pushText("driver_offer_payout", locale, { payout: payout.toFixed(2) })
+        : pushText("driver_offer", locale);
+      return [{
+        to: tokenRow.expo_push_token,
+        sound: resolvePushSoundForPlatform("driver_offer", tokenRow.platform),
+        channelId: DRIVER_MISSION_PUSH_CHANNEL,
+        title: copy.title,
+        body: copy.body,
+        data: {
+          type: "driver_offer",
+          orderId: order.id,
+          order_id: order.id,
+          offerId,
+          offer_id: offerId,
+          wave: requestedWave,
+          screen: "DriverOrderDetails",
+        },
+        priority: "high",
+        // Wake suspended iOS apps so the Driver mission alert service can ring.
+        _contentAvailable: true,
+      }];
+    });
+
+    const pushResult = await sendExpoPush(messages);
 
     const notifiedDriverIds = Array.from(
       new Set(uniqueTokens.map((t: any) => String(t.user_id)).filter(Boolean))

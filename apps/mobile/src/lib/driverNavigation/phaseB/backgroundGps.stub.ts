@@ -10,9 +10,10 @@ export type BackgroundGpsSession = {
  * Not activated: call sites should no-op when disabled.
  */
 export async function startBackgroundNavigationGps(
-  _session: BackgroundGpsSession,
+  session: BackgroundGpsSession,
 ): Promise<void> {
   if (!DRIVER_NAV_PHASE_B.backgroundGps.enabled) return;
+  if (!session.driverId || !session.orderId) return;
   // Future: expo-task-manager + startLocationUpdatesAsync
 }
 

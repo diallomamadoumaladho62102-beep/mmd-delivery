@@ -132,7 +132,10 @@ export async function searchPublicMmdHelp(params: {
 
   hits.sort((a, b) => b.score - a.score);
   return {
-    hits: hits.slice(0, limit).map(({ score: _score, ...hit }) => hit),
+    hits: hits.slice(0, limit).map(({ score, ...hit }) => {
+      void score;
+      return hit;
+    }),
     localeUsed: locale,
     invented: false,
   };

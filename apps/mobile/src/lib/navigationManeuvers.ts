@@ -11,7 +11,6 @@ import type { NavigationRouteStep } from "./navigationService";
 import type { NavigationLane } from "./navigationLanes";
 import {
   formatManeuverDistanceLabel,
-  resolveNavigationLocale,
   type NavigationLocale,
 } from "./navigationLocale";
 import { hashNavigationSignature } from "./navigationRouteVersion";
@@ -208,43 +207,178 @@ export function selectActiveManeuver(
   return { active, distanceMeters, secondary, secondaryDistanceMeters };
 }
 
-const VERB: Record<
-  ManeuverKind,
-  Record<NavigationLocale, string>
-> = {
-  "turn-left": { en: "turn left", fr: "tournez à gauche", es: "gire a la izquierda" },
-  "turn-right": { en: "turn right", fr: "tournez à droite", es: "gire a la derecha" },
-  "slight-left": { en: "keep left", fr: "serrez à gauche", es: "manténgase a la izquierda" },
-  "slight-right": { en: "keep right", fr: "serrez à droite", es: "manténgase a la derecha" },
-  "sharp-left": { en: "turn sharp left", fr: "tournez fortement à gauche", es: "gire cerrado a la izquierda" },
-  "sharp-right": { en: "turn sharp right", fr: "tournez fortement à droite", es: "gire cerrado a la derecha" },
-  straight: { en: "continue straight", fr: "continuez tout droit", es: "continúe recto" },
-  uturn: { en: "make a U-turn", fr: "faites demi-tour", es: "haga un cambio de sentido" },
-  roundabout: { en: "take the roundabout", fr: "prenez le rond-point", es: "tome la rotonda" },
-  "fork-left": { en: "keep left at the fork", fr: "au embranchement, restez à gauche", es: "en la bifurcación, manténgase a la izquierda" },
-  "fork-right": { en: "keep right at the fork", fr: "au embranchement, restez à droite", es: "en la bifurcación, manténgase a la derecha" },
-  merge: { en: "merge", fr: "insérez-vous", es: "incorpórese" },
-  exit: { en: "take the exit", fr: "prenez la sortie", es: "tome la salida" },
-  depart: { en: "start", fr: "démarrez", es: "comience" },
-  arrive: { en: "arrive at your destination", fr: "vous êtes arrivé à destination", es: "ha llegado a su destino" },
-  continue: { en: "continue", fr: "continuez", es: "continúe" },
+export type VoicePhraseLocale = NavigationLocale | "ar" | "zh" | "ff";
+
+/** Spoken maneuver language. Does not map Fulfulde to French or Arabic/Chinese to English. */
+export function resolveVoicePhraseLocale(appLocale: string): VoicePhraseLocale {
+  const code = appLocale.toLowerCase().split("-")[0] ?? "en";
+  if (code === "fr" || code === "es" || code === "ar" || code === "zh" || code === "ff") {
+    return code;
+  }
+  return "en";
+}
+
+const VERB: Record<ManeuverKind, Record<VoicePhraseLocale, string>> = {
+  "turn-left": {
+    en: "turn left",
+    fr: "tournez à gauche",
+    es: "gire a la izquierda",
+    ar: "انعطف يساراً",
+    zh: "左转",
+    ff: "yah to nano",
+  },
+  "turn-right": {
+    en: "turn right",
+    fr: "tournez à droite",
+    es: "gire a la derecha",
+    ar: "انعطف يميناً",
+    zh: "右转",
+    ff: "yah to ñaamo",
+  },
+  "slight-left": {
+    en: "keep left",
+    fr: "serrez à gauche",
+    es: "manténgase a la izquierda",
+    ar: "ابقَ يساراً",
+    zh: "靠左",
+    ff: "jokku nano",
+  },
+  "slight-right": {
+    en: "keep right",
+    fr: "serrez à droite",
+    es: "manténgase a la derecha",
+    ar: "ابقَ يميناً",
+    zh: "靠右",
+    ff: "jokku ñaamo",
+  },
+  "sharp-left": {
+    en: "turn sharp left",
+    fr: "tournez fortement à gauche",
+    es: "gire cerrado a la izquierda",
+    ar: "انعطف بشدة يساراً",
+    zh: "急左转",
+    ff: "yah nano no feewi",
+  },
+  "sharp-right": {
+    en: "turn sharp right",
+    fr: "tournez fortement à droite",
+    es: "gire cerrado a la derecha",
+    ar: "انعطف بشدة يميناً",
+    zh: "急右转",
+    ff: "yah ñaamo no feewi",
+  },
+  straight: {
+    en: "continue straight",
+    fr: "continuez tout droit",
+    es: "continúe recto",
+    ar: "تابع مستقيمًا",
+    zh: "直行",
+    ff: "jokku feewde",
+  },
+  uturn: {
+    en: "make a U-turn",
+    fr: "faites demi-tour",
+    es: "haga un cambio de sentido",
+    ar: "استدر للخلف",
+    zh: "掉头",
+    ff: "yiltu",
+  },
+  roundabout: {
+    en: "take the roundabout",
+    fr: "prenez le rond-point",
+    es: "tome la rotonda",
+    ar: "ادخل الدوار",
+    zh: "进入环岛",
+    ff: "naat e mbeltirde",
+  },
+  "fork-left": {
+    en: "keep left at the fork",
+    fr: "au embranchement, restez à gauche",
+    es: "en la bifurcación, manténgase a la izquierda",
+    ar: "عند التفرع ابقَ يساراً",
+    zh: "岔路靠左",
+    ff: "to ceerndal, jokku nano",
+  },
+  "fork-right": {
+    en: "keep right at the fork",
+    fr: "au embranchement, restez à droite",
+    es: "en la bifurcación, manténgase a la derecha",
+    ar: "عند التفرع ابقَ يميناً",
+    zh: "岔路靠右",
+    ff: "to ceerndal, jokku ñaamo",
+  },
+  merge: {
+    en: "merge",
+    fr: "insérez-vous",
+    es: "incorpórese",
+    ar: "اندمج",
+    zh: "并道",
+    ff: "naat e laawol",
+  },
+  exit: {
+    en: "take the exit",
+    fr: "prenez la sortie",
+    es: "tome la salida",
+    ar: "خذ المخرج",
+    zh: "驶出",
+    ff: "yaltu",
+  },
+  depart: {
+    en: "start",
+    fr: "démarrez",
+    es: "comience",
+    ar: "ابدأ",
+    zh: "出发",
+    ff: "fuɗɗo",
+  },
+  arrive: {
+    en: "arrive at your destination",
+    fr: "vous êtes arrivé à destination",
+    es: "ha llegado a su destino",
+    ar: "وصلت إلى وجهتك",
+    zh: "到达目的地",
+    ff: "a yottii gartirde maa",
+  },
+  continue: {
+    en: "continue",
+    fr: "continuez",
+    es: "continúe",
+    ar: "تابع",
+    zh: "继续",
+    ff: "jokku",
+  },
 };
 
-const ON_STREET: Record<NavigationLocale, string> = {
+const ON_STREET: Record<VoicePhraseLocale, string> = {
   en: "onto",
   fr: "sur",
   es: "por",
+  ar: "إلى",
+  zh: "进入",
+  ff: "e",
+};
+
+const NOW_PREFIX: Record<VoicePhraseLocale, string> = {
+  en: "Now, ",
+  fr: "Maintenant, ",
+  es: "Ahora, ",
+  ar: "الآن، ",
+  zh: "现在，",
+  ff: "jooni, ",
 };
 
 /** Localized distance prefix ("In 500 m", "Dans 500 mètres"). */
 export function formatVoiceDistancePrefix(
   meters: number,
-  locale: NavigationLocale,
+  locale: VoicePhraseLocale,
 ): string {
   const rounded = Math.max(0, Math.round(meters / 10) * 10);
   if (locale === "fr") return `Dans ${rounded} mètres`;
   if (locale === "es") return `En ${rounded} metros`;
-  return formatManeuverDistanceLabel(meters, locale);
+  if (locale === "ar") return `بعد ${rounded} متر`;
+  if (locale === "zh") return `${rounded}米后`;
+  if (locale === "ff") return `nder ${rounded} meeter`;
+  return formatManeuverDistanceLabel(meters, "en");
 }
 
 /**
@@ -254,17 +388,16 @@ export function formatVoiceDistancePrefix(
 export function formatManeuverVoice(params: {
   maneuver: Pick<RouteManeuver, "kind" | "streetName">;
   distanceMeters: number | null;
-  locale: string | NavigationLocale;
+  locale: string | VoicePhraseLocale;
 }): string {
-  const locale =
-    typeof params.locale === "string"
-      ? resolveNavigationLocale(params.locale)
-      : params.locale;
+  const locale = resolveVoicePhraseLocale(String(params.locale));
   const { maneuver } = params;
   const verb = VERB[maneuver.kind][locale];
 
   if (maneuver.kind === "arrive") {
-    return VERB.arrive[locale].replace(/^./, (c) => c.toUpperCase());
+    const phrase = VERB.arrive[locale];
+    if (locale === "ar" || locale === "zh" || locale === "ff") return phrase;
+    return phrase.replace(/^./, (c) => c.toUpperCase());
   }
 
   const withStreet =
@@ -277,8 +410,7 @@ export function formatManeuverVoice(params: {
       : verb;
 
   if (params.distanceMeters == null) {
-    const now = locale === "fr" ? "Maintenant, " : locale === "es" ? "Ahora, " : "Now, ";
-    return `${now}${withStreet}`.replace(/\s+/g, " ").trim();
+    return `${NOW_PREFIX[locale]}${withStreet}`.replace(/\s+/g, " ").trim();
   }
 
   const prefix = formatVoiceDistancePrefix(params.distanceMeters, locale);

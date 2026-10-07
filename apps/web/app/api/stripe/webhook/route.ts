@@ -596,39 +596,81 @@ async function requireDeliveryRequestWalletBridge(params: {
   return { ok: true };
 }
 
-async function enqueueDeliveryPaidFailOpen(params: {
+async function enqueueDeliveryPaidOrFail(params: {
   supabaseAdmin: SupabaseClient;
   deliveryRequest: DeliveryRequestRow;
   deliveryRequestId: string;
   paymentIntentId: string | null;
-}): Promise<void> {
-  try {
-    const { enqueuePaymentSucceeded, processFinancePendingBatch } = await import(
-      "@/lib/finance/financeEvents"
-    );
-    await enqueuePaymentSucceeded({
-      supabaseAdmin: params.supabaseAdmin,
-      entityType: "delivery_request",
-      entityId: params.deliveryRequestId,
-      vertical: "delivery",
-      amountCents: Number(
-        params.deliveryRequest.net_charge_cents ??
-          params.deliveryRequest.total_cents ??
-          0,
-      ),
-      currency: params.deliveryRequest.currency ?? "USD",
-      countryCode: resolveDeliveryRequestPlatformCountry(params.deliveryRequest),
-      paymentIntentId: params.paymentIntentId ?? undefined,
-    });
-    // Food settlement processes the batch inline; Delivery must too —
-    // /api/cron/process-finance is not scheduled in vercel.json.
-    await processFinancePendingBatch(params.supabaseAdmin, 50);
-  } catch (e) {
-    console.warn(
-      "[finance] delivery_paid enqueue fail-open",
-      e instanceof Error ? e.message : e,
-    );
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { enqueuePaymentSucceededAndProcessBatch } = await import(
+    "@/lib/finance/financeEvents"
+  );
+  const { resolveDeliveryRequestAmountCents } = await import(
+    "@/lib/deliveryRequestAmountCents"
+  );
+  return enqueuePaymentSucceededAndProcessBatch(params.supabaseAdmin, {
+    entityType: "delivery_request",
+    entityId: params.deliveryRequestId,
+    vertical: "delivery",
+    amountCents: resolveDeliveryRequestAmountCents(params.deliveryRequest) ?? 0,
+    currency: params.deliveryRequest.currency ?? "USD",
+    countryCode: resolveDeliveryRequestPlatformCountry(params.deliveryRequest),
+    paymentIntentId: params.paymentIntentId ?? undefined,
+  });
+}
+
+async function enqueueFoodPaidOrFail(params: {
+  supabaseAdmin: SupabaseClient;
+  order: Parameters<typeof resolveOrderAmountCents>[0] &
+    Parameters<typeof resolveOrderPlatformCountry>[0] & {
+      kind?: unknown;
+    };
+  orderId: string;
+  paymentIntentId: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (String(params.order.kind ?? "").toLowerCase() !== "food") {
+    return { ok: true };
   }
+  const { enqueuePaymentSucceededAndProcessBatch } = await import(
+    "@/lib/finance/financeEvents"
+  );
+  return enqueuePaymentSucceededAndProcessBatch(params.supabaseAdmin, {
+    entityType: "order",
+    entityId: params.orderId,
+    vertical: "food",
+    amountCents: resolveOrderAmountCents(params.order) ?? 0,
+    currency: params.order.currency ?? "USD",
+    countryCode: resolveOrderPlatformCountry(params.order),
+    paymentIntentId: params.paymentIntentId ?? undefined,
+  });
+}
+
+async function dispatchPaidDeliveryOrFail(params: {
+  supabaseAdmin: SupabaseClient;
+  deliveryRequestId: string;
+}) {
+  const result = await triggerDeliveryRequestDispatch({
+    supabase: params.supabaseAdmin,
+    deliveryRequestId: params.deliveryRequestId,
+    wave: 1,
+  });
+  if (result.ok) return null;
+  console.error("[webhook] delivery dispatch failed", {
+    delivery_request_id: params.deliveryRequestId,
+    error: result.error ?? result.message ?? "dispatch_failed",
+    retry_scheduled: result.retryScheduled,
+  });
+  return json(
+    {
+      received: true,
+      ok: false,
+      error: "dispatch_trigger_failed",
+      details: result.error ?? result.message ?? "dispatch_failed",
+      retry_scheduled: result.retryScheduled,
+      delivery_request_id: params.deliveryRequestId,
+    },
+    500,
+  );
 }
 
 function walletBridgeFailureResponse(
@@ -1893,6 +1935,24 @@ async function handleCheckoutCompletedLikeEvent(
       if (walletGate.ok === false) {
         return walletBridgeFailureResponse({ order_id: orderId }, walletGate.error);
       }
+      const foodReplay = await enqueueFoodPaidOrFail({
+        supabaseAdmin,
+        order,
+        orderId,
+        paymentIntentId,
+      });
+      if (foodReplay.ok === false) {
+        return json(
+          {
+            received: true,
+            ok: false,
+            error: "finance_enqueue_failed",
+            details: foodReplay.error,
+            order_id: orderId,
+          },
+          500,
+        );
+      }
       return json({
         received: true,
         ok: true,
@@ -2023,24 +2083,31 @@ async function handleCheckoutCompletedLikeEvent(
         kind: paidOrder.kind,
         dispatchOrigin: getDispatchSiteOrigin(),
       });
-      try {
-        const { enqueuePaymentSucceeded } = await import(
-          "@/lib/finance/financeEvents"
-        );
-        await enqueuePaymentSucceeded({
-          supabaseAdmin,
+      const { enqueuePaymentSucceededAndProcessBatch } = await import(
+        "@/lib/finance/financeEvents"
+      );
+      const foodFinance = await enqueuePaymentSucceededAndProcessBatch(
+        supabaseAdmin,
+        {
           entityType: "order",
           entityId: orderId,
           vertical: "food",
-          amountCents: Number(paidOrder.total_cents ?? 0),
+          amountCents: resolveOrderAmountCents(paidOrder) ?? 0,
           currency: paidOrder.currency ?? "USD",
           countryCode: resolveOrderPlatformCountry(paidOrder),
           paymentIntentId,
-        });
-      } catch (e) {
-        console.warn(
-          "[finance] food_paid enqueue fail-open",
-          e instanceof Error ? e.message : e
+        },
+      );
+      if (foodFinance.ok === false) {
+        return json(
+          {
+            received: true,
+            ok: false,
+            error: "finance_enqueue_failed",
+            details: foodFinance.error,
+            order_id: orderId,
+          },
+          500,
         );
       }
     }
@@ -2203,6 +2270,29 @@ async function handleCheckoutCompletedLikeEvent(
         walletGate.error,
       );
     }
+    const deliveryReplay = await enqueueDeliveryPaidOrFail({
+      supabaseAdmin,
+      deliveryRequest,
+      deliveryRequestId,
+      paymentIntentId,
+    });
+    if (deliveryReplay.ok === false) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "finance_enqueue_failed",
+          details: deliveryReplay.error,
+          delivery_request_id: deliveryRequestId,
+        },
+        500,
+      );
+    }
+    const dispatchFailure = await dispatchPaidDeliveryOrFail({
+      supabaseAdmin,
+      deliveryRequestId,
+    });
+    if (dispatchFailure) return dispatchFailure;
     return json({
       received: true,
       ok: true,
@@ -2323,25 +2413,30 @@ console.log("✅ WEBHOOK PI: order released to drivers", {
 
 await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
 
-  await enqueueDeliveryPaidFailOpen({
+  const deliveryFinance = await enqueueDeliveryPaidOrFail({
     supabaseAdmin,
     deliveryRequest,
     deliveryRequestId,
     paymentIntentId,
   });
-
-  try {
-    await triggerDeliveryRequestDispatch({
-      supabase: supabaseAdmin,
-      deliveryRequestId,
-      wave: 1,
-    });
-  } catch (e) {
-    console.log(
-      "⚠️ WEBHOOK: delivery request dispatch trigger failed",
-      e instanceof Error ? e.message : String(e),
+  if (deliveryFinance.ok === false) {
+    return json(
+      {
+        received: true,
+        ok: false,
+        error: "finance_enqueue_failed",
+        details: deliveryFinance.error,
+        delivery_request_id: deliveryRequestId,
+      },
+      500,
     );
   }
+
+  const dispatchFailure = await dispatchPaidDeliveryOrFail({
+    supabaseAdmin,
+    deliveryRequestId,
+  });
+  if (dispatchFailure) return dispatchFailure;
 
 return json({
   received: true,
@@ -2795,6 +2890,24 @@ async function handlePaymentIntentSucceeded(
       if (walletGate.ok === false) {
         return walletBridgeFailureResponse({ order_id: orderId }, walletGate.error);
       }
+      const foodReplay = await enqueueFoodPaidOrFail({
+        supabaseAdmin,
+        order,
+        orderId,
+        paymentIntentId,
+      });
+      if (foodReplay.ok === false) {
+        return json(
+          {
+            received: true,
+            ok: false,
+            error: "finance_enqueue_failed",
+            details: foodReplay.error,
+            order_id: orderId,
+          },
+          500,
+        );
+      }
 
       return json({
         received: true,
@@ -2932,24 +3045,31 @@ async function handlePaymentIntentSucceeded(
         kind: paidOrderPi.kind,
         dispatchOrigin: getDispatchSiteOrigin(),
       });
-      try {
-        const { enqueuePaymentSucceeded } = await import(
-          "@/lib/finance/financeEvents"
-        );
-        await enqueuePaymentSucceeded({
-          supabaseAdmin,
+      const { enqueuePaymentSucceededAndProcessBatch } = await import(
+        "@/lib/finance/financeEvents"
+      );
+      const foodFinance = await enqueuePaymentSucceededAndProcessBatch(
+        supabaseAdmin,
+        {
           entityType: "order",
           entityId: orderId,
           vertical: "food",
-          amountCents: Number(paidOrderPi.total_cents ?? 0),
+          amountCents: resolveOrderAmountCents(paidOrderPi) ?? 0,
           currency: paidOrderPi.currency ?? "USD",
           countryCode: resolveOrderPlatformCountry(paidOrderPi),
           paymentIntentId,
-        });
-      } catch (e) {
-        console.warn(
-          "[finance] food_paid enqueue fail-open",
-          e instanceof Error ? e.message : e
+        },
+      );
+      if (foodFinance.ok === false) {
+        return json(
+          {
+            received: true,
+            ok: false,
+            error: "finance_enqueue_failed",
+            details: foodFinance.error,
+            order_id: orderId,
+          },
+          500,
         );
       }
     }
@@ -3124,6 +3244,30 @@ async function handlePaymentIntentSucceeded(
         walletGate.error,
       );
     }
+    const deliveryReplay = await enqueueDeliveryPaidOrFail({
+      supabaseAdmin,
+      deliveryRequest,
+      deliveryRequestId,
+      paymentIntentId,
+    });
+    if (deliveryReplay.ok === false) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "finance_enqueue_failed",
+          details: deliveryReplay.error,
+          delivery_request_id: deliveryRequestId,
+        },
+        500,
+      );
+    }
+
+    const dispatchFailure = await dispatchPaidDeliveryOrFail({
+      supabaseAdmin,
+      deliveryRequestId,
+    });
+    if (dispatchFailure) return dispatchFailure;
 
     return json({
       received: true,
@@ -3252,25 +3396,30 @@ await persistStripeFeeSnapshot({
 
 await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
 
-await enqueueDeliveryPaidFailOpen({
+const deliveryFinance = await enqueueDeliveryPaidOrFail({
   supabaseAdmin,
   deliveryRequest,
   deliveryRequestId,
   paymentIntentId,
 });
+if (deliveryFinance.ok === false) {
+  return json(
+    {
+      received: true,
+      ok: false,
+      error: "finance_enqueue_failed",
+      details: deliveryFinance.error,
+      delivery_request_id: deliveryRequestId,
+    },
+    500,
+  );
+}
 
-  try {
-    await triggerDeliveryRequestDispatch({
-      supabase: supabaseAdmin,
-      deliveryRequestId,
-      wave: 1,
-    });
-  } catch (e) {
-    console.log(
-      "⚠️ WEBHOOK PI: delivery request dispatch trigger failed",
-      e instanceof Error ? e.message : String(e),
-    );
-  }
+  const dispatchFailure = await dispatchPaidDeliveryOrFail({
+    supabaseAdmin,
+    deliveryRequestId,
+  });
+  if (dispatchFailure) return dispatchFailure;
 
 return json({
   received: true,

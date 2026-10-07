@@ -79,7 +79,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Strip any client_secret — mobile may only receive sessionId, url, ephemeralKeySecret.
-    const { clientSecret: _omitSecret, ...safe } = result;
+    const safe = { ...result };
+    delete safe.clientSecret;
     return json(safe);
   } catch (error) {
     logTechnicalError("identity.sessions.create", error, {

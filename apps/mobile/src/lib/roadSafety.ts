@@ -11,7 +11,10 @@
  */
 import type { CoordinatePoint } from "./coordinates";
 import { distanceMeters } from "./coordinates";
-import { resolveNavigationLocale, type NavigationLocale } from "./navigationLocale";
+import {
+  resolveVoicePhraseLocale,
+  type VoicePhraseLocale,
+} from "./navigationManeuvers";
 import { VoicePriority, type VoiceAnnouncement } from "./navigationVoiceTriggers";
 
 export type RoadSafetyEventType =
@@ -262,17 +265,62 @@ function resolveBands(thresholds?: { far?: number; near?: number }) {
 function safetyLabel(
   event: ProjectedSafetyEvent,
   distanceMetersValue: number,
-  locale: NavigationLocale,
+  locale: VoicePhraseLocale,
 ): string {
   const d = Math.max(0, Math.round(distanceMetersValue / 10) * 10);
   const prefix =
-    locale === "fr" ? `Dans ${d} mètres, ` : locale === "es" ? `En ${d} metros, ` : `In ${d} meters, `;
-  const name: Record<RoadSafetyEventType, Record<NavigationLocale, string>> = {
-    speed_camera: { en: "speed camera", fr: "radar de vitesse", es: "radar de velocidad" },
-    red_light_camera: { en: "red light camera", fr: "radar de feu rouge", es: "cámara de semáforo" },
-    speed_limit: { en: "speed limit change", fr: "changement de limitation", es: "cambio de límite" },
-    stop_sign: { en: "stop sign", fr: "panneau stop", es: "señal de alto" },
-    school_zone: { en: "school zone", fr: "zone scolaire", es: "zona escolar" },
+    locale === "fr"
+      ? `Dans ${d} mètres, `
+      : locale === "es"
+        ? `En ${d} metros, `
+        : locale === "ar"
+          ? `بعد ${d} متر، `
+          : locale === "zh"
+            ? `${d}米后，`
+            : locale === "ff"
+              ? `nder ${d} meeter, `
+              : `In ${d} meters, `;
+  const name: Record<RoadSafetyEventType, Record<VoicePhraseLocale, string>> = {
+    speed_camera: {
+      en: "speed camera",
+      fr: "radar de vitesse",
+      es: "radar de velocidad",
+      ar: "رادار سرعة",
+      zh: "测速摄像头",
+      ff: "kamera yaawre",
+    },
+    red_light_camera: {
+      en: "red light camera",
+      fr: "radar de feu rouge",
+      es: "cámara de semáforo",
+      ar: "كاميرا الإشارة الحمراء",
+      zh: "闯红灯摄像头",
+      ff: "kamera jalbiinde boɗeere",
+    },
+    speed_limit: {
+      en: "speed limit change",
+      fr: "changement de limitation",
+      es: "cambio de límite",
+      ar: "تغيير حد السرعة",
+      zh: "限速变化",
+      ff: "waylo keerol yaawre",
+    },
+    stop_sign: {
+      en: "stop sign",
+      fr: "panneau stop",
+      es: "señal de alto",
+      ar: "علامة قف",
+      zh: "停车标志",
+      ff: "maandee darorde",
+    },
+    school_zone: {
+      en: "school zone",
+      fr: "zone scolaire",
+      es: "zona escolar",
+      ar: "منطقة مدرسية",
+      zh: "学校区域",
+      ff: "diiwaan janngirde",
+    },
   };
   const suffix =
     event.type === "school_zone" && distanceMetersValue <= SAFETY_BANDS.nearBandTop
@@ -280,7 +328,13 @@ function safetyLabel(
         ? ", ralentissez"
         : locale === "es"
           ? ", reduzca la velocidad"
-          : ", slow down"
+          : locale === "ar"
+            ? "، خفف السرعة"
+            : locale === "zh"
+              ? "，请减速"
+              : locale === "ff"
+                ? ", yaaɗu seeɗa"
+                : ", slow down"
       : "";
   return `${prefix}${name[event.type][locale]}${suffix}`;
 }
@@ -294,13 +348,10 @@ export function computeSafetyAnnouncements(params: {
   state: SafetyVoiceState;
   routeVersion: string;
   events: ProjectedSafetyEvent[];
-  locale: string | NavigationLocale;
+  locale: string | VoicePhraseLocale;
   thresholds?: { far?: number; near?: number };
 }): { state: SafetyVoiceState; announcement: VoiceAnnouncement | null } {
-  const locale =
-    typeof params.locale === "string"
-      ? resolveNavigationLocale(params.locale)
-      : params.locale;
+  const locale = resolveVoicePhraseLocale(String(params.locale));
   const bands = resolveBands(params.thresholds);
 
   let state = params.state;

@@ -14,8 +14,9 @@ export type DemandZoneHeat = {
  * Not activated.
  */
 export async function fetchDemandZoneHeatmaps(
-  _center: CoordinatePoint,
+  center: CoordinatePoint,
 ): Promise<DemandZoneHeat[]> {
   if (!DRIVER_NAV_PHASE_B.zoneHeatmaps.enabled) return [];
+  if (!Number.isFinite(center.latitude) || !Number.isFinite(center.longitude)) return [];
   return [];
 }

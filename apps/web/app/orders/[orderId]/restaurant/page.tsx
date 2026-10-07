@@ -108,7 +108,6 @@ export default function RestaurantOrderPage() {
         restaurant_name,
         pickup_address,
         dropoff_address,
-        pickup_code,
         leave_at_door,
         items_json,
         client_user_id,
@@ -135,7 +134,13 @@ export default function RestaurantOrderPage() {
       return;
     }
 
-    const typedOrder = data as OrderRow;
+    const typedOrder = data as unknown as OrderRow;
+    const { data: codeRow } = await supabase.rpc("get_authorized_verification_codes", {
+      p_entity_type: "order",
+      p_entity_id: orderId,
+    });
+    const codes = (codeRow ?? {}) as { pickup_code?: string | null };
+    typedOrder.pickup_code = codes.pickup_code ?? null;
     setOrder(typedOrder);
 
     const clientId = String(typedOrder.client_user_id ?? typedOrder.client_id ?? "").trim();

@@ -104,7 +104,7 @@ export function taxiDriverEtaDedupKey(
   return `taxi_driver_eta:${String(taxiRideId).trim()}:${bucket}`;
 }
 
-async function wasTaxiPushAlreadySent(
+export async function wasTaxiPushAlreadySent(
   supabaseAdmin: SupabaseClient,
   dedupKey: string,
 ): Promise<boolean> {
@@ -159,6 +159,9 @@ export async function notifyClientOrderCreated(params: {
 
   if (tokens.length === 0) return;
 
+  const dedupKey = `order_paid:${params.orderId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
+
   const data = {
     type: "order_paid",
     order_id: params.orderId,
@@ -178,6 +181,15 @@ export async function notifyClientOrderCreated(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientOrderAccepted(params: {
@@ -189,6 +201,9 @@ export async function notifyClientOrderAccepted(params: {
   const userIds = dedupeStrings(params.userIds);
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
+
+  const dedupKey = `order_accepted:${params.orderId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
 
   const data = {
     type: "order_accepted",
@@ -211,6 +226,15 @@ export async function notifyClientOrderAccepted(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientDeliveryRequestPaid(params: {
@@ -222,6 +246,9 @@ export async function notifyClientDeliveryRequestPaid(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
 
   if (tokens.length === 0) return;
+
+  const dedupKey = `delivery_request_paid:${params.deliveryRequestId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
 
   const data = {
     type: "delivery_request_paid",
@@ -241,6 +268,15 @@ export async function notifyClientDeliveryRequestPaid(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientOrderCancelled(params: {
@@ -253,6 +289,9 @@ export async function notifyClientOrderCancelled(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
 
   if (tokens.length === 0) return;
+
+  const dedupKey = `order_cancelled:${params.orderId}:${params.refund}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
 
   const data = {
     type: "order_cancelled",
@@ -278,10 +317,92 @@ export async function notifyClientOrderCancelled(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export function deliveryRequestPickupDedupKey(deliveryRequestId: string): string {
   return `delivery_request_pickup:${String(deliveryRequestId).trim()}`;
+}
+
+export function deliveryDriverArrivedPickupDedupKey(
+  entityType: string,
+  entityId: string,
+): string {
+  return `delivery_driver_arrived_pickup:${String(entityType).trim()}:${String(entityId).trim()}`;
+}
+
+export function deliveryPickedUpDedupKey(
+  entityType: string,
+  entityId: string,
+): string {
+  return `delivery_picked_up:${String(entityType).trim()}:${String(entityId).trim()}`;
+}
+
+export async function notifyClientDriverArrivedPickup(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  entityType: "order" | "delivery_request";
+  entityId: string;
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const dedupKey = deliveryDriverArrivedPickupDedupKey(
+    params.entityType,
+    params.entityId,
+  );
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) {
+    return;
+  }
+
+  const data = {
+    type: "driver_arrived_pickup",
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+    ...(params.entityType === "delivery_request"
+      ? {
+          delivery_request_id: params.entityId,
+          deliveryRequestId: params.entityId,
+          source_table: "delivery_requests",
+        }
+      : {
+          order_id: params.entityId,
+          orderId: params.entityId,
+          source_table: "orders",
+        }),
+  };
+
+  const messages = tokens.map((target) => {
+    const copy = pushText("driver_arrived_pickup", target.locale);
+    return {
+      to: target.token,
+      sound: resolvePushSound("driver_arrived"),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high",
+    };
+  });
+
+  await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: String(messages[0]?.title ?? ""),
+    body: String(messages[0]?.body ?? ""),
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientDeliveryRequestPickedUp(params: {
@@ -343,6 +464,9 @@ export async function notifyClientDeliveryRequestCancelled(params: {
 
   if (tokens.length === 0) return;
 
+  const dedupKey = `delivery_request_cancelled:${params.deliveryRequestId}:${params.refund}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
+
   const data = {
     type: "delivery_request_cancelled",
     delivery_request_id: params.deliveryRequestId,
@@ -365,6 +489,15 @@ export async function notifyClientDeliveryRequestCancelled(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientDriverArrived(params: {
@@ -395,7 +528,17 @@ export async function notifyClientDriverArrived(params: {
           taxi_ride_id: params.entityId,
           taxiRideId: params.entityId,
         }
-      : {}),
+      : params.entityType === "delivery_request"
+        ? {
+            delivery_request_id: params.entityId,
+            deliveryRequestId: params.entityId,
+            source_table: "delivery_requests",
+          }
+        : {
+            order_id: params.entityId,
+            orderId: params.entityId,
+            source_table: "orders",
+          }),
   };
 
   const messages = tokens.map((target) => {
@@ -525,10 +668,22 @@ export async function notifyClientWaitFeeStarted(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
 
+  const dedupKey = `wait_fee_started:${params.entityType}:${params.entityId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
+
+  const entityType = String(params.entityType ?? "").toLowerCase();
   const data = {
     type: "wait_fee_started",
     entity_type: params.entityType,
     entity_id: params.entityId,
+    ...(entityType.includes("taxi")
+      ? { taxi_ride_id: params.entityId, taxiRideId: params.entityId }
+      : entityType.includes("delivery")
+        ? {
+            delivery_request_id: params.entityId,
+            deliveryRequestId: params.entityId,
+          }
+        : { order_id: params.entityId, orderId: params.entityId }),
   };
 
   const messages = tokens.map((target) => {
@@ -544,6 +699,15 @@ export async function notifyClientWaitFeeStarted(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientWaitFinalWarning(params: {
@@ -557,10 +721,22 @@ export async function notifyClientWaitFinalWarning(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
 
+  const dedupKey = `wait_final_warning:${params.entityType}:${params.entityId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
+
+  const entityType = String(params.entityType ?? "").toLowerCase();
   const data = {
     type: "wait_final_warning",
     entity_type: params.entityType,
     entity_id: params.entityId,
+    ...(entityType.includes("taxi")
+      ? { taxi_ride_id: params.entityId, taxiRideId: params.entityId }
+      : entityType.includes("delivery")
+        ? {
+            delivery_request_id: params.entityId,
+            deliveryRequestId: params.entityId,
+          }
+        : { order_id: params.entityId, orderId: params.entityId }),
   };
 
   const messages = tokens.map((target) => {
@@ -581,6 +757,15 @@ export async function notifyClientWaitFinalWarning(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientTaxiRideAccepted(params: {
@@ -686,6 +871,9 @@ export async function notifyClientTaxiRideCompleted(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
 
+  const dedupKey = `taxi_ride_completed:${params.taxiRideId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
+
   const data = {
     type: "taxi_ride_completed",
     taxi_ride_id: params.taxiRideId,
@@ -696,7 +884,7 @@ export async function notifyClientTaxiRideCompleted(params: {
     const copy = pushText("taxi_completed", target.locale);
     return {
       to: target.token,
-      sound: resolvePushSound("delivery_completed"),
+      sound: resolvePushSound("taxi_ride_completed"),
       title: copy.title,
       body: copy.body,
       data,
@@ -705,6 +893,15 @@ export async function notifyClientTaxiRideCompleted(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }
 
 export async function notifyClientTaxiRideCancelled(params: {
@@ -716,6 +913,9 @@ export async function notifyClientTaxiRideCancelled(params: {
   const userIds = dedupeStrings(params.userIds);
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
+
+  const dedupKey = `taxi_ride_cancelled:${params.taxiRideId}:${params.refund}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
 
   const data = {
     type: "taxi_ride_cancelled",
@@ -740,4 +940,13 @@ export async function notifyClientTaxiRideCancelled(params: {
   });
 
   await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
 }

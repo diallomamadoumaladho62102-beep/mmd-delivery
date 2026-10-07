@@ -68,6 +68,7 @@ export function resolvePushSound(dataType?: string | null): string {
       return MMD_PUSH_SOUNDS.warning;
 
     case "driver_arrived":
+    case "driver_arrived_pickup":
       return MMD_PUSH_SOUNDS.driverArrived;
 
     case "order_accepted":
@@ -77,6 +78,9 @@ export function resolvePushSound(dataType?: string | null): string {
     case "delivered":
     case "delivery_completed":
       return MMD_PUSH_SOUNDS.deliveryCompleted;
+
+    case "taxi_ride_completed":
+      return MMD_PUSH_SOUNDS.success;
 
     case "wait_fee_started":
     case "wait_final_warning":

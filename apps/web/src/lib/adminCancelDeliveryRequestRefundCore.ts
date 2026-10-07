@@ -107,6 +107,10 @@ export async function adminCancelDeliveryRequestRefundCore(params: {
           : "not_paid",
   };
 
+  if (stripeRefund?.id || alreadyRefunded) {
+    updatePayload.payment_status = "refunded";
+  }
+
   if (stripeRefund?.id) {
     updatePayload.stripe_refund_id = stripeRefund.id;
     updatePayload.stripe_refunded_at = nowIso;

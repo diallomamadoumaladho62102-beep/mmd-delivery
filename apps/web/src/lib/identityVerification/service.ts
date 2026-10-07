@@ -123,7 +123,8 @@ function toPublicStatus(
   }
 ): IdentityStatusResult {
   // Never expose internal metadata / admin ids / Connect internals to clients.
-  const { verification: _omit, ...publicFields } = result;
+  const publicFields = { ...result };
+  delete publicFields.verification;
   return {
     ...publicFields,
     verification: null,

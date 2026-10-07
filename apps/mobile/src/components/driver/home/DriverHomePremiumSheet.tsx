@@ -12,6 +12,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   MMD_BLUE,
   MMD_GOLD_CLASSIC,
@@ -108,7 +109,8 @@ type Props = {
   jobsLoading: boolean;
   jobsError: string | null;
   searchPulseStyle?: StyleProp<ViewStyle>;
-  radarPulseStyle?: StyleProp<ViewStyle>;
+  /** Clockwise radar: one full turn every 2s (driven by the parent animation). */
+  radarSpinStyle?: StyleProp<ViewStyle>;
   bottomPadding: number;
 };
 
@@ -123,64 +125,16 @@ function jobVisual(kind: PremiumJobKind): {
   return { icon: "cube", bg: "rgba(170,190,230,0.16)", fg: C.textMuted };
 }
 
-/** Mockup-style luminous multi-layer backdrop + full-width pulse wave. */
-function SmartDispatchBackdrop({ live }: { live: boolean }) {
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <View style={styles.smartBase} />
-      <View style={styles.smartGradientTop} />
-      <View style={styles.smartGradientBottom} />
-      <View style={[styles.smartGlowCyan, live ? styles.smartGlowLive : null]} />
-      <View style={[styles.smartGlowPurple, live ? styles.smartGlowLive : null]} />
-      <View style={styles.smartGlowBlueMid} />
-      <Image
-        source={require("../../../../assets/brand/smart-dispatch-wave.png")}
-        style={styles.smartWaveImage}
-        resizeMode="cover"
-      />
-      <Image
-        source={require("../../../../assets/brand/smart-dispatch-wave.png")}
-        style={styles.smartWaveImageSoft}
-        resizeMode="cover"
-      />
-      <View style={styles.smartWaveRibbonHost}>
-        {[
-          { x: 0.08, y: 22, c: "#67E8F9", s: "#22D3EE" },
-          { x: 0.2, y: 34, c: "#A5B4FC", s: "#818CF8" },
-          { x: 0.34, y: 14, c: "#C084FC", s: "#A855F7" },
-          { x: 0.48, y: 30, c: "#67E8F9", s: "#22D3EE" },
-          { x: 0.62, y: 18, c: "#E879F9", s: "#D946EF" },
-          { x: 0.76, y: 32, c: "#67E8F9", s: "#22D3EE" },
-          { x: 0.9, y: 16, c: "#C084FC", s: "#A855F7" },
-        ].map((n, i) => (
-          <View
-            key={`node-${i}`}
-            style={[
-              styles.smartWaveNode,
-              {
-                left: `${n.x * 100}%`,
-                bottom: n.y,
-                backgroundColor: n.c,
-                shadowColor: n.s,
-              },
-            ]}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
-
 export function DriverHomePremiumSheet({
   isOnline,
-  searchingSubtitle: _searchingSubtitle,
+  searchingSubtitle,
   smartDispatch: _smartDispatch,
-  zone,
+  zone: _zone,
   stats,
   earningsHidden,
   onToggleEarningsHidden,
   onOpenEarnings,
-  onViewHotspots,
+  onViewHotspots: _onViewHotspots,
   onViewAllJobs,
   onGoBusyArea,
   onGoOffline,
@@ -190,13 +144,13 @@ export function DriverHomePremiumSheet({
   jobs,
   jobsLoading,
   jobsError,
-  searchPulseStyle,
-  radarPulseStyle,
+  searchPulseStyle: _searchPulseStyle,
+  radarSpinStyle,
   bottomPadding,
 }: Props) {
   const { t } = useTranslation();
-  const progressPct = Math.round(Math.max(0, Math.min(1, stats.levelProgress)) * 100);
   const jobsTitle = t("driver.home.premium.activeJobs", { count: jobs.length });
+  const valueStyle = [styles.statValue, isOnline ? styles.statValueOnline : null];
 
   const summaryBlock = (
     <View style={styles.summaryBlock}>
@@ -210,46 +164,31 @@ export function DriverHomePremiumSheet({
 
       <View style={styles.summaryStats}>
         <View style={styles.statCol}>
-          <Text style={styles.statValue} numberOfLines={1}>
+          <Text style={[valueStyle, isOnline ? styles.statEarningsOnline : null]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
             {formatHiddenEarningsLabel(earningsHidden, stats.todayEarningsLabel)}
           </Text>
-          <Text style={styles.statLabel}>{t("driver.home.premium.earnings")}</Text>
+          <View style={styles.earningsLabelRow}>
+            <Text style={styles.statLabel}>{t("driver.home.premium.earnings")}</Text>
+            <TouchableOpacity onPress={onToggleEarningsHidden} hitSlop={8} accessibilityRole="button">
+              <Ionicons name={earningsHidden ? "eye-off" : "eye"} size={14} color={C.textMuted} />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.statCol}>
-          <Text style={styles.statValue}>{stats.tripsToday}</Text>
+          <Text style={valueStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{stats.tripsToday}</Text>
           <Text style={styles.statLabel}>{t("driver.home.premium.trips")}</Text>
         </View>
         <View style={styles.statCol}>
-          <Text style={styles.statValue}>{Math.round(stats.points).toLocaleString()}</Text>
+          <Text style={valueStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{Math.round(stats.points).toLocaleString()}</Text>
           <Text style={styles.statLabel}>{t("driver.home.premium.points")}</Text>
         </View>
         <View style={styles.statCol}>
-          <Text style={styles.statValue} numberOfLines={1}>
+          <Text style={valueStyle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
             {stats.level}
           </Text>
           <Text style={styles.statLabel}>{t("driver.home.premium.level")}</Text>
         </View>
       </View>
-
-      <View style={styles.progressHeader}>
-        <Text style={styles.progressPts}>{stats.pointsProgressLabel}</Text>
-        <TouchableOpacity onPress={onToggleEarningsHidden} hitSlop={8}>
-          <Ionicons name={earningsHidden ? "eye-off" : "eye"} size={15} color={C.textMuted} />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
-      </View>
-
-      <TouchableOpacity style={styles.nextRewardCard} activeOpacity={0.88} onPress={onOpenEarnings}>
-        <Text style={styles.nextRewardEyebrow}>{t("driver.home.premium.nextReward")}</Text>
-        <View style={styles.linkRow}>
-          <Text style={styles.nextRewardValue} numberOfLines={1}>
-            {stats.nextRewardLabel}
-          </Text>
-          <Ionicons name="chevron-forward" size={13} color={C.link} />
-        </View>
-      </TouchableOpacity>
     </View>
   );
 
@@ -257,26 +196,25 @@ export function DriverHomePremiumSheet({
     <View style={styles.jobsBlock}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{jobsTitle}</Text>
-        <TouchableOpacity
-          onPress={jobs.length > 0 ? onViewAllJobs : onRefreshJobs}
-          style={styles.linkRow}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.linkText}>
-            {jobs.length > 0 ? t("driver.home.premium.viewAll") : t("driver.home.premium.refresh")}
+        {jobs.length === 0 ? (
+          <Text style={styles.emptyTitleInline} numberOfLines={2}>
+            {t("driver.home.premium.noMission")}
           </Text>
-          <Ionicons name="chevron-forward" size={13} color={C.link} />
-        </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={onViewAllJobs} style={styles.linkRow} activeOpacity={0.85}>
+            <Text style={styles.linkText}>{t("driver.home.premium.viewAll")}</Text>
+            <Ionicons name="chevron-forward" size={13} color={C.link} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {jobsLoading ? <ActivityIndicator color={C.green} style={{ marginVertical: 10 }} /> : null}
       {jobsError ? <Text style={styles.errorText}>{jobsError}</Text> : null}
 
       {jobs.length === 0 && !jobsLoading ? (
-        <View style={styles.emptyBox}>
-          <Text style={styles.emptyTitle}>{t("driver.home.premium.noMission")}</Text>
+        <TouchableOpacity style={styles.emptyBox} activeOpacity={0.88} onPress={onRefreshJobs}>
           <Text style={styles.emptySub}>{t("driver.home.premium.noMissionBody")}</Text>
-        </View>
+        </TouchableOpacity>
       ) : (
         jobs.map((item) => {
           const visual = jobVisual(item.kind);
@@ -319,7 +257,7 @@ export function DriverHomePremiumSheet({
 
   if (!isOnline) {
     return (
-      <View style={[styles.sheet, { paddingBottom: Math.max(bottomPadding, 12) }]}>
+      <View style={[styles.sheet, isOnline ? styles.sheetOnline : null, { paddingBottom: Math.max(bottomPadding, 12) }]}>
         <View style={styles.handle} />
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -354,7 +292,7 @@ export function DriverHomePremiumSheet({
   }
 
   return (
-    <View style={[styles.sheet, { paddingBottom: Math.max(bottomPadding, 12) }]}>
+    <View style={[styles.sheet, isOnline ? styles.sheetOnline : null, { paddingBottom: Math.max(bottomPadding, 12) }]}>
       <View style={styles.handle} />
 
       <ScrollView
@@ -363,94 +301,28 @@ export function DriverHomePremiumSheet({
         nestedScrollEnabled
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Smart Dispatch — brand card only; live metrics live in intel strip */}
-        <Animated.View style={[styles.smartCard, searchPulseStyle]}>
-          <SmartDispatchBackdrop live />
-          <View style={styles.smartContent}>
-            <View style={styles.smartTop}>
-              <Animated.View style={[styles.logoBox, radarPulseStyle]}>
-                <Image
-                  source={require("../../../../assets/brand/mmd-logo-ui.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              </Animated.View>
-              <View style={styles.smartMid}>
-                <View style={styles.smartTitleRow}>
-                  <Text style={styles.smartTitle} numberOfLines={1}>
-                    MMD Smart Dispatch
-                  </Text>
-                  <View style={styles.livePill}>
-                    <Text style={styles.liveText}>{t("driver.home.premium.live")}</Text>
-                  </View>
-                </View>
-                <Text style={styles.smartSubtitle} numberOfLines={2}>
-                  {t("driver.home.premium.smartSubtitle")}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={onViewHotspots}
-                activeOpacity={0.88}
-                style={styles.hotspotsBtn}
-              >
-                <Text style={styles.hotspotsText}>{t("driver.home.premium.viewHotspots")}</Text>
-                <Ionicons name="chevron-forward" size={12} color="#F8FAFC" />
-              </TouchableOpacity>
-            </View>
+        <LinearGradient
+          colors={["#082F49", "#0F172A"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.nextRideCard}
+        >
+          <View style={styles.nextRideCopy}>
+            <Text style={styles.nextRideTitle}>{t("driver.home.premium.nextRideTitle")}</Text>
+            <Text style={styles.nextRideSub} numberOfLines={3}>
+              {searchingSubtitle}
+            </Text>
+            <Text style={styles.nextRideStatus}>{t("driver.home.premium.nextRideStatus")}</Text>
           </View>
-        </Animated.View>
-
-        <View style={styles.intelStrip}>
-          <View style={styles.intelCell}>
-            <Ionicons name="cellular" size={13} color={C.red} />
-            <Text style={styles.intelLabel}>{t("driver.home.premium.highDemand")}</Text>
-            <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.activityLabel}
-            </Text>
-            <Text style={styles.intelDetail} numberOfLines={1}>
-              {zone.activityDetail}
-            </Text>
+          <View style={styles.radarHost}>
+            <Animated.View style={[styles.radarSpin, radarSpinStyle]}>
+              <View style={styles.radarRingRed} />
+              <View style={styles.radarRingYellow} />
+              <View style={styles.radarRingGreen} />
+            </Animated.View>
+            <View style={styles.radarCore} />
           </View>
-          <View style={styles.intelDivider} />
-          <View style={styles.intelCell}>
-            <Ionicons name="person" size={13} color={C.green} />
-            <Text style={styles.intelLabel}>{t("driver.home.premium.driversNearby")}</Text>
-            <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.driversNearby}{" "}
-              {zone.driversNearby === 1
-                ? t("driver.home.premium.driverOne")
-                : t("driver.home.premium.driverMany")}
-            </Text>
-            <Text style={styles.intelDetail} numberOfLines={1}>
-              {zone.driversDetail}
-            </Text>
-          </View>
-          <View style={styles.intelDivider} />
-          <View style={styles.intelCell}>
-            <Ionicons name="time" size={13} color={C.purple} />
-            <Text style={styles.intelLabel}>{t("driver.home.premium.estWait")}</Text>
-            <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.waitRangeLabel}
-            </Text>
-            <Text style={styles.intelDetail} numberOfLines={1}>
-              {zone.waitDetail}
-            </Text>
-          </View>
-          <View style={styles.intelDivider} />
-          <View style={styles.intelCell}>
-            <Ionicons name="chatbubble" size={13} color={C.blue} />
-            <Text style={styles.intelLabel}>{t("driver.home.premium.requestsNearby")}</Text>
-            <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.requestsNearby}{" "}
-              {zone.requestsNearby === 1
-                ? t("driver.home.premium.requestOne")
-                : t("driver.home.premium.requestMany")}
-            </Text>
-            <Text style={styles.intelDetail} numberOfLines={1}>
-              {zone.areaLabel}
-            </Text>
-          </View>
-        </View>
+        </LinearGradient>
 
         {summaryBlock}
         {jobsBlock}
@@ -458,14 +330,14 @@ export function DriverHomePremiumSheet({
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.primaryAction} activeOpacity={0.9} onPress={onGoBusyArea}>
             <View style={styles.actionTextCol}>
-              <Text style={styles.primaryActionTitle}>{t("driver.home.premium.goBusyArea")}</Text>
-              <Text style={styles.primaryActionSub}>{t("driver.home.premium.goBusyAreaSub")}</Text>
+              <Text style={styles.primaryActionTitle} numberOfLines={2}>{t("driver.home.premium.goBusyArea")}</Text>
+              <Text style={styles.primaryActionSub} numberOfLines={2}>{t("driver.home.premium.goBusyAreaSub")}</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryAction} activeOpacity={0.9} onPress={onGoOffline}>
             <View style={styles.actionTextCol}>
-              <Text style={styles.secondaryActionTitle}>{t("driver.home.premium.goOffline")}</Text>
-              <Text style={styles.secondaryActionSub}>{t("driver.home.premium.goOfflineSub")}</Text>
+              <Text style={styles.secondaryActionTitle} numberOfLines={2}>{t("driver.home.premium.goOffline")}</Text>
+              <Text style={styles.secondaryActionSub} numberOfLines={2}>{t("driver.home.premium.goOfflineSub")}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -481,6 +353,9 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingTop: 6,
     maxHeight: "100%",
+  },
+  sheetOnline: {
+    maxHeight: "52%",
   },
   handle: {
     alignSelf: "flex-start",
@@ -778,8 +653,75 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   statGlyph: { fontSize: 16, fontWeight: "900" },
-  statValue: { color: MMD_WHITE, fontSize: 13, fontWeight: "800" },
-  statLabel: { color: MMD_TEXT_MUTED_BLUE, fontSize: 10, fontWeight: "600" },
+  statValue: { color: MMD_WHITE, fontSize: 13, fontWeight: "800", textAlign: "center" },
+  statValueOnline: { fontSize: 16 },
+  statEarningsOnline: { fontSize: 19 },
+  earningsLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
+  statLabel: { color: MMD_TEXT_MUTED_BLUE, fontSize: 10, fontWeight: "600", textAlign: "center" },
+  emptyTitleInline: {
+    color: MMD_WHITE,
+    fontSize: 11,
+    fontWeight: "700",
+    flexShrink: 1,
+    textAlign: "right",
+    maxWidth: "58%",
+  },
+  nextRideCard: {
+    borderRadius: 18,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    overflow: "hidden",
+  },
+  nextRideCopy: { flex: 1, minWidth: 0 },
+  nextRideTitle: { color: "#F8FAFC", fontSize: 17, fontWeight: "800", lineHeight: 22 },
+  nextRideSub: { color: "#93C5FD", fontSize: 11, fontWeight: "600", marginTop: 6, lineHeight: 15 },
+  nextRideStatus: {
+    color: "#A78BFA",
+    fontSize: 9,
+    fontWeight: "700",
+    marginTop: 8,
+    letterSpacing: 0.4,
+  },
+  radarHost: { width: 84, height: 84, alignItems: "center", justifyContent: "center" },
+  radarSpin: { width: 78, height: 78, alignItems: "center", justifyContent: "center" },
+  radarRingRed: {
+    position: "absolute",
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: "#EF4444",
+    borderBottomColor: "transparent",
+  },
+  radarRingYellow: {
+    position: "absolute",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 3,
+    borderColor: "#EAB308",
+    borderLeftColor: "transparent",
+  },
+  radarRingGreen: {
+    position: "absolute",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 3,
+    borderColor: "#22C55E",
+    borderRightColor: "transparent",
+  },
+  radarCore: {
+    position: "absolute",
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#22C55E",
+  },
   progressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -851,29 +793,31 @@ const styles = StyleSheet.create({
   jobAmount: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
   jobMeta: { color: "#94A3B8", fontSize: 11, fontWeight: "600", marginTop: 2 },
 
-  actionsRow: { flexDirection: "column", gap: 8, marginTop: 4, marginBottom: 6 },
+  actionsRow: { flexDirection: "row", gap: 8, marginTop: 4, marginBottom: 6 },
   primaryAction: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: C.actionNavy,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: MMD_STROKE,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 12,
   },
   secondaryAction: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: MMD_BLUE,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: MMD_STROKE,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 12,
   },
   actionTextCol: { flex: 1 },
-  primaryActionTitle: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
+  primaryActionTitle: { color: MMD_WHITE, fontSize: 14, fontWeight: "800", flexShrink: 1 },
   primaryActionSub: {
     color: "#DCFCE7",
     fontSize: 11,

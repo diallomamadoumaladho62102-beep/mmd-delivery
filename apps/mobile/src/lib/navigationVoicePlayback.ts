@@ -93,6 +93,18 @@ export function completeInstructionReading(
   };
 }
 
+/**
+ * The utterance never finished a complete reading (TTS onStopped/onError
+ * before onDone). Return to idle so the same instruction can be retried.
+ * A partial second reading stays stopped so it is not announced again.
+ */
+export function playbackAfterFailedStart(
+  state: InstructionPlaybackState,
+): InstructionPlaybackState {
+  if (state.completedReadings <= 0) return createIdlePlaybackState();
+  return cancelInstructionPlayback(state);
+}
+
 /** Explicit cancel/interrupt — does NOT count as a completed reading. */
 export function cancelInstructionPlayback(
   state: InstructionPlaybackState,

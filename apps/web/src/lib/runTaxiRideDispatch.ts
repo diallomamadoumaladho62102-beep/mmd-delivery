@@ -796,12 +796,14 @@ export async function runTaxiRideDispatch(params: {
   const payoutDollars =
     payoutCents != null ? (payoutCents / 100).toFixed(2) : null;
 
-  const messages = uniqueTokens.map((tokenRow) => {
+  const messages = uniqueTokens.flatMap((tokenRow) => {
+    const offerId = offerStats.offerIdsByDriver[String(tokenRow.user_id)] ?? null;
+    if (!offerId) return [];
     const locale = normalizeAppLocale(tokenRow.locale);
     const copy = payoutDollars
       ? pushText("taxi_offer_payout", locale, { payout: payoutDollars })
       : pushText("taxi_offer", locale);
-    return {
+    return [{
       to: tokenRow.expo_push_token,
       sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
       channelId: DRIVER_MISSION_PUSH_CHANNEL,
@@ -810,12 +812,15 @@ export async function runTaxiRideDispatch(params: {
       data: {
         type: "taxi_offer_dispatch",
         taxiRideId: ride.id,
+        taxi_ride_id: ride.id,
+        offerId,
+        offer_id: offerId,
         wave,
-        screen: "DriverTabs",
+        screen: "DriverOrderDetails",
       },
       priority: "high" as const,
       _contentAvailable: true,
-    };
+    }];
   });
 
   const distanceByDriver = new Map(

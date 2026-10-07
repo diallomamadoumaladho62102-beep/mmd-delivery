@@ -1,4 +1,3 @@
-import { NextRequest } from "next/server";
 import { mmdLocationJson } from "@/lib/mmdLocationCore";
 import { allowMarketplacePublicCatalog } from "@/lib/marketplaceApiAuth";
 import { loadApprovedSellers } from "@/lib/marketplaceOrderService";
@@ -25,7 +24,7 @@ function toPublicSeller(row: Awaited<ReturnType<typeof loadApprovedSellers>>[num
   };
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   // Guest browse allowed (Apple Guideline 5.1.1(v)) — catalog discovery only.
   const access = allowMarketplacePublicCatalog();
   if (access.ok === false) return access.response;

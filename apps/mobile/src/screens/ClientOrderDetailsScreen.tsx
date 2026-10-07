@@ -586,7 +586,6 @@ export function ClientOrderDetailsScreen() {
                 "total",
                 "grand_total",
                 "delivery_fee",
-                "dropoff_code",
                 "payment_status",
                 "currency",
                 "driver_id",
@@ -625,6 +624,16 @@ export function ClientOrderDetailsScreen() {
           }
 
           await loadParticipantProfiles(nextOrder);
+
+          const { data: codeRow } = await supabase.rpc(
+            "get_authorized_verification_codes",
+            { p_entity_type: "order", p_entity_id: orderId },
+          );
+          const codes = (codeRow ?? null) as {
+            pickup_code?: string | null;
+            dropoff_code?: string | null;
+          } | null;
+          nextOrder.dropoff_code = codes?.dropoff_code ?? null;
 
           if (isMountedRef.current) {
             const prevStatus = prevOrderStatusRef.current;

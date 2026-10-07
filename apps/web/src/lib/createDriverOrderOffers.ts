@@ -37,11 +37,17 @@ export async function createDriverOrderOffers(params: {
   order: OrderOfferContext;
   candidates: DispatchCandidate[];
   wave: number;
-}): Promise<{ created: number; refreshed: number; skipped: number }> {
+}): Promise<{
+  created: number;
+  refreshed: number;
+  skipped: number;
+  offerIdsByDriver: Record<string, string>;
+}> {
   const { supabase, order, candidates, wave } = params;
+  const offerIdsByDriver: Record<string, string> = {};
 
   if (candidates.length === 0) {
-    return { created: 0, refreshed: 0, skipped: 0 };
+    return { created: 0, refreshed: 0, skipped: 0, offerIdsByDriver };
   }
 
   const now = new Date();
@@ -102,6 +108,7 @@ export async function createDriverOrderOffers(params: {
         skipped += 1;
       } else {
         refreshed += 1;
+        offerIdsByDriver[driverId] = String(existing.id);
       }
       continue;
     }
@@ -114,34 +121,44 @@ export async function createDriverOrderOffers(params: {
       .eq("status", "pending")
       .lte("expires_at", nowIso);
 
-    const { error: insertError } = await supabase.from("driver_order_offers").insert({
-      ...offerRow,
-      created_at: nowIso,
-    });
+    const { data: inserted, error: insertError } = await supabase
+      .from("driver_order_offers")
+      .insert({
+        ...offerRow,
+        created_at: nowIso,
+      })
+      .select("id")
+      .maybeSingle();
 
     if (insertError) {
       if (insertError.code === "23505") {
-        const { error: upsertError } = await supabase
+        const { data: conflictRow, error: upsertError } = await supabase
           .from("driver_order_offers")
           .update(offerRow)
           .eq("order_id", order.id)
           .eq("driver_id", driverId)
-          .eq("status", "pending");
+          .eq("status", "pending")
+          .select("id")
+          .maybeSingle();
 
-        if (upsertError) {
-          console.log("driver_order_offers conflict update error:", upsertError.message);
+        if (upsertError || !conflictRow?.id) {
+          console.log("driver_order_offers conflict update error:", upsertError?.message);
           skipped += 1;
         } else {
           refreshed += 1;
+          offerIdsByDriver[driverId] = String(conflictRow.id);
         }
       } else {
         console.log("driver_order_offers insert error:", insertError.message);
         skipped += 1;
       }
-    } else {
+    } else if (inserted?.id) {
       created += 1;
+      offerIdsByDriver[driverId] = String(inserted.id);
+    } else {
+      skipped += 1;
     }
   }
 
-  return { created, refreshed, skipped };
+  return { created, refreshed, skipped, offerIdsByDriver };
 }

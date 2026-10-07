@@ -42,6 +42,13 @@ export function normalizeAppLocale(raw: string | undefined): AppLanguageCode {
  * - TTS: expo-speech (device voices). Fulfulde is not a standard OS TTS locale.
  * - STT: OpenAI whisper-1. Fulfulde is not a documented Whisper language code.
  */
+/** Device TTS locale for navigation speech. Fulfulde has no OS voice, so ff uses en-US. */
+export function resolveNavigationTtsLanguage(
+  appLanguage: string | undefined,
+): AiTtsLanguage {
+  return resolveAiVoiceLanguages(appLanguage).ttsLanguage;
+}
+
 export function resolveAiVoiceLanguages(
   appLanguage: string | undefined
 ): AiVoiceLanguageResolution {

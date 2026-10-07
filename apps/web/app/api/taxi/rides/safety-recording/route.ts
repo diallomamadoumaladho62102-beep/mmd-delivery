@@ -60,9 +60,8 @@ export async function GET(req: NextRequest) {
     const ownRecordings = allRecordings
       .filter((row) => String(row.initiator_user_id) === userId)
       .map((row) => {
-        const { storage_path: _storagePath, ...safe } = row as SafetyRecordingRow & {
-          storage_path?: string | null;
-        };
+        const safe = { ...row };
+        delete safe.storage_path;
         return safe;
       });
 

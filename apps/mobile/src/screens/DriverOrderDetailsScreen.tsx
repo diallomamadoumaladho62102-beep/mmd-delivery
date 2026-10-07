@@ -11,6 +11,8 @@ import {
   Platform,
   Linking,
   Image,
+  AppState,
+  type AppStateStatus,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Mapbox from "@rnmapbox/maps";
@@ -58,6 +60,21 @@ import {
   BOOT_AUTH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
+import { toUserFacingError } from "../lib/userFacingError";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import {
+  confirmDeliveryPickupArrival,
+  fetchDeliveryPickupArrival,
+} from "../lib/deliveryStageApi";
+import {
+  driverArrivedWaitTimer,
+  fetchWaitTimerStatus,
+} from "../lib/waitTimerApi";
+import * as Location from "expo-location";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -813,6 +830,12 @@ export function DriverOrderDetailsScreen() {
   const [clientProfileLoading, setClientProfileLoading] = useState(false);
   const [restaurantProfile, setRestaurantProfile] = useState<RestaurantProfile | null>(null);
   const [restaurantProfileLoading, setRestaurantProfileLoading] = useState(false);
+  const [pickupArrivedAt, setPickupArrivedAt] = useState<string | null>(null);
+  const [dropoffArrivedAt, setDropoffArrivedAt] = useState<string | null>(null);
+  const [stageActing, setStageActing] = useState(false);
+  const stageLockRef = useRef(false);
+  const network = useNetworkStatus();
+  const prevNetworkRef = useRef(network.quality);
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
   const didFitRef = useRef(false);
@@ -922,9 +945,13 @@ export function DriverOrderDetailsScreen() {
       case "ready":
         return t("driver.orderDetails.status.ready", "Ready for pickup");
       case "dispatched":
-        return t("driver.orderDetails.status.dispatched", "On delivery");
+        return pickupArrivedAt
+          ? t("driver.orderDetails.stage.atPickup", "Arrived at pickup")
+          : t("driver.orderDetails.status.dispatched", "On delivery");
       case "picked_up":
-        return t("driver.orderDetails.status.picked_up", "Package picked up — on the way");
+        return dropoffArrivedAt
+          ? t("driver.orderDetails.stage.atCustomer", "Arrived at the customer")
+          : t("driver.orderDetails.stage.inTransit", "On the way");
       case "delivered":
         return t("driver.orderDetails.status.delivered", "Delivered");
       case "canceled":
@@ -1020,9 +1047,10 @@ export function DriverOrderDetailsScreen() {
     };
   }, [navigation]);
 
-  const fetchOrder = useCallback(async () => {
+  const fetchOrder = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
 
       await withTimeout(
         (async () => {
@@ -1051,7 +1079,7 @@ export function DriverOrderDetailsScreen() {
              pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,dropoff_location_id,
              distance_miles,eta_minutes,delivery_fee,total,currency,
              driver_delivery_payout,platform_fee,
-             pickup_code,dropoff_code,picked_up_at,delivered_at`
+             picked_up_at,delivered_at`
               )
               .eq("id", orderId)
               .maybeSingle();
@@ -1090,6 +1118,24 @@ export function DriverOrderDetailsScreen() {
 
             if (error) throw error;
             if (data) nextOrder = mapTaxiRideToOrder(data);
+
+            if (nextOrder && uid) {
+              const { data: pendingTaxiOffer } = await supabase
+                .from("taxi_offers")
+                .select("id")
+                .eq("taxi_ride_id", orderId)
+                .eq("driver_id", uid)
+                .eq("status", "pending")
+                .gt("expires_at", new Date().toISOString())
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (pendingTaxiOffer?.id) {
+                nextOrder = { ...nextOrder, offer_id: String(pendingTaxiOffer.id) };
+              } else if (routeParams?.offer_id) {
+                nextOrder = { ...nextOrder, offer_id: String(routeParams.offer_id) };
+              }
+            }
           } else if (sourceTable === "marketplace_delivery_jobs") {
             const job = await fetchDriverMarketplaceJob(orderId);
             nextOrder = mapMarketplaceJobToOrder(job);
@@ -1137,6 +1183,24 @@ export function DriverOrderDetailsScreen() {
 
             if (error) throw error;
             if (data) nextOrder = mapOrderRowToOrder(data);
+
+            if (nextOrder && uid) {
+              const { data: pendingFoodOffer } = await supabase
+                .from("driver_order_offers")
+                .select("id")
+                .eq("order_id", orderId)
+                .eq("driver_id", uid)
+                .eq("status", "pending")
+                .gt("expires_at", new Date().toISOString())
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (pendingFoodOffer?.id) {
+                nextOrder = { ...nextOrder, offer_id: String(pendingFoodOffer.id) };
+              } else if (routeParams?.offer_id) {
+                nextOrder = { ...nextOrder, offer_id: String(routeParams.offer_id) };
+              }
+            }
           }
 
           if (!nextOrder) {
@@ -1160,24 +1224,65 @@ export function DriverOrderDetailsScreen() {
           setOrder(nextOrder);
           setMyUserId(uid);
           didFitRef.current = false;
+
+          const stageEntityType =
+            sourceTable === "delivery_requests" ? "delivery_request" : "order";
+          if (
+            sourceTable === "delivery_requests" ||
+            sourceTable === "orders"
+          ) {
+            const accessToken =
+              (await supabase.auth.getSession()).data.session?.access_token ?? "";
+            try {
+              const arrival = await fetchDeliveryPickupArrival({
+                entityType: stageEntityType,
+                entityId: nextOrder.id,
+              });
+              setPickupArrivedAt(arrival.arrived_at);
+            } catch {
+              setPickupArrivedAt(null);
+            }
+            if (accessToken) {
+              try {
+                const wait = await fetchWaitTimerStatus(accessToken, {
+                  entityType: stageEntityType,
+                  entityId: nextOrder.id,
+                });
+                setDropoffArrivedAt(
+                  wait.driver_arrived_at ?? wait.wait_timer_started_at ?? null,
+                );
+              } catch {
+                setDropoffArrivedAt(null);
+              }
+            } else {
+              setDropoffArrivedAt(null);
+            }
+          } else {
+            setPickupArrivedAt(null);
+            setDropoffArrivedAt(null);
+          }
         })(),
         BOOT_AUTH_TIMEOUT_MS,
         "driver_order_details_load",
       );
     } catch (e: any) {
       console.error("Erreur fetch driver order details:", e);
-      Alert.alert(
-        t("common.error", "Error"),
-        e?.message ??
-          t(
-            "driver.orderDetails.loadError",
-            "Unable to load order details."
+      if (!silent) {
+        Alert.alert(
+          t("common.error", "Error"),
+          toUserFacingError(
+            e,
+            t(
+              "driver.orderDetails.loadError",
+              "Unable to load order details."
+            )
           )
-      );
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, [orderId, sourceTable, navigation, t]);
+  }, [orderId, sourceTable, navigation, t, routeParams?.offer_id]);
 
   const fetchProfileById = useCallback(async (profileId: string) => {
     const { data, error } = await supabase
@@ -1288,6 +1393,70 @@ export function DriverOrderDetailsScreen() {
       return () => clearTimeout(timer);
     }, [fetchOrder])
   );
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") void fetchOrder({ silent: true });
+    });
+    return () => sub.remove();
+  }, [fetchOrder]);
+
+  useEffect(() => {
+    const prev = prevNetworkRef.current;
+    prevNetworkRef.current = network.quality;
+    if (prev !== "online" && network.quality === "online") {
+      void fetchOrder({ silent: true });
+    }
+  }, [network.quality, fetchOrder]);
+
+  useEffect(() => {
+    if (!orderId) return;
+
+    const reload = () => {
+      void fetchOrder({ silent: true });
+    };
+
+    const table =
+      sourceTable === "delivery_requests"
+        ? "delivery_requests"
+        : sourceTable === "taxi_rides"
+          ? "taxi_rides"
+          : sourceTable === "marketplace_delivery_jobs"
+            ? "marketplace_delivery_jobs"
+            : "orders";
+
+    const channel = subscribePostgresChannel(`driver-order-detail:${sourceTable}:${orderId}`, [
+      {
+        event: "*" as const,
+        table,
+        filter: `id=eq.${orderId}`,
+        callback: reload,
+      },
+      ...(sourceTable === "delivery_requests"
+        ? [
+            {
+              event: "*" as const,
+              table: "delivery_request_driver_offers",
+              filter: `delivery_request_id=eq.${orderId}`,
+              callback: reload,
+            },
+          ]
+        : sourceTable === "orders"
+          ? [
+              {
+                event: "*" as const,
+                table: "driver_order_offers",
+                filter: `order_id=eq.${orderId}`,
+                callback: reload,
+              },
+            ]
+          : []),
+    ]);
+
+    return () => {
+      void unsubscribeSupabaseChannel(channel);
+    };
+  }, [orderId, sourceTable, fetchOrder]);
 
   useEffect(() => {
     if (!order) return;
@@ -1505,15 +1674,27 @@ export function DriverOrderDetailsScreen() {
     !isMarketplaceJob &&
     (isTaxiRide
       ? orderStatus === "accepted" || orderStatus === "driver_arrived"
-      : isDeliveryRequest
-        ? orderStatus === "dispatched"
-        : ["ready", "accepted", "prepared", "dispatched"].includes(orderStatus));
+      : orderStatus === "dispatched" && !!pickupArrivedAt);
 
   const canDeliver =
     !!order &&
     isAssignedDriver &&
     !isMarketplaceJob &&
-    (isTaxiRide ? orderStatus === "in_progress" : orderStatus === "picked_up");
+    (isTaxiRide
+      ? orderStatus === "in_progress"
+      : orderStatus === "picked_up" && !!dropoffArrivedAt);
+
+  const deliveryStage = !order || isTaxiRide || isMarketplaceJob || !isAssignedDriver
+    ? null
+    : orderStatus === "dispatched" && !pickupArrivedAt
+      ? "arrive_pickup"
+      : orderStatus === "dispatched" && pickupArrivedAt
+        ? "confirm_pickup"
+        : orderStatus === "picked_up" && !dropoffArrivedAt
+          ? "arrive_dropoff"
+          : orderStatus === "picked_up" && dropoffArrivedAt
+            ? "confirm_dropoff"
+            : null;
 
   const canAccept =
     !!order &&
@@ -1526,9 +1707,19 @@ export function DriverOrderDetailsScreen() {
     !order.driver_id &&
     (
       (isMarketplaceJob && String(order.status).toLowerCase() === "dispatch_ready") ||
-      (isDeliveryRequest && ["pending", "paid_pending", "processing_pending"].includes(order.status)) ||
-      (isPickupDropoff && order.status === "pending") ||
-      (!isDeliveryRequest && !isPickupDropoff && !isMarketplaceJob && order.status === "ready")
+      (isDeliveryRequest &&
+        ["pending", "paid_pending", "processing_pending"].includes(order.status) &&
+        !!(order.offer_id || routeParams?.offer_id)) ||
+      (isTaxiRide && !!(order.offer_id || routeParams?.offer_id)) ||
+      (isPickupDropoff &&
+        order.status === "pending" &&
+        !!(order.offer_id || routeParams?.offer_id)) ||
+      (!isDeliveryRequest &&
+        !isPickupDropoff &&
+        !isMarketplaceJob &&
+        !isTaxiRide &&
+        order.status === "ready" &&
+        !!(order.offer_id || routeParams?.offer_id))
     );
 
   const canCancelAsDriver =
@@ -1540,7 +1731,11 @@ export function DriverOrderDetailsScreen() {
     !proofPhotoPreparing &&
     (
       (isDeliveryRequest && order.status === "dispatched") ||
-      (!isDeliveryRequest && (order.status === "accepted" || order.status === "ready"))
+      (!isDeliveryRequest &&
+        !isTaxiRide &&
+        (order.status === "accepted" ||
+          order.status === "ready" ||
+          order.status === "dispatched"))
     );
 
   const canMarketplacePickup =
@@ -1559,7 +1754,8 @@ export function DriverOrderDetailsScreen() {
     !!order &&
     isAssignedDriver &&
     !isMarketplaceJob &&
-    String(order.status).toLowerCase() === "picked_up";
+    String(order.status).toLowerCase() === "picked_up" &&
+    !!dropoffArrivedAt;
 
   const waitTimerEntityType = isDeliveryRequest ? "delivery_request" : "order";
 
@@ -1879,7 +2075,6 @@ export function DriverOrderDetailsScreen() {
         body: JSON.stringify({
           order_id: currentOrderId,
           proof_photo_url: proofPhotoUrl,
-          driver_id: myUserId,
           ...(kind === "pickup"
             ? { pickup_code: verificationCode, code: verificationCode }
             : { dropoff_code: verificationCode, code: verificationCode }),
@@ -1980,9 +2175,43 @@ export function DriverOrderDetailsScreen() {
         await acceptDeliveryRequestOffer(offerId);
       } else if (getOrderSourceTable(order) === "marketplace_delivery_jobs") {
         await acceptDriverMarketplaceJob(order.id);
+      } else if (getOrderSourceTable(order) === "taxi_rides") {
+        const taxiOfferId = String(order.offer_id ?? routeParams?.offer_id ?? "").trim();
+        if (!taxiOfferId) {
+          throw new Error(
+            t(
+              "driver.orderDetails.offerRequired",
+              "A pending offer is required to accept this delivery.",
+            ),
+          );
+        }
+        const { acceptTaxiOffer } = await import("../lib/taxiDriverApi");
+        await acceptTaxiOffer(taxiOfferId);
       } else {
-        const { acceptReadyFoodOrder } = await import("../lib/driverOrderDriverApi");
-        await acceptReadyFoodOrder(order.id);
+        let foodOfferId = String(order.offer_id ?? routeParams?.offer_id ?? "").trim();
+        if (!foodOfferId && myUserId) {
+          const { data: pendingFoodOffer } = await supabase
+            .from("driver_order_offers")
+            .select("id")
+            .eq("order_id", order.id)
+            .eq("driver_id", myUserId)
+            .eq("status", "pending")
+            .gt("expires_at", new Date().toISOString())
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          foodOfferId = String(pendingFoodOffer?.id ?? "").trim();
+        }
+        if (!foodOfferId) {
+          throw new Error(
+            t(
+              "driver.orderDetails.offerRequired",
+              "A pending offer is required to accept this delivery.",
+            ),
+          );
+        }
+        const { acceptFoodOrderOffer } = await import("../lib/driverOrderDriverApi");
+        await acceptFoodOrderOffer(foodOfferId);
       }
 
       const uid =
@@ -2007,14 +2236,108 @@ export function DriverOrderDetailsScreen() {
       console.error("Erreur handleAccept:", e);
       Alert.alert(
         t("common.error", "Error"),
-        e?.message ??
+        toUserFacingError(
+          e,
           t(
             "driver.orderDetails.acceptError",
             "Unable to accept the trip right now."
           )
+        )
       );
     } finally {
       setAccepting(false);
+    }
+  }
+
+  async function handleArrivePickup() {
+    if (!order || stageLockRef.current || deliveryStage !== "arrive_pickup") return;
+    stageLockRef.current = true;
+    setStageActing(true);
+    try {
+      const { status: perm } = await Location.requestForegroundPermissionsAsync();
+      if (perm !== "granted") {
+        throw new Error(
+          t(
+            "driver.orderDetails.locationRequired",
+            "Location permission is required to complete this ride.",
+          ),
+        );
+      }
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      await confirmDeliveryPickupArrival({
+        entityType: isDeliveryRequest ? "delivery_request" : "order",
+        entityId: order.id,
+        driverLat: pos.coords.latitude,
+        driverLng: pos.coords.longitude,
+      });
+      await fetchOrder({ silent: true });
+    } catch (e: unknown) {
+      const message = toUserFacingError(
+        e,
+        t("driver.orderDetails.stage.arriveFailed", "Unable to confirm arrival."),
+      );
+      if (String((e as Error)?.message ?? "").includes("invalid_status")) {
+        await fetchOrder({ silent: true });
+      }
+      Alert.alert(t("common.error", "Error"), message);
+    } finally {
+      stageLockRef.current = false;
+      setStageActing(false);
+    }
+  }
+
+  async function handleArriveCustomer() {
+    if (!order || stageLockRef.current || deliveryStage !== "arrive_dropoff") return;
+    stageLockRef.current = true;
+    setStageActing(true);
+    try {
+      const { status: perm } = await Location.requestForegroundPermissionsAsync();
+      if (perm !== "granted") {
+        throw new Error(
+          t(
+            "driver.orderDetails.locationRequired",
+            "Location permission is required to complete this ride.",
+          ),
+        );
+      }
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) {
+        throw new Error(t("driver.orderDetails.tokenMissing", "Missing session token."));
+      }
+      const result = await driverArrivedWaitTimer(token, {
+        entity_type: isDeliveryRequest ? "delivery_request" : "order",
+        entity_id: order.id,
+        driver_lat: pos.coords.latitude,
+        driver_lng: pos.coords.longitude,
+      });
+      if (!result.ok) {
+        const err = String(result.error ?? "arrival_failed");
+        if (err === "already_arrived") {
+          await fetchOrder({ silent: true });
+          return;
+        }
+        throw new Error(err);
+      }
+      await fetchOrder({ silent: true });
+    } catch (e: unknown) {
+      Alert.alert(
+        t("common.error", "Error"),
+        toUserFacingError(
+          e,
+          t("driver.orderDetails.stage.arriveFailed", "Unable to confirm arrival."),
+        ),
+      );
+      if (String((e as Error)?.message ?? "").includes("409") || String((e as Error)?.message ?? "").includes("already_arrived")) {
+        await fetchOrder({ silent: true });
+      }
+    } finally {
+      stageLockRef.current = false;
+      setStageActing(false);
     }
   }
 
@@ -2026,7 +2349,7 @@ export function DriverOrderDetailsScreen() {
         t("driver.orderDetails.cancel.unavailableTitle", "Annulation indisponible"),
         t(
           "driver.orderDetails.cancel.unavailableBody",
-          "You can cancel only before pickup, while the trip is still accepted or ready."
+          "You can cancel only before pickup, while the trip is still accepted, ready, or dispatched."
         )
       );
       return;
@@ -2132,8 +2455,10 @@ export function DriverOrderDetailsScreen() {
             } catch (e: any) {
               Alert.alert(
                 t("common.error", "Error"),
-                e?.message ??
+                toUserFacingError(
+                  e,
                   t("driver.orderDetails.cancel.error", "Unable to cancel this trip.")
+                )
               );
             } finally {
               setCanceling(false);
@@ -2336,11 +2661,13 @@ export function DriverOrderDetailsScreen() {
       });
       console.error("Erreur handleSubmitCode:", e);
       setCodeError(
-        e?.message ??
+        toUserFacingError(
+          e,
           t(
             "driver.orderDetails.codeVerifyError",
             "Could not verify the code right now.",
           ),
+        ),
       );
       setCodeInput("");
     } finally {
@@ -3416,65 +3743,122 @@ export function DriverOrderDetailsScreen() {
             {t("driver.orderDetails.verify.title", "Verification")}
           </Text>
 
-          <TouchableOpacity
-            disabled={false}
-            onPress={() => openCodeModal("pickup")}
-            activeOpacity={canPickup ? 0.85 : 0.7}
-            style={{
-              borderRadius: 999,
-              paddingVertical: 14,
-              paddingHorizontal: 12,
-              alignItems: "center",
-              backgroundColor: MMD_BLUE,
-              opacity: canPickup ? 1 : 0.55,
-              borderWidth: 1,
-              borderColor: "#0037A0",
-            }}
-          >
-            <Text
+          {isTaxiRide ? (
+            <>
+              <TouchableOpacity
+                disabled={!canPickup}
+                onPress={() => openCodeModal("pickup")}
+                activeOpacity={canPickup ? 0.85 : 0.7}
+                style={{
+                  borderRadius: 999,
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  alignItems: "center",
+                  backgroundColor: MMD_BLUE,
+                  opacity: canPickup ? 1 : 0.55,
+                  borderWidth: 1,
+                  borderColor: "#0037A0",
+                }}
+              >
+                <Text
+                  style={{
+                    color: canPickup ? MMD_WHITE : "#B4C8FF",
+                    fontSize: 14,
+                    fontFamily: MMD_FONT.extrabold,
+                    fontWeight: "800",
+                  }}
+                >
+                  {t("driver.orderDetails.verify.pickupBtn", "Verify Pickup Code")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={!canDeliver}
+                onPress={() => openCodeModal("dropoff")}
+                activeOpacity={canDeliver ? 0.85 : 0.7}
+                style={{
+                  borderRadius: 999,
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  alignItems: "center",
+                  backgroundColor: "#16A34A",
+                  opacity: canDeliver ? 1 : 0.55,
+                  borderWidth: 1,
+                  borderColor: "#34D399",
+                }}
+              >
+                <Text
+                  style={{
+                    color: MMD_WHITE,
+                    fontSize: 14,
+                    fontFamily: MMD_FONT.extrabold,
+                    fontWeight: "800",
+                  }}
+                >
+                  {t("driver.orderDetails.verify.completeRide", "Complete ride")}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : deliveryStage ? (
+            <TouchableOpacity
+              disabled={stageActing}
+              onPress={() => {
+                if (deliveryStage === "arrive_pickup") {
+                  void handleArrivePickup();
+                  return;
+                }
+                if (deliveryStage === "confirm_pickup") {
+                  openCodeModal("pickup");
+                  return;
+                }
+                if (deliveryStage === "arrive_dropoff") {
+                  void handleArriveCustomer();
+                  return;
+                }
+                openCodeModal("dropoff");
+              }}
+              activeOpacity={0.85}
               style={{
-                color: canPickup ? MMD_WHITE : "#B4C8FF",
-                fontSize: 14,
-                fontFamily: MMD_FONT.extrabold,
-                fontWeight: "800",
+                borderRadius: 999,
+                paddingVertical: 14,
+                paddingHorizontal: 12,
+                alignItems: "center",
+                backgroundColor:
+                  deliveryStage === "confirm_dropoff" ? "#16A34A" : MMD_BLUE,
+                opacity: stageActing ? 0.7 : 1,
+                borderWidth: 1,
+                borderColor:
+                  deliveryStage === "confirm_dropoff" ? "#34D399" : "#0037A0",
               }}
             >
-              {isPickupDropoff
-                ? t("driver.orderDetails.verify.pickupBtnPd", "Verify Pickup Code")
-                : t("driver.orderDetails.verify.pickupBtn", "Verify Pickup Code")}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            disabled={false}
-            onPress={() => openCodeModal("dropoff")}
-            activeOpacity={canDeliver ? 0.85 : 0.7}
-            style={{
-              borderRadius: 999,
-              paddingVertical: 14,
-              paddingHorizontal: 12,
-              alignItems: "center",
-              backgroundColor: "#16A34A",
-              opacity: canDeliver ? 1 : 0.55,
-              borderWidth: 1,
-              borderColor: "#34D399",
-            }}
-          >
-            <Text
-              style={{
-                color: MMD_WHITE,
-                fontSize: 14,
-                fontFamily: MMD_FONT.extrabold,
-                fontWeight: "800",
-              }}
-            >
-              {isTaxiRide
-                ? t("driver.orderDetails.verify.completeRide", "Complete ride")
-                : isPickupDropoff
-                ? t("driver.orderDetails.verify.dropoffBtnPd", "Verify Delivery Code")
-                : t("driver.orderDetails.verify.dropoffBtn", "Verify Delivery Code")}
-            </Text>
-          </TouchableOpacity>
+              {stageActing ? (
+                <ActivityIndicator color={MMD_WHITE} />
+              ) : (
+                <Text
+                  style={{
+                    color: MMD_WHITE,
+                    fontSize: 14,
+                    fontFamily: MMD_FONT.extrabold,
+                    fontWeight: "800",
+                  }}
+                >
+                  {deliveryStage === "arrive_pickup"
+                    ? isDeliveryRequest
+                      ? t("driver.orderDetails.stage.arrivedPickup", "I've arrived at pickup")
+                      : t(
+                          "driver.orderDetails.stage.arrivedPickupFood",
+                          "I've arrived at the restaurant",
+                        )
+                    : deliveryStage === "confirm_pickup"
+                      ? isDeliveryRequest
+                        ? t("driver.orderDetails.stage.confirmPickupPackage", "Package picked up")
+                        : t("driver.orderDetails.stage.confirmPickup", "Order picked up")
+                      : deliveryStage === "arrive_dropoff"
+                        ? t("driver.orderDetails.stage.arrivedCustomer", "I've arrived")
+                        : t("driver.orderDetails.stage.completeDelivery", "Delivery completed")}
+                </Text>
+              )}
+            </TouchableOpacity>
+          ) : null}
 
           <Text
             style={{
@@ -3484,14 +3868,14 @@ export function DriverOrderDetailsScreen() {
               fontWeight: "600",
             }}
           >
-            {isPickupDropoff
+            {isTaxiRide
               ? t(
-                  "driver.orderDetails.verify.autoHintPd",
+                  "driver.orderDetails.verify.autoHint",
                   "Buttons activate automatically at the right time based on status."
                 )
               : t(
-                  "driver.orderDetails.verify.autoHint",
-                  "Buttons activate automatically at the right time based on status."
+                  "driver.orderDetails.stage.hint",
+                  "Only the current delivery step is available."
                 )}
           </Text>
         </View>

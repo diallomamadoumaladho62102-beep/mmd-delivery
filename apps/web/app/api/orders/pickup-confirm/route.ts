@@ -10,6 +10,10 @@ import {
   pushText,
 } from "@/lib/pushCopy";
 import { normalizeAppLocale } from "@/lib/userLocale";
+import {
+  deliveryPickedUpDedupKey,
+  wasTaxiPushAlreadySent,
+} from "@/lib/clientPushNotifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +30,7 @@ type Body = {
 type RpcResult = {
   ok?: boolean;
   error?: string;
+  already_picked_up?: boolean;
 };
 
 type OrderLinkRow = {
@@ -270,7 +275,7 @@ async function persistPickupProof(params: {
       status: string;
       updated_at: string;
     } = {
-      status: existingOrder.status ?? "accepted",
+      status: "picked_up",
       updated_at: new Date().toISOString(),
     };
 
@@ -319,6 +324,14 @@ async function notifyClientPickup(params: {
     return;
   }
 
+  const alreadySent = await wasTaxiPushAlreadySent(
+    supabaseAdmin,
+    deliveryPickedUpDedupKey("order", orderId),
+  );
+  if (alreadySent) {
+    return;
+  }
+
   const { data: tokenRows, error: tokenErr } = await supabaseAdmin
     .from("user_push_tokens")
     .select("*")
@@ -359,7 +372,9 @@ async function notifyClientPickup(params: {
       data: {
         type: "pickup_confirmed",
         order_id: orderRow.id,
+        orderId: orderRow.id,
         kind: orderRow.kind ?? "pickup_dropoff",
+        source_table: "orders",
       },
     };
   });
@@ -381,6 +396,17 @@ async function notifyClientPickup(params: {
       `Expo push request failed (${response.status}) ${text}`.trim()
     );
   }
+
+  await supabaseAdmin.from("notification_logs").insert({
+    user_id: recipientIds[0] ?? null,
+    role: "client",
+    title: String(messages[0]?.title ?? "Pickup confirmed"),
+    body: String(messages[0]?.body ?? ""),
+    data: messages[0]?.data ?? { type: "pickup_confirmed", order_id: orderId },
+    status: "sent",
+    dedup_key: deliveryPickedUpDedupKey("order", orderId),
+    sent_at: new Date().toISOString(),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -506,6 +532,15 @@ export async function POST(req: NextRequest) {
     if (!result?.ok) {
       const mapped = mapRpcFailureToHttp(result?.error || "");
       return json({ error: mapped.error }, mapped.status);
+    }
+
+    if (result.already_picked_up === true) {
+      return json({
+        ok: true,
+        order_id: orderId,
+        already_picked_up: true,
+        result,
+      });
     }
 
     if (proofPhotoUrl) {

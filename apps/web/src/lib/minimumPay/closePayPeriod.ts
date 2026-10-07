@@ -98,12 +98,71 @@ async function refreshTripEligibility(
     pickupLng = data?.pickup_lng;
     dropoffLat = data?.dropoff_lat;
     dropoffLng = data?.dropoff_lng;
+  } else if (
+    interval.entity_type === "taxi_ride" ||
+    interval.entity_type === "taxi" ||
+    interval.entity_type === "taxi_rides"
+  ) {
+    const { data } = await supabase
+      .from("taxi_rides")
+      .select(
+        "pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, is_test, archived_at, hidden_from_user"
+      )
+      .eq("id", interval.entity_id)
+      .maybeSingle();
+    if (
+      data?.is_test === true ||
+      data?.archived_at ||
+      data?.hidden_from_user === true
+    ) {
+      await supabase
+        .from("trip_time_intervals")
+        .update({
+          eligible: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", interval.id);
+      return { eligible: false, reason: "test_or_archived_source" };
+    }
+    pickupLat = data?.pickup_lat;
+    pickupLng = data?.pickup_lng;
+    dropoffLat = data?.dropoff_lat;
+    dropoffLng = data?.dropoff_lng;
   } else if (interval.entity_type === "marketplace_job") {
     const { data: job } = await supabase
       .from("marketplace_delivery_jobs")
-      .select("pickup_location_id, dropoff_location_id")
+      .select(
+        "pickup_location_id, dropoff_location_id, is_test, archived_at, hidden_from_user, seller_order_id"
+      )
       .eq("id", interval.entity_id)
       .maybeSingle();
+    let sellerHidden = false;
+    if (job?.seller_order_id) {
+      const { data: sellerOrder } = await supabase
+        .from("seller_orders")
+        .select("is_test, archived_at, hidden_from_user")
+        .eq("id", job.seller_order_id)
+        .maybeSingle();
+      sellerHidden =
+        sellerOrder?.is_test === true ||
+        Boolean(sellerOrder?.archived_at) ||
+        sellerOrder?.hidden_from_user === true;
+    }
+    if (
+      job?.is_test === true ||
+      job?.archived_at ||
+      job?.hidden_from_user === true ||
+      sellerHidden
+    ) {
+      await supabase
+        .from("trip_time_intervals")
+        .update({
+          eligible: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", interval.id);
+      return { eligible: false, reason: "test_or_archived_source" };
+    }
     const locationIds = [job?.pickup_location_id, job?.dropoff_location_id]
       .map((id) => (id ? String(id) : ""))
       .filter(Boolean);
@@ -478,6 +537,11 @@ export async function reconcileMinimumPayPeriod(
           { onConflict: "source_type,source_id" }
         );
       } else if (transfer.ok && transfer.skipped) {
+        await supabase
+          .from("minimum_pay_adjustments")
+          .update({ status: "computed", updated_at: new Date().toISOString() })
+          .eq("id", saved?.id);
+      } else {
         await supabase
           .from("minimum_pay_adjustments")
           .update({ status: "computed", updated_at: new Date().toISOString() })

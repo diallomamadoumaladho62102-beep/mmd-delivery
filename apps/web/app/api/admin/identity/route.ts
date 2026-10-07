@@ -138,7 +138,8 @@ export async function POST(req: NextRequest) {
         adminUserId: staff.userId,
         reason: typeof body.reason === "string" ? body.reason : null,
       });
-      const { clientSecret: _omit, ...safe } = result;
+      const safe = { ...result };
+      delete safe.clientSecret;
       return adminJson(safe, result.ok ? 200 : 400);
     }
 

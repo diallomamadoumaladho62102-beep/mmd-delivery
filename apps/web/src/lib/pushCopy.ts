@@ -101,6 +101,14 @@ export const PUSH_CATALOG = {
     { title: "司机已到达", body: "司机已到达。您有 5 分钟免费等待时间。" },
     { title: "Driwer maa arii", body: "Driwer maa arii. A heɓii hojomaaji 5 njeddaango tawaaka." },
   ),
+  driver_arrived_pickup: L(
+    { title: "Your driver has arrived at the restaurant", body: "Your driver has arrived at the pickup location." },
+    { title: "Votre chauffeur est arrivé au restaurant", body: "Votre chauffeur est arrivé au point de retrait." },
+    { title: "Tu conductor ha llegado al restaurante", body: "Tu conductor ha llegado al punto de recogida." },
+    { title: "وصل السائق إلى المطعم", body: "وصل السائق إلى نقطة الاستلام." },
+    { title: "司机已到达餐厅", body: "司机已到达取件地点。" },
+    { title: "Driwer maa arii e restoran", body: "Driwer maa arii e nokku pickup." },
+  ),
   wait_free_ending: L(
     { title: "Free waiting is ending", body: "One minute of free waiting remains." },
     { title: "L'attente gratuite se termine", body: "Il reste une minute d'attente gratuite." },

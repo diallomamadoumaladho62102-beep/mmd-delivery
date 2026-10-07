@@ -229,6 +229,7 @@ export type RootStackParamList = {
     orderId: string;
     sourceTable?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
     source_table?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
+    offer_id?: string | null;
   };
   DriverMap: {
     orderId: string;
