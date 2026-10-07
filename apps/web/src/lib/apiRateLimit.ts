@@ -155,6 +155,7 @@ export function classifyApiPath(pathname: string): ApiRateTier {
     p.startsWith("/api/locations") ||
     p.startsWith("/api/mapbox") ||
     p.startsWith("/api/driver/location") ||
+    p.startsWith("/api/taxi/nearby-drivers") ||
     p.includes("geocode")
   ) {
     return "location";
