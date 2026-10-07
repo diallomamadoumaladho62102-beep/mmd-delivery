@@ -37,6 +37,7 @@ type WaitLateFeeRow = {
   wait_timer_started_at: string | null;
   free_wait_minutes: number | null;
   leave_at_door: boolean | null;
+  started_at?: string | null;
 };
 
 function tableForEntity(entityType: WaitTimerEntityType) {
@@ -130,7 +131,7 @@ async function loadWaitLateFeeRow(
   const { data, error } = await supabaseAdmin
     .from("taxi_rides")
     .select(
-      "id,driver_id,client_user_id,created_by,user_id,client_id,currency,country_code,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,wait_fee_amount_cents,wait_fee_status,wait_fee_currency,driver_arrived_at,manual_arrival_required,driver_distance_to_target_meters,wait_timer_started_at,free_wait_minutes,leave_at_door"
+      "id,driver_id,client_user_id,created_by,user_id,client_id,currency,country_code,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,wait_fee_amount_cents,wait_fee_status,wait_fee_currency,driver_arrived_at,manual_arrival_required,driver_distance_to_target_meters,wait_timer_started_at,free_wait_minutes,leave_at_door,started_at"
     )
     .eq("id", entityId)
     .maybeSingle();
@@ -183,6 +184,7 @@ export async function chargeWaitLateFeeIfEligible(
   const computed = computeWaitTimerState({
     waitTimerStartedAt: row.wait_timer_started_at ?? row.driver_arrived_at,
     freeWaitMinutes: row.free_wait_minutes ?? undefined,
+    waitEndedAt: input.entityType === "taxi_ride" ? row.started_at : null,
     leaveAtDoor: row.leave_at_door === true,
     entityKind,
   });

@@ -26,7 +26,7 @@
     "test:payout-routing": "tsx src/lib/payoutMethodRouting.test.ts",
     "test:payout-providers": "tsx src/lib/payoutProviders.test.ts",
     "test:wait-fee": "tsx src/lib/waitFeeCalculator.test.ts",
-    "test:wait-timer": "tsx src/lib/waitTimerPlatform.test.ts && tsx src/lib/waitTimerLateFeeBilling.test.ts",
+    "test:wait-timer": "tsx src/lib/waitTimerPlatform.test.ts && tsx src/lib/waitTimerLateFeeBilling.test.ts && tsx src/lib/taxiWaitStart.test.ts",
     "test:marketplace-delivery-shadow": "tsx src/lib/marketplaceDeliveryShadow.test.ts",
     "test:marketplace-live-checkout": "tsx src/lib/marketplaceLiveCheckout.test.ts",
     "test:marketplace-dispatch": "node scripts/smoke-marketplace-dispatch.mjs",

@@ -30,6 +30,8 @@ export function computeWaitTimerState(input: {
   waitTimerStartedAt: string | Date | null;
   freeWaitMinutes?: number;
   now?: Date;
+  /** When the trip has started, waiting stops at this server timestamp. */
+  waitEndedAt?: string | Date | null;
   leaveAtDoor?: boolean;
   entityKind: "delivery" | "taxi";
   driverArrivedAt?: string | Date | null;
@@ -55,7 +57,11 @@ export function computeWaitTimerState(input: {
   }
 
   const startedAt = new Date(input.waitTimerStartedAt ?? input.driverArrivedAt ?? now);
-  const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 1000));
+  const endedAt = input.waitEndedAt ? new Date(input.waitEndedAt) : now;
+  const endMs = Number.isNaN(endedAt.getTime())
+    ? now.getTime()
+    : Math.min(now.getTime(), endedAt.getTime());
+  const elapsedSeconds = Math.max(0, Math.floor((endMs - startedAt.getTime()) / 1000));
   const elapsedMinutes = elapsedSeconds / 60;
   const billableMinutes = Math.max(0, elapsedMinutes - freeWaitMinutes);
   const waitFeeCents = computeWaitFeeCents(billableMinutes);
