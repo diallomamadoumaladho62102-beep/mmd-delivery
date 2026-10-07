@@ -921,6 +921,7 @@
       "acceptedTitle": "Trip accepted ✅",
       "acceptedBody": "You are now assigned to this trip.",
       "acceptError": "Unable to accept the trip right now.",
+      "offerRequired": "A pending offer is required to accept this delivery.",
       "codeMissingTitle": "Missing code",
       "codeMissingBody": "Enter the verification code.",
       "codeServerError": "Server error while verifying the code.",

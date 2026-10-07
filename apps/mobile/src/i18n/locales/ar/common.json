@@ -919,6 +919,7 @@
       "acceptedTitle": "تم قبول الرحلة ✅",
       "acceptedBody": "تم تعيينك لهذه الرحلة.",
       "acceptError": "تعذر قبول الرحلة الآن.",
+      "offerRequired": "يلزم عرض معلّق لقبول هذا التوصيل.",
       "codeMissingTitle": "رمز مفقود",
       "codeMissingBody": "أدخل رمز التحقق.",
       "codeServerError": "خطأ في الخادم أثناء التحقق من الرمز.",

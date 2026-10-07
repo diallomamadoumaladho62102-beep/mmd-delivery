@@ -919,6 +919,7 @@
       "acceptedTitle": "Viaje aceptado ✅",
       "acceptedBody": "Ahora estás asignado a este viaje.",
       "acceptError": "No se pudo aceptar el viaje ahora.",
+      "offerRequired": "Se requiere una oferta pendiente para aceptar esta entrega.",
       "codeMissingTitle": "Falta código",
       "codeMissingBody": "Ingresa el código de verificación.",
       "codeServerError": "Error del servidor al verificar el código.",
