@@ -80,6 +80,7 @@ export type WaitTimerRow = {
   dropoff_lat?: number | null;
   dropoff_lng?: number | null;
   status?: string | null;
+  started_at?: string | null;
   driver_id?: string | null;
   currency?: string | null;
   driver_payout_cents?: number | null;

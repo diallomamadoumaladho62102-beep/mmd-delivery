@@ -9,6 +9,7 @@ import {
   type WaitTimerRow,
 } from "@/lib/waitTimerTypes";
 import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
+import { resolveTaxiWaitStart } from "@/lib/taxiWaitStart";
 
 type EntityContext = {
   entityType: WaitTimerEntityType;
@@ -70,6 +71,9 @@ const ENTITY_SELECT_BASE = `
 function selectForEntity(entityType: WaitTimerEntityType): string {
   if (entityType === "delivery_request") {
     return `${ENTITY_SELECT_BASE}, driver_delivery_payout`;
+  }
+  if (entityType === "taxi_ride") {
+    return `${ENTITY_SELECT_BASE}, driver_payout_cents, started_at`;
   }
   return `${ENTITY_SELECT_BASE}, driver_payout_cents`;
 }
@@ -241,6 +245,138 @@ function validateProximity(input: {
   return { ok: false, error: "too_far_from_target", distanceMeters: dist };
 }
 
+async function recordTaxiWaitArrival(
+  supabaseAdmin: SupabaseClient,
+  ctx: EntityContext,
+  input: {
+    entityType: WaitTimerEntityType;
+    entityId: string;
+    driverUserId: string;
+    driverLat: number;
+    driverLng: number;
+  }
+) {
+  const proximity = validateProximity({
+    driverLat: input.driverLat,
+    driverLng: input.driverLng,
+    targetLat: ctx.targetLat,
+    targetLng: ctx.targetLng,
+    forceManual: false,
+  });
+
+  const decision = resolveTaxiWaitStart({
+    status: String(ctx.row.status ?? ""),
+    driverArrivedAt: ctx.row.driver_arrived_at,
+    waitTimerStartedAt: ctx.row.wait_timer_started_at,
+    nowIso: new Date().toISOString(),
+    proximity,
+  });
+
+  if (decision.action === "reject") {
+    if (proximity.ok === false && !ctx.row.driver_arrived_at && !ctx.row.wait_timer_started_at) {
+      await logWaitTimerEvent(supabaseAdmin, {
+        entityType: input.entityType,
+        entityId: input.entityId,
+        eventType:
+          proximity.error === "manual_arrival_required"
+            ? "driver_arrival_manual_required"
+            : "driver_arrival_blocked",
+        actorId: input.driverUserId,
+        triggeredRole: "driver",
+        description: "Driver arrival blocked by proximity validation",
+        metadata: {
+          distance_meters: proximity.distanceMeters,
+          driver_lat: input.driverLat,
+          driver_lng: input.driverLng,
+        },
+      });
+    }
+    return {
+      ok: false as const,
+      error: decision.error,
+      distance_meters: proximity.ok ? proximity.distanceMeters : proximity.distanceMeters,
+    };
+  }
+
+  if (decision.action === "idempotent") {
+    return {
+      ok: true as const,
+      already_arrived: true,
+      entity_type: input.entityType,
+      entity_id: input.entityId,
+      driver_arrived_at: decision.driverArrivedAt,
+      wait_timer_started_at: decision.waitTimerStartedAt,
+      distance_meters: ctx.row.driver_distance_to_target_meters,
+      manual_arrival_required: Boolean(ctx.row.manual_arrival_required),
+      client_user_ids: ctx.clientUserIds,
+      entity_kind: ctx.entityKind,
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const currency = String(ctx.row.currency ?? "USD").toUpperCase();
+  const update: Record<string, unknown> = {
+    wait_timer_started_at: decision.startedAt,
+    updated_at: nowIso,
+  };
+
+  if (decision.action === "start") {
+    update.driver_arrived_at = decision.startedAt;
+    update.status = "driver_arrived";
+    update.wait_fee_status = "free";
+    update.wait_fee_currency = currency;
+    update.driver_distance_to_target_meters = decision.distanceMeters;
+    update.manual_arrival_required = false;
+    update.wait_arrival_lat = input.driverLat;
+    update.wait_arrival_lng = input.driverLng;
+  } else if (decision.distanceMeters != null) {
+    update.driver_distance_to_target_meters = decision.distanceMeters;
+    update.manual_arrival_required = false;
+    update.wait_arrival_lat = input.driverLat;
+    update.wait_arrival_lng = input.driverLng;
+    if (!ctx.row.wait_fee_status || ctx.row.wait_fee_status === "none") {
+      update.wait_fee_status = "free";
+    }
+  } else if (!ctx.row.wait_fee_status || ctx.row.wait_fee_status === "none") {
+    update.wait_fee_status = "free";
+  }
+
+  const { error: updateErr } = await supabaseAdmin
+    .from(ctx.table)
+    .update(update)
+    .eq("id", input.entityId)
+    .eq("driver_id", input.driverUserId);
+
+  if (updateErr) return { ok: false as const, error: updateErr.message };
+
+  if (decision.action === "start") {
+    await logWaitTimerEvent(supabaseAdmin, {
+      entityType: input.entityType,
+      entityId: input.entityId,
+      eventType: "driver_arrived",
+      actorId: input.driverUserId,
+      triggeredRole: "driver",
+      description: "Driver arrived — wait timer started",
+      metadata: {
+        distance_meters: decision.distanceMeters,
+        manual_required: false,
+      },
+    });
+  }
+
+  return {
+    ok: true as const,
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    driver_arrived_at: decision.action === "start" ? decision.startedAt : ctx.row.driver_arrived_at,
+    wait_timer_started_at: decision.startedAt,
+    distance_meters: decision.distanceMeters,
+    manual_arrival_required: false,
+    client_user_ids: ctx.clientUserIds,
+    entity_kind: ctx.entityKind,
+  };
+}
+
 export async function recordDriverArrival(
   supabaseAdmin: SupabaseClient,
   input: {
@@ -256,9 +392,14 @@ export async function recordDriverArrival(
     supabaseAdmin,
     input.entityType,
     input.entityId,
-    input.driverUserId
+    input.driverUserId,
+    { requireArrivalEligibleStatus: input.entityType !== "taxi_ride" }
   );
   if ("error" in ctx) return { ok: false as const, error: ctx.error };
+
+  if (input.entityType === "taxi_ride") {
+    return recordTaxiWaitArrival(supabaseAdmin, ctx, input);
+  }
 
   if (ctx.row.driver_arrived_at || ctx.row.wait_timer_started_at) {
     return { ok: false as const, error: "already_arrived" };
@@ -309,10 +450,6 @@ export async function recordDriverArrival(
     wait_arrival_lng: input.driverLng,
     updated_at: nowIso,
   };
-
-  if (input.entityType === "taxi_ride") {
-    update.status = "driver_arrived";
-  }
 
   const { error: updateErr } = await supabaseAdmin
     .from(ctx.table)
@@ -380,6 +517,7 @@ export async function getWaitTimerStatus(
   const computed = computeWaitTimerState({
     waitTimerStartedAt: ctx.row.wait_timer_started_at ?? ctx.row.driver_arrived_at,
     freeWaitMinutes: ctx.row.free_wait_minutes ?? undefined,
+    waitEndedAt: ctx.entityKind === "taxi" ? ctx.row.started_at : null,
     leaveAtDoor: Boolean(ctx.row.leave_at_door),
     entityKind: ctx.entityKind,
     driverArrivedAt: ctx.row.driver_arrived_at,
@@ -520,6 +658,7 @@ export async function cancelTaxiNoShow(
   const computed = computeWaitTimerState({
     waitTimerStartedAt: ctx.row.wait_timer_started_at ?? ctx.row.driver_arrived_at,
     freeWaitMinutes: ctx.row.free_wait_minutes ?? undefined,
+    waitEndedAt: ctx.row.started_at,
     entityKind: "taxi",
   });
 

@@ -304,9 +304,7 @@ export function DriverWaitTimerPanel({
     <View style={[styles.card, premium && styles.cardPremium]}>
       <View style={styles.headerRow}>
         <Text style={[styles.title, premium && styles.titlePremium]}>
-          {premium
-            ? "Customer wait time"
-            : tr("driver.waitTimer.title", "Customer wait timer")}
+          {tr("driver.waitTimer.title", "Customer wait timer")}
         </Text>
         {refreshing ? <ActivityIndicator size="small" color="#94A3B8" /> : null}
       </View>
@@ -320,7 +318,7 @@ export function DriverWaitTimerPanel({
           <View style={styles.premiumIdleRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.meta}>
-                Free wait time: {timer?.free_wait_minutes ?? 5} min
+                {tr("driver.waitTimer.freeWait", "Free wait")}: {timer?.free_wait_minutes ?? 5} min
               </Text>
             </View>
             <Text style={[styles.timer, styles.timerPremium]}>00:00</Text>
@@ -346,13 +344,18 @@ export function DriverWaitTimerPanel({
             <View style={styles.premiumIdleRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.meta}>
-                  Free wait time: {timer?.free_wait_minutes ?? 5} min
+                  {tr("driver.waitTimer.freeWait", "Free wait")}: {timer?.free_wait_minutes ?? 5} min
                 </Text>
                 {(timer?.remaining_free_seconds ?? 0) > 0 ? (
                   <Text style={styles.meta}>
-                    Free remaining: {formatTimer(timer?.remaining_free_seconds ?? 0)}
+                    {tr("driver.waitTimer.freeRemaining", "Remaining free time")}:{" "}
+                    {formatTimer(timer?.remaining_free_seconds ?? 0)}
                   </Text>
                 ) : null}
+                <Text style={styles.meta}>
+                  {tr("driver.waitTimer.lateFee", "Fees")}:{" "}
+                  {formatWaitFee(timer?.wait_fee_cents ?? 0, currency)}
+                </Text>
               </View>
               <Text style={[styles.timer, styles.timerPremium]}>
                 {formatTimer(timer?.elapsed_seconds ?? 0)}
