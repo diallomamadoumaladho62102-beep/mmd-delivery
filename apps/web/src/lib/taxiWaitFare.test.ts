@@ -91,6 +91,14 @@ test("pickup wait is finalized on trip start and is not a second Stripe charge",
   assert.doesNotMatch(customer, /\.update\(/);
   assert.doesNotMatch(stop, /finalizeTaxiWaitOnTripStart/);
   assert.doesNotMatch(stop, /wait_timer_started_at/);
+
+  const noShow = fs.readFileSync(
+    path.join(repoRoot, "apps/web/src/lib/waitTimerService.ts"),
+    "utf8",
+  );
+  const noShowUpdate = noShow.slice(noShow.indexOf("export async function cancelTaxiNoShow"));
+  assert.match(noShowUpdate, /\.eq\("status", "driver_arrived"\)/);
+  assert.match(noShowUpdate, /invalid_status_for_no_show_cancel/);
 });
 
 test("customer wait copy exists in all six locales", () => {

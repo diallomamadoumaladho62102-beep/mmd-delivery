@@ -683,7 +683,7 @@ export async function cancelTaxiNoShow(
       ridePriceCents * getPricingBusinessDefault("taxi_no_show_compensation_pct")
     ) + waitFeeCents;
 
-  const { error } = await supabaseAdmin
+  const { data: canceled, error } = await supabaseAdmin
     .from("taxi_rides")
     .update({
       status: "canceled",
@@ -698,9 +698,15 @@ export async function cancelTaxiNoShow(
       updated_at: nowIso,
     })
     .eq("id", input.rideId)
-    .eq("driver_id", input.driverUserId);
+    .eq("driver_id", input.driverUserId)
+    .eq("status", "driver_arrived")
+    .select("id")
+    .maybeSingle();
 
   if (error) return { ok: false as const, error: error.message };
+  if (!canceled?.id) {
+    return { ok: false as const, error: "invalid_status_for_no_show_cancel" };
+  }
 
   await logWaitTimerEvent(supabaseAdmin, {
     entityType: "taxi_ride",
