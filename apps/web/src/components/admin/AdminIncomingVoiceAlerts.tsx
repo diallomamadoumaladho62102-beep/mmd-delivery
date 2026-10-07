@@ -403,8 +403,8 @@ export default function AdminIncomingVoiceAlerts({
             ) : (
               <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                 {authorizedAdminCount <= 1
-                  ? "Seul administrateur autorisé — décrochez le téléphone pour parler. Accept arrête la sonnerie web."
-                  : "Aucun autre administrateur éligible n’est disponible pour un transfert."}
+                  ? t("You are the only authorized administrator. Answer the phone to talk. Accept stops the web ring.")
+                  : t("No other eligible administrator is available for a transfer.")}
               </p>
             )}
           </section>

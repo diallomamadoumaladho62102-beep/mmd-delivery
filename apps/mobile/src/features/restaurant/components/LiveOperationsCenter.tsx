@@ -35,7 +35,7 @@ type Props = {
   currency: string;
   language: string;
   onHandOver: (orderId: string) => void;
-  onViewMap: (orderId: string) => void;
+  onViewMap?: (orderId: string) => void;
   onViewOrder: (orderId: string) => void;
   onRefresh: () => void;
 };
@@ -266,7 +266,7 @@ function LiveOperationsCenterComponent({
                     : undefined
                 }
                 onViewMap={
-                  item.variant !== "arrived"
+                  onViewMap && item.variant !== "arrived"
                     ? () => onViewMap(item.card.orderId)
                     : undefined
                 }

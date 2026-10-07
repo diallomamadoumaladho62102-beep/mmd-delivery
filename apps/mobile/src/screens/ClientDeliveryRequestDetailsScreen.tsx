@@ -788,9 +788,12 @@ export function ClientDeliveryRequestDetailsScreen() {
     };
   }, [data?.driver_id]);
 
-  const { location: liveDriverLocation } = useLiveDriverLocation(
-    data?.driver_id ?? null,
-  );
+  const liveDriverId = (() => {
+    const status = normalizeStatus(data?.status);
+    if (["delivered", "completed", "canceled", "cancelled"].includes(status)) return null;
+    return data?.driver_id ?? null;
+  })();
+  const { location: liveDriverLocation } = useLiveDriverLocation(liveDriverId);
   const network = useNetworkStatus();
 
   const pickupCoord = useMemo(

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AppState } from "react-native";
 import { supabase } from "../lib/supabase";
 import {
   subscribePostgresChannel,
@@ -16,25 +17,30 @@ export function useLiveDriverLocation(driverId?: string | null) {
   const [location, setLocation] = useState<DriverLocation | null>(null);
 
   useEffect(() => {
-    if (!driverId) return;
+    if (!driverId) {
+      setLocation(null);
+      return;
+    }
 
     let mounted = true;
 
-    // initial fetch
-    void supabase
-      .from("driver_locations")
-      .select("driver_id,lat,lng,updated_at")
-      .eq("driver_id", driverId)
-      .maybeSingle()
-      .then(
-        ({ data }) => {
-          if (!mounted) return;
-          if (data) setLocation(data as any);
-        },
-        () => {},
-      );
+    const fetchOnce = () => {
+      void supabase
+        .from("driver_locations")
+        .select("driver_id,lat,lng,updated_at")
+        .eq("driver_id", driverId)
+        .maybeSingle()
+        .then(
+          ({ data }) => {
+            if (!mounted) return;
+            setLocation(data ? (data as DriverLocation) : null);
+          },
+          () => {},
+        );
+    };
 
-    // realtime updates
+    fetchOnce();
+
     const channel = subscribePostgresChannel(`driver_locations:${driverId}`, [
       {
         event: "*",
@@ -48,8 +54,21 @@ export function useLiveDriverLocation(driverId?: string | null) {
       },
     ]);
 
+    const appSub = AppState.addEventListener("change", (state) => {
+      if (state === "active") fetchOnce();
+    });
+
+    const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_OUT" || !mounted) return;
+      mounted = false;
+      setLocation(null);
+      void unsubscribeSupabaseChannel(channel);
+    });
+
     return () => {
       mounted = false;
+      appSub.remove();
+      authSub.subscription.unsubscribe();
       void unsubscribeSupabaseChannel(channel);
     };
   }, [driverId]);

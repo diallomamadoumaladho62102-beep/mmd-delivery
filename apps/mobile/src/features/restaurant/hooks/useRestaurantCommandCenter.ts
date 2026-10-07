@@ -130,13 +130,6 @@ export function useRestaurantCommandCenter(): UseRestaurantCommandCenterResult {
         },
         {
           event: "*",
-          table: "driver_locations",
-          callback: () => {
-            void silentRefresh();
-          },
-        },
-        {
-          event: "*",
           table: "restaurant_profiles",
           filter: `user_id=eq.${restaurantUserId}`,
           callback: () => {

@@ -24,7 +24,6 @@ type Props = {
 function RestaurantLiveMapComponent({
   restaurant,
   mapData,
-  focusOrderId,
   height = 360,
   onOpenFullMap,
 }: Props) {
@@ -37,41 +36,22 @@ function RestaurantLiveMapComponent({
     return [restaurant.lng, restaurant.lat];
   }, [restaurant.lat, restaurant.lng]);
 
-  const focusDriver = useMemo(
-    () => mapData.drivers.find((driver) => driver.orderId === focusOrderId) ?? null,
-    [focusOrderId, mapData.drivers]
-  );
-
-  const driverPoints = mapData.drivers.filter(
-    (driver) => Number.isFinite(driver.lat) && Number.isFinite(driver.lng)
-  );
-
   const statusCounts = useMemo(() => {
     const counts = { arrived: 0, approaching: 0, en_route: 0 };
-    for (const driver of driverPoints) {
+    for (const driver of mapData.drivers) {
       counts[driver.status] += 1;
     }
     return counts;
-  }, [driverPoints]);
+  }, [mapData.drivers]);
 
   useEffect(() => {
     if (!cameraRef.current || !restaurantCoordinate) return;
-
-    if (focusDriver) {
-      cameraRef.current.setCamera({
-        centerCoordinate: [focusDriver.lng, focusDriver.lat],
-        zoomLevel: 14.5,
-        animationDuration: 700,
-      });
-      return;
-    }
-
     cameraRef.current.setCamera({
       centerCoordinate: restaurantCoordinate,
       zoomLevel: 13,
       animationDuration: 700,
     });
-  }, [focusDriver, restaurantCoordinate]);
+  }, [restaurantCoordinate]);
 
   const mapHeight = height - 72;
 
@@ -80,7 +60,7 @@ function RestaurantLiveMapComponent({
       <SectionHeroHeader
         title={t("restaurant.commandCenter.liveMap")}
         subtitle={restaurant.name}
-        badge={driverPoints.length > 0 ? String(driverPoints.length) : undefined}
+        badge={mapData.drivers.length > 0 ? String(mapData.drivers.length) : undefined}
         badgeColor={CC.blue}
         rightSlot={
           onOpenFullMap ? (
@@ -119,49 +99,6 @@ function RestaurantLiveMapComponent({
                 </View>
               </Mapbox.PointAnnotation>
 
-              {driverPoints.map((driver) => {
-                const status = LIVE_OPS_STATUS[driver.status];
-                return (
-                  <Mapbox.PointAnnotation
-                    key={`driver-${driver.driverId}-${driver.orderId}`}
-                    id={`driver-${driver.driverId}`}
-                    coordinate={[driver.lng, driver.lat]}
-                  >
-                    <View style={styles.driverPinWrap}>
-                      <View
-                        style={[
-                          styles.driverPin,
-                          {
-                            backgroundColor: status.color,
-                            borderColor: status.border,
-                          },
-                        ]}
-                      >
-                        <Text style={styles.driverPinText}>🛵</Text>
-                      </View>
-                      {driver.etaMinutes != null ? (
-                        <View style={[styles.etaChip, { borderColor: status.border }]}>
-                          <Text style={[styles.etaChipText, { color: status.color }]}>
-                            {t("restaurant.commandCenter.etaMinutes", { minutes: driver.etaMinutes })}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  </Mapbox.PointAnnotation>
-                );
-              })}
-
-              {mapData.customers.map((customer) => (
-                <Mapbox.PointAnnotation
-                  key={`customer-${customer.orderId}`}
-                  id={`customer-${customer.orderId}`}
-                  coordinate={[customer.lng, customer.lat]}
-                >
-                  <View style={styles.customerPin}>
-                    <Text style={styles.customerPinText}>📍</Text>
-                  </View>
-                </Mapbox.PointAnnotation>
-              ))}
             </Mapbox.MapView>
           </View>
 
@@ -174,7 +111,7 @@ function RestaurantLiveMapComponent({
             ))}
           </View>
 
-          {driverPoints.length === 0 ? (
+          {mapData.drivers.length === 0 ? (
             <View style={styles.overlay}>
               <Text style={styles.overlayText}>{t("restaurant.commandCenter.noActiveDrivers")}</Text>
             </View>

@@ -146,9 +146,12 @@ export default function TaxiRideTrackingScreen() {
   }>(null);
   const mountedRef = useRef(true);
 
-  const { location: liveDriver } = useLiveDriverLocation(
-    String(ride?.driver_id ?? "") || null,
-  );
+  const liveDriverId = (() => {
+    const rideStatus = String(ride?.status ?? "").toLowerCase();
+    if (["completed", "cancelled", "canceled"].includes(rideStatus)) return null;
+    return String(ride?.driver_id ?? "") || null;
+  })();
+  const { location: liveDriver } = useLiveDriverLocation(liveDriverId);
 
   const confirmingPaymentRef = useRef(false);
 
