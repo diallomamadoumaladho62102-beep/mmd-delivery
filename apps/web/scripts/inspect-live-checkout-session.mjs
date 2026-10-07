@@ -106,7 +106,7 @@ async function main() {
   const { createClient } = await import("@supabase/supabase-js");
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY,
+    process.env.SUPABASE_SECRET_KEY,
     { auth: { persistSession: false }, realtime: { transport: ws } },
   );
   const { data: order } = await admin

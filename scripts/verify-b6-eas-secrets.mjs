@@ -14,7 +14,7 @@ const root = join(__dirname, "..");
 const REQUIRED_EAS = [
   "EXPO_PUBLIC_STRIPE_PK",
   "EXPO_PUBLIC_SUPABASE_URL",
-  "EXPO_PUBLIC_SUPABASE_ANON_KEY",
+  "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
   "EXPO_PUBLIC_MAPBOX_TOKEN",
   "RNMAPBOX_MAPS_DOWNLOAD_TOKEN",
 ];
@@ -68,11 +68,6 @@ function parseEasEnvList(text) {
     }
   }
   return vars;
-}
-
-function tailMatch(a, b, n = 12) {
-  if (!a || !b) return false;
-  return a.slice(-n) === b.slice(-n);
 }
 
 function scanMobileForForbiddenSecrets() {
@@ -158,7 +153,8 @@ async function main() {
 
   const stripe = easVars.get("EXPO_PUBLIC_STRIPE_PK")?.value ?? "";
   const supabaseUrl = easVars.get("EXPO_PUBLIC_SUPABASE_URL")?.value ?? "";
-  const supabaseAnon = easVars.get("EXPO_PUBLIC_SUPABASE_ANON_KEY")?.value ?? "";
+  const publishableEntry = easVars.get("EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  const supabasePublishable = publishableEntry?.value ?? "";
   const mapboxPk = easVars.get("EXPO_PUBLIC_MAPBOX_TOKEN")?.value ?? "";
 
   report.coherence = {
@@ -167,7 +163,9 @@ async function main() {
     supabase_url_matches_prod:
       supabaseUrl === cert.SUPABASE_URL ||
       supabaseUrl.includes("sjmszohmhudayxawfows"),
-    supabase_anon_matches_prod: tailMatch(supabaseAnon, cert.SUPABASE_ANON_KEY, 16),
+    supabase_publishable_prefix:
+      publishableEntry?.present === true &&
+      (publishableEntry.masked || supabasePublishable.startsWith("sb_publishable_")),
     mapbox_token_set: mapboxPk.startsWith("pk."),
     api_url_prod: "https://www.mmddelivery.com (eas.json production profile)",
     legal_urls: "defaults in app.config.ts → www.mmddelivery.com/legal/*",
@@ -179,8 +177,10 @@ async function main() {
   if (!report.coherence.supabase_url_matches_prod) {
     report.risks.push("EXPO_PUBLIC_SUPABASE_URL does not match production project sjmszohmhudayxawfows");
   }
-  if (!report.coherence.supabase_anon_matches_prod) {
-    report.risks.push("EXPO_PUBLIC_SUPABASE_ANON_KEY may not match production anon key");
+  if (!report.coherence.supabase_publishable_prefix) {
+    report.risks.push(
+      "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must be present and start with sb_publishable_"
+    );
   }
   if (easVars.has("MAPBOX_DOWNLOADS_TOKEN")) {
     report.risks.push(

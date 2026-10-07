@@ -33,7 +33,7 @@ const envPath = path.join(web, ".env.vercel.production.local");
 const env = loadEnv(envPath);
 const url = (env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
 const key =
-  env.SUPABASE_SERVICE_ROLE_KEY ||
+  env.SUPABASE_SECRET_KEY ||
   env.SUPABASE_SECRET_KEY ||
   env.SUPABASE_SERVICE_KEY;
 

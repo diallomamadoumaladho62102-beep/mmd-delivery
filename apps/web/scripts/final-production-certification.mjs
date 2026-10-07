@@ -178,7 +178,7 @@ async function checkHealthEndpoints() {
     recordCheck("stripe", "vercel_webhook_health", "FAIL", { body: stripeHealth.body });
   }
 
-  const hasServiceRole = Boolean((process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY));
+  const hasServiceRole = Boolean((process.env.SUPABASE_SECRET_KEY));
   if (!hasServiceRole) {
     const recent = stripeHealth.body?.recent_webhook_events_24h;
     if (recent?.ok === true) {
@@ -278,10 +278,10 @@ async function probeEdgeWebhook() {
 
 async function checkSupabaseReadOnly() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const serviceKey = (process.env.SUPABASE_SECRET_KEY);
   if (!url || !serviceKey) {
     recordCheck("supabase", "service_role_checks", "SKIP", {
-      note: "Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY for DB probes",
+      note: "Set SUPABASE_URL + SUPABASE_SECRET_KEY for DB probes",
     });
     return;
   }
@@ -396,11 +396,11 @@ async function checkRlsProbe() {
   }
 
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anon = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const token = (process.env.TEST_CLIENT_JWT || "").trim();
   if (!url || !anon || !token) {
     recordCheck("supabase", "rls_client_insert_probe", "SKIP", {
-      note: "Needs SUPABASE_URL, SUPABASE_ANON_KEY, TEST_CLIENT_JWT",
+      note: "Needs SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, TEST_CLIENT_JWT",
     });
     return;
   }

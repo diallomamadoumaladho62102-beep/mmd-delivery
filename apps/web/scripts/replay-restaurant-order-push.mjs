@@ -17,7 +17,6 @@ const url = (
   ""
 ).replace(/\/$/, "");
 const key =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_SECRET_KEY ||
   "";
 
@@ -26,7 +25,7 @@ function log(...args) {
 }
 
 if (!url || !key) {
-  console.error("Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
+  console.error("Missing SUPABASE_URL / SUPABASE_SECRET_KEY");
   process.exit(1);
 }
 

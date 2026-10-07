@@ -9,7 +9,7 @@ import {
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const SUPABASE_URL = getEdgeSupabaseUrl();
-const SUPABASE_ANON_KEY = getEdgePublishableKey();
+const SUPABASE_PUBLISHABLE_KEY = getEdgePublishableKey();
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
     const authHeader = req.headers.get("Authorization") ?? "";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
 

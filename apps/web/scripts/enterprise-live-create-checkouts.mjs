@@ -20,10 +20,9 @@ require("dotenv").config({
 const SITE = "https://www.mmddelivery.com";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const anon =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const service =
-  process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_SECRET_KEY;
 const EMAIL = process.env.E2E_TEST_EMAIL || "e2e.enterprise-cert@mmd.test";
 const PASSWORD =
   process.env.E2E_TEST_PASSWORD || "E2eEnterpriseCert!Mmd2026";

@@ -9,7 +9,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const key = process.env.SUPABASE_SECRET_KEY;
 const dryRun = process.env.DRY_RUN !== "0";
 const limit = Number(process.env.LIMIT ?? 200);
 

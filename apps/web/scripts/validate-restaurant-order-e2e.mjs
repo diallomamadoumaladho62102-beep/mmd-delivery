@@ -10,8 +10,8 @@
  *
  * Required env (examples):
  *   SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_ANON_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY
- *   SUPABASE_SERVICE_ROLE_KEY (for pricing_config + visibility checks)
+ *   SUPABASE_PUBLISHABLE_KEY / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ *   SUPABASE_SECRET_KEY (for pricing_config + visibility checks)
  *   STRIPE_SECRET_KEY (test mode sk_test_… recommended)
  *   E2E_TEST_EMAIL / E2E_TEST_PASSWORD
  *   Optional: API_BASE_URL (default https://www.mmddelivery.com)
@@ -53,13 +53,11 @@ const supabaseUrl = (
 ).trim();
 const anonKey = (
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
   ""
 ).trim();
 const serviceKey = (
   process.env.SUPABASE_SECRET_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
   ""
 ).trim();
 const stripeSecret = (process.env.STRIPE_SECRET_KEY || "").trim();
@@ -112,7 +110,7 @@ function failFatal(message) {
 
 async function authClient() {
   if (!supabaseUrl || !anonKey) {
-    failFatal("Missing SUPABASE_URL / SUPABASE_ANON_KEY");
+    failFatal("Missing SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY");
   }
   const client = createClient(supabaseUrl, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },

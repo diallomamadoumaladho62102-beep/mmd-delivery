@@ -11,8 +11,8 @@
  *
  * Required env:
  *   NEXT_PUBLIC_SUPABASE_URL / SUPABASE_URL
- *   NEXT_PUBLIC_SUPABASE_ANON_KEY (or publishable)
- *   SUPABASE_SERVICE_ROLE_KEY (preferred for restaurant lookup)
+ *   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or publishable)
+ *   SUPABASE_SECRET_KEY (preferred for restaurant lookup)
  *   E2E_TEST_EMAIL / E2E_TEST_PASSWORD
  *   STRIPE_SECRET_KEY (must be sk_live_… in Live)
  *
@@ -57,13 +57,11 @@ const supabaseUrl = (
 ).trim();
 const anonKey = (
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
   ""
 ).trim();
 const serviceKey = (
   process.env.SUPABASE_SECRET_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
   ""
 ).trim();
 const stripeSecret = (process.env.STRIPE_SECRET_KEY || "").trim();

@@ -9,8 +9,8 @@ import {
 type Body = { message_id: string };
 
 const SUPABASE_URL = getEdgeSupabaseUrl();
-const SUPABASE_ANON_KEY = getEdgePublishableKey();
-const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
+const SUPABASE_PUBLISHABLE_KEY = getEdgePublishableKey();
+const SUPABASE_SECRET_KEY = getEdgeSecretKey();
 
 const GOOGLE_API_KEY = Deno.env.get("GOOGLE_TRANSLATE_API_KEY") ?? "";
 
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
   try {
     // 1) Auth user (JWT)
     const authHeader = req.headers.get("Authorization") ?? "";
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const userClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
 
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     if (!body?.message_id) return new Response("Missing message_id", { status: 400 });
 
     // 2) Admin client for DB update
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const admin = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY);
 
     // 3) Load message
     const { data: msg, error: msgErr } = await admin

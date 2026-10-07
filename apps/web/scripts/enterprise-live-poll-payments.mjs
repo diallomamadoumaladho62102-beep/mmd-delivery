@@ -19,7 +19,7 @@ require("dotenv").config({
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const service =
-  process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_SECRET_KEY;
 const admin = createClient(url, service, {
   auth: { persistSession: false, autoRefreshToken: false },
 });

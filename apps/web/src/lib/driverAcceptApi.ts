@@ -75,11 +75,11 @@ export function getOptionalDeliveryRequestOfferId(
 
 function getSupabaseUserClient(token: string): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
-      "Missing env (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)",
+      "Missing env (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)",
     );
   }
 
@@ -91,11 +91,11 @@ function getSupabaseUserClient(token: string): SupabaseClient {
 
 export function getSupabaseAdminClient(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabaseServiceKey = (process.env.SUPABASE_SECRET_KEY);
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error(
-      "Missing env (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)",
+      "Missing env (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SECRET_KEY)",
     );
   }
 

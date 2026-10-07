@@ -278,7 +278,7 @@ export async function GET(req: NextRequest) {
   try {
     const supabaseUrl =
       process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const serviceKey = (process.env.SUPABASE_SECRET_KEY);
 
     const envBucketRaw = process.env.TAX_PDF_BUCKET || DEFAULT_BUCKET;
     const usedBucket = normalizeBucket(envBucketRaw);
@@ -287,7 +287,7 @@ export async function GET(req: NextRequest) {
     if (!supabaseUrl || !serviceKey) {
       return jsonError(
         500,
-        "Missing env (SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)"
+        "Missing env (SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SECRET_KEY)"
       );
     }
 

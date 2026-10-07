@@ -6,7 +6,7 @@
  *   node scripts/verify-stripe-payment-platform.mjs
  *
  * Optional env:
- *   SUPABASE_ANON_KEY / EXPO_PUBLIC_SUPABASE_ANON_KEY
+ *   SUPABASE_PUBLISHABLE_KEY / EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
  *   VERIFY_ACCESS_TOKEN  (user JWT for authenticated Connect probes)
  */
 import { spawnSync } from "node:child_process";
@@ -34,8 +34,8 @@ const REQUIRED_SECRETS = [
   "STRIPE_RETURN_URL",
   "STRIPE_REFRESH_URL",
   "SUPABASE_URL",
-  "SUPABASE_ANON_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_PUBLISHABLE_KEYS",
+  "SUPABASE_SECRET_KEYS",
 ];
 
 function run(cmd, args) {
@@ -109,9 +109,9 @@ async function main() {
   }
 
   const anon =
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     "";
 
   for (const fn of FUNCTIONS) {

@@ -201,8 +201,8 @@ const fallback = loadEnv("apps/web/.env.local");
 const env = { ...fallback, ...local };
 
 const url = String(env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-const anon = String(env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
-const service = String(env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+const anon = String(env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "").trim();
+const service = String(env.SUPABASE_SECRET_KEY || "").trim();
 const host = url ? new URL(url).host : "sjmszohmhudayxawfows.supabase.co";
 
 console.log(
@@ -211,9 +211,9 @@ console.log(
     vars: [
       sanitizeMeta("NEXT_PUBLIC_SUPABASE_URL", env.NEXT_PUBLIC_SUPABASE_URL),
       sanitizeMeta("EXPO_PUBLIC_SUPABASE_URL", env.EXPO_PUBLIC_SUPABASE_URL),
-      sanitizeMeta("NEXT_PUBLIC_SUPABASE_ANON_KEY", env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-      sanitizeMeta("SUPABASE_SERVICE_ROLE_KEY", env.SUPABASE_SERVICE_ROLE_KEY),
-      sanitizeMeta("EXPO_PUBLIC_SUPABASE_ANON_KEY", env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
+      sanitizeMeta("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+      sanitizeMeta("SUPABASE_SECRET_KEY", env.SUPABASE_SECRET_KEY),
+      sanitizeMeta("EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY", env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
     ],
   })
 );

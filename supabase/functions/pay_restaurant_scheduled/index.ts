@@ -8,7 +8,7 @@ import {
 
 
 const SUPABASE_URL = getEdgeSupabaseUrl();
-const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
+const SUPABASE_SECRET_KEY = getEdgeSecretKey();
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET")!;
 
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       return json(req, { error: "Forbidden" }, 403);
     }
 
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    const admin = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
       auth: { persistSession: false },
     });
 
