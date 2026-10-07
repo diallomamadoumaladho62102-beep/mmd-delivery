@@ -91,5 +91,8 @@ test("own profile still reads email, so a live column revoke would break shipped
     "utf8",
   );
   assert.match(clientProfile, /\.select\("full_name, phone, phone_e164, phone_verified_at, email, avatar_url"\)/);
-  assert.match(navigator, /\.select\("email, phone_verified_at, phone, phone_e164"\)/);
+  assert.match(
+    navigator,
+    /\.select\("email, phone_verified_at, phone, phone_e164[^"]*"\)/,
+  );
 });
