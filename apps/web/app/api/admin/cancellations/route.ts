@@ -61,7 +61,12 @@ export async function GET(request: NextRequest) {
     if (params.get("waiting_fee") === "1") query = query.gt("wait_fee_cents", 0);
     if (params.get("payment_status")) query = query.eq("payment_status", params.get("payment_status"));
     if (from) query = query.gte("created_at", from);
-    if (to) query = query.lte("created_at", to);
+    if (to) {
+      query = query.lte(
+        "created_at",
+        /^\d{4}-\d{2}-\d{2}$/.test(to) ? `${to}T23:59:59.999Z` : to,
+      );
+    }
 
     const { data, error } = await query;
     if (error) return json({ ok: false, error: error.message }, 500);

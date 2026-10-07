@@ -5,6 +5,7 @@ import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
 import { notifyClientTaxiRideCancelled } from "@/lib/clientPushNotifications";
 import { parseStructuredCancelReason } from "@/lib/cancellationReasons";
 import { recordServiceCancellation } from "@/lib/serviceCancellationAudit";
+import { taxiWaitAuditFromRide } from "@/lib/taxi/taxiWaitAudit";
 import { TAXI_DRIVER_CANCEL_REASONS } from "@/lib/taxi/taxiCancellationPolicy";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
     const { data: rideBefore } = await auth.supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,status,client_user_id,payment_status,driver_id,country_code,currency",
+        "id,status,client_user_id,payment_status,driver_id,country_code,currency,wait_timer_started_at,driver_arrived_at,started_at,free_wait_minutes,wait_fee_amount_cents,wait_fee_applied_to_total,driver_distance_to_target_meters",
       )
       .eq("id", rideId)
       .maybeSingle();
@@ -91,6 +92,7 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", rideId);
 
+    const waitAudit = taxiWaitAuditFromRide(rideBefore ?? {});
     await recordServiceCancellation(auth.supabaseAdmin, {
       entityType: "taxi_ride",
       entityId: rideId,
@@ -101,13 +103,15 @@ export async function POST(req: NextRequest) {
       reasonNote: reasonDetail || null,
       previousStatus: String(rideBefore?.status ?? ""),
       resultingStatus: String(result.status ?? "dispatching"),
+      waitMinutes: waitAudit.waitMinutes,
+      waitFeeCents: waitAudit.waitFeeCents,
       paymentStatus: String(rideBefore?.payment_status ?? ""),
       refundAmountCents: 0,
       acceptanceRateImpact: false,
       cancellationRateImpact: true,
       cancellationSource: "driver_release",
       postAcceptance: true,
-      metadata: { reassign: true, refund: "NONE" },
+      metadata: { reassign: true, refund: "NONE", ...waitAudit.metadata },
     });
 
     let dispatch: { ok: boolean; error?: string } = { ok: false };

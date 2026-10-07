@@ -18,6 +18,7 @@ import * as KeepAwake from "expo-keep-awake";
 import Mapbox from "@rnmapbox/maps";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { askCancellationReason, CancellationReasonHost } from "../components/cancellation/CancellationReasonHost";
 import { supabase } from "../lib/supabase";
 import {
   subscribePostgresChannel,
@@ -907,8 +908,14 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
       try {
         setOrderActionLoading(true);
+        const choice = await askCancellationReason("restaurant");
+        if (!choice) return;
         const { postRestaurantOrderReject } = await import("../lib/restaurantOrderStatusApi");
-        await postRestaurantOrderReject({ orderId: order.id });
+        await postRestaurantOrderReject({
+          orderId: order.id,
+          reasonCode: choice.reasonCode,
+          reasonNote: choice.reasonNote,
+        });
         setLiveOrder(null);
         refreshLiveMap();
       } catch (e: any) {
@@ -2149,6 +2156,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
           </View>
         </View>
       </View>
+      <CancellationReasonHost />
     </SafeAreaProvider>
   );
 }

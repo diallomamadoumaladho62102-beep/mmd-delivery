@@ -16,6 +16,10 @@ import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { loadOwnSeller, loadSellerOrders } from "../../lib/sellerApi";
 import { formatMoney, type SellerOrderRow } from "../../lib/sellerTypes";
 import { updateMarketplaceSellerOrderStatus } from "../../lib/marketplaceApi";
+import {
+  askCancellationReason,
+  CancellationReasonHost,
+} from "../../components/cancellation/CancellationReasonHost";
 import { useTranslation } from "react-i18next";
 import { toUserFacingError } from "../../lib/userFacingError";
 import { rowDirection } from "../../i18n/rtl";
@@ -175,10 +179,20 @@ export default function SellerOrdersScreen({ navigation }: Props) {
     status: "accepted" | "refused" | "preparing" | "ready" | "out_for_delivery"
   ) {
     try {
+      let reasonCode: string | undefined;
+      let reasonNote: string | null | undefined;
+      if (status === "refused") {
+        const choice = await askCancellationReason("seller");
+        if (!choice) return;
+        reasonCode = choice.reasonCode;
+        reasonNote = choice.reasonNote;
+      }
       setBusyId(order.id);
       const result = await updateMarketplaceSellerOrderStatus({
         orderId: order.id,
         status,
+        reasonCode,
+        reasonNote,
       });
       if (result.stripe_refund_deferred) {
         Alert.alert(
@@ -354,6 +368,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
         </SellerContentWrap>
       )}
 
+      <CancellationReasonHost />
       <SellerBottomNav active="orders" />
     </SafeAreaView>
   );

@@ -28,6 +28,8 @@ type Row = {
   no_show: boolean;
   post_acceptance: boolean;
   cancellation_source: string;
+  wait_minutes: number | null;
+  metadata: Record<string, unknown> | null;
 };
 
 function CancellationReviewBody() {
@@ -36,6 +38,12 @@ function CancellationReviewBody() {
   const [service, setService] = useState("");
   const [actor, setActor] = useState("");
   const [query, setQuery] = useState("");
+  const [reason, setReason] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [noShow, setNoShow] = useState(false);
+  const [postAcceptance, setPostAcceptance] = useState(false);
+  const [waitingFee, setWaitingFee] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,6 +56,12 @@ function CancellationReviewBody() {
     if (service) params.set("service", service);
     if (actor) params.set("actor", actor);
     if (/^[0-9a-f-]{36}$/i.test(query.trim())) params.set("entity_id", query.trim());
+    if (reason.trim()) params.set("reason", reason.trim());
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (noShow) params.set("no_show", "1");
+    if (postAcceptance) params.set("post_acceptance", "1");
+    if (waitingFee) params.set("waiting_fee", "1");
     void adminFetch(`/api/admin/cancellations?${params.toString()}`)
       .then(async (res) => {
         const body = (await res.json()) as { ok?: boolean; cancellations?: Row[]; error?: string };
@@ -59,7 +73,7 @@ function CancellationReviewBody() {
         setError(null);
       })
       .catch(() => setError(t("Unable to load cancellations")));
-  }, [actor, locale, query, service, t]);
+  }, [actor, from, locale, noShow, postAcceptance, query, reason, service, t, to, waitingFee]);
 
   return (
     <main className="mx-auto max-w-6xl space-y-4 p-4">
@@ -85,6 +99,26 @@ function CancellationReviewBody() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        <input
+          className="rounded border px-2 py-1"
+          placeholder={t("Reason code")}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+        <input className="rounded border px-2 py-1" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <input className="rounded border px-2 py-1" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <label className="flex items-center gap-1 text-sm">
+          <input type="checkbox" checked={noShow} onChange={(e) => setNoShow(e.target.checked)} />
+          {t("No-show")}
+        </label>
+        <label className="flex items-center gap-1 text-sm">
+          <input type="checkbox" checked={postAcceptance} onChange={(e) => setPostAcceptance(e.target.checked)} />
+          {t("Post-acceptance")}
+        </label>
+        <label className="flex items-center gap-1 text-sm">
+          <input type="checkbox" checked={waitingFee} onChange={(e) => setWaitingFee(e.target.checked)} />
+          {t("Waiting fee")}
+        </label>
       </div>
       {error ? <p className="text-red-700">{error}</p> : null}
       <ul className="space-y-3">
@@ -111,6 +145,14 @@ function CancellationReviewBody() {
             </div>
             <div>
               {t("Payment")}: {row.payment_status ?? "—"} · {t("Refund cents")}: {row.refund_amount_cents ?? "—"} · {t("Wait fee cents")}: {row.wait_fee_cents ?? "—"}
+              {" · "}
+              {t("Wait minutes")}: {row.wait_minutes ?? "—"}
+              {row.metadata?.free_wait_minutes != null ? ` · ${t("Free wait minutes")}: ${String(row.metadata.free_wait_minutes)}` : ""}
+              {row.metadata?.billable_wait_minutes != null ? ` · ${t("Billable wait minutes")}: ${String(row.metadata.billable_wait_minutes)}` : ""}
+              {row.metadata?.wait_fee_collected != null ? ` · ${t("Wait fee collected")}: ${row.metadata.wait_fee_collected ? t("yes") : t("no")}` : ""}
+              {row.metadata?.quoted_total_cents != null ? ` · ${t("Quoted cents")}: ${String(row.metadata.quoted_total_cents)}` : ""}
+              {row.metadata?.cancel_fee_cents != null ? ` · ${t("Cancellation fee cents")}: ${String(row.metadata.cancel_fee_cents)}` : ""}
+              {row.metadata?.stripe_payment_intent_id ? ` · ${t("Payment reference")}: ${String(row.metadata.stripe_payment_intent_id)}` : ""}
             </div>
             <div>{row.created_at} · {row.cancellation_source}</div>
           </li>

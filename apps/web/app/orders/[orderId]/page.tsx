@@ -9,6 +9,8 @@ import { supabase } from "@/lib/supabaseBrowser";
 import { getAvatarSrc } from "@/lib/avatarUrl";
 import { DriverLiveMap } from "@/components/DriverLiveMap";
 import PayButton from "@/components/checkout/PayButton";
+import { RESTAURANT_CANCEL_REASONS } from "@/lib/cancellationReasons";
+import { collectCancelReason } from "@/lib/collectCancellationReason";
 
 type OrderStatus =
   | "pending"
@@ -562,6 +564,9 @@ export default function OrderPage() {
 
     if (!confirmed) return;
 
+    const choice = await collectCancelReason(RESTAURANT_CANCEL_REASONS);
+    if (!choice) return;
+
     setUpdatingStatus(true);
     setErr(null);
     setSuccessMsg(null);
@@ -578,6 +583,8 @@ export default function OrderPage() {
         body: JSON.stringify({
           orderId: order.id,
           role: "restaurant",
+          reason_code: choice.reasonCode,
+          reason_detail: choice.reasonNote,
         }),
         cache: "no-store",
       });

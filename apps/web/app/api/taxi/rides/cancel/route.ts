@@ -12,6 +12,7 @@ import {
 import { stripe } from "@/lib/stripe";
 import { parseStructuredCancelReason } from "@/lib/cancellationReasons";
 import { recordServiceCancellation } from "@/lib/serviceCancellationAudit";
+import { taxiWaitAuditFromRide } from "@/lib/taxi/taxiWaitAudit";
 import {
   isDriverAtDestination,
   planClientTaxiCancellation,
@@ -136,7 +137,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: readError } = await auth.supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,status,payment_status,driver_id,stripe_payment_intent_id,stripe_refund_id,stripe_refunded_at,refund_status,total_cents,driver_payout_cents,dropoff_lat,dropoff_lng,currency",
+        "id,status,payment_status,driver_id,stripe_payment_intent_id,stripe_refund_id,stripe_refunded_at,refund_status,total_cents,driver_payout_cents,dropoff_lat,dropoff_lng,currency,wait_timer_started_at,driver_arrived_at,started_at,free_wait_minutes,wait_fee_amount_cents,wait_fee_applied_to_total,driver_distance_to_target_meters",
       )
       .eq("id", rideId)
       .maybeSingle();
@@ -271,6 +272,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const waitAudit = taxiWaitAuditFromRide(ride);
     await recordServiceCancellation(auth.supabaseAdmin, {
       entityType: "taxi_ride",
       entityId: rideId,
@@ -281,6 +283,8 @@ export async function POST(req: NextRequest) {
       reasonNote: reasonDetail || null,
       previousStatus: status,
       resultingStatus: "canceled",
+      waitMinutes: waitAudit.waitMinutes,
+      waitFeeCents: waitAudit.waitFeeCents,
       paymentStatus: String(ride.payment_status ?? ""),
       refundAmountCents: plan.refundCents,
       acceptanceRateImpact: false,
@@ -290,6 +294,9 @@ export async function POST(req: NextRequest) {
       metadata: {
         cancel_fee_cents: plan.cancelFeeCents,
         refund_policy: plan.refundPolicy,
+        quoted_total_cents: ride.total_cents ?? null,
+        stripe_payment_intent_id: ride.stripe_payment_intent_id ?? null,
+        ...waitAudit.metadata,
       },
     });
 

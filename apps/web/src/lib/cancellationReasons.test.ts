@@ -82,6 +82,15 @@ assert.doesNotMatch(migration, /acceptance_rate\s*=/);
 assert.match(migration, /cancellation_rate = least/);
 assert.match(migration, /revoke all on table public.service_cancellations/);
 
+const sellerRefuse = read("apps/web/app/api/marketplace/orders/seller-status/route.ts");
+assert.match(sellerRefuse, /parseStructuredCancelReason/);
+assert.match(sellerRefuse, /refused_by_seller/);
+assert.match(sellerRefuse, /recordServiceCancellation/);
+
+const taxiCancel = read("apps/web/app/api/taxi/rides/cancel/route.ts");
+assert.match(taxiCancel, /taxiWaitAuditFromRide/);
+assert.doesNotMatch(taxiCancel, /paymentIntents\.create/);
+
 const admin = read("apps/web/app/api/admin/cancellations/route.ts");
 assert.match(admin, /assertStaffPermission/);
 assert.match(admin, /reason_note/);
@@ -92,7 +101,7 @@ for (const locale of ["en", "fr", "es", "ar", "zh", "ff"]) {
   for (const code of TAXI_CLIENT_CANCEL_REASONS) {
     assert.match(raw, new RegExp(`"${code}"`), locale);
   }
-  for (const code of TAXI_DRIVER_CANCEL_REASONS) {
+  for (const code of [...TAXI_DRIVER_CANCEL_REASONS, ...RESTAURANT_CANCEL_REASONS, ...SELLER_CANCEL_REASONS]) {
     assert.match(raw, new RegExp(`"${code}"`), locale);
   }
   assert.match(raw, /"tooShort"/, locale);
