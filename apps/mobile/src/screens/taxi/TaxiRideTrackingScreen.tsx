@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
+import { TaxiCustomerWaitCard } from "../../components/taxi/TaxiCustomerWaitCard";
 import { safeTaxiUserMessage } from "../../lib/userFacingError";
 import { Ionicons } from "@expo/vector-icons";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
@@ -881,6 +882,10 @@ export default function TaxiRideTrackingScreen() {
               : null
           }
         />
+
+        {rideId && (status === "driver_arrived" || status === "in_progress") ? (
+          <TaxiCustomerWaitCard rideId={rideId} />
+        ) : null}
 
         {status === "driver_arrived" ? (
           <TouchableOpacity

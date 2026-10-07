@@ -503,6 +503,29 @@ export async function fetchTaxiRideRating(rideId: string): Promise<{
   return taxiGet(`/api/taxi/rides/${encodeURIComponent(rideId)}/rating`);
 }
 
+export type TaxiCustomerWaitStatus = {
+  ok: boolean;
+  currency?: string;
+  server_now?: string;
+  wait_started_at?: string | null;
+  trip_started_at?: string | null;
+  free_wait_minutes?: number;
+  elapsed_seconds?: number;
+  remaining_free_seconds?: number;
+  billable_minutes?: number;
+  wait_fee_cents?: number;
+  max_wait_fee_cents?: number;
+  max_fee_reached?: boolean;
+  wait_active?: boolean;
+  trip_started?: boolean;
+  final_wait_fee_cents?: number | null;
+};
+
+export async function fetchTaxiCustomerWait(rideId: string): Promise<TaxiCustomerWaitStatus> {
+  const query = new URLSearchParams({ taxi_ride_id: rideId });
+  return taxiGet(`/api/taxi/rides/wait-status?${query.toString()}`);
+}
+
 export async function submitTaxiRideRating(params: {
   rideId: string;
   rating: number;

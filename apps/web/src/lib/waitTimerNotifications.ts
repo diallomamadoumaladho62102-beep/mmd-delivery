@@ -3,6 +3,7 @@ import {
   notifyClientWaitFeeStarted,
   notifyClientWaitFinalWarning,
   notifyClientDriverArrived,
+  notifyClientWaitFreeEnding,
 } from "@/lib/clientPushNotifications";
 import type { WaitTimerEntityType } from "@/lib/waitTimerTypes";
 import { markWaitTimerNotificationSent } from "@/lib/waitTimerService";
@@ -42,6 +43,19 @@ export async function processWaitTimerClientNotifications(
       entityType: input.entityType,
       entityId: input.entityId,
       field: "client_wait_arrived_notified_at",
+    });
+  }
+
+  if (
+    input.entityKind === "taxi" &&
+    input.timer.remaining_free_seconds > 0 &&
+    input.timer.remaining_free_seconds <= 60
+  ) {
+    await notifyClientWaitFreeEnding({
+      supabaseAdmin,
+      userIds,
+      entityType: input.entityType,
+      entityId: input.entityId,
     });
   }
 
