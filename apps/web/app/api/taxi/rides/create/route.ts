@@ -38,6 +38,10 @@ import {
   normalizeTaxiReturnMode,
   normalizeTaxiTripMode,
 } from "@/lib/taxiTripMode";
+import {
+  resolveTaxiCustomerVehicleClass,
+  taxiStopCapacityError,
+} from "@/lib/taxiVehicleClass";
 import { buildTaxiFareComponentsDoc } from "@/lib/taxi/taxiFareComponents";
 import { splitTaxiNetCommissionCents } from "@/lib/taxi/taxiQuoteCheckoutDiscounts";
 import { usesLocalMobileMoney } from "@/lib/paymentProviderRouting";
@@ -137,9 +141,13 @@ export async function POST(req: NextRequest) {
     if (auth.ok === false) return auth.response;
 
     const body = (await req.json().catch(() => ({}))) as Body;
-    const vehicleClass = String(
-      body.vehicleClass ?? body.vehicle_class ?? "standard"
-    ).trim();
+    const resolvedVehicle = resolveTaxiCustomerVehicleClass(
+      body.vehicleClass ?? body.vehicle_class,
+    );
+    if (resolvedVehicle.ok === false) {
+      return taxiJson({ ok: false, error: resolvedVehicle.error }, 400);
+    }
+    const vehicleClass = resolvedVehicle.vehicleClass;
     const passengerCount = Math.max(
       1,
       Number(body.passengerCount ?? body.passenger_count ?? 1)
@@ -218,6 +226,11 @@ export async function POST(req: NextRequest) {
 
     if (returnMode === "scheduled" && !returnScheduledAt) {
       return taxiJson({ ok: false, error: "return_scheduled_at_required" }, 400);
+    }
+
+    const stopCapacity = taxiStopCapacityError(body.stops, tripMode);
+    if (stopCapacity) {
+      return taxiJson({ ok: false, error: stopCapacity }, 400);
     }
 
     let route;
@@ -628,10 +641,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (insertError || !ride) {
-      return taxiJson(
-        { ok: false, error: insertError?.message ?? "Failed to create ride" },
-        500
-      );
+      console.error("[taxi.create] ride insert failed", insertError?.message);
+      return taxiJson({ ok: false, error: "confirmation_failed" }, 500);
     }
 
     if (route.stops.length > 0) {
@@ -685,7 +696,11 @@ export async function POST(req: NextRequest) {
         return taxiJson(
           {
             ok: false,
-            error: marketingAttach.error ?? "Impossible de réserver la promotion",
+            error:
+              typeof marketingAttach.error === "string" &&
+              /^[a-z0-9_]+$/i.test(marketingAttach.error)
+                ? marketingAttach.error
+                : "promotion_unavailable",
           },
           400
         );

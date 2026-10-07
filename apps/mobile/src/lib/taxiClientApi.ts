@@ -92,19 +92,17 @@ async function taxiPost(path: string, body: Record<string, unknown>) {
         payment_status: (out as { payment_status?: string } | null)?.payment_status,
       });
     }
-    throw new Error(
+    const err = new Error(
       expectedPending
-        ? toUserFacingError(
-            out,
-            String(
-              i18n.t("taxi.quote.paymentNotCompleted", {
-                defaultValue:
-                  "Payment was not completed. Please check your payment method and try again.",
-              }),
-            ),
-          )
-        : toUserFacingError(out),
+        ? "payment_not_confirmed"
+        : String((out as { error?: string; message?: string } | null)?.error
+            ?? (out as { message?: string } | null)?.message
+            ?? "request_failed"),
     );
+    (err as Error & { code?: string }).code = expectedPending
+      ? "payment_not_confirmed"
+      : String((out as { error?: string } | null)?.error ?? "");
+    throw err;
   }
   return out;
 }
@@ -151,7 +149,7 @@ export function quoteTaxiRide(input: TaxiQuoteInput) {
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,
     dropoffLng: input.dropoffLng,
-    vehicleClass: input.vehicleClass ?? "standard",
+    vehicleClass: input.vehicleClass,
     passengerCount: input.passengerCount ?? 1,
     countryCode: requireCountryCode(input.countryCode),
     stops: input.stops,
@@ -189,7 +187,7 @@ export function createTaxiRide(
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,
     dropoffLng: input.dropoffLng,
-    vehicleClass: input.vehicleClass ?? "standard",
+    vehicleClass: input.vehicleClass,
     passengerCount: input.passengerCount ?? 1,
     countryCode: requireCountryCode(input.countryCode),
     clientNotes: input.clientNotes ?? "",
@@ -317,7 +315,7 @@ export function startTaxiCheckoutFromQuote(
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,
     dropoffLng: input.dropoffLng,
-    vehicleClass: input.vehicleClass ?? "standard",
+    vehicleClass: input.vehicleClass,
     passengerCount: input.passengerCount ?? 1,
     countryCode: requireCountryCode(input.countryCode),
     clientNotes: input.clientNotes ?? "",
@@ -444,7 +442,7 @@ export function createScheduledTaxiRide(
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,
     dropoffLng: input.dropoffLng,
-    vehicleClass: input.vehicleClass ?? "standard",
+    vehicleClass: input.vehicleClass,
     passengerCount: input.passengerCount ?? 1,
     countryCode: requireCountryCode(input.countryCode),
     stops: input.stops,

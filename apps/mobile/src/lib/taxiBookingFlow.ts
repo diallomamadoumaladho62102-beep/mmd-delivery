@@ -12,6 +12,11 @@
 /** Max intermediate stops between pickup and final dropoff (DB stop_order 1–3). */
 export const MAX_TAXI_STOPS = 3;
 
+/** Round trip stores the outward destination as one stop, so the rider can add two. */
+export function maxBookingStops(tripMode: "one_way" | "round_trip"): number {
+  return tripMode === "round_trip" ? 2 : MAX_TAXI_STOPS;
+}
+
 export type TaxiStopInput = {
   address: string;
   lat?: number;
@@ -78,6 +83,10 @@ export function buildMultiStopQuoteNavigationParams(input: {
   route?: Record<string, unknown> | null;
   stops: Array<string | TaxiStopInput>;
 }): MultiStopQuoteNavParams {
+  const vehicleClass = String(input.vehicleClass ?? "").trim();
+  if (!vehicleClass) {
+    throw new Error("vehicle_class_required");
+  }
   const stops = normalizeOrderedStops(input.stops);
   const route = {
     ...(input.route ?? {}),
@@ -86,7 +95,7 @@ export function buildMultiStopQuoteNavigationParams(input: {
   return {
     pickupAddress: String(input.pickupAddress ?? "").trim(),
     dropoffAddress: String(input.dropoffAddress ?? "").trim(),
-    vehicleClass: input.vehicleClass ?? "standard",
+    vehicleClass,
     countryCode: input.countryCode,
     quote: (input.quote ?? {}) as Record<string, unknown>,
     route,

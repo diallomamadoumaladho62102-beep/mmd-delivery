@@ -2,7 +2,11 @@ import { NextRequest } from "next/server";
 import { applyOwnedLocationIdsToTaxiInput } from "@/lib/mmdLocationSnapshot";
 import { resolveTaxiMultiStopRoute, ROUTE_UNAVAILABLE } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
-import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
+import { logTechnicalError } from "@/lib/userFacingError";
+import {
+  resolveTaxiCustomerVehicleClass,
+  taxiStopCapacityError,
+} from "@/lib/taxiVehicleClass";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import { applyTaxiServiceFeeToQuote, mergeTaxiServiceFeeIntoQuote } from "@/lib/taxiServiceFee";
@@ -68,9 +72,13 @@ export async function POST(req: NextRequest) {
     if (auth.ok === false) return auth.response;
 
     const body = (await req.json().catch(() => ({}))) as Body;
-    const vehicleClass = String(
-      body.vehicleClass ?? body.vehicle_class ?? "standard"
-    ).trim();
+    const resolvedVehicle = resolveTaxiCustomerVehicleClass(
+      body.vehicleClass ?? body.vehicle_class,
+    );
+    if (resolvedVehicle.ok === false) {
+      return taxiJson({ ok: false, error: resolvedVehicle.error }, 400);
+    }
+    const vehicleClass = resolvedVehicle.vehicleClass;
     const passengerCount = Math.max(
       1,
       Number(body.passengerCount ?? body.passenger_count ?? 1)
@@ -114,6 +122,11 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: "return_scheduled_at_required" }, 400);
     }
 
+    const stopCapacity = taxiStopCapacityError(body.stops, tripMode);
+    if (stopCapacity) {
+      return taxiJson({ ok: false, error: stopCapacity }, 400);
+    }
+
     let route;
     try {
       route = await resolveTaxiMultiStopRoute(
@@ -132,31 +145,14 @@ export async function POST(req: NextRequest) {
       );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : ROUTE_UNAVAILABLE;
+      if (message === "too_many_stops" || message === "round_trip_stop_limit") {
+        return taxiJson({ ok: false, error: message }, 400);
+      }
       if (message === "distance_too_far" || message === "taxi_distance_too_far") {
-        return taxiJson(
-          {
-            ok: false,
-            error: "taxi_distance_too_far",
-            message: toUserFacingError(
-              { error: "taxi_distance_too_far" },
-              "Cette course dépasse la distance maximale autorisée.",
-            ),
-          },
-          400,
-        );
+        return taxiJson({ ok: false, error: "taxi_distance_too_far" }, 400);
       }
       logTechnicalError("taxi.quote.route", e, { userId: auth.user.id });
-      return taxiJson(
-        {
-          ok: false,
-          error: ROUTE_UNAVAILABLE,
-          message: toUserFacingError(
-            { error: ROUTE_UNAVAILABLE },
-            "Nous n'avons pas pu calculer l'itinéraire exact pour le moment. Veuillez vérifier les adresses ou réessayer.",
-          ),
-        },
-        400,
-      );
+      return taxiJson({ ok: false, error: ROUTE_UNAVAILABLE }, 400);
     }
 
     const countryResult = await resolveTaxiCountryWithDetection({
@@ -246,14 +242,7 @@ export async function POST(req: NextRequest) {
 
     if (quoteError) {
       logTechnicalError("taxi.quote.rpc", quoteError, { userId: auth.user.id });
-      return taxiJson(
-        {
-          ok: false,
-          error: "quote_failed",
-          message: toUserFacingError(quoteError, "Impossible d'estimer le tarif pour le moment. Réessayez dans quelques instants."),
-        },
-        500,
-      );
+      return taxiJson({ ok: false, error: "quote_failed" }, 500);
     }
 
     const quoteObj = (quote ?? {}) as Record<string, unknown>;
@@ -354,14 +343,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (e: unknown) {
     logTechnicalError("taxi.quote", e);
-    return taxiJson(
-      {
-        ok: false,
-        error: "quote_failed",
-        message: toUserFacingError(e, "Impossible d'estimer le tarif pour le moment. Réessayez dans quelques instants."),
-      },
-      500,
-    );
+    return taxiJson({ ok: false, error: "quote_failed" }, 500);
   }
 }
 

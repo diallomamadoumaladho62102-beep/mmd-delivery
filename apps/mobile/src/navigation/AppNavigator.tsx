@@ -212,7 +212,7 @@ export type RootStackParamList = {
   TaxiLoyalty: undefined;
   TaxiScheduled: undefined;
   TaxiScheduledBook: undefined;
-  TaxiMultiStop: undefined;
+  TaxiMultiStop: { vehicleClass?: string } | undefined;
   TaxiLoyaltyRewards: undefined;
   TaxiChat: { rideId: string };
 

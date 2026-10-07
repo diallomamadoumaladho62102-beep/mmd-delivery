@@ -38,9 +38,8 @@ export async function GET(req: NextRequest) {
       category,
       label: TAXI_CATEGORY_LABELS[category],
       available: availableCount > 0,
-      unavailable_message: availableCount
-        ? null
-        : "Aucun chauffeur disponible pour cette catégorie actuellement.",
+      reason_code: availableCount > 0 ? null : "category_unavailable",
+      unavailable_message: null,
     };
   });
 

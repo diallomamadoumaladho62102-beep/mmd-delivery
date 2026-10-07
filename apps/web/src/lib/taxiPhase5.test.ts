@@ -7,6 +7,10 @@ import {
 } from "./taxiAddressConfig";
 import { buildRoundTripRouteInput } from "./taxiTripMode";
 import {
+  resolveTaxiCustomerVehicleClass,
+  taxiStopCapacityError,
+} from "./taxiVehicleClass";
+import {
   assertTaxiDropoffProximity,
   assertTaxiPickupProximity,
   parseRequiredTaxiGps,
@@ -137,9 +141,113 @@ function testAcceptRouteNotifiesClient() {
   assert.match(src, /notifyClientTaxiRideAccepted/);
 }
 
+function testCustomerClassDoesNotFallBackToStandard() {
+  const classes = ["standard", "comfort", "xl", "wheelchair_accessible"] as const;
+  for (const vehicleClass of classes) {
+    const resolved = resolveTaxiCustomerVehicleClass(vehicleClass);
+    assert.equal(resolved.ok, true);
+    if (resolved.ok) assert.equal(resolved.vehicleClass, vehicleClass);
+  }
+  const premium = resolveTaxiCustomerVehicleClass("premium");
+  assert.equal(premium.ok, true);
+  if (premium.ok) assert.equal(premium.vehicleClass, "comfort");
+  const wheelchair = resolveTaxiCustomerVehicleClass("wheelchair");
+  assert.equal(wheelchair.ok, true);
+  if (wheelchair.ok) assert.equal(wheelchair.vehicleClass, "wheelchair_accessible");
+  assert.deepEqual(resolveTaxiCustomerVehicleClass(""), {
+    ok: false,
+    error: "vehicle_class_required",
+  });
+  assert.deepEqual(resolveTaxiCustomerVehicleClass("suv"), {
+    ok: false,
+    error: "vehicle_class_unsupported",
+  });
+}
+
+function testStopCapacityAndRoundTripOrder() {
+  assert.equal(
+    taxiStopCapacityError(
+      [{ address: "S1" }, { address: "S2" }, { address: "S3" }],
+      "one_way",
+    ),
+    null,
+  );
+  assert.equal(
+    taxiStopCapacityError(
+      [{ address: "S1" }, { address: "S2" }, { address: "S3" }, { address: "S4" }],
+      "one_way",
+    ),
+    "too_many_stops",
+  );
+  assert.equal(
+    taxiStopCapacityError([{ address: "S1" }, { address: "S2" }], "round_trip"),
+    null,
+  );
+  assert.equal(
+    taxiStopCapacityError(
+      [{ address: "S1" }, { address: "S2" }, { address: "S3" }],
+      "round_trip",
+    ),
+    "round_trip_stop_limit",
+  );
+
+  const round = buildRoundTripRouteInput(
+    {
+      pickupAddress: "A",
+      dropoffAddress: "B",
+      pickupLat: 1,
+      pickupLng: 2,
+      dropoffLat: 3,
+      dropoffLng: 4,
+      stops: [{ address: "S1", lat: 5, lng: 6 }],
+    },
+    "round_trip",
+  );
+  assert.equal(round.dropoffAddress, "A");
+  assert.deepEqual(
+    round.stops?.map((stop) => stop.address),
+    ["S1", "B"],
+  );
+}
+
+function testQuoteContractDoesNotInventStandardOrCharge() {
+  const quote = readFileSync(join(process.cwd(), "app", "api", "taxi", "rides", "quote", "route.ts"), "utf8");
+  const available = readFileSync(
+    join(process.cwd(), "app", "api", "taxi", "categories", "available", "route.ts"),
+    "utf8",
+  );
+  const checkout = readFileSync(
+    join(process.cwd(), "src", "lib", "taxi", "taxiCheckoutFromQuote.ts"),
+    "utf8",
+  );
+  assert.equal(quote.includes('?? "standard"'), false);
+  assert.equal(quote.includes("Aucun chauffeur"), false);
+  assert.equal(quote.includes("Impossible d'estimer"), false);
+  assert.equal(quote.includes('.from("taxi_rides")'), false);
+  assert.equal(available.includes("Aucun chauffeur"), false);
+  assert.equal(checkout.includes('vehicle_class: snapshot.vehicle_class || "standard"'), false);
+  const migration = readFileSync(
+    join(
+      process.cwd(),
+      "..",
+      "..",
+      "supabase",
+      "migrations",
+      "20261215120000_taxi_customer_category_pricing.sql",
+    ),
+    "utf8",
+  );
+  assert.match(migration, /'comfort'/);
+  assert.match(migration, /'wheelchair_accessible'/);
+  assert.match(migration, /Formula unchanged/);
+}
+
 function main() {
   testAddressConfigUsVsGn();
   testRoundTripRouteInputBuildsReturnToPickup();
+  testCustomerClassDoesNotFallBackToStandard();
+  testStopCapacityAndRoundTripOrder();
+  testQuoteContractDoesNotInventStandardOrCharge();
   testProximityGatesTooFar();
   testMigrationContainsGpsAndAddressConfig();
   testArriveRouteRequiresGps();

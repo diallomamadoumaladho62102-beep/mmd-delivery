@@ -232,6 +232,7 @@ export default function TaxiQuoteScreen() {
     let cancelled = false;
     const requestId = ++quoteRequestIdRef.current;
     setQuoting(true);
+    setQuoteState(null);
     void quoteTaxiRide({
       pickupAddress,
       dropoffAddress,
@@ -311,10 +312,12 @@ export default function TaxiQuoteScreen() {
 
   const vehicleLabel = useMemo(() => {
     const key = String(vehicleClass ?? "").toLowerCase();
-    if (key === "standard" || key === "xl" || key === "premium") {
-      return t(`taxi.home.${key}`);
+    if (key === "premium" || key === "comfort") return t("taxi.home.comfort");
+    if (key === "wheelchair_accessible" || key === "wheelchair") {
+      return t("taxi.home.wheelchair");
     }
-    return String(vehicleClass ?? "").trim();
+    if (key === "standard" || key === "xl") return t(`taxi.home.${key}`);
+    return t("taxi.home.vehicle");
   }, [t, vehicleClass]);
 
   const distanceMiles = Number(routeInfo?.distanceMiles);

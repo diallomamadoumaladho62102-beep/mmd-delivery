@@ -24,6 +24,7 @@ import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { captureEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import { finalizeTaxiPromotionAfterPaidMaterialize } from "@/lib/taxi/taxiQuoteCheckoutDiscounts";
 import { STRIPE_APPLE_PAY_MERCHANT_COUNTRY_CODE } from "@/lib/stripeNativeApplePay";
+import { resolveTaxiCustomerVehicleClass } from "@/lib/taxiVehicleClass";
 
 export const TAXI_QUOTE_CHECKOUT_TTL_MS = 30 * 60 * 1000;
 
@@ -442,10 +443,15 @@ export async function materializePaidTaxiRideFromQuoteCheckout(params: {
     String(params.sessionId ?? intent.stripe_checkout_session_id ?? "").trim() ||
     null;
 
+  const resolvedRideClass = resolveTaxiCustomerVehicleClass(snapshot.vehicle_class);
+  if (resolvedRideClass.ok === false) {
+    return { ok: false, error: resolvedRideClass.error };
+  }
+
   const stops = Array.isArray(snapshot.stops) ? snapshot.stops : [];
   const rideInsert = {
     client_user_id: snapshot.client_user_id,
-    vehicle_class: snapshot.vehicle_class || "standard",
+    vehicle_class: resolvedRideClass.vehicleClass,
     status: "paid",
     payment_status: "paid",
     paid_at: new Date().toISOString(),
@@ -515,7 +521,8 @@ export async function materializePaidTaxiRideFromQuoteCheckout(params: {
     insertError &&
     /fare_components|column/i.test(String(insertError.message ?? ""))
   ) {
-    const { fare_components: _fc, ...withoutFc } = rideInsert;
+    const withoutFc = { ...rideInsert };
+    delete withoutFc.fare_components;
     const retry = await supabaseAdmin
       .from("taxi_rides")
       .insert(withoutFc)

@@ -8,6 +8,7 @@ import { quoteRideFinalFromRateCaptureSot } from "@/lib/pricingEngine";
 import { applyTaxiServiceFeeToQuote, mergeTaxiServiceFeeIntoQuote } from "@/lib/taxiServiceFee";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
+import { resolveTaxiCustomerVehicleClass } from "@/lib/taxiVehicleClass";
 
 function num(value: unknown): number | null {
   const n = Number(value);
@@ -55,7 +56,18 @@ export async function getTaxiCategories(ctx: AiToolContext): Promise<AiToolResul
 export async function quoteTaxi(ctx: AiToolContext, args: Record<string, unknown>): Promise<AiToolResult> {
   const pickupAddress = String(args.pickup_address ?? args.pickupAddress ?? "").trim();
   const dropoffAddress = String(args.dropoff_address ?? args.dropoffAddress ?? "").trim();
-  const vehicleClass = String(args.vehicle_class ?? args.vehicleClass ?? "standard").trim() || "standard";
+  const resolvedVehicle = resolveTaxiCustomerVehicleClass(
+    args.vehicle_class ?? args.vehicleClass,
+  );
+  if (resolvedVehicle.ok === false) {
+    return {
+      ok: false,
+      summary: "Choose a taxi category before I estimate the fare.",
+      data: { error: resolvedVehicle.error },
+      actions: [{ type: "navigate", label: "Open Taxi", route: "TaxiHome", params: {} }],
+    };
+  }
+  const vehicleClass = resolvedVehicle.vehicleClass;
   const countryCode = normalizeTaxiCountryCode(args.country_code ?? args.countryCode ?? "US");
   const pickupLat = num(args.pickup_lat ?? args.pickupLat);
   const pickupLng = num(args.pickup_lng ?? args.pickupLng);
@@ -198,7 +210,17 @@ export async function quoteTaxi(ctx: AiToolContext, args: Record<string, unknown
 export function prepareTaxiBooking(args: Record<string, unknown>): AiToolResult {
   const pickupAddress = String(args.pickup_address ?? args.pickupAddress ?? "").trim();
   const dropoffAddress = String(args.dropoff_address ?? args.dropoffAddress ?? "").trim();
-  const vehicleClass = String(args.vehicle_class ?? args.vehicleClass ?? "standard").trim();
+  const resolvedVehicle = resolveTaxiCustomerVehicleClass(
+    args.vehicle_class ?? args.vehicleClass,
+  );
+  if (resolvedVehicle.ok === false) {
+    return {
+      ok: false,
+      summary: "Choose a taxi category before I prepare the booking.",
+      data: { error: resolvedVehicle.error },
+    };
+  }
+  const vehicleClass = resolvedVehicle.vehicleClass;
 
   if (!pickupAddress || !dropoffAddress) {
     return {
@@ -210,7 +232,7 @@ export function prepareTaxiBooking(args: Record<string, unknown>): AiToolResult 
   return {
     ok: true,
     requiresConfirmation: true,
-    summary: `Ready to book taxi ${vehicleClass || "standard"} from ${pickupAddress} to ${dropoffAddress}. Confirm to open the official Taxi checkout. MMD AI will not take payment.`,
+    summary: `Ready to book taxi ${vehicleClass} from ${pickupAddress} to ${dropoffAddress}. Confirm to open the official Taxi checkout. MMD AI will not take payment.`,
     data: {
       pickupAddress,
       dropoffAddress,
