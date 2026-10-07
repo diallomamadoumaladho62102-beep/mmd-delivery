@@ -425,6 +425,96 @@ export async function notifyClientDriverArrived(params: {
   });
 }
 
+export async function notifyClientWaitFreeEnding(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  entityType: string;
+  entityId: string;
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const dedupKey = `wait_free_ending:${params.entityType}:${params.entityId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
+
+  const data = {
+    type: "wait_free_ending",
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+    taxi_ride_id: params.entityId,
+    taxiRideId: params.entityId,
+  };
+
+  const messages = tokens.map((target) => {
+    const copy = pushText("wait_free_ending", target.locale);
+    return {
+      to: target.token,
+      sound: resolvePushSound("wait_fee_started"),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high" as const,
+    };
+  });
+
+  await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
+}
+
+export async function notifyClientWaitFeeAdded(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  entityType: string;
+  entityId: string;
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const dedupKey = `wait_fee_added:${params.entityType}:${params.entityId}`;
+  if (await wasTaxiPushAlreadySent(params.supabaseAdmin, dedupKey)) return;
+
+  const data = {
+    type: "wait_fee_added",
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+    taxi_ride_id: params.entityId,
+    taxiRideId: params.entityId,
+  };
+
+  const messages = tokens.map((target) => {
+    const copy = pushText("wait_fee_added", target.locale);
+    return {
+      to: target.token,
+      sound: resolvePushSound("wait_fee_started"),
+      title: copy.title,
+      body: copy.body,
+      data,
+      priority: "high" as const,
+    };
+  });
+
+  await sendExpoPushMessages(messages);
+  await logTaxiClientPush({
+    supabaseAdmin: params.supabaseAdmin,
+    userId: userIds[0] ?? null,
+    title: messages[0]?.title ?? "",
+    body: messages[0]?.body ?? "",
+    data,
+    dedupKey,
+    sent: true,
+  });
+}
+
 export async function notifyClientWaitFeeStarted(params: {
   supabaseAdmin: SupabaseClient;
   userIds: Array<string | null | undefined>;

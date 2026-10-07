@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { finalizeTaxiWaitOnTripStart } from "@/lib/taxiWaitFareFinalization";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { getTaxiRideId, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
@@ -51,8 +52,15 @@ export async function POST(req: NextRequest) {
 
     const result = (data ?? null) as TaxiRpcResult | null;
 
+    if (result?.ok) {
+      await finalizeTaxiWaitOnTripStart(auth.supabaseAdmin, rideId);
+    }
+
     if (!result?.ok) {
       const mapped = mapTaxiRpcError(result?.message ?? result?.error ?? "");
+      if (String(result?.message ?? result?.error ?? "") === "invalid_status") {
+        await finalizeTaxiWaitOnTripStart(auth.supabaseAdmin, rideId);
+      }
       return taxiJson({ ok: false, error: mapped.message }, mapped.status);
     }
 
