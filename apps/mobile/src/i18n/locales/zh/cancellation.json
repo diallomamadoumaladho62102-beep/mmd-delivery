@@ -1,0 +1,58 @@
+{
+  "cancellation": {
+    "title": "为什么取消？",
+    "describe": "请说明原因",
+    "tooShort": "请至少输入 8 个字符。",
+    "confirm": "确认取消",
+    "continueWaiting": "继续等待",
+    "cancelRide": "取消行程",
+    "taxiClient": {
+      "driver_not_moving": "司机没有前往上车点",
+      "driver_too_late": "司机太晚了",
+      "driver_concerning_behavior": "司机有问题或令人担心的行为",
+      "passenger_feels_unsafe": "我感到不安全",
+      "pickup_location_problem": "上车地点有问题",
+      "other": "其他 — 请说明原因"
+    },
+    "taxiDriver": {
+      "customer_not_responding": "客户没有回应或不在场",
+      "unsafe_pickup_location": "上车地点不安全",
+      "intoxicated_or_threatening_customer": "客户醉酒或构成威胁",
+      "vehicle_problem": "车辆有问题",
+      "emergency_or_personal_issue": "紧急情况或个人问题",
+      "other": "其他 — 请说明原因"
+    },
+    "deliveryClient": {
+      "order_no_longer_needed": "我不再需要这个订单",
+      "delivery_too_long": "配送时间太长",
+      "order_problem": "我的订单有问题",
+      "restaurant_or_seller_problem": "餐厅或卖家有问题",
+      "delivery_problem": "配送有问题",
+      "other": "其他 — 请说明原因"
+    },
+    "deliveryDriver": {
+      "customer_not_responding": "客户没有回应或不在场",
+      "delivery_location_problem": "配送地点有问题",
+      "safety_problem": "安全问题",
+      "vehicle_problem": "车辆有问题",
+      "emergency_or_personal_issue": "紧急情况或个人问题",
+      "other": "其他 — 请说明原因"
+    },
+    "restaurant": {
+      "cannot_prepare": "无法制作此订单",
+      "item_unavailable": "有商品无法提供",
+      "too_busy_or_closed": "餐厅已打烊或太忙",
+      "safety_problem": "安全问题",
+      "order_details_problem": "订单有问题",
+      "other": "其他 — 请说明原因"
+    },
+    "seller": {
+      "cannot_fulfill": "无法完成此订单",
+      "item_unavailable": "有商品无法提供",
+      "seller_unavailable": "卖家无法接单",
+      "safety_problem": "安全问题",
+      "order_problem": "订单有问题",
+      "other": "其他 — 请说明原因"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "cancellation": {
+    "title": "¿Por qué cancelas?",
+    "describe": "Describe tu motivo",
+    "tooShort": "Escribe al menos 8 caracteres.",
+    "confirm": "Confirmar cancelación",
+    "continueWaiting": "Seguir esperando",
+    "cancelRide": "Cancelar el viaje",
+    "taxiClient": {
+      "driver_not_moving": "El conductor no se dirige al punto de recogida",
+      "driver_too_late": "El conductor llega demasiado tarde",
+      "driver_concerning_behavior": "El conductor tiene un problema o un comportamiento preocupante",
+      "passenger_feels_unsafe": "No me siento seguro",
+      "pickup_location_problem": "Problema con el punto de recogida",
+      "other": "Otro — explica tu motivo"
+    },
+    "taxiDriver": {
+      "customer_not_responding": "El cliente no responde o no está presente",
+      "unsafe_pickup_location": "El punto de recogida no es seguro",
+      "intoxicated_or_threatening_customer": "El cliente está intoxicado o representa una amenaza",
+      "vehicle_problem": "Problema con el vehículo",
+      "emergency_or_personal_issue": "Emergencia o asunto personal",
+      "other": "Otro — explica tu motivo"
+    },
+    "deliveryClient": {
+      "order_no_longer_needed": "Ya no necesito el pedido",
+      "delivery_too_long": "La entrega está tardando demasiado",
+      "order_problem": "Problema con mi pedido",
+      "restaurant_or_seller_problem": "Problema con el restaurante o el vendedor",
+      "delivery_problem": "Problema con la entrega",
+      "other": "Otro — explica tu motivo"
+    },
+    "deliveryDriver": {
+      "customer_not_responding": "El cliente no responde o no está presente",
+      "delivery_location_problem": "Problema con el lugar de entrega",
+      "safety_problem": "Problema de seguridad",
+      "vehicle_problem": "Problema con el vehículo",
+      "emergency_or_personal_issue": "Emergencia o asunto personal",
+      "other": "Otro — explica tu motivo"
+    },
+    "restaurant": {
+      "cannot_prepare": "No se puede preparar este pedido",
+      "item_unavailable": "Un artículo no está disponible",
+      "too_busy_or_closed": "El restaurante está cerrado o demasiado ocupado",
+      "safety_problem": "Problema de seguridad",
+      "order_details_problem": "Problema con el pedido",
+      "other": "Otro — explica tu motivo"
+    },
+    "seller": {
+      "cannot_fulfill": "No se puede cumplir este pedido",
+      "item_unavailable": "Un artículo no está disponible",
+      "seller_unavailable": "El vendedor no está disponible",
+      "safety_problem": "Problema de seguridad",
+      "order_problem": "Problema con el pedido",
+      "other": "Otro — explica tu motivo"
+    }
+  }
+}

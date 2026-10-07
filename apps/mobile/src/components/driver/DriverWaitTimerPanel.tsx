@@ -36,6 +36,7 @@ type Props = {
   variant?: "default" | "premium";
   onDepositAuthorized?: (proofPhotoUrl: string) => void;
   onTaxiNoShowCanceled?: () => void;
+  onRequestDriverCancel?: () => void;
 };
 
 function isNetworkErrorMessage(message: string): boolean {
@@ -62,6 +63,7 @@ export function DriverWaitTimerPanel({
   variant = "default",
   onDepositAuthorized,
   onTaxiNoShowCanceled,
+  onRequestDriverCancel,
 }: Props) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -402,6 +404,45 @@ export function DriverWaitTimerPanel({
                 </Text>
               )}
             </TouchableOpacity>
+          ) : null}
+
+          {mode === "taxi" &&
+          status?.driver_arrived_at &&
+          (timer?.remaining_free_seconds ?? 0) <= 0 &&
+          !timer?.can_cancel_no_penalty ? (
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+              <TouchableOpacity
+                style={[styles.secondaryBtn, { flex: 1 }]}
+                disabled={loading}
+                onPress={() => {
+                  void (async () => {
+                    try {
+                      const { continueTaxiWait } = await import("../../lib/taxiDriverApi");
+                      await continueTaxiWait(entityId);
+                      await refresh();
+                    } catch (error) {
+                      Alert.alert(
+                        tr("cancellation.continueWaiting", "Continue waiting"),
+                        toUserFacingError(error, tr("common.error", "Error")),
+                      );
+                    }
+                  })();
+                }}
+              >
+                <Text style={styles.secondaryText}>
+                  {tr("cancellation.continueWaiting", "Continue waiting")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.dangerBtn, { flex: 1 }]}
+                disabled={loading}
+                onPress={onRequestDriverCancel}
+              >
+                <Text style={styles.dangerText}>
+                  {tr("cancellation.cancelRide", "Cancel ride")}
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : null}
 
           {mode === "taxi" && timer?.can_cancel_no_penalty ? (

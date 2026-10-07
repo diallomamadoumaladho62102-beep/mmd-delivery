@@ -20,6 +20,7 @@ import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { CancellationReasonHost } from "../components/cancellation/CancellationReasonHost";
 import { supabase } from "../lib/supabase";
 import {
   CLIENT_SCREEN_FETCH_TIMEOUT_MS,
@@ -1163,6 +1164,11 @@ export function ClientOrderDetailsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              const { askCancellationReason } = await import(
+                "../components/cancellation/CancellationReasonHost"
+              );
+              const choice = await askCancellationReason("deliveryClient");
+              if (!choice) return;
               setCanceling(true);
 
               const { data, error } = await supabase.auth.getSession();
@@ -1186,6 +1192,8 @@ export function ClientOrderDetailsScreen() {
                   orderId: order.id,
                   order_id: order.id,
                   role: "client",
+                  reason_code: choice.reasonCode,
+                  reason_detail: choice.reasonNote,
                 }),
               });
 
@@ -2614,6 +2622,7 @@ export function ClientOrderDetailsScreen() {
           orderId={String(order.id)}
         />
       ) : null}
+      <CancellationReasonHost />
     </SafeAreaView>
   );
 }

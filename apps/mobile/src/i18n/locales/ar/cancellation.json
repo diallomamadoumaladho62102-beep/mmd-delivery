@@ -1,0 +1,58 @@
+{
+  "cancellation": {
+    "title": "لماذا تلغي؟",
+    "describe": "صف سببك",
+    "tooShort": "أدخل 8 أحرف على الأقل.",
+    "confirm": "تأكيد الإلغاء",
+    "continueWaiting": "متابعة الانتظار",
+    "cancelRide": "إلغاء الرحلة",
+    "taxiClient": {
+      "driver_not_moving": "السائق لا يتجه إلى نقطة الالتقاط",
+      "driver_too_late": "السائق متأخر جدًا",
+      "driver_concerning_behavior": "لدى السائق مشكلة أو سلوك مثير للقلق",
+      "passenger_feels_unsafe": "لا أشعر بالأمان",
+      "pickup_location_problem": "مشكلة في موقع الالتقاط",
+      "other": "أخرى — اشرح سببك"
+    },
+    "taxiDriver": {
+      "customer_not_responding": "العميل لا يرد أو غير موجود",
+      "unsafe_pickup_location": "موقع الالتقاط غير آمن",
+      "intoxicated_or_threatening_customer": "العميل مخمور أو يمثل تهديدًا",
+      "vehicle_problem": "مشكلة في المركبة",
+      "emergency_or_personal_issue": "حالة طارئة أو مسألة شخصية",
+      "other": "أخرى — اشرح سببك"
+    },
+    "deliveryClient": {
+      "order_no_longer_needed": "لم أعد بحاجة إلى الطلب",
+      "delivery_too_long": "التوصيل يستغرق وقتًا طويلًا",
+      "order_problem": "مشكلة في طلبي",
+      "restaurant_or_seller_problem": "مشكلة في المطعم أو البائع",
+      "delivery_problem": "مشكلة في التوصيل",
+      "other": "أخرى — اشرح سببك"
+    },
+    "deliveryDriver": {
+      "customer_not_responding": "العميل لا يرد أو غير موجود",
+      "delivery_location_problem": "مشكلة في موقع التوصيل",
+      "safety_problem": "مشكلة سلامة",
+      "vehicle_problem": "مشكلة في المركبة",
+      "emergency_or_personal_issue": "حالة طارئة أو مسألة شخصية",
+      "other": "أخرى — اشرح سببك"
+    },
+    "restaurant": {
+      "cannot_prepare": "لا يمكن تجهيز هذا الطلب",
+      "item_unavailable": "أحد العناصر غير متوفر",
+      "too_busy_or_closed": "المطعم مغلق أو مزدحم جدًا",
+      "safety_problem": "مشكلة سلامة",
+      "order_details_problem": "مشكلة في الطلب",
+      "other": "أخرى — اشرح سببك"
+    },
+    "seller": {
+      "cannot_fulfill": "لا يمكن تنفيذ هذا الطلب",
+      "item_unavailable": "أحد العناصر غير متوفر",
+      "seller_unavailable": "البائع غير متاح",
+      "safety_problem": "مشكلة سلامة",
+      "order_problem": "مشكلة في الطلب",
+      "other": "أخرى — اشرح سببك"
+    }
+  }
+}

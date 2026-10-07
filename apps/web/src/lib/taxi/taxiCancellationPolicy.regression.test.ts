@@ -137,16 +137,24 @@ test("destination arrival uses GPS radius", () => {
 
 test("cancel reasons whitelist", () => {
   assert.equal(
+    normalizeTaxiCancelReason("driver_not_moving", TAXI_CLIENT_CANCEL_REASONS),
+    "driver_not_moving",
+  );
+  assert.equal(
     normalizeTaxiCancelReason("changed_mind", TAXI_CLIENT_CANCEL_REASONS),
-    "changed_mind",
+    null,
   );
   assert.equal(
     normalizeTaxiCancelReason("hacked", TAXI_CLIENT_CANCEL_REASONS),
     null,
   );
   assert.equal(
+    normalizeTaxiCancelReason("vehicle_problem", TAXI_DRIVER_CANCEL_REASONS),
+    "vehicle_problem",
+  );
+  assert.equal(
     normalizeTaxiCancelReason("vehicle_issue", TAXI_DRIVER_CANCEL_REASONS),
-    "vehicle_issue",
+    null,
   );
 });
 

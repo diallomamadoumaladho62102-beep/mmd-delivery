@@ -1,0 +1,58 @@
+{
+  "cancellation": {
+    "title": "Hol ko waɗi a haɗtata?",
+    "describe": "Siftin daliilu maa",
+    "tooShort": "Naatnu ko famɗi fof alkule 8.",
+    "confirm": "Tabitin haɗtude",
+    "continueWaiting": "Jokku sabbaade",
+    "cancelRide": "Haɗtu yahdu",
+    "taxiClient": {
+      "driver_not_moving": "Driwer yiltataako e nokku ƴettugol",
+      "driver_too_late": "Driwer ina ɓooyii no feewi",
+      "driver_concerning_behavior": "Driwer ina jogii caɗeele walla jikku kulniiɗo",
+      "passenger_feels_unsafe": "Mi naamnaani kisal",
+      "pickup_location_problem": "Caɗeele e nokku ƴettugol",
+      "other": "Woɗɗude — siftin daliilu maa"
+    },
+    "taxiDriver": {
+      "customer_not_responding": "Kelleer jaabaani walla woodaani",
+      "unsafe_pickup_location": "Nokku ƴettugol hisaani",
+      "intoxicated_or_threatening_customer": "Kelleer ina wara walla ina hulbina",
+      "vehicle_problem": "Caɗeele e mootor",
+      "emergency_or_personal_issue": "Kattanɗe walla caɗeele keertiiɗe",
+      "other": "Woɗɗude — siftin daliilu maa"
+    },
+    "deliveryClient": {
+      "order_no_longer_needed": "Mi soklaani odaare ndee kadi",
+      "delivery_too_long": "Neldu ina ɓooytoo no feewi",
+      "order_problem": "Caɗeele e odaare am",
+      "restaurant_or_seller_problem": "Caɗeele e restoran walla yeeyoowo",
+      "delivery_problem": "Caɗeele e neldu",
+      "other": "Woɗɗude — siftin daliilu maa"
+    },
+    "deliveryDriver": {
+      "customer_not_responding": "Kelleer jaabaani walla woodaani",
+      "delivery_location_problem": "Caɗeele e nokku neldu",
+      "safety_problem": "Caɗeele kisal",
+      "vehicle_problem": "Caɗeele e mootor",
+      "emergency_or_personal_issue": "Kattanɗe walla caɗeele keertiiɗe",
+      "other": "Woɗɗude — siftin daliilu maa"
+    },
+    "restaurant": {
+      "cannot_prepare": "Waawaa aamde ndee odaare",
+      "item_unavailable": "Huunde woodaani",
+      "too_busy_or_closed": "Restoran uddii walla ina heewi golle",
+      "safety_problem": "Caɗeele kisal",
+      "order_details_problem": "Caɗeele e odaare",
+      "other": "Woɗɗude — siftin daliilu maa"
+    },
+    "seller": {
+      "cannot_fulfill": "Waawaa huutoraade ndee odaare",
+      "item_unavailable": "Huunde woodaani",
+      "seller_unavailable": "Yeeyoowo woodaani",
+      "safety_problem": "Caɗeele kisal",
+      "order_problem": "Caɗeele e odaare",
+      "other": "Woɗɗude — siftin daliilu maa"
+    }
+  }
+}

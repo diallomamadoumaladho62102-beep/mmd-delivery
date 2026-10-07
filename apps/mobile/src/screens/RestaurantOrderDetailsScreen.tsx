@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { CancellationReasonHost } from "../components/cancellation/CancellationReasonHost";
 import { RestaurantBrandLoadingState } from "../components/restaurant/RestaurantBrandLoadingState";
 import { API_BASE_URL } from "../lib/apiBase";
 import {
@@ -365,6 +366,11 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
 
   const cancelOrder = useCallback(async () => {
     if (!order || updating || !canRestaurantCancel(order.status)) return;
+    const { askCancellationReason } = await import(
+      "../components/cancellation/CancellationReasonHost"
+    );
+    const choice = await askCancellationReason("restaurant");
+    if (!choice) return;
     setUpdating(true);
     try {
       const { data, error } = await supabase.auth.getSession();
@@ -376,7 +382,12 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
           Authorization: `Bearer ${data.session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ orderId: order.id, role: "restaurant" }),
+        body: JSON.stringify({
+          orderId: order.id,
+          role: "restaurant",
+          reason_code: choice.reasonCode,
+          reason_detail: choice.reasonNote,
+        }),
       });
       const result = await response.json().catch(() => null);
       if (!response.ok)
@@ -646,6 +657,7 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
             />
           ) : null}
         </View>
+      <CancellationReasonHost />
       </ScrollView>
     </SafeAreaView>
   );

@@ -100,16 +100,11 @@ const CANCELABLE = new Set([
 ]);
 
 const CLIENT_CANCEL_REASON_CODES = [
-  "driver_taking_too_long",
-  "driver_too_far",
-  "changed_mind",
-  "wrong_pickup",
-  "wrong_destination",
-  "found_another_option",
-  "problem_with_driver",
-  "problem_with_vehicle",
-  "pickup_problem",
-  "emergency",
+  "driver_not_moving",
+  "driver_too_late",
+  "driver_concerning_behavior",
+  "passenger_feels_unsafe",
+  "pickup_location_problem",
   "other",
 ] as const;
 
@@ -641,7 +636,7 @@ export default function TaxiRideTrackingScreen() {
           ),
           [
             ...CLIENT_CANCEL_REASON_CODES.map((code) => ({
-              text: t(`taxi.ride.cancelReasons.${code}`),
+              text: t(`cancellation.taxiClient.${code}`),
               onPress: () => {
                 if (code === "other") {
                   setAddressPrompt({ mode: "cancel_other", value: "" });
@@ -1285,12 +1280,12 @@ export default function TaxiRideTrackingScreen() {
                 if (mode === "change_destination") void runChangeDest(value);
                 else if (mode === "add_stop") void runAddStop(value);
                 else if (mode === "cancel_other") {
-                  if (value.length < 3) {
+                  if (value.length < 8) {
                     Alert.alert(
                       t("taxi.ride.cancelOtherTitle", "Describe what happened"),
                       t(
-                        "taxi.ride.cancelOtherTooShort",
-                        "Please enter at least 3 characters.",
+                        "cancellation.tooShort",
+                        "Enter at least 8 characters.",
                       ),
                     );
                     return;

@@ -1,0 +1,58 @@
+{
+  "cancellation": {
+    "title": "Pourquoi annulez-vous ?",
+    "describe": "Décrivez votre raison",
+    "tooShort": "Saisissez au moins 8 caractères.",
+    "confirm": "Confirmer l'annulation",
+    "continueWaiting": "Continuer à attendre",
+    "cancelRide": "Annuler la course",
+    "taxiClient": {
+      "driver_not_moving": "Le chauffeur ne se dirige pas vers le point de prise en charge",
+      "driver_too_late": "Le chauffeur est trop en retard",
+      "driver_concerning_behavior": "Le chauffeur a un problème ou un comportement préoccupant",
+      "passenger_feels_unsafe": "Je ne me sens pas en sécurité",
+      "pickup_location_problem": "Problème avec le lieu de prise en charge",
+      "other": "Autre — expliquez votre raison"
+    },
+    "taxiDriver": {
+      "customer_not_responding": "Le client ne répond pas ou n'est pas présent",
+      "unsafe_pickup_location": "Le lieu de prise en charge n'est pas sûr",
+      "intoxicated_or_threatening_customer": "Le client est en état d'ébriété ou représente une menace",
+      "vehicle_problem": "Problème avec le véhicule",
+      "emergency_or_personal_issue": "Urgence ou problème personnel",
+      "other": "Autre — expliquez votre raison"
+    },
+    "deliveryClient": {
+      "order_no_longer_needed": "Je n'ai plus besoin de la commande",
+      "delivery_too_long": "La livraison prend trop de temps",
+      "order_problem": "Problème avec ma commande",
+      "restaurant_or_seller_problem": "Problème avec le restaurant ou le vendeur",
+      "delivery_problem": "Problème avec la livraison",
+      "other": "Autre — expliquez votre raison"
+    },
+    "deliveryDriver": {
+      "customer_not_responding": "Le client ne répond pas ou n'est pas présent",
+      "delivery_location_problem": "Problème avec le lieu de livraison",
+      "safety_problem": "Problème de sécurité",
+      "vehicle_problem": "Problème avec le véhicule",
+      "emergency_or_personal_issue": "Urgence ou problème personnel",
+      "other": "Autre — expliquez votre raison"
+    },
+    "restaurant": {
+      "cannot_prepare": "Impossible de préparer cette commande",
+      "item_unavailable": "Un article n'est pas disponible",
+      "too_busy_or_closed": "Le restaurant est fermé ou trop occupé",
+      "safety_problem": "Problème de sécurité",
+      "order_details_problem": "Problème avec la commande",
+      "other": "Autre — expliquez votre raison"
+    },
+    "seller": {
+      "cannot_fulfill": "Impossible d'honorer cette commande",
+      "item_unavailable": "Un article n'est pas disponible",
+      "seller_unavailable": "Le vendeur n'est pas disponible",
+      "safety_problem": "Problème de sécurité",
+      "order_problem": "Problème avec la commande",
+      "other": "Autre — expliquez votre raison"
+    }
+  }
+}

@@ -10,9 +10,10 @@ import {
   taxiJson,
 } from "@/lib/taxiApi";
 import { stripe } from "@/lib/stripe";
+import { parseStructuredCancelReason } from "@/lib/cancellationReasons";
+import { recordServiceCancellation } from "@/lib/serviceCancellationAudit";
 import {
   isDriverAtDestination,
-  normalizeTaxiCancelReason,
   planClientTaxiCancellation,
   TAXI_CLIENT_CANCEL_REASONS,
 } from "@/lib/taxi/taxiCancellationPolicy";
@@ -100,39 +101,25 @@ export async function POST(req: NextRequest) {
     const previewOnly =
       body?.preview === true || body?.preview_only === true;
 
-    const reasonCode = normalizeTaxiCancelReason(
-      body?.reason_code ?? body?.reasonCode ?? body?.reason,
+    const parsedReason = parseStructuredCancelReason(
+      {
+        reasonCode: body?.reason_code ?? body?.reasonCode ?? body?.reason,
+        reasonNote: body?.reason_detail ?? body?.reasonDetail ?? body?.reason_note,
+      },
       TAXI_CLIENT_CANCEL_REASONS,
     );
-    const reasonDetail = String(
-      body?.reason_detail ?? body?.reasonDetail ?? "",
-    )
-      .trim()
-      .slice(0, 500);
-
-    if (!previewOnly) {
-      if (!reasonCode) {
-        return taxiJson(
-          {
-            ok: false,
-            error: "cancel_reason_required",
-            message: "Please select a cancellation reason.",
-            allowed_reasons: TAXI_CLIENT_CANCEL_REASONS,
-          },
-          400,
-        );
-      }
-      if (reasonCode === "other" && reasonDetail.length < 3) {
-        return taxiJson(
-          {
-            ok: false,
-            error: "cancel_reason_detail_required",
-            message: "Please describe why you are cancelling.",
-          },
-          400,
-        );
-      }
+    if (!previewOnly && parsedReason.ok === false) {
+      return taxiJson(
+        {
+          ok: false,
+          error: parsedReason.error,
+          allowed_reasons: parsedReason.allowed,
+        },
+        400,
+      );
     }
+    const reasonCode = parsedReason.ok ? parsedReason.reasonCode : null;
+    const reasonDetail = parsedReason.ok ? parsedReason.reasonNote ?? "" : "";
 
     const role = await getProfileRole(auth.supabaseAdmin, auth.user.id);
     const scope = await assertClientOwnsTaxiRide({
@@ -283,6 +270,28 @@ export async function POST(req: NextRequest) {
         409,
       );
     }
+
+    await recordServiceCancellation(auth.supabaseAdmin, {
+      entityType: "taxi_ride",
+      entityId: rideId,
+      serviceType: "taxi",
+      actorUserId: auth.user.id,
+      actorRole: "client",
+      reasonCode: reasonCode ?? "other",
+      reasonNote: reasonDetail || null,
+      previousStatus: status,
+      resultingStatus: "canceled",
+      paymentStatus: String(ride.payment_status ?? ""),
+      refundAmountCents: plan.refundCents,
+      acceptanceRateImpact: false,
+      cancellationRateImpact: false,
+      cancellationSource: "client_cancel",
+      postAcceptance: plan.phase !== "before_assignment",
+      metadata: {
+        cancel_fee_cents: plan.cancelFeeCents,
+        refund_policy: plan.refundPolicy,
+      },
+    });
 
     await releaseEntityCredit(auth.supabaseAdmin, "taxi_ride", rideId);
 

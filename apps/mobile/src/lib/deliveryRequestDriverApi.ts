@@ -47,15 +47,25 @@ export function acceptDeliveryRequest(
   });
 }
 
-export function cancelDeliveryRequestAsDriver(deliveryRequestId: string) {
+export function cancelDeliveryRequestAsDriver(
+  deliveryRequestId: string,
+  reason?: { reasonCode: string; reasonNote: string | null },
+) {
   return postDeliveryRequestApi("/api/delivery-requests/driver-cancel", {
     delivery_request_id: deliveryRequestId,
+    reason_code: reason?.reasonCode,
+    reason_detail: reason?.reasonNote,
   });
 }
 
-export function cancelDeliveryRequestAsClient(deliveryRequestId: string) {
+export function cancelDeliveryRequestAsClient(
+  deliveryRequestId: string,
+  reason?: { reasonCode: string; reasonNote: string | null },
+) {
   return postDeliveryRequestApi("/api/delivery-requests/cancel", {
     delivery_request_id: deliveryRequestId,
+    reason_code: reason?.reasonCode,
+    reason_detail: reason?.reasonNote,
   });
 }
 

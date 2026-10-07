@@ -1,0 +1,58 @@
+{
+  "cancellation": {
+    "title": "Why are you cancelling?",
+    "describe": "Describe your reason",
+    "tooShort": "Enter at least 8 characters.",
+    "confirm": "Confirm cancellation",
+    "continueWaiting": "Continue waiting",
+    "cancelRide": "Cancel ride",
+    "taxiClient": {
+      "driver_not_moving": "The driver is not heading to the pickup location",
+      "driver_too_late": "The driver is too late",
+      "driver_concerning_behavior": "The driver has a problem or concerning behavior",
+      "passenger_feels_unsafe": "I do not feel safe",
+      "pickup_location_problem": "Problem with the pickup location",
+      "other": "Other — explain your reason"
+    },
+    "taxiDriver": {
+      "customer_not_responding": "The customer does not respond or is not present",
+      "unsafe_pickup_location": "The pickup location is unsafe",
+      "intoxicated_or_threatening_customer": "The customer is intoxicated or represents a threat",
+      "vehicle_problem": "Problem with the vehicle",
+      "emergency_or_personal_issue": "Emergency or personal issue",
+      "other": "Other — explain your reason"
+    },
+    "deliveryClient": {
+      "order_no_longer_needed": "I no longer need the order",
+      "delivery_too_long": "The delivery is taking too long",
+      "order_problem": "Problem with my order",
+      "restaurant_or_seller_problem": "Problem with the restaurant or seller",
+      "delivery_problem": "Problem with the delivery",
+      "other": "Other — explain your reason"
+    },
+    "deliveryDriver": {
+      "customer_not_responding": "The customer does not respond or is not present",
+      "delivery_location_problem": "Problem with the delivery location",
+      "safety_problem": "Safety problem",
+      "vehicle_problem": "Problem with the vehicle",
+      "emergency_or_personal_issue": "Emergency or personal issue",
+      "other": "Other — explain your reason"
+    },
+    "restaurant": {
+      "cannot_prepare": "Cannot prepare this order",
+      "item_unavailable": "An item is unavailable",
+      "too_busy_or_closed": "The restaurant is closed or too busy",
+      "safety_problem": "Safety problem",
+      "order_details_problem": "Problem with the order",
+      "other": "Other — explain your reason"
+    },
+    "seller": {
+      "cannot_fulfill": "Cannot fulfill this order",
+      "item_unavailable": "An item is unavailable",
+      "seller_unavailable": "The seller is unavailable",
+      "safety_problem": "Safety problem",
+      "order_problem": "Problem with the order",
+      "other": "Other — explain your reason"
+    }
+  }
+}

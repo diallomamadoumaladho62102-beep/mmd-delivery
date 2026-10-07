@@ -8,6 +8,11 @@ import {
 import { getSupabaseAdminClient } from "@/lib/driverAcceptApi";
 import { expirePendingDeliveryRequestOffers } from "@/lib/expirePendingDriverOffers";
 import { triggerDeliveryRequestDispatch } from "@/lib/triggerDeliveryRequestDispatch";
+import {
+  DELIVERY_DRIVER_CANCEL_REASONS,
+  parseStructuredCancelReason,
+} from "@/lib/cancellationReasons";
+import { recordServiceCancellation } from "@/lib/serviceCancellationAudit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +55,22 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid token" }, 401);
     }
 
+    const parsedReason = parseStructuredCancelReason(
+      {
+        reasonCode: (body as Record<string, unknown>).reason_code ?? (body as Record<string, unknown>).reasonCode,
+        reasonNote:
+          (body as Record<string, unknown>).reason_detail ??
+          (body as Record<string, unknown>).reason_note,
+      },
+      DELIVERY_DRIVER_CANCEL_REASONS,
+    );
+    if (parsedReason.ok === false) {
+      return json(
+        { error: parsedReason.error, allowed_reasons: parsedReason.allowed },
+        400,
+      );
+    }
+
     const { data, error } = await supabase.rpc("driver_release_delivery_request", {
       p_request_id: requestId,
     });
@@ -66,6 +87,20 @@ export async function POST(req: NextRequest) {
     }
 
     const supabaseAdmin = getSupabaseAdminClient();
+    await recordServiceCancellation(supabaseAdmin, {
+      entityType: "delivery_request",
+      entityId: requestId,
+      serviceType: "package",
+      actorUserId: userData.user.id,
+      actorRole: "driver",
+      reasonCode: parsedReason.reasonCode,
+      reasonNote: parsedReason.reasonNote,
+      resultingStatus: "released",
+      acceptanceRateImpact: false,
+      cancellationSource: "driver_release",
+      postAcceptance: true,
+      metadata: { reassign: true },
+    });
     await expirePendingDeliveryRequestOffers(supabaseAdmin, requestId);
     const smartDispatch = await triggerDeliveryRequestDispatch({
       supabase: supabaseAdmin,

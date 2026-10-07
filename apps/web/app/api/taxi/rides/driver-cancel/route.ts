@@ -3,10 +3,9 @@ import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { getTaxiRideId, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
 import { notifyClientTaxiRideCancelled } from "@/lib/clientPushNotifications";
-import {
-  normalizeTaxiCancelReason,
-  TAXI_DRIVER_CANCEL_REASONS,
-} from "@/lib/taxi/taxiCancellationPolicy";
+import { parseStructuredCancelReason } from "@/lib/cancellationReasons";
+import { recordServiceCancellation } from "@/lib/serviceCancellationAudit";
+import { TAXI_DRIVER_CANCEL_REASONS } from "@/lib/taxi/taxiCancellationPolicy";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 
 export const runtime = "nodejs";
@@ -32,31 +31,26 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: message }, 400);
     }
 
-    const reasonCode =
-      normalizeTaxiCancelReason(
-        body.reason_code ?? body.reasonCode ?? body.reason,
-        TAXI_DRIVER_CANCEL_REASONS,
-      ) ?? "other";
-    const reasonDetail = String(body.reason_detail ?? body.reasonDetail ?? "")
-      .trim()
-      .slice(0, 500);
-    if (reasonCode === "other" && reasonDetail.length < 3) {
+    const parsedReason = parseStructuredCancelReason(
+      {
+        reasonCode: body.reason_code ?? body.reasonCode ?? body.reason,
+        reasonNote: body.reason_detail ?? body.reasonDetail ?? body.reason_note,
+      },
+      TAXI_DRIVER_CANCEL_REASONS,
+    );
+    if (parsedReason.ok === false) {
       return taxiJson(
         {
           ok: false,
-          error: "cancel_reason_required",
-          message:
-            "Please select a cancellation reason. If Other, add a short explanation.",
+          error: parsedReason.error,
+          allowed_reasons: parsedReason.allowed,
         },
         400,
       );
     }
-    const reason =
-      reasonCode === "other"
-        ? `other:${reasonDetail}`
-        : reasonDetail
-          ? `${reasonCode}:${reasonDetail}`
-          : reasonCode;
+    const reasonCode = parsedReason.reasonCode;
+    const reasonDetail = parsedReason.reasonNote ?? "";
+    const reason = reasonCode;
 
     const { data: rideBefore } = await auth.supabaseAdmin
       .from("taxi_rides")
@@ -97,6 +91,25 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", rideId);
 
+    await recordServiceCancellation(auth.supabaseAdmin, {
+      entityType: "taxi_ride",
+      entityId: rideId,
+      serviceType: "taxi",
+      actorUserId: auth.user.id,
+      actorRole: "driver",
+      reasonCode,
+      reasonNote: reasonDetail || null,
+      previousStatus: String(rideBefore?.status ?? ""),
+      resultingStatus: String(result.status ?? "dispatching"),
+      paymentStatus: String(rideBefore?.payment_status ?? ""),
+      refundAmountCents: 0,
+      acceptanceRateImpact: false,
+      cancellationRateImpact: true,
+      cancellationSource: "driver_release",
+      postAcceptance: true,
+      metadata: { reassign: true, refund: "NONE" },
+    });
+
     let dispatch: { ok: boolean; error?: string } = { ok: false };
     try {
       await runTaxiRideDispatch({
@@ -122,7 +135,8 @@ export async function POST(req: NextRequest) {
       metadata: {
         reason_code: reasonCode,
         reason_detail: reasonDetail || null,
-        activity_impact: true,
+        activity_impact: false,
+        acceptance_rate_impact: false,
         dispatch,
         previous_driver_id: result.previous_driver_id ?? auth.user.id,
       },
@@ -144,9 +158,10 @@ export async function POST(req: NextRequest) {
       result,
       refund: "NONE",
       dispatch,
-      activity_impact: true,
+      activity_impact: false,
+      acceptance_rate_impact: false,
       message:
-        "Ride released. Searching for another nearby driver. Cancelling after accept may affect your acceptance activity.",
+        "Ride released. Searching for another nearby driver. The customer is not refunded. This does not reduce your acceptance rate.",
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
