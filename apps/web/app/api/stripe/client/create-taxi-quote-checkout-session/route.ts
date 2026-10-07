@@ -33,6 +33,10 @@ import {
   normalizeTaxiReturnMode,
   normalizeTaxiTripMode,
 } from "@/lib/taxiTripMode";
+import {
+  resolveTaxiCustomerVehicleClass,
+  taxiStopCapacityError,
+} from "@/lib/taxiVehicleClass";
 import { buildTaxiFareComponentsDoc } from "@/lib/taxi/taxiFareComponents";
 import {
   createTaxiCheckoutIntent,
@@ -147,9 +151,13 @@ export async function POST(req: NextRequest) {
     if (auth.ok === false) return auth.response;
 
     const body = (await req.json().catch(() => ({}))) as Body;
-    const vehicleClass = String(
-      body.vehicleClass ?? body.vehicle_class ?? "standard",
-    ).trim();
+    const resolvedVehicle = resolveTaxiCustomerVehicleClass(
+      body.vehicleClass ?? body.vehicle_class,
+    );
+    if (resolvedVehicle.ok === false) {
+      return taxiJson({ ok: false, error: resolvedVehicle.error }, 400);
+    }
+    const vehicleClass = resolvedVehicle.vehicleClass;
     const passengerCount = Math.max(
       1,
       Number(body.passengerCount ?? body.passenger_count ?? 1),
@@ -221,6 +229,11 @@ export async function POST(req: NextRequest) {
     );
     if (returnMode === "scheduled" && !returnScheduledAt) {
       return taxiJson({ ok: false, error: "return_scheduled_at_required" }, 400);
+    }
+
+    const stopCapacity = taxiStopCapacityError(body.stops, tripMode);
+    if (stopCapacity) {
+      return taxiJson({ ok: false, error: stopCapacity }, 400);
     }
 
     let route;

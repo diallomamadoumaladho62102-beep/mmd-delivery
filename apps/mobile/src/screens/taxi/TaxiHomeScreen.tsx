@@ -16,7 +16,7 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
-import { toUserFacingError } from "../../lib/userFacingError";
+import { safeTaxiUserMessage, toUserFacingError } from "../../lib/userFacingError";
 import { isValidCoordinate } from "../../lib/coordinates";
 import {
   quoteTaxiRide,
@@ -46,6 +46,7 @@ import { AddressAutocomplete } from "../../components/location/AddressAutocomple
 import { reverseGeocode } from "../../lib/reverseGeocode";
 import { getFreshPosition } from "../../lib/locationPermissionState";
 import { taxiHomePrefillFromParams } from "../../lib/taxiHomePrefill";
+import { maxBookingStops, normalizeOrderedStops } from "../../lib/taxiBookingFlow";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -146,6 +147,7 @@ export default function TaxiHomeScreen() {
   const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(
     initialPrefill.dropoffCoords
   );
+  const [stops, setStops] = useState<{ address: string; lat?: number; lng?: number }[]>([]);
 
   useEffect(() => {
     const next = taxiHomePrefillFromParams(route.params);
@@ -296,9 +298,24 @@ export default function TaxiHomeScreen() {
     if (!market.scopeResolved && !showDevCountryPicker) {
       Alert.alert(
         t("taxi.home.unavailableTitle", "Service not available yet"),
-        features.service_messages?.taxi ??
-          features.message ??
-          t("taxi.home.unavailable", "Taxi service is not available in this county yet.")
+        t("taxi.home.unavailable", "Taxi service is not available in this county yet.")
+      );
+      return;
+    }
+
+    const orderedStops = normalizeOrderedStops(stops);
+    const stopLimit = maxBookingStops(tripMode);
+    if (orderedStops.length > stopLimit) {
+      Alert.alert(
+        t("taxi.home.estimateFailed", "Estimate failed"),
+        t(
+          tripMode === "round_trip"
+            ? "taxi.home.roundTripStopLimit"
+            : "taxi.home.tooManyStops",
+          tripMode === "round_trip"
+            ? "A round trip can include up to 2 stops."
+            : "You can add up to 3 stops.",
+        ),
       );
       return;
     }
@@ -307,9 +324,7 @@ export default function TaxiHomeScreen() {
     if (!activeCountryCode || !market.taxiAvailable) {
       Alert.alert(
         t("taxi.home.unavailableTitle", "Service not available yet"),
-        features.service_messages?.taxi ??
-          features.message ??
-          t("taxi.home.unavailable", "Taxi service is not available in this county yet.")
+        t("taxi.home.unavailable", "Taxi service is not available in this county yet.")
       );
       return;
     }
@@ -330,6 +345,7 @@ export default function TaxiHomeScreen() {
         dropoffLng: dropoffHasCoords ? dropoffCoords!.lng : undefined,
         vehicleClass,
         countryCode: activeCountryCode,
+        stops: orderedStops,
         tripMode,
         returnMode: tripMode === "round_trip" ? returnMode : undefined,
         returnWaitMinutes:
@@ -343,7 +359,10 @@ export default function TaxiHomeScreen() {
       });
 
       if (!result?.ok) {
-        throw new Error(result?.message ?? result?.error ?? "Quote failed");
+        const code = String(result?.error ?? result?.message ?? "quote_failed");
+        const err = new Error(code);
+        (err as Error & { code?: string }).code = code;
+        throw err;
       }
 
       const resolvedCountry =
@@ -363,6 +382,7 @@ export default function TaxiHomeScreen() {
         countryResolution: result.country_resolution,
         quote: result.quote,
         route: result.route,
+        stops: orderedStops,
         tripMode,
         returnMode: tripMode === "round_trip" ? returnMode : undefined,
         returnWaitMinutes:
@@ -375,7 +395,7 @@ export default function TaxiHomeScreen() {
             : undefined,
       });
     } catch (e: unknown) {
-      const message = toUserFacingError(
+      const message = safeTaxiUserMessage(
         e,
         t("taxi.home.quoteFailed", "Unable to get estimate. Check the addresses or try again."),
       );
@@ -554,6 +574,115 @@ export default function TaxiHomeScreen() {
 
         <View style={{ gap: 10 }}>
           <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+            {t("taxi.home.stops", "Stops")}
+          </Text>
+          {stops.map((stop, index) => (
+            <View key={`taxi-stop-${index}`} style={{ gap: 8 }}>
+              <AddressAutocomplete
+                value={stop.address}
+                onChangeText={(text) => {
+                  setStops((prev) =>
+                    prev.map((row, i) =>
+                      i === index ? { address: text } : row,
+                    ),
+                  );
+                }}
+                onSelect={(place) => {
+                  setStops((prev) =>
+                    prev.map((row, i) =>
+                      i === index
+                        ? {
+                            address: place.fullAddress,
+                            lat: place.latitude,
+                            lng: place.longitude,
+                          }
+                        : row,
+                    ),
+                  );
+                }}
+                placeholder={t("taxi.home.stopPlaceholder", "Stop {{n}}", {
+                  n: index + 1,
+                })}
+                proximity={proximity}
+                country={countryCode || undefined}
+              />
+              <View style={{ flexDirection: rowDirection(), gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() =>
+                    setStops((prev) => {
+                      if (index === 0) return prev;
+                      const next = prev.slice();
+                      const [item] = next.splice(index, 1);
+                      next.splice(index - 1, 0, item);
+                      return next;
+                    })
+                  }
+                  disabled={index === 0}
+                  style={{ opacity: index === 0 ? 0.4 : 1 }}
+                >
+                  <Text style={{ color: MMD_WHITE, fontWeight: "700" }}>
+                    {t("taxi.home.moveUp", "Up")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() =>
+                    setStops((prev) => {
+                      if (index >= prev.length - 1) return prev;
+                      const next = prev.slice();
+                      const [item] = next.splice(index, 1);
+                      next.splice(index + 1, 0, item);
+                      return next;
+                    })
+                  }
+                  disabled={index >= stops.length - 1}
+                  style={{ opacity: index >= stops.length - 1 ? 0.4 : 1 }}
+                >
+                  <Text style={{ color: MMD_WHITE, fontWeight: "700" }}>
+                    {t("taxi.home.moveDown", "Down")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() =>
+                    setStops((prev) => prev.filter((_, i) => i !== index))
+                  }
+                >
+                  <Text style={{ color: "#FCA5A5", fontWeight: "700" }}>
+                    {t("taxi.home.removeStop", "Remove")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+          {stops.length < maxBookingStops(tripMode) ? (
+            <TouchableOpacity
+              onPress={() => setStops((prev) => [...prev, { address: "" }])}
+              style={{
+                borderRadius: 14,
+                paddingVertical: 12,
+                alignItems: "center",
+                backgroundColor: "rgba(255,255,255,0.08)",
+              }}
+            >
+              <Text style={{ color: MMD_WHITE, fontWeight: "800" }}>
+                {t("taxi.home.addStop", "Add stop")}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={{ color: "#94A3B8", fontSize: 13 }}>
+              {t(
+                tripMode === "round_trip"
+                  ? "taxi.home.roundTripStopLimit"
+                  : "taxi.home.tooManyStops",
+                tripMode === "round_trip"
+                  ? "A round trip can include up to 2 stops."
+                  : "You can add up to 3 stops.",
+              )}
+            </Text>
+          )}
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
             {t("taxi.home.tripMode", "Trip type")}
           </Text>
           <View style={{ flexDirection: rowDirection(), gap: 10 }}>
@@ -659,18 +788,18 @@ export default function TaxiHomeScreen() {
                 <TouchableOpacity
                   key={item.key}
                   onPress={() => {
+                    setVehicleClass(item.key);
                     if (unavailable) {
                       Alert.alert(
                         item.label,
-                        availability?.unavailable_message ??
-                          t(
-                            "taxi.home.categoryUnavailable",
-                            "No driver is available for this category right now.",
-                          ),
+                        t("taxi.home.categoryUnavailableNamed", {
+                          category: item.label,
+                          defaultValue:
+                            "{{category}} is unavailable. Please choose another option.",
+                        }),
+                        [{ text: t("common.ok", "OK") }],
                       );
-                      return;
                     }
-                    setVehicleClass(item.key);
                   }}
                   style={{
                     width: "48%",
@@ -863,7 +992,7 @@ export default function TaxiHomeScreen() {
               ["💎", t("taxi.home.loyalty", "Loyalty"), () => navigation.navigate("TaxiLoyalty")],
               ["💼", t("taxi.home.businessWallet", "Wallet"), () => navigation.navigate("BusinessWallet")],
               ["📅", t("taxi.home.scheduled", "Schedule"), () => navigation.navigate("TaxiScheduled")],
-              ["🔄", t("taxi.home.multiStop", "Multi-stop"), () => navigation.navigate("TaxiMultiStop")],
+              ["🔄", t("taxi.home.multiStop", "Multi-stop"), () => navigation.navigate("TaxiMultiStop", { vehicleClass })],
               ["🎁", t("taxi.home.loyaltyRewards", "Rewards"), () => navigation.navigate("TaxiLoyaltyRewards")],
             ] as const
           ).map(([emoji, label, onPress]) => (

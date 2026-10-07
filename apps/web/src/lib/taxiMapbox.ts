@@ -236,11 +236,40 @@ async function resolveStop(input: TaxiStopInput, fallbackLabel: string) {
   return { address, lat: geo.lat, lng: geo.lng };
 }
 
+async function resolveNamedPoint(
+  address: string | null | undefined,
+  lat: number | undefined,
+  lng: number | undefined,
+) {
+  if (isValidCoordinate(lat, lng)) {
+    return {
+      address: address?.trim() || null,
+      lat: Number(lat),
+      lng: Number(lng),
+    };
+  }
+  const trimmed = address?.trim() ?? "";
+  if (!trimmed) throw new Error(ROUTE_UNAVAILABLE);
+  const geo = await geocodeAddress(trimmed);
+  return { address: trimmed, lat: geo.lat, lng: geo.lng };
+}
+
 export async function resolveTaxiMultiStopRoute(
   input: TaxiMultiStopRouteInput,
 ): Promise<TaxiMultiStopRouteResult> {
-  const baseRoute = await resolveTaxiRoute(input);
-  const rawStops = Array.isArray(input.stops) ? input.stops.slice(0, 3) : [];
+  const rawStops = Array.isArray(input.stops) ? input.stops : [];
+  if (rawStops.length > 3) throw new Error("too_many_stops");
+
+  const pickup = await resolveNamedPoint(
+    input.pickupAddress,
+    input.pickupLat,
+    input.pickupLng,
+  );
+  const dropoff = await resolveNamedPoint(
+    input.dropoffAddress,
+    input.dropoffLat,
+    input.dropoffLng,
+  );
 
   const stops: TaxiStopResult[] = [];
   for (let i = 0; i < rawStops.length; i += 1) {
@@ -254,9 +283,9 @@ export async function resolveTaxiMultiStopRoute(
   }
 
   const coordinates = [
-    { lat: baseRoute.pickupLat, lng: baseRoute.pickupLng },
+    { lat: pickup.lat, lng: pickup.lng },
     ...stops.map((stop) => ({ lat: stop.lat, lng: stop.lng })),
-    { lat: baseRoute.dropoffLat, lng: baseRoute.dropoffLng },
+    { lat: dropoff.lat, lng: dropoff.lng },
   ];
 
   const { distanceMiles, durationMinutes, durationSeconds } =
@@ -265,7 +294,12 @@ export async function resolveTaxiMultiStopRoute(
   assertRouteDistanceWithinLimit(distanceMiles, "taxi");
 
   return {
-    ...baseRoute,
+    pickupLat: pickup.lat,
+    pickupLng: pickup.lng,
+    dropoffLat: dropoff.lat,
+    dropoffLng: dropoff.lng,
+    pickupAddress: pickup.address,
+    dropoffAddress: dropoff.address,
     distanceMiles,
     durationMinutes,
     durationSeconds,

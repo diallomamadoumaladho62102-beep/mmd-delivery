@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
+import { safeTaxiUserMessage } from "../../lib/userFacingError";
 import { Ionicons } from "@expo/vector-icons";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { textAlignStart } from "../../i18n/rtl";
@@ -221,10 +222,10 @@ export default function TaxiRideTrackingScreen() {
         "taxi_ride_tracking_load",
       );
     } catch (e: unknown) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : t("taxi.ride.loadFailed", "Unable to load ride");
+      const message = safeTaxiUserMessage(
+        e,
+        t("taxi.ride.loadFailed", "Unable to load ride"),
+      );
       if (mountedRef.current) {
         setLoadError(message);
       }
@@ -469,7 +470,7 @@ export default function TaxiRideTrackingScreen() {
       } catch (e: unknown) {
         Alert.alert(
           t("taxi.ride.addStopTitle", "Add stop"),
-          e instanceof Error ? e.message : t("taxi.ride.addStopFailed", "Unable to add stop"),
+          safeTaxiUserMessage(e, t("taxi.ride.addStopFailed", "Unable to add stop")),
         );
       }
     },
@@ -515,9 +516,10 @@ export default function TaxiRideTrackingScreen() {
       } catch (e: unknown) {
         Alert.alert(
           t("taxi.ride.changeDestTitle", "Change destination"),
-          e instanceof Error
-            ? e.message
-            : t("taxi.ride.changeDestFailed", "Unable to change destination"),
+          safeTaxiUserMessage(
+            e,
+            t("taxi.ride.changeDestFailed", "Unable to change destination"),
+          ),
         );
       }
     },
@@ -549,9 +551,10 @@ export default function TaxiRideTrackingScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.quote.payment", "Payment"),
-        e instanceof Error
-          ? e.message
-          : t("taxi.quote.paymentFailed", "Unable to start payment"),
+        safeTaxiUserMessage(
+          e,
+          t("taxi.quote.paymentFailed", "Unable to start payment"),
+        ),
       );
     } finally {
       setStartingCheckout(false);
@@ -583,9 +586,10 @@ export default function TaxiRideTrackingScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.ride.callTitle", "Call driver"),
-        e instanceof Error
-          ? e.message
-          : t("taxi.ride.callFailed", "Unable to start a masked call right now."),
+        safeTaxiUserMessage(
+          e,
+          t("taxi.ride.callFailed", "Unable to start a masked call right now."),
+        ),
       );
     } finally {
       setCalling(false);
@@ -652,9 +656,10 @@ export default function TaxiRideTrackingScreen() {
                   } catch (e: unknown) {
                     Alert.alert(
                       t("taxi.ride.cancelTitle", "Cancel ride"),
-                      e instanceof Error
-                        ? e.message
-                        : t("taxi.ride.cancelFailed", "Unable to cancel"),
+                      safeTaxiUserMessage(
+                        e,
+                        t("taxi.ride.cancelFailed", "Unable to cancel"),
+                      ),
                     );
                   } finally {
                     setCancelling(false);
@@ -681,9 +686,7 @@ export default function TaxiRideTrackingScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.ride.cancelTitle", "Cancel ride"),
-        e instanceof Error
-          ? e.message
-          : t("taxi.ride.cancelFailed", "Unable to cancel"),
+        safeTaxiUserMessage(e, t("taxi.ride.cancelFailed", "Unable to cancel")),
       );
     }
   }
@@ -1298,9 +1301,10 @@ export default function TaxiRideTrackingScreen() {
                     } catch (e: unknown) {
                       Alert.alert(
                         t("taxi.ride.cancelTitle", "Cancel ride"),
-                        e instanceof Error
-                          ? e.message
-                          : t("taxi.ride.cancelFailed", "Unable to cancel"),
+                        safeTaxiUserMessage(
+                          e,
+                          t("taxi.ride.cancelFailed", "Unable to cancel"),
+                        ),
                       );
                     } finally {
                       setCancelling(false);
@@ -1348,9 +1352,10 @@ export default function TaxiRideTrackingScreen() {
                       } catch (e: unknown) {
                         Alert.alert(
                           t("taxi.ride.cancelTitle", "Cancel ride"),
-                          e instanceof Error
-                            ? e.message
-                            : t("taxi.ride.cancelFailed", "Unable to cancel"),
+                          safeTaxiUserMessage(
+                            e,
+                            t("taxi.ride.cancelFailed", "Unable to cancel"),
+                          ),
                         );
                       } finally {
                         setCancelling(false);

@@ -50,6 +50,19 @@ const TECHNICAL_PATTERNS: RegExp[] = [
   /delivery_fee_abnormal/i,
 ];
 
+/** Show a translated Taxi message. Never surface a raw backend sentence. */
+export function safeTaxiUserMessage(error: unknown, fallback: string): string {
+  const mapped = toUserFacingError(error, fallback);
+  const raw =
+    error instanceof Error
+      ? error.message.trim()
+      : typeof error === "string"
+        ? error.trim()
+        : "";
+  if (raw && mapped === raw && !/^[a-z0-9_]+$/i.test(raw)) return fallback;
+  return mapped;
+}
+
 export function isTechnicalErrorMessage(message: string): boolean {
   const text = String(message ?? "").trim();
   if (!text) return false;
@@ -114,7 +127,7 @@ const USER_ALREADY_REGISTERED_EN =
   "An account already exists with this email address.";
 
 function mapKnownErrorCode(errorCode: string, message: string): string | null {
-  switch (errorCode) {
+  switch (errorCode || message) {
     case "active_mission_in_progress":
       return code(
         "active_mission_in_progress",
@@ -187,6 +200,94 @@ function mapKnownErrorCode(errorCode: string, message: string): string | null {
       return code(
         "route_unavailable",
         "We could not calculate the exact route right now. Please check the addresses or try again.",
+      );
+    case "pricing_not_found":
+      return code(
+        "pricing_not_found",
+        "This vehicle category is not priced in your area yet.",
+      );
+    case "vehicle_class_required":
+      return code(
+        "vehicle_class_required",
+        "Choose a vehicle category before estimating.",
+      );
+    case "vehicle_class_unsupported":
+      return code(
+        "vehicle_class_unsupported",
+        "This vehicle category is not supported.",
+      );
+    case "quote_failed":
+      return code(
+        "quote_failed",
+        "Unable to estimate the fare right now. Please try again.",
+      );
+    case "return_scheduled_at_required":
+      return code(
+        "return_scheduled_at_required",
+        "Enter a valid return time for a scheduled round trip.",
+      );
+    case "round_trip_stop_limit":
+      return code(
+        "round_trip_stop_limit",
+        "A round trip can include up to 2 stops.",
+      );
+    case "too_many_stops":
+      return code("too_many_stops", "You can add up to 3 stops.");
+    case "invalid_stop":
+      return code("invalid_stop", "Check the stop address and try again.");
+    case "confirmation_failed":
+      return code(
+        "confirmation_failed",
+        "The ride could not be confirmed. Please try again.",
+      );
+    case "promotion_unavailable":
+      return code(
+        "promotion_unavailable",
+        "This promotion could not be applied. Continue without it or try another code.",
+      );
+    case "category_unavailable":
+      return code(
+        "category_unavailable",
+        "This category is unavailable. Please choose another option.",
+      );
+    case "country_mismatch":
+      return tr(
+        "taxi.home.countryMismatch",
+        "Pickup location does not match selected country.",
+      );
+    case "payment_not_confirmed":
+      return tr(
+        "taxi.quote.paymentNotCompleted",
+        "Payment was not completed. Please check your payment method and try again.",
+      );
+    case "offer_required":
+    case "offer_not_available":
+    case "offer_not_found":
+    case "offer_expired":
+    case "offer_superseded":
+    case "offer_already_accepted":
+    case "request_no_longer_available":
+    case "already_assigned":
+      return code(
+        "offer_required",
+        "This offer is no longer available. Refresh offers.",
+      );
+    case "invalid_status_for_pickup_arrival":
+    case "invalid_status_for_dropoff_arrival":
+      return code(
+        "invalid_delivery_stage",
+        "This step is no longer available. Refresh the trip.",
+      );
+    case "already_arrived":
+      return code(
+        "already_arrived",
+        "Arrival is already confirmed. Refresh the trip.",
+      );
+    case "too_far_from_target":
+    case "manual_arrival_required":
+      return code(
+        "too_far_from_target",
+        "Move closer to the location to confirm arrival.",
       );
     case "card_declined":
       return code("card_declined", CARD_DECLINED_EN);
@@ -323,6 +424,17 @@ function mapKnownErrorCode(errorCode: string, message: string): string | null {
     return pattern(
       "networkFailed",
       "Unstable connection. Check your network and try again.",
+    );
+  }
+
+  if (
+    /offer_required|offer_not_available|offer_not_found|offer_expired|offer_superseded|offer_already_accepted|request_no_longer_available|already_assigned/i.test(
+      message,
+    )
+  ) {
+    return code(
+      "offer_required",
+      "This offer is no longer available. Refresh offers.",
     );
   }
 

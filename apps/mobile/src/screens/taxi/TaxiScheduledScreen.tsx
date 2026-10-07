@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { toUserFacingError } from "../../lib/userFacingError";
+import { safeTaxiUserMessage, toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -117,9 +117,10 @@ export default function TaxiScheduledScreen() {
                     .catch((e: unknown) =>
                       Alert.alert(
                         t("taxi.scheduled.cancel", "Cancel reservation"),
-                        e instanceof Error
-                          ? e.message
-                          : t("taxi.scheduled.cancelFailed", "Failed")
+                        safeTaxiUserMessage(
+                          e,
+                          t("taxi.scheduled.cancelFailed", "Failed"),
+                        )
                       )
                     )
                 }

@@ -55,7 +55,7 @@ export function buildRoundTripRouteInput<T extends {
   if (tripMode !== "round_trip") return input;
 
   const outwardDropoff = {
-    address: String(input.dropoffAddress ?? "").trim() || "Destination",
+    address: String(input.dropoffAddress ?? "").trim(),
     ...(Number.isFinite(Number(input.dropoffLat))
       ? { lat: Number(input.dropoffLat) }
       : {}),
@@ -64,7 +64,7 @@ export function buildRoundTripRouteInput<T extends {
       : {}),
   };
 
-  const existingStops = Array.isArray(input.stops) ? input.stops.slice(0, 4) : [];
+  const existingStops = Array.isArray(input.stops) ? input.stops.slice(0, 2) : [];
 
   return {
     ...input,

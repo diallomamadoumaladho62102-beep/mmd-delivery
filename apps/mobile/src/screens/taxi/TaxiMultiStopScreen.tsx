@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { toUserFacingError } from "../../lib/userFacingError";
+import { safeTaxiUserMessage } from "../../lib/userFacingError";
 import {
   Text,
   TouchableOpacity,
@@ -12,7 +12,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
@@ -40,6 +40,7 @@ import {
 } from "../../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiMultiStop">;
+type MultiStopRoute = RouteProp<RootStackParamList, "TaxiMultiStop">;
 
 const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
@@ -57,7 +58,9 @@ const inputStyle = {
 
 export default function TaxiMultiStopScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<MultiStopRoute>();
   const { t } = useTranslation();
+  const vehicleClass = String(route.params?.vehicleClass ?? "").trim();
   const { features, loading: scopeLoading } = useClientPlatformFeatures();
   const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
   const [pickup, setPickup] = useState("");
@@ -99,6 +102,17 @@ export default function TaxiMultiStopScreen() {
       return;
     }
 
+    if (!vehicleClass) {
+      Alert.alert(
+        t("taxi.multiStop.title", "Multi-stop ride"),
+        t(
+          "errors.codes.vehicle_class_required",
+          "Choose a vehicle category before estimating.",
+        ),
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const countryCode = market.countryCode;
@@ -108,7 +122,7 @@ export default function TaxiMultiStopScreen() {
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
         stops: normalizedStops,
-        vehicleClass: "standard",
+        vehicleClass: vehicleClass as "standard" | "comfort" | "xl" | "wheelchair_accessible" | "premium",
         countryCode,
       });
 
@@ -117,7 +131,7 @@ export default function TaxiMultiStopScreen() {
       const params = buildMultiStopQuoteNavigationParams({
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
-        vehicleClass: "standard",
+        vehicleClass,
         countryCode,
         quote: result.quote,
         route: { ...result.route, stops: result.route?.stops ?? normalizedStops },
@@ -128,7 +142,7 @@ export default function TaxiMultiStopScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.multiStop.title", "Multi-stop ride"),
-        toUserFacingError(e, t("taxi.quote.paymentFailed", "Failed"))
+        safeTaxiUserMessage(e, t("taxi.home.quoteFailed", "Unable to get estimate. Check the addresses or try again."))
       );
     } finally {
       setLoading(false);

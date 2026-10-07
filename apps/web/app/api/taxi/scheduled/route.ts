@@ -13,6 +13,10 @@ import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
 import { validateRouteClaimsServer } from "@/lib/geoTrust";
+import {
+  resolveTaxiCustomerVehicleClass,
+  taxiStopCapacityError,
+} from "@/lib/taxiVehicleClass";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,9 +79,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const vehicleClass = String(
-      body.vehicleClass ?? body.vehicle_class ?? "standard"
-    ).trim();
+    const resolvedVehicle = resolveTaxiCustomerVehicleClass(
+      body.vehicleClass ?? body.vehicle_class,
+    );
+    if (resolvedVehicle.ok === false) {
+      return taxiJson({ ok: false, error: resolvedVehicle.error }, 400);
+    }
+    const vehicleClass = resolvedVehicle.vehicleClass;
+    const stopCapacity = taxiStopCapacityError(body.stops, "one_way");
+    if (stopCapacity) {
+      return taxiJson({ ok: false, error: stopCapacity }, 400);
+    }
     const passengerCount = Math.max(
       1,
       Number(body.passengerCount ?? body.passenger_count ?? 1)
@@ -271,10 +283,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (insertError || !ride) {
-      return taxiJson(
-        { ok: false, error: insertError?.message ?? "Failed to create ride" },
-        500
-      );
+      console.error("[taxi.scheduled] ride insert failed", insertError?.message);
+      return taxiJson({ ok: false, error: "confirmation_failed" }, 500);
     }
 
     if (route.stops.length > 0) {
@@ -291,7 +301,8 @@ export async function POST(req: NextRequest) {
         );
 
       if (stopsError) {
-        return taxiJson({ ok: false, error: stopsError.message }, 500);
+        console.error("[taxi.scheduled] stop insert failed", stopsError.message);
+        return taxiJson({ ok: false, error: "invalid_stop" }, 500);
       }
     }
 
@@ -306,10 +317,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (scheduledError || !scheduled) {
-      return taxiJson(
-        { ok: false, error: scheduledError?.message ?? "Failed to schedule ride" },
-        500
-      );
+      console.error("[taxi.scheduled] schedule insert failed", scheduledError?.message);
+      return taxiJson({ ok: false, error: "confirmation_failed" }, 500);
     }
 
     if (promoCode) {
@@ -318,7 +327,8 @@ export async function POST(req: NextRequest) {
         { p_ride_id: String(ride.id), p_code: promoCode }
       );
       if (promoError) {
-        return taxiJson({ ok: false, error: promoError.message }, 500);
+        console.error("[taxi.scheduled] promo failed", promoError.message);
+        return taxiJson({ ok: false, error: "promotion_unavailable" }, 500);
       }
       const promoObj = (promoData ?? {}) as Record<string, unknown>;
       if (promoObj.ok === false) {
