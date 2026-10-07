@@ -547,3 +547,20 @@ export async function submitTaxiRideRating(params: {
     comment: params.comment ?? null,
   });
 }
+
+export async function fetchNearbyActiveDrivers(params: {
+  pickupLat: number;
+  pickupLng: number;
+  vehicleClass: string;
+}): Promise<{
+  ok?: boolean;
+  informational?: boolean;
+  drivers?: unknown;
+  eta?: unknown;
+}> {
+  return taxiPost("/api/taxi/nearby-drivers", {
+    pickup_lat: params.pickupLat,
+    pickup_lng: params.pickupLng,
+    vehicle_class: params.vehicleClass,
+  });
+}

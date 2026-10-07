@@ -25,6 +25,7 @@ import {
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
 import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
+import { NearbyDriversSection } from "../../components/taxi/NearbyDriversSection";
 import TaxiMarketScopeCard from "../../components/taxi/TaxiMarketScopeCard";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import {
@@ -419,7 +420,13 @@ export default function TaxiHomeScreen() {
         fallbackRoute="ClientHome"
         variant="dark"
       />
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+      <NearbyDriversSection
+        pickup={pickupCoords}
+        dropoff={dropoffCoords}
+        category={vehicleClass}
+        enabled={market.taxiAvailable}
+      />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 16 }}>
         <Image
           source={MMD_LOGO}
           style={{ width: 44, height: 44, borderRadius: 14, alignSelf: "flex-start" }}
