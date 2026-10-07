@@ -10,6 +10,7 @@ import {
   type PlatformFeaturesResponse,
 } from "../lib/platformFeaturesApi";
 import { clearManualClientScope, readManualClientScope } from "../lib/clientScopeStorage";
+import { supabase } from "../lib/supabase";
 
 type UseClientPlatformFeaturesOptions = {
   enabled?: boolean;
@@ -102,7 +103,8 @@ export function useClientPlatformFeatures(options: UseClientPlatformFeaturesOpti
       let manualState: string | undefined;
 
       if (!lat || !lng) {
-        const manual = await readManualClientScope();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const manual = await readManualClientScope(sessionData.session?.user?.id ?? null);
         if (manual) {
           manualCountry = manual.countryCode;
           manualState = manual.stateCode ?? undefined;

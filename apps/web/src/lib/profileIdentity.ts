@@ -71,3 +71,37 @@ function textOrKeep(next: string | null | undefined, current: string | null): st
   const value = String(next ?? "").trim();
   return value.length > 0 ? value : current;
 }
+
+export type OwnedDetailKind =
+  | "client_profiles"
+  | "driver_profiles"
+  | "restaurant_profiles"
+  | "sellers";
+
+export type OwnedDetail = {
+  userId: string;
+  kind: OwnedDetailKind;
+};
+
+/**
+ * One role-detail row per auth user. A write for another user is rejected.
+ * A repeat write updates the same row and does not append a second one.
+ */
+export function applyOwnedDetail(
+  rows: OwnedDetail[],
+  actorUserId: string,
+  incoming: OwnedDetail,
+): { rows: OwnedDetail[]; rejected: boolean } {
+  if (incoming.userId !== actorUserId) {
+    return { rows, rejected: true };
+  }
+  const index = rows.findIndex(
+    (row) => row.kind === incoming.kind && row.userId === incoming.userId,
+  );
+  if (index < 0) {
+    return { rows: [...rows, incoming], rejected: false };
+  }
+  const next = rows.slice();
+  next[index] = { ...rows[index], ...incoming, userId: rows[index].userId };
+  return { rows: next, rejected: false };
+}

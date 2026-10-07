@@ -28,7 +28,7 @@ import { getApiBaseUrl } from "../lib/apiBase";
 import { getLegalSmsUrl, openLegalUrl } from "../lib/legalUrls";
 import LegalSignupLinks from "../components/LegalSignupLinks";
 import { toUserFacingError } from "../lib/userFacingError";
-import { resolvePostAuthRoute } from "../lib/authRole";
+import { clearSelectedRole, resolvePostAuthRoute } from "../lib/authRole";
 import {
   AUTH_ACTION_TIMEOUT_MS,
   BOOT_AUTH_TIMEOUT_MS,
@@ -337,6 +337,7 @@ export function ClientAuthScreen() {
       }
 
       if (!data.user?.email_confirmed_at) {
+        await clearSelectedRole();
         await supabase.auth.signOut();
         throw new Error(
           t(
