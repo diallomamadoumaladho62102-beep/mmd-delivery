@@ -47,7 +47,6 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
   const { data, aiGrowth, loading, refreshing, error, refresh, restaurantUserId } =
     useRestaurantCommandCenter();
   const { availabilityLoading, confirmToggleAvailability } = useRestaurantAvailability();
-  const [mapFocusOrderId, setMapFocusOrderId] = useState<string | null>(null);
   const [isOpenOverride, setIsOpenOverride] = useState<boolean | null>(null);
 
   const isRestaurantOpen = isOpenOverride ?? data?.restaurant.isOpen ?? false;
@@ -112,10 +111,6 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
     },
     [navigation]
   );
-
-  const onViewMap = useCallback((orderId: string) => {
-    setMapFocusOrderId(orderId);
-  }, []);
 
   const onViewOrder = useCallback(
     (orderId: string) => {
@@ -359,7 +354,6 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           currency={currency}
           language={i18n.language}
           onHandOver={onHandOver}
-          onViewMap={onViewMap}
           onViewOrder={onViewOrder}
           onRefresh={() => void refresh()}
         />
@@ -367,7 +361,6 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
         <RestaurantLiveMap
           restaurant={data.restaurant}
           mapData={data.map}
-          focusOrderId={mapFocusOrderId}
           height={360}
           onOpenFullMap={() => navigation.navigate("RestaurantHome")}
         />

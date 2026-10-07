@@ -324,8 +324,7 @@ export default function AdminCountyManagementPage() {
 
           {!canEdit ? (
             <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-              {t("Lecture seule — permission")} <code>platform_launch.manage</code> requise pour
-              modifier les counties.
+              {t("Read only. The platform launch permission is required to edit counties.")}
             </div>
           ) : null}
 
@@ -333,8 +332,8 @@ export default function AdminCountyManagementPage() {
             <p className="text-sm text-slate-500">{t("Chargement…")}</p>
           ) : counties.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">
-              Aucun county configuré pour {countryFilter}/{regionFilter.toUpperCase()}. Les
-              seeds NY (Nassau, Suffolk, NYC, Westchester) sont créés par migration.
+              {t("No county is configured for this state yet.")} {countryFilter}/{regionFilter.toUpperCase()}.{" "}
+              {t("Default county records are created by migration.")}
             </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">

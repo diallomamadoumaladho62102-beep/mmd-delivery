@@ -52,8 +52,6 @@ export type CommandCenterTopProduct = {
 export type CommandCenterMapDriver = {
   driverId: string;
   driverName: string;
-  lat: number;
-  lng: number;
   status: "arrived" | "approaching" | "en_route";
   orderId: string;
   orderLabel: string;

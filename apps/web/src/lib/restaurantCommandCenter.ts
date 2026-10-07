@@ -72,8 +72,6 @@ export type CommandCenterTopProduct = {
 export type CommandCenterMapDriver = {
   driverId: string;
   driverName: string;
-  lat: number;
-  lng: number;
   status: "arrived" | "approaching" | "en_route";
   orderId: string;
   orderLabel: string;
@@ -495,45 +493,35 @@ export async function getRestaurantCommandCenter(params: {
     const card = buildDriverCard(row);
     if (!card) continue;
 
+    const publicCard: CommandCenterDriverCard = {
+      ...card,
+      distanceMeters: null,
+      pickupLat: null,
+      pickupLng: null,
+      dropoffLat: null,
+      dropoffLng: null,
+    };
+    const mapDriver: CommandCenterMapDriver = {
+      driverId: card.driverId,
+      driverName: card.driverName,
+      status: "en_route",
+      orderId: card.orderId,
+      orderLabel: card.orderLabel,
+      etaMinutes: card.etaMinutes,
+    };
+
     if (card.distanceMeters != null && card.distanceMeters <= DRIVER_ARRIVED_METERS) {
-      driverArrived.push(card);
-      mapDrivers.push({
-        driverId: card.driverId,
-        driverName: card.driverName,
-        lat: asNumber(driverLocationMap.get(card.driverId)?.lat),
-        lng: asNumber(driverLocationMap.get(card.driverId)?.lng),
-        status: "arrived",
-        orderId: card.orderId,
-        orderLabel: card.orderLabel,
-        etaMinutes: card.etaMinutes,
-      });
+      driverArrived.push(publicCard);
+      mapDrivers.push({ ...mapDriver, status: "arrived" });
     } else if (isDriverApproaching({
       distanceMeters: card.distanceMeters,
       etaMinutes: card.etaMinutes,
     })) {
-      driverApproaching.push(card);
-      mapDrivers.push({
-        driverId: card.driverId,
-        driverName: card.driverName,
-        lat: asNumber(driverLocationMap.get(card.driverId)?.lat),
-        lng: asNumber(driverLocationMap.get(card.driverId)?.lng),
-        status: "approaching",
-        orderId: card.orderId,
-        orderLabel: card.orderLabel,
-        etaMinutes: card.etaMinutes,
-      });
+      driverApproaching.push(publicCard);
+      mapDrivers.push({ ...mapDriver, status: "approaching" });
     } else {
-      driverEnRoute.push(card);
-      mapDrivers.push({
-        driverId: card.driverId,
-        driverName: card.driverName,
-        lat: asNumber(driverLocationMap.get(card.driverId)?.lat),
-        lng: asNumber(driverLocationMap.get(card.driverId)?.lng),
-        status: "en_route",
-        orderId: card.orderId,
-        orderLabel: card.orderLabel,
-        etaMinutes: card.etaMinutes,
-      });
+      driverEnRoute.push(publicCard);
+      mapDrivers.push(mapDriver);
     }
   }
 
@@ -788,7 +776,7 @@ export async function getRestaurantCommandCenter(params: {
       attentionRequired,
     },
     map: {
-      drivers: mapDrivers.filter((d) => Number.isFinite(d.lat) && Number.isFinite(d.lng)),
+      drivers: mapDrivers,
       customers: mapCustomers,
     },
     orderStatusBreakdown,

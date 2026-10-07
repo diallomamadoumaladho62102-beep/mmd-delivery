@@ -1396,7 +1396,8 @@ export function ClientOrderDetailsScreen() {
     !verifyingPay &&
     !paymentPending;
 
-  const driverId = order?.driver_id ?? null;
+  const driverId =
+    order?.driver_id && !isFinalStatus(order.status) ? order.driver_id : null;
   const { location: liveDriver } = useLiveDriverLocation(driverId);
 
   const pickupCoord = useMemo(() => {

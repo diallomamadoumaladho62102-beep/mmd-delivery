@@ -19,8 +19,7 @@ export default function AdminLiveMapPage() {
             {t("Live Map")}
           </h1>
           <p className="mt-1 text-sm text-[var(--cc-muted)]">
-            Supervisez en temps réel chauffeurs, clients, restaurants, commerces,
-            commandes et courses taxi — avec itinéraires, ETA et suivi de mission.
+            {t("Authorized live operations for this role. Active trip status only.")}
           </p>
         </header>
         <AdminOpsLiveMap heightClass="h-[min(78vh,820px)]" showHeaderLink={false} />
