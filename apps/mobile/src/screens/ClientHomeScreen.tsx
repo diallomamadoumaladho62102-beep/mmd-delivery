@@ -1038,8 +1038,8 @@ export function ClientHomeScreen() {
           updated_at?: string | null;
         } | null;
 
-        const profileAvatar = clientRow?.avatar_url ?? baseRow?.avatar_url ?? metaAvatar;
-        const profileName = clientRow?.full_name || baseRow?.full_name || fullName;
+        const profileAvatar = baseRow?.avatar_url ?? clientRow?.avatar_url ?? metaAvatar;
+        const profileName = baseRow?.full_name || clientRow?.full_name || fullName;
         const avatarCacheKey = clientRow?.updated_at || baseRow?.updated_at || null;
         const profileCity = String(clientRow?.city || "").trim();
         if (profileCity) {

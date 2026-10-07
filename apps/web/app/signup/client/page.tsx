@@ -175,6 +175,10 @@ export default function SignupClientPage() {
           phone: cleanPhone(phone),
           email: userEmail,
           avatar_url: avatarUrl,
+          client_address: trimOrEmpty(addressLine1) || null,
+          client_city: trimOrEmpty(city) || null,
+          client_state: trimOrEmpty(stateRegion) || null,
+          client_zip: trimOrEmpty(postalCode) || null,
         },
         { onConflict: "id" }
       );

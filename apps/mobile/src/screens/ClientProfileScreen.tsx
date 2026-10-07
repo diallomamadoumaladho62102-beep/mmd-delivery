@@ -258,11 +258,11 @@ export function ClientProfileScreen() {
             if (!alive) return;
 
             const row = data as ProfileRow | null;
-            setFullName(row?.full_name ?? baseProfile?.full_name ?? "");
+            setFullName(baseProfile?.full_name ?? row?.full_name ?? "");
             setPhone(
-              row?.phone ??
-                baseProfile?.phone_e164 ??
+              baseProfile?.phone_e164 ??
                 baseProfile?.phone ??
+                row?.phone ??
                 "",
             );
             setPhoneVerified(Boolean(baseProfile?.phone_verified_at));
@@ -280,7 +280,7 @@ export function ClientProfileScreen() {
               addrRow?.postal_code ?? row?.postal_code ?? row?.zip ?? "",
             );
             setCountry(addrRow?.country ?? row?.country ?? "US");
-            setAvatarUrl(row?.avatar_url ?? baseProfile?.avatar_url ?? null);
+            setAvatarUrl(baseProfile?.avatar_url ?? row?.avatar_url ?? null);
 
             const lat = Number(addrRow?.latitude ?? addrRow?.lat);
             const lng = Number(addrRow?.longitude ?? addrRow?.lng);
