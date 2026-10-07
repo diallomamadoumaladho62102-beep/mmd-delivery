@@ -12,6 +12,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { askCancellationReason, CancellationReasonHost } from "../components/cancellation/CancellationReasonHost";
 import { supabase } from "../lib/supabase";
 import {
   CLIENT_SCREEN_FETCH_TIMEOUT_MS,
@@ -560,7 +561,13 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           const { postRestaurantOrderReject } = await import(
             "../lib/restaurantOrderStatusApi"
           );
-          await postRestaurantOrderReject({ orderId });
+          const choice = await askCancellationReason("restaurant");
+          if (!choice) return;
+          await postRestaurantOrderReject({
+            orderId,
+            reasonCode: choice.reasonCode,
+            reasonNote: choice.reasonNote,
+          });
         } else {
           const { postRestaurantOrderStatus } = await import(
             "../lib/restaurantOrderStatusApi"
@@ -976,6 +983,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           )}
         </View>
       )}
+      <CancellationReasonHost />
     </SafeAreaView>
   );
 }

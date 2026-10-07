@@ -241,6 +241,11 @@ export default function AdminTaxiRideDetailPage() {
                 <h2 className="text-sm font-semibold text-slate-900">{t("Résumé")}</h2>
                 <div className="mt-3 space-y-1 text-sm">
                   <div>Statut : {ride.status ?? "—"}</div>
+                  <div>
+                    <Link href={`/admin/cancellations?entity_id=${encodeURIComponent(ride.id)}`}>
+                      {t("Cancellation review")}
+                    </Link>
+                  </div>
                   <div>Classe : {ride.vehicle_class ?? "—"}</div>
                   <div>Paiement : {ride.payment_status ?? "—"}</div>
                   <div>Remboursement : {ride.refund_status ?? "—"}</div>

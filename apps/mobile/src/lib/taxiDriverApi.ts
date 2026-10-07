@@ -110,13 +110,19 @@ export function completeTaxiRide(
   });
 }
 
+export function continueTaxiWait(rideId: string) {
+  return taxiPost("/api/taxi/rides/wait-continue", {
+    taxi_ride_id: rideId,
+  });
+}
+
 export function cancelTaxiRideByDriver(
   rideId: string,
   opts?: { reason_code?: string; reason_detail?: string; reason?: string },
 ) {
   return taxiPost("/api/taxi/rides/driver-cancel", {
     taxi_ride_id: rideId,
-    reason_code: opts?.reason_code ?? opts?.reason ?? "other",
+    reason_code: opts?.reason_code ?? opts?.reason ?? "",
     reason_detail: opts?.reason_detail,
   });
 }

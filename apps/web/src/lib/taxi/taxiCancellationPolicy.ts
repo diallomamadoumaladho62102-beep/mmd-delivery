@@ -9,30 +9,12 @@
  */
 
 import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
+import {
+  TAXI_CLIENT_CANCEL_REASONS,
+  TAXI_DRIVER_CANCEL_REASONS,
+} from "@/lib/cancellationReasons";
 
-export const TAXI_CLIENT_CANCEL_REASONS = [
-  "driver_taking_too_long",
-  "driver_too_far",
-  "changed_mind",
-  "wrong_pickup",
-  "wrong_destination",
-  "found_another_option",
-  "problem_with_driver",
-  "problem_with_vehicle",
-  "pickup_problem",
-  "emergency",
-  "other",
-] as const;
-
-export const TAXI_DRIVER_CANCEL_REASONS = [
-  "vehicle_issue",
-  "personal_emergency",
-  "unsafe_pickup",
-  "customer_unreachable",
-  "traffic_or_route_blocked",
-  "wrong_trip_details",
-  "other",
-] as const;
+export { TAXI_CLIENT_CANCEL_REASONS, TAXI_DRIVER_CANCEL_REASONS };
 
 export type TaxiClientCancelReason = (typeof TAXI_CLIENT_CANCEL_REASONS)[number];
 export type TaxiDriverCancelReason = (typeof TAXI_DRIVER_CANCEL_REASONS)[number];

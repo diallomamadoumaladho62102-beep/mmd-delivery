@@ -55,7 +55,11 @@ export async function postRestaurantOrderStatus(params: {
   };
 }
 
-export async function postRestaurantOrderReject(params: { orderId: string }) {
+export async function postRestaurantOrderReject(params: {
+  orderId: string;
+  reasonCode: string;
+  reasonNote?: string | null;
+}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
   if (sessionError) {
@@ -77,6 +81,8 @@ export async function postRestaurantOrderReject(params: { orderId: string }) {
     body: JSON.stringify({
       orderId: params.orderId,
       role: "restaurant",
+      reason_code: params.reasonCode,
+      reason_detail: params.reasonNote ?? null,
     }),
   });
 

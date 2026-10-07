@@ -472,12 +472,11 @@ export function DriverTaxiPanel({
     if (!rideId || actionLockRef.current) return;
 
     const reasonCodes = [
-      "vehicle_issue",
-      "personal_emergency",
-      "unsafe_pickup",
-      "customer_unreachable",
-      "traffic_or_route_blocked",
-      "wrong_trip_details",
+      "customer_not_responding",
+      "unsafe_pickup_location",
+      "intoxicated_or_threatening_customer",
+      "vehicle_problem",
+      "emergency_or_personal_issue",
       "other",
     ] as const;
 
@@ -485,12 +484,12 @@ export function DriverTaxiPanel({
       t("driver.taxiPanel.cancelTitle", "Release this ride?"),
       t(
         "driver.taxiPanel.cancelWarn",
-        "Cancelling after accept may affect your acceptance activity. The ride will be offered to another nearby driver — the customer is not refunded.",
+        "The ride will be offered to another nearby driver. The customer is not refunded. This does not reduce your acceptance rate.",
       ),
       [
         { text: t("common.cancel", "Cancel"), style: "cancel" },
         ...reasonCodes.map((code) => ({
-          text: t(`driver.taxiPanel.cancelReasons.${code}`),
+          text: t(`cancellation.taxiDriver.${code}`),
           style: "destructive" as const,
           onPress: () => {
             if (code === "other") {
@@ -646,15 +645,15 @@ export function DriverTaxiPanel({
                     const ride = String(otherDetailPrompt?.rideId ?? "");
                     const detail = String(otherDetailPrompt?.value ?? "").trim();
                     setOtherDetailPrompt(null);
-                    if (detail.length < 3) {
+                    if (detail.length < 8) {
                       Alert.alert(
                         t(
                           "driver.taxiPanel.cancelOtherTitle",
                           "Describe what happened",
                         ),
                         t(
-                          "driver.taxiPanel.cancelOtherTooShort",
-                          "Please enter at least 3 characters.",
+                          "cancellation.tooShort",
+                          "Enter at least 8 characters.",
                         ),
                       );
                       return;

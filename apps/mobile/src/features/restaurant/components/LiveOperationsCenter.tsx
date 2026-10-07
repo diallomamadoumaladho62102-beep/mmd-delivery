@@ -16,6 +16,10 @@ import type {
   RestaurantCommandCenterData,
 } from "../../../lib/restaurantCommandCenterApi";
 import {
+  askCancellationReason,
+  CancellationReasonHost,
+} from "../../../components/cancellation/CancellationReasonHost";
+import {
   postRestaurantOrderReject,
   postRestaurantOrderStatus,
 } from "../../../lib/restaurantOrderStatusApi";
@@ -192,7 +196,13 @@ function LiveOperationsCenterComponent({
               void (async () => {
                 try {
                   setActionLoadingId(orderId);
-                  await postRestaurantOrderReject({ orderId });
+                  const choice = await askCancellationReason("restaurant");
+                  if (!choice) return;
+                  await postRestaurantOrderReject({
+                    orderId,
+                    reasonCode: choice.reasonCode,
+                    reasonNote: choice.reasonNote,
+                  });
                   onRefresh();
                 } catch (e: unknown) {
                   Alert.alert(
@@ -297,6 +307,7 @@ function LiveOperationsCenterComponent({
       />
       <StatusLegend />
       {content}
+      <CancellationReasonHost />
     </GlassCard>
   );
 }

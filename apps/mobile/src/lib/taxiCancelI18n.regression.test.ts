@@ -116,7 +116,8 @@ test("client tracking screen uses i18n reason keys not hardcoded English labels"
     ),
     "utf8",
   );
-  assert.match(src, /taxi\.ride\.cancelReasons\./);
+  assert.match(src, /cancellation\.taxiClient\./);
+  assert.doesNotMatch(src, /changed_mind/);
   assert.doesNotMatch(src, /label: "Driver taking too long"/);
 });
 
@@ -128,8 +129,29 @@ test("driver taxi panel uses i18n cancel reason keys", () => {
     ),
     "utf8",
   );
-  assert.match(src, /driver\.taxiPanel\.cancelReasons\./);
+  assert.match(src, /cancellation\.taxiDriver\./);
+  assert.doesNotMatch(src, /vehicle_issue/);
   assert.doesNotMatch(src, /label: "Vehicle issue"/);
+});
+
+test("cancellation catalogs exist in six languages and are translated", () => {
+  const codes = [
+    "cancellation.taxiClient.driver_not_moving",
+    "cancellation.taxiDriver.customer_not_responding",
+    "cancellation.deliveryClient.order_no_longer_needed",
+    "cancellation.deliveryDriver.delivery_location_problem",
+    "cancellation.tooShort",
+  ];
+  const enCancel = flatten(loadJson(path.join(localesDir, "en", "cancellation.json")));
+  for (const lang of langs) {
+    const flat = flatten(loadJson(path.join(localesDir, lang, "cancellation.json")));
+    for (const key of codes) {
+      assert.ok(String(flat[key] ?? "").trim(), `${lang} missing ${key}`);
+      if (lang !== "en") {
+        assert.notEqual(flat[key], enCancel[key], `${lang} still English for ${key}`);
+      }
+    }
+  }
 });
 
 test("image-size patch guards ICNS and JXL zero-size loops", () => {

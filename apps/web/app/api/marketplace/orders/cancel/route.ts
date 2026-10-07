@@ -4,6 +4,12 @@ import {
   cancelMarketplaceOrder,
   loadSellerOwnedByUser,
 } from "@/lib/marketplaceOrderLifecycle";
+import {
+  DELIVERY_CLIENT_CANCEL_REASONS,
+  SELLER_CANCEL_REASONS,
+  parseStructuredCancelReason,
+} from "@/lib/cancellationReasons";
+import { recordServiceCancellation } from "@/lib/serviceCancellationAudit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,11 +46,26 @@ export async function POST(req: NextRequest) {
       actorRole = "seller";
     }
 
+    const parsedReason = parseStructuredCancelReason(
+      {
+        reasonCode: body.cancel_reason ?? (body as { reason_code?: string }).reason_code,
+        reasonNote: (body as { reason_detail?: string; reason_note?: string }).reason_detail
+          ?? (body as { reason_note?: string }).reason_note,
+      },
+      actorRole === "seller" ? SELLER_CANCEL_REASONS : DELIVERY_CLIENT_CANCEL_REASONS,
+    );
+    if (parsedReason.ok === false) {
+      return mmdLocationJson(
+        { ok: false, error: parsedReason.error, allowed_reasons: parsedReason.allowed },
+        400,
+      );
+    }
+
     const result = await cancelMarketplaceOrder(auth.supabaseAdmin, {
       actorUserId: auth.user.id,
       orderId,
       actorRole,
-      cancelReason: body.cancel_reason ?? null,
+      cancelReason: parsedReason.reasonCode,
     });
 
     if (result.ok === false) {
@@ -58,6 +79,21 @@ export async function POST(req: NextRequest) {
               : 400;
       return mmdLocationJson({ ok: false, error: result.error }, status);
     }
+
+    await recordServiceCancellation(auth.supabaseAdmin, {
+      entityType: "seller_order",
+      entityId: orderId,
+      serviceType: "marketplace",
+      actorUserId: auth.user.id,
+      actorRole,
+      reasonCode: parsedReason.reasonCode,
+      reasonNote: parsedReason.reasonNote,
+      resultingStatus: String(result.order.status ?? "canceled"),
+      paymentStatus: String(result.order.payment_status ?? ""),
+      acceptanceRateImpact: false,
+      cancellationSource: actorRole === "seller" ? "seller_cancel" : "client_cancel",
+      metadata: { refund_status: result.refund_status ?? null },
+    });
 
     return mmdLocationJson({
       ok: true,

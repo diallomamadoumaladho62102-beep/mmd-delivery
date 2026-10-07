@@ -325,6 +325,7 @@ export function DriverTaxiActiveRideCard({
               mode="taxi"
               variant="premium"
               onTaxiNoShowCanceled={onNoShowCanceled}
+              onRequestDriverCancel={onCancel}
             />
           </View>
         ) : null}

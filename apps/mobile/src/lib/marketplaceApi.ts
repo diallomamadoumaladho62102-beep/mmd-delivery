@@ -391,6 +391,8 @@ export async function updateMarketplaceSellerOrderStatus(input: {
   orderId: string;
   status: "accepted" | "refused" | "preparing" | "ready" | "out_for_delivery";
   cancelReason?: string;
+  reasonCode?: string;
+  reasonNote?: string | null;
 }): Promise<{
   order: Record<string, unknown>;
   stripe_refund_deferred?: boolean;
@@ -404,7 +406,9 @@ export async function updateMarketplaceSellerOrderStatus(input: {
     body: JSON.stringify({
       order_id: input.orderId,
       status: input.status,
-      cancel_reason: input.cancelReason ?? null,
+      cancel_reason: input.status === "refused" ? "refused_by_seller" : input.cancelReason ?? null,
+      reason_code: input.reasonCode ?? null,
+      reason_detail: input.reasonNote ?? null,
     }),
   });
 }

@@ -11,6 +11,11 @@ import { expirePendingDeliveryRequestOffers } from "@/lib/expirePendingDriverOff
 import { stripe } from "@/lib/stripe";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
+  DELIVERY_CLIENT_CANCEL_REASONS,
+  parseStructuredCancelReason,
+} from "@/lib/cancellationReasons";
+import { recordServiceCancellation } from "@/lib/serviceCancellationAudit";
+import {
   getSupabasePublishableKey,
   getSupabaseUrl,
 } from "@/lib/supabaseEnv";
@@ -272,6 +277,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const parsedReason = parseStructuredCancelReason(
+      {
+        reasonCode: body.reason_code ?? body.reasonCode ?? body.cancel_reason,
+        reasonNote: body.reason_detail ?? body.reasonDetail ?? body.reason_note,
+      },
+      DELIVERY_CLIENT_CANCEL_REASONS,
+    );
+    if (parsedReason.ok === false) {
+      return json(
+        { error: parsedReason.error, allowed_reasons: parsedReason.allowed },
+        400,
+      );
+    }
+
     const refundPolicy: CancelRefund = clientCanCancelWithFullRefund(status)
       ? "FULL"
       : "NONE";
@@ -444,6 +463,23 @@ export async function POST(req: NextRequest) {
         notifyErr instanceof Error ? notifyErr.message : notifyErr
       );
     }
+
+    await recordServiceCancellation(supabaseAdmin, {
+      entityType: "delivery_request",
+      entityId: requestId,
+      serviceType: "package",
+      actorUserId: user.id,
+      actorRole: "client",
+      reasonCode: parsedReason.reasonCode,
+      reasonNote: parsedReason.reasonNote,
+      previousStatus: status,
+      resultingStatus: "canceled",
+      paymentStatus: normalizeStatus(requestRow.payment_status),
+      acceptanceRateImpact: false,
+      cancellationSource: "client_cancel",
+      postAcceptance: refundPolicy === "NONE",
+      metadata: { refund: refundPolicy, policy_reason: reason },
+    });
 
     return json({
       ok: true,

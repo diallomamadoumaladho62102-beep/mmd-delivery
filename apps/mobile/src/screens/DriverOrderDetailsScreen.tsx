@@ -33,6 +33,7 @@ import {
 } from "../lib/driverLocationTracker";
 import { DriverTripLocationCard } from "../components/location/DriverTripLocationCard";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { CancellationReasonHost } from "../components/cancellation/CancellationReasonHost";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
 import {
   resolveDriverStackActionBottom,
@@ -2047,13 +2048,18 @@ export function DriverOrderDetailsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              const { askCancellationReason } = await import(
+                "../components/cancellation/CancellationReasonHost"
+              );
+              const choice = await askCancellationReason("deliveryDriver");
+              if (!choice) return;
               setCanceling(true);
 
               if (getOrderSourceTable(order) === "delivery_requests") {
                 const { cancelDeliveryRequestAsDriver } = await import(
                   "../lib/deliveryRequestDriverApi"
                 );
-                await cancelDeliveryRequestAsDriver(order.id);
+                await cancelDeliveryRequestAsDriver(order.id, choice);
 
                 stopDriverLocationTracking();
                 await fetchOrder();
@@ -2096,6 +2102,8 @@ export function DriverOrderDetailsScreen() {
                   orderId: order.id,
                   order_id: order.id,
                   role: "driver",
+                  reason_code: choice.reasonCode,
+                  reason_detail: choice.reasonNote,
                 }),
               });
 
@@ -3954,6 +3962,7 @@ export function DriverOrderDetailsScreen() {
           </View>
         </View>
       </Modal>
+      <CancellationReasonHost />
     </SafeAreaView>
   );
 }

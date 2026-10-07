@@ -28,6 +28,7 @@ import {
 import { formatMoney, formatDateTime as formatLocalizedDateTime, formatDistance as formatLocalizedDistance } from "../i18n/formatters";
 import { rowDirection, textAlignStart } from "../i18n/rtl";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { CancellationReasonHost } from "../components/cancellation/CancellationReasonHost";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
 import { useLiveTripEta } from "../hooks/useLiveTripEta";
@@ -1004,6 +1005,11 @@ export function ClientDeliveryRequestDetailsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
+            const { askCancellationReason } = await import(
+              "../components/cancellation/CancellationReasonHost"
+            );
+            const choice = await askCancellationReason("deliveryClient");
+            if (!choice) return;
             setCanceling(true);
 
             const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -1028,6 +1034,8 @@ export function ClientDeliveryRequestDetailsScreen() {
                   orderId: data.orderId,
                   order_id: data.orderId,
                   role: "client",
+                  reason_code: choice.reasonCode,
+                  reason_detail: choice.reasonNote,
                 }),
               });
               out = (await res.json().catch(() => ({}))) as CancelOrderResponse;
@@ -1038,7 +1046,7 @@ export function ClientDeliveryRequestDetailsScreen() {
               const { cancelDeliveryRequestAsClient } = await import(
                 "../lib/deliveryRequestDriverApi"
               );
-              out = (await cancelDeliveryRequestAsClient(data.requestId)) as CancelOrderResponse;
+              out = (await cancelDeliveryRequestAsClient(data.requestId, choice)) as CancelOrderResponse;
             }
 
             await loadDetails({ silent: true });
@@ -1899,6 +1907,7 @@ export function ClientDeliveryRequestDetailsScreen() {
           rideId={data?.requestId ? String(data.requestId) : undefined}
         />
       ) : null}
+      <CancellationReasonHost />
     </SafeAreaView>
   );
 }

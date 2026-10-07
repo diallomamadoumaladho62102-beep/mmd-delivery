@@ -7,6 +7,8 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { orderStatusUiLabel } from "@/i18n/orderStatusUi";
 import { formatDateTime } from "@/i18n/formatters";
+import { RESTAURANT_CANCEL_REASONS } from "@/lib/cancellationReasons";
+import { collectCancelReason } from "@/lib/collectCancellationReason";
 
 type OrderStatus =
   | "pending"
@@ -225,6 +227,9 @@ export default function RestaurantOrderPage() {
 
     if (!ok) return;
 
+    const choice = await collectCancelReason(RESTAURANT_CANCEL_REASONS);
+    if (!choice) return;
+
     setSaving("canceled");
     setErr(null);
 
@@ -250,6 +255,8 @@ export default function RestaurantOrderPage() {
         body: JSON.stringify({
           orderId: order.id,
           role: "restaurant",
+          reason_code: choice.reasonCode,
+          reason_detail: choice.reasonNote,
         }),
       });
 

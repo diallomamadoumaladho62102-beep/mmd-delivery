@@ -13,6 +13,13 @@ import {
 } from "@/lib/platformRouteGuards";
 import { stripe } from "@/lib/stripe";
 import { assertProfileActive, inactiveAccountBody } from "@/lib/requireActiveAccount";
+import {
+  DELIVERY_CLIENT_CANCEL_REASONS,
+  DELIVERY_DRIVER_CANCEL_REASONS,
+  RESTAURANT_CANCEL_REASONS,
+  parseStructuredCancelReason,
+} from "@/lib/cancellationReasons";
+import { recordServiceCancellation } from "@/lib/serviceCancellationAudit";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   getSupabasePublishableKey,
@@ -323,7 +330,7 @@ export async function POST(req: NextRequest) {
     const body = await safeReadJson(req);
 
     const orderId = String(body.orderId ?? body.order_id ?? "").trim();
-    const role = normalizeRole(body.role);
+    const requestedRole = body.role == null || body.role === "" ? null : normalizeRole(body.role);
 
     if (!orderId) {
       return json({ error: "Missing orderId" }, 400);
@@ -437,6 +444,43 @@ export async function POST(req: NextRequest) {
         400
       );
     }
+
+    const ownedRoles: CancelRole[] = [];
+    if (isClientOrderOwner(order, user.id)) ownedRoles.push("client");
+    if (sameId(order.driver_id, user.id)) ownedRoles.push("driver");
+    if (
+      sameId(order.restaurant_id, user.id) ||
+      sameId(order.restaurant_user_id, user.id)
+    ) {
+      ownedRoles.push("restaurant");
+    }
+    if (ownedRoles.length === 0) {
+      return json({ error: "Forbidden" }, 403);
+    }
+    if (requestedRole && !ownedRoles.includes(requestedRole)) {
+      return json({ error: "actor_spoof_rejected" }, 403);
+    }
+    const role: CancelRole = requestedRole ?? ownedRoles[0];
+    const reasonCatalog =
+      role === "driver"
+        ? DELIVERY_DRIVER_CANCEL_REASONS
+        : role === "restaurant"
+          ? RESTAURANT_CANCEL_REASONS
+          : DELIVERY_CLIENT_CANCEL_REASONS;
+    const parsedReason = parseStructuredCancelReason(
+      {
+        reasonCode: body.reason_code ?? body.reasonCode ?? body.cancel_reason,
+        reasonNote: body.reason_detail ?? body.reasonDetail ?? body.reason_note,
+      },
+      reasonCatalog,
+    );
+    if (parsedReason.ok === false) {
+      return json(
+        { error: parsedReason.error, allowed_reasons: parsedReason.allowed },
+        400,
+      );
+    }
+    const serviceType = kind === "food" ? "food" : "package";
 
     // CLIENT CANCEL
     if (role === "client") {
@@ -557,6 +601,23 @@ export async function POST(req: NextRequest) {
           refundStatus: linkedRefundStatus,
         });
 
+        await recordServiceCancellation(supabaseAdmin, {
+          entityType: "order",
+          entityId: orderId,
+          serviceType,
+          actorUserId: user.id,
+          actorRole: "client",
+          reasonCode: parsedReason.reasonCode,
+          reasonNote: parsedReason.reasonNote,
+          previousStatus: status,
+          resultingStatus: "canceled",
+          paymentStatus: normalizeStatus(order.payment_status),
+          acceptanceRateImpact: false,
+          cancellationSource: "client_cancel",
+          postAcceptance: false,
+          metadata: { refund: refundLabel, policy_reason: reason },
+        });
+
         return successResponse({
           by: "client",
           refund: refundLabel,
@@ -636,6 +697,24 @@ export async function POST(req: NextRequest) {
           order,
           reason: "client_cancelled_after_restaurant_accept",
           refundStatus: "no_refund",
+        });
+
+        await recordServiceCancellation(supabaseAdmin, {
+          entityType: "order",
+          entityId: orderId,
+          serviceType,
+          actorUserId: user.id,
+          actorRole: "client",
+          reasonCode: parsedReason.reasonCode,
+          reasonNote: parsedReason.reasonNote,
+          previousStatus: status,
+          resultingStatus: "canceled",
+          paymentStatus: normalizeStatus(order.payment_status),
+          refundAmountCents: 0,
+          acceptanceRateImpact: false,
+          cancellationSource: "client_cancel",
+          postAcceptance: true,
+          metadata: { refund: "NONE" },
         });
 
         return successResponse({
@@ -806,6 +885,23 @@ export async function POST(req: NextRequest) {
 
       await expirePendingDriverOrderOffers(supabaseAdmin, orderId);
 
+      await recordServiceCancellation(supabaseAdmin, {
+        entityType: "order",
+        entityId: orderId,
+        serviceType: "food",
+        actorUserId: user.id,
+        actorRole: "restaurant",
+        reasonCode: parsedReason.reasonCode,
+        reasonNote: parsedReason.reasonNote,
+        previousStatus: status,
+        resultingStatus: "canceled",
+        paymentStatus: normalizeStatus(order.payment_status),
+        acceptanceRateImpact: false,
+        cancellationSource: status === "pending" ? "restaurant_reject" : "restaurant_cancel",
+        postAcceptance: status !== "pending",
+        metadata: { refund: refundLabel, policy_reason: reason },
+      });
+
       return successResponse({
         by: "restaurant",
         refund: refundLabel,
@@ -888,6 +984,23 @@ export async function POST(req: NextRequest) {
       const smartDispatch = await triggerSmartDispatchForOrder({
         origin: trustedInternalOrigin(req.nextUrl.origin),
         orderId,
+      });
+
+      await recordServiceCancellation(supabaseAdmin, {
+        entityType: "order",
+        entityId: orderId,
+        serviceType,
+        actorUserId: user.id,
+        actorRole: "driver",
+        reasonCode: parsedReason.reasonCode,
+        reasonNote: parsedReason.reasonNote,
+        previousStatus: status,
+        resultingStatus: nextStatus,
+        paymentStatus: normalizeStatus(order.payment_status),
+        acceptanceRateImpact: false,
+        cancellationSource: "driver_release",
+        postAcceptance: true,
+        metadata: { reassign: true },
       });
 
       return successResponse({
