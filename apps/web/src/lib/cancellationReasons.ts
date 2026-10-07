@@ -287,14 +287,22 @@ export function normalizeCancelReasonCode(
   return code;
 }
 
+export function sanitizeCancelNote(value: unknown): string {
+  const raw = String(value ?? "");
+  let out = "";
+  for (const char of raw) {
+    const code = char.charCodeAt(0);
+    if (code <= 31 || code === 127) continue;
+    out += char;
+  }
+  return out.trim().slice(0, CANCEL_NOTE_MAX);
+}
+
 export function parseCancellationNote(
   value: unknown,
   required: boolean,
 ): { ok: true; note: string | null } | { ok: false; error: "cancel_reason_detail_required" } {
-  const note = String(value ?? "")
-    .replace(/[\u0000-\u001F\u007F]/g, "")
-    .trim()
-    .slice(0, CANCEL_NOTE_MAX);
+  const note = sanitizeCancelNote(value);
   if (required && note.length < CANCEL_NOTE_MIN) {
     return { ok: false, error: "cancel_reason_detail_required" };
   }

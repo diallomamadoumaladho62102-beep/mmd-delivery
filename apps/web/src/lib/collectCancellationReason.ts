@@ -4,6 +4,7 @@ import {
   CANCEL_NOTE_MAX,
   CANCEL_NOTE_MIN,
   cancellationReasonLabel,
+  sanitizeCancelNote,
   type CancelLocale,
 } from "@/lib/cancellationReasons";
 
@@ -129,7 +130,7 @@ export function collectCancelReason(
 
     const refresh = () => {
       const code = select.value;
-      const note = area.value.replace(/[\u0000-\u001F\u007F]/g, "").trim();
+      const note = sanitizeCancelNote(area.value);
       label.hidden = code !== "other";
       const valid = code.length > 0 && (code !== "other" || note.length >= CANCEL_NOTE_MIN);
       submit.disabled = !valid;
@@ -145,7 +146,7 @@ export function collectCancelReason(
     card.addEventListener("submit", (event) => {
       event.preventDefault();
       const code = select.value;
-      const note = area.value.replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, CANCEL_NOTE_MAX);
+      const note = sanitizeCancelNote(area.value);
       if (!code || (code === "other" && note.length < CANCEL_NOTE_MIN)) {
         refresh();
         return;
