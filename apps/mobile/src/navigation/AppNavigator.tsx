@@ -17,7 +17,7 @@ import {
   isRestaurantOrderEligible,
 } from "../lib/accountStatus";
 import { supabase } from "../lib/supabase";
-import { getSelectedRole } from "../lib/authRole";
+import { clearSelectedRole, getSelectedRoleForUser } from "../lib/authRole";
 import {
   pendingDriverMayStayOn,
   selectedSellerAppliesToProfile,
@@ -569,7 +569,7 @@ export function AppNavigator({
   }, []);
 
   const resolveUserRole = React.useCallback(async (uid: string): Promise<AppRole> => {
-    const selectedRole = normalizeAppRole(await getSelectedRole());
+    const selectedRole = normalizeAppRole(await getSelectedRoleForUser(uid));
 
     try {
       const { data, error } = await supabase
@@ -597,7 +597,7 @@ export function AppNavigator({
       console.log("profiles role check failed:", e);
     }
 
-    return normalizeAppRole(await getSelectedRole());
+    return normalizeAppRole(await getSelectedRoleForUser(uid));
   }, []);
 
   const getDriverStatus = React.useCallback(
@@ -803,7 +803,7 @@ export function AppNavigator({
               .maybeSingle(),
             supabase
               .from("profiles")
-              .select("email, phone_verified_at, phone, phone_e164")
+              .select("email, phone_verified_at, phone, phone_e164, full_name, avatar_url")
               .eq("id", uid)
               .maybeSingle(),
             supabase
@@ -841,12 +841,12 @@ export function AppNavigator({
 
         return scoreClientProfileComplete(
           {
-            fullName: (data as any)?.full_name,
+            fullName: (data as any)?.full_name ?? profile?.full_name,
             email: profile?.email ?? user?.email,
             emailVerified: Boolean(user?.email_confirmed_at),
             phone: (data as any)?.phone ?? profile?.phone_e164 ?? profile?.phone,
             phoneVerified: Boolean(profile?.phone_verified_at),
-            avatarUrl: (data as any)?.avatar_url,
+            avatarUrl: (data as any)?.avatar_url ?? profile?.avatar_url,
             addressLine:
               addr?.address_line1 ||
               (data as any)?.address ||
@@ -953,6 +953,7 @@ export function AppNavigator({
         if (blockMessage) {
           console.log("Account blocked:", blockMessage);
         }
+        await clearSelectedRole();
         await supabase.auth.signOut();
         resetTo("RoleSelect");
         return;
@@ -976,6 +977,7 @@ export function AppNavigator({
 
         if (status === "suspended" || status === "disabled") {
           await stopDriverMissionAlertService();
+          await clearSelectedRole();
           await supabase.auth.signOut();
           resetTo("DriverAuth");
           return;
