@@ -2,6 +2,16 @@ export type BoundPublicRole = "client" | "driver" | "restaurant" | "seller";
 
 const ROLES = new Set<BoundPublicRole>(["client", "driver", "restaurant", "seller"]);
 
+/** True when this device still holds private cache for a different auth user. */
+export function shouldClearPrivateDeviceState(
+  storedOwner: string | null,
+  currentUserId: string,
+): boolean {
+  const owner = String(storedOwner ?? "").trim();
+  const current = currentUserId.trim();
+  return Boolean(owner && current && owner !== current);
+}
+
 export function normalizeBoundRole(value: string | null | undefined): BoundPublicRole | null {
   const role = String(value ?? "").trim().toLowerCase();
   return ROLES.has(role as BoundPublicRole) ? (role as BoundPublicRole) : null;
