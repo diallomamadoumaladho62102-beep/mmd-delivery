@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  applyOwnedDetail,
   applyProfileInsert,
   rejectPrivilegedSignupRole,
   roleFromSignupMetadata,
+  type OwnedDetailKind,
 } from "./profileIdentity";
 
 const root = path.join(process.cwd(), "../..");
@@ -110,5 +112,61 @@ const profileScreen = fs.readFileSync(
 assert.match(home, /baseRow\?\.full_name \|\| clientRow\?\.full_name/);
 assert.match(profileScreen, /baseProfile\?\.full_name \?\? row\?\.full_name/);
 assert.doesNotMatch(home, /clientRow\?\.full_name \|\| baseRow\?\.full_name/);
+
+const driverAuth = fs.readFileSync(
+  path.join(root, "apps/mobile/src/screens/DriverAuthScreen.tsx"),
+  "utf8",
+);
+const restaurantAuth = fs.readFileSync(
+  path.join(root, "apps/mobile/src/screens/RestaurantAuthScreen.tsx"),
+  "utf8",
+);
+const sellerApi = fs.readFileSync(
+  path.join(root, "apps/mobile/src/lib/sellerApi.ts"),
+  "utf8",
+);
+const driverGuard = fs.readFileSync(
+  path.join(root, "supabase/migrations/20261213120000_driver_review_lifecycle.sql"),
+  "utf8",
+);
+const authRole = fs.readFileSync(
+  path.join(root, "apps/mobile/src/lib/authRole.ts"),
+  "utf8",
+);
+
+for (const kind of [
+  "client_profiles",
+  "driver_profiles",
+  "restaurant_profiles",
+  "sellers",
+] as OwnedDetailKind[]) {
+  let rows = applyOwnedDetail([], userA, { userId: userA, kind }).rows;
+  for (let i = 0; i < 5; i += 1) {
+    const next = applyOwnedDetail(rows, userA, { userId: userA, kind });
+    assert.equal(next.rejected, false);
+    rows = next.rows;
+  }
+  assert.equal(rows.length, 1);
+  const cross = applyOwnedDetail(rows, userB, { userId: userA, kind });
+  assert.equal(cross.rejected, true);
+  assert.equal(cross.rows.length, 1);
+  assert.equal(cross.rows[0]?.userId, userA);
+}
+
+assert.match(driverAuth, /onConflict:\s*"id"/);
+assert.match(driverAuth, /onConflict:\s*"user_id"/);
+assert.match(driverAuth, /id:\s*uid/);
+assert.match(driverAuth, /user_id:\s*uid/);
+assert.doesNotMatch(driverAuth, /auth\.admin\.createUser/);
+assert.match(driverGuard, /new\.status := old\.status/);
+assert.match(restaurantAuth, /if \(!existingProfile\)/);
+assert.match(restaurantAuth, /if \(!existingRestaurantProfile && createRestaurantProfileIfMissing\)/);
+assert.match(restaurantAuth, /user_id: userId/);
+assert.doesNotMatch(restaurantAuth, /auth\.admin\.createUser/);
+assert.match(sellerApi, /onConflict:\s*"user_id"/);
+assert.match(sellerApi, /user_id: userId/);
+assert.doesNotMatch(sellerApi, /auth\.admin\.createUser/);
+assert.match(authRole, /clearManualClientScope/);
+assert.match(authRole, /clearMarketplaceSessionScope/);
 
 console.log("profileIdentity.regression.test.ts — PASS");

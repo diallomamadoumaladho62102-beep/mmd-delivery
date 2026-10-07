@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "./apiBase";
 import { CLIENT_SCREEN_FETCH_TIMEOUT_MS, withTimeout } from "./bootFailOpen";
+import { clearSelectedRole } from "./authRole";
 import { supabase } from "./supabase";
 
 export type DeleteAccountResult =
@@ -129,6 +130,7 @@ export async function deleteMyAccount(params: {
   }
 
   try {
+    await clearSelectedRole();
     await withTimeout(
       supabase.auth.signOut(),
       CLIENT_SCREEN_FETCH_TIMEOUT_MS,

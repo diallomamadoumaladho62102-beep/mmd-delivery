@@ -21,6 +21,10 @@ export async function getSelectedRole(): Promise<UserRole | null> {
 
 export async function clearSelectedRole() {
   await AsyncStorage.multiRemove([KEY, UID_KEY]);
+  const { clearManualClientScope } = await import("./clientScopeStorage");
+  await clearManualClientScope();
+  const { clearMarketplaceSessionScope } = await import("./marketplaceScope");
+  clearMarketplaceSessionScope();
 }
 
 /**

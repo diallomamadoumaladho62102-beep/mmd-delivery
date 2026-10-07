@@ -12,6 +12,14 @@ export type MarketplaceScopeInput = {
 
 let manualCountryCode: string | null = null;
 let locationCountryCode: string | null = null;
+let scopeOwnerId: string | null = null;
+
+/** Drop in-memory marketplace country when the signed-in user changes. */
+export function clearMarketplaceSessionScope() {
+  manualCountryCode = null;
+  locationCountryCode = null;
+  scopeOwnerId = null;
+}
 
 export function normalizeMarketplaceCountryCode(value: unknown): string | null {
   const code = String(value ?? "")
@@ -84,6 +92,15 @@ async function readPlatformFeaturesCountry(input?: {
 export async function resolveMarketplaceCountryCode(
   input: MarketplaceScopeInput = {}
 ): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const currentUserId = session?.user?.id ?? null;
+  if (!currentUserId || (scopeOwnerId && scopeOwnerId !== currentUserId)) {
+    clearMarketplaceSessionScope();
+  }
+  if (currentUserId) scopeOwnerId = currentUserId;
+
   const manual = normalizeMarketplaceCountryCode(
     input.manualCountryCode ?? manualCountryCode
   );
