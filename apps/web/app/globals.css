@@ -690,4 +690,27 @@ html:has(.admin-figma) body {
     font-weight: 600;
     color: #ffffff;
   }
+
+  .cc-sidebar-link:focus-visible {
+    outline: 2px solid var(--cc-gold);
+    outline-offset: 2px;
+  }
+
+  .cc-sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+  }
+
+  .cc-sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .cc-sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .cc-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+  }
 }

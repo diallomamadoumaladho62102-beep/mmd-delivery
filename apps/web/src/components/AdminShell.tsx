@@ -167,7 +167,7 @@ export default function AdminShell({
   const sidebar = (
     <aside
       className={[
-        "flex h-full flex-col border-r border-white/12 bg-white/[0.04] text-white backdrop-blur-[20px] shadow-[10px_10px_24px_rgba(0,0,0,0.25)]",
+        "flex h-full min-h-0 flex-col border-r border-white/12 bg-white/[0.04] text-white backdrop-blur-[20px] shadow-[10px_10px_24px_rgba(0,0,0,0.25)]",
         railCollapsed ? "w-[88px]" : "w-[260px]",
       ].join(" ")}
       aria-label={adminShellT(
@@ -177,7 +177,7 @@ export default function AdminShell({
       )}
       dir={dir}
     >
-      <div className="flex items-center gap-3 px-6 py-7">
+      <div className="flex shrink-0 items-center gap-3 px-6 py-7">
         <Link href="/admin" className="flex min-w-0 items-center gap-3">
           <Image
             src={ADMIN_LOGO}
@@ -212,7 +212,7 @@ export default function AdminShell({
       </div>
 
       <nav
-        className="flex-1 space-y-4 overflow-y-auto px-4 pb-4"
+        className="cc-sidebar-scroll min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-2"
         aria-label={adminShellT(
           "admin.shell.sectionsLabel",
           locale,
@@ -228,7 +228,7 @@ export default function AdminShell({
                 type="button"
                 onClick={() => toggleGroup(group.id)}
                 className={[
-                  "flex w-full items-center gap-2 px-2 py-1 text-start text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--cc-gold)]",
+                  "flex w-full min-w-0 items-center gap-2 px-2 py-1 text-start text-[12px] font-bold uppercase tracking-[0.08em] text-[var(--cc-gold)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cc-gold)]",
                   railCollapsed ? "justify-center" : "",
                 ].join(" ")}
                 title={groupLabel}
@@ -253,6 +253,7 @@ export default function AdminShell({
                           href={item.href}
                           title={itemLabel}
                           className={[
+                            "min-w-0 overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cc-gold)]",
                             railCollapsed ? "justify-center" : "gap-3",
                             active ? CC_SIDEBAR_LINK_ACTIVE : CC_SIDEBAR_LINK,
                           ].join(" ")}
@@ -275,41 +276,63 @@ export default function AdminShell({
         })}
       </nav>
 
-      <div className="border-t border-white/10 p-4">
-        {!railCollapsed ? (
-          <div className="space-y-2">
-            <label className="block text-xs text-white/60">
+      <div className="shrink-0 border-t border-white/10 p-4">
+        <div className="space-y-2">
+          <label className={railCollapsed ? "block" : "block text-xs text-white/60"}>
+            <span className={railCollapsed ? "sr-only" : undefined}>
               {adminShellT("admin.shell.language", locale, "Language")}
-              <select
-                className="mt-1 w-full rounded-lg border border-white/15 bg-[#001a66] px-2 py-1.5 text-sm text-white"
-                value={locale}
-                onChange={(e) => changeAdminLocale(e.target.value as WebLocale)}
-              >
-                {WEB_LOCALES.map((code) => (
-                  <option key={code} value={code}>
-                    {WEB_LOCALE_LABELS[code]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="rounded-2xl border border-white/12 bg-white/[0.06] px-3 py-2.5">
-              <p className="truncate text-xs text-white/60">
-                {adminShellT("admin.shell.signedIn", locale, "Signed in")}
-              </p>
+            </span>
+            <select
+              className={[
+                "w-full max-w-full rounded-lg border border-white/15 bg-[#001a66] text-white",
+                railCollapsed ? "px-1 py-2 text-xs" : "mt-1 px-2 py-1.5 text-sm",
+              ].join(" ")}
+              aria-label={adminShellT("admin.shell.language", locale, "Language")}
+              title={adminShellT("admin.shell.language", locale, "Language")}
+              value={locale}
+              onChange={(e) => changeAdminLocale(e.target.value as WebLocale)}
+            >
+              {WEB_LOCALES.map((code) => (
+                <option key={code} value={code}>
+                  {WEB_LOCALE_LABELS[code]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div
+            className={[
+              "rounded-2xl border border-white/12 bg-white/[0.06]",
+              railCollapsed ? "px-1 py-2 text-center" : "px-3 py-2.5",
+            ].join(" ")}
+            title={`${adminShellT("admin.shell.signedIn", locale, "Signed in")} ${displayRole}`}
+          >
+            {railCollapsed ? (
               <p className="truncate text-sm font-semibold text-[var(--cc-gold)]">
-                {displayRole}
+                <span className="sr-only">
+                  {adminShellT("admin.shell.signedIn", locale, "Signed in")}
+                </span>
+                {displayRole.slice(0, 1)}
               </p>
-            </div>
+            ) : (
+              <>
+                <p className="truncate text-xs text-white/60">
+                  {adminShellT("admin.shell.signedIn", locale, "Signed in")}
+                </p>
+                <p className="truncate text-sm font-semibold text-[var(--cc-gold)]">
+                  {displayRole}
+                </p>
+              </>
+            )}
           </div>
-        ) : null}
+        </div>
       </div>
     </aside>
   );
 
   return (
-    <div className="admin-figma min-h-screen" dir={dir}>
-      <div className="mx-auto flex min-h-screen max-w-[1280px]">
-        <div className="hidden md:sticky md:top-0 md:flex md:h-screen md:shrink-0">
+    <div className="admin-figma flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden" dir={dir}>
+      <div className="flex min-h-0 w-full flex-1">
+        <div className="hidden h-full min-h-0 shrink-0 md:flex">
           {sidebar}
         </div>
 
@@ -325,12 +348,12 @@ export default function AdminShell({
               )}
               onClick={() => setSidebarOpen(false)}
             />
-            <div className="absolute inset-y-0 start-0 z-50 shadow-2xl">{sidebar}</div>
+            <div className="absolute inset-y-0 start-0 z-50 flex h-full shadow-2xl">{sidebar}</div>
           </div>
         ) : null}
 
-        <div className="flex min-w-0 flex-1 flex-col overflow-x-auto">
-          <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0033CC]/85 backdrop-blur-[12px]">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <header className="z-30 shrink-0 border-b border-white/10 bg-[#0033CC]/85 backdrop-blur-[12px]">
             <div className="flex h-[72px] items-center gap-3 px-4 sm:h-[88px] lg:px-10">
               <button
                 type="button"
@@ -398,7 +421,7 @@ export default function AdminShell({
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 lg:px-10 lg:py-8">
+          <main className="min-h-0 flex-1 overflow-x-auto overflow-y-auto px-4 py-6 pb-20 md:pb-6 lg:px-10 lg:py-8">
             {(title || subtitle) && (
               <div className="mb-6 space-y-1">
                 {title ? (
@@ -446,7 +469,6 @@ export default function AdminShell({
           {t("More")}
         </button>
       </nav>
-      <div className="h-16 md:hidden" />
       <AdminIncomingVoiceAlerts session={session} />
     </div>
   );
