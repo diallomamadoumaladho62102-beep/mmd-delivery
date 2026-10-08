@@ -15,6 +15,11 @@ import {
   type OpsMapLayer,
   type OpsTimelineStep,
 } from "@/lib/adminOpsMap";
+import {
+  OPS_NEUTRAL_VIEWPORT,
+  shouldAutoFitViewport,
+  viewportForCoordinates,
+} from "@/lib/opsLiveViewport";
 
 const Map = dynamic(() => import("react-map-gl").then((m) => m.default), {
   ssr: false,
@@ -101,10 +106,12 @@ export default function AdminOpsLiveMap({
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<OpsMapFeature | null>(null);
   const [viewState, setViewState] = useState({
-    longitude: -73.9857,
-    latitude: 40.7484,
-    zoom: 3.2,
+    longitude: OPS_NEUTRAL_VIEWPORT.longitude,
+    latitude: OPS_NEUTRAL_VIEWPORT.latitude,
+    zoom: OPS_NEUTRAL_VIEWPORT.zoom,
   });
+  const userAdjustedRef = useRef(false);
+  const fittedRef = useRef(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [refreshSeconds, setRefreshSeconds] = useState(5);
   const prevPointsRef = useRef<OpsMapFeature[]>([]);
@@ -245,6 +252,29 @@ export default function AdminOpsLiveMap({
     [regions, country]
   );
 
+  const fitScope = `${layers.join(",")}|${country}|${region}|${city}|${q.trim()}`;
+  const fitScopeRef = useRef(fitScope);
+  useEffect(() => {
+    const scopeChanged = fitScopeRef.current !== fitScope;
+    if (scopeChanged) {
+      fitScopeRef.current = fitScope;
+      fittedRef.current = false;
+    }
+    if (!rawFeatures.length && !updatedAt) return;
+    if (fittedRef.current) return;
+    const reason = scopeChanged ? "filter" : "load";
+    if (!shouldAutoFitViewport({ userAdjusted: userAdjustedRef.current, reason })) return;
+    fittedRef.current = true;
+    const points = rawFeatures.flatMap((feature) => {
+      if (feature.geometry.type !== "Point") return [];
+      if (feature.properties.layer === "drivers_offline") return [];
+      const [lng, lat] = feature.geometry.coordinates;
+      return [{ lng, lat }];
+    });
+    const next = viewportForCoordinates(points);
+    setViewState({ longitude: next.longitude, latitude: next.latitude, zoom: next.zoom });
+  }, [rawFeatures, updatedAt, fitScope]);
+
   const timeline = useMemo(
     () => parseTimeline(selected?.properties.timeline_json),
     [selected]
@@ -302,13 +332,23 @@ export default function AdminOpsLiveMap({
         ) : null}
       </div>
 
-      <div className="grid gap-3 border-b border-[var(--cc-border)] px-4 py-3 lg:grid-cols-5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--cc-border)] px-4 py-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={t("Search labels…")}
-          className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
+          placeholder={t("Search live operations")}
+          aria-label={t("Search live operations")}
+          className="min-w-[200px] flex-1 rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
         />
+        <p className="text-xs text-slate-600">
+          {t("Live now")}
+          {ALL_LAYERS.map((layer) => ` · ${t(OPS_MAP_LAYER_META[layer].label)} ${counts[layer] ?? 0}`)}
+        </p>
+        <details className="relative">
+          <summary className="cursor-pointer rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+            {t("Advanced filters")}
+          </summary>
+          <div className="absolute right-0 z-10 mt-2 grid w-[min(92vw,420px)] gap-2 rounded-xl border border-[var(--cc-border)] bg-white p-3 shadow">
         <select
           value={country}
           onChange={(e) => {
@@ -352,9 +392,7 @@ export default function AdminOpsLiveMap({
         >
           {t("Refresh now")}
         </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2 border-b border-[var(--cc-border)] px-4 py-3">
+        <div className="flex flex-wrap gap-2">
         {ALL_LAYERS.map((layer) => {
           const active = layers.includes(layer);
           const meta = OPS_MAP_LAYER_META[layer];
@@ -369,10 +407,13 @@ export default function AdminOpsLiveMap({
               ].join(" ")}
               style={active ? { backgroundColor: meta.color } : undefined}
             >
-              {meta.label} ({counts[layer] ?? 0})
+              {t(meta.label)} ({counts[layer] ?? 0})
             </button>
           );
         })}
+        </div>
+          </div>
+        </details>
       </div>
 
       {error ? (
@@ -385,7 +426,14 @@ export default function AdminOpsLiveMap({
       <div className={`relative w-full ${heightClass}`}>
         <Map
           {...viewState}
-          onMove={(evt) => setViewState(evt.viewState)}
+          onMove={(evt) => {
+            setViewState({
+              longitude: evt.viewState.longitude,
+              latitude: evt.viewState.latitude,
+              zoom: evt.viewState.zoom,
+            });
+            if (evt.originalEvent) userAdjustedRef.current = true;
+          }}
           mapboxAccessToken={token}
           mapStyle="mapbox://styles/mapbox/streets-v12"
           style={{ width: "100%", height: "100%" }}
