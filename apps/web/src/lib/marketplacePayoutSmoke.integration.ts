@@ -14,6 +14,11 @@ import {
   simulateMarketplaceJobDelivered,
 } from "@/lib/marketplacePayoutService";
 import { upsertMarketplaceDraftOrder } from "@/lib/marketplaceOrderService";
+import {
+  cleanupMarketplaceSmoke,
+  ensureSmokeSeller,
+  type MarketplaceSmokeCreated,
+} from "@/lib/marketplaceSmokeCleanup";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "..", "..", ".env.local") });
@@ -33,8 +38,11 @@ const testPassword =
 
 function fail(message: string): never {
   console.error(`FAIL: ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }
+
+const created: MarketplaceSmokeCreated = { orderIds: [] };
+let smokeAdmin: SupabaseClient | null = null;
 
 function ok(label: string, detail = "") {
   console.log(`OK  [marketplace-payout] ${label}${detail ? ` — ${detail}` : ""}`);
@@ -78,14 +86,9 @@ async function getTestUserToken(): Promise<{ token: string; userId: string }> {
   return { token: signIn.session.access_token, userId: signIn.user.id };
 }
 
-async function pickSellerAndProduct(admin: SupabaseClient) {
-  const { data: seller, error: sellerError } = await admin
-    .from("sellers")
-    .select("id,country_code")
-    .eq("status", "approved")
-    .limit(1)
-    .maybeSingle();
-  if (sellerError || !seller?.id) fail(`seller lookup failed: ${sellerError?.message}`);
+async function pickSellerAndProduct(admin: SupabaseClient, userId: string) {
+  const seller = await ensureSmokeSeller(admin, userId);
+  created.sellerId = seller.id;
 
   const { data: existingProducts } = await admin
     .from("seller_products")
@@ -114,9 +117,11 @@ async function pickSellerAndProduct(admin: SupabaseClient) {
       fail(`product fixture failed: ${productError?.message ?? "missing product"}`);
     }
     productId = product.id;
+    created.productCreated = true;
   }
+  created.productId = productId;
 
-  return { seller, productId };
+  return { seller: { id: seller.id, country_code: "GN" }, productId };
 }
 
 async function main() {
@@ -132,11 +137,13 @@ async function main() {
   const admin = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  smokeAdmin = admin;
 
   const { token, userId } = await getTestUserToken();
+  created.userId = userId;
   ok("auth", testEmail);
 
-  const { seller, productId } = await pickSellerAndProduct(admin);
+  const { seller, productId } = await pickSellerAndProduct(admin, userId);
   ok("seller/product", seller.id);
 
   const country = seller.country_code ?? "GN";
@@ -157,6 +164,7 @@ async function main() {
   if (dropoffErr || !dropoffLoc?.id) {
     fail(`dropoff location fixture failed: ${dropoffErr?.message ?? "missing id"}`);
   }
+  created.locationId = dropoffLoc.id;
   ok("dropoff location", dropoffLoc.id);
 
   const order = await upsertMarketplaceDraftOrder(admin, {
@@ -166,6 +174,7 @@ async function main() {
     dropoffLocationId: dropoffLoc.id,
     items: [{ product_id: productId, quantity: 1 }],
   });
+  created.orderIds = [order.id];
   ok("draft order", order.id);
 
   const paidAt = new Date().toISOString();
@@ -196,6 +205,7 @@ async function main() {
   if (sellerPayout.payout.payout_live_enabled !== false) {
     fail("seller payout live flag should be false");
   }
+  created.sellerPayoutId = sellerPayout.payout.id;
   ok("seller payout pending", sellerPayout.payout.id);
 
   const dispatch = await prepareMarketplaceDeliveryJob(admin, {
@@ -205,6 +215,7 @@ async function main() {
   if (!dispatch.ok || !dispatch.job?.id) {
     fail(`dispatch job prep failed: ${dispatch.error ?? "missing job"}`);
   }
+  created.jobId = dispatch.job.id;
   ok("dispatch job", dispatch.job.id);
 
   const delivered = await simulateMarketplaceJobDelivered(admin, {
@@ -225,6 +236,7 @@ async function main() {
   if (driverPayout.payout.status !== "pending") {
     fail("driver payout should be pending");
   }
+  created.driverPayoutId = driverPayout.payout.id;
   ok("driver payout pending", driverPayout.payout.id);
 
   const userClient = createClient(url, anon, {
@@ -267,14 +279,17 @@ async function main() {
     .limit(1);
   ok("existing orders payout table untouched", `sample count=${ordersPayoutFlags ?? 0}`);
 
-  await admin.from("marketplace_driver_payouts").delete().eq("id", driverPayout.payout.id);
-  await admin.from("marketplace_seller_payouts").delete().eq("id", sellerPayout.payout.id);
-  await admin.from("marketplace_delivery_jobs").delete().eq("id", dispatch.job.id);
-  await admin.from("seller_orders").delete().eq("id", order.id);
+  await cleanupMarketplaceSmoke(admin, created);
 
   console.log("\nMarketplace Payout Smoke: ALL PASS\n");
 }
 
-main().catch((error) => {
-  fail(error instanceof Error ? error.message : String(error));
+main().catch(async (error) => {
+  console.error(error instanceof Error ? error.message : error);
+  if (smokeAdmin) {
+    await cleanupMarketplaceSmoke(smokeAdmin, created).catch((cleanupError) => {
+      console.error(cleanupError instanceof Error ? cleanupError.message : cleanupError);
+    });
+  }
+  process.exit(1);
 });

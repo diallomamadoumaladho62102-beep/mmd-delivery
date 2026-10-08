@@ -13,6 +13,10 @@ import {
   upsertMarketplaceDraftOrder,
 } from "@/lib/marketplaceOrderService";
 import { isMarketplaceCheckoutEnabled } from "@/lib/marketplaceCheckout";
+import {
+  cleanupMarketplaceSmoke,
+  type MarketplaceSmokeCreated,
+} from "@/lib/marketplaceSmokeCleanup";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "..", "..", ".env.local") });
@@ -32,8 +36,11 @@ const testPassword =
 
 function fail(message: string): never {
   console.error(`FAIL: ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }
+
+const created: MarketplaceSmokeCreated = { orderIds: [] };
+let smokeAdmin: SupabaseClient | null = null;
 
 function ok(label: string, detail = "") {
   console.log(`OK  [marketplace-shadow] ${label}${detail ? ` — ${detail}` : ""}`);
@@ -103,6 +110,7 @@ async function main() {
   const admin = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  smokeAdmin = admin;
 
   const authClient = createClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -118,6 +126,7 @@ async function main() {
   }
 
   const userId = signIn.user.id;
+  created.userId = userId;
   const token = signIn.session.access_token;
   ok("auth", userId);
 
@@ -172,6 +181,7 @@ async function main() {
   if (sellerErr || !seller?.id) {
     fail(`seller fixture failed: ${sellerErr?.message ?? "missing seller"}`);
   }
+  created.sellerId = seller.id;
   ok("seller fixture", seller.id);
 
   const productPriceCents = 2500;
@@ -203,7 +213,9 @@ async function main() {
       fail(`product fixture failed: ${productErr?.message ?? "missing product"}`);
     }
     productId = product.id;
+    created.productCreated = true;
   }
+  created.productId = productId;
 
   ok("product fixture", productId);
 
@@ -240,6 +252,7 @@ async function main() {
     fail(`POST draft failed: ${postDraftBody?.error ?? postDraftRes.status}`);
   }
   const httpOrderId = postDraftBody.order.id as string;
+  created.orderIds = [...(created.orderIds ?? []), httpOrderId];
   ok("HTTP POST draft", httpOrderId);
 
   const { res: getDraftRes, body: getDraftBody } = await authFetch(
@@ -339,6 +352,7 @@ async function main() {
     items: [{ product_id: productId, quantity: 2 }],
   });
 
+  created.orderIds = [...new Set([...(created.orderIds ?? []), order.id])];
   ok("draft created via service", order.id);
 
   if (Number(order.subtotal_cents) <= 0) {
@@ -425,9 +439,17 @@ async function main() {
 
   ok("no live delivery_requests", `recent count=${deliveryRequestCount ?? 0}`);
 
+  await cleanupMarketplaceSmoke(admin, created);
+
   console.log("\nMarketplace Shadow Smoke: ALL PASS\n");
 }
 
-main().catch((error) => {
-  fail(error instanceof Error ? error.message : String(error));
+main().catch(async (error) => {
+  console.error(error instanceof Error ? error.message : error);
+  if (smokeAdmin) {
+    await cleanupMarketplaceSmoke(smokeAdmin, created).catch((cleanupError) => {
+      console.error(cleanupError instanceof Error ? cleanupError.message : cleanupError);
+    });
+  }
+  process.exit(1);
 });

@@ -40,7 +40,48 @@ const results = {
 
 function fail(message) {
   console.error(`FAIL: ${message}`);
-  process.exit(1);
+  throw new Error(message);
+}
+
+const created = {
+  userId: null,
+  locationIds: [],
+  photoPath: null,
+  rideId: null,
+  deliveryId: null,
+};
+let admin = null;
+
+async function cleanupCreated() {
+  if (!admin) return;
+  if (created.deliveryId && created.userId) {
+    await admin
+      .from("delivery_requests")
+      .delete()
+      .eq("id", created.deliveryId)
+      .eq("client_user_id", created.userId)
+      .eq("title", "E2E Phase 1.5 delivery")
+      .eq("errand_description", "Automated E2E test");
+  }
+  if (created.rideId && created.userId) {
+    await admin
+      .from("taxi_rides")
+      .delete()
+      .eq("id", created.rideId)
+      .eq("client_user_id", created.userId)
+      .eq("country_code", "GN");
+  }
+  if (created.photoPath) {
+    await admin.storage.from("location-attachments").remove([created.photoPath]);
+  }
+  if (created.locationIds.length && created.userId) {
+    await admin
+      .from("location_points")
+      .delete()
+      .in("id", created.locationIds)
+      .eq("owner_user_id", created.userId)
+      .like("directions_text", "E2E Phase 1.5%");
+  }
 }
 
 function ok(section, label, detail = "") {
@@ -139,9 +180,10 @@ async function main() {
   console.log(`API: ${apiBase}`);
   console.log(`User: ${testEmail}\n`);
 
-  const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
-  await ensureTestUser(admin);
+  admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+  created.userId = await ensureTestUser(admin);
   const { token, userId, client } = await signIn();
+  created.userId = userId;
   ok("auth", "signed in", userId);
 
   const pickupCoords = { lat: 9.6378, lng: -13.5784 };
@@ -149,6 +191,7 @@ async function main() {
 
   const pickupLocation = await createLocation(token, "pickup", pickupCoords);
   const dropoffLocation = await createLocation(token, "dropoff", dropoffCoords);
+  created.locationIds.push(pickupLocation.id, dropoffLocation.id);
   results.supabase.pickupLocationId = pickupLocation.id;
   results.supabase.dropoffLocationId = dropoffLocation.id;
   ok("location", "pickup location_point", pickupLocation.id);
@@ -168,6 +211,7 @@ async function main() {
   if (!photo.res.ok || !photo.body?.ok || !photo.body?.photo_path) {
     fail(`locations/photo ${photo.res.status}: ${photo.body?.error ?? "unknown"}`);
   }
+  created.photoPath = photo.body.photo_path;
   results.storage.photoPath = photo.body.photo_path;
   ok("storage", "location photo uploaded", photo.body.photo_path);
 
@@ -247,6 +291,7 @@ async function main() {
   }
 
   const rideId = createRide.body.ride.id;
+  created.rideId = rideId;
   results.taxi.rideId = rideId;
   ok("taxi", "create with location IDs", rideId);
 
@@ -333,6 +378,7 @@ async function main() {
     fail(`delivery_requests insert: ${drErr?.message ?? "unknown"}`);
   }
 
+  created.deliveryId = drRow.id;
   results.delivery.requestId = drRow.id;
   results.delivery.db = drRow;
   ok("delivery", "create with dropoff_location_id", drRow.id);
@@ -400,12 +446,17 @@ async function main() {
   }
   ok("supabase", "driver_can_read_location_point RPC callable");
 
+  await cleanupCreated();
+
   console.log("\n=== SUMMARY JSON ===");
   console.log(JSON.stringify(results, null, 2));
   console.log("\nMMD Phase 1.5 E2E: ALL PASS\n");
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error(err);
+  await cleanupCreated().catch((cleanupError) => {
+    console.error(cleanupError);
+  });
   process.exit(1);
 });

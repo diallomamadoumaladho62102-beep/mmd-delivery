@@ -13,6 +13,11 @@ import {
   prepareMarketplaceDeliveryJob,
 } from "@/lib/marketplaceDispatchService";
 import { upsertMarketplaceDraftOrder } from "@/lib/marketplaceOrderService";
+import {
+  cleanupMarketplaceSmoke,
+  ensureSmokeSeller,
+  type MarketplaceSmokeCreated,
+} from "@/lib/marketplaceSmokeCleanup";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "..", "..", ".env.local") });
@@ -32,8 +37,11 @@ const testPassword =
 
 function fail(message: string): never {
   console.error(`FAIL: ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }
+
+const created: MarketplaceSmokeCreated = { orderIds: [] };
+let smokeAdmin: SupabaseClient | null = null;
 
 function ok(label: string, detail = "") {
   console.log(`OK  [marketplace-dispatch] ${label}${detail ? ` — ${detail}` : ""}`);
@@ -80,14 +88,9 @@ async function getTestUserToken(): Promise<{
   return { token: signIn.session.access_token, userId: signIn.user.id };
 }
 
-async function pickSellerAndProduct(admin: SupabaseClient) {
-  const { data: seller, error: sellerError } = await admin
-    .from("sellers")
-    .select("id,country_code")
-    .eq("status", "approved")
-    .limit(1)
-    .maybeSingle();
-  if (sellerError || !seller?.id) fail(`seller lookup failed: ${sellerError?.message}`);
+async function pickSellerAndProduct(admin: SupabaseClient, userId: string) {
+  const seller = await ensureSmokeSeller(admin, userId);
+  created.sellerId = seller.id;
 
   const { data: existingProducts } = await admin
     .from("seller_products")
@@ -116,9 +119,11 @@ async function pickSellerAndProduct(admin: SupabaseClient) {
       fail(`product fixture failed: ${productError?.message ?? "missing product"}`);
     }
     productId = product.id;
+    created.productCreated = true;
   }
+  created.productId = productId;
 
-  return { seller, productId };
+  return { seller: { id: seller.id, country_code: "GN" }, productId };
 }
 
 async function main() {
@@ -134,11 +139,13 @@ async function main() {
   const admin = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  smokeAdmin = admin;
 
   const { token, userId } = await getTestUserToken();
+  created.userId = userId;
   ok("auth", testEmail);
 
-  const { seller, productId } = await pickSellerAndProduct(admin);
+  const { seller, productId } = await pickSellerAndProduct(admin, userId);
   ok("seller/product", seller.id);
 
   const country = seller.country_code ?? "GN";
@@ -160,6 +167,7 @@ async function main() {
   if (dropoffErr || !dropoffLoc?.id) {
     fail(`dropoff location fixture failed: ${dropoffErr?.message ?? "missing id"}`);
   }
+  created.locationId = dropoffLoc.id;
   ok("dropoff location", dropoffLoc.id);
 
   const order = await upsertMarketplaceDraftOrder(admin, {
@@ -169,6 +177,7 @@ async function main() {
     dropoffLocationId: dropoffLoc.id,
     items: [{ product_id: productId, quantity: 1 }],
   });
+  created.orderIds = [order.id];
   ok("draft order", order.id);
 
   const paidAt = new Date().toISOString();
@@ -197,6 +206,7 @@ async function main() {
   if (!prep.ok || !prep.job?.id) {
     fail(`prepare job failed: ${prep.error ?? "missing job"}`);
   }
+  created.jobId = prep.job.id;
   ok("dispatch job created", prep.job.status);
 
   if (prep.job.live_dispatch_enabled !== false) {
@@ -247,12 +257,17 @@ async function main() {
     }
   }
 
-  await admin.from("marketplace_delivery_jobs").delete().eq("id", prep.job.id);
-  await admin.from("seller_orders").delete().eq("id", order.id);
+  await cleanupMarketplaceSmoke(admin, created);
 
   console.log("\nMarketplace Dispatch Smoke: ALL PASS\n");
 }
 
-main().catch((error) => {
-  fail(error instanceof Error ? error.message : String(error));
+main().catch(async (error) => {
+  console.error(error instanceof Error ? error.message : error);
+  if (smokeAdmin) {
+    await cleanupMarketplaceSmoke(smokeAdmin, created).catch((cleanupError) => {
+      console.error(cleanupError instanceof Error ? cleanupError.message : cleanupError);
+    });
+  }
+  process.exit(1);
 });

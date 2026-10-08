@@ -22,7 +22,23 @@ const password = process.env.TEST_LOGIN_PASSWORD;
 
 function fail(message) {
   console.error(`FAIL: ${message}`);
-  process.exit(1);
+  throw new Error(message);
+}
+
+const created = { locationId: null, photoPath: null, userId: null };
+
+async function cleanupCreated() {
+  if (!serviceKey || !url || !created.locationId || !created.userId) return;
+  const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+  if (created.photoPath) {
+    await admin.storage.from("location-attachments").remove([created.photoPath]);
+  }
+  await admin
+    .from("location_points")
+    .delete()
+    .eq("id", created.locationId)
+    .eq("owner_user_id", created.userId)
+    .like("directions_text", "Smoke test:%");
 }
 
 function ok(label, detail = "") {
@@ -46,6 +62,7 @@ async function main() {
   }
 
   const token = data.session.access_token;
+  created.userId = data.session.user.id;
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
@@ -97,6 +114,7 @@ async function main() {
   }
 
   const locationId = create.body.location.id;
+  created.locationId = locationId;
   ok("POST /api/locations/create", locationId);
 
   const patch = await authFetch(`/api/locations/${locationId}/pin`, {
@@ -130,6 +148,7 @@ async function main() {
   if (!photo.res.ok || !photo.body?.ok || !photo.body?.photo_path) {
     fail(`locations/photo ${photo.res.status}: ${photo.body?.error ?? "unknown"}`);
   }
+  created.photoPath = photo.body.photo_path;
   ok("POST /api/locations/[id]/photo", photo.body.photo_path);
 
   if (serviceKey) {
@@ -159,10 +178,15 @@ async function main() {
     console.warn("WARN: SUPABASE_SECRET_KEY not set — skipping bucket/table checks");
   }
 
+  await cleanupCreated();
+
   console.log("\nMMD Location Phase 1 smoke: ALL PASS\n");
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error(err);
+  await cleanupCreated().catch((cleanupError) => {
+    console.error(cleanupError);
+  });
   process.exit(1);
 });
