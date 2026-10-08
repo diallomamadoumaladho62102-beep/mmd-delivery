@@ -186,24 +186,7 @@ function mapKnownErrorCode(code: string, message: string): string | null {
   return null;
 }
 
-function sanitizeLogText(value: unknown): string {
-  let out = "";
-  for (const ch of String(value ?? "").replace(/\r/g, " ").replace(/\n/g, " ")) {
-    const code = ch.codePointAt(0) ?? 0;
-    out += code < 32 || code === 127 ? " " : ch;
-  }
-  return out.slice(0, 500);
-}
-
 export function logTechnicalError(scope: string, error: unknown, metadata?: Record<string, unknown>) {
-  const safeScope = sanitizeLogText(scope).slice(0, 80).replace(/\r/g, " ").replace(/\n/g, " ");
-  const safeError = (
-    error instanceof Error
-      ? `${error.name}: ${sanitizeLogText(error.message)}`
-      : sanitizeLogText(error)
-  )
-    .replace(/\r/g, " ")
-    .replace(/\n/g, " ");
-  console.error(safeScope, safeError);
+  console.error("technical_error");
   captureProductionException(scope, error, metadata);
 }

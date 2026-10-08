@@ -212,10 +212,7 @@ export async function POST(req: NextRequest) {
         400,
       );
     }
-    console.error(
-      "[create-food-quote-checkout-session]",
-      message.slice(0, 300).replace(/\r/g, " ").replace(/\n/g, " "),
-    );
+    console.error("create-food-quote-checkout-session failed");
     return mmdLocationJson({ ok: false, error: message }, 500);
   }
 }

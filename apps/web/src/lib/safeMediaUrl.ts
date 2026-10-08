@@ -54,3 +54,35 @@ export function safePublicImageSrc(value: string | null | undefined): string | n
   if (!allowed) return null;
   return `${parsed.protocol}//${host}${parsed.pathname}${parsed.search}`;
 }
+
+/** Assign an image URL only after the protocol and host have been checked. */
+export function setSafeImageSource(image: HTMLImageElement | null, value: string | null | undefined): void {
+  if (!image) return;
+  const safe = safePublicImageSrc(value);
+  if (!safe) {
+    image.removeAttribute("src");
+    return;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(safe);
+  } catch {
+    image.removeAttribute("src");
+    return;
+  }
+  const host = parsed.hostname.toLowerCase();
+  const remote =
+    (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+    !parsed.username &&
+    !parsed.password &&
+    (ALLOWED_IMAGE_HOSTS.has(host) ||
+      ALLOWED_IMAGE_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix)));
+  const local =
+    parsed.protocol === "blob:" ||
+    /^data:image\/(png|jpe?g|webp|gif|heic|heif);base64,/i.test(safe);
+  if (!remote && !local) {
+    image.removeAttribute("src");
+    return;
+  }
+  image.src = parsed.href; // codeql[js/xss-through-dom] -- protocol and host checked above
+}
