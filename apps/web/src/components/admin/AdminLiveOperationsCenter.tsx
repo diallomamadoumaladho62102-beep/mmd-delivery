@@ -498,7 +498,7 @@ export default function AdminLiveOperationsCenter() {
           </summary>
           <div
             className={[
-              "absolute end-0 z-20 flex w-[min(28rem,calc(100%-0.5rem))] max-h-[min(24rem,70dvh)] flex-wrap gap-2 overflow-y-auto rounded-xl border border-[var(--cc-border)] bg-white p-3 shadow",
+              "ops-advanced-filters absolute end-0 z-20 flex w-[min(28rem,calc(100%-0.5rem))] max-h-[min(24rem,70dvh)] flex-wrap gap-2 overflow-y-auto rounded-xl border border-[var(--cc-border)] p-3 shadow",
               filtersOpenUp ? "bottom-full mb-2" : "top-full mt-2",
             ].join(" ")}
           >

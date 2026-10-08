@@ -35,6 +35,26 @@ const NavigationControl = dynamic(
   { ssr: false }
 );
 
+/** Pick the readable ink for a layer chip sitting on that layer's color. */
+function advancedFilterChipInk(hex: string): string {
+  const n = Number.parseInt(hex.slice(1), 16);
+  if (!Number.isFinite(n)) return "#0f172a";
+  const channel = (value: number) => {
+    const s = value / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance =
+    0.2126 * channel((n >> 16) & 255) +
+    0.7152 * channel((n >> 8) & 255) +
+    0.0722 * channel(n & 255);
+  const contrast = (against: number) => {
+    const hi = Math.max(luminance, against);
+    const lo = Math.min(luminance, against);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  return contrast(1) >= contrast(0.012) ? "#ffffff" : "#0f172a";
+}
+
 type CountryOpt = { country_code: string; country_name: string };
 type RegionOpt = {
   country_code: string;
@@ -359,7 +379,7 @@ export default function AdminOpsLiveMap({
           </summary>
           <div
             className={[
-              "absolute end-0 z-20 grid w-[min(28rem,calc(100%-0.5rem))] max-h-[min(24rem,70dvh)] gap-2 overflow-y-auto rounded-xl border border-[var(--cc-border)] bg-white p-3 shadow",
+              "ops-advanced-filters absolute end-0 z-20 grid w-[min(28rem,calc(100%-0.5rem))] max-h-[min(24rem,70dvh)] gap-2 overflow-y-auto rounded-xl border border-[var(--cc-border)] p-3 shadow",
               filtersOpenUp ? "bottom-full mb-2" : "top-full mt-2",
             ].join(" ")}
           >
@@ -419,7 +439,11 @@ export default function AdminOpsLiveMap({
                 "rounded-full px-3 py-1 text-xs font-semibold",
                 active ? "text-white" : "bg-slate-100 text-slate-600",
               ].join(" ")}
-              style={active ? { backgroundColor: meta.color } : undefined}
+              style={
+                active
+                  ? { backgroundColor: meta.color, color: advancedFilterChipInk(meta.color) }
+                  : undefined
+              }
             >
               {t(meta.label)} ({counts[layer] ?? 0})
             </button>

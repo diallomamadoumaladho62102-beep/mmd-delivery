@@ -373,6 +373,85 @@ html:has(.admin-figma) body {
   outline-color: var(--cc-gold);
 }
 
+/*
+ * Advanced Filters sits on the light map. The admin theme turns .bg-white into
+ * a glass wash and paints inputs, placeholders, and slate text white, so the
+ * sheet needs its own light surface and dark ink. Scoped to this panel only.
+ */
+.admin-figma .ops-advanced-filters {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  color-scheme: light;
+}
+
+.admin-figma .ops-advanced-filters input,
+.admin-figma .ops-advanced-filters select,
+.admin-figma .ops-advanced-filters textarea {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.admin-figma .ops-advanced-filters input::placeholder,
+.admin-figma .ops-advanced-filters textarea::placeholder {
+  color: #64748b;
+}
+
+.admin-figma .ops-advanced-filters input:disabled,
+.admin-figma .ops-advanced-filters select:disabled,
+.admin-figma .ops-advanced-filters textarea:disabled {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.admin-figma .ops-advanced-filters select option,
+.admin-figma .ops-advanced-filters select option:checked {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+.admin-figma .ops-advanced-filters select option:checked {
+  background-color: #e2e8f0;
+}
+
+.admin-figma .ops-advanced-filters .text-slate-950,
+.admin-figma .ops-advanced-filters .text-slate-900,
+.admin-figma .ops-advanced-filters .text-slate-800,
+.admin-figma .ops-advanced-filters .text-gray-900,
+.admin-figma .ops-advanced-filters .text-gray-800,
+.admin-figma .ops-advanced-filters .text-black {
+  color: #0f172a !important;
+}
+
+.admin-figma .ops-advanced-filters .text-slate-700,
+.admin-figma .ops-advanced-filters .text-gray-700 {
+  color: #334155 !important;
+}
+
+.admin-figma .ops-advanced-filters .text-slate-600,
+.admin-figma .ops-advanced-filters .text-slate-500,
+.admin-figma .ops-advanced-filters .text-gray-600,
+.admin-figma .ops-advanced-filters .text-gray-500,
+.admin-figma .ops-advanced-filters .text-slate-400,
+.admin-figma .ops-advanced-filters .text-slate-300,
+.admin-figma .ops-advanced-filters .text-gray-400,
+.admin-figma .ops-advanced-filters .text-gray-300 {
+  color: #475569 !important;
+}
+
+.admin-figma .ops-advanced-filters .bg-white,
+.admin-figma .ops-advanced-filters .bg-slate-50,
+.admin-figma .ops-advanced-filters .bg-slate-100,
+.admin-figma .ops-advanced-filters .bg-gray-50 {
+  background-color: #f8fafc !important;
+}
+
+.admin-figma .ops-advanced-filters button:disabled,
+.admin-figma .ops-advanced-filters [aria-disabled="true"] {
+  color: #64748b !important;
+}
+
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
