@@ -104,6 +104,7 @@ export default function AdminOpsLiveMap({
   const [region, setRegion] = useState("");
   const [city, setCity] = useState("");
   const [q, setQ] = useState("");
+  const [filtersOpenUp, setFiltersOpenUp] = useState(false);
   const [selected, setSelected] = useState<OpsMapFeature | null>(null);
   const [viewState, setViewState] = useState({
     longitude: OPS_NEUTRAL_VIEWPORT.longitude,
@@ -301,7 +302,7 @@ export default function AdminOpsLiveMap({
   }
 
   return (
-    <div className="cc-card overflow-hidden">
+    <div className="cc-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--cc-border)] px-5 py-4">
         <div>
           <h2 className="text-base font-semibold text-slate-900">
@@ -332,7 +333,7 @@ export default function AdminOpsLiveMap({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--cc-border)] px-4 py-2">
+      <div className="relative z-20 flex flex-wrap items-center gap-2 border-b border-[var(--cc-border)] px-4 py-2">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -344,11 +345,24 @@ export default function AdminOpsLiveMap({
           {t("Live now")}
           {ALL_LAYERS.map((layer) => ` · ${t(OPS_MAP_LAYER_META[layer].label)} ${counts[layer] ?? 0}`)}
         </p>
-        <details className="relative">
+        <details
+          onToggle={(event) => {
+            const node = event.currentTarget;
+            if (!node.open) return;
+            const rect = node.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            setFiltersOpenUp(spaceBelow < 280 && rect.top > spaceBelow);
+          }}
+        >
           <summary className="cursor-pointer rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
             {t("Advanced filters")}
           </summary>
-          <div className="absolute right-0 z-10 mt-2 grid w-[min(92vw,420px)] gap-2 rounded-xl border border-[var(--cc-border)] bg-white p-3 shadow">
+          <div
+            className={[
+              "absolute end-0 z-20 grid w-[min(28rem,calc(100%-0.5rem))] max-h-[min(24rem,70dvh)] gap-2 overflow-y-auto rounded-xl border border-[var(--cc-border)] bg-white p-3 shadow",
+              filtersOpenUp ? "bottom-full mb-2" : "top-full mt-2",
+            ].join(" ")}
+          >
         <select
           value={country}
           onChange={(e) => {
@@ -423,7 +437,7 @@ export default function AdminOpsLiveMap({
         </div>
       ) : null}
 
-      <div className={`relative w-full ${heightClass}`}>
+      <div className={`relative w-full overflow-hidden rounded-b-[var(--cc-radius)] ${heightClass}`}>
         <Map
           {...viewState}
           onMove={(evt) => {

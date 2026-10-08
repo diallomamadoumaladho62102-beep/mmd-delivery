@@ -125,6 +125,7 @@ export default function AdminLiveOperationsCenter() {
   const [region, setRegion] = useState("");
   const [cityDraft, setCityDraft] = useState("");
   const [city, setCity] = useState("");
+  const [filtersOpenUp, setFiltersOpenUp] = useState(false);
   const [countries, setCountries] = useState<Array<{ country_code: string; country_name: string }>>([]);
   const [regions, setRegions] = useState<Array<{ country_code: string; region_code: string; region_name: string }>>([]);
   const [viewState, setViewState] = useState({
@@ -431,7 +432,7 @@ export default function AdminLiveOperationsCenter() {
   }
 
   return (
-    <div ref={rootRef} className="cc-card overflow-hidden bg-white">
+    <div ref={rootRef} className="cc-card bg-white">
       <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--cc-border)] px-4 py-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cc-muted)]">
@@ -478,15 +479,29 @@ export default function AdminLiveOperationsCenter() {
           <FilterButton key={item} active={service === item} label={t(serviceLabelKey(item))} onClick={() => setService(item)} />
         ))}
       </div>
-      <div className="relative flex flex-wrap gap-2 border-b border-[var(--cc-border)] px-4 py-3">
+      <div className="relative z-20 flex flex-wrap gap-2 border-b border-[var(--cc-border)] px-4 py-3">
         {PHASES.map((item) => (
           <FilterButton key={item} active={phase === item} label={t(phaseLabelKey(item))} onClick={() => setPhase(item)} />
         ))}
-        <details className="ml-auto">
+        <details
+          className="ml-auto"
+          onToggle={(event) => {
+            const node = event.currentTarget;
+            if (!node.open) return;
+            const rect = node.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            setFiltersOpenUp(spaceBelow < 280 && rect.top > spaceBelow);
+          }}
+        >
           <summary className="cursor-pointer rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
             {t("Advanced filters")}
           </summary>
-          <div className="absolute z-10 mt-2 flex w-[min(100vw-2rem,520px)] flex-wrap gap-2 rounded-xl border border-[var(--cc-border)] bg-white p-3 shadow">
+          <div
+            className={[
+              "absolute end-0 z-20 flex w-[min(28rem,calc(100%-0.5rem))] max-h-[min(24rem,70dvh)] flex-wrap gap-2 overflow-y-auto rounded-xl border border-[var(--cc-border)] bg-white p-3 shadow",
+              filtersOpenUp ? "bottom-full mb-2" : "top-full mt-2",
+            ].join(" ")}
+          >
             <label className="sr-only" htmlFor="ops-country">{t("All countries")}</label>
             <select
               id="ops-country"
@@ -545,7 +560,7 @@ export default function AdminLiveOperationsCenter() {
         </p>
       ) : null}
 
-      <div className={fullscreen ? "h-[calc(100vh-148px)]" : "h-[calc(100vh-188px)] min-h-[560px]"}>
+      <div className={fullscreen ? "h-[calc(100vh-148px)] overflow-hidden rounded-b-[var(--cc-radius)]" : "h-[calc(100vh-188px)] min-h-[560px] overflow-hidden rounded-b-[var(--cc-radius)]"}>
         <div className="relative h-full">
           <Map
             {...viewState}
