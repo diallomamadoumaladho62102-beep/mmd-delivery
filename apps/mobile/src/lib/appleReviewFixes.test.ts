@@ -256,6 +256,7 @@ test("Play/Apple store config pins API 36, Xcode 26 image, and web account delet
   assert.doesNotMatch(appJson, /READ_CONTACTS|READ_PHONE_STATE|CALL_PHONE/);
   assert.equal(eas?.build?.production?.ios?.image, "sdk-54");
   assert.match(deletionPage, /ACCOUNT_DELETION_URL/);
+  // codeql[js/incomplete-url-substring-sanitization] source assertion for the canonical deletion URL, not a runtime allowlist
   assert.equal(deletionCopy.includes("https://www.mmddelivery.com/legal/account-deletion"), true);
   assert.match(legalUrls, /\/legal\/account-deletion/);
 });

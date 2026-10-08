@@ -274,13 +274,14 @@ async function mapboxEvidence(url: string, cacheKey: string): Promise<GeoEvidenc
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   const safeUrl = assertMapboxGeocodingUrl(url);
-  const pinned = new URL(safeUrl);
-  if (pinned.protocol !== "https:" || pinned.hostname !== "api.mapbox.com") {
+  const endpoint = new URL(safeUrl);
+  if (endpoint.protocol !== "https:" || endpoint.hostname !== "api.mapbox.com") {
     throw new Error("geographic_validation_unavailable:invalid_url");
   }
-  const response = await fetch(new URL(`${pinned.pathname}${pinned.search}`, "https://api.mapbox.com"), {
-    cache: "no-store",
-  });
+  if (!endpoint.pathname.startsWith("/geocoding/v5/mapbox.places/")) {
+    throw new Error("geographic_validation_unavailable:invalid_url");
+  }
+  const response = await fetch(endpoint, { cache: "no-store" });
   if (!response.ok) throw new Error(`geographic_validation_unavailable:${response.status}`);
   const body = (await response.json().catch(() => null)) as { features?: MapboxFeature[] } | null;
   const value = featureEvidence(body?.features?.[0]);

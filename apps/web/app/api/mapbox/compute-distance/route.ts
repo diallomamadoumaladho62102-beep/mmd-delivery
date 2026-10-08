@@ -272,7 +272,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Erreur interne serveur";
-    console.error("API /mapbox/compute-distance error:", message.replace(/[\r\n]/g, " ").slice(0, 200));
+    console.error(
+      "API /mapbox/compute-distance error:",
+      message.replace(/\r/g, " ").replace(/\n/g, " ").slice(0, 200),
+    );
     return NextResponse.json(
       {
         ok: false,

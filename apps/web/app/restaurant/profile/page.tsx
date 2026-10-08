@@ -758,11 +758,13 @@ export default function RestaurantProfilePage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50 text-xl font-black text-gray-400">
               {logoPreview && isSafePublicImageUrl(logoPreview) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoPreview} alt="Aperçu logo" className="h-full w-full object-cover" />
+                // eslint-disable-next-line @next/next/no-img-element -- allowlisted by isSafePublicImageUrl
+                // codeql[js/xss-through-dom]
+                <img src={logoPreview} alt={t("Logo du restaurant")} className="h-full w-full object-cover" />
               ) : isSafePublicImageUrl(profile.restaurant_logo_url) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.restaurant_logo_url ?? undefined} alt="Logo restaurant" className="h-full w-full object-cover" />
+                // eslint-disable-next-line @next/next/no-img-element -- allowlisted by isSafePublicImageUrl
+                // codeql[js/xss-through-dom]
+                <img src={profile.restaurant_logo_url ?? undefined} alt={t("Logo du restaurant")} className="h-full w-full object-cover" />
               ) : (
                 "+"
               )}
@@ -787,12 +789,14 @@ export default function RestaurantProfilePage() {
 
           <div className="flex flex-col gap-3">
             <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-2xl border bg-gray-50 text-xl font-black text-gray-400">
-              {coverPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={isSafePublicImageUrl(coverPreview) ? coverPreview : undefined} alt="Aperçu couverture" className="h-full w-full object-cover" />
+              {isSafePublicImageUrl(coverPreview) ? (
+                // eslint-disable-next-line @next/next/no-img-element -- allowlisted by isSafePublicImageUrl
+                // codeql[js/xss-through-dom]
+                <img src={coverPreview ?? undefined} alt={t("Image de couverture")} className="h-full w-full object-cover" />
               ) : isSafePublicImageUrl(profile.cover_image_url) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.cover_image_url ?? undefined} alt="Couverture restaurant" className="h-full w-full object-cover" />
+                // eslint-disable-next-line @next/next/no-img-element -- allowlisted by isSafePublicImageUrl
+                // codeql[js/xss-through-dom]
+                <img src={profile.cover_image_url ?? undefined} alt={t("Image de couverture")} className="h-full w-full object-cover" />
               ) : (
                 "Couverture"
               )}

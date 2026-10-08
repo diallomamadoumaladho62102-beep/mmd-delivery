@@ -201,6 +201,9 @@ export function logTechnicalError(scope: string, error: unknown, metadata?: Reco
     error instanceof Error
       ? `${error.name}: ${sanitizeLogText(error.message)}`
       : sanitizeLogText(error);
-  console.error(`[${safeScope}]`, safeError.replace(/[\r\n]/g, " "));
+  console.error(
+    `[${safeScope.replace(/\r/g, " ").replace(/\n/g, " ")}]`,
+    safeError.replace(/\r/g, " ").replace(/\n/g, " "),
+  );
   captureProductionException(scope, error, metadata);
 }
