@@ -123,13 +123,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data, error } = await query;
-    if (error) return json(req, { error: "query_failed", details: error.message }, 500);
+    if (error) return json(req, { error: "query_failed" }, 500);
 
     return json(req, { events: data ?? [], config, attribution: ATTRIBUTION });
   } catch (error) {
-    return json(req, 
-      { error: "unexpected", details: error instanceof Error ? error.message : String(error) },
-      500,
-    );
+    return json(req, { error: "unexpected" }, 500);
   }
 });

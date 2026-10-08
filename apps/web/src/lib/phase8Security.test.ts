@@ -56,7 +56,8 @@ function readRepo(rel: string) {
 {
   const cors = readRepo("supabase/functions/_shared/cors.ts");
   assert.match(cors, /buildCorsHeaders/);
-  assert.match(cors, /mmddelivery\.com/);
+  assert.equal(cors.includes("\"https://www.mmddelivery.com\""), true);
+  assert.equal(cors.includes("\"https://mmddelivery.com\""), true);
   assert.doesNotMatch(cors, /^[\s\S]*"Access-Control-Allow-Origin": "\*"/);
 }
 

@@ -172,6 +172,9 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(String((e as any)?.message ?? e), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: "translate_failed" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 });

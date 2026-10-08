@@ -188,9 +188,9 @@ function mapKnownErrorCode(code: string, message: string): string | null {
 
 function sanitizeLogText(value: unknown): string {
   let out = "";
-  for (const ch of String(value ?? "")) {
+  for (const ch of String(value ?? "").replace(/\r/g, " ").replace(/\n/g, " ")) {
     const code = ch.codePointAt(0) ?? 0;
-    out += code < 32 ? " " : ch;
+    out += code < 32 || code === 127 ? " " : ch;
   }
   return out.slice(0, 500);
 }
@@ -201,6 +201,6 @@ export function logTechnicalError(scope: string, error: unknown, metadata?: Reco
     error instanceof Error
       ? `${error.name}: ${sanitizeLogText(error.message)}`
       : sanitizeLogText(error);
-  console.error(`[${safeScope}]`, safeError);
+  console.error(`[${safeScope}]`, safeError.replace(/[\r\n]/g, " "));
   captureProductionException(scope, error, metadata);
 }

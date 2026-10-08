@@ -256,15 +256,15 @@ test("Play/Apple store config pins API 36, Xcode 26 image, and web account delet
   assert.doesNotMatch(appJson, /READ_CONTACTS|READ_PHONE_STATE|CALL_PHONE/);
   assert.equal(eas?.build?.production?.ios?.image, "sdk-54");
   assert.match(deletionPage, /ACCOUNT_DELETION_URL/);
-  assert.match(deletionCopy, /www\.mmddelivery\.com\/legal\/account-deletion/);
+  assert.equal(deletionCopy.includes("https://www.mmddelivery.com/legal/account-deletion"), true);
   assert.match(legalUrls, /\/legal\/account-deletion/);
 });
 
 test("iOS associated domains use www only (apex AASA 307s and is invalid)", () => {
   const appConfig = read("app.config.ts");
   const appJson = read("apps/mobile/app.json");
-  assert.match(appConfig, /applinks:www\.mmddelivery\.com/);
-  assert.match(appJson, /applinks:www\.mmddelivery\.com/);
+  assert.equal(appConfig.includes("applinks:www.mmddelivery.com"), true);
+  assert.equal(appJson.includes("applinks:www.mmddelivery.com"), true);
   assert.doesNotMatch(appConfig, /applinks:mmddelivery\.com"/);
   assert.doesNotMatch(appJson, /applinks:mmddelivery\.com"/);
 });
@@ -315,10 +315,10 @@ test("RoleSelect exposes explicit Log in entry for App Review", () => {
 
 test("Apple Pay merchant id and entitlement remain configured", () => {
   const config = read("app.config.ts");
-  assert.match(config, /merchant\.com\.maladho2025\.mmddelivery/);
+  assert.equal(config.includes("merchant.com.maladho2025.mmddelivery"), true);
   assert.match(config, /com\.apple\.developer\.in-app-payments/);
   const gate = read("apps/mobile/src/lib/StripeGate.tsx");
-  assert.match(gate, /merchantIdentifier="merchant\.com\.maladho2025\.mmddelivery"/);
+  assert.equal(gate.includes("merchantIdentifier=\"merchant.com.maladho2025.mmddelivery\""), true);
 });
 
 test("client checkout exposes Card and native Apple Pay", () => {
