@@ -3,7 +3,7 @@
 
 import { useAdminT } from "@/i18n/useAdminT";
 import AdminGate from "@/components/AdminGate";
-import AdminOpsLiveMap from "@/components/admin/AdminOpsLiveMap";
+import AdminLiveOperationsCenter from "@/components/admin/AdminLiveOperationsCenter";
 
 export default function AdminLiveMapPage() {
   const { t } = useAdminT();
@@ -16,13 +16,13 @@ export default function AdminLiveMapPage() {
             {t("Operations")}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-            {t("Live Map")}
+            {t("Live Operations Center")}
           </h1>
           <p className="mt-1 text-sm text-[var(--cc-muted)]">
             {t("Authorized live operations for this role. Active trip status only.")}
           </p>
         </header>
-        <AdminOpsLiveMap heightClass="h-[min(78vh,820px)]" showHeaderLink={false} />
+        <AdminLiveOperationsCenter />
       </div>
     </AdminGate>
   );

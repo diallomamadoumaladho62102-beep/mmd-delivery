@@ -19,6 +19,16 @@ import {
   type LatLng,
 } from "@/lib/opsMapDirections";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import {
+  OPS_LOCATION_STALE_MS,
+  buildOpsLiveCenter,
+  decorateOpsMission,
+  isDriverLocationStale,
+  isLiveOpsStatus,
+  opsServiceFromKind,
+  type OpsSafetyReport,
+  type OpsService,
+} from "@/lib/opsLiveCenter";
 
 export const dynamic = "force-dynamic";
 
@@ -187,8 +197,10 @@ export async function GET(request: NextRequest) {
 
     const features: OpsMapFeature[] = [];
     const pendingRoutes: PendingOpsRoute[] = [];
+    const missionDrafts: Array<Parameters<typeof decorateOpsMission>[0]> = [];
+    const safetyReports: OpsSafetyReport[] = [];
     const now = Date.now();
-    const staleMs = 15 * 60 * 1000;
+    const staleMs = OPS_LOCATION_STALE_MS;
     const driverLocById = new Map<
       string,
       { lat: number; lng: number; updated_at: string }
@@ -292,6 +304,9 @@ export async function GET(request: NextRequest) {
           city: d.city ?? null,
           mission_kind: "driver",
           driver_id: id,
+          pin_role: "driver",
+          location_updated_at: loc.updated_at || null,
+          location_stale: !fresh,
         });
         if (f) features.push(f);
       }
@@ -306,7 +321,7 @@ export async function GET(request: NextRequest) {
       const { data: orders } = await supabase
         .from("orders")
         .select(
-          "id, status, client_user_id, driver_id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, country_code, city, created_at, accepted_at, picked_up_at, delivered_at, payment_status, eta_minutes"
+          "id, status, kind, client_user_id, driver_id, restaurant_name, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, country_code, city, created_at, accepted_at, picked_up_at, delivered_at, payment_status, eta_minutes"
         )
         .in("status", [
           "pending",
@@ -331,6 +346,9 @@ export async function GET(request: NextRequest) {
         const orderLat = pickupLat ?? dropLat;
         const orderLng = pickupLng ?? dropLng;
         const timeline = encodeTimeline(orderTimeline(o));
+        const service = opsServiceFromKind(String(o.kind ?? ""));
+        const driverLoc = o.driver_id ? driverLocById.get(String(o.driver_id)) : null;
+        const locationUpdatedAt = driverLoc?.updated_at || null;
 
         if (layers.includes(layer) && orderLat != null && orderLng != null) {
           const f = pointFeature(orderLng, orderLat, {
@@ -344,11 +362,44 @@ export async function GET(request: NextRequest) {
             mission_kind: "order",
             driver_id: o.driver_id ? String(o.driver_id) : null,
             client_id: o.client_user_id ? String(o.client_user_id) : null,
-            eta_minutes: num(o.eta_minutes),
+            eta_minutes: null,
             payment_status: o.payment_status ? String(o.payment_status) : null,
             timeline_json: timeline,
+            service,
+            pin_role: "pickup",
+            operation_id: String(o.id),
+            location_updated_at: locationUpdatedAt,
+            location_stale: o.driver_id
+              ? isDriverLocationStale(locationUpdatedAt, now, staleMs)
+              : false,
+            partner_label: o.restaurant_name ? String(o.restaurant_name) : null,
+            pickup_label: o.pickup_address ? String(o.pickup_address) : null,
+            dropoff_label: o.dropoff_address ? String(o.dropoff_address) : null,
           });
           if (f) features.push(f);
+        }
+
+        if (service && isLiveOpsStatus(String(o.status))) {
+          missionDrafts.push({
+            id: String(o.id),
+            service,
+            status: String(o.status),
+            href: `/admin/orders/${o.id}`,
+            driverId: o.driver_id ? String(o.driver_id) : null,
+            clientId: o.client_user_id ? String(o.client_user_id) : null,
+            partnerLabel: o.restaurant_name ? String(o.restaurant_name) : null,
+            pickupLabel: o.pickup_address ? String(o.pickup_address) : null,
+            dropoffLabel: o.dropoff_address ? String(o.dropoff_address) : null,
+            etaMinutes: null,
+            etaSource: null,
+            locationUpdatedAt,
+            driverAssigned: Boolean(o.driver_id),
+            lat: orderLat,
+            lng: orderLng,
+            timeline: orderTimeline(o),
+            updatedAt: String(o.accepted_at ?? o.created_at ?? "") || null,
+            nowMs: now,
+          });
         }
 
         if (
@@ -369,14 +420,15 @@ export async function GET(request: NextRequest) {
             client_id: String(o.client_user_id),
             driver_id: o.driver_id ? String(o.driver_id) : null,
             timeline_json: timeline,
+            service,
+            pin_role: "destination",
+            operation_id: String(o.id),
+            dropoff_label: o.dropoff_address ? String(o.dropoff_address) : null,
           });
           if (f) features.push(f);
         }
 
         if (layers.includes("routes") && !pending) {
-          const driverLoc = o.driver_id
-            ? driverLocById.get(String(o.driver_id))
-            : null;
           const waypoints: LatLng[] = [];
           if (driverLoc) {
             waypoints.push({ lat: driverLoc.lat, lng: driverLoc.lng });
@@ -408,6 +460,8 @@ export async function GET(request: NextRequest) {
                 timeline_json: timeline,
                 country_code: o.country_code ?? null,
                 city: o.city ?? null,
+                service,
+                operation_id: String(o.id),
               },
             });
           }
@@ -454,13 +508,50 @@ export async function GET(request: NextRequest) {
             mission_kind: "taxi",
             driver_id: r.driver_id ? String(r.driver_id) : null,
             client_id: r.client_user_id ? String(r.client_user_id) : null,
-            eta_minutes: eta,
+            eta_minutes: null,
             payment_status: r.payment_status
               ? String(r.payment_status)
               : null,
             timeline_json: timeline,
+            service: "taxi",
+            pin_role: "pickup",
+            operation_id: String(r.id),
+            location_updated_at: r.driver_id
+              ? driverLocById.get(String(r.driver_id))?.updated_at ?? null
+              : null,
+            location_stale: r.driver_id
+              ? isDriverLocationStale(
+                  driverLocById.get(String(r.driver_id))?.updated_at,
+                  now,
+                  staleMs,
+                )
+              : false,
           });
           if (f) features.push(f);
+        }
+
+        if (isLiveOpsStatus(String(r.status))) {
+          const taxiLoc = r.driver_id ? driverLocById.get(String(r.driver_id)) : null;
+          missionDrafts.push({
+            id: String(r.id),
+            service: "taxi",
+            status: String(r.status),
+            href: `/admin/taxi-rides?focus=${r.id}`,
+            driverId: r.driver_id ? String(r.driver_id) : null,
+            clientId: r.client_user_id ? String(r.client_user_id) : null,
+            partnerLabel: null,
+            pickupLabel: null,
+            dropoffLabel: null,
+            etaMinutes: null,
+            etaSource: null,
+            locationUpdatedAt: taxiLoc?.updated_at ?? null,
+            driverAssigned: Boolean(r.driver_id),
+            lat: pickupLat,
+            lng: pickupLng,
+            timeline: taxiTimeline(r),
+            updatedAt: String(r.accepted_at ?? r.created_at ?? "") || null,
+            nowMs: now,
+          });
         }
 
         if (
@@ -480,6 +571,9 @@ export async function GET(request: NextRequest) {
             client_id: String(r.client_user_id),
             driver_id: r.driver_id ? String(r.driver_id) : null,
             timeline_json: timeline,
+            service: "taxi",
+            pin_role: "destination",
+            operation_id: String(r.id),
           });
           if (f) features.push(f);
         }
@@ -520,6 +614,138 @@ export async function GET(request: NextRequest) {
                   : null,
                 timeline_json: timeline,
                 country_code: r.country_code ?? null,
+                service: "taxi",
+                operation_id: String(r.id),
+              },
+            });
+          }
+        }
+      }
+    }
+
+    if (layers.some((l) => ["orders_active", "orders_pending", "clients", "routes"].includes(l))) {
+      const { data: deliveries } = await supabase
+        .from("delivery_requests")
+        .select(
+          "id, status, client_user_id, driver_id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, eta_minutes, created_at, payment_status"
+        )
+        .in("status", [
+          "pending",
+          "paid",
+          "accepted",
+          "dispatched",
+          "ready",
+          "picked_up",
+          "in_transit",
+          "en_route",
+          "in_progress",
+        ])
+        .limit(1500);
+
+      for (const d of deliveries ?? []) {
+        if (!isLiveOpsStatus(String(d.status))) continue;
+        const operationId = `dr:${d.id}`;
+        const pickupLat = num(d.pickup_lat);
+        const pickupLng = num(d.pickup_lng);
+        const dropLat = num(d.dropoff_lat);
+        const dropLng = num(d.dropoff_lng);
+        const driverLoc = d.driver_id ? driverLocById.get(String(d.driver_id)) : null;
+        const timelineSteps = orderTimeline({
+          created_at: d.created_at,
+          driver_id: d.driver_id,
+          status: d.status,
+          payment_status: d.payment_status,
+        });
+        const timeline = encodeTimeline(timelineSteps);
+        const service: OpsService = "delivery";
+        if (pickupLat != null && pickupLng != null) {
+          const f = pointFeature(pickupLng, pickupLat, {
+            id: `delivery-${d.id}`,
+            layer: "orders_active",
+            label: `Delivery ${String(d.id).slice(0, 8)}`,
+            href: `/admin/delivery-requests?focus=${d.id}`,
+            status: String(d.status),
+            mission_kind: "order",
+            driver_id: d.driver_id ? String(d.driver_id) : null,
+            client_id: d.client_user_id ? String(d.client_user_id) : null,
+            eta_minutes: null,
+            payment_status: d.payment_status ? String(d.payment_status) : null,
+            timeline_json: timeline,
+            service,
+            pin_role: "pickup",
+            operation_id: operationId,
+            location_updated_at: driverLoc?.updated_at ?? null,
+            location_stale: d.driver_id
+              ? isDriverLocationStale(driverLoc?.updated_at, now, staleMs)
+              : false,
+            pickup_label: d.pickup_address ? String(d.pickup_address) : null,
+            dropoff_label: d.dropoff_address ? String(d.dropoff_address) : null,
+          });
+          if (f) features.push(f);
+        }
+        if (dropLat != null && dropLng != null && layers.includes("clients")) {
+          const f = pointFeature(dropLng, dropLat, {
+            id: `delivery-dest-${d.id}`,
+            layer: "clients",
+            label: `Delivery ${String(d.id).slice(0, 8)}`,
+            href: `/admin/delivery-requests?focus=${d.id}`,
+            status: String(d.status),
+            mission_kind: "client",
+            service,
+            pin_role: "destination",
+            operation_id: operationId,
+            client_id: d.client_user_id ? String(d.client_user_id) : null,
+            driver_id: d.driver_id ? String(d.driver_id) : null,
+          });
+          if (f) features.push(f);
+        }
+        missionDrafts.push({
+          id: operationId,
+          service,
+          status: String(d.status),
+          href: `/admin/delivery-requests?focus=${d.id}`,
+          driverId: d.driver_id ? String(d.driver_id) : null,
+          clientId: d.client_user_id ? String(d.client_user_id) : null,
+          partnerLabel: null,
+          pickupLabel: d.pickup_address ? String(d.pickup_address) : null,
+          dropoffLabel: d.dropoff_address ? String(d.dropoff_address) : null,
+          etaMinutes: null,
+          etaSource: null,
+          locationUpdatedAt: driverLoc?.updated_at ?? null,
+          driverAssigned: Boolean(d.driver_id),
+          lat: pickupLat,
+          lng: pickupLng,
+          timeline: timelineSteps,
+          updatedAt: String(d.created_at ?? "") || null,
+          nowMs: now,
+        });
+        if (layers.includes("routes")) {
+          const waypoints: LatLng[] = [];
+          if (driverLoc) waypoints.push({ lat: driverLoc.lat, lng: driverLoc.lng });
+          if (pickupLat != null && pickupLng != null) {
+            waypoints.push({ lat: pickupLat, lng: pickupLng });
+          }
+          if (dropLat != null && dropLng != null) {
+            waypoints.push({ lat: dropLat, lng: dropLng });
+          }
+          if (waypoints.length >= 2) {
+            pendingRoutes.push({
+              missionId: `delivery-${d.id}`,
+              waypoints,
+              fallbackEtaMinutes: num(d.eta_minutes),
+              properties: {
+                id: `route-delivery-${d.id}`,
+                layer: "routes",
+                label: `Route delivery ${String(d.id).slice(0, 8)}`,
+                href: `/admin/delivery-requests?focus=${d.id}`,
+                status: String(d.status),
+                mission_kind: "order",
+                service,
+                operation_id: operationId,
+                driver_id: d.driver_id ? String(d.driver_id) : null,
+                client_id: d.client_user_id ? String(d.client_user_id) : null,
+                eta_minutes: null,
+                timeline_json: timeline,
               },
             });
           }
@@ -592,7 +818,7 @@ export async function GET(request: NextRequest) {
     if (layers.includes("incidents")) {
       const { data: reports } = await supabase
         .from("driver_map_reports")
-        .select("id, latitude, longitude, status, country_code, city")
+        .select("id, latitude, longitude, status, country_code, city, created_at")
         .order("created_at", { ascending: false })
         .limit(1000);
       for (const r of reports ?? []) {
@@ -607,8 +833,18 @@ export async function GET(request: NextRequest) {
           status: String(r.status ?? "open"),
           country_code: r.country_code ?? null,
           city: r.city ?? null,
+          pin_role: "attention",
+          service: null,
         });
         if (f) features.push(f);
+        safetyReports.push({
+          id: String(r.id),
+          label: "Safety report",
+          status: String(r.status ?? "open"),
+          at: r.created_at ? String(r.created_at) : null,
+          lat,
+          lng,
+        });
       }
     }
 
@@ -649,7 +885,14 @@ export async function GET(request: NextRequest) {
         });
       });
       for (const route of resolved) {
-        if (route) features.push(route);
+        if (!route || route.properties.route_source === "straight") continue;
+        features.push(route);
+        const operationId = route.properties.operation_id;
+        if (!operationId) continue;
+        const draft = missionDrafts.find((item) => item.id === operationId);
+        if (!draft) continue;
+        draft.etaMinutes = route.properties.eta_minutes ?? null;
+        draft.etaSource = route.properties.route_source ?? null;
       }
     }
 
@@ -671,7 +914,7 @@ export async function GET(request: NextRequest) {
     if (q) {
       const qq = q.toLowerCase();
       filtered = filtered.filter((f) =>
-        `${f.properties.label} ${f.properties.status ?? ""}`
+        `${f.properties.id} ${f.properties.operation_id ?? ""} ${f.properties.label} ${f.properties.status ?? ""} ${f.properties.driver_id ?? ""} ${f.properties.client_id ?? ""}`
           .toLowerCase()
           .includes(qq)
       );
@@ -686,10 +929,17 @@ export async function GET(request: NextRequest) {
       .select("country_code, region_code, region_name, region_type")
       .limit(2000);
 
+    const center = buildOpsLiveCenter({
+      missions: missionDrafts.map((draft) => decorateOpsMission(draft)),
+      safety: safetyReports,
+      nowMs: now,
+    });
+
     return json({
       ok: true,
       capability,
       generated_at: new Date().toISOString(),
+      center,
       // Routes use cached Directions; slightly slower poll reduces Mapbox burn.
       refresh_seconds: layers.includes("routes") ? 8 : 5,
       collection: { type: "FeatureCollection", features: filtered },
