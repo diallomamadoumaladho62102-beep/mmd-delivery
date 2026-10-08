@@ -274,7 +274,7 @@ export async function POST(req: NextRequest) {
     const message = e instanceof Error ? e.message : "Erreur interne serveur";
     console.error(
       "API /mapbox/compute-distance error:",
-      message.replace(/\r/g, " ").replace(/\n/g, " ").slice(0, 200),
+      message.slice(0, 200).replace(/\r/g, " ").replace(/\n/g, " "),
     );
     return NextResponse.json(
       {

@@ -196,14 +196,14 @@ function sanitizeLogText(value: unknown): string {
 }
 
 export function logTechnicalError(scope: string, error: unknown, metadata?: Record<string, unknown>) {
-  const safeScope = sanitizeLogText(scope).slice(0, 80);
-  const safeError =
+  const safeScope = sanitizeLogText(scope).slice(0, 80).replace(/\r/g, " ").replace(/\n/g, " ");
+  const safeError = (
     error instanceof Error
       ? `${error.name}: ${sanitizeLogText(error.message)}`
-      : sanitizeLogText(error);
-  console.error(
-    `[${safeScope.replace(/\r/g, " ").replace(/\n/g, " ")}]`,
-    safeError.replace(/\r/g, " ").replace(/\n/g, " "),
-  );
+      : sanitizeLogText(error)
+  )
+    .replace(/\r/g, " ")
+    .replace(/\n/g, " ");
+  console.error(safeScope, safeError);
   captureProductionException(scope, error, metadata);
 }

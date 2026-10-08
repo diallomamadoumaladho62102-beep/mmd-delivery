@@ -29,3 +29,28 @@ export function isSafePublicImageUrl(value: string | null | undefined): boolean 
   if (ALLOWED_IMAGE_HOSTS.has(host)) return true;
   return ALLOWED_IMAGE_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
 }
+
+/** Rebuild an allowlisted image URL. Returns null for every other value. */
+export function safePublicImageSrc(value: string | null | undefined): string | null {
+  if (!isSafePublicImageUrl(value)) return null;
+  const raw = String(value).trim();
+
+  if (raw.startsWith("blob:")) {
+    const parsed = new URL(raw);
+    return parsed.protocol === "blob:" ? parsed.href : null;
+  }
+
+  if (/^data:image\/(png|jpe?g|webp|gif|heic|heif);base64,/i.test(raw)) {
+    return raw;
+  }
+
+  const parsed = new URL(raw);
+  if (parsed.username || parsed.password) return null;
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+  const host = parsed.hostname.toLowerCase();
+  const allowed =
+    ALLOWED_IMAGE_HOSTS.has(host) ||
+    ALLOWED_IMAGE_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
+  if (!allowed) return null;
+  return `${parsed.protocol}//${host}${parsed.pathname}${parsed.search}`;
+}

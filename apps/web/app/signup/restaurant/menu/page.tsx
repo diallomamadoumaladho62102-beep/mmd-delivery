@@ -4,7 +4,8 @@
 import { useAdminT } from "@/i18n/useAdminT";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
-import { isSafePublicImageUrl } from "@/lib/safeMediaUrl";
+import { SafePublicImage } from "@/components/SafePublicImage";
+import { safePublicImageSrc } from "@/lib/safeMediaUrl";
 
 type Category = {
   id: string;
@@ -490,10 +491,8 @@ export default function RestaurantMenuPage() {
     return (
       <div key={item.id} className="rounded-2xl border bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row">
-          {isSafePublicImageUrl(item.image_url) ? (
-            // eslint-disable-next-line @next/next/no-img-element -- allowlisted by isSafePublicImageUrl
-            // codeql[js/xss-through-dom]
-            <img src={item.image_url ?? undefined} alt={item.name} className="h-24 w-24 rounded-xl object-cover bg-slate-100" />
+          {safePublicImageSrc(item.image_url) ? (
+            <SafePublicImage src={item.image_url} alt={item.name} className="h-24 w-24 rounded-xl object-cover bg-slate-100" />
           ) : (
             <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-500">
               {t("No photo")}
@@ -682,10 +681,8 @@ export default function RestaurantMenuPage() {
             <div>
               <label className="mb-2 block text-sm font-bold">{t("Image")}</label>
               <input type="file" accept="image/*" onChange={(event: ChangeEvent<HTMLInputElement>) => onNewImageChange(event.target.files?.[0] ?? null)} />
-              {isSafePublicImageUrl(newImagePreview) ? (
-                // eslint-disable-next-line @next/next/no-img-element -- local file preview, allowlisted by isSafePublicImageUrl
-                // codeql[js/xss-through-dom]
-                <img src={newImagePreview ?? undefined} alt={t("Image")} className="mt-3 h-28 w-28 rounded-xl object-cover" />
+              {safePublicImageSrc(newImagePreview) ? (
+                <SafePublicImage src={newImagePreview} alt={t("Image")} className="mt-3 h-28 w-28 rounded-xl object-cover" />
               ) : null}
             </div>
           </div>
@@ -803,14 +800,9 @@ export default function RestaurantMenuPage() {
               <div>
                 <label className="mb-2 block text-sm font-bold">{t("Image")}</label>
                 <input type="file" accept="image/*" onChange={(event: ChangeEvent<HTMLInputElement>) => onEditImageChange(event.target.files?.[0] ?? null)} />
-                {isSafePublicImageUrl(editImagePreview) || isSafePublicImageUrl(editForm.image_url) ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- allowlisted by isSafePublicImageUrl
-                  // codeql[js/xss-through-dom]
-                  <img
-                    src={
-                      (isSafePublicImageUrl(editImagePreview) ? editImagePreview : undefined) ||
-                      (isSafePublicImageUrl(editForm.image_url) ? editForm.image_url : undefined)
-                    }
+                {safePublicImageSrc(editImagePreview) || safePublicImageSrc(editForm.image_url) ? (
+                  <SafePublicImage
+                    src={safePublicImageSrc(editImagePreview) ?? editForm.image_url}
                     alt={t("Image")}
                     className="mt-3 h-28 w-28 rounded-xl object-cover"
                   />

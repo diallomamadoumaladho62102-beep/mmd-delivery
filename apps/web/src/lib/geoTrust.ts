@@ -270,17 +270,20 @@ export function assertMapboxGeocodingUrl(url: string): string {
   return parsed.toString();
 }
 
-async function mapboxEvidence(url: string, cacheKey: string): Promise<GeoEvidence | null> {
+async function mapboxEvidence(
+  place: string,
+  search: URLSearchParams,
+  cacheKey: string,
+): Promise<GeoEvidence | null> {
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const safeUrl = assertMapboxGeocodingUrl(url);
-  const endpoint = new URL(safeUrl);
-  if (endpoint.protocol !== "https:" || endpoint.hostname !== "api.mapbox.com") {
+  const segment = encodeURIComponent(place);
+  const endpoint = new URL(`/geocoding/v5/mapbox.places/${segment}.json`, "https://api.mapbox.com");
+  if (endpoint.hostname !== "api.mapbox.com" || endpoint.protocol !== "https:") {
     throw new Error("geographic_validation_unavailable:invalid_url");
   }
-  if (!endpoint.pathname.startsWith("/geocoding/v5/mapbox.places/")) {
-    throw new Error("geographic_validation_unavailable:invalid_url");
-  }
+  endpoint.search = search.toString();
+  assertMapboxGeocodingUrl(endpoint.toString());
   const response = await fetch(endpoint, { cache: "no-store" });
   if (!response.ok) throw new Error(`geographic_validation_unavailable:${response.status}`);
   const body = (await response.json().catch(() => null)) as { features?: MapboxFeature[] } | null;
@@ -293,10 +296,12 @@ export async function reverseGeocodeEvidence(point: GeoPoint): Promise<GeoEviden
   if (!isValidGeoPoint(point)) return null;
   const token = getServerMapboxToken();
   const key = `r:${point.lat.toFixed(4)}:${point.lng.toFixed(4)}`;
-  const url =
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${point.lng},${point.lat}.json` +
-    `?types=address,poi,place,locality,neighborhood&limit=1&access_token=${encodeURIComponent(token)}`;
-  return mapboxEvidence(url, key);
+  const search = new URLSearchParams({
+    types: "address,poi,place,locality,neighborhood",
+    limit: "1",
+    access_token: token,
+  });
+  return mapboxEvidence(`${point.lng},${point.lat}`, search, key);
 }
 
 export async function forwardGeocodeEvidence(
@@ -308,12 +313,13 @@ export async function forwardGeocodeEvidence(
   const token = getServerMapboxToken();
   const country = normalizeCountry(countryCode)?.toLowerCase();
   const key = `f:${country ?? ""}:${query.toLowerCase()}`;
-  const url =
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
-    `?types=address,poi,place,locality,neighborhood&limit=1` +
-    `${country ? `&country=${country}` : ""}` +
-    `&access_token=${encodeURIComponent(token)}`;
-  return mapboxEvidence(url, key);
+  const search = new URLSearchParams({
+    types: "address,poi,place,locality,neighborhood",
+    limit: "1",
+    access_token: token,
+  });
+  if (country) search.set("country", country);
+  return mapboxEvidence(query, search, key);
 }
 
 export async function validateLocationClaimServer(
