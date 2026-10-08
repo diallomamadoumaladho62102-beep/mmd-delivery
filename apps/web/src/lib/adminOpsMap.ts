@@ -42,6 +42,15 @@ export type OpsMapFeatureProperties = {
   payment_status?: string | null;
   /** JSON-encoded timeline steps for live mission panel */
   timeline_json?: string | null;
+  /** Live Operations Center classification. Optional so older pins still render. */
+  service?: "taxi" | "food" | "delivery" | "marketplace" | null;
+  pin_role?: "driver" | "pickup" | "destination" | "attention" | null;
+  operation_id?: string | null;
+  location_updated_at?: string | null;
+  location_stale?: boolean | null;
+  partner_label?: string | null;
+  pickup_label?: string | null;
+  dropoff_label?: string | null;
 };
 
 export type OpsMapGeometry =
