@@ -19,6 +19,12 @@ import {
   type OpsSafetyReport,
   type OpsService,
 } from "@/lib/opsLiveCenter";
+import {
+  OPS_NEUTRAL_VIEWPORT,
+  isValidOpsCoordinate,
+  shouldAutoFitViewport,
+  viewportForCoordinates,
+} from "@/lib/opsLiveViewport";
 
 const Map = dynamic(() => import("react-map-gl").then((m) => m.default), { ssr: false });
 const Source = dynamic(() => import("react-map-gl").then((m) => m.Source), { ssr: false });
@@ -114,13 +120,24 @@ export default function AdminLiveOperationsCenter() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [refreshSeconds, setRefreshSeconds] = useState(8);
   const [fullscreen, setFullscreen] = useState(false);
+  const [showList, setShowList] = useState(true);
+  const [country, setCountry] = useState("");
+  const [region, setRegion] = useState("");
+  const [cityDraft, setCityDraft] = useState("");
+  const [city, setCity] = useState("");
+  const [countries, setCountries] = useState<Array<{ country_code: string; country_name: string }>>([]);
+  const [regions, setRegions] = useState<Array<{ country_code: string; region_code: string; region_name: string }>>([]);
   const [viewState, setViewState] = useState({
-    longitude: -73.9857,
-    latitude: 40.7484,
-    zoom: 3.2,
+    longitude: OPS_NEUTRAL_VIEWPORT.longitude,
+    latitude: OPS_NEUTRAL_VIEWPORT.latitude,
+    zoom: OPS_NEUTRAL_VIEWPORT.zoom,
   });
   const prevPointsRef = useRef<OpsMapFeature[]>([]);
   const animFrameRef = useRef<number | null>(null);
+  const userAdjustedRef = useRef(false);
+  const fittedKeyRef = useRef<string | null>(null);
+  const lastGeoRef = useRef<string | null>(null);
+  const [geoEpoch, setGeoEpoch] = useState(0);
 
   const load = useCallback(async () => {
     if (!token) {
@@ -129,7 +146,11 @@ export default function AdminLiveOperationsCenter() {
       return;
     }
     try {
-      const res = await adminFetch(`/api/admin/ops-map?layers=${CENTER_LAYERS}`);
+      const params = new URLSearchParams({ layers: CENTER_LAYERS });
+      if (country) params.set("country", country);
+      if (region) params.set("region", region);
+      if (city) params.set("city", city);
+      const res = await adminFetch(`/api/admin/ops-map?${params.toString()}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.ok) {
         setError("load");
@@ -144,6 +165,13 @@ export default function AdminLiveOperationsCenter() {
       setMissions((center.missions ?? []) as OpsMission[]);
       setSafety((center.safety ?? []) as OpsSafetyReport[]);
       setUpdatedAt(body.generated_at ?? null);
+      setCountries(body.geo?.countries ?? []);
+      setRegions(body.geo?.regions ?? []);
+      const geoStamp = `${country}|${region}|${city}`;
+      if (lastGeoRef.current !== geoStamp) {
+        lastGeoRef.current = geoStamp;
+        setGeoEpoch((value) => value + 1);
+      }
       if (typeof body.refresh_seconds === "number") {
         setRefreshSeconds(body.refresh_seconds);
       }
@@ -152,7 +180,7 @@ export default function AdminLiveOperationsCenter() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, country, region, city]);
 
   useEffect(() => {
     void load();
@@ -191,6 +219,16 @@ export default function AdminLiveOperationsCenter() {
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
+  const geoActive = Boolean(country || region || city);
+  const geoOperationIds = useMemo(() => {
+    if (!geoActive) return null;
+    const ids = new Set<string>();
+    for (const feature of features) {
+      if (feature.properties.operation_id) ids.add(feature.properties.operation_id);
+    }
+    return ids;
+  }, [features, geoActive]);
+
   const filtered = useMemo(() => {
     const phaseFilter =
       phase === "active"
@@ -201,8 +239,9 @@ export default function AdminLiveOperationsCenter() {
       phase: phaseFilter === "all" ? "all" : phaseFilter,
       q,
     }).filter((mission) => (phase === "active" ? mission.phase !== "waiting" : true));
-    return rows;
-  }, [missions, service, phase, q]);
+    if (!geoOperationIds) return rows;
+    return rows.filter((mission) => geoOperationIds.has(mission.id));
+  }, [missions, service, phase, q, geoOperationIds]);
 
   const view = useMemo(
     () =>
@@ -291,37 +330,55 @@ export default function AdminLiveOperationsCenter() {
   }, [visibleFeatures, refreshSeconds]);
 
   const selected = filtered.find((mission) => mission.id === selectedId) ?? null;
+  const fitKey = `${service}|${phase}|${q.trim()}|${geoEpoch}`;
+  const operationPoints = useMemo(() => {
+    const points: Array<{ lng: number; lat: number }> = [];
+    for (const mission of filtered) {
+      if (mission.lat != null && mission.lng != null) points.push({ lng: mission.lng, lat: mission.lat });
+    }
+    for (const feature of visibleFeatures) {
+      if (feature.geometry.type !== "Point") continue;
+      if (!feature.properties.operation_id) continue;
+      const [lng, lat] = feature.geometry.coordinates;
+      points.push({ lng, lat });
+    }
+    return points;
+  }, [filtered, visibleFeatures]);
+
+  useEffect(() => {
+    if (loading && missions.length === 0 && features.length === 0) return;
+    if (fittedKeyRef.current === fitKey) return;
+    const reason = fittedKeyRef.current == null ? "load" : "filter";
+    if (!shouldAutoFitViewport({ userAdjusted: userAdjustedRef.current, reason })) return;
+    fittedKeyRef.current = fitKey;
+    userAdjustedRef.current = false;
+    const next = viewportForCoordinates(operationPoints);
+    setViewState({ longitude: next.longitude, latitude: next.latitude, zoom: next.zoom });
+  }, [fitKey, loading, missions.length, features.length, operationPoints]);
 
   function centerOn(lng: number | null, lat: number | null) {
-    if (lng == null || lat == null) return;
-    setViewState((prev) => ({ ...prev, longitude: lng, latitude: lat, zoom: Math.max(prev.zoom, 12) }));
+    if (!isValidOpsCoordinate(lng, lat)) return;
+    userAdjustedRef.current = true;
+    setViewState((prev) => ({
+      ...prev,
+      longitude: Number(lng),
+      latitude: Number(lat),
+      zoom: Math.max(prev.zoom, 14),
+    }));
   }
 
   function selectMission(mission: OpsMission) {
     setSelectedId(mission.id);
+    setShowList(true);
     centerOn(mission.lng, mission.lat);
   }
 
   function fitOperations() {
-    const points = visibleFeatures.filter((feature) => feature.geometry.type === "Point");
-    if (!points.length) return;
-    let minLng = 180;
-    let maxLng = -180;
-    let minLat = 90;
-    let maxLat = -90;
-    for (const feature of points) {
-      if (feature.geometry.type !== "Point") continue;
-      const [lng, lat] = feature.geometry.coordinates;
-      minLng = Math.min(minLng, lng);
-      maxLng = Math.max(maxLng, lng);
-      minLat = Math.min(minLat, lat);
-      maxLat = Math.max(maxLat, lat);
-    }
-    setViewState({
-      longitude: (minLng + maxLng) / 2,
-      latitude: (minLat + maxLat) / 2,
-      zoom: points.length === 1 ? 13 : 10,
-    });
+    if (!shouldAutoFitViewport({ userAdjusted: userAdjustedRef.current, reason: "manual-fit" })) return;
+    fittedKeyRef.current = fitKey;
+    userAdjustedRef.current = false;
+    const next = viewportForCoordinates(operationPoints);
+    setViewState({ longitude: next.longitude, latitude: next.latitude, zoom: next.zoom });
   }
 
   async function toggleFullscreen() {
@@ -392,26 +449,21 @@ export default function AdminLiveOperationsCenter() {
         </div>
       </div>
 
-      <div className="grid gap-2 border-b border-[var(--cc-border)] px-4 py-3 sm:grid-cols-3 lg:grid-cols-7" aria-live="polite">
-        {(
-          [
-            ["Taxi", view.metrics.taxi],
-            ["Food", view.metrics.food],
-            ["Delivery", view.metrics.delivery],
-            ["Marketplace", view.metrics.marketplace],
-            ["Active operations", view.metrics.total],
-            ["On time", view.metrics.onTime],
-            ["Delayed", view.metrics.delayed],
-            ["Waiting", view.metrics.waiting],
-            ["Attention", view.metrics.attention],
-          ] as const
-        ).map(([key, value]) => (
-          <div key={key} className="rounded-xl border border-[var(--cc-border)] px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--cc-muted)]">{t(key)}</p>
-            <p className="text-xl font-semibold tabular-nums text-slate-900">{value}</p>
-          </div>
-        ))}
-      </div>
+      <p className="border-b border-[var(--cc-border)] px-4 py-2 text-sm text-slate-700" aria-live="polite">
+        <span className="font-semibold uppercase tracking-wide">{t("Live now")}</span>
+        <span className="mx-2 text-slate-300" aria-hidden>·</span>
+        <span className="tabular-nums font-semibold">{view.metrics.total}</span> {t("Active")}
+        <span className="mx-2 text-slate-300" aria-hidden>·</span>
+        {t("Taxi")} <span className="tabular-nums">{view.metrics.taxi}</span>
+        <span className="mx-2 text-slate-300" aria-hidden>·</span>
+        {t("Food")} <span className="tabular-nums">{view.metrics.food}</span>
+        <span className="mx-2 text-slate-300" aria-hidden>·</span>
+        {t("Delivery")} <span className="tabular-nums">{view.metrics.delivery}</span>
+        <span className="mx-2 text-slate-300" aria-hidden>·</span>
+        {t("Marketplace")} <span className="tabular-nums">{view.metrics.marketplace}</span>
+        <span className="mx-2 text-slate-300" aria-hidden>·</span>
+        {t("Attention")} <span className="tabular-nums">{view.metrics.attention}</span>
+      </p>
 
       <div className="flex flex-wrap gap-2 border-b border-[var(--cc-border)] px-4 py-3">
         <label className="sr-only" htmlFor="ops-search">{t("Search live operations")}</label>
@@ -426,10 +478,65 @@ export default function AdminLiveOperationsCenter() {
           <FilterButton key={item} active={service === item} label={t(serviceLabelKey(item))} onClick={() => setService(item)} />
         ))}
       </div>
-      <div className="flex flex-wrap gap-2 border-b border-[var(--cc-border)] px-4 py-3">
+      <div className="relative flex flex-wrap gap-2 border-b border-[var(--cc-border)] px-4 py-3">
         {PHASES.map((item) => (
           <FilterButton key={item} active={phase === item} label={t(phaseLabelKey(item))} onClick={() => setPhase(item)} />
         ))}
+        <details className="ml-auto">
+          <summary className="cursor-pointer rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            {t("Advanced filters")}
+          </summary>
+          <div className="absolute z-10 mt-2 flex w-[min(100vw-2rem,520px)] flex-wrap gap-2 rounded-xl border border-[var(--cc-border)] bg-white p-3 shadow">
+            <label className="sr-only" htmlFor="ops-country">{t("All countries")}</label>
+            <select
+              id="ops-country"
+              value={country}
+              onChange={(event) => {
+                setCountry(event.target.value);
+                setRegion("");
+              }}
+              className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
+            >
+              <option value="">{t("All countries")}</option>
+              {countries.map((item) => (
+                <option key={item.country_code} value={item.country_code}>
+                  {item.country_name || item.country_code}
+                </option>
+              ))}
+            </select>
+            <label className="sr-only" htmlFor="ops-region">{t("All states / regions")}</label>
+            <select
+              id="ops-region"
+              value={region}
+              onChange={(event) => setRegion(event.target.value)}
+              className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
+            >
+              <option value="">{t("All states / regions")}</option>
+              {regions
+                .filter((item) => !country || item.country_code === country)
+                .map((item) => (
+                  <option key={`${item.country_code}-${item.region_code}`} value={item.region_code}>
+                    {item.region_name || item.region_code}
+                  </option>
+                ))}
+            </select>
+            <label className="sr-only" htmlFor="ops-city">{t("City filter")}</label>
+            <input
+              id="ops-city"
+              value={cityDraft}
+              onChange={(event) => setCityDraft(event.target.value)}
+              placeholder={t("City filter")}
+              className="min-w-[140px] flex-1 rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white"
+              onClick={() => setCity(cityDraft.trim())}
+            >
+              {t("Apply filters")}
+            </button>
+          </div>
+        </details>
       </div>
 
       {error ? (
@@ -438,11 +545,18 @@ export default function AdminLiveOperationsCenter() {
         </p>
       ) : null}
 
-      <div className={`grid gap-0 ${fullscreen ? "h-[calc(100vh-220px)]" : ""} xl:grid-cols-[minmax(0,1fr)_380px]`}>
-        <div className={`relative min-h-[420px] ${fullscreen ? "h-full" : "h-[min(72vh,820px)]"}`}>
+      <div className={fullscreen ? "h-[calc(100vh-148px)]" : "h-[calc(100vh-188px)] min-h-[560px]"}>
+        <div className="relative h-full">
           <Map
             {...viewState}
-            onMove={(event) => setViewState(event.viewState)}
+            onMove={(event) => {
+              setViewState({
+                longitude: event.viewState.longitude,
+                latitude: event.viewState.latitude,
+                zoom: event.viewState.zoom,
+              });
+              if (event.originalEvent) userAdjustedRef.current = true;
+            }}
             mapboxAccessToken={token}
             mapStyle="mapbox://styles/mapbox/streets-v12"
             style={{ width: "100%", height: "100%" }}
@@ -487,9 +601,12 @@ export default function AdminLiveOperationsCenter() {
               />
             </Source>
           </Map>
-          <div className="absolute left-3 top-3 flex max-w-[240px] flex-col gap-2">
+          <div className="absolute left-3 top-3 flex max-w-[220px] flex-col gap-1">
             <button type="button" onClick={fitOperations} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-semibold shadow">
               {t("Fit active operations")}
+            </button>
+            <button type="button" onClick={() => setShowList((value) => !value)} className="rounded-xl bg-white px-3 py-2 text-left text-xs font-semibold shadow">
+              {showList ? t("Hide operations") : t("Show operations")}
             </button>
             <Toggle label={t("Drivers")} pressed={showDrivers} onClick={() => setShowDrivers((value) => !value)} />
             <Toggle label={t("Customers")} pressed={showDestinations} onClick={() => setShowDestinations((value) => !value)} />
@@ -513,9 +630,12 @@ export default function AdminLiveOperationsCenter() {
                 : t("No active operations")}
             </div>
           ) : null}
-        </div>
 
-        <aside className="max-h-[min(72vh,820px)] overflow-y-auto border-t border-[var(--cc-border)] xl:border-l xl:border-t-0">
+        <aside
+          className={`absolute bottom-14 right-3 top-14 z-10 w-[min(92%,340px)] overflow-y-auto rounded-2xl border border-[var(--cc-border)] bg-white/95 shadow-lg ${
+            showList ? "" : "hidden"
+          }`}
+        >
           <section className="border-b border-[var(--cc-border)] p-4">
             <h3 className="text-sm font-semibold text-slate-900">{t("Live attention")}</h3>
             {view.attention.length === 0 ? (
@@ -637,6 +757,7 @@ export default function AdminLiveOperationsCenter() {
             )}
           </section>
         </aside>
+        </div>
       </div>
       {loading ? <p className="px-4 py-2 text-xs text-[var(--cc-muted)]">{t("Loading…")}</p> : null}
     </div>
