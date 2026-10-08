@@ -78,7 +78,7 @@ const resetPassword = readRepo("apps/web/app/auth/reset-password/page.tsx");
 assert.match(resetPassword, /assertSafeAppReturnUrl/);
 
 const restaurantProfile = readRepo("apps/web/app/restaurant/profile/page.tsx");
-assert.match(restaurantProfile, /isSafePublicImageUrl/);
+assert.match(restaurantProfile, /SafePublicImage/);
 
 const mobileAuth = readRepo("apps/mobile/lib/supabase.ts");
 assert.match(mobileAuth, /createSecureAuthStorage/);

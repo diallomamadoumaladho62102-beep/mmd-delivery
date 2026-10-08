@@ -135,9 +135,12 @@ export default function ResetPasswordPage() {
 
     setMessage(t("Mot de passe mis à jour avec succès ✅"));
     if (safeNext) {
-      window.setTimeout(() => {
-        window.location.assign(safeNext);
-      }, 800);
+      const target = new URL(safeNext, window.location.origin);
+      if (target.origin === window.location.origin) {
+        window.setTimeout(() => {
+          window.location.assign(`${target.pathname}${target.search}${target.hash}`);
+        }, 800);
+      }
     }
   };
 

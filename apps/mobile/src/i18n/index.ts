@@ -71,11 +71,17 @@ function ensureAllowedLocale(locale: string) {
 /**
  * Helpers: get/set deep path safely
  */
+function isSafePathSegment(segment: string): boolean {
+  return segment !== "__proto__" && segment !== "prototype" && segment !== "constructor";
+}
+
 function getDeep(obj: any, path: string) {
   const parts = path.split(".");
   let cur = obj;
   for (const p of parts) {
+    if (!isSafePathSegment(p)) return undefined;
     if (cur == null || typeof cur !== "object") return undefined;
+    if (!Object.prototype.hasOwnProperty.call(cur, p)) return undefined;
     cur = cur[p];
   }
   return cur;
@@ -88,12 +94,16 @@ function setDeepIfMissing(obj: any, path: string, value: any) {
 
   for (let i = 0; i < parts.length - 1; i++) {
     const p = parts[i];
-    if (cur[p] == null || typeof cur[p] !== "object") cur[p] = {};
+    if (!isSafePathSegment(p)) return;
+    if (!Object.prototype.hasOwnProperty.call(cur, p) || cur[p] == null || typeof cur[p] !== "object") {
+      cur[p] = {};
+    }
     cur = cur[p];
   }
 
   const last = parts[parts.length - 1];
-  if (cur[last] == null) cur[last] = value;
+  if (!isSafePathSegment(last)) return;
+  if (!Object.prototype.hasOwnProperty.call(cur, last) || cur[last] == null) cur[last] = value;
 }
 
 /**
@@ -118,10 +128,15 @@ function ensureStringFallback(t: any, path: string, fallback: string) {
     let cur = t;
     for (let i = 0; i < parts.length - 1; i++) {
       const p = parts[i];
-      if (cur[p] == null || typeof cur[p] !== "object") cur[p] = {};
+      if (!isSafePathSegment(p)) return;
+      if (!Object.prototype.hasOwnProperty.call(cur, p) || cur[p] == null || typeof cur[p] !== "object") {
+        cur[p] = {};
+      }
       cur = cur[p];
     }
-    cur[parts[parts.length - 1]] = fallback;
+    const leaf = parts[parts.length - 1];
+    if (!isSafePathSegment(leaf)) return;
+    cur[leaf] = fallback;
   }
 }
 

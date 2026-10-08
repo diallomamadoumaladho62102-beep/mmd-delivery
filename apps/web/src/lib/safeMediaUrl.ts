@@ -29,3 +29,60 @@ export function isSafePublicImageUrl(value: string | null | undefined): boolean 
   if (ALLOWED_IMAGE_HOSTS.has(host)) return true;
   return ALLOWED_IMAGE_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
 }
+
+/** Rebuild an allowlisted image URL. Returns null for every other value. */
+export function safePublicImageSrc(value: string | null | undefined): string | null {
+  if (!isSafePublicImageUrl(value)) return null;
+  const raw = String(value).trim();
+
+  if (raw.startsWith("blob:")) {
+    const parsed = new URL(raw);
+    return parsed.protocol === "blob:" ? parsed.href : null;
+  }
+
+  if (/^data:image\/(png|jpe?g|webp|gif|heic|heif);base64,/i.test(raw)) {
+    return raw;
+  }
+
+  const parsed = new URL(raw);
+  if (parsed.username || parsed.password) return null;
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+  const host = parsed.hostname.toLowerCase();
+  const allowed =
+    ALLOWED_IMAGE_HOSTS.has(host) ||
+    ALLOWED_IMAGE_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
+  if (!allowed) return null;
+  return `${parsed.protocol}//${host}${parsed.pathname}${parsed.search}`;
+}
+
+/** Assign an image URL only after the protocol and host have been checked. */
+export function setSafeImageSource(image: HTMLImageElement | null, value: string | null | undefined): void {
+  if (!image) return;
+  const safe = safePublicImageSrc(value);
+  if (!safe) {
+    image.removeAttribute("src");
+    return;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(safe);
+  } catch {
+    image.removeAttribute("src");
+    return;
+  }
+  const host = parsed.hostname.toLowerCase();
+  const remote =
+    (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+    !parsed.username &&
+    !parsed.password &&
+    (ALLOWED_IMAGE_HOSTS.has(host) ||
+      ALLOWED_IMAGE_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix)));
+  const local =
+    parsed.protocol === "blob:" ||
+    /^data:image\/(png|jpe?g|webp|gif|heic|heif);base64,/i.test(safe);
+  if (!remote && !local) {
+    image.removeAttribute("src");
+    return;
+  }
+  image.src = parsed.href; // codeql[js/xss-through-dom] -- protocol and host checked above
+}

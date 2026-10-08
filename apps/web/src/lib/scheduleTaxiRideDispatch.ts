@@ -57,7 +57,15 @@ export async function triggerTaxiRideDispatch(params: {
   };
 
   try {
-    const res = await fetch(`${trustedInternalOrigin(origin).replace(/\/$/, "")}/api/dispatch/taxi-ride`, {
+    const internalOrigin = new URL(trustedInternalOrigin(origin));
+    const host = internalOrigin.hostname.toLowerCase();
+    const loopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (internalOrigin.protocol !== "https:" && !(internalOrigin.protocol === "http:" && loopback)) {
+      throw new Error("untrusted_internal_origin");
+    }
+    const endpoint = new URL("/api/dispatch/taxi-ride", internalOrigin.origin);
+    if (endpoint.hostname.toLowerCase() !== host) throw new Error("untrusted_internal_origin");
+    const res = await fetch(endpoint, {
       method: "POST",
       headers,
       body: JSON.stringify({ taxiRideId, taxi_ride_id: taxiRideId, wave }),

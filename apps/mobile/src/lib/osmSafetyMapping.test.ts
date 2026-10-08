@@ -93,7 +93,8 @@ assert(isRetryableOverpassStatus(406) === true, "406 retry other mirrors");
 assert(isRetryableOverpassStatus(403) === true, "403 retry other mirrors");
 assert(isRetryableOverpassStatus(404) === false, "404 definitive");
 assert(
-  OVERPASS_USER_AGENT.includes("mmddelivery.com"),
+  OVERPASS_USER_AGENT ===
+    "MMD-Delivery/road-safety (https://www.mmddelivery.com; support@mmddelivery.com)",
   "Overpass UA identifies MMD with contact host",
 );
 assert(

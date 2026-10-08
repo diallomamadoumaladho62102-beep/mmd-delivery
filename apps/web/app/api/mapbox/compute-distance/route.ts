@@ -67,13 +67,25 @@ async function getDistanceAndDuration(
 ) {
   const MAPBOX_TOKEN = requireMapboxToken();
 
-  const url = new URL(
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${pickupLng},${pickupLat};${dropoffLng},${dropoffLat}`
-  );
+  const lng1 = Number(pickupLng);
+  const lat1 = Number(pickupLat);
+  const lng2 = Number(dropoffLng);
+  const lat2 = Number(dropoffLat);
+  if (![lng1, lat1, lng2, lat2].every((value) => Number.isFinite(value))) {
+    throw new Error("invalid_coordinates");
+  }
+  const path = `${lng1.toFixed(6)},${lat1.toFixed(6)};${lng2.toFixed(6)},${lat2.toFixed(6)}`;
+  if (!/^-?\d+\.\d{6},-?\d+\.\d{6};-?\d+\.\d{6},-?\d+\.\d{6}$/.test(path)) {
+    throw new Error("invalid_coordinates");
+  }
+  const url = new URL(`/directions/v5/mapbox/driving/${path}`, "https://api.mapbox.com");
+  if (url.hostname !== "api.mapbox.com" || url.protocol !== "https:") {
+    throw new Error("invalid_coordinates");
+  }
   url.searchParams.set("overview", "false");
   url.searchParams.set("access_token", MAPBOX_TOKEN);
 
-  const res = await fetch(url.toString(), {
+  const res = await fetch(url, {
     headers: { "Content-Type": "application/json" },
   });
 
@@ -258,9 +270,8 @@ export async function POST(req: NextRequest) {
       delivery_fee: deliveryPrice,
       delivery_fee_usd: deliveryPrice,
     });
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Erreur interne serveur";
-    console.error("API /mapbox/compute-distance error:", message.slice(0, 200));
+  } catch {
+    console.error("API /mapbox/compute-distance error");
     return NextResponse.json(
       {
         ok: false,

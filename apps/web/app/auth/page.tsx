@@ -20,14 +20,10 @@ function readNextPath(): string {
 }
 
 function redirectIfSafeNext(next: string) {
-  if (
-    next.startsWith("/") &&
-    !next.startsWith("//") &&
-    !next.includes("://") &&
-    !next.includes("\\")
-  ) {
-    window.location.assign(next);
-  }
+  const safe = sanitizeInternalRedirectPath(next, "/dashboard");
+  const target = new URL(safe, window.location.origin);
+  if (target.origin !== window.location.origin) return;
+  window.location.assign(`${target.pathname}${target.search}${target.hash}`);
 }
 
 export default function AuthPage() {

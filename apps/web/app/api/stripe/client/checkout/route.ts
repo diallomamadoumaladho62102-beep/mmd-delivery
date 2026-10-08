@@ -57,10 +57,19 @@ export async function POST(req: NextRequest) {
     }
 
     const authHeader = extractBearerHeader(req);
-    const base = trustedInternalOrigin(req.nextUrl.origin);
+    const internalOrigin = new URL(trustedInternalOrigin(req.nextUrl.origin));
+    const host = internalOrigin.hostname.toLowerCase();
+    const loopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (internalOrigin.protocol !== "https:" && !(internalOrigin.protocol === "http:" && loopback)) {
+      throw new Error("untrusted_internal_origin");
+    }
+    const endpoint = new URL("/api/stripe/client/create-checkout-session", internalOrigin.origin);
+    if (endpoint.hostname.toLowerCase() !== host) {
+      throw new Error("untrusted_internal_origin");
+    }
 
     const response = await fetch(
-      `${base}/api/stripe/client/create-checkout-session`,
+      endpoint,
       {
         method: "POST",
         headers: {

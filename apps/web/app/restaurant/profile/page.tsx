@@ -5,7 +5,8 @@ import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
-import { isSafePublicImageUrl } from "@/lib/safeMediaUrl";
+import { SafePublicImage } from "@/components/SafePublicImage";
+import { safePublicImageSrc } from "@/lib/safeMediaUrl";
 
 type RestaurantProfileRow = {
   user_id: string;
@@ -757,12 +758,12 @@ export default function RestaurantProfilePage() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50 text-xl font-black text-gray-400">
-              {logoPreview && isSafePublicImageUrl(logoPreview) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoPreview} alt="Aperçu logo" className="h-full w-full object-cover" />
-              ) : isSafePublicImageUrl(profile.restaurant_logo_url) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.restaurant_logo_url ?? undefined} alt="Logo restaurant" className="h-full w-full object-cover" />
+              {safePublicImageSrc(logoPreview) || safePublicImageSrc(profile.restaurant_logo_url) ? (
+                <SafePublicImage
+                  src={safePublicImageSrc(logoPreview) ?? profile.restaurant_logo_url}
+                  alt={t("Logo du restaurant")}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 "+"
               )}
@@ -787,12 +788,12 @@ export default function RestaurantProfilePage() {
 
           <div className="flex flex-col gap-3">
             <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-2xl border bg-gray-50 text-xl font-black text-gray-400">
-              {coverPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={isSafePublicImageUrl(coverPreview) ? coverPreview : undefined} alt="Aperçu couverture" className="h-full w-full object-cover" />
-              ) : isSafePublicImageUrl(profile.cover_image_url) ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.cover_image_url ?? undefined} alt="Couverture restaurant" className="h-full w-full object-cover" />
+              {safePublicImageSrc(coverPreview) || safePublicImageSrc(profile.cover_image_url) ? (
+                <SafePublicImage
+                  src={safePublicImageSrc(coverPreview) ?? profile.cover_image_url}
+                  alt={t("Image de couverture")}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 "Couverture"
               )}

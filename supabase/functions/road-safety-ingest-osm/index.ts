@@ -60,8 +60,8 @@ Deno.serve(async (req: Request) => {
 
     return json(req, { ok: true, ...result, attribution: "© OpenStreetMap contributors" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : "";
     const status = message.startsWith("overpass_failed") ? 502 : 500;
-    return json(req, { error: "ingest_failed", details: message }, status);
+    return json(req, { error: "ingest_failed", reason: status === 502 ? "upstream" : "internal" }, status);
   }
 });
