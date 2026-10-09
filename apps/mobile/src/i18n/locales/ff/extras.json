@@ -4348,7 +4348,11 @@
     "pricingUnavailable": "Njobdi Gine alaa tawo. Ndoggu njobdaaka.",
     "routeUnavailable": "Laawol waawaa hiisaade.",
     "requestFailed": "Ɗaɓɓoore waawaa neldude.",
-    "outsideGuinea": "Jipporde e yottoonde fow ena poti wonde e Gine."
+    "outsideGuinea": "Jipporde e yottoonde fow ena poti wonde e Gine.",
+    "distanceExceeded": "Yahdu nduu ɓuri 100 km. Njaru Standard huutoraaka. Huutoro XL so laawol ngol woni.",
+    "capacityExceeded": "Moota oo waawaa jogaade yimɓe ɓee fof.",
+    "motorcyclePool": "Moto waawaa renndineede.",
+    "commissionUnavailable": "Komisiyoŋ Gine teeldaaka tawo. Yahdu nduu njaraaka."
   },
   "taxiXl": {
     "open": "XL hakkunde diiwanuuji",

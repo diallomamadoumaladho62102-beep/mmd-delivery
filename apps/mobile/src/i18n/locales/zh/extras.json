@@ -4462,7 +4462,11 @@
     "pricingUnavailable": "几内亚运价尚未配置。此次行程未计价。",
     "routeUnavailable": "无法计算路线。",
     "requestFailed": "无法发送请求。",
-    "outsideGuinea": "上车点和目的地都必须在几内亚境内。"
+    "outsideGuinea": "上车点和目的地都必须在几内亚境内。",
+    "distanceExceeded": "此行程超过 100 公里。标准计价不适用。轴线可用时请使用跨区 XL。",
+    "capacityExceeded": "这辆车不能乘坐这么多乘客。",
+    "motorcyclePool": "摩托车不能拼车。",
+    "commissionUnavailable": "几内亚佣金尚未配置。此次行程未计价。"
   },
   "taxiXl": {
     "open": "XL 跨区",

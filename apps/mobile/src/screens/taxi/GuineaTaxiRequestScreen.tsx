@@ -72,6 +72,24 @@ function quoteErrorMessage(
   if (code === "taxi_distance_too_far") {
     return t("taxiGuinea.routeUnavailable", "The route could not be calculated.");
   }
+  if (code === "guinea_standard_distance_exceeded") {
+    return t(
+      "taxiGuinea.distanceExceeded",
+      "This trip is longer than 100 km. Standard pricing does not apply. Use XL interregional when that axis is available.",
+    );
+  }
+  if (code === "guinea_capacity_exceeded") {
+    return t("taxiGuinea.capacityExceeded", "This vehicle cannot take that many passengers.");
+  }
+  if (code === "guinea_motorcycle_pool_forbidden") {
+    return t("taxiGuinea.motorcyclePool", "A motorcycle cannot be shared.");
+  }
+  if (code === "guinea_commission_not_configured") {
+    return t(
+      "taxiGuinea.commissionUnavailable",
+      "The Guinea commission is not configured yet. The trip was not priced.",
+    );
+  }
   return t("taxiGuinea.requestFailed", "The request could not be sent.");
 }
 

@@ -1,3 +1,5 @@
+import { resolveGuineaStandardVehicle } from "@/lib/markets/guineaStandard";
+
 /**
  * Guinea is one national market.
  *
@@ -29,7 +31,7 @@ export const GUINEA_NATIONAL_EXTENT = {
 
 export type GuineaMarketDecision =
   | { kind: "us" }
-  | { kind: "guinea" }
+  | { kind: "guinea"; vehicle: "car" | "motorcycle" }
   | { kind: "reject"; status: number; error: string };
 
 export function isGuineaMarketEnabled(
@@ -134,7 +136,7 @@ export function resolveGuineaTaxiMarket(input: {
     }
   }
 
-  if ((input.stops?.length ?? 0) > 0 || input.sharedRide === true) {
+  if ((input.stops?.length ?? 0) > 0) {
     return { kind: "reject", status: 400, error: "guinea_trip_not_supported" };
   }
 
@@ -143,10 +145,13 @@ export function resolveGuineaTaxiMarket(input: {
     return { kind: "reject", status: 400, error: "guinea_trip_not_supported" };
   }
 
-  const vehicleClass = String(input.vehicleClass ?? "standard").trim().toLowerCase();
-  if (vehicleClass !== "standard") {
-    return { kind: "reject", status: 400, error: "guinea_vehicle_class_not_configured" };
+  const vehicle = resolveGuineaStandardVehicle(input.vehicleClass ?? "standard");
+  if (vehicle.ok === false) {
+    return { kind: "reject", status: 400, error: vehicle.error };
+  }
+  if (input.sharedRide === true && vehicle.vehicle === "motorcycle") {
+    return { kind: "reject", status: 400, error: "guinea_motorcycle_pool_forbidden" };
   }
 
-  return { kind: "guinea" };
+  return { kind: "guinea", vehicle: vehicle.vehicle };
 }

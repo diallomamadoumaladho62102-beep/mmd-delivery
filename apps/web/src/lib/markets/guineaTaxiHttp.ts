@@ -25,6 +25,13 @@ import {
   readGuineaTaxiRateCard,
   type GuineaTaxiRateCard,
 } from "@/lib/markets/guineaTaxiPricing";
+import {
+  freezeGuineaStandardSnapshot,
+  GUINEA_STANDARD_MAX_DISTANCE_METERS,
+  readGuineaStandardCommissionBps,
+  resolveGuineaPassengerCount,
+  splitGuineaStandardCommission,
+} from "@/lib/markets/guineaStandard";
 
 type PointInput = {
   claimedCountryCode?: string | null;
@@ -44,6 +51,7 @@ type PointInput = {
   promoCode?: string | null;
   rewardId?: string | null;
   clientNotes?: string | null;
+  passengerCount?: unknown;
 };
 
 function requestedMethod(value: unknown): string {
@@ -159,8 +167,12 @@ async function routeAndPrice(input: PointInput, card: GuineaTaxiRateCard) {
     }
   }
 
+  const distanceMeters = milesToWholeMeters(route.distanceMiles);
+  if (distanceMeters > GUINEA_STANDARD_MAX_DISTANCE_METERS) {
+    throw new Error("guinea_standard_distance_exceeded");
+  }
   const priced = calculateGuineaTaxiFareGnf({
-    distanceMeters: milesToWholeMeters(route.distanceMiles),
+    distanceMeters,
     durationMinutes: route.durationMinutes,
     card,
   });
@@ -170,6 +182,8 @@ async function routeAndPrice(input: PointInput, card: GuineaTaxiRateCard) {
 function quoteBody(input: {
   locality: string | null;
   fareGnf: number;
+  platformFeeGnf: number;
+  driverAmountGnf: number;
   distanceMeters: number;
   durationMinutes: number;
   route: {
@@ -206,7 +220,8 @@ function quoteBody(input: {
       gross_total_cents: input.fareGnf,
       tax_cents: 0,
       service_fee_cents: 0,
-      platform_fee_cents: 0,
+      platform_fee_cents: input.platformFeeGnf,
+      driver_payout_cents: input.driverAmountGnf,
       payment_method: "cash",
       charge_path: "guinea_cash",
       distance_km: distanceKm,
@@ -241,15 +256,27 @@ export async function maybeQuoteGuineaTaxi(input: PointInput) {
     return taxiJson({ ok: false, error: "orange_money_disabled" }, 403);
   }
 
+  const passengers = resolveGuineaPassengerCount(input.passengerCount, decision.vehicle);
+  if (passengers.ok === false) {
+    return taxiJson({ ok: false, error: passengers.error }, 400);
+  }
   const rates = readGuineaTaxiRateCard();
   if (rates.ok === false) {
     return taxiJson({ ok: false, error: rates.error }, 503);
+  }
+  const commissionBps = readGuineaStandardCommissionBps();
+  if (commissionBps == null) {
+    return taxiJson({ ok: false, error: "guinea_commission_not_configured" }, 503);
   }
 
   try {
     const { route, priced, evidence } = await routeAndPrice(input, rates.card);
     if (priced.ok === false) {
       return taxiJson({ ok: false, error: priced.error }, 400);
+    }
+    const split = splitGuineaStandardCommission(priced.fareGnf, commissionBps);
+    if (!split) {
+      return taxiJson({ ok: false, error: "guinea_commission_not_configured" }, 503);
     }
     const locality =
       localityLabel(input.pickupAddress) ??
@@ -258,6 +285,8 @@ export async function maybeQuoteGuineaTaxi(input: PointInput) {
       quoteBody({
         locality,
         fareGnf: priced.fareGnf,
+        platformFeeGnf: split.platformFeeGnf,
+        driverAmountGnf: split.driverAmountGnf,
         distanceMeters: priced.distanceMeters,
         durationMinutes: priced.durationMinutes,
         route,
@@ -267,6 +296,9 @@ export async function maybeQuoteGuineaTaxi(input: PointInput) {
     const message = error instanceof Error ? error.message : ROUTE_UNAVAILABLE;
     if (message === "distance_too_far" || message === "taxi_distance_too_far") {
       return taxiJson({ ok: false, error: "taxi_distance_too_far" }, 400);
+    }
+    if (message === "guinea_standard_distance_exceeded") {
+      return taxiJson({ ok: false, error: "guinea_standard_distance_exceeded" }, 400);
     }
     if (
       message === "MAPBOX_ACCESS_TOKEN missing" ||
@@ -322,9 +354,17 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     return taxiJson({ ok: false, ...(platform as unknown as Record<string, unknown>) }, 403);
   }
 
+  const passengers = resolveGuineaPassengerCount(input.passengerCount, decision.vehicle);
+  if (passengers.ok === false) {
+    return taxiJson({ ok: false, error: passengers.error }, 400);
+  }
   const rates = readGuineaTaxiRateCard();
   if (rates.ok === false) {
     return taxiJson({ ok: false, error: rates.error }, 503);
+  }
+  const commissionBps = readGuineaStandardCommissionBps();
+  if (commissionBps == null) {
+    return taxiJson({ ok: false, error: "guinea_commission_not_configured" }, 503);
   }
 
   let route;
@@ -339,6 +379,9 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     const message = error instanceof Error ? error.message : ROUTE_UNAVAILABLE;
     if (message === "distance_too_far" || message === "taxi_distance_too_far") {
       return taxiJson({ ok: false, error: "taxi_distance_too_far" }, 400);
+    }
+    if (message === "guinea_standard_distance_exceeded") {
+      return taxiJson({ ok: false, error: "guinea_standard_distance_exceeded" }, 400);
     }
     if (
       message === "MAPBOX_ACCESS_TOKEN missing" ||
@@ -361,6 +404,27 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
   }
 
   const fareGnf = priced.fareGnf;
+  const split = splitGuineaStandardCommission(fareGnf, commissionBps);
+  if (!split) {
+    return taxiJson({ ok: false, error: "guinea_commission_not_configured" }, 503);
+  }
+  const quotedAt = new Date().toISOString();
+  const snapshot = freezeGuineaStandardSnapshot({
+    distanceMeters: priced.distanceMeters,
+    durationMinutes: priced.durationMinutes,
+    fareGnf,
+    platformShareBps: commissionBps,
+    platformFeeGnf: split.platformFeeGnf,
+    driverAmountGnf: split.driverAmountGnf,
+    baseFareGnf: rates.card.baseFareGnf,
+    perKmGnf: rates.card.perKmGnf,
+    perMinuteGnf: rates.card.perMinuteGnf,
+    minimumFareGnf: rates.card.minimumFareGnf,
+    maximumFareGnf: rates.card.maximumFareGnf,
+    vehicle: decision.vehicle,
+    passengerCount: passengers.passengerCount,
+    quotedAt,
+  });
   const pickupLocality =
     localityLabel(input.pickupAddress) ??
     localityLabel(evidence.pickup.canonicalAddress);
@@ -380,7 +444,7 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
 
   const row = {
     client_user_id: input.userId,
-    vehicle_class: "standard",
+    vehicle_class: decision.vehicle === "motorcycle" ? "motorcycle" : "standard",
     status: "dispatching",
     pickup_address: pickupAddress,
     pickup_lat: route.pickupLat,
@@ -395,12 +459,12 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     currency: GUINEA_CURRENCY,
     subtotal_cents: fareGnf,
     tax_cents: 0,
-    platform_fee_cents: 0,
-    driver_payout_cents: fareGnf,
+    platform_fee_cents: split.platformFeeGnf,
+    driver_payout_cents: split.driverAmountGnf,
     service_fee_cents: 0,
     total_cents: fareGnf,
     gross_total_cents: fareGnf,
-    passenger_count: Math.max(1, Math.round(input.passengerCount || 1)),
+    passenger_count: passengers.passengerCount,
     payment_status: "pending_cash",
     payment_method: "cash",
     stripe_session_id: null,
@@ -408,19 +472,10 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     trip_mode: "one_way",
     client_notes: driverNote(input.clientNotes),
     fare_components: {
-      market: "GN",
+      ...snapshot,
       locality: pickupLocality,
       destination_locality: dropoffLocality,
       region: evidence.pickup.region,
-      currency: GUINEA_CURRENCY,
-      base_fare_gnf: rates.card.baseFareGnf,
-      per_km_gnf: rates.card.perKmGnf,
-      per_minute_gnf: rates.card.perMinuteGnf,
-      minimum_fare_gnf: rates.card.minimumFareGnf,
-      maximum_fare_gnf: rates.card.maximumFareGnf,
-      distance_meters: priced.distanceMeters,
-      duration_minutes: priced.durationMinutes,
-      fare_gnf: fareGnf,
       payment_method: "cash",
     },
   };
@@ -446,6 +501,9 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
 
   if (inserted.error || !inserted.data) {
     const message = String(inserted.error?.message ?? "create_failed");
+    if (/vehicle_class/i.test(message)) {
+      return taxiJson({ ok: false, error: "guinea_motorcycle_schema_not_ready" }, 503);
+    }
     if (/payment_method|payment_status|check constraint/i.test(message)) {
       return taxiJson({ ok: false, error: "guinea_schema_not_ready" }, 503);
     }

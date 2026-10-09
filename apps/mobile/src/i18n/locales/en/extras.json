@@ -4289,7 +4289,11 @@
     "pricingUnavailable": "The Guinea fare is not configured yet. The trip was not priced.",
     "routeUnavailable": "The route could not be calculated.",
     "requestFailed": "The request could not be sent.",
-    "outsideGuinea": "Pickup and destination must both be in Guinea."
+    "outsideGuinea": "Pickup and destination must both be in Guinea.",
+    "distanceExceeded": "This trip is longer than 100 km. Standard pricing does not apply. Use XL interregional when that axis is available.",
+    "capacityExceeded": "This vehicle cannot take that many passengers.",
+    "motorcyclePool": "A motorcycle cannot be shared.",
+    "commissionUnavailable": "The Guinea commission is not configured yet. The trip was not priced."
   },
   "taxiXl": {
     "open": "XL interregional",

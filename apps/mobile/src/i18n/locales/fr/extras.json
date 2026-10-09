@@ -4443,7 +4443,11 @@
     "pricingUnavailable": "Le tarif Guinée n'est pas encore configuré. La course n'a pas été tarifée.",
     "routeUnavailable": "Le trajet n'a pas pu être calculé.",
     "requestFailed": "La demande n'a pas pu être envoyée.",
-    "outsideGuinea": "Le départ et la destination doivent tous les deux être en Guinée."
+    "outsideGuinea": "Le départ et la destination doivent tous les deux être en Guinée.",
+    "distanceExceeded": "Ce trajet dépasse 100 km. Le tarif Standard ne s'applique pas. Utilisez le XL interrégional lorsque l'axe est disponible.",
+    "capacityExceeded": "Ce véhicule ne peut pas prendre autant de passagers.",
+    "motorcyclePool": "Une moto ne peut pas être partagée.",
+    "commissionUnavailable": "La commission Guinée n'est pas encore configurée. Le trajet n'a pas été tarifé."
   },
   "taxiXl": {
     "open": "XL interrégional",

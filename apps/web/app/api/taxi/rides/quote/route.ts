@@ -33,6 +33,7 @@ import {
   quoteRideFinalSot,
 } from "@/lib/pricingEngine";
 import { maybeQuoteGuineaTaxi } from "@/lib/markets/guineaTaxiHttp";
+import { isGuineaMotorcycleClass } from "@/lib/markets/guineaStandard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,9 +74,11 @@ export async function POST(req: NextRequest) {
     if (auth.ok === false) return auth.response;
 
     const body = (await req.json().catch(() => ({}))) as Body;
-    const resolvedVehicle = resolveTaxiCustomerVehicleClass(
-      body.vehicleClass ?? body.vehicle_class,
-    );
+    const rawVehicle = body.vehicleClass ?? body.vehicle_class;
+    const guineaMotorcycle = isGuineaMotorcycleClass(rawVehicle);
+    const resolvedVehicle = guineaMotorcycle
+      ? { ok: true as const, vehicleClass: "motorcycle" }
+      : resolveTaxiCustomerVehicleClass(rawVehicle);
     if (resolvedVehicle.ok === false) {
       return taxiJson({ ok: false, error: resolvedVehicle.error }, 400);
     }
@@ -140,8 +143,12 @@ export async function POST(req: NextRequest) {
       sharedRide: body.sharedRide === true || body.shared_ride === true,
       tripMode,
       vehicleClass,
+      passengerCount: body.passengerCount ?? body.passenger_count ?? 1,
     });
     if (guineaQuote) return guineaQuote;
+    if (guineaMotorcycle) {
+      return taxiJson({ ok: false, error: "vehicle_class_unsupported" }, 400);
+    }
 
     let route;
     try {

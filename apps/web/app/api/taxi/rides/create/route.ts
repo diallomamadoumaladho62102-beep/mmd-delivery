@@ -32,6 +32,7 @@ import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
 import type { TaxiAmbiancePreference, TaxiClientPreferences } from "@/lib/taxiClientPreferences";
 import { validateRouteClaimsServer } from "@/lib/geoTrust";
 import { maybeCreateGuineaCashTaxi } from "@/lib/markets/guineaTaxiHttp";
+import { isGuineaMotorcycleClass } from "@/lib/markets/guineaStandard";
 import {
   buildRoundTripRouteInput,
   normalizeReturnScheduledAt,
@@ -144,9 +145,11 @@ export async function POST(req: NextRequest) {
     if (auth.ok === false) return auth.response;
 
     const body = (await req.json().catch(() => ({}))) as Body;
-    const resolvedVehicle = resolveTaxiCustomerVehicleClass(
-      body.vehicleClass ?? body.vehicle_class,
-    );
+    const rawVehicle = body.vehicleClass ?? body.vehicle_class;
+    const guineaMotorcycle = isGuineaMotorcycleClass(rawVehicle);
+    const resolvedVehicle = guineaMotorcycle
+      ? { ok: true as const, vehicleClass: "motorcycle" }
+      : resolveTaxiCustomerVehicleClass(rawVehicle);
     if (resolvedVehicle.ok === false) {
       return taxiJson({ ok: false, error: resolvedVehicle.error }, 400);
     }
@@ -250,7 +253,7 @@ export async function POST(req: NextRequest) {
       sharedRide,
       tripMode,
       vehicleClass,
-      passengerCount,
+      passengerCount: body.passengerCount ?? body.passenger_count ?? 1,
       paymentMethod: body.paymentMethod ?? body.payment_method,
       premiumDriverOnly,
       businessAccountId,
@@ -259,6 +262,9 @@ export async function POST(req: NextRequest) {
       clientNotes: body.clientNotes ?? body.client_notes,
     });
     if (guineaCreate) return guineaCreate;
+    if (guineaMotorcycle) {
+      return taxiJson({ ok: false, error: "vehicle_class_unsupported" }, 400);
+    }
 
     let route;
     try {
