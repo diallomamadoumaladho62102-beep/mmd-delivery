@@ -7,9 +7,14 @@ import { loadCommercialConfig } from "@/lib/markets/guineaTaxiHttp";
 import { hasPermission } from "@/lib/adminRbac";
 import {
   cancelGuineaPoolReservation,
+  chooseGuineaPoolProposal,
+  declineGuineaPoolProposal,
   evaluateGuineaPool,
+  filterGuineaPoolSearchRows,
   freezeGuineaStandardSnapshot,
+  guineaPoolSearchBounds,
   guineaStandardDistanceAllowed,
+  guineaStandardSaveConflicts,
   guineaStopOrderValid,
   planGuineaStandardPool,
   readGuineaPoolLimits,
@@ -464,6 +469,106 @@ test("server reads the saved standard row and fails closed without it", async ()
   );
   assert.equal(absent.ok, false);
   assert.equal(absent.ok === false && absent.error, "guinea_pricing_not_configured");
+});
+
+test("pooling search stays inside one pickup box and does not join without approved thresholds", () => {
+  const bounds = guineaPoolSearchBounds(9.6412, -13.5784, 800);
+  assert.ok(bounds);
+  const far = {
+    id: "kankan",
+    countryCode: "GN",
+    currency: "GNF",
+    vehicleClass: "standard",
+    status: "dispatching",
+    paymentStatus: "pending_cash",
+    paymentMethod: "cash",
+    pickupLat: 10.385,
+    pickupLng: -9.306,
+  };
+  const near = { ...far, id: "near", pickupLat: 9.6412, pickupLng: -13.5784 };
+  const usa = { ...near, id: "usa", countryCode: "US", currency: "USD" };
+  const moto = { ...near, id: "moto", vehicleClass: "motorcycle" };
+  const rows = [far, near, usa, moto, ...Array.from({ length: 30 }, (_, index) => ({ ...near, id: `n${index}` }))];
+  const found = filterGuineaPoolSearchRows({ rows, bounds: bounds!, limit: 50 });
+  assert.equal(found.some((row) => row.id === "kankan"), false);
+  assert.equal(found.some((row) => row.id === "usa" || row.id === "moto"), false);
+  assert.equal(found.length, 20);
+  assert.equal(found[0]?.id, "near");
+
+  const inactive = chooseGuineaPoolProposal({
+    sharedRide: true,
+    vehicle: "car",
+    limits: null,
+    incomingPassengers: 1,
+    candidates: [],
+    nowMs: 1_000,
+  });
+  assert.equal(inactive.action, "solo");
+  const proposal = chooseGuineaPoolProposal({
+    sharedRide: true,
+    vehicle: "car",
+    limits: LIMITS,
+    incomingPassengers: 1,
+    nowMs: 1_000,
+    candidates: [
+      {
+        id: "ride-a",
+        passengerCount: 1,
+        fareGnf: 118_000,
+        detourMeters: 400,
+        extraMinutes: 4,
+        pickupDeviationMeters: 200,
+        oppositeDirection: false,
+        driverOnline: true,
+        poolable: true,
+        proposalExpiresAtMs: 2_000,
+      },
+    ],
+  });
+  assert.equal(proposal.action, "propose");
+  if (proposal.action === "propose") assert.equal(proposal.keptFareGnf, 118_000);
+  const full = chooseGuineaPoolProposal({
+    sharedRide: true,
+    vehicle: "car",
+    limits: LIMITS,
+    incomingPassengers: 1,
+    nowMs: 1_000,
+    candidates: [
+      {
+        id: "full",
+        passengerCount: 4,
+        fareGnf: 50_000,
+        detourMeters: 100,
+        extraMinutes: 1,
+        pickupDeviationMeters: 100,
+        oppositeDirection: false,
+        driverOnline: true,
+        poolable: true,
+        proposalExpiresAtMs: 2_000,
+      },
+    ],
+  });
+  assert.equal(full.action, "refuse");
+  const primary = seat("main", 209_000);
+  const declined = declineGuineaPoolProposal([primary, seat("offer", 5_000)], "offer");
+  assert.equal(declined.find((row) => row.id === "main")?.status, "confirmed");
+  assert.equal(declined.find((row) => row.id === "main")?.fareGnf, 209_000);
+  assert.equal(declined.find((row) => row.id === "offer")?.status, "canceled");
+  const http = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "guineaTaxiHttp.ts"),
+    "utf8",
+  );
+  assert.match(http, /candidates:\s*\[\]/);
+  assert.match(http, /payment_funding:\s*"cash"/);
+  const adminRoute = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../app/api/admin/guinea-standard/route.ts"),
+    "utf8",
+  );
+  assert.match(adminRoute, /guinea_rate_conflict/);
+  assert.match(adminRoute, /\.eq\("updated_at"/);
+  assert.equal(guineaStandardSaveConflicts("2026-10-09T00:00:00.000Z", "2026-10-09T00:00:00.000Z"), false);
+  assert.equal(guineaStandardSaveConflicts("2026-10-09T00:00:00.000Z", "2026-10-09T00:00:01.000Z"), true);
+  assert.equal(guineaStandardSaveConflicts("2026-10-09T00:00:00.000Z", null), true);
 });
 
 console.log("guineaStandard.test.ts passed");

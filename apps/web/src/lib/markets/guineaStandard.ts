@@ -126,6 +126,165 @@ export function planGuineaStandardPool(input: {
   };
 }
 
+export type GuineaPoolSearchBounds = {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+};
+
+/** Bounding box around one pickup. A search must not scan every Guinea ride. */
+export function guineaPoolSearchBounds(
+  lat: number,
+  lng: number,
+  radiusMeters: number,
+): GuineaPoolSearchBounds | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return null;
+  }
+  if (!Number.isFinite(radiusMeters) || radiusMeters < 0) return null;
+  const latDelta = radiusMeters / 111_320;
+  const cosine = Math.cos((lat * Math.PI) / 180);
+  const lngDelta = radiusMeters / (111_320 * Math.max(Math.abs(cosine), 0.2));
+  return {
+    minLat: lat - latDelta,
+    maxLat: lat + latDelta,
+    minLng: lng - lngDelta,
+    maxLng: lng + lngDelta,
+  };
+}
+
+export type GuineaPoolSearchRow = {
+  id: string;
+  countryCode: string;
+  currency: string;
+  vehicleClass: string;
+  status: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  pickupLat: number;
+  pickupLng: number;
+};
+
+/** Keeps only nearby Standard cash rides. The caller supplies the already bounded rows. */
+export function filterGuineaPoolSearchRows(input: {
+  rows: GuineaPoolSearchRow[];
+  bounds: GuineaPoolSearchBounds;
+  excludeId?: string;
+  limit: number;
+}): GuineaPoolSearchRow[] {
+  const cap = Math.min(Math.max(Math.trunc(input.limit), 0), 20);
+  const matched: GuineaPoolSearchRow[] = [];
+  for (const row of input.rows) {
+    if (matched.length >= cap) break;
+    if (input.excludeId && row.id === input.excludeId) continue;
+    if (row.countryCode !== "GN" || row.currency !== "GNF") continue;
+    if (row.vehicleClass !== "standard") continue;
+    if (row.status !== "dispatching" && row.status !== "accepted") continue;
+    if (row.paymentMethod !== "cash" || row.paymentStatus !== "pending_cash") continue;
+    if (row.pickupLat < input.bounds.minLat || row.pickupLat > input.bounds.maxLat) continue;
+    if (row.pickupLng < input.bounds.minLng || row.pickupLng > input.bounds.maxLng) continue;
+    matched.push(row);
+  }
+  return matched;
+}
+
+export type GuineaPoolMeasuredCandidate = {
+  id: string;
+  passengerCount: number;
+  fareGnf: number;
+  detourMeters: number;
+  extraMinutes: number;
+  pickupDeviationMeters: number;
+  oppositeDirection: boolean;
+  driverOnline: boolean;
+  poolable: boolean;
+  proposalExpiresAtMs: number;
+};
+
+/**
+ * Matching stays inactive when thresholds are missing.
+ * A proposal does not change an accepted fare and does not join by itself.
+ */
+export function chooseGuineaPoolProposal(input: {
+  sharedRide: boolean;
+  vehicle: GuineaStandardVehicle;
+  limits: GuineaPoolLimits | null;
+  incomingPassengers: number;
+  candidates: GuineaPoolMeasuredCandidate[];
+  nowMs: number;
+}):
+  | { action: "solo"; reason: string }
+  | {
+      action: "propose";
+      candidateId: string;
+      keptFareGnf: number;
+      activePassengers: number;
+      remainingSeats: number;
+    }
+  | { action: "refuse"; error: string } {
+  if (!input.sharedRide || input.vehicle === "motorcycle") {
+    return {
+      action: "solo",
+      reason: input.vehicle === "motorcycle" ? "guinea_motorcycle_pool_forbidden" : "not_requested",
+    };
+  }
+  if (!input.limits) return { action: "solo", reason: "guinea_pool_not_configured" };
+  const fresh = input.candidates.filter((candidate) => candidate.proposalExpiresAtMs > input.nowMs);
+  if (input.candidates.length > 0 && fresh.length === 0) {
+    return { action: "solo", reason: "guinea_pool_proposal_expired" };
+  }
+  if (fresh.length === 0) return { action: "solo", reason: "guinea_pool_no_candidate" };
+  for (const candidate of fresh) {
+    const decision = evaluateGuineaPool({
+      vehicle: "car",
+      driverOnline: candidate.driverOnline,
+      poolable: candidate.poolable,
+      existing: [
+        {
+          id: candidate.id,
+          status: "confirmed",
+          passengerCount: candidate.passengerCount,
+          fareGnf: candidate.fareGnf,
+        },
+      ],
+      incomingPassengers: input.incomingPassengers,
+      detourMeters: candidate.detourMeters,
+      extraMinutes: candidate.extraMinutes,
+      pickupDeviationMeters: candidate.pickupDeviationMeters,
+      oppositeDirection: candidate.oppositeDirection,
+      limits: input.limits,
+    });
+    if (decision.ok) {
+      return {
+        action: "propose",
+        candidateId: candidate.id,
+        keptFareGnf: candidate.fareGnf,
+        activePassengers: decision.activePassengers,
+        remainingSeats: decision.remainingSeats,
+      };
+    }
+  }
+  return { action: "refuse", error: "guinea_pool_incompatible" };
+}
+
+/** Refusing one proposal cancels only that reservation. */
+export function declineGuineaPoolProposal(
+  rows: GuineaPoolReservation[],
+  proposalId: string,
+): GuineaPoolReservation[] {
+  return cancelGuineaPoolReservation(rows, proposalId);
+}
+
+/** A save must carry the timestamp read from the current row. */
+export function guineaStandardSaveConflicts(
+  currentUpdatedAt: string | null | undefined,
+  expectedUpdatedAt: unknown,
+): boolean {
+  if (!currentUpdatedAt) return false;
+  return String(expectedUpdatedAt ?? "") !== currentUpdatedAt;
+}
+
 export function readGuineaStandardCommissionBps(
   env: Record<string, string | undefined> = process.env,
 ): number | null {

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 import { resolveTaxiDispatchRetryDecision } from "@/lib/taxiSharedRideDispatch";
+import { taxiPaymentAllowsDispatch } from "@/lib/markets/guineaCashPayment";
 
 export type TaxiOrphanRide = {
   id: string;
@@ -27,16 +28,46 @@ export async function findTaxiRidesNeedingDispatchRetry(
 ): Promise<TaxiDispatchRetryScanResult> {
   const nowIso = new Date().toISOString();
 
-  const { data: rides, error } = await supabase
+  const paidColumns =
+    "id, status, dispatch_wave, updated_at, payment_status, driver_id, favorite_dispatch_expires_at, preferred_driver_id, is_shared_ride, shared_ride_id, is_scheduled";
+  const cashColumns = `${paidColumns}, payment_method`;
+  type RetryRideRow = {
+    id: unknown;
+    status: unknown;
+    dispatch_wave: unknown;
+    updated_at: unknown;
+    payment_status: unknown;
+    payment_method?: unknown;
+    driver_id: unknown;
+    favorite_dispatch_expires_at: unknown;
+    preferred_driver_id: unknown;
+    is_shared_ride: unknown;
+    shared_ride_id: unknown;
+    is_scheduled: unknown;
+  };
+  const first = await supabase
     .from("taxi_rides")
-    .select(
-      "id, status, dispatch_wave, updated_at, payment_status, driver_id, favorite_dispatch_expires_at, preferred_driver_id, is_shared_ride, shared_ride_id, is_scheduled"
-    )
+    .select(cashColumns)
     .is("driver_id", null)
-    .eq("payment_status", "paid")
+    .or("payment_status.eq.paid,and(payment_status.eq.pending_cash,payment_method.eq.cash)")
     .in("status", ["paid", "dispatching"])
     .order("updated_at", { ascending: true })
     .limit(Math.max(limit * 3, 50));
+  let rides = (first.data ?? null) as RetryRideRow[] | null;
+  let error = first.error;
+
+  if (error && /payment_method/i.test(error.message)) {
+    const fallback = await supabase
+      .from("taxi_rides")
+      .select(paidColumns)
+      .is("driver_id", null)
+      .eq("payment_status", "paid")
+      .in("status", ["paid", "dispatching"])
+      .order("updated_at", { ascending: true })
+      .limit(Math.max(limit * 3, 50));
+    rides = (fallback.data ?? null) as RetryRideRow[] | null;
+    error = fallback.error;
+  }
 
   if (error) {
     throw new Error(error.message);
@@ -44,7 +75,8 @@ export async function findTaxiRidesNeedingDispatchRetry(
 
   const candidates = (rides ?? []).filter((ride) => {
     const status = normalize(ride.status);
-    return status === "paid" || status === "dispatching";
+    if (status !== "paid" && status !== "dispatching") return false;
+    return taxiPaymentAllowsDispatch(ride.payment_status, ride.payment_method);
   });
 
   if (candidates.length === 0) {

@@ -1,5 +1,7 @@
 -- Guinea cash taxi.
--- Adds payment_method and cash statuses. Does not update historical ride amounts.
+-- Adds payment_method, cash statuses, and cash funding.
+-- Does not update historical ride amounts, fares, or other markets.
+-- Not applied. Do not run this file with supabase db push.
 
 begin;
 
@@ -540,6 +542,125 @@ begin
     'queued', v_queue,
     'queued_after_ride_id', v_active_id,
     'next_ride_eta_minutes', v_eta
+  );
+end;
+$$;
+
+-- Cash is not a Stripe or Business Wallet charge. Existing values stay valid.
+alter table public.taxi_rides
+  drop constraint if exists taxi_rides_payment_funding_check;
+
+alter table public.taxi_rides
+  add constraint taxi_rides_payment_funding_check
+  check (payment_funding in ('stripe', 'business_wallet', 'cash'));
+
+-- Releasing a cash ride returns it to dispatch. It does not mark the cash collected.
+-- A paid card ride keeps the existing dispatching path.
+create or replace function public.driver_cancel_taxi_ride(
+  p_ride_id uuid,
+  p_reason text default 'driver_cancelled'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_driver_id uuid := auth.uid();
+  v_ride public.taxi_rides%rowtype;
+  v_old_status text;
+  v_reason text := left(coalesce(nullif(trim(p_reason), ''), 'driver_cancelled'), 120);
+  v_next_status text;
+begin
+  if v_driver_id is null then
+    return jsonb_build_object('ok', false, 'message', 'not_authenticated');
+  end if;
+
+  select *
+  into v_ride
+  from public.taxi_rides
+  where id = p_ride_id
+    and driver_id = v_driver_id
+  for update;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'message', 'ride_not_found');
+  end if;
+
+  if lower(coalesce(v_ride.status, '')) not in ('accepted', 'driver_arrived') then
+    return jsonb_build_object('ok', false, 'message', 'invalid_status');
+  end if;
+
+  v_old_status := v_ride.status;
+  v_next_status := case
+    when lower(coalesce(v_ride.payment_status, '')) in ('paid', 'pending_cash') then 'dispatching'
+    else 'paid'
+  end;
+
+  update public.taxi_rides
+  set
+    status = v_next_status,
+    driver_id = null,
+    reassigned_from_driver_id = v_driver_id,
+    driver_release_count = coalesce(driver_release_count, 0) + 1,
+    cancel_reason = v_reason,
+    cancel_reason_code = left(split_part(v_reason, ':', 1), 64),
+    cancelled_by = null,
+    cancelled_at = null,
+    pickup_verification_code = public.taxi_generate_pickup_verification_code(),
+    started_at = null,
+    updated_at = now()
+  where id = p_ride_id
+    and driver_id = v_driver_id
+    and status = v_ride.status;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'message', 'status_changed');
+  end if;
+
+  update public.taxi_offers
+  set status = 'expired', updated_at = now()
+  where taxi_ride_id = p_ride_id
+    and status = 'pending';
+
+  begin
+    update public.driver_profiles
+    set
+      cancellation_rate = least(
+        1,
+        coalesce(cancellation_rate, 0) + 0.01
+      ),
+      updated_at = now()
+    where user_id = v_driver_id;
+  exception when others then
+    null;
+  end;
+
+  perform public.log_taxi_event(
+    p_ride_id,
+    'driver_release_reassign',
+    v_old_status,
+    v_next_status,
+    v_driver_id,
+    'driver',
+    'Driver released accepted taxi ride for reassignment',
+    jsonb_build_object(
+      'reason', v_reason,
+      'previous_driver_id', v_driver_id,
+      'reassign', true,
+      'refund', 'NONE',
+      'acceptance_rate_impact', false
+    )
+  );
+
+  return jsonb_build_object(
+    'ok', true,
+    'taxi_ride_id', p_ride_id,
+    'status', v_next_status,
+    'reassign', true,
+    'previous_driver_id', v_driver_id,
+    'refund', 'NONE',
+    'acceptance_rate_impact', false
   );
 end;
 $$;

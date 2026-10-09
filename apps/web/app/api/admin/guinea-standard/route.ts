@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertCanWriteTaxiPricing, assertStaffPermission } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { readGuineaStandardCommissionBps, validateGuineaStandardSettings } from "@/lib/markets/guineaStandard";
+import {
+  guineaStandardSaveConflicts,
+  readGuineaStandardCommissionBps,
+  validateGuineaStandardSettings,
+} from "@/lib/markets/guineaStandard";
 import { readGuineaTaxiRateCard } from "@/lib/markets/guineaTaxiPricing";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +108,9 @@ export async function POST(request: NextRequest) {
       return json({ ok: false, error: "guinea_standard_schema_not_ready" }, 503);
     }
     if (current.error) return json({ ok: false, error: "guinea_catalog_failed" }, 500);
+    if (guineaStandardSaveConflicts(current.data?.updated_at, body.expectedUpdatedAt)) {
+      return json({ ok: false, error: "guinea_rate_conflict" }, 409);
+    }
 
     const row = {
       id: "GN",
@@ -119,8 +126,17 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
     const saved = current.data
-      ? await supabase.from("guinea_standard_settings").update(row).eq("id", "GN").select(SELECT).maybeSingle()
+      ? await supabase
+          .from("guinea_standard_settings")
+          .update(row)
+          .eq("id", "GN")
+          .eq("updated_at", String(current.data.updated_at))
+          .select(SELECT)
+          .maybeSingle()
       : await supabase.from("guinea_standard_settings").insert(row).select(SELECT).maybeSingle();
+    if (current.data && !saved.error && !saved.data) {
+      return json({ ok: false, error: "guinea_rate_conflict" }, 409);
+    }
     if (saved.error || !saved.data) return json({ ok: false, error: "guinea_rate_invalid" }, 400);
 
     await supabase.from("guinea_standard_audit").insert({

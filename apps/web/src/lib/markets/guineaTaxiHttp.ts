@@ -28,7 +28,7 @@ import {
 import {
   freezeGuineaStandardSnapshot,
   GUINEA_STANDARD_MAX_DISTANCE_METERS,
-  planGuineaStandardPool,
+  chooseGuineaPoolProposal,
   readGuineaPoolLimits,
   readGuineaStandardCommissionBps,
   resolveGuineaPassengerCount,
@@ -521,6 +521,7 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     passenger_count: passengers.passengerCount,
     payment_status: "pending_cash",
     payment_method: "cash",
+    payment_funding: "cash",
     stripe_session_id: null,
     stripe_payment_intent_id: null,
     trip_mode: "one_way",
@@ -579,11 +580,13 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     currency: GUINEA_CURRENCY,
     payment_method: "cash",
     payment_status: "pending_cash",
-    pooling: planGuineaStandardPool({
+    pooling: chooseGuineaPoolProposal({
       sharedRide: input.sharedRide === true,
       vehicle: decision.vehicle,
       limits: readGuineaPoolLimits(),
-      compared: null,
+      incomingPassengers: passengers.passengerCount,
+      candidates: [],
+      nowMs: Date.now(),
     }),
     ride: inserted.data,
     dispatch: {

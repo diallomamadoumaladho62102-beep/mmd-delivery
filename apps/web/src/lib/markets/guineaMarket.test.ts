@@ -587,6 +587,8 @@ pending.push(test("the migration adds cash fields without rewriting historical r
   assert.match(sql, /current_user::text = 'service_role'/);
   assert.match(sql, /auth\.role\(\)/);
   assert.match(sql, /payment_method/);
+  assert.match(sql, /'stripe', 'business_wallet', 'cash'/);
+  assert.match(sql, /'paid', 'pending_cash'/);
   assert.equal(/set\s+currency\s*=/i.test(sql), false);
   assert.equal(/set\s+total_cents\s*=/i.test(sql), false);
   assert.equal(/^as \$$/m.test(sql), false);

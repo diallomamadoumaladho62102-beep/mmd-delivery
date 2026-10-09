@@ -31,6 +31,7 @@ export default function GuineaStandardPricingPage() {
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [canEdit, setCanEdit] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [baseFare, setBaseFare] = useState("");
   const [perKm, setPerKm] = useState("");
   const [perMinute, setPerMinute] = useState("");
@@ -84,13 +85,18 @@ export default function GuineaStandardPricingPage() {
         perMinuteGnf: perMinute,
         minimumFareGnf: minimum,
         platformShareBps: commission,
+        expectedUpdatedAt: settings?.updated_at ?? null,
       }),
     });
-    const body = (await response.json()) as { ok?: boolean; error?: string };
+    const body = (await response.json()) as { ok?: boolean; error?: string; settings?: Settings };
     if (!response.ok || body.ok === false) {
+      setNotice(null);
       setError(body.error ?? t("Update failed"));
+      if (response.status === 409) await load();
       return;
     }
+    setNotice(t("Saved values"));
+    setError(null);
     await load();
   }
 
@@ -106,6 +112,7 @@ export default function GuineaStandardPricingPage() {
           {schemaReady ? "" : " · guinea_standard_schema_not_ready"}
         </p>
         {error ? <p className="text-red-700">{error}</p> : null}
+        {notice ? <p className="text-green-800">{notice}</p> : null}
         {settings ? (
           <section className="rounded border border-slate-200 p-4 text-sm">
             <h2 className="font-medium">{t("Saved values")}</h2>
