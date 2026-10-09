@@ -90,6 +90,21 @@ function quoteErrorMessage(
       "The Guinea commission is not configured yet. The trip was not priced.",
     );
   }
+  if (code === "guinea_schema_not_ready") {
+    return t(
+      "taxiGuinea.schemaNotReady",
+      "Cash rides are not ready on the server yet. The trip was not created.",
+    );
+  }
+  if (code === "guinea_motorcycle_schema_not_ready") {
+    return t("taxiGuinea.motorcycleNotReady", "Motorcycle rides are not ready on the server yet.");
+  }
+  if (code === "guinea_vehicle_class_not_configured" || code === "vehicle_class_unsupported") {
+    return t("taxiGuinea.vehicleUnsupported", "This vehicle is not available for this trip.");
+  }
+  if (code === "guinea_trip_not_supported") {
+    return t("taxiGuinea.tripNotSupported", "This trip type is not available.");
+  }
   return t("taxiGuinea.requestFailed", "The request could not be sent.");
 }
 

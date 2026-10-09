@@ -3,6 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { calculateGuineaTaxiFareGnf, readGuineaTaxiRateCard } from "@/lib/markets/guineaTaxiPricing";
+import {
+  guineaAdminErrorLabel,
+  guineaAuditActionLabel,
+  guineaConfigSourceLabel,
+} from "@/lib/markets/guineaAdminErrors";
+import { adminT } from "@/i18n/adminUiI18n";
 import { loadCommercialConfig } from "@/lib/markets/guineaTaxiHttp";
 import { hasPermission } from "@/lib/adminRbac";
 import {
@@ -569,6 +575,63 @@ test("pooling search stays inside one pickup box and does not join without appro
   assert.equal(guineaStandardSaveConflicts("2026-10-09T00:00:00.000Z", "2026-10-09T00:00:00.000Z"), false);
   assert.equal(guineaStandardSaveConflicts("2026-10-09T00:00:00.000Z", "2026-10-09T00:00:01.000Z"), true);
   assert.equal(guineaStandardSaveConflicts("2026-10-09T00:00:00.000Z", null), true);
+});
+
+test("Guinea screens translate errors and statuses in all six languages", () => {
+  const locales = ["en", "fr", "es", "ar", "zh", "ff"] as const;
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
+  const requiredGuinea = ["schemaNotReady", "motorcycleNotReady", "vehicleUnsupported", "tripNotSupported"];
+  const requiredXl = ["statusOpen", "statusClosed", "statusCompleted", "statusCanceled", "statusConfirmed"];
+  const guineaSets = locales.map((locale) => {
+    const json = JSON.parse(
+      fs.readFileSync(path.join(root, `apps/mobile/src/i18n/locales/${locale}/extras.json`), "utf8"),
+    ) as { taxiGuinea?: Record<string, string>; taxiXl?: Record<string, string> };
+    for (const key of requiredGuinea) {
+      const value = json.taxiGuinea?.[key] ?? "";
+      assert.equal(value.length > 0, true);
+      assert.equal(value.includes("guinea_"), false);
+    }
+    for (const key of requiredXl) {
+      const value = json.taxiXl?.[key] ?? "";
+      assert.equal(value.length > 0, true);
+      assert.equal(/^(open|closed|completed|canceled|confirmed)$/.test(value), false);
+    }
+    return Object.keys(json.taxiGuinea ?? {}).sort();
+  });
+  for (const keys of guineaSets) assert.deepEqual(keys, guineaSets[0]);
+  const labels = [
+    guineaAdminErrorLabel("guinea_rate_conflict"),
+    guineaAdminErrorLabel("xl_rate_conflict"),
+    guineaAdminErrorLabel("unknown_code"),
+    guineaConfigSourceLabel("database"),
+    guineaConfigSourceLabel("environment"),
+    guineaConfigSourceLabel("raw_source"),
+    guineaAuditActionLabel("rates_saved"),
+    guineaAuditActionLabel("axis_created"),
+    guineaAuditActionLabel("set_active"),
+    guineaAuditActionLabel("mystery_action"),
+  ];
+  assert.equal(labels[0], "That fare was changed by someone else. Reload the page.");
+  assert.equal(labels[2], "Update failed");
+  assert.equal(labels[5], "Not configured");
+  assert.equal(labels[9], "Recorded change");
+  for (const label of labels) assert.equal(/guinea_|xl_|mystery_|raw_source/.test(label), false);
+  for (const locale of locales) {
+    const translated = adminT("One direction only", locale);
+    assert.equal(translated.length > 0, true);
+    assert.equal(translated.includes("directional"), false);
+    if (locale !== "en") assert.notEqual(translated, "One direction only");
+  }
+  const standardPage = fs.readFileSync(
+    path.join(root, "apps/web/app/admin/guinea-standard-pricing/page.tsx"),
+    "utf8",
+  );
+  const xlPage = fs.readFileSync(path.join(root, "apps/web/app/admin/guinea-xl-pricing/page.tsx"), "utf8");
+  assert.equal(standardPage.includes("setError(body.error"), false);
+  assert.equal(xlPage.includes("setError(body.error"), false);
+  assert.equal(standardPage.includes("Africa/Conakry"), false);
+  assert.equal(xlPage.includes("{row.action}"), false);
+  assert.match(xlPage, /directional: form.get\("directional"\) === "on"/);
 });
 
 console.log("guineaStandard.test.ts passed");

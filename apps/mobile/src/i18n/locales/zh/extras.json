@@ -4466,7 +4466,11 @@
     "distanceExceeded": "此行程超过 100 公里。标准计价不适用。轴线可用时请使用跨区 XL。",
     "capacityExceeded": "这辆车不能乘坐这么多乘客。",
     "motorcyclePool": "摩托车不能拼车。",
-    "commissionUnavailable": "几内亚佣金尚未配置。此次行程未计价。"
+    "commissionUnavailable": "几内亚佣金尚未配置。此次行程未计价。",
+    "schemaNotReady": "服务器尚未准备好现金行程。行程未创建。",
+    "motorcycleNotReady": "服务器尚未准备好摩托车行程。",
+    "vehicleUnsupported": "此车辆不适用于本次行程。",
+    "tripNotSupported": "不支持此行程类型。"
   },
   "taxiXl": {
     "open": "XL 跨区",
@@ -4519,6 +4523,11 @@
     "rideNotCompleted": "请先完成班次再收款。",
     "capacityRejected": "该车辆不符合此 XL 载客数。",
     "myBookings": "我的预订",
-    "noBookings": "你还没有 XL 预订。"
+    "noBookings": "你还没有 XL 预订。",
+    "statusOpen": "开放",
+    "statusClosed": "已关闭",
+    "statusCompleted": "已完成",
+    "statusCanceled": "已取消",
+    "statusConfirmed": "已确认"
   }
 }

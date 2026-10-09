@@ -31,6 +31,20 @@ const XL_ERROR_KEYS: Record<string, string> = {
   xl_vehicle_capacity_unsupported: "taxiXl.capacityRejected",
 };
 
+const XL_STATUS_KEYS: Record<string, string> = {
+  open: "taxiXl.statusOpen",
+  closed: "taxiXl.statusClosed",
+  completed: "taxiXl.statusCompleted",
+  canceled: "taxiXl.statusCanceled",
+  cancelled: "taxiXl.statusCanceled",
+  confirmed: "taxiXl.statusConfirmed",
+};
+
+export function xlStatusLabel(status: unknown, translate: (key: string) => string): string {
+  const key = XL_STATUS_KEYS[String(status ?? "").trim().toLowerCase()];
+  return key ? translate(key) : translate("taxiXl.requestFailed");
+}
+
 export function xlErrorMessage(error: unknown, translate: (key: string) => string): string {
   const code = error instanceof Error ? error.message : "";
   const key = XL_ERROR_KEYS[code];

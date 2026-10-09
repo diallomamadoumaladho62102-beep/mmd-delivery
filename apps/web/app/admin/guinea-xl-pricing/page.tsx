@@ -5,6 +5,7 @@ import AdminGate from "@/components/AdminGate";
 import { canWriteTaxiPricing } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
 import { useAdminT } from "@/i18n/useAdminT";
+import { guineaAdminErrorLabel, guineaAuditActionLabel } from "@/lib/markets/guineaAdminErrors";
 
 type AxisRow = {
   id: string;
@@ -14,6 +15,7 @@ type AxisRow = {
   other_seat_gnf: number;
   currency: string;
   active: boolean;
+  directional?: boolean;
   version: number;
   updated_at: string | null;
   updated_by: string | null;
@@ -80,7 +82,7 @@ export default function GuineaXlPricingPage() {
       settings?: { platform_share_bps?: number; currency?: string } | null;
     };
     if (!response.ok || body.ok === false) {
-      setError(body.error ?? t("Update failed"));
+      setError(t(guineaAdminErrorLabel(body.error)));
       return;
     }
     setAxes(body.axes ?? []);
@@ -109,7 +111,7 @@ export default function GuineaXlPricingPage() {
     });
     const body = (await response.json()) as { ok?: boolean; error?: string };
     if (!response.ok || body.ok === false) {
-      setError(body.error ?? t("Update failed"));
+      setError(t(guineaAdminErrorLabel(body.error)));
       return;
     }
     await load();
@@ -120,7 +122,7 @@ export default function GuineaXlPricingPage() {
       <main className="mx-auto max-w-5xl space-y-6 p-6">
         <h1 className="text-2xl font-semibold">{t("XL Interregional Pricing")}</h1>
         <p className="text-sm text-slate-600">
-          {t("Currency")} {currency} · {t("Timezone")} Africa/Conakry
+          {t("Currency")} {currency} · {t("Timezone")} {t("Conakry")}
         </p>
         {error ? <p className="text-red-700">{error}</p> : null}
 
@@ -151,6 +153,7 @@ export default function GuineaXlPricingPage() {
               destinationLabel: form.get("destinationLabel"),
               frontSeatGnf: Number(form.get("frontSeatGnf")),
               otherSeatGnf: Number(form.get("otherSeatGnf")),
+              directional: form.get("directional") === "on",
             });
           }}
         >
@@ -159,6 +162,12 @@ export default function GuineaXlPricingPage() {
           <input name="destinationLabel" className="rounded border px-3 py-2" placeholder={t("Destination")} disabled={!canEdit} />
           <input name="frontSeatGnf" type="number" className="rounded border px-3 py-2" placeholder={t("Front seat")} disabled={!canEdit} />
           <input name="otherSeatGnf" type="number" className="rounded border px-3 py-2" placeholder={t("Other seats")} disabled={!canEdit} />
+          <label className="md:col-span-2 text-sm">
+            <input name="directional" type="checkbox" disabled={!canEdit} /> {t("One direction only")}
+          </label>
+          <p className="md:col-span-2 text-sm text-slate-600">
+            {t("Both directions share one price. Check this only for a one-way axis.")}
+          </p>
           <button className="rounded bg-slate-900 px-4 py-2 text-white disabled:opacity-40" disabled={!canEdit} type="submit">{t("Save")}</button>
         </form>
 
@@ -184,7 +193,7 @@ export default function GuineaXlPricingPage() {
                 {t("Front seat")} {axis.front_seat_gnf} {axis.currency} · {t("Other seats")} {axis.other_seat_gnf} {axis.currency}
               </p>
               <p className="text-sm">
-                {t("Status")} {axis.active ? t("Active") : t("Inactive")} · {t("Version")} {axis.version}
+                {t("Status")} {axis.active ? t("Active") : t("Inactive")} · {axis.directional ? t("One direction only") : t("Both directions")} · {t("Version")} {axis.version}
               </p>
               <p className="text-sm text-slate-500">
                 {t("Updated")} {axis.updated_at ?? "—"} · {t("Updated by")} {axis.updated_by ?? "—"}
@@ -219,7 +228,14 @@ export default function GuineaXlPricingPage() {
                         expectedVersion: axis.version,
                         active: !axis.active,
                       }),
-                    }).then(() => load());
+                    }).then(async (response) => {
+                      const payload = (await response.json()) as { ok?: boolean; error?: string };
+                      if (!response.ok || payload.ok === false) {
+                        setError(t(guineaAdminErrorLabel(payload.error)));
+                        return;
+                      }
+                      await load();
+                    });
                   }}
                 >
                   {axis.active ? t("Deactivate") : t("Activate")}
@@ -295,7 +311,7 @@ export default function GuineaXlPricingPage() {
           <ul className="mt-2 space-y-2 text-sm">
             {history.map((row) => (
               <li key={row.id}>
-                <p>{row.created_at} · {row.action} · {row.actor_id ?? "—"} · {row.axis_id ?? "—"}</p>
+                <p>{row.created_at} · {t(guineaAuditActionLabel(row.action))} · {row.actor_id ?? "—"} · {row.axis_id ?? "—"}</p>
                 <p>{t("Updated")}: {JSON.stringify(row.old_value ?? null)} → {JSON.stringify(row.new_value ?? null)}</p>
                 {row.reason ? <p>{row.reason}</p> : null}
               </li>

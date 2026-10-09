@@ -4295,7 +4295,11 @@
     "distanceExceeded": "Este trayecto supera los 100 km. La tarifa Standard no se aplica. Usa el XL interregional cuando el eje esté disponible.",
     "capacityExceeded": "Este vehículo no puede llevar tantos pasajeros.",
     "motorcyclePool": "Una moto no se puede compartir.",
-    "commissionUnavailable": "La comisión de Guinea aún no está configurada. El trayecto no se ha tarifado."
+    "commissionUnavailable": "La comisión de Guinea aún no está configurada. El trayecto no se ha tarifado.",
+    "schemaNotReady": "Los viajes en efectivo aún no están listos en el servidor. El viaje no se creó.",
+    "motorcycleNotReady": "Los viajes en moto aún no están listos en el servidor.",
+    "vehicleUnsupported": "Este vehículo no está disponible para este viaje.",
+    "tripNotSupported": "Este tipo de trayecto no está disponible."
   },
   "taxiXl": {
     "open": "XL interregional",
@@ -4348,6 +4352,11 @@
     "rideNotCompleted": "Termina la salida antes de cobrar.",
     "capacityRejected": "Este vehículo no es elegible para esa capacidad XL.",
     "myBookings": "Mis reservas",
-    "noBookings": "Todavía no tienes una reserva XL."
+    "noBookings": "Todavía no tienes una reserva XL.",
+    "statusOpen": "Abierto",
+    "statusClosed": "Cerrado",
+    "statusCompleted": "Terminado",
+    "statusCanceled": "Cancelado",
+    "statusConfirmed": "Confirmado"
   }
 }

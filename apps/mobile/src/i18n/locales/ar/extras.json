@@ -4295,7 +4295,11 @@
     "distanceExceeded": "تتجاوز هذه الرحلة 100 كم. لا ينطبق سعر ستاندرد. استخدم XL بين المناطق عندما يكون المحور متاحًا.",
     "capacityExceeded": "لا يمكن لهذه المركبة حمل هذا العدد من الركاب.",
     "motorcyclePool": "لا يمكن مشاركة الدراجة النارية.",
-    "commissionUnavailable": "عمولة غينيا غير مهيأة بعد. لم يتم تسعير الرحلة."
+    "commissionUnavailable": "عمولة غينيا غير مهيأة بعد. لم يتم تسعير الرحلة.",
+    "schemaNotReady": "رحلات النقد ليست جاهزة على الخادم بعد. لم يتم إنشاء الرحلة.",
+    "motorcycleNotReady": "رحلات الدراجة النارية ليست جاهزة على الخادم بعد.",
+    "vehicleUnsupported": "هذه المركبة غير متاحة لهذه الرحلة.",
+    "tripNotSupported": "هذا النوع من الرحلات غير متاح."
   },
   "taxiXl": {
     "open": "XL بين المناطق",
@@ -4348,6 +4352,11 @@
     "rideNotCompleted": "أكمل الرحلة قبل التحصيل.",
     "capacityRejected": "هذه المركبة غير مؤهلة لهذه السعة.",
     "myBookings": "حجوزاتي",
-    "noBookings": "ليس لديك حجز XL بعد."
+    "noBookings": "ليس لديك حجز XL بعد.",
+    "statusOpen": "مفتوح",
+    "statusClosed": "مغلق",
+    "statusCompleted": "مكتمل",
+    "statusCanceled": "ملغى",
+    "statusConfirmed": "مؤكد"
   }
 }

@@ -5,6 +5,11 @@ import AdminGate from "@/components/AdminGate";
 import { canWriteTaxiPricing } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
 import { useAdminT } from "@/i18n/useAdminT";
+import {
+  guineaAdminErrorLabel,
+  guineaAuditActionLabel,
+  guineaConfigSourceLabel,
+} from "@/lib/markets/guineaAdminErrors";
 
 type Settings = {
   currency?: string;
@@ -49,7 +54,7 @@ export default function GuineaStandardPricingPage() {
       history?: HistoryRow[];
     };
     if (!response.ok || body.ok === false) {
-      setError(body.error ?? t("Update failed"));
+      setError(t(guineaAdminErrorLabel(body.error)));
       return;
     }
     const saved = body.settings ?? null;
@@ -91,7 +96,7 @@ export default function GuineaStandardPricingPage() {
     const body = (await response.json()) as { ok?: boolean; error?: string; settings?: Settings };
     if (!response.ok || body.ok === false) {
       setNotice(null);
-      setError(body.error ?? t("Update failed"));
+      setError(t(guineaAdminErrorLabel(body.error)));
       if (response.status === 409) await load();
       return;
     }
@@ -105,11 +110,11 @@ export default function GuineaStandardPricingPage() {
       <main className="mx-auto max-w-3xl space-y-6 p-6">
         <h1 className="text-2xl font-semibold">{t("Guinea Standard Pricing")}</h1>
         <p className="text-sm text-slate-600">
-          {t("Currency")} GNF · {t("Price per kilometer")} · {t("Timezone")} Africa/Conakry
+          {t("Currency")} GNF · {t("Price per kilometer")} · {t("Timezone")} {t("Conakry")}
         </p>
         <p className="text-sm text-slate-600">
-          {t("Configuration source")}: {source}
-          {schemaReady ? "" : " · guinea_standard_schema_not_ready"}
+          {t("Configuration source")}: {t(guineaConfigSourceLabel(source))}
+          {schemaReady ? "" : ` · ${t("Guinea standard settings are not ready")}`}
         </p>
         {error ? <p className="text-red-700">{error}</p> : null}
         {notice ? <p className="text-green-800">{notice}</p> : null}
@@ -153,7 +158,7 @@ export default function GuineaStandardPricingPage() {
           <ul className="mt-2 space-y-1 text-sm">
             {history.map((row) => (
               <li key={row.id}>
-                {row.created_at} · {row.action}
+                {row.created_at} · {t(guineaAuditActionLabel(row.action))}
               </li>
             ))}
           </ul>

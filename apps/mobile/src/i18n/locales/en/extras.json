@@ -4293,7 +4293,11 @@
     "distanceExceeded": "This trip is longer than 100 km. Standard pricing does not apply. Use XL interregional when that axis is available.",
     "capacityExceeded": "This vehicle cannot take that many passengers.",
     "motorcyclePool": "A motorcycle cannot be shared.",
-    "commissionUnavailable": "The Guinea commission is not configured yet. The trip was not priced."
+    "commissionUnavailable": "The Guinea commission is not configured yet. The trip was not priced.",
+    "schemaNotReady": "Cash rides are not ready on the server yet. The trip was not created.",
+    "motorcycleNotReady": "Motorcycle rides are not ready on the server yet.",
+    "vehicleUnsupported": "This vehicle is not available for this trip.",
+    "tripNotSupported": "This trip type is not available."
   },
   "taxiXl": {
     "open": "XL interregional",
@@ -4346,6 +4350,11 @@
     "rideNotCompleted": "Complete the departure before collecting cash.",
     "capacityRejected": "This vehicle is not eligible for that XL capacity.",
     "myBookings": "My reservations",
-    "noBookings": "You have no XL reservation yet."
+    "noBookings": "You have no XL reservation yet.",
+    "statusOpen": "Open",
+    "statusClosed": "Closed",
+    "statusCompleted": "Completed",
+    "statusCanceled": "Canceled",
+    "statusConfirmed": "Confirmed"
   }
 }

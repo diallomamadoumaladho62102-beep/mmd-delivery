@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { formatMoneyFromCents } from "../../i18n/formatters";
 import {
   collectGuineaXlCash,
+  xlStatusLabel,
   completeGuineaXlDeparture,
   fetchGuineaXlDepartures,
   openGuineaXlDeparture,
@@ -133,7 +134,7 @@ export default function DriverGuineaXlScreen() {
               {axis?.origin_label} → {axis?.destination_label}
             </Text>
             <Text>
-              {t("taxiXl.capacity")} {departure.passenger_capacity} · {departure.status}
+              {t("taxiXl.capacity")} {departure.passenger_capacity} · {xlStatusLabel(departure.status, t)}
             </Text>
             <Text>
               {t("taxiXl.passengers")} {passengers}

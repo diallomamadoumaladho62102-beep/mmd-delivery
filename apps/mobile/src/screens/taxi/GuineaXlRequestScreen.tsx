@@ -10,6 +10,7 @@ import {
   fetchMyGuineaXlBookings,
   quoteGuineaXl,
   xlErrorMessage,
+  xlStatusLabel,
 } from "../../lib/taxiXlApi";
 
 type Seat = { seat_index: number; seat_role: string; booking_id: string | null };
@@ -278,7 +279,7 @@ export default function GuineaXlRequestScreen() {
             {money(booking.baggage_gnf)}
           </Text>
           <Text>
-            {t("taxiXl.total")} {money(booking.total_gnf)} · {booking.status} ·{" "}
+            {t("taxiXl.total")} {money(booking.total_gnf)} · {xlStatusLabel(booking.status, t)} ·{" "}
             {booking.payment_status === "cash_collected" ? t("taxiXl.paymentCollected") : t("taxiXl.paymentPending")}
           </Text>
         </View>

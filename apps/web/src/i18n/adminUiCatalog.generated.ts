@@ -20738,5 +20738,221 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "ar": "مصدر الإعداد",
     "zh": "配置来源",
     "ff": "Iwdi njuɓɓudi"
+  },
+  "Conakry": {
+    "en": "Conakry",
+    "fr": "Conakry",
+    "es": "Conakry",
+    "ar": "كوناكري",
+    "zh": "科纳克里",
+    "ff": "Konakiri"
+  },
+  "Guinea standard settings are not ready": {
+    "en": "Guinea standard settings are not ready",
+    "fr": "Les paramètres Standard Guinée ne sont pas prêts",
+    "es": "Los ajustes Standard de Guinea no están listos",
+    "ar": "إعدادات التاكسي العادي في غينيا غير جاهزة",
+    "zh": "几内亚标准出租车设置尚未就绪",
+    "ff": "Teeltagol Standard Gine heɓaani tawo"
+  },
+  "That fare was changed by someone else. Reload the page.": {
+    "en": "That fare was changed by someone else. Reload the page.",
+    "fr": "Ce tarif a été modifié par quelqu'un d'autre. Rechargez la page.",
+    "es": "Otra persona cambió esta tarifa. Recarga la página.",
+    "ar": "غيّر شخص آخر هذا السعر. أعد تحميل الصفحة.",
+    "zh": "其他人已修改该票价。请重新加载页面。",
+    "ff": "Goɗɗo waylii njaru ngu. Loowtu hello ngo."
+  },
+  "The fare values are not valid.": {
+    "en": "The fare values are not valid.",
+    "fr": "Les valeurs du tarif ne sont pas valides.",
+    "es": "Los valores de la tarifa no son válidos.",
+    "ar": "قيم السعر غير صالحة.",
+    "zh": "票价值无效。",
+    "ff": "Njaruuji ɗii peewaani."
+  },
+  "The commission value is not valid.": {
+    "en": "The commission value is not valid.",
+    "fr": "La valeur de la commission n'est pas valide.",
+    "es": "El valor de la comisión no es válido.",
+    "ar": "قيمة العمولة غير صالحة.",
+    "zh": "佣金数值无效。",
+    "ff": "Njaru komisiyoŋ ngol peewaani."
+  },
+  "The fare catalog could not be loaded.": {
+    "en": "The fare catalog could not be loaded.",
+    "fr": "Le catalogue tarifaire n'a pas pu être chargé.",
+    "es": "No se pudo cargar el catálogo de tarifas.",
+    "ar": "تعذر تحميل قائمة الأسعار.",
+    "zh": "无法加载票价目录。",
+    "ff": "Doggol njaru ngu loowaaka."
+  },
+  "The currency must stay GNF.": {
+    "en": "The currency must stay GNF.",
+    "fr": "La devise doit rester le GNF.",
+    "es": "La moneda debe seguir siendo GNF.",
+    "ar": "يجب أن تبقى العملة فرنك غيني.",
+    "zh": "货币必须保持为 GNF。",
+    "ff": "Njaru ngu foti heddaade GNF."
+  },
+  "The XL catalog could not be loaded.": {
+    "en": "The XL catalog could not be loaded.",
+    "fr": "Le catalogue XL n'a pas pu être chargé.",
+    "es": "No se pudo cargar el catálogo XL.",
+    "ar": "تعذر تحميل قائمة XL.",
+    "zh": "无法加载 XL 目录。",
+    "ff": "Doggol XL ngu loowaaka."
+  },
+  "The XL rate is not valid.": {
+    "en": "The XL rate is not valid.",
+    "fr": "Le tarif XL n'est pas valide.",
+    "es": "La tarifa XL no es válida.",
+    "ar": "سعر XL غير صالح.",
+    "zh": "XL 票价无效。",
+    "ff": "Njaru XL ngu peewaani."
+  },
+  "That XL rate changed. Reload the page.": {
+    "en": "That XL rate changed. Reload the page.",
+    "fr": "Ce tarif XL a changé. Rechargez la page.",
+    "es": "Esta tarifa XL cambió. Recarga la página.",
+    "ar": "تغير سعر XL هذا. أعد تحميل الصفحة.",
+    "zh": "该 XL 票价已变化。请重新加载页面。",
+    "ff": "Njaru XL ngu wayliima. Loowtu hello ngo."
+  },
+  "This XL route is not configured.": {
+    "en": "This XL route is not configured.",
+    "fr": "Cet axe XL n'est pas configuré.",
+    "es": "Esta ruta XL no está configurada.",
+    "ar": "مسار XL هذا غير مهيأ.",
+    "zh": "此 XL 线路尚未配置。",
+    "ff": "Ndee laawol XL teeldaaka."
+  },
+  "The XL commission is not valid.": {
+    "en": "The XL commission is not valid.",
+    "fr": "La commission XL n'est pas valide.",
+    "es": "La comisión XL no es válida.",
+    "ar": "عمولة XL غير صالحة.",
+    "zh": "XL 佣金无效。",
+    "ff": "Komisiyoŋ XL ngu peewaani."
+  },
+  "The baggage band is not valid.": {
+    "en": "The baggage band is not valid.",
+    "fr": "La tranche de bagage n'est pas valide.",
+    "es": "El tramo de equipaje no es válido.",
+    "ar": "شريحة الأمتعة غير صالحة.",
+    "zh": "行李档位无效。",
+    "ff": "Doggol bagaasi ngu peewaani."
+  },
+  "The XL booking is not valid.": {
+    "en": "The XL booking is not valid.",
+    "fr": "La réservation XL n'est pas valide.",
+    "es": "La reserva XL no es válida.",
+    "ar": "حجز XL غير صالح.",
+    "zh": "XL 预订无效。",
+    "ff": "Jooɗorde XL ndee peewaani."
+  },
+  "Saved in the database": {
+    "en": "Saved in the database",
+    "fr": "Enregistré dans la base",
+    "es": "Guardado en la base de datos",
+    "ar": "محفوظ في قاعدة البيانات",
+    "zh": "已保存在数据库中",
+    "ff": "Danndaa e keeringol"
+  },
+  "Read from the server environment": {
+    "en": "Read from the server environment",
+    "fr": "Lu depuis l'environnement du serveur",
+    "es": "Leído del entorno del servidor",
+    "ar": "مقروء من بيئة الخادم",
+    "zh": "读取自服务器环境",
+    "ff": "Jangaama e weeydi sarworde"
+  },
+  "Not configured": {
+    "en": "Not configured",
+    "fr": "Non configuré",
+    "es": "No configurado",
+    "ar": "غير مهيأ",
+    "zh": "尚未配置",
+    "ff": "Teeldaaka"
+  },
+  "Rates saved": {
+    "en": "Rates saved",
+    "fr": "Tarifs enregistrés",
+    "es": "Tarifas guardadas",
+    "ar": "تم حفظ الأسعار",
+    "zh": "票价已保存",
+    "ff": "Njaruuji danndaama"
+  },
+  "Axis created": {
+    "en": "Axis created",
+    "fr": "Axe créé",
+    "es": "Eje creado",
+    "ar": "تم إنشاء المحور",
+    "zh": "线路已创建",
+    "ff": "Laawol sosaa"
+  },
+  "Commission changed": {
+    "en": "Commission changed",
+    "fr": "Commission modifiée",
+    "es": "Comisión modificada",
+    "ar": "تم تغيير العمولة",
+    "zh": "佣金已更改",
+    "ff": "Komisiyoŋ waylaama"
+  },
+  "Baggage band saved": {
+    "en": "Baggage band saved",
+    "fr": "Tranche de bagage enregistrée",
+    "es": "Tramo de equipaje guardado",
+    "ar": "تم حفظ شريحة الأمتعة",
+    "zh": "行李档位已保存",
+    "ff": "Doggol bagaasi danndaama"
+  },
+  "XL rate updated": {
+    "en": "XL rate updated",
+    "fr": "Tarif XL mis à jour",
+    "es": "Tarifa XL actualizada",
+    "ar": "تم تحديث سعر XL",
+    "zh": "XL 票价已更新",
+    "ff": "Njaru XL hesɗitinaama"
+  },
+  "XL route activated or deactivated": {
+    "en": "XL route activated or deactivated",
+    "fr": "Axe XL activé ou désactivé",
+    "es": "Ruta XL activada o desactivada",
+    "ar": "تم تفعيل مسار XL أو إيقافه",
+    "zh": "XL 线路已启用或停用",
+    "ff": "Laawol XL huɓɓinaama walla dartinaama"
+  },
+  "Recorded change": {
+    "en": "Recorded change",
+    "fr": "Modification enregistrée",
+    "es": "Cambio registrado",
+    "ar": "تغيير مسجل",
+    "zh": "已记录的变更",
+    "ff": "Waylo danndaango"
+  },
+  "One direction only": {
+    "en": "One direction only",
+    "fr": "Un seul sens",
+    "es": "Un solo sentido",
+    "ar": "اتجاه واحد فقط",
+    "zh": "仅单程",
+    "ff": "Feere wootere tan"
+  },
+  "Both directions": {
+    "en": "Both directions",
+    "fr": "Les deux sens",
+    "es": "Ambos sentidos",
+    "ar": "الاتجاهان",
+    "zh": "双向",
+    "ff": "Feere ɗiɗi"
+  },
+  "Both directions share one price. Check this only for a one-way axis.": {
+    "en": "Both directions share one price. Check this only for a one-way axis.",
+    "fr": "Les deux sens partagent un prix. Cochez seulement pour un axe à sens unique.",
+    "es": "Ambos sentidos comparten un precio. Márcalo solo para un eje de ida.",
+    "ar": "الاتجاهان يشتركان في سعر واحد. حدده فقط لمحور باتجاه واحد.",
+    "zh": "双向共用一个价格。仅单程线路才勾选此项。",
+    "ff": "Feere ɗiɗi njogii njaru gootol. Labo ɗum tan ngam laawol feere wootere."
   }
 } as const;

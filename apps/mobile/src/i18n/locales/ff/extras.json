@@ -4352,7 +4352,11 @@
     "distanceExceeded": "Yahdu nduu ɓuri 100 km. Njaru Standard huutoraaka. Huutoro XL so laawol ngol woni.",
     "capacityExceeded": "Moota oo waawaa jogaade yimɓe ɓee fof.",
     "motorcyclePool": "Moto waawaa renndineede.",
-    "commissionUnavailable": "Komisiyoŋ Gine teeldaaka tawo. Yahdu nduu njaraaka."
+    "commissionUnavailable": "Komisiyoŋ Gine teeldaaka tawo. Yahdu nduu njaraaka.",
+    "schemaNotReady": "Yahdu ceede heɓaani tawo e sarworde. Yahdu ndu sosaaka.",
+    "motorcycleNotReady": "Yahdu moto heɓaani tawo e sarworde.",
+    "vehicleUnsupported": "Oo oto heɓaani ngam ndee yahdu.",
+    "tripNotSupported": "Ndee fannu yahdu heɓaani."
   },
   "taxiXl": {
     "open": "XL hakkunde diiwanuuji",
@@ -4405,6 +4409,11 @@
     "rideNotCompleted": "Timmin jipporde hade mooɓde kaalis.",
     "capacityRejected": "Ngal mootere fotaani ngal keewal XL.",
     "myBookings": "Jooɗorɗe am",
-    "noBookings": "A woodani tawo jooɗorde XL."
+    "noBookings": "A woodani tawo jooɗorde XL.",
+    "statusOpen": "Udditii",
+    "statusClosed": "Uddu",
+    "statusCompleted": "Timmi",
+    "statusCanceled": "Haayti",
+    "statusConfirmed": "Teeŋtinaama"
   }
 }
