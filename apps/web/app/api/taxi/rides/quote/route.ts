@@ -144,6 +144,7 @@ export async function POST(req: NextRequest) {
       tripMode,
       vehicleClass,
       passengerCount: body.passengerCount ?? body.passenger_count ?? 1,
+      supabaseAdmin: auth.supabaseAdmin,
     });
     if (guineaQuote) return guineaQuote;
     if (guineaMotorcycle) {

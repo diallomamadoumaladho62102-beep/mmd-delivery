@@ -54,6 +54,7 @@ type PointInput = {
   rewardId?: string | null;
   clientNotes?: string | null;
   passengerCount?: unknown;
+  supabaseAdmin?: SupabaseClient | null;
 };
 
 function requestedMethod(value: unknown): string {
@@ -81,6 +82,63 @@ function driverNote(value: unknown): string | null {
     .trim()
     .slice(0, 200);
   return text || null;
+}
+
+function schemaMissing(message: string): boolean {
+  return /guinea_standard_|schema cache|does not exist/i.test(message);
+}
+
+function wholeSetting(value: unknown): number | null {
+  const amount = typeof value === "number" ? value : Number(value);
+  if (!Number.isSafeInteger(amount) || amount < 0) return null;
+  return amount;
+}
+
+export async function loadCommercialConfig(supabase: SupabaseClient | null | undefined): Promise<
+  | { ok: true; card: GuineaTaxiRateCard; bps: number; source: "database" | "environment" }
+  | { ok: false; error: "guinea_pricing_not_configured" | "guinea_commission_not_configured" }
+> {
+  if (supabase) {
+    const row = await supabase
+      .from("guinea_standard_settings")
+      .select("base_fare_gnf,per_km_gnf,per_minute_gnf,minimum_fare_gnf,maximum_fare_gnf,platform_share_bps")
+      .eq("id", "GN")
+      .maybeSingle();
+    if (row.error) {
+      if (!schemaMissing(row.error.message)) {
+        return { ok: false, error: "guinea_pricing_not_configured" };
+      }
+    } else if (row.data) {
+      const baseFareGnf = wholeSetting(row.data.base_fare_gnf);
+      const perKmGnf = wholeSetting(row.data.per_km_gnf);
+      const perMinuteGnf = wholeSetting(row.data.per_minute_gnf);
+      const minimumFareGnf = wholeSetting(row.data.minimum_fare_gnf);
+      const bps = wholeSetting(row.data.platform_share_bps);
+      const maximumFareGnf =
+        row.data.maximum_fare_gnf == null ? null : wholeSetting(row.data.maximum_fare_gnf);
+      if (
+        baseFareGnf == null ||
+        perKmGnf == null ||
+        perMinuteGnf == null ||
+        minimumFareGnf == null ||
+        (row.data.maximum_fare_gnf != null && maximumFareGnf == null)
+      ) {
+        return { ok: false, error: "guinea_pricing_not_configured" };
+      }
+      if (bps == null || bps > 10_000) return { ok: false, error: "guinea_commission_not_configured" };
+      return {
+        ok: true,
+        source: "database",
+        bps,
+        card: { baseFareGnf, perKmGnf, perMinuteGnf, minimumFareGnf, maximumFareGnf },
+      };
+    }
+  }
+  const rates = readGuineaTaxiRateCard();
+  if (rates.ok === false) return rates;
+  const bps = readGuineaStandardCommissionBps();
+  if (bps == null) return { ok: false, error: "guinea_commission_not_configured" };
+  return { ok: true, card: rates.card, bps, source: "environment" };
 }
 
 function guineaDecision(input: PointInput) {
@@ -262,17 +320,14 @@ export async function maybeQuoteGuineaTaxi(input: PointInput) {
   if (passengers.ok === false) {
     return taxiJson({ ok: false, error: passengers.error }, 400);
   }
-  const rates = readGuineaTaxiRateCard();
-  if (rates.ok === false) {
-    return taxiJson({ ok: false, error: rates.error }, 503);
+  const commercial = await loadCommercialConfig(input.supabaseAdmin);
+  if (commercial.ok === false) {
+    return taxiJson({ ok: false, error: commercial.error }, 503);
   }
-  const commissionBps = readGuineaStandardCommissionBps();
-  if (commissionBps == null) {
-    return taxiJson({ ok: false, error: "guinea_commission_not_configured" }, 503);
-  }
+  const commissionBps = commercial.bps;
 
   try {
-    const { route, priced, evidence } = await routeAndPrice(input, rates.card);
+    const { route, priced, evidence } = await routeAndPrice(input, commercial.card);
     if (priced.ok === false) {
       return taxiJson({ ok: false, error: priced.error }, 400);
     }
@@ -360,20 +415,17 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
   if (passengers.ok === false) {
     return taxiJson({ ok: false, error: passengers.error }, 400);
   }
-  const rates = readGuineaTaxiRateCard();
-  if (rates.ok === false) {
-    return taxiJson({ ok: false, error: rates.error }, 503);
+  const commercial = await loadCommercialConfig(input.supabaseAdmin);
+  if (commercial.ok === false) {
+    return taxiJson({ ok: false, error: commercial.error }, 503);
   }
-  const commissionBps = readGuineaStandardCommissionBps();
-  if (commissionBps == null) {
-    return taxiJson({ ok: false, error: "guinea_commission_not_configured" }, 503);
-  }
+  const commissionBps = commercial.bps;
 
   let route;
   let priced;
   let evidence;
   try {
-    const resolved = await routeAndPrice(input, rates.card);
+    const resolved = await routeAndPrice(input, commercial.card);
     route = resolved.route;
     priced = resolved.priced;
     evidence = resolved.evidence;
@@ -418,11 +470,11 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     platformShareBps: commissionBps,
     platformFeeGnf: split.platformFeeGnf,
     driverAmountGnf: split.driverAmountGnf,
-    baseFareGnf: rates.card.baseFareGnf,
-    perKmGnf: rates.card.perKmGnf,
-    perMinuteGnf: rates.card.perMinuteGnf,
-    minimumFareGnf: rates.card.minimumFareGnf,
-    maximumFareGnf: rates.card.maximumFareGnf,
+    baseFareGnf: commercial.card.baseFareGnf,
+    perKmGnf: commercial.card.perKmGnf,
+    perMinuteGnf: commercial.card.perMinuteGnf,
+    minimumFareGnf: commercial.card.minimumFareGnf,
+    maximumFareGnf: commercial.card.maximumFareGnf,
     vehicle: decision.vehicle,
     passengerCount: passengers.passengerCount,
     quotedAt,

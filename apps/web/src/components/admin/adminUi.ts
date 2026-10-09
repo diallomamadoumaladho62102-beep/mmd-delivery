@@ -79,6 +79,7 @@ export const NAV_ICONS: Record<string, string> = {
   "/admin/pricing": "🏷️",
   "/admin/taxi-pricing": "🚕",
   "/admin/guinea-xl-pricing": "🚐",
+  "/admin/guinea-standard-pricing": "🚖",
   "/admin/taxi-taxes": "🧾",
   "/admin/taxi-exchange-rates": "💱",
   "/admin/payment-methods": "💸",

@@ -137,6 +137,62 @@ export function readGuineaStandardCommissionBps(
 }
 
 /** Integer half-up split. The rate is the supplied configuration, not a literal. */
+function wholeNonNegative(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  if (typeof value === "string" && !/^\d+$/.test(value.trim())) return null;
+  const amount = typeof value === "number" ? value : Number(value.trim());
+  if (!Number.isSafeInteger(amount) || amount < 0) return null;
+  return amount;
+}
+
+export function validateGuineaStandardSettings(input: {
+  baseFareGnf: unknown;
+  perKmGnf: unknown;
+  perMinuteGnf: unknown;
+  minimumFareGnf: unknown;
+  platformShareBps: unknown;
+  maximumFareGnf?: unknown;
+}):
+  | {
+      ok: true;
+      baseFareGnf: number;
+      perKmGnf: number;
+      perMinuteGnf: number;
+      minimumFareGnf: number;
+      maximumFareGnf: number | null;
+      platformShareBps: number;
+    }
+  | { ok: false; error: "guinea_rate_invalid" | "guinea_commission_not_configured" } {
+  const baseFareGnf = wholeNonNegative(input.baseFareGnf);
+  const perKmGnf = wholeNonNegative(input.perKmGnf);
+  const perMinuteGnf = wholeNonNegative(input.perMinuteGnf);
+  const minimumFareGnf = wholeNonNegative(input.minimumFareGnf);
+  const platformShareBps = wholeNonNegative(input.platformShareBps);
+  const maximumProvided = input.maximumFareGnf != null && input.maximumFareGnf !== "";
+  const maximumFareGnf = maximumProvided ? wholeNonNegative(input.maximumFareGnf) : null;
+  if (
+    baseFareGnf == null ||
+    perKmGnf == null ||
+    perMinuteGnf == null ||
+    minimumFareGnf == null ||
+    (maximumProvided && maximumFareGnf == null)
+  ) {
+    return { ok: false, error: "guinea_rate_invalid" };
+  }
+  if (platformShareBps == null || platformShareBps > 10_000) {
+    return { ok: false, error: "guinea_commission_not_configured" };
+  }
+  return {
+    ok: true,
+    baseFareGnf,
+    perKmGnf,
+    perMinuteGnf,
+    minimumFareGnf,
+    maximumFareGnf,
+    platformShareBps,
+  };
+}
+
 export function splitGuineaStandardCommission(
   fareGnf: number,
   platformShareBps: number,

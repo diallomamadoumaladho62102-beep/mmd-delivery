@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { calculateGuineaTaxiFareGnf, readGuineaTaxiRateCard } from "@/lib/markets/guineaTaxiPricing";
+import { loadCommercialConfig } from "@/lib/markets/guineaTaxiHttp";
+import { hasPermission } from "@/lib/adminRbac";
 import {
   cancelGuineaPoolReservation,
   evaluateGuineaPool,
@@ -15,6 +17,7 @@ import {
   resolveGuineaPassengerCount,
   resolveGuineaStandardVehicle,
   splitGuineaStandardCommission,
+  validateGuineaStandardSettings,
   type GuineaPoolLimits,
   type GuineaPoolReservation,
 } from "@/lib/markets/guineaStandard";
@@ -258,10 +261,209 @@ test("standard http does not hardcode the commercial percentage", () => {
     path.join(path.dirname(fileURLToPath(import.meta.url)), "guineaTaxiHttp.ts"),
     "utf8",
   );
+  const pricing = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "guineaTaxiPricing.ts"),
+    "utf8",
+  );
   assert.equal(http.includes("platform_fee_cents: 0"), false);
   assert.equal(http.includes("0.15"), false);
   assert.equal(http.includes("GUINEA_TAXI_PLATFORM_SHARE_BPS"), false);
   assert.match(http, /readGuineaStandardCommissionBps/);
+  assert.match(http, /guinea_standard_settings/);
+  for (const source of [pricing, http]) {
+    assert.equal(/baseFareGnf\s*[:=]\s*1_?000/.test(source), false);
+    assert.equal(/perKmGnf\s*[:=]\s*2_?000/.test(source), false);
+    assert.equal(/perMinuteGnf\s*[:=]\s*500\b/.test(source), false);
+    assert.equal(/minimumFareGnf\s*[:=]\s*5_?000/.test(source), false);
+    assert.equal(/platformShareBps\s*[:=]\s*1_?500/.test(source), false);
+    assert.equal(source.includes("?? 1000"), false);
+    assert.equal(source.includes("?? 5000"), false);
+  }
+  const migration = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../../../supabase/migrations/20261220120000_guinea_standard_settings.sql"),
+    "utf8",
+  );
+  assert.match(migration, /1000, 2000, 500, 5000, 1500/);
+  assert.match(migration, /on conflict \(id\) do nothing/);
+});
+
+test("authorized standard card is simulated without replacing the old references", () => {
+  const card = {
+    baseFareGnf: 1000,
+    perKmGnf: 2000,
+    perMinuteGnf: 500,
+    minimumFareGnf: 5000,
+    maximumFareGnf: null,
+  };
+  const trips = [
+    { km: 1, minutes: 1.2, oldFare: 10_000 },
+    { km: 45, minutes: 54, oldFare: 77_000 },
+    { km: 80, minutes: 96, oldFare: 181_000 },
+    { km: 100, minutes: 120, oldFare: 265_000 },
+  ];
+  const results = trips.map((trip) => {
+    const quoted = calculateGuineaTaxiFareGnf({
+      distanceMeters: trip.km * 1000,
+      durationMinutes: trip.minutes,
+      card,
+    });
+    if (quoted.ok === false) throw new Error("quote failed");
+    const distanceComponent = Math.round((card.perKmGnf * trip.km * 1000) / 1000);
+    const timeComponent = card.perMinuteGnf * quoted.durationMinutes;
+    const beforeMinimum = card.baseFareGnf + distanceComponent + timeComponent;
+    return {
+      ...trip,
+      roundedMinutes: quoted.durationMinutes,
+      distanceComponent,
+      timeComponent,
+      beforeMinimum,
+      minimumApplied: beforeMinimum < card.minimumFareGnf,
+      finalFare: quoted.fareGnf,
+    };
+  });
+  assert.deepEqual(
+    results.map((row) => [row.roundedMinutes, row.beforeMinimum, row.minimumApplied, row.finalFare]),
+    [
+      [1, 3500, true, 5000],
+      [54, 118000, false, 118000],
+      [96, 209000, false, 209000],
+      [120, 261000, false, 261000],
+    ],
+  );
+  assert.deepEqual(
+    results.map((row) => row.finalFare - row.oldFare),
+    [-5000, 41000, 28000, -4000],
+  );
+  for (const row of results) {
+    const split = splitGuineaStandardCommission(row.finalFare, 1500);
+    assert.ok(split);
+    assert.equal(split.platformFeeGnf + split.driverAmountGnf, row.finalFare);
+  }
+  const short = splitGuineaStandardCommission(5000, 1500);
+  const mid = splitGuineaStandardCommission(118000, 1500);
+  assert.equal(short?.platformFeeGnf, 750);
+  assert.equal(short?.driverAmountGnf, 4250);
+  assert.equal(mid?.platformFeeGnf, 17700);
+  assert.equal(mid?.driverAmountGnf, 100300);
+});
+
+test("standard settings reject invalid amounts and unauthorized writers", () => {
+  assert.equal(validateGuineaStandardSettings({
+    baseFareGnf: 1000,
+    perKmGnf: 2000,
+    perMinuteGnf: 500,
+    minimumFareGnf: 5000,
+    platformShareBps: 1500,
+  }).ok, true);
+  assert.equal(validateGuineaStandardSettings({
+    baseFareGnf: -1,
+    perKmGnf: 2000,
+    perMinuteGnf: 500,
+    minimumFareGnf: 5000,
+    platformShareBps: 1500,
+  }).ok, false);
+  assert.equal(validateGuineaStandardSettings({
+    baseFareGnf: 1.5,
+    perKmGnf: 2000,
+    perMinuteGnf: 500,
+    minimumFareGnf: 5000,
+    platformShareBps: 1500,
+  }).ok, false);
+  assert.equal(
+    validateGuineaStandardSettings({
+      baseFareGnf: 1000,
+      perKmGnf: 2000,
+      perMinuteGnf: 500,
+      minimumFareGnf: 5000,
+      platformShareBps: 10001,
+    }).ok,
+    false,
+  );
+  assert.equal(hasPermission("super_admin", "taxi_pricing.write"), true);
+  assert.equal(hasPermission("finance_admin", "taxi_pricing.read"), true);
+  assert.equal(hasPermission("finance_admin", "taxi_pricing.write"), false);
+  assert.equal(hasPermission("operations_admin", "taxi_pricing.write"), false);
+  assert.equal(hasPermission("client", "taxi_pricing.read"), false);
+  const route = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../app/api/admin/guinea-standard/route.ts"),
+    "utf8",
+  );
+  assert.match(route, /taxi_pricing\.read/);
+  assert.match(route, /assertCanWriteTaxiPricing/);
+  assert.equal(/base_fare_gnf:\s*1000/.test(route), false);
+  assert.equal(/per_km_gnf:\s*2000/.test(route), false);
+  assert.equal(/minimum_fare_gnf:\s*5000/.test(route), false);
+  assert.equal(/platform_share_bps:\s*1500/.test(route), false);
+});
+
+function settingsClient(result: { data: unknown; error: { message: string } | null }) {
+  const chain = {
+    select() {
+      return chain;
+    },
+    eq() {
+      return chain;
+    },
+    maybeSingle: async () => result,
+  };
+  return { from: () => chain };
+}
+
+test("server reads the saved standard row and fails closed without it", async () => {
+  const saved = await loadCommercialConfig(
+    settingsClient({
+      data: {
+        base_fare_gnf: 1000,
+        per_km_gnf: 2000,
+        per_minute_gnf: 500,
+        minimum_fare_gnf: 5000,
+        maximum_fare_gnf: null,
+        platform_share_bps: 1500,
+      },
+      error: null,
+    }) as never,
+  );
+  assert.equal(saved.ok, true);
+  if (saved.ok) {
+    assert.equal(saved.source, "database");
+    assert.equal(saved.card.baseFareGnf, 1000);
+    assert.equal(saved.card.perKmGnf, 2000);
+    assert.equal(saved.bps, 1500);
+  }
+  const edited = await loadCommercialConfig(
+    settingsClient({
+      data: {
+        base_fare_gnf: 2500,
+        per_km_gnf: 3000,
+        per_minute_gnf: 700,
+        minimum_fare_gnf: 8000,
+        maximum_fare_gnf: null,
+        platform_share_bps: 1200,
+      },
+      error: null,
+    }) as never,
+  );
+  assert.equal(edited.ok && edited.card.baseFareGnf, 2500);
+  assert.equal(edited.ok && edited.card.perKmGnf, 3000);
+  const invalid = await loadCommercialConfig(
+    settingsClient({
+      data: {
+        base_fare_gnf: 1.5,
+        per_km_gnf: 2000,
+        per_minute_gnf: 500,
+        minimum_fare_gnf: 5000,
+        maximum_fare_gnf: null,
+        platform_share_bps: 1500,
+      },
+      error: null,
+    }) as never,
+  );
+  assert.equal(invalid.ok, false);
+  const absent = await loadCommercialConfig(
+    settingsClient({ data: null, error: { message: "relation guinea_standard_settings does not exist" } }) as never,
+  );
+  assert.equal(absent.ok, false);
+  assert.equal(absent.ok === false && absent.error, "guinea_pricing_not_configured");
 });
 
 console.log("guineaStandard.test.ts passed");

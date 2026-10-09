@@ -20698,5 +20698,45 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
   "Baggage": { "en": "Baggage", "fr": "Bagages", "es": "Equipaje", "ar": "الأمتعة", "zh": "行李", "ff": "Gaɗeeje" },
   "Minimum kg": { "en": "Minimum kg", "fr": "Poids minimum", "es": "Peso mínimo", "ar": "الحد الأدنى للكيلوغرام", "zh": "最小公斤", "ff": "Kg les" },
   "Maximum kg": { "en": "Maximum kg", "fr": "Poids maximum", "es": "Peso máximo", "ar": "الحد الأقصى للكيلوغرام", "zh": "最大公斤", "ff": "Kg dow" },
-  "Inactive": { "en": "Inactive", "fr": "Inactif", "es": "Inactivo", "ar": "غير نشط", "zh": "停用", "ff": "Dartaama" }
+  "Inactive": { "en": "Inactive", "fr": "Inactif", "es": "Inactivo", "ar": "غير نشط", "zh": "停用", "ff": "Dartaama" },
+  "Guinea Standard Pricing": {
+    "en": "Guinea Standard Pricing",
+    "fr": "Tarification Standard Guinée",
+    "es": "Tarifas Standard Guinea",
+    "ar": "تسعير التاكسي العادي في غينيا",
+    "zh": "几内亚标准出租车定价",
+    "ff": "Njaru Standard Gine"
+  },
+  "Price per kilometer": {
+    "en": "Price per kilometer",
+    "fr": "Prix par kilomètre",
+    "es": "Precio por kilómetro",
+    "ar": "السعر لكل كيلومتر",
+    "zh": "每公里价格",
+    "ff": "Njaru kiloomeete"
+  },
+  "Trip minimum": {
+    "en": "Trip minimum",
+    "fr": "Minimum de course",
+    "es": "Mínimo del viaje",
+    "ar": "الحد الأدنى للرحلة",
+    "zh": "行程最低价",
+    "ff": "Keewal les ngol"
+  },
+  "Saved values": {
+    "en": "Saved values",
+    "fr": "Valeurs enregistrées",
+    "es": "Valores guardados",
+    "ar": "القيم المحفوظة",
+    "zh": "已保存的值",
+    "ff": "Njaruuji danndaaɗi"
+  },
+  "Configuration source": {
+    "en": "Configuration source",
+    "fr": "Source de configuration",
+    "es": "Origen de la configuración",
+    "ar": "مصدر الإعداد",
+    "zh": "配置来源",
+    "ff": "Iwdi njuɓɓudi"
+  }
 } as const;

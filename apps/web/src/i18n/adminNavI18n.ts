@@ -203,6 +203,13 @@ const NAV: Record<string, Record<Exclude<WebLocale, "en">, string>> = {
   Advertisements: { fr: "Publicités", es: "Anuncios", ar: "الإعلانات", zh: "广告", ff: "Advertisements" },
   "Corporate Website": { fr: "Site corporate", es: "Sitio corporativo", ar: "الموقع المؤسسي", zh: "企业网站", ff: "Lowre korporatif" },
   "Test Records": { fr: "Enregistrements de test", es: "Registros de prueba", ar: "سجلات الاختبار", zh: "测试记录", ff: "Nawnaaɗe test" },
+  "Guinea Standard Pricing": {
+    fr: "Tarification Standard Guinée",
+    es: "Tarifas Standard Guinea",
+    ar: "تسعير التاكسي العادي في غينيا",
+    zh: "几内亚标准出租车定价",
+    ff: "Njaru Standard Gine",
+  },
 };
 
 const SHELL: Record<string, Record<Exclude<WebLocale, "en">, string>> = {

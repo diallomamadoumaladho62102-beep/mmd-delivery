@@ -216,6 +216,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "taxi_pricing.read",
   },
   {
+    href: "/admin/guinea-standard-pricing",
+    title: "Guinea Standard Pricing",
+    description: "Guinea Standard base, kilometer, minute, minimum and commission",
+    permission: "taxi_pricing.read",
+  },
+  {
     href: "/admin/driver-vehicles",
     title: "Véhicules & catégories taxi",
     description: "Admissibilité Standard, Comfort, XL, Wheelchair, documents véhicule",
