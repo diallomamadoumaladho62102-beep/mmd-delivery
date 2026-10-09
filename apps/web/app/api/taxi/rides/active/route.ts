@@ -15,11 +15,7 @@ export async function GET(req: NextRequest) {
     const auth = await requireTaxiApiUser(req);
     if (auth.ok === false) return auth.response;
 
-    const { data, error } = await applyLiveTripFilters(
-      auth.supabaseAdmin
-        .from("taxi_rides")
-        .select(
-          `
+    const rideSelect = `
         *,
         taxi_ride_stops (
           id,
@@ -29,8 +25,11 @@ export async function GET(req: NextRequest) {
           lng,
           status
         )
-      `,
-        ),
+      `;
+    const activeResult = await applyLiveTripFilters(
+      auth.supabaseAdmin
+        .from("taxi_rides")
+        .select(rideSelect),
     )
       .eq("driver_id", auth.user.id)
       .in("status", ACTIVE_STATUSES)
@@ -38,8 +37,25 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    if (error) {
-      return taxiJson({ ok: false, error: error.message }, 500);
+    if (activeResult.error) {
+      return taxiJson({ ok: false, error: activeResult.error.message }, 500);
+    }
+
+    let data = activeResult.data;
+    if (!data) {
+      const cashResult = await applyLiveTripFilters(
+        auth.supabaseAdmin.from("taxi_rides").select(rideSelect),
+      )
+        .eq("driver_id", auth.user.id)
+        .eq("status", "completed")
+        .eq("payment_method", "cash")
+        .eq("payment_status", "pending_cash")
+        .order("completed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cashResult.error && cashResult.data) {
+        data = cashResult.data;
+      }
     }
 
     // Never expose boarding OTP to the driver — client must communicate it.

@@ -39,6 +39,7 @@ type Props = {
   onArrive: () => void;
   onVerifyPickupCode: (code: string) => Promise<void>;
   onComplete: () => void;
+  onCashCollected?: () => void;
   onCancel: () => void;
   onArriveStop: (stopOrder: number) => void;
   onCompleteStop: (stopOrder: number) => void;
@@ -84,6 +85,7 @@ export function DriverTaxiActiveRideCard({
   onArrive,
   onVerifyPickupCode,
   onComplete,
+  onCashCollected,
   onCancel,
   onArriveStop,
   onCompleteStop,
@@ -422,6 +424,18 @@ export function DriverTaxiActiveRideCard({
               {busy
                 ? "…"
                 : t("taxi.driver.activeRide.completeRide", "Complete ride")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {status === "completed" && onCashCollected ? (
+          <TouchableOpacity
+            style={[styles.primaryBtn, { marginTop: 12 }]}
+            disabled={busy}
+            onPress={onCashCollected}
+          >
+            <Text style={styles.primaryText}>
+              {busy ? "…" : t("taxiGuinea.cashReceived", "Cash received")}
             </Text>
           </TouchableOpacity>
         ) : null}

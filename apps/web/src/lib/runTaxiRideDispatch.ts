@@ -12,6 +12,7 @@ import {
 import { filterTaxiCandidatesByCapacity } from "@/lib/driverMissionCapacity";
 import { pushText } from "@/lib/pushCopy";
 import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
+import { taxiPaymentAllowsDispatch } from "@/lib/markets/guineaCashPayment";
 
 const MAX_DISPATCH_MILES = 15;
 
@@ -33,11 +34,12 @@ function normalize(value: unknown) {
 
 function isDispatchableTaxiRide(ride: {
   payment_status?: unknown;
+  payment_method?: unknown;
   status?: unknown;
   driver_id?: unknown;
 }) {
   if (ride.driver_id) return false;
-  if (normalize(ride.payment_status) !== "paid") return false;
+  if (!taxiPaymentAllowsDispatch(ride.payment_status, ride.payment_method)) return false;
 
   const status = normalize(ride.status);
   return status === "paid" || status === "dispatching";
@@ -175,13 +177,23 @@ export async function runTaxiRideDispatch(params: {
   const maxDrivers = waveConfig.maxDrivers;
   const maxMiles = waveConfig.maxMiles;
 
-  const { data: ride, error: rideError } = await supabase
+  const rideSelect =
+    "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,pickup_city,dropoff_address,driver_payout_cents,total_cents,vehicle_class,dispatch_wave,client_user_id,preferred_driver_id,favorite_dispatch_expires_at,premium_driver_only,is_shared_ride,shared_ride_id,prefer_electric_or_hybrid,electric_search_until,electric_search_expired,country_code,preferences_stage_until,preferences_dispatch_stage,client_preferences,ambiance_preference";
+  let { data: ride, error: rideError } = await supabase
     .from("taxi_rides")
-    .select(
-      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,pickup_city,dropoff_address,driver_payout_cents,total_cents,vehicle_class,dispatch_wave,client_user_id,preferred_driver_id,favorite_dispatch_expires_at,premium_driver_only,is_shared_ride,shared_ride_id,prefer_electric_or_hybrid,electric_search_until,electric_search_expired,country_code,preferences_stage_until,preferences_dispatch_stage,client_preferences,ambiance_preference"
-    )
+    .select(`${rideSelect},payment_method`)
     .eq("id", taxiRideId)
     .maybeSingle();
+
+  if (rideError && /payment_method/i.test(String(rideError.message ?? ""))) {
+    const retry = await supabase
+      .from("taxi_rides")
+      .select(rideSelect)
+      .eq("id", taxiRideId)
+      .maybeSingle();
+    ride = retry.data;
+    rideError = retry.error;
+  }
 
   if (rideError) {
     return {

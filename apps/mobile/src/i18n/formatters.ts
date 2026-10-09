@@ -42,7 +42,16 @@ export function formatMoneyFromCents(
   currency = "USD",
   language?: string | null
 ): string {
-  return formatMoney(Number(cents || 0) / 100, currency, language);
+  const code = String(currency || "USD").trim().toUpperCase();
+  const minor = Number(cents || 0);
+  const major = code === "GNF" ? minor : minor / 100;
+  if (code === "GNF") {
+    const formatted = new Intl.NumberFormat(intlLocaleTag(language), {
+      maximumFractionDigits: 0,
+    }).format(Math.round(major));
+    return `${formatted} GNF`;
+  }
+  return formatMoney(major, code, language);
 }
 
 export function formatDateTime(

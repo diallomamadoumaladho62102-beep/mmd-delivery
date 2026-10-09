@@ -23,6 +23,13 @@ function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+function readStoredRegion(value: unknown): string | null {
+  if (value == null || typeof value !== "object") return null;
+  const region = (value as { region?: unknown }).region;
+  const text = typeof region === "string" ? region.trim() : "";
+  return text || null;
+}
+
 function uniqIds(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((v) => String(v ?? "").trim()).filter(Boolean))];
 }
@@ -55,64 +62,82 @@ export async function GET(request: NextRequest) {
     const paymentStatus = params.get("payment_status")?.trim();
     const q = params.get("q")?.trim();
 
-    let query = supabase
-      .from("taxi_rides")
-      .select(
-        [
-          "id",
-          "status",
-          "vehicle_class",
-          "payment_status",
-          "refund_status",
-          "total_cents",
-          "currency",
-          "client_user_id",
-          "driver_id",
-          "pickup_address",
-          "dropoff_address",
-          "pickup_city",
-          "distance_miles",
-          "duration_minutes",
-          "next_ride_eta_minutes",
-          "created_at",
-          "completed_at",
-          "accepted_at",
-          "driver_arrived_at",
-          "started_at",
-          "updated_at",
-        ].join(", ")
-      )
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    const baseColumns = [
+      "id",
+      "status",
+      "vehicle_class",
+      "payment_status",
+      "refund_status",
+      "total_cents",
+      "currency",
+      "country_code",
+      "client_user_id",
+      "driver_id",
+      "pickup_address",
+      "dropoff_address",
+      "pickup_city",
+      "distance_miles",
+      "duration_minutes",
+      "next_ride_eta_minutes",
+      "created_at",
+      "completed_at",
+      "accepted_at",
+      "driver_arrived_at",
+      "started_at",
+      "updated_at",
+    ];
 
-    if (status && status !== "searching") query = query.eq("status", status);
-    if (status === "searching") {
-      query = query.in("status", [
-        "dispatching",
-        "paid",
-        "pending_payment",
-        "quoted",
-        "draft",
-        "scheduled",
-        "queued",
-      ]);
-    }
-    if (vehicleClass) query = query.eq("vehicle_class", vehicleClass);
-    if (paymentStatus) query = query.eq("payment_status", paymentStatus);
-    if (q) {
-      const safeQ = q.replace(/[%_,]/g, "");
-      if (/^[0-9a-f-]{8,}$/i.test(safeQ)) {
-        query = query.or(
-          `id.eq.${safeQ},pickup_address.ilike.%${safeQ}%,dropoff_address.ilike.%${safeQ}%`
-        );
-      } else if (safeQ) {
-        query = query.or(
-          `pickup_address.ilike.%${safeQ}%,dropoff_address.ilike.%${safeQ}%,pickup_city.ilike.%${safeQ}%`
-        );
+    const loadRides = (columns: string[]) => {
+      let query = supabase
+        .from("taxi_rides")
+        .select(columns.join(", "))
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (status && status !== "searching") query = query.eq("status", status);
+      if (status === "searching") {
+        query = query.in("status", [
+          "dispatching",
+          "paid",
+          "pending_payment",
+          "quoted",
+          "draft",
+          "scheduled",
+          "queued",
+        ]);
       }
-    }
+      if (vehicleClass) query = query.eq("vehicle_class", vehicleClass);
+      if (paymentStatus) query = query.eq("payment_status", paymentStatus);
+      if (q) {
+        const safeQ = q.replace(/[%_,]/g, "");
+        if (/^[0-9a-f-]{8,}$/i.test(safeQ)) {
+          query = query.or(
+            `id.eq.${safeQ},pickup_address.ilike.%${safeQ}%,dropoff_address.ilike.%${safeQ}%`
+          );
+        } else if (safeQ) {
+          query = query.or(
+            `pickup_address.ilike.%${safeQ}%,dropoff_address.ilike.%${safeQ}%,pickup_city.ilike.%${safeQ}%`
+          );
+        }
+      }
+      return applyLiveTripFilters(query);
+    };
 
-    const { data, error } = await applyLiveTripFilters(query);
+    let { data, error } = await loadRides([
+      ...baseColumns,
+      "payment_method",
+      "fare_components",
+    ]);
+    if (error && /fare_components/i.test(error.message)) {
+      const retry = await loadRides([...baseColumns, "payment_method"]);
+      data = retry.data;
+      error = retry.error;
+    }
+    if (error && /payment_method/i.test(error.message)) {
+      const retry = await loadRides(baseColumns);
+      data = retry.data;
+      error = retry.error;
+    }
     if (error) return json({ ok: false, error: error.message }, 500);
 
     const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
@@ -281,11 +306,14 @@ export async function GET(request: NextRequest) {
           refund_status: (r.refund_status as string | null) ?? null,
           total_cents: r.total_cents != null ? Number(r.total_cents) : null,
           currency: (r.currency as string | null) ?? null,
+          country_code: (r.country_code as string | null) ?? null,
+          payment_method: (r.payment_method as string | null) ?? null,
           client_user_id: clientId || null,
           driver_id: driverId || null,
           pickup_address: (r.pickup_address as string | null) ?? null,
           dropoff_address: (r.dropoff_address as string | null) ?? null,
           pickup_city: (r.pickup_city as string | null) ?? null,
+          region: readStoredRegion(r.fare_components),
           distance_miles:
             r.distance_miles != null ? Number(r.distance_miles) : null,
           duration_minutes:

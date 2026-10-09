@@ -140,11 +140,38 @@ function TaxiRideOpsCard({ ride }: { ride: AdminTaxiRideListItem }) {
           ) : null}
         </div>
         <div className="mt-1 text-slate-600">
+          {t("Country")}{" "}
+          <span className="font-semibold text-slate-900">
+            {ride.country_code === "GN" ? t("Guinea") : ride.country_code || "—"}
+          </span>
+          {" · "}
+          {t("City")}{" "}
+          <span className="font-semibold text-slate-900">{ride.pickup_city || "—"}</span>
+          {ride.region ? (
+            <>
+              {" · "}
+              {t("Region")}{" "}
+              <span className="font-semibold text-slate-900">{ride.region}</span>
+            </>
+          ) : null}
+          {" · "}
+          {t("Currency")}{" "}
+          <span className="font-semibold text-slate-900">{ride.currency || "—"}</span>
+          {ride.payment_method ? (
+            <>
+              {" · "}
+              {t("Payment")}{" "}
+              <span className="font-semibold text-slate-900">
+                {ride.payment_method === "cash" ? t("Cash") : ride.payment_method}
+              </span>
+            </>
+          ) : null}
+        </div>
+        <div className="mt-1 text-slate-600">
           Amount{" "}
           <span className="font-semibold text-slate-900">
             {formatRideMoney(ride.total_cents, ride.currency ?? "USD")}
           </span>
-          {ride.currency ? ` · ${ride.currency}` : ""}
         </div>
       </div>
 

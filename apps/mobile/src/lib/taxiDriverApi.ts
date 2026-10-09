@@ -98,6 +98,10 @@ export function startTaxiRide(rideId: string, pickupCode: string) {
   });
 }
 
+export function confirmTaxiCashCollected(rideId: string) {
+  return taxiPost("/api/taxi/rides/cash-collected", { taxi_ride_id: rideId });
+}
+
 export function completeTaxiRide(
   rideId: string,
   coords?: { lat: number; lng: number },
@@ -166,14 +170,22 @@ export async function loadTaxiDriverFeatures(
 }
 
 export function formatDriverPayout(cents: unknown, currency = "USD") {
-  const value = Number(cents ?? 0) / 100;
-  if (!Number.isFinite(value)) return "$0.00";
+  const code = String(currency || "USD").trim().toUpperCase();
+  const minor = Number(cents ?? 0);
+  if (!Number.isFinite(minor)) return code === "GNF" ? "0 GNF" : "$0.00";
+  const value = code === "GNF" ? minor : minor / 100;
   try {
+    if (code === "GNF") {
+      const formatted = new Intl.NumberFormat("fr-FR", {
+        maximumFractionDigits: 0,
+      }).format(Math.round(value));
+      return `${formatted} GNF`;
+    }
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: currency || "USD",
+      currency: code,
     }).format(value);
   } catch {
-    return `$${value.toFixed(2)}`;
+    return code === "GNF" ? `${Math.round(value)} GNF` : `$${value.toFixed(2)}`;
   }
 }

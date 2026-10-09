@@ -32,6 +32,7 @@ import {
   quoteRideFinalFromRateCaptureSot,
   quoteRideFinalSot,
 } from "@/lib/pricingEngine";
+import { maybeQuoteGuineaTaxi } from "@/lib/markets/guineaTaxiHttp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -126,6 +127,21 @@ export async function POST(req: NextRequest) {
     if (stopCapacity) {
       return taxiJson({ ok: false, error: stopCapacity }, 400);
     }
+
+    const guineaQuote = await maybeQuoteGuineaTaxi({
+      claimedCountryCode: manualCountryCode,
+      pickupLat: locationInput.pickupLat,
+      pickupLng: locationInput.pickupLng,
+      dropoffLat: locationInput.dropoffLat,
+      dropoffLng: locationInput.dropoffLng,
+      pickupAddress: locationInput.pickupAddress,
+      dropoffAddress: locationInput.dropoffAddress,
+      stops: body.stops,
+      sharedRide: body.sharedRide === true || body.shared_ride === true,
+      tripMode,
+      vehicleClass,
+    });
+    if (guineaQuote) return guineaQuote;
 
     let route;
     try {

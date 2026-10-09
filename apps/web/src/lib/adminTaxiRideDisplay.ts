@@ -41,6 +41,10 @@ export type AdminTaxiRideListItem = {
   refund_status: string | null;
   total_cents: number | null;
   currency: string | null;
+  country_code?: string | null;
+  payment_method?: string | null;
+  /** Mapbox region when the fare snapshot stored one. Never invented. */
+  region?: string | null;
   client_user_id: string | null;
   driver_id: string | null;
   pickup_address: string | null;
@@ -115,10 +119,15 @@ export function formatRideMoney(
   currency = "USD"
 ): string {
   if (cents == null || !Number.isFinite(Number(cents))) return "—";
-  return new Intl.NumberFormat("en-US", {
+  const code = String(currency || "USD").trim().toUpperCase();
+  const major = code === "GNF" ? Number(cents) : Number(cents) / 100;
+  return new Intl.NumberFormat(code === "GNF" ? "fr-FR" : "en-US", {
     style: "currency",
-    currency: currency || "USD",
-  }).format(Number(cents) / 100);
+    currency: code,
+    currencyDisplay: code === "GNF" ? "code" : "symbol",
+    maximumFractionDigits: code === "GNF" ? 0 : undefined,
+    minimumFractionDigits: code === "GNF" ? 0 : undefined,
+  }).format(major);
 }
 
 export function formatRideDateParts(
@@ -402,7 +411,11 @@ function isSameLocalDay(iso: string | null | undefined, now = new Date()): boole
   );
 }
 
-/** Display-only sum of persisted total_cents for completed rides today. */
+function rideCurrency(row: AdminTaxiRideListItem): string {
+  return String(row.currency ?? "USD").trim().toUpperCase() || "USD";
+}
+
+/** USD-only total. Other currencies stay out of this number. */
 export function revenueTodayCents(
   items: AdminTaxiRideListItem[],
   now = new Date()
@@ -411,11 +424,38 @@ export function revenueTodayCents(
   for (const row of items) {
     if (normalizeTaxiRideStatus(row.status) !== "completed") continue;
     if (!isSameLocalDay(row.completed_at ?? row.created_at, now)) continue;
+    if (rideCurrency(row) !== "USD") continue;
     if (row.total_cents != null && Number.isFinite(row.total_cents)) {
       sum += Number(row.total_cents);
     }
   }
   return sum;
+}
+
+export function revenueTodayByCurrency(
+  items: AdminTaxiRideListItem[],
+  now = new Date()
+): Array<{ currency: string; amountMinor: number }> {
+  const totals = new Map<string, number>();
+  for (const row of items) {
+    if (normalizeTaxiRideStatus(row.status) !== "completed") continue;
+    if (!isSameLocalDay(row.completed_at ?? row.created_at, now)) continue;
+    if (row.total_cents == null || !Number.isFinite(row.total_cents)) continue;
+    const currency = rideCurrency(row);
+    totals.set(currency, (totals.get(currency) ?? 0) + Number(row.total_cents));
+  }
+  return [...totals.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([currency, amountMinor]) => ({ currency, amountMinor }));
+}
+
+export function formatRevenueToday(
+  totals: Array<{ currency: string; amountMinor: number }>
+): string {
+  if (totals.length === 0) return formatRideMoney(0, "USD");
+  return totals
+    .map((row) => formatRideMoney(row.amountMinor, row.currency))
+    .join(" · ");
 }
 
 export function computeTaxiRideKpis(items: AdminTaxiRideListItem[]) {
@@ -432,6 +472,7 @@ export function computeTaxiRideKpis(items: AdminTaxiRideListItem[]) {
       return s === "canceled" || s === "cancelled";
     }),
     revenueTodayCents: revenueTodayCents(items),
+    revenueTodayByCurrency: revenueTodayByCurrency(items),
   };
 }
 

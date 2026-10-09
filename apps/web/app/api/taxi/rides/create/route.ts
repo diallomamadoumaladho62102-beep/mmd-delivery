@@ -31,6 +31,7 @@ import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
 import type { TaxiAmbiancePreference, TaxiClientPreferences } from "@/lib/taxiClientPreferences";
 import { validateRouteClaimsServer } from "@/lib/geoTrust";
+import { maybeCreateGuineaCashTaxi } from "@/lib/markets/guineaTaxiHttp";
 import {
   buildRoundTripRouteInput,
   normalizeReturnScheduledAt,
@@ -99,6 +100,8 @@ type Body = {
   return_wait_minutes?: number;
   returnScheduledAt?: string;
   return_scheduled_at?: string;
+  paymentMethod?: string;
+  payment_method?: string;
 };
 
 function parseClientPreferences(body: Body): {
@@ -232,6 +235,30 @@ export async function POST(req: NextRequest) {
     if (stopCapacity) {
       return taxiJson({ ok: false, error: stopCapacity }, 400);
     }
+
+    const guineaCreate = await maybeCreateGuineaCashTaxi({
+      supabaseAdmin: auth.supabaseAdmin,
+      userId: auth.user.id,
+      claimedCountryCode: manualCountryCode,
+      pickupLat: locationInput.pickupLat,
+      pickupLng: locationInput.pickupLng,
+      dropoffLat: locationInput.dropoffLat,
+      dropoffLng: locationInput.dropoffLng,
+      pickupAddress: locationInput.pickupAddress,
+      dropoffAddress: locationInput.dropoffAddress,
+      stops: body.stops,
+      sharedRide,
+      tripMode,
+      vehicleClass,
+      passengerCount,
+      paymentMethod: body.paymentMethod ?? body.payment_method,
+      premiumDriverOnly,
+      businessAccountId,
+      promoCode,
+      rewardId,
+      clientNotes: body.clientNotes ?? body.client_notes,
+    });
+    if (guineaCreate) return guineaCreate;
 
     let route;
     try {

@@ -20,6 +20,8 @@ export type TaxiStopInput = {
 
 export type TaxiMultiStopRouteInput = TaxiRouteInput & {
   stops?: TaxiStopInput[];
+  /** Road geometry for the client map. US quotes leave this off. */
+  includeGeometry?: boolean;
 };
 
 export type TaxiStopResult = {
@@ -43,6 +45,7 @@ export type TaxiRouteResult = {
   distanceMiles: number;
   durationMinutes: number;
   durationSeconds: number;
+  routeGeometry?: { type: "LineString"; coordinates: number[][] } | null;
 };
 
 export function isValidCoordinate(lat: unknown, lng: unknown): boolean {
@@ -114,6 +117,7 @@ async function geocodeAddress(address: string) {
  */
 export async function getMultiLegDistanceAndDuration(
   coordinates: { lat: number; lng: number }[],
+  options?: { includeGeometry?: boolean },
 ) {
   const MAPBOX_TOKEN = requireMapboxToken();
   if (coordinates.length < 2) throw new Error(ROUTE_UNAVAILABLE);
@@ -122,7 +126,10 @@ export async function getMultiLegDistanceAndDuration(
   const url = new URL(
     `https://api.mapbox.com/directions/v5/mapbox/driving/${coordPath}`,
   );
-  url.searchParams.set("overview", "false");
+  url.searchParams.set("overview", options?.includeGeometry ? "full" : "false");
+  if (options?.includeGeometry) {
+    url.searchParams.set("geometries", "geojson");
+  }
   url.searchParams.set("access_token", MAPBOX_TOKEN);
 
   const res = await fetch(url.toString(), {
@@ -152,11 +159,23 @@ export async function getMultiLegDistanceAndDuration(
     throw new Error(ROUTE_UNAVAILABLE);
   }
 
+  const geometry =
+    options?.includeGeometry &&
+    route.geometry &&
+    route.geometry.type === "LineString" &&
+    Array.isArray(route.geometry.coordinates)
+      ? {
+          type: "LineString" as const,
+          coordinates: route.geometry.coordinates as number[][],
+        }
+      : null;
+
   return {
     distanceMiles: distanceMeters / 1609.34,
     durationMinutes: Math.max(1, durationSeconds / 60),
     durationSeconds: Number.isFinite(durationSeconds) ? Math.max(0, durationSeconds) : 0,
     fallback: false as const,
+    routeGeometry: geometry,
   };
 }
 
@@ -288,8 +307,10 @@ export async function resolveTaxiMultiStopRoute(
     { lat: dropoff.lat, lng: dropoff.lng },
   ];
 
-  const { distanceMiles, durationMinutes, durationSeconds } =
-    await getMultiLegDistanceAndDuration(coordinates);
+  const { distanceMiles, durationMinutes, durationSeconds, routeGeometry } =
+    await getMultiLegDistanceAndDuration(coordinates, {
+      includeGeometry: input.includeGeometry === true,
+    });
 
   assertRouteDistanceWithinLimit(distanceMiles, "taxi");
 
@@ -303,6 +324,7 @@ export async function resolveTaxiMultiStopRoute(
     distanceMiles,
     durationMinutes,
     durationSeconds,
+    routeGeometry,
     stops,
   };
 }

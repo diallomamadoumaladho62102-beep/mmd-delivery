@@ -190,6 +190,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         permission: "taxi_pricing.read",
       },
       {
+        href: "/admin/guinea-xl-pricing",
+        label: "XL Interregional Pricing",
+        permission: "taxi_pricing.read",
+      },
+      {
         href: "/admin/taxi-taxes",
         label: "Taxi Taxes",
         permission: "taxi_taxes.read",

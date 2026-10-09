@@ -336,6 +336,10 @@ export function paymentStatusBadge(status: string | null | undefined): {
     case "processing":
     case "requires_payment":
       return { label: "Pending", tone: "orange" };
+    case "pending_cash":
+      return { label: "Pending cash", tone: "orange" };
+    case "cash_collected":
+      return { label: "Cash collected", tone: "green" };
     case "failed":
     case "canceled":
     case "cancelled":

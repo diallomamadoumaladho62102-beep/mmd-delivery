@@ -951,7 +951,16 @@ export default function TaxiHomeScreen() {
         </View>
 
         <TouchableOpacity
-          onPress={handleQuote}
+          onPress={() => {
+            const activeCountry = String(
+              showDevCountryPicker ? countryCode : market.countryCode ?? "",
+            ).toUpperCase();
+            if (activeCountry === "GN") {
+              navigation.navigate("GuineaTaxiRequest");
+              return;
+            }
+            void handleQuote();
+          }}
           disabled={loading}
           style={{
             marginTop: 8,
@@ -974,10 +983,23 @@ export default function TaxiHomeScreen() {
                 fontFamily: MMD_FONT.extrabold,
               }}
             >
-              ✨ {t("taxi.home.getEstimate", "Get Estimate")}
+              ✨{" "}
+              {String(
+                showDevCountryPicker ? countryCode : market.countryCode ?? "",
+              ).toUpperCase() === "GN"
+                ? t("taxiGuinea.choosePickup", "Choose the pickup")
+                : t("taxi.home.getEstimate", "Get Estimate")}
             </Text>
           )}
         </TouchableOpacity>
+        {String(showDevCountryPicker ? countryCode : market.countryCode ?? "").toUpperCase() === "GN" ? (
+          <TouchableOpacity
+            onPress={() => navigation.navigate("GuineaXlRequest")}
+            style={{ marginTop: 8, alignItems: "center" }}
+          >
+            <Text style={{ color: MMD_WHITE, fontWeight: "700" }}>{t("taxiXl.open")}</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <Text
           style={{

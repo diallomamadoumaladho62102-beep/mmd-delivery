@@ -180,6 +180,9 @@ export type RootStackParamList = {
         locationPickerResult?: MmdLocationPickerResult;
       }
     | undefined;
+  GuineaTaxiRequest: undefined;
+  GuineaXlRequest: undefined;
+  DriverGuineaXl: undefined;
   TaxiQuote: {
     pickupAddress: string;
     dropoffAddress: string;
@@ -703,6 +706,8 @@ export function AppNavigator({
       r === "DeleteAccount" ||
       r === "MMDLocationPicker" ||
       r === "TaxiHome" ||
+      r === "GuineaTaxiRequest" ||
+      r === "GuineaXlRequest" ||
       r === "TaxiQuote" ||
       r === "TaxiRideTracking" ||
       r === "TaxiTip" ||
@@ -1503,6 +1508,20 @@ export function AppNavigator({
         <Stack.Screen
           name="TaxiHome"
           getComponent={() => require("../screens/taxi/TaxiHomeScreen").default}
+        />
+        <Stack.Screen
+          name="GuineaTaxiRequest"
+          getComponent={() =>
+            require("../screens/taxi/GuineaTaxiRequestScreen").default
+          }
+        />
+        <Stack.Screen
+          name="GuineaXlRequest"
+          getComponent={() => require("../screens/taxi/GuineaXlRequestScreen").default}
+        />
+        <Stack.Screen
+          name="DriverGuineaXl"
+          getComponent={() => require("../screens/taxi/DriverGuineaXlScreen").default}
         />
         <Stack.Screen
           name="TaxiQuote"

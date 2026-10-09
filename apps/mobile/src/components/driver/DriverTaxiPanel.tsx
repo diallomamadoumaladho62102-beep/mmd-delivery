@@ -28,6 +28,7 @@ import {
   cancelTaxiRideByDriver,
   completeTaxiRide,
   completeTaxiStop,
+  confirmTaxiCashCollected,
   fetchActiveTaxiRide,
   fetchMyTaxiOffers,
   formatDriverPayout,
@@ -66,6 +67,7 @@ type TaxiOfferRow = {
     dropoff_address?: string | null;
     driver_payout_cents?: number | null;
     currency?: string | null;
+    payment_method?: string | null;
     vehicle_class?: string | null;
     is_scheduled?: boolean | null;
     scheduled_pickup_at?: string | null;
@@ -342,6 +344,28 @@ export function DriverTaxiPanel({
     }
   }
 
+  async function confirmCash() {
+    const rideId = String(activeRide?.id ?? "");
+    if (!rideId || actionLockRef.current) return;
+    actionLockRef.current = true;
+    setActionId(rideId);
+    try {
+      const result = await confirmTaxiCashCollected(rideId);
+      if (!result?.ok) {
+        throw new Error(result?.error ?? t("driver.taxiPanel.actionFailed", "Action failed"));
+      }
+      await refresh();
+    } catch (e: unknown) {
+      Alert.alert(
+        t("driver.taxiPanel.title", "Taxi"),
+        toUserFacingError(e, t("driver.taxiPanel.actionFailed", "Action failed")),
+      );
+    } finally {
+      actionLockRef.current = false;
+      setActionId(null);
+    }
+  }
+
   async function lifecycle(action: "arrive" | "complete") {
     const rideId = String(activeRide?.id ?? "");
     if (!rideId || actionLockRef.current) return;
@@ -509,7 +533,12 @@ export function DriverTaxiPanel({
   // Idle "Taxi mode / STANDARD" card removed from Driver Home.
   // Panel only surfaces when there is a live offer or active ride.
   if (!activeRide && activeOffers.length === 0) {
-    return null;
+    if (features?.xl_eligible !== true) return null;
+    return (
+      <TouchableOpacity onPress={() => navigation.navigate("DriverGuineaXl")} style={{ padding: 12 }}>
+        <Text>{t("taxiXl.driverTitle")}</Text>
+      </TouchableOpacity>
+    );
   }
 
   if (activeRide) {
@@ -537,10 +566,19 @@ export function DriverTaxiPanel({
           }
           paymentLabel={
             String(activeRide.payment_method ?? "").toLowerCase() === "cash"
-              ? "Cash"
+              ? String(activeRide.payment_status ?? "").toLowerCase() === "cash_collected"
+                ? t("taxiGuinea.cashCollected", "Cash collected")
+                : t("taxiGuinea.cash", "Cash")
               : String(activeRide.payment_status ?? "").toLowerCase() === "paid"
-                ? "Paid"
+                ? t("taxi.ui.paid", "Paid")
                 : null
+          }
+          onCashCollected={
+            String(activeRide.payment_method ?? "").toLowerCase() === "cash" &&
+            String(activeRide.payment_status ?? "").toLowerCase() === "pending_cash" &&
+            status === "completed"
+              ? () => void confirmCash()
+              : undefined
           }
           preferenceLines={
             (activeRide.client_preference_lines as Array<{
@@ -758,6 +796,11 @@ export function DriverTaxiPanel({
                       String(ride?.currency ?? "USD")
                     )}
                   </Text>
+                  {String(ride?.payment_method ?? "").toLowerCase() === "cash" ? (
+                    <Text style={styles.meta}>
+                      {t("taxiGuinea.payment", "Payment")}: {t("taxiGuinea.cash", "Cash")} · GNF
+                    </Text>
+                  ) : null}
                   {(offer.client_preference_lines ?? ride?.client_preference_lines ?? []).length >
                   0 ? (
                     <View style={styles.prefsBox}>

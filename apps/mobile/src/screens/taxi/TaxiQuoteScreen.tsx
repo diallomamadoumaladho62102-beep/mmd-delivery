@@ -407,6 +407,35 @@ export default function TaxiQuoteScreen() {
     payingRef.current = true;
     setPaying(true);
     try {
+      if (
+        String(quoteState.market ?? "") === "GN" &&
+        String(quoteState.payment_method ?? "") === "cash"
+      ) {
+        const created = await createTaxiRide({
+          pickupAddress,
+          dropoffAddress,
+          pickupLocationId: pickupLocationId || undefined,
+          dropoffLocationId: dropoffLocationId || undefined,
+          pickupLat: hasCoords ? pickupLat : undefined,
+          pickupLng: hasCoords ? pickupLng : undefined,
+          dropoffLat: hasCoords ? dropoffLat : undefined,
+          dropoffLng: hasCoords ? dropoffLng : undefined,
+          vehicleClass: vehicleClass as TaxiVehicleClass,
+          countryCode,
+          paymentMethod: "cash",
+          stops: rideStops,
+          tripMode: params.tripMode,
+          returnMode: params.returnMode,
+          returnWaitMinutes: params.returnWaitMinutes,
+          returnScheduledAt: params.returnScheduledAt,
+        });
+        if (!created?.ok || !created?.ride?.id) {
+          throw new Error(created?.error ?? t("taxi.quote.createFailed", "Unable to create ride"));
+        }
+        navigation.replace("TaxiRideTracking", { rideId: String(created.ride.id) });
+        return;
+      }
+
       // Local mobile money still needs an entity id today. Stripe Checkout is
       // pay-then-create (no taxi_rides row until payment is confirmed).
       if (shouldOfferLocalMobileMoney(countryCode)) {
@@ -755,6 +784,38 @@ export default function TaxiQuoteScreen() {
           </View>
           {quoteState ? (
             <>
+              {String(quoteState.market ?? "") === "GN" ? (
+                <>
+                  <PriceRow
+                    label={t("taxiGuinea.pickup", "Pickup")}
+                    value={pickupLabel || "—"}
+                  />
+                  <PriceRow
+                    label={t("taxiGuinea.destination", "Destination")}
+                    value={dropoffLabel || "—"}
+                  />
+                  <PriceRow
+                    label={t("taxiGuinea.distance", "Distance")}
+                    value={t("taxiGuinea.kilometers", "{{value}} km", {
+                      value: String(quoteState.distance_km ?? "—"),
+                    })}
+                  />
+                  <PriceRow
+                    label={t("taxiGuinea.estimatedTime", "Estimated time")}
+                    value={t("taxiGuinea.minutes", "{{value}} min", {
+                      value: String(quoteState.duration_minutes ?? "—"),
+                    })}
+                  />
+                  <PriceRow
+                    label={t("taxiGuinea.currency", "Currency")}
+                    value="GNF"
+                  />
+                  <PriceRow
+                    label={t("taxiGuinea.payment", "Payment")}
+                    value={t("taxiGuinea.cash", "Cash")}
+                  />
+                </>
+              ) : null}
               {subtotalCents > 0 ? (
                 <PriceRow
                   label={t("taxi.ui.subtotal", "Subtotal")}
@@ -976,7 +1037,11 @@ export default function TaxiQuoteScreen() {
             <>
               {quoteState ? <QuoteIcon source={ICON.check} size={22} /> : null}
               <Text style={styles.ctaLabel}>
-                {quoteState
+                {quoteState &&
+                String(quoteState.market ?? "") === "GN" &&
+                String(quoteState.payment_method ?? "") === "cash"
+                  ? t("taxiGuinea.confirmCash", "Confirm cash ride")
+                  : quoteState
                   ? t("taxi.quote.confirmPayTotal", "Confirm & pay {{total}}", { total })
                   : t("taxi.quote.quoteUnavailable", "Estimate unavailable — check addresses")}
               </Text>

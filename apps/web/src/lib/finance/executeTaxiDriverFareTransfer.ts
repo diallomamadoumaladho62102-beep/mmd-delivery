@@ -16,6 +16,7 @@ import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { toStripeAmount } from "@/lib/taxiStripeAmounts";
 import { normalizeTaxiCurrencyForStripe } from "@/lib/taxiCountries";
 import { evaluateTaxiPayoutEligibility } from "@/lib/taxiPayoutEligibility";
+import { taxiCashSkipsStripe } from "@/lib/markets/guineaCashPayment";
 import { stripe } from "@/lib/stripe";
 import {
   buildTaxiFareTransferIdempotencyKey,
@@ -151,6 +152,15 @@ export async function executeTaxiDriverFareTransfer(params: {
 
   if (rideErr || !ride) {
     return { ok: false, error: "Taxi ride not found", httpStatus: 404 };
+  }
+
+  if (taxiCashSkipsStripe(ride.payment_status)) {
+    return {
+      ok: false,
+      error: "cash_collected_outside_stripe",
+      taxi_ride_id: ride.id,
+      httpStatus: 409,
+    };
   }
 
   const realMoneyBlock = realMoneyBlockReason(ride);

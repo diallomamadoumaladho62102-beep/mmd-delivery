@@ -6,6 +6,7 @@ import type {
   ProviderWebhookResult,
 } from "@/lib/paymentTypes";
 import type { PaymentProvider } from "@/lib/paymentTypes";
+import { isOrangeMoneyGuineaEnabled } from "@/lib/markets/guineaOrangeMoney";
 
 export type PaymentProviderAdapter = {
   provider: PaymentProvider;
@@ -71,6 +72,9 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
 export const orangeMoneyGuineaAdapter: PaymentProviderAdapter = {
   provider: "orange_money_gn",
   async initiate(input) {
+    if (!isOrangeMoneyGuineaEnabled()) {
+      return { ok: false, error: "orange_money_disabled" };
+    }
     const base = env("ORANGE_MONEY_GN_API_BASE") || "https://api.orange.com/orange-money-webpay/gn/v1";
     const merchantKey = env("ORANGE_MONEY_GN_MERCHANT_KEY");
     const reference = `mmd-${input.transactionId}`;
@@ -142,6 +146,9 @@ export const orangeMoneyGuineaAdapter: PaymentProviderAdapter = {
     };
   },
   async fetchStatus(externalReference) {
+    if (!isOrangeMoneyGuineaEnabled()) {
+      return { ok: false, error: "orange_money_disabled" };
+    }
     const base = env("ORANGE_MONEY_GN_API_BASE") || "https://api.orange.com/orange-money-webpay/gn/v1";
     const res = await fetch(
       `${base.replace(/\/$/, "")}/transactionstatus/${encodeURIComponent(externalReference)}`,

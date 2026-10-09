@@ -175,7 +175,8 @@ export function createTaxiRide(
     clientPreferences?: Record<string, boolean>;
     ambiancePreference?: "quiet" | "music" | "conversation" | "none";
     businessAccountId?: string;
-  businessTripType?: "personal" | "business";
+    businessTripType?: "personal" | "business";
+    paymentMethod?: "cash" | "card";
   }
 ) {
   return taxiPost("/api/taxi/rides/create", {
@@ -207,6 +208,7 @@ export function createTaxiRide(
     returnMode: input.returnMode,
     returnWaitMinutes: input.returnWaitMinutes,
     returnScheduledAt: input.returnScheduledAt,
+    paymentMethod: input.paymentMethod,
   });
 }
 

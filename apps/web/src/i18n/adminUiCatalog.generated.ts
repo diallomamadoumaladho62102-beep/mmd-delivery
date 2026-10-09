@@ -108,6 +108,38 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "zh": "付款",
     "ff": "Yoɓɓol"
   },
+  "Guinea": {
+    "fr": "Guinée",
+    "es": "Guinea",
+    "ar": "غينيا",
+    "zh": "几内亚",
+    "ff": "Gine",
+    "en": "Guinea"
+  },
+  "Cash": {
+    "fr": "Espèces",
+    "es": "Efectivo",
+    "ar": "نقداً",
+    "zh": "现金",
+    "ff": "Kaalis",
+    "en": "Cash"
+  },
+  "Pending cash": {
+    "fr": "Espèces en attente",
+    "es": "Efectivo pendiente",
+    "ar": "نقد بانتظار التحصيل",
+    "zh": "待收现金",
+    "ff": "Kaalis ina habbi",
+    "en": "Pending cash"
+  },
+  "Cash collected": {
+    "fr": "Espèces encaissées",
+    "es": "Efectivo cobrado",
+    "ar": "تم تحصيل النقد",
+    "zh": "现金已收取",
+    "ff": "Kaalis moɓtaama",
+    "en": "Cash collected"
+  },
   "Refresh": {
     "fr": "Actualiser",
     "es": "Actualizar",
@@ -20648,5 +20680,23 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "ar": "فشل التحديث",
     "zh": "更新失败",
     "ff": "Kesɗitinal woorii"
-  }
+  },
+  "XL Interregional Pricing": {
+    "en": "XL Interregional Pricing",
+    "fr": "Tarification XL interrégionale",
+    "es": "Tarifas XL interregionales",
+    "ar": "تسعير XL بين المناطق",
+    "zh": "XL 跨区定价",
+    "ff": "Njaru XL hakkunde diiwanuuji"
+  },
+  "Add axis": { "en": "Add axis", "fr": "Ajouter un axe", "es": "Añadir un eje", "ar": "إضافة محور", "zh": "添加线路", "ff": "Ɓeydu laawol" },
+  "Front seat": { "en": "Front seat", "fr": "Place avant", "es": "Asiento delantero", "ar": "المقعد الأمامي", "zh": "前座", "ff": "Jooɗorgal yeeso" },
+  "Other seats": { "en": "Other seats", "fr": "Autres places", "es": "Otros asientos", "ar": "المقاعد الأخرى", "zh": "其他座位", "ff": "Jooɗorɗe goɗɗe" },
+  "MMD commission basis points": { "en": "MMD commission basis points", "fr": "Commission MMD en points de base", "es": "Comisión MMD en puntos básicos", "ar": "عمولة MMD بنقاط الأساس", "zh": "MMD 佣金基点", "ff": "Komisiyoŋ MMD" },
+  "Updated by": { "en": "Updated by", "fr": "Modifié par", "es": "Modificado por", "ar": "عدّله", "zh": "修改者", "ff": "Kesɗini" },
+  "Activate": { "en": "Activate", "fr": "Activer", "es": "Activar", "ar": "تفعيل", "zh": "启用", "ff": "Hurmin" },
+  "Baggage": { "en": "Baggage", "fr": "Bagages", "es": "Equipaje", "ar": "الأمتعة", "zh": "行李", "ff": "Gaɗeeje" },
+  "Minimum kg": { "en": "Minimum kg", "fr": "Poids minimum", "es": "Peso mínimo", "ar": "الحد الأدنى للكيلوغرام", "zh": "最小公斤", "ff": "Kg les" },
+  "Maximum kg": { "en": "Maximum kg", "fr": "Poids maximum", "es": "Peso máximo", "ar": "الحد الأقصى للكيلوغرام", "zh": "最大公斤", "ff": "Kg dow" },
+  "Inactive": { "en": "Inactive", "fr": "Inactif", "es": "Inactivo", "ar": "غير نشط", "zh": "停用", "ff": "Dartaama" }
 } as const;

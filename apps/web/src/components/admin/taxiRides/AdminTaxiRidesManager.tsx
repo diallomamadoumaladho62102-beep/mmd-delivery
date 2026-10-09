@@ -10,7 +10,7 @@ import {
   DEFAULT_TAXI_RIDE_FILTERS,
   computeTaxiRideKpis,
   filterTaxiRides,
-  formatRideMoney,
+  formatRevenueToday,
   parseTaxiRideFiltersFromSearchParams,
   partyDisplayName,
   sortTaxiRidesOps,
@@ -166,7 +166,7 @@ export default function AdminTaxiRidesManager() {
             [t("Cancelled"), String(kpis.canceled)],
             [
               "Revenue Today",
-              formatRideMoney(kpis.revenueTodayCents, items[0]?.currency ?? "USD"),
+              formatRevenueToday(kpis.revenueTodayByCurrency),
             ],
           ] as const
         ).map(([label, value]) => (

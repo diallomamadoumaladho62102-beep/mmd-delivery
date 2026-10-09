@@ -210,6 +210,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "taxi_pricing.read",
   },
   {
+    href: "/admin/guinea-xl-pricing",
+    title: "XL Interregional Pricing",
+    description: "Guinea XL axes, seats and baggage",
+    permission: "taxi_pricing.read",
+  },
+  {
     href: "/admin/driver-vehicles",
     title: "Véhicules & catégories taxi",
     description: "Admissibilité Standard, Comfort, XL, Wheelchair, documents véhicule",
