@@ -527,6 +527,8 @@ test("the XL migration locks seats and does not touch standard taxi or wallet_le
   );
   assert.equal(/PaymentIntent|stripe/i.test(http), false);
   assert.match(http, /xl_eligible/);
+  assert.match(http, /booking_id: item\.booking_id \? "taken" : null/);
+  assert.match(http, /listClientGuineaXlBookings/);
 });
 
 test("N'zérékoré and Nzerekore share one locality key", () => {

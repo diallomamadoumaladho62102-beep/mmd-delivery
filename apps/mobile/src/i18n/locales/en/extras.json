@@ -4340,6 +4340,8 @@
     "seatTaken": "That seat was just taken.",
     "rideCanceled": "This reservation is canceled.",
     "rideNotCompleted": "Complete the departure before collecting cash.",
-    "capacityRejected": "This vehicle is not eligible for that XL capacity."
+    "capacityRejected": "This vehicle is not eligible for that XL capacity.",
+    "myBookings": "My reservations",
+    "noBookings": "You have no XL reservation yet."
   }
 }

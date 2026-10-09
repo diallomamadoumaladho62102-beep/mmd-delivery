@@ -4,7 +4,13 @@ import { useTranslation } from "react-i18next";
 import * as Location from "expo-location";
 import { formatMoneyFromCents } from "../../i18n/formatters";
 import { searchMapboxPlaces } from "../../lib/mapboxPlaces";
-import { bookGuineaXl, fetchGuineaXlDepartures, quoteGuineaXl, xlErrorMessage } from "../../lib/taxiXlApi";
+import {
+  bookGuineaXl,
+  fetchGuineaXlDepartures,
+  fetchMyGuineaXlBookings,
+  quoteGuineaXl,
+  xlErrorMessage,
+} from "../../lib/taxiXlApi";
 
 type Seat = { seat_index: number; seat_role: string; booking_id: string | null };
 type Departure = {
@@ -19,6 +25,16 @@ type Departure = {
   guinea_xl_seats?: Seat[];
 };
 
+type Mine = {
+  id: string;
+  status: string;
+  payment_status: string;
+  total_gnf: number;
+  transport_gnf: number;
+  baggage_gnf: number;
+  guinea_xl_axes?: { origin_label?: string; destination_label?: string } | null;
+};
+
 type Quote = {
   totalGnf?: number;
   transportGnf?: number;
@@ -29,6 +45,7 @@ type Quote = {
 export default function GuineaXlRequestScreen() {
   const { t } = useTranslation();
   const [departures, setDepartures] = useState<Departure[]>([]);
+  const [mine, setMine] = useState<Mine[]>([]);
   const [axes, setAxes] = useState<unknown[]>([]);
   const [selected, setSelected] = useState<Departure | null>(null);
   const [seats, setSeats] = useState<number[]>([]);
@@ -43,10 +60,11 @@ export default function GuineaXlRequestScreen() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    void fetchGuineaXlDepartures()
-      .then((payload) => {
+    void Promise.all([fetchGuineaXlDepartures(), fetchMyGuineaXlBookings()])
+      .then(([payload, bookings]) => {
         setDepartures((payload.departures ?? []) as Departure[]);
         setAxes(payload.axes ?? []);
+        setMine((bookings.bookings ?? []) as Mine[]);
       })
       .catch((cause: unknown) => setError(xlErrorMessage(cause, t)));
   }, [t]);
@@ -245,6 +263,26 @@ export default function GuineaXlRequestScreen() {
           </TouchableOpacity>
         </View>
       ) : null}
+      <Text style={{ fontSize: 18, fontWeight: "700" }}>{t("taxiXl.myBookings")}</Text>
+      {mine.length === 0 ? <Text>{t("taxiXl.noBookings")}</Text> : null}
+      {mine.map((booking) => (
+        <View key={booking.id} style={{ gap: 4 }}>
+          <Text>
+            {booking.guinea_xl_axes?.origin_label} → {booking.guinea_xl_axes?.destination_label}
+          </Text>
+          <Text>
+            {t("taxiXl.bookingRef")} {booking.id}
+          </Text>
+          <Text>
+            {t("taxiXl.transportAmount")} {money(booking.transport_gnf)} · {t("taxiXl.baggageAmount")}{" "}
+            {money(booking.baggage_gnf)}
+          </Text>
+          <Text>
+            {t("taxiXl.total")} {money(booking.total_gnf)} · {booking.status} ·{" "}
+            {booking.payment_status === "cash_collected" ? t("taxiXl.paymentCollected") : t("taxiXl.paymentPending")}
+          </Text>
+        </View>
+      ))}
       {bookingId ? (
         <View style={{ gap: 4 }}>
           <Text>{t("taxiXl.booked")}</Text>

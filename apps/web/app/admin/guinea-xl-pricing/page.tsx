@@ -32,9 +32,22 @@ type HistoryRow = {
   id: string;
   action: string;
   actor_id: string | null;
+  axis_id: string | null;
   created_at: string;
   old_value: unknown;
   new_value: unknown;
+  reason: string | null;
+};
+
+type VersionRow = {
+  id: string;
+  axis_id: string;
+  version: number;
+  front_seat_gnf: number;
+  other_seat_gnf: number;
+  active: boolean;
+  created_at: string;
+  created_by: string | null;
 };
 
 export default function GuineaXlPricingPage() {
@@ -42,6 +55,7 @@ export default function GuineaXlPricingPage() {
   const [axes, setAxes] = useState<AxisRow[]>([]);
   const [bands, setBands] = useState<BandRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [versions, setVersions] = useState<VersionRow[]>([]);
   const [commissionBps, setCommissionBps] = useState("");
   const [currency, setCurrency] = useState("GNF");
   const [canEdit, setCanEdit] = useState(false);
@@ -62,6 +76,7 @@ export default function GuineaXlPricingPage() {
       axes?: AxisRow[];
       bands?: BandRow[];
       history?: HistoryRow[];
+      versions?: VersionRow[];
       settings?: { platform_share_bps?: number; currency?: string } | null;
     };
     if (!response.ok || body.ok === false) {
@@ -71,6 +86,7 @@ export default function GuineaXlPricingPage() {
     setAxes(body.axes ?? []);
     setBands(body.bands ?? []);
     setHistory(body.history ?? []);
+    setVersions(body.versions ?? []);
     setCommissionBps(String(body.settings?.platform_share_bps ?? ""));
     setCurrency(body.settings?.currency ?? "GNF");
     setError(null);
@@ -217,8 +233,28 @@ export default function GuineaXlPricingPage() {
           <h2 className="font-semibold">{t("Baggage")}</h2>
           <ul className="mt-2 space-y-2">
             {bands.map((band) => (
-              <li key={band.id} className="text-sm">
-                {band.min_kg}–{band.max_kg} kg · {band.price_gnf} {band.currency} · {band.active ? t("Active") : t("Inactive")}
+              <li key={band.id}>
+                <form
+                  className="flex flex-wrap items-center gap-2 text-sm"
+                  onSubmit={(event) => {
+                    const form = new FormData(event.currentTarget);
+                    void submit(event, {
+                      action: "save_band",
+                      bandId: band.id,
+                      minKg: Number(form.get("minKg")),
+                      maxKg: Number(form.get("maxKg")),
+                      priceGnf: Number(form.get("priceGnf")),
+                      active: form.get("active") === "on",
+                    });
+                  }}
+                >
+                  <input name="minKg" type="number" defaultValue={band.min_kg} className="w-24 rounded border px-2 py-1" disabled={!canEdit} />
+                  <input name="maxKg" type="number" defaultValue={band.max_kg} className="w-24 rounded border px-2 py-1" disabled={!canEdit} />
+                  <input name="priceGnf" type="number" defaultValue={band.price_gnf} className="w-32 rounded border px-2 py-1" disabled={!canEdit} />
+                  <span>{band.currency}</span>
+                  <label><input name="active" type="checkbox" defaultChecked={band.active} disabled={!canEdit} /> {t("Active")}</label>
+                  <button className="rounded border px-3 py-1 disabled:opacity-40" disabled={!canEdit} type="submit">{t("Save")}</button>
+                </form>
               </li>
             ))}
           </ul>
@@ -244,11 +280,24 @@ export default function GuineaXlPricingPage() {
         </section>
 
         <section>
+          <h2 className="font-semibold">{t("Version")}</h2>
+          <ul className="mt-2 space-y-2 text-sm">
+            {versions.map((row) => (
+              <li key={row.id}>
+                {row.created_at} · {t("Version")} {row.version} · {t("Front seat")} {row.front_seat_gnf} · {t("Other seats")} {row.other_seat_gnf} · {row.active ? t("Active") : t("Inactive")} · {row.axis_id} · {row.created_by ?? "—"}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section>
           <h2 className="font-semibold">{t("History")}</h2>
           <ul className="mt-2 space-y-2 text-sm">
             {history.map((row) => (
               <li key={row.id}>
-                {row.created_at} · {row.action} · {row.actor_id ?? "—"}
+                <p>{row.created_at} · {row.action} · {row.actor_id ?? "—"} · {row.axis_id ?? "—"}</p>
+                <p>{t("Updated")}: {JSON.stringify(row.old_value ?? null)} → {JSON.stringify(row.new_value ?? null)}</p>
+                {row.reason ? <p>{row.reason}</p> : null}
               </li>
             ))}
           </ul>

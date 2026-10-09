@@ -11,8 +11,7 @@ export async function POST(req: NextRequest) {
     if (auth.ok === false) return auth.response;
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     return await quoteGuineaXl(auth.supabaseAdmin, body);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Server error";
-    return taxiJson({ ok: false, error: message }, 500);
+  } catch {
+    return taxiJson({ ok: false, error: "Server error" }, 500);
   }
 }

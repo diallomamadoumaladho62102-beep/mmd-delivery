@@ -15,8 +15,7 @@ export async function POST(req: NextRequest) {
       auth.user.id,
       String(body.bookingId ?? body.booking_id ?? ""),
     );
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Server error";
-    return taxiJson({ ok: false, error: message }, 500);
+  } catch {
+    return taxiJson({ ok: false, error: "Server error" }, 500);
   }
 }

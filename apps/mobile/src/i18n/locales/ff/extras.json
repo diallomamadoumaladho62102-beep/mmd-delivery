@@ -4399,6 +4399,8 @@
     "seatTaken": "Ngal jooɗorgal joonaama jooni.",
     "rideCanceled": "Ngal jooɗorde haaytinaama.",
     "rideNotCompleted": "Timmin jipporde hade mooɓde kaalis.",
-    "capacityRejected": "Ngal mootere fotaani ngal keewal XL."
+    "capacityRejected": "Ngal mootere fotaani ngal keewal XL.",
+    "myBookings": "Jooɗorɗe am",
+    "noBookings": "A woodani tawo jooɗorde XL."
   }
 }

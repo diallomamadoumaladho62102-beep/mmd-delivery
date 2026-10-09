@@ -4342,6 +4342,8 @@
     "seatTaken": "Ese asiento acaba de ocuparse.",
     "rideCanceled": "Esta reserva está cancelada.",
     "rideNotCompleted": "Termina la salida antes de cobrar.",
-    "capacityRejected": "Este vehículo no es elegible para esa capacidad XL."
+    "capacityRejected": "Este vehículo no es elegible para esa capacidad XL.",
+    "myBookings": "Mis reservas",
+    "noBookings": "Todavía no tienes una reserva XL."
   }
 }

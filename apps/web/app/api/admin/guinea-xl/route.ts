@@ -32,20 +32,22 @@ export async function GET(request: NextRequest) {
     if (origin) axes = axes.or(`origin_key.eq.${origin},destination_key.eq.${origin}`);
     if (destination) axes = axes.or(`origin_key.eq.${destination},destination_key.eq.${destination}`);
     if (active === "true" || active === "false") axes = axes.eq("active", active === "true");
-    const [axisRows, bands, settings, history] = await Promise.all([
+    const [axisRows, bands, settings, history, versions] = await Promise.all([
       axes,
       supabase.from("guinea_xl_baggage_bands").select("id,min_kg,max_kg,price_gnf,active,currency,updated_at,updated_by").order("min_kg"),
       supabase.from("guinea_xl_settings").select("platform_share_bps,currency,country_code,updated_at,updated_by").eq("id", "GN").maybeSingle(),
       supabase.from("guinea_xl_audit").select("id,actor_id,axis_id,action,old_value,new_value,reason,created_at").order("created_at", { ascending: false }).limit(50),
+      supabase.from("guinea_xl_axis_versions").select("id,axis_id,version,front_seat_gnf,other_seat_gnf,active,created_at,created_by").order("created_at", { ascending: false }).limit(50),
     ]);
-    const error = axisRows.error ?? bands.error ?? settings.error ?? history.error;
-    if (error) return json({ ok: false, error: error.message }, 500);
+    const error = axisRows.error ?? bands.error ?? settings.error ?? history.error ?? versions.error;
+    if (error) return json({ ok: false, error: "xl_catalog_failed" }, 500);
     return json({
       ok: true,
       axes: axisRows.data ?? [],
       bands: bands.data ?? [],
       settings: settings.data,
       history: history.data ?? [],
+      versions: versions.data ?? [],
     });
   } catch (error: unknown) {
     if (error instanceof AdminAccessError) return json({ ok: false, error: error.message }, error.status);
@@ -90,7 +92,7 @@ export async function POST(request: NextRequest) {
           })
           .select("id,version,front_seat_gnf,other_seat_gnf,active")
           .maybeSingle();
-        if (inserted.error) return json({ ok: false, error: inserted.error.message }, 400);
+        if (inserted.error) return json({ ok: false, error: "xl_rate_invalid" }, 400);
         await supabase.from("guinea_xl_audit").insert({
           actor_id: staff.userId,
           axis_id: inserted.data?.id,
@@ -170,7 +172,7 @@ export async function POST(request: NextRequest) {
         .eq("id", "GN")
         .select("platform_share_bps")
         .maybeSingle();
-      if (updated.error) return json({ ok: false, error: updated.error.message }, 400);
+      if (updated.error) return json({ ok: false, error: "xl_commission_not_configured" }, 400);
       await supabase.from("guinea_xl_audit").insert({
         actor_id: staff.userId,
         action: "commission_changed",
@@ -202,7 +204,7 @@ export async function POST(request: NextRequest) {
       const saved = bandId
         ? await supabase.from("guinea_xl_baggage_bands").update(payload).eq("id", bandId).select("id,min_kg,max_kg,price_gnf,active").maybeSingle()
         : await supabase.from("guinea_xl_baggage_bands").insert(payload).select("id,min_kg,max_kg,price_gnf,active").maybeSingle();
-      if (saved.error) return json({ ok: false, error: saved.error.message }, 400);
+      if (saved.error) return json({ ok: false, error: "xl_baggage_invalid" }, 400);
       await supabase.from("guinea_xl_audit").insert({
         actor_id: staff.userId,
         action: "baggage_band_saved",

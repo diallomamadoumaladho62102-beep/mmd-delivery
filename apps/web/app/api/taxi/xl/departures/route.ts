@@ -18,9 +18,8 @@ export async function GET(req: NextRequest) {
       return await listDriverGuineaXlDepartures(auth.supabaseAdmin, auth.user.id);
     }
     return await listOpenGuineaXlDepartures(auth.supabaseAdmin);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Server error";
-    return taxiJson({ ok: false, error: message }, 500);
+  } catch {
+    return taxiJson({ ok: false, error: "Server error" }, 500);
   }
 }
 
@@ -37,8 +36,7 @@ export async function POST(req: NextRequest) {
       );
     }
     return await openGuineaXlDeparture(auth.supabaseAdmin, auth.user.id, body);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Server error";
-    return taxiJson({ ok: false, error: message }, 500);
+  } catch {
+    return taxiJson({ ok: false, error: "Server error" }, 500);
   }
 }

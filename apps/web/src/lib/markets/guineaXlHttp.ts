@@ -372,7 +372,44 @@ export async function listOpenGuineaXlDepartures(supabaseAdmin: SupabaseClient) 
     if (schemaMissing(message)) return jsonError("xl_schema_not_ready", 503);
     return jsonError("xl_departure_unavailable", 500);
   }
-  return taxiJson({ ok: true, departures: rows.data ?? [], axes: axes.data ?? [] });
+  const departures = ((rows.data ?? []) as Array<Record<string, unknown>>).map((row) => {
+    const seats = Array.isArray(row.guinea_xl_seats)
+      ? row.guinea_xl_seats.map((seat) => {
+          const item = seat as Record<string, unknown>;
+          return {
+            seat_index: item.seat_index,
+            seat_role: item.seat_role,
+            booking_id: item.booking_id ? "taken" : null,
+          };
+        })
+      : [];
+    return {
+      id: row.id,
+      axis_id: row.axis_id,
+      passenger_capacity: row.passenger_capacity,
+      scheduled_at: row.scheduled_at,
+      status: row.status,
+      guinea_xl_seats: seats,
+      guinea_xl_axes: row.guinea_xl_axes,
+    };
+  });
+  return taxiJson({ ok: true, departures, axes: axes.data ?? [] });
+}
+
+export async function listClientGuineaXlBookings(supabaseAdmin: SupabaseClient, clientUserId: string) {
+  const rows = await supabaseAdmin
+    .from("guinea_xl_bookings")
+    .select(
+      "id,seat_indexes,status,payment_status,payment_method,currency,total_gnf,transport_gnf,baggage_gnf,created_at,guinea_xl_axes(origin_label,destination_label)",
+    )
+    .eq("client_user_id", clientUserId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (rows.error) {
+    if (schemaMissing(rows.error.message)) return jsonError("xl_schema_not_ready", 503);
+    return jsonError("xl_booking_invalid", 500);
+  }
+  return taxiJson({ ok: true, bookings: rows.data ?? [] });
 }
 
 export function bookingSnapshot(booking: XlBooking) {

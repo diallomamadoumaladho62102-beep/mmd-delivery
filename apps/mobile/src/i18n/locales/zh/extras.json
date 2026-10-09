@@ -4513,6 +4513,8 @@
     "seatTaken": "该座位刚刚被订走。",
     "rideCanceled": "该预订已取消。",
     "rideNotCompleted": "请先完成班次再收款。",
-    "capacityRejected": "该车辆不符合此 XL 载客数。"
+    "capacityRejected": "该车辆不符合此 XL 载客数。",
+    "myBookings": "我的预订",
+    "noBookings": "你还没有 XL 预订。"
   }
 }

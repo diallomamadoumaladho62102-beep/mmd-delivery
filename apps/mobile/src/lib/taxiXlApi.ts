@@ -50,6 +50,15 @@ export async function fetchGuineaXlDepartures(scope?: "driver") {
   };
 }
 
+export async function fetchMyGuineaXlBookings() {
+  const response = await fetch(`${String(API_BASE_URL).replace(/\/$/, "")}/api/taxi/xl/bookings`, {
+    headers: await headers(),
+  });
+  const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+  if (!response.ok || payload.ok === false) throw new Error(payload.error ?? "request_failed");
+  return payload as { bookings: Array<Record<string, unknown>> };
+}
+
 export function quoteGuineaXl(body: Record<string, unknown>) {
   return post("/api/taxi/xl/quote", body);
 }

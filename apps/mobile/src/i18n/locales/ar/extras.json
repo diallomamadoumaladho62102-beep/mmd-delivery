@@ -4342,6 +4342,8 @@
     "seatTaken": "هذا المقعد أُخذ للتو.",
     "rideCanceled": "هذا الحجز ملغى.",
     "rideNotCompleted": "أكمل الرحلة قبل التحصيل.",
-    "capacityRejected": "هذه المركبة غير مؤهلة لهذه السعة."
+    "capacityRejected": "هذه المركبة غير مؤهلة لهذه السعة.",
+    "myBookings": "حجوزاتي",
+    "noBookings": "ليس لديك حجز XL بعد."
   }
 }
