@@ -78,6 +78,7 @@ export const NAV_ICONS: Record<string, string> = {
   "/admin/driver-integrity": "🛡️",
   "/admin/pricing": "🏷️",
   "/admin/taxi-pricing": "🚕",
+  "/admin/guinea-xl-pricing": "🚐",
   "/admin/taxi-taxes": "🧾",
   "/admin/taxi-exchange-rates": "💱",
   "/admin/payment-methods": "💸",
