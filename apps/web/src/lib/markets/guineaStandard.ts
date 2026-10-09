@@ -62,6 +62,70 @@ export function guineaStandardDistanceAllowed(distanceMeters: number): boolean {
   return Number.isSafeInteger(distanceMeters) && distanceMeters > 0 && distanceMeters <= GUINEA_STANDARD_MAX_DISTANCE_METERS;
 }
 
+function readConfiguredWhole(raw: string | undefined): number | null {
+  const text = String(raw ?? "").trim();
+  if (!/^\d+$/.test(text)) return null;
+  const value = Number(text);
+  if (!Number.isSafeInteger(value) || value < 0) return null;
+  return value;
+}
+
+/** Pooling stays off until every threshold is explicitly configured. */
+export function readGuineaPoolLimits(
+  env: Record<string, string | undefined> = process.env,
+): GuineaPoolLimits | null {
+  const maxDetourMeters = readConfiguredWhole(env.GUINEA_STANDARD_MAX_DETOUR_METERS);
+  const maxExtraMinutes = readConfiguredWhole(env.GUINEA_STANDARD_MAX_EXTRA_MINUTES);
+  const maxPickupDeviationMeters = readConfiguredWhole(
+    env.GUINEA_STANDARD_MAX_PICKUP_DEVIATION_METERS,
+  );
+  if (maxDetourMeters == null || maxExtraMinutes == null || maxPickupDeviationMeters == null) {
+    return null;
+  }
+  return { maxDetourMeters, maxExtraMinutes, maxPickupDeviationMeters };
+}
+
+/**
+ * A first passenger can leave immediately.
+ * Joining another ride requires configured thresholds and a compared route.
+ * Missing thresholds do not invent a detour limit and do not cancel the trip.
+ */
+export function planGuineaStandardPool(input: {
+  sharedRide: boolean;
+  vehicle: GuineaStandardVehicle;
+  limits: GuineaPoolLimits | null;
+  compared?: {
+    existing: GuineaPoolReservation[];
+    incomingPassengers: number;
+    detourMeters: number;
+    extraMinutes: number;
+    pickupDeviationMeters: number;
+    oppositeDirection: boolean;
+    driverOnline: boolean;
+    poolable: boolean;
+  } | null;
+}):
+  | { action: "solo"; reason: string }
+  | { action: "join"; activePassengers: number; remainingSeats: number }
+  | { action: "refuse"; error: string } {
+  if (!input.sharedRide || input.vehicle === "motorcycle") {
+    return { action: "solo", reason: input.vehicle === "motorcycle" ? "guinea_motorcycle_pool_forbidden" : "not_requested" };
+  }
+  if (!input.limits) return { action: "solo", reason: "guinea_pool_not_configured" };
+  if (!input.compared) return { action: "solo", reason: "guinea_pool_route_required" };
+  const decision = evaluateGuineaPool({
+    vehicle: "car",
+    limits: input.limits,
+    ...input.compared,
+  });
+  if (decision.ok === false) return { action: "refuse", error: decision.error };
+  return {
+    action: "join",
+    activePassengers: decision.activePassengers,
+    remainingSeats: decision.remainingSeats,
+  };
+}
+
 export function readGuineaStandardCommissionBps(
   env: Record<string, string | undefined> = process.env,
 ): number | null {

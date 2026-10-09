@@ -28,6 +28,8 @@ import {
 import {
   freezeGuineaStandardSnapshot,
   GUINEA_STANDARD_MAX_DISTANCE_METERS,
+  planGuineaStandardPool,
+  readGuineaPoolLimits,
   readGuineaStandardCommissionBps,
   resolveGuineaPassengerCount,
   splitGuineaStandardCommission,
@@ -525,6 +527,12 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     currency: GUINEA_CURRENCY,
     payment_method: "cash",
     payment_status: "pending_cash",
+    pooling: planGuineaStandardPool({
+      sharedRide: input.sharedRide === true,
+      vehicle: decision.vehicle,
+      limits: readGuineaPoolLimits(),
+      compared: null,
+    }),
     ride: inserted.data,
     dispatch: {
       ok: dispatch.ok,

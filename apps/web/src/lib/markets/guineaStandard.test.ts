@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { calculateGuineaTaxiFareGnf } from "@/lib/markets/guineaTaxiPricing";
+import { calculateGuineaTaxiFareGnf, readGuineaTaxiRateCard } from "@/lib/markets/guineaTaxiPricing";
 import {
   cancelGuineaPoolReservation,
   evaluateGuineaPool,
   freezeGuineaStandardSnapshot,
   guineaStandardDistanceAllowed,
   guineaStopOrderValid,
+  planGuineaStandardPool,
+  readGuineaPoolLimits,
   readGuineaStandardCommissionBps,
   resolveGuineaPassengerCount,
   resolveGuineaStandardVehicle,
@@ -183,6 +185,72 @@ test("standard pricing stops above 100 km and still prices 100 km", () => {
   assert.equal(guineaStandardDistanceAllowed(100_000), true);
   assert.equal(guineaStandardDistanceAllowed(100_001), false);
   assert.equal(guineaStandardDistanceAllowed(1_000), true);
+});
+
+test("a configured 5000 GNF minimum is a floor and not the price per kilometer", () => {
+  const card = {
+    baseFareGnf: 1_000,
+    perKmGnf: 100,
+    perMinuteGnf: 10,
+    minimumFareGnf: 5_000,
+    maximumFareGnf: null,
+  };
+  const shortTrip = calculateGuineaTaxiFareGnf({
+    distanceMeters: 1_000,
+    durationMinutes: 1,
+    card,
+  });
+  assert.equal(shortTrip.ok && shortTrip.fareGnf, 5_000);
+  const longer = calculateGuineaTaxiFareGnf({
+    distanceMeters: 45_000,
+    durationMinutes: 54,
+    card,
+  });
+  assert.equal(longer.ok && longer.fareGnf, 1_000 + 4_500 + 540);
+  assert.notEqual(longer.ok && longer.fareGnf, 77_000);
+  const pricing = fs.readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "guineaTaxiPricing.ts"),
+    "utf8",
+  );
+  assert.equal(pricing.includes("5000"), false);
+  assert.equal(pricing.includes("5_000"), false);
+  assert.equal(readGuineaTaxiRateCard({}).ok, false);
+});
+
+test("live pooling stays solo until thresholds and a compared route exist", () => {
+  assert.equal(readGuineaPoolLimits({}), null);
+  const first = planGuineaStandardPool({
+    sharedRide: true,
+    vehicle: "car",
+    limits: null,
+    compared: null,
+  });
+  assert.equal(first.action, "solo");
+  if (first.action === "solo") assert.equal(first.reason, "guinea_pool_not_configured");
+  const waiting = planGuineaStandardPool({
+    sharedRide: true,
+    vehicle: "car",
+    limits: LIMITS,
+    compared: null,
+  });
+  assert.equal(waiting.action, "solo");
+  const joined = planGuineaStandardPool({
+    sharedRide: true,
+    vehicle: "car",
+    limits: LIMITS,
+    compared: {
+      existing: [seat("a", 77_000)],
+      incomingPassengers: 1,
+      detourMeters: 500,
+      extraMinutes: 3,
+      pickupDeviationMeters: 200,
+      oppositeDirection: false,
+      driverOnline: true,
+      poolable: true,
+    },
+  });
+  assert.equal(joined.action, "join");
+  assert.equal(seat("a", 77_000).fareGnf, 77_000);
 });
 
 test("standard http does not hardcode the commercial percentage", () => {
