@@ -312,6 +312,48 @@ export async function openGuineaXlDeparture(
   return taxiJson({ ok: true, departure: inserted.data });
 }
 
+export async function listDriverGuineaXlDepartures(supabaseAdmin: SupabaseClient, driverId: string) {
+  const rows = await supabaseAdmin
+    .from("guinea_xl_departures")
+    .select(
+      "id,axis_id,driver_id,passenger_capacity,scheduled_at,status,guinea_xl_seats(seat_index,seat_role,booking_id),guinea_xl_axes(origin_label,destination_label,currency)",
+    )
+    .eq("driver_id", driverId)
+    .order("created_at", { ascending: false });
+  if (rows.error) {
+    if (schemaMissing(rows.error.message)) return jsonError("xl_schema_not_ready", 503);
+    return jsonError("xl_departure_unavailable", 500);
+  }
+  const departureIds = (rows.data ?? []).map((row) => String(row.id));
+  const bookings = departureIds.length
+    ? await supabaseAdmin
+        .from("guinea_xl_bookings")
+        .select(
+          "id,departure_id,seat_indexes,status,payment_status,payment_method,total_gnf,transport_gnf,baggage_gnf,driver_amount_gnf,platform_fee_gnf",
+        )
+        .eq("driver_id", driverId)
+        .in("departure_id", departureIds)
+    : { data: [], error: null };
+  if (bookings.error) {
+    if (schemaMissing(bookings.error.message)) return jsonError("xl_schema_not_ready", 503);
+    return jsonError("xl_departure_unavailable", 500);
+  }
+  const byDeparture = new Map<string, Array<Record<string, unknown>>>();
+  for (const booking of (bookings.data ?? []) as Array<Record<string, unknown>>) {
+    const departureId = String(booking.departure_id);
+    const list = byDeparture.get(departureId) ?? [];
+    list.push(booking);
+    byDeparture.set(departureId, list);
+  }
+  return taxiJson({
+    ok: true,
+    departures: (rows.data ?? []).map((row) => ({
+      ...row,
+      bookings: byDeparture.get(String(row.id)) ?? [],
+    })),
+  });
+}
+
 export async function listOpenGuineaXlDepartures(supabaseAdmin: SupabaseClient) {
   const [rows, axes] = await Promise.all([
     supabaseAdmin

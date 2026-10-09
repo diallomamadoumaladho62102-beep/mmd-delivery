@@ -22,8 +22,24 @@ async function post(path: string, body: Record<string, unknown>) {
   return payload;
 }
 
-export async function fetchGuineaXlDepartures() {
-  const response = await fetch(`${String(API_BASE_URL).replace(/\/$/, "")}/api/taxi/xl/departures`, {
+const XL_ERROR_KEYS: Record<string, string> = {
+  xl_route_not_configured: "taxiXl.routeNotConfigured",
+  xl_seat_taken: "taxiXl.seatTaken",
+  cash_forbidden: "taxiXl.cashForbidden",
+  ride_canceled: "taxiXl.rideCanceled",
+  ride_not_completed: "taxiXl.rideNotCompleted",
+  xl_vehicle_capacity_unsupported: "taxiXl.capacityRejected",
+};
+
+export function xlErrorMessage(error: unknown, translate: (key: string) => string): string {
+  const code = error instanceof Error ? error.message : "";
+  const key = XL_ERROR_KEYS[code];
+  return key ? translate(key) : translate("taxiXl.requestFailed");
+}
+
+export async function fetchGuineaXlDepartures(scope?: "driver") {
+  const query = scope === "driver" ? "?scope=driver" : "";
+  const response = await fetch(`${String(API_BASE_URL).replace(/\/$/, "")}/api/taxi/xl/departures${query}`, {
     headers: await headers(),
   });
   const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };

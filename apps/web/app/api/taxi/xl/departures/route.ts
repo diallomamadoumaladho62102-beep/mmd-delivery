@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
-import { listOpenGuineaXlDepartures, openGuineaXlDeparture, completeGuineaXlDeparture } from "@/lib/markets/guineaXlHttp";
+import {
+  listDriverGuineaXlDepartures,
+  listOpenGuineaXlDepartures,
+  openGuineaXlDeparture,
+  completeGuineaXlDeparture,
+} from "@/lib/markets/guineaXlHttp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +14,9 @@ export async function GET(req: NextRequest) {
   try {
     const auth = await requireTaxiApiUser(req);
     if (auth.ok === false) return auth.response;
+    if (req.nextUrl.searchParams.get("scope") === "driver") {
+      return await listDriverGuineaXlDepartures(auth.supabaseAdmin, auth.user.id);
+    }
     return await listOpenGuineaXlDepartures(auth.supabaseAdmin);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Server error";
