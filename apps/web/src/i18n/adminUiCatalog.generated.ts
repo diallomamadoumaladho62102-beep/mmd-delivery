@@ -20954,5 +20954,317 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "ar": "الاتجاهان يشتركان في سعر واحد. حدده فقط لمحور باتجاه واحد.",
     "zh": "双向共用一个价格。仅单程线路才勾选此项。",
     "ff": "Feere ɗiɗi njogii njaru gootol. Labo ɗum tan ngam laawol feere wootere."
+  },
+  "XL segments": {
+    "en": "XL segments",
+    "fr": "Tronçons XL",
+    "es": "Tramos XL",
+    "ar": "مقاطع XL",
+    "zh": "XL 路段",
+    "ff": "Pecce XL"
+  },
+  "XL segments are not ready": {
+    "en": "XL segments are not ready",
+    "fr": "Les tronçons XL ne sont pas prêts",
+    "es": "Los tramos XL no están listos",
+    "ar": "مقاطع XL غير جاهزة",
+    "zh": "XL 路段尚未就绪",
+    "ff": "Pecce XL heɓaani tawo"
+  },
+  "Dispatch rules are not configured": {
+    "en": "Dispatch rules are not configured",
+    "fr": "Les règles d'attribution ne sont pas configurées",
+    "es": "Las reglas de asignación no están configuradas",
+    "ar": "قواعد التوزيع غير مهيأة",
+    "zh": "调度规则尚未配置",
+    "ff": "Sariyaaji ndiiwu njuɓɓinaaka"
+  },
+  "No admissible driver": {
+    "en": "No admissible driver",
+    "fr": "Aucun conducteur admissible",
+    "es": "Ningún conductor admisible",
+    "ar": "لا يوجد سائق مقبول",
+    "zh": "没有符合条件的司机",
+    "ff": "Daɗo mo jaɓaaka"
+  },
+  "Pickup coordinates are required": {
+    "en": "Pickup coordinates are required",
+    "fr": "Les coordonnées de prise en charge sont requises",
+    "es": "Se requieren las coordenadas de recogida",
+    "ar": "إحداثيات الالتقاط مطلوبة",
+    "zh": "需要上车坐标",
+    "ff": "Nokkuure ƴettugol ena waɗɗii"
+  },
+  "Pickup time is required": {
+    "en": "Pickup time is required",
+    "fr": "L'heure de prise en charge est requise",
+    "es": "Se requiere la hora de recogida",
+    "ar": "وقت الالتقاط مطلوب",
+    "zh": "需要上车时间",
+    "ff": "Waktu ƴettugol ena waɗɗii"
+  },
+  "Driver location is unavailable": {
+    "en": "Driver location is unavailable",
+    "fr": "La position du conducteur est indisponible",
+    "es": "La posición del conductor no está disponible",
+    "ar": "موقع السائق غير متاح",
+    "zh": "司机位置不可用",
+    "ff": "Nokkuure daɗo heɓaaka"
+  },
+  "This departure is completed": {
+    "en": "This departure is completed",
+    "fr": "Ce départ est terminé",
+    "es": "Esta salida está terminada",
+    "ar": "هذه الرحلة مكتملة",
+    "zh": "该班次已完成",
+    "ff": "Ngal doggol timmii"
+  },
+  "This departure is canceled": {
+    "en": "This departure is canceled",
+    "fr": "Ce départ est annulé",
+    "es": "Esta salida está cancelada",
+    "ar": "هذه الرحلة ملغاة",
+    "zh": "该班次已取消",
+    "ff": "Ngal doggol haaytaama"
+  },
+  "Dispatch rules saved": {
+    "en": "Dispatch rules saved",
+    "fr": "Règles d'attribution enregistrées",
+    "es": "Reglas de asignación guardadas",
+    "ar": "تم حفظ قواعد التوزيع",
+    "zh": "调度规则已保存",
+    "ff": "Sariyaaji ndiiwu ndesndaama"
+  },
+  "Maximum distance to pickup": {
+    "en": "Maximum distance to pickup (meters)",
+    "fr": "Distance maximale jusqu'au client (mètres)",
+    "es": "Distancia máxima hasta la recogida (metros)",
+    "ar": "أقصى مسافة إلى الالتقاط (متر)",
+    "zh": "到上车点的最大距离（米）",
+    "ff": "Njaajeendi ɓurndi haa ƴettugol (meeter)"
+  },
+  "Maximum detour": {
+    "en": "Maximum detour (meters)",
+    "fr": "Détour maximal (mètres)",
+    "es": "Desvío máximo (metros)",
+    "ar": "أقصى انحراف (متر)",
+    "zh": "最大绕路（米）",
+    "ff": "Yeewtere ɓurnde (meeter)"
+  },
+  "Maximum pickup delay": {
+    "en": "Maximum pickup delay (minutes)",
+    "fr": "Délai maximal de prise en charge (minutes)",
+    "es": "Demora máxima de recogida (minutos)",
+    "ar": "أقصى تأخير للالتقاط (دقائق)",
+    "zh": "最长上车等待（分钟）",
+    "ff": "Nelaaɗe ɓurɗe ƴettugol (hojomaaji)"
+  },
+  "Maximum GPS age": {
+    "en": "Maximum GPS age (seconds)",
+    "fr": "Ancienneté maximale de la position (secondes)",
+    "es": "Antigüedad máxima de la posición (segundos)",
+    "ar": "أقصى عمر للموقع (ثوان)",
+    "zh": "定位最长有效时间（秒）",
+    "ff": "Waktu GPS ɓurɗo (leƴƴi)"
+  },
+  "Unconfirmed estimate": {
+    "en": "Unconfirmed estimate",
+    "fr": "Estimation non confirmée",
+    "es": "Estimación no confirmada",
+    "ar": "تقدير غير مؤكد",
+    "zh": "未经确认的估算",
+    "ff": "Ciimtol tabintaaka"
+  },
+  "Validated segment": {
+    "en": "Validated segment",
+    "fr": "Tronçon validé",
+    "es": "Tramo validado",
+    "ar": "مقطع مؤكد",
+    "zh": "已确认路段",
+    "ff": "Peccol tabintinaango"
+  },
+  "No definitive price": {
+    "en": "No definitive price",
+    "fr": "Aucun prix définitif",
+    "es": "Sin precio definitivo",
+    "ar": "لا يوجد سعر نهائي",
+    "zh": "没有最终价格",
+    "ff": "Alaa njaru timmungo"
+  },
+  "Raw segment price": {
+    "en": "Raw segment price",
+    "fr": "Prix brut du tronçon",
+    "es": "Precio bruto del tramo",
+    "ar": "السعر الخام للمقطع",
+    "zh": "路段原价",
+    "ff": "Njaru kecco peccol"
+  },
+  "Final segment price": {
+    "en": "Final segment price",
+    "fr": "Prix final du tronçon",
+    "es": "Precio final del tramo",
+    "ar": "السعر النهائي للمقطع",
+    "zh": "路段最终价格",
+    "ff": "Njaru timmungo peccol"
+  },
+  "Distance km": {
+    "en": "Distance km",
+    "fr": "Distance km",
+    "es": "Distancia km",
+    "ar": "المسافة بالكيلومتر",
+    "zh": "距离（公里）",
+    "ff": "Njuuteendi km"
+  },
+  "Duration minutes": {
+    "en": "Duration minutes",
+    "fr": "Durée en minutes",
+    "es": "Duración en minutos",
+    "ar": "المدة بالدقائق",
+    "zh": "时长（分钟）",
+    "ff": "Njuuteendi hojomaaji"
+  },
+  "Base per segment": {
+    "en": "Base per segment",
+    "fr": "Base par tronçon",
+    "es": "Base por tramo",
+    "ar": "الأساس لكل مقطع",
+    "zh": "每段起步价",
+    "ff": "Fuɗɗoode peccol"
+  },
+  "Cumulative routes": {
+    "en": "Cumulative routes",
+    "fr": "Trajets cumulés",
+    "es": "Rutas acumuladas",
+    "ar": "المسارات المجمعة",
+    "zh": "累计线路",
+    "ff": "Laabi denndinaaɗi"
+  },
+  "This segment is not priced": {
+    "en": "This segment is not priced",
+    "fr": "Ce tronçon n'a pas de prix",
+    "es": "Este tramo no tiene precio",
+    "ar": "هذا المقطع بلا سعر",
+    "zh": "此路段没有价格",
+    "ff": "Ndee peccol alaa njaru"
+  },
+  "That segment changed. Reload the page.": {
+    "en": "That segment changed. Reload the page.",
+    "fr": "Ce tronçon a changé. Rechargez la page.",
+    "es": "Este tramo cambió. Recarga la página.",
+    "ar": "تغير هذا المقطع. أعد تحميل الصفحة.",
+    "zh": "该路段已变化。请重新加载页面。",
+    "ff": "Ndee peccol wayliima. Loowtu hello ngo."
+  },
+  "This segment is inactive": {
+    "en": "This segment is inactive",
+    "fr": "Ce tronçon est inactif",
+    "es": "Este tramo está inactivo",
+    "ar": "هذا المقطع غير نشط",
+    "zh": "此路段未启用",
+    "ff": "Ndee peccol hurbaani"
+  },
+  "This segment is still an unconfirmed estimate": {
+    "en": "This segment is still an unconfirmed estimate",
+    "fr": "Ce tronçon reste une estimation non confirmée",
+    "es": "Este tramo sigue siendo una estimación no confirmada",
+    "ar": "هذا المقطع ما زال تقديراً غير مؤكد",
+    "zh": "此路段仍是未经确认的估算",
+    "ff": "Ndee peccol woni ciimtol tabintaaka"
+  },
+  "This route is not a valid segment path": {
+    "en": "This route is not a valid segment path",
+    "fr": "Ce trajet n'est pas un chemin de tronçons valide",
+    "es": "Esta ruta no es un camino de tramos válido",
+    "ar": "هذا المسار ليس مسار مقاطع صالحاً",
+    "zh": "此线路不是有效的路段路径",
+    "ff": "Ndee laawol wonaa laawol pecce peewol"
+  },
+  "Segment tariff saved": {
+    "en": "Segment tariff saved",
+    "fr": "Tarif des tronçons enregistré",
+    "es": "Tarifa de tramos guardada",
+    "ar": "تم حفظ تعرفة المقاطع",
+    "zh": "路段票价已保存",
+    "ff": "Njaru pecce danndaama"
+  },
+  "Segment updated": {
+    "en": "Segment updated",
+    "fr": "Tronçon mis à jour",
+    "es": "Tramo actualizado",
+    "ar": "تم تحديث المقطع",
+    "zh": "路段已更新",
+    "ff": "Peccol hesɗitinaama"
+  },
+  "Segment activated or deactivated": {
+    "en": "Segment activated or deactivated",
+    "fr": "Tronçon activé ou désactivé",
+    "es": "Tramo activado o desactivado",
+    "ar": "تم تفعيل المقطع أو إيقافه",
+    "zh": "路段已启用或停用",
+    "ff": "Peccol hurbinaama walla dartinaama"
+  },
+  "Distance source": {
+    "en": "Distance source",
+    "fr": "Source de la distance",
+    "es": "Fuente de la distancia",
+    "ar": "مصدر المسافة",
+    "zh": "距离来源",
+    "ff": "Iwdi njuuteendi"
+  },
+  "Segment bookings are not open": {
+    "en": "Segment bookings are not open",
+    "fr": "Les réservations par tronçon ne sont pas ouvertes",
+    "es": "Las reservas por tramo no están abiertas",
+    "ar": "حجوزات المقاطع غير مفتوحة",
+    "zh": "路段预订尚未开放",
+    "ff": "Jooɗorɗe pecce udditaaka"
+  },
+  "Main line": {
+    "en": "Main line",
+    "fr": "Ligne principale",
+    "es": "Línea principal",
+    "ar": "الخط الرئيسي",
+    "zh": "主线",
+    "ff": "Laawol mawngol"
+  },
+  "Dougountounny branch": {
+    "en": "Dougountounny branch",
+    "fr": "Branche de Dougountounny",
+    "es": "Ramal de Dougountounny",
+    "ar": "فرع دوغونتوني",
+    "zh": "Dougountounny 支线",
+    "ff": "Laawol Dougountounny"
+  },
+  "Mali Centre branch": {
+    "en": "Mali Centre branch",
+    "fr": "Branche de Mali Centre",
+    "es": "Ramal de Mali Centre",
+    "ar": "فرع مركز مالي",
+    "zh": "Mali Centre 支线",
+    "ff": "Laawol Mali Centre"
+  },
+  "Price per passenger": {
+    "en": "Price per passenger",
+    "fr": "Prix par passager",
+    "es": "Precio por pasajero",
+    "ar": "السعر لكل راكب",
+    "zh": "每位乘客价格",
+    "ff": "Njaru njillu"
+  },
+  "Each reservation is for one passenger": {
+    "en": "Each reservation is for one passenger",
+    "fr": "Chaque réservation concerne un passager",
+    "es": "Cada reserva es para un pasajero",
+    "ar": "كل حجز لراكب واحد",
+    "zh": "每次预订对应一位乘客",
+    "ff": "Jooɗorde kala woni njillu gooto"
+  },
+  "Mark segment validated": {
+    "en": "Mark segment validated",
+    "fr": "Marquer le tronçon comme validé",
+    "es": "Marcar el tramo como validado",
+    "ar": "تعليم المقطع كمؤكد",
+    "zh": "将路段标为已确认",
+    "ff": "Tabintin peccol"
   }
 } as const;

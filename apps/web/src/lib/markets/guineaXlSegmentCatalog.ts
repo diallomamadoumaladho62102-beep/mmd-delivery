@@ -1,0 +1,108 @@
+import type { XlSegmentInput } from "@/lib/markets/guineaXlSegments";
+
+/**
+ * Local calculation catalog. Every distance here is an estimate.
+ * confirmed stays false. Commercial booking is not authorized by this file.
+ * Checked on 2026-10-10.
+ */
+export const XL_SEGMENT_LOCAL_ESTIMATES: XlSegmentInput[] = [
+  {
+    code: "1",
+    sequence: 1,
+    originLabel: "Conakry",
+    destinationLabel: "Kindia",
+    branch: "trunk",
+    distanceKm: 128,
+    durationMinutes: 102,
+    active: true,
+    confirmed: false,
+    estimateSource: "Unconfirmed project estimate already stored for Conakry to Kindia. Not an official survey.",
+  },
+  {
+    code: "2",
+    sequence: 2,
+    originLabel: "Kindia",
+    destinationLabel: "Mamou",
+    branch: "trunk",
+    distanceKm: 134,
+    durationMinutes: 109,
+    active: true,
+    confirmed: false,
+    estimateSource: "Unconfirmed project estimate already stored for Kindia to Mamou. Not an official survey.",
+  },
+  {
+    code: "3",
+    sequence: 3,
+    originLabel: "Mamou",
+    destinationLabel: "Dalaba",
+    branch: "trunk",
+    distanceKm: 54,
+    durationMinutes: 75,
+    active: true,
+    confirmed: false,
+    estimateSource: "Unconfirmed project estimate already stored for Mamou to Dalaba. Not an official survey.",
+  },
+  {
+    code: "4",
+    sequence: 4,
+    originLabel: "Dalaba",
+    destinationLabel: "Pita",
+    branch: "trunk",
+    distanceKm: 54,
+    durationMinutes: 42,
+    active: true,
+    confirmed: false,
+    estimateSource: "Unconfirmed project estimate already stored for Dalaba to Pita. Not an official survey.",
+  },
+  {
+    code: "5",
+    sequence: 5,
+    originLabel: "Pita",
+    destinationLabel: "Labé",
+    branch: "trunk",
+    distanceKm: 40,
+    durationMinutes: 32,
+    active: true,
+    confirmed: false,
+    estimateSource: "Unconfirmed project estimate already stored for Pita to Labé. Not an official survey.",
+  },
+  {
+    code: "6",
+    sequence: 6,
+    originLabel: "Labé",
+    destinationLabel: "Yembering",
+    branch: "trunk",
+    distanceKm: 70,
+    durationMinutes: 120,
+    active: true,
+    confirmed: false,
+    estimateSource:
+      "Estimate checked 2026-10-10. OpenStreetMap via OSRM: 69.7 km and 99 min from Labé city to Yembering. Global Highways and FromTo.City give 69 to 69.7 km. Duration uses 120 min from Africa Guinee and Guineematin reports of about two hours. Not an official fare distance.",
+  },
+  {
+    code: "7",
+    sequence: 7,
+    originLabel: "Yembering",
+    destinationLabel: "Dougountounny",
+    branch: "dougountounny",
+    distanceKm: 40,
+    durationMinutes: 61,
+    active: true,
+    confirmed: false,
+    estimateSource:
+      "Estimate checked 2026-10-10. OpenStreetMap via OSRM: 40.4 km and 61 min from Yembering to Dougountouny. Rounded to 40 km. No separate official survey. Not confirmed.",
+  },
+  {
+    code: "8",
+    sequence: 8,
+    originLabel: "Yembering",
+    destinationLabel: "Mali Centre",
+    branch: "mali",
+    distanceKm: 40,
+    durationMinutes: 180,
+    active: true,
+    confirmed: false,
+    estimateSource:
+      "Estimate checked 2026-10-10. The Labé–Mali project lot is 38 km. OpenStreetMap via OSRM: 38.6 km and 58 min. Guineematin on 2026-09-24 reports about 40 km and up to three hours on the current road. Duration uses 180 min. Not confirmed.",
+  },
+];

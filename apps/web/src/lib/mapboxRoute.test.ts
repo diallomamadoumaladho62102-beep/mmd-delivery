@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { getDistanceAndEta } from "./mapboxRoute";
+import { getDistanceAndEta, getDrivingLeg } from "./mapboxRoute";
 
 async function main() {
   const env = process.env as Record<string, string | undefined>;
@@ -17,6 +17,14 @@ async function main() {
     await assert.rejects(
       () =>
         getDistanceAndEta(
+          { lat: 40.7, lng: -74.0 },
+          { lat: 40.8, lng: -73.9 }
+        ),
+      /MAPBOX_ACCESS_TOKEN missing/
+    );
+    await assert.rejects(
+      () =>
+        getDrivingLeg(
           { lat: 40.7, lng: -74.0 },
           { lat: 40.8, lng: -73.9 }
         ),
@@ -58,6 +66,38 @@ async function main() {
         ),
       /no usable route/
     );
+    await assert.rejects(
+      () =>
+        getDrivingLeg(
+          { lat: 40.7, lng: -74.0 },
+          { lat: 40.8, lng: -73.9 }
+        ),
+      /no usable route/
+    );
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      seenUrl = String(input);
+      return new Response(
+        JSON.stringify({ routes: [{ distance: 16093.4, duration: 90 }] }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    const food = await getDistanceAndEta(
+      { lat: 40.7, lng: -74.0 },
+      { lat: 40.8, lng: -73.9 },
+    );
+    const leg = await getDrivingLeg(
+      { lat: 40.7, lng: -74.0 },
+      { lat: 40.8, lng: -73.9 },
+    );
+    assert.equal(food.distanceMiles, 10);
+    assert.equal(food.etaMinutes, 2);
+    assert.equal(leg.distanceMeters, 16093.4);
+    assert.equal(leg.etaMinutes, 2);
+    assert.match(seenUrl, /\/driving\/-74,40\.7;-73\.9,40\.8\?/);
+    assert.match(seenUrl, /geometries=geojson/);
+    assert.doesNotMatch(seenUrl, /pk\.public-must-not-be-used/);
 
     console.log("mapboxRoute.test.ts OK");
   } finally {

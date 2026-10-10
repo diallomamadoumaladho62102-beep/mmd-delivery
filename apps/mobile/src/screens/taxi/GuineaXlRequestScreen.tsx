@@ -41,7 +41,19 @@ type Quote = {
   transportGnf?: number;
   baggageGnf?: number;
   driverAmountGnf?: number;
+  total_gnf?: number;
+  definitive?: boolean;
 };
+
+type SegmentDispatch = {
+  ok?: boolean;
+  error?: string;
+  etaMinutes?: number;
+  departureId?: string;
+  seatIndex?: number;
+};
+
+const SEGMENT_PLACES = ["Conakry", "Kindia", "Mamou", "Dalaba", "Pita", "Labé", "Yembering", "Dougountounny", "Mali Centre"];
 
 export default function GuineaXlRequestScreen() {
   const { t } = useTranslation();
@@ -59,6 +71,12 @@ export default function GuineaXlRequestScreen() {
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [segmentOrigin, setSegmentOrigin] = useState("Conakry");
+  const [segmentDestination, setSegmentDestination] = useState("Labé");
+  const [segmentQuote, setSegmentQuote] = useState<Quote | null>(null);
+  const [segmentCommercial, setSegmentCommercial] = useState(false);
+  const [segmentIdempotencyKey, setSegmentIdempotencyKey] = useState<string | null>(null);
+  const [segmentDispatch, setSegmentDispatch] = useState<SegmentDispatch | null>(null);
 
   const load = useCallback(() => {
     void Promise.all([fetchGuineaXlDepartures(), fetchMyGuineaXlBookings()])
@@ -149,9 +167,123 @@ export default function GuineaXlRequestScreen() {
     }
   }
 
+  async function requestSegmentQuote() {
+    if (busy || segmentOrigin === segmentDestination) return;
+    setBusy(true);
+    setError(null);
+    setBookingId(null);
+    setSegmentDispatch(null);
+    try {
+      let pickupLat: number | undefined;
+      let pickupLng: number | undefined;
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status === "granted") {
+        const position = await Location.getCurrentPositionAsync({});
+        pickupLat = position.coords.latitude;
+        pickupLng = position.coords.longitude;
+      }
+      const idempotencyKey = `segment-${Date.now()}-${segmentOrigin}-${segmentDestination}`.replace(/\s+/g, "");
+      const priced = await quoteGuineaXl({
+        bookingKind: "segment",
+        countryCode: "GN",
+        currency: "GNF",
+        originLabel: segmentOrigin,
+        destinationLabel: segmentDestination,
+        pickupLat,
+        pickupLng,
+        requestedPickupAt: new Date().toISOString(),
+        idempotencyKey,
+      });
+      setSegmentIdempotencyKey(idempotencyKey);
+      const payload = priced as { quote?: Quote; dispatch?: SegmentDispatch; commercial_booking?: boolean };
+      setSegmentQuote(payload.quote ?? null);
+      setSegmentCommercial(payload.commercial_booking === true);
+      setSegmentDispatch(payload.dispatch ?? null);
+    } catch (cause: unknown) {
+      setSegmentQuote(null);
+      setSegmentCommercial(false);
+      setSegmentDispatch(null);
+      setError(xlErrorMessage(cause, t));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function requestSegmentBooking() {
+    if (busy || !segmentQuote) return;
+    setBusy(true);
+    setError(null);
+    setBookingId(null);
+    try {
+      let pickupLat: number | undefined;
+      let pickupLng: number | undefined;
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status === "granted") {
+        const position = await Location.getCurrentPositionAsync({});
+        pickupLat = position.coords.latitude;
+        pickupLng = position.coords.longitude;
+      }
+      if (!segmentIdempotencyKey) return;
+      const saved = await bookGuineaXl({
+        bookingKind: "segment",
+        countryCode: "GN",
+        currency: "GNF",
+        originLabel: segmentOrigin,
+        destinationLabel: segmentDestination,
+        pickupLat,
+        pickupLng,
+        requestedPickupAt: new Date().toISOString(),
+        idempotencyKey: segmentIdempotencyKey,
+        ...(Number.isInteger(segmentQuote.total_gnf ?? segmentQuote.totalGnf)
+          ? { totalGnf: segmentQuote.total_gnf ?? segmentQuote.totalGnf }
+          : {}),
+      });
+      const payload = saved as { booking_id?: string; booking?: { booking_id?: string } };
+      const persisted = payload.booking_id ?? payload.booking?.booking_id ?? null;
+      if (persisted) setBookingId(persisted);
+    } catch (cause: unknown) {
+      setBookingId(null);
+      setError(xlErrorMessage(cause, t));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
       <Text style={{ fontSize: 22, fontWeight: "700" }}>{t("taxiXl.title")}</Text>
+      <Text style={{ fontWeight: "700" }}>{t("taxiXl.segmentTitle")}</Text>
+      <Text>{t("taxiXl.segmentHint")}</Text>
+      {segmentCommercial ? null : <Text>{t("taxiXl.segmentClosed")}</Text>}
+      <Text>{t("taxiXl.selectOrigin")}</Text>
+      {SEGMENT_PLACES.map((place) => (
+        <TouchableOpacity key={`origin-${place}`} onPress={() => { setSegmentOrigin(place); setSegmentQuote(null); setSegmentCommercial(false); setSegmentIdempotencyKey(null); setBookingId(null); }}>
+          <Text>{segmentOrigin === place ? `✓ ${place}` : place}</Text>
+        </TouchableOpacity>
+      ))}
+      <Text>{t("taxiXl.selectDestination")}</Text>
+      {SEGMENT_PLACES.map((place) => (
+        <TouchableOpacity key={`destination-${place}`} onPress={() => { setSegmentDestination(place); setSegmentQuote(null); setSegmentCommercial(false); setSegmentIdempotencyKey(null); setBookingId(null); }}>
+          <Text>{segmentDestination === place ? `✓ ${place}` : place}</Text>
+        </TouchableOpacity>
+      ))}
+      <TouchableOpacity onPress={() => void requestSegmentQuote()} disabled={busy || segmentOrigin === segmentDestination}>
+        <Text>{t("taxiXl.quoteAction")}</Text>
+      </TouchableOpacity>
+      {segmentQuote ? (
+        <Text>
+          {t("taxiXl.pricePerPassenger")} {money(segmentQuote.total_gnf ?? segmentQuote.totalGnf)}
+          {segmentQuote.definitive === false ? ` · ${t("taxiXl.segmentHint")}` : ""}
+        </Text>
+      ) : null}
+      {segmentDispatch?.ok ? (
+        <Text>{t("taxiXl.dispatchProposed")} · {segmentDispatch.etaMinutes} min</Text>
+      ) : segmentDispatch?.error ? (
+        <Text>{xlErrorMessage(new Error(segmentDispatch.error), t)}</Text>
+      ) : null}
+      <TouchableOpacity onPress={() => void requestSegmentBooking()} disabled={busy || !segmentQuote}>
+        <Text>{t("taxiXl.confirm")}</Text>
+      </TouchableOpacity>
       <Text>{t("taxiXl.subtitle")}</Text>
       <Text>{t("taxiXl.originCurrent")}</Text>
       {axes.length === 0 ? <Text>{t("taxiXl.routeNotConfigured")}</Text> : null}

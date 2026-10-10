@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getDrivingLeg } from "@/lib/mapboxRoute";
 import { taxiJson } from "@/lib/taxiApi";
 import { detectTaxiCountryFromCoords } from "@/lib/taxiCountryDetection";
 import { detectTaxiCityFromCoords } from "@/lib/taxiCityDetection";
@@ -14,9 +15,13 @@ import {
 import {
   findActiveXlAxis,
   isXlCapacity,
+  localityKey,
   type XlAxisRecord,
   type XlBaggageBand,
 } from "@/lib/markets/guineaXlPricing";
+import { loadXlSegmentDispatchMatch, planXlSegmentDeparture } from "@/lib/markets/guineaXlSegmentDispatch";
+import { xlProgressHttpBodyFromRpc } from "../../../../../shared/xlProgressWire";
+import { guineaXlSegmentMarketAllowedWithDetection, segmentCommercialBookingEnabled, segmentFromRow } from "@/lib/markets/guineaXlSegments";
 
 function schemaMissing(message: string): boolean {
   return /guinea_xl_|schema cache|does not exist/i.test(message);
@@ -102,7 +107,136 @@ function baggageItems(value: unknown): Array<{ weightKg: unknown }> {
   }));
 }
 
+async function segmentMarketClosed(body: Record<string, unknown>) {
+  const lat = body.pickupLat ?? body.pickup_lat;
+  const lng = body.pickupLng ?? body.pickup_lng;
+  const hasPickup = lat != null && lng != null && String(lat).trim() !== "" && String(lng).trim() !== "";
+  const detected = hasPickup ? await detectTaxiCountryFromCoords(lat, lng) : null;
+  return !guineaXlSegmentMarketAllowedWithDetection(body, detected);
+}
+
+export async function quoteGuineaXlSegment(supabaseAdmin: SupabaseClient, body: Record<string, unknown>) {
+  if (await segmentMarketClosed(body)) return jsonError("xl_market_unavailable", 409);
+  const originKey = localityKey(body.originLabel ?? body.origin_label);
+  const destinationKey = localityKey(body.destinationLabel ?? body.destination_label);
+  if (!originKey || !destinationKey || originKey === destinationKey) return jsonError("xl_segment_path_invalid", 400);
+  const quoted = await supabaseAdmin.rpc("quote_guinea_xl_segments", {
+    p_origin_key: originKey,
+    p_destination_key: destinationKey,
+  });
+  if (quoted.error) {
+    if (schemaMissing(quoted.error.message)) return jsonError("xl_segment_schema_not_ready", 503);
+    return jsonError("xl_segment_not_priced", 400);
+  }
+  const payload = quoted.data as { ok?: boolean; error?: string; definitive?: boolean; total_gnf?: number };
+  if (payload?.ok === false) return jsonError(String(payload.error ?? "xl_segment_not_priced"), 400);
+  const requestedPickup = Date.parse(String(body.requestedPickupAt ?? ""));
+  const dispatch = await loadXlSegmentDispatchMatch(supabaseAdmin, {
+    originLabel: body.originLabel ?? body.origin_label,
+    destinationLabel: body.destinationLabel ?? body.destination_label,
+    pickupLat: body.pickupLat,
+    pickupLng: body.pickupLng,
+    requestedPickupAtMs: Number.isFinite(requestedPickup) ? requestedPickup : null,
+    nowMs: Date.now(),
+    measureRoad: async (from, to) => {
+      try {
+        return await getDrivingLeg(from, to);
+      } catch {
+        return null;
+      }
+    },
+  });
+  return taxiJson({
+    ok: true,
+    currency: "GNF",
+    country_code: "GN",
+    commercial_booking: segmentCommercialBookingEnabled(),
+    quote: payload,
+    dispatch,
+  });
+}
+
+export async function persistGuineaXlSegmentBooking(
+  supabaseAdmin: SupabaseClient,
+  clientUserId: string,
+  body: Record<string, unknown>,
+) {
+  if (await segmentMarketClosed(body)) return jsonError("xl_market_unavailable", 409);
+  if (!segmentCommercialBookingEnabled()) {
+    return jsonError("xl_segment_commercial_disabled", 409);
+  }
+  const excluded: string[] = [];
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const requestedPickup = Date.parse(String(body.requestedPickupAt ?? ""));
+    const matched = await loadXlSegmentDispatchMatch(supabaseAdmin, {
+      originLabel: body.originLabel ?? body.origin_label,
+      destinationLabel: body.destinationLabel ?? body.destination_label,
+      pickupLat: body.pickupLat,
+      pickupLng: body.pickupLng,
+      requestedPickupAtMs: Number.isFinite(requestedPickup) ? requestedPickup : null,
+      nowMs: Date.now(),
+      excludeDepartureIds: excluded,
+      measureRoad: async (from, to) => {
+        try {
+          return await getDrivingLeg(from, to);
+        } catch {
+          return null;
+        }
+      },
+    });
+    if (matched.ok === false) return jsonError(matched.error, 409);
+    const saved = await saveMatchedSegmentBooking(supabaseAdmin, clientUserId, body, matched);
+    if (saved.ok === true) return saved.response;
+    if (saved.retry) {
+      excluded.push(matched.departureId);
+      continue;
+    }
+    return saved.response;
+  }
+  return jsonError("xl_dispatch_no_driver", 409);
+}
+
+async function saveMatchedSegmentBooking(
+  supabaseAdmin: SupabaseClient,
+  clientUserId: string,
+  body: Record<string, unknown>,
+  matched: { departureId: string; seatIndex: number },
+): Promise<{ ok: true; response: Response } | { ok: false; retry: boolean; response: Response }> {
+  const originKey = localityKey(body.originLabel ?? body.origin_label);
+  const destinationKey = localityKey(body.destinationLabel ?? body.destination_label);
+  const baggage = Array.isArray(body.baggage)
+    ? body.baggage
+        .map((item) => Number(item && typeof item === "object" ? (item as { weightKg?: unknown }).weightKg : item))
+        .filter((item) => Number.isInteger(item))
+    : [];
+  const saved = await supabaseAdmin.rpc("create_guinea_xl_segment_booking", {
+    p_booking_id: crypto.randomUUID(),
+    p_idempotency_key: String(body.idempotencyKey ?? body.idempotency_key ?? ""),
+    p_client_user_id: clientUserId,
+    p_departure_id: matched.departureId,
+    p_seat_index: matched.seatIndex,
+    p_origin_key: originKey,
+    p_destination_key: destinationKey,
+    p_baggage_kg: baggage,
+    p_claimed_total_gnf: body.totalGnf ?? body.total ?? null,
+  });
+  if (saved.error) {
+    if (schemaMissing(saved.error.message)) {
+      return { ok: false, retry: false, response: jsonError("xl_segment_schema_not_ready", 503) };
+    }
+    return { ok: false, retry: false, response: jsonError("xl_booking_invalid", 400) };
+  }
+  const payload = saved.data as { ok?: boolean; error?: string };
+  if (payload?.ok === false) {
+    const error = String(payload.error ?? "xl_booking_invalid");
+    const retry = error === "xl_seat_taken" || error === "xl_departure_unavailable";
+    return { ok: false, retry, response: jsonError(error, 409) };
+  }
+  return { ok: true, response: taxiJson({ ok: true, booking: payload }) };
+}
+
 export async function quoteGuineaXl(supabaseAdmin: SupabaseClient, body: Record<string, unknown>) {
+  if (isSegmentBookingRequest(body)) return quoteGuineaXlSegment(supabaseAdmin, body);
   const catalog = await loadCatalog(supabaseAdmin);
   if (catalog.ok === false) return catalog.response;
   const places = await placesFromCoords(body.pickupLat, body.pickupLng, body.dropoffLat, body.dropoffLng);
@@ -164,11 +298,18 @@ export async function quoteGuineaXl(supabaseAdmin: SupabaseClient, body: Record<
   });
 }
 
+function isSegmentBookingRequest(body: Record<string, unknown>): boolean {
+  return body.bookingKind === "segment" || body.fareSource === "xl_segment";
+}
+
 export async function bookGuineaXl(
   supabaseAdmin: SupabaseClient,
   clientUserId: string,
   body: Record<string, unknown>,
 ) {
+  if (isSegmentBookingRequest(body)) {
+    return persistGuineaXlSegmentBooking(supabaseAdmin, clientUserId, body);
+  }
   const idempotencyKey = String(body.idempotencyKey ?? body.idempotency_key ?? "").trim();
   if (!idempotencyKey || idempotencyKey.length > 80) return jsonError("xl_booking_invalid", 400);
   const existing = await supabaseAdmin
@@ -275,6 +416,10 @@ export async function bookGuineaXl(
   });
 }
 
+function isSegmentDepartureRequest(body: Record<string, unknown>): boolean {
+  return body.segmentRun === true || body.bookingKind === "segment";
+}
+
 export async function openGuineaXlDeparture(
   supabaseAdmin: SupabaseClient,
   driverId: string,
@@ -282,6 +427,10 @@ export async function openGuineaXlDeparture(
 ) {
   const capacity = Number(body.capacity);
   if (!isXlCapacity(capacity)) return jsonError("xl_vehicle_capacity_unsupported", 400);
+  if (isSegmentDepartureRequest(body)) {
+    if (body.axisId) return jsonError("xl_booking_invalid", 400);
+    return openGuineaXlSegmentDeparture(supabaseAdmin, driverId, body, capacity);
+  }
   const features = await supabaseAdmin
     .from("taxi_driver_features")
     .select("passenger_capacity,xl_eligible")
@@ -312,11 +461,87 @@ export async function openGuineaXlDeparture(
   return taxiJson({ ok: true, departure: inserted.data });
 }
 
+async function openGuineaXlSegmentDeparture(
+  supabaseAdmin: SupabaseClient,
+  driverId: string,
+  body: Record<string, unknown>,
+  capacity: number,
+) {
+  const features = await supabaseAdmin
+    .from("taxi_driver_features")
+    .select("passenger_capacity,xl_eligible")
+    .eq("user_id", driverId)
+    .maybeSingle();
+  if (features.error) return jsonError("xl_vehicle_capacity_unsupported", 400);
+  const declared = Number(features.data?.passenger_capacity ?? 0);
+  if (features.data?.xl_eligible !== true || !Number.isSafeInteger(declared) || declared < capacity) {
+    return jsonError("xl_vehicle_capacity_unsupported", 400);
+  }
+  const segmentRows = await supabaseAdmin
+    .from("guinea_xl_segments")
+    .select("id,code,sequence,origin_label,destination_label,branch,distance_km,duration_minutes,active,confirmed,version,estimate_source")
+    .order("sequence");
+  if (segmentRows.error) {
+    if (schemaMissing(segmentRows.error.message)) return jsonError("xl_segment_schema_not_ready", 503);
+    return jsonError("xl_segment_not_priced", 400);
+  }
+  const segments = ((segmentRows.data ?? []) as Array<Record<string, unknown>>).map(segmentFromRow);
+  const planned = planXlSegmentDeparture(segments, body.originLabel ?? body.origin_label, body.destinationLabel ?? body.destination_label);
+  if (planned.ok === false) return jsonError(planned.error, 400);
+  const ids = new Map(segments.map((segment) => [segment.code, segment.id]));
+  const segmentIds = planned.segmentCodes.map((code) => ids.get(code) ?? null);
+  if (segmentIds.some((id) => !id)) return jsonError("xl_segment_not_priced", 400);
+  const saved = await supabaseAdmin.rpc("open_guinea_xl_segment_departure", {
+    p_departure_id: crypto.randomUUID(),
+    p_driver_id: driverId,
+    p_capacity: capacity,
+    p_scheduled_at: body.scheduledAt ? String(body.scheduledAt) : null,
+    p_segment_ids: segmentIds,
+  });
+  if (saved.error) {
+    if (schemaMissing(saved.error.message)) return jsonError("xl_segment_schema_not_ready", 503);
+    return jsonError("xl_departure_unavailable", 400);
+  }
+  const payload = saved.data as { ok?: boolean; error?: string; departure_id?: string; segment_codes?: string[] };
+  if (payload?.ok === false) return jsonError(String(payload.error ?? "xl_departure_unavailable"), 409);
+  return taxiJson({
+    ok: true,
+    departure: {
+      id: payload.departure_id,
+      passenger_capacity: capacity,
+      status: "open",
+      segment_run: true,
+      segmentCodes: payload.segment_codes ?? planned.segmentCodes,
+      axisId: null,
+    },
+  });
+}
+
+export async function syncGuineaXlProgress(
+  supabaseAdmin: SupabaseClient,
+  driverId: string,
+  body: Record<string, unknown>,
+) {
+  const events = Array.isArray(body.events) ? body.events : [];
+  const saved = await supabaseAdmin.rpc("accept_guinea_xl_progress_batch", {
+    p_driver_id: driverId,
+    p_events: events,
+  });
+  if (saved.error) {
+    if (schemaMissing(saved.error.message)) return jsonError("xl_segment_schema_not_ready", 503);
+    return jsonError("xl_progress_unverified", 400);
+  }
+  const payload = saved.data as { ok?: boolean; error?: string; events?: Array<Record<string, unknown>> };
+  const result = xlProgressHttpBodyFromRpc(payload ?? {});
+  if (result.ok === false) return jsonError(result.error, 400);
+  return taxiJson({ ok: true, acks: result.acks, rejected: result.rejected });
+}
+
 export async function listDriverGuineaXlDepartures(supabaseAdmin: SupabaseClient, driverId: string) {
   const rows = await supabaseAdmin
     .from("guinea_xl_departures")
     .select(
-      "id,axis_id,driver_id,passenger_capacity,scheduled_at,status,guinea_xl_seats(seat_index,seat_role,booking_id),guinea_xl_axes(origin_label,destination_label,currency)",
+      "id,axis_id,segment_run,driver_id,passenger_capacity,scheduled_at,status,guinea_xl_seats(seat_index,seat_role,booking_id),guinea_xl_axes(origin_label,destination_label,currency)",
     )
     .eq("driver_id", driverId)
     .order("created_at", { ascending: false });
@@ -338,6 +563,32 @@ export async function listDriverGuineaXlDepartures(supabaseAdmin: SupabaseClient
     if (schemaMissing(bookings.error.message)) return jsonError("xl_schema_not_ready", 503);
     return jsonError("xl_departure_unavailable", 500);
   }
+  const links = departureIds.length
+    ? await supabaseAdmin
+        .from("guinea_xl_departure_segments")
+        .select("departure_id,position,guinea_xl_segments(origin_label,destination_label)")
+        .in("departure_id", departureIds)
+    : { data: [], error: null };
+  const stopsByDeparture = new Map<string, string[]>();
+  if (!links.error) {
+    const grouped = new Map<string, Array<Record<string, unknown>>>();
+    for (const link of (links.data ?? []) as Array<Record<string, unknown>>) {
+      const list = grouped.get(String(link.departure_id)) ?? [];
+      list.push(link);
+      grouped.set(String(link.departure_id), list);
+    }
+    for (const [departureId, group] of grouped) {
+      const ordered = group.slice().sort((left, right) => Number(left.position) - Number(right.position));
+      const stops: string[] = [];
+      ordered.forEach((link, index) => {
+        const segment = Array.isArray(link.guinea_xl_segments) ? link.guinea_xl_segments[0] : link.guinea_xl_segments;
+        const row = segment && typeof segment === "object" ? (segment as Record<string, unknown>) : null;
+        if (index === 0 && row?.origin_label) stops.push(String(row.origin_label));
+        if (row?.destination_label) stops.push(String(row.destination_label));
+      });
+      stopsByDeparture.set(departureId, stops);
+    }
+  }
   const byDeparture = new Map<string, Array<Record<string, unknown>>>();
   for (const booking of (bookings.data ?? []) as Array<Record<string, unknown>>) {
     const departureId = String(booking.departure_id);
@@ -349,6 +600,7 @@ export async function listDriverGuineaXlDepartures(supabaseAdmin: SupabaseClient
     ok: true,
     departures: (rows.data ?? []).map((row) => ({
       ...row,
+      stops: stopsByDeparture.get(String(row.id)) ?? [],
       bookings: byDeparture.get(String(row.id)) ?? [],
     })),
   });

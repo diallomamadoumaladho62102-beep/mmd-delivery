@@ -29,6 +29,28 @@ const XL_ERROR_KEYS: Record<string, string> = {
   ride_canceled: "taxiXl.rideCanceled",
   ride_not_completed: "taxiXl.rideNotCompleted",
   xl_vehicle_capacity_unsupported: "taxiXl.capacityRejected",
+  xl_segment_commercial_disabled: "taxiXl.segmentClosed",
+  xl_market_unavailable: "taxiXl.marketUnavailable",
+  xl_segment_schema_not_ready: "taxiXl.segmentClosed",
+  xl_segment_unconfirmed: "taxiXl.segmentHint",
+  xl_segment_not_priced: "taxiXl.routeNotConfigured",
+  xl_client_total_rejected: "taxiXl.requestFailed",
+  xl_dispatch_not_configured: "taxiXl.dispatchUnavailable",
+  xl_dispatch_no_driver: "taxiXl.dispatchUnavailable",
+  xl_dispatch_pickup_required: "taxiXl.dispatchUnavailable",
+  xl_pickup_time_required: "taxiXl.dispatchUnavailable",
+  xl_driver_location_unavailable: "taxiXl.dispatchUnavailable",
+  xl_driver_too_far: "taxiXl.dispatchUnavailable",
+  xl_driver_wrong_direction: "taxiXl.dispatchUnavailable",
+  xl_detour_exceeded: "taxiXl.dispatchUnavailable",
+  xl_pickup_delay: "taxiXl.dispatchUnavailable",
+  xl_pickup_passed: "taxiXl.dispatchUnavailable",
+  xl_progress_unverified: "taxiXl.dispatchUnavailable",
+  xl_progress_inconsistent: "taxiXl.dispatchUnavailable",
+  xl_dispatch_no_verified_driver: "taxiXl.dispatchUnavailable",
+  xl_driver_unavailable: "taxiXl.dispatchUnavailable",
+  xl_departure_completed: "taxiXl.dispatchUnavailable",
+  xl_departure_canceled: "taxiXl.dispatchUnavailable",
 };
 
 const XL_STATUS_KEYS: Record<string, string> = {
@@ -87,6 +109,10 @@ export function openGuineaXlDeparture(body: Record<string, unknown>) {
 
 export function completeGuineaXlDeparture(departureId: string) {
   return post("/api/taxi/xl/departures", { action: "complete", departureId });
+}
+
+export function syncGuineaXlProgress(events: Array<Record<string, unknown>>) {
+  return post("/api/taxi/xl/departures", { action: "progress", events });
 }
 
 export function collectGuineaXlCash(bookingId: string) {

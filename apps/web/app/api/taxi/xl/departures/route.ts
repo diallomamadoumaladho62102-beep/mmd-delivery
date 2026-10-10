@@ -5,6 +5,7 @@ import {
   listOpenGuineaXlDepartures,
   openGuineaXlDeparture,
   completeGuineaXlDeparture,
+  syncGuineaXlProgress,
 } from "@/lib/markets/guineaXlHttp";
 
 export const runtime = "nodejs";
@@ -28,6 +29,9 @@ export async function POST(req: NextRequest) {
     const auth = await requireTaxiApiUser(req);
     if (auth.ok === false) return auth.response;
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    if (body.action === "progress") {
+      return await syncGuineaXlProgress(auth.supabaseAdmin, auth.user.id, body);
+    }
     if (body.action === "complete") {
       return await completeGuineaXlDeparture(
         auth.supabaseAdmin,

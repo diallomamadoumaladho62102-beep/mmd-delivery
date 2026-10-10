@@ -16,6 +16,20 @@ let lastLiveUpsert: {
   lng: number;
 } | null = null;
 
+export type RecordedDriverFix = {
+  driverId: string;
+  latitude: number;
+  longitude: number;
+  capturedAtMs: number;
+};
+
+let recordedFixSink: ((fix: RecordedDriverFix) => void) | null = null;
+
+/** XL progress listens here. The driver_locations upsert stays the same. */
+export function setRecordedDriverFixSink(sink: ((fix: RecordedDriverFix) => void) | null) {
+  recordedFixSink = sink;
+}
+
 /** Upsert throttled — réutilise le GPS navigation sans second abonnement. */
 export async function upsertDriverLiveLocation(
   driverId: string,
@@ -40,15 +54,22 @@ export async function upsertDriverLiveLocation(
 
   lastLiveUpsert = { driverId, at: now, lat: latitude, lng: longitude };
 
-  const { error } = await supabase.from("driver_locations").upsert({
-    driver_id: driverId,
-    lat: latitude,
-    lng: longitude,
-    updated_at: new Date().toISOString(),
-  });
-
-  if (error) {
-    // Réseau instable — ne pas bloquer la navigation.
+  try {
+    const { error } = await supabase.from("driver_locations").upsert({
+      driver_id: driverId,
+      lat: latitude,
+      lng: longitude,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      // Réseau instable — ne pas bloquer la navigation.
+    }
+  } finally {
+    try {
+      recordedFixSink?.({ driverId, latitude, longitude, capturedAtMs: now });
+    } catch {
+      // The XL queue must not break the existing location upsert.
+    }
   }
 }
 

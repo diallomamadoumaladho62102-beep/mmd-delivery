@@ -1,6 +1,19 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "react-i18next";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import { supabase } from "../../lib/supabase";
+import {
+  installXlGpsCapture,
+  readActiveXlDeparture,
+  recordXlDriverAction,
+  rememberActiveXlDeparture,
+  type XlActiveDeparture,
+} from "../../lib/xlProgressCapture";
+import { flushXlProgress, readXlProgress } from "../../lib/xlProgressQueue";
+import type { XlProgressKind, XlQueuedProgress } from "../../../../../shared/xlSegmentProgress";
+import { interpretXlProgressSyncResponse, xlProgressSyncEvents } from "../../../../../shared/xlProgressWire";
 import { formatMoneyFromCents } from "../../i18n/formatters";
 import {
   collectGuineaXlCash,
@@ -8,6 +21,7 @@ import {
   completeGuineaXlDeparture,
   fetchGuineaXlDepartures,
   openGuineaXlDeparture,
+  syncGuineaXlProgress,
   xlErrorMessage,
 } from "../../lib/taxiXlApi";
 
@@ -36,6 +50,8 @@ type Departure = {
   id: string;
   passenger_capacity: number;
   status: string;
+  segment_run?: boolean;
+  stops?: string[];
   guinea_xl_axes?: { origin_label?: string; destination_label?: string } | null;
   guinea_xl_seats?: Seat[];
   bookings?: Booking[];
@@ -48,21 +64,142 @@ export default function DriverGuineaXlScreen() {
   const [capacity, setCapacity] = useState<4 | 5 | 6 | 7>(4);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [manualReason, setManualReason] = useState("");
+  const [queued, setQueued] = useState<XlQueuedProgress[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const network = useNetworkStatus();
+  const wasOffline = useRef(false);
+
+  const sendPending = useCallback(async (pending: XlQueuedProgress[]) => {
+    try {
+      return interpretXlProgressSyncResponse(await syncGuineaXlProgress(xlProgressSyncEvents(pending)));
+    } catch {
+      return { ok: false as const };
+    }
+  }, []);
+
+  const syncPending = useCallback(async () => {
+    await flushXlProgress(AsyncStorage, sendPending);
+    const [rows, active] = await Promise.all([readXlProgress(AsyncStorage), readActiveXlDeparture(AsyncStorage)]);
+    setQueued(rows);
+    setActiveId(active?.departureId ?? null);
+  }, [sendPending]);
 
   const load = useCallback(() => {
     void Promise.all([fetchGuineaXlDepartures(), fetchGuineaXlDepartures("driver")])
-      .then(([catalog, mine]) => {
+      .then(async ([catalog, mine]) => {
+        const rows = (mine.departures ?? []) as Departure[];
         setAxes((catalog.axes ?? []) as Axis[]);
-        setDepartures((mine.departures ?? []) as Departure[]);
+        setDepartures(rows);
+        const existing = await readActiveXlDeparture(AsyncStorage);
+        const stillOpen = rows.some((row) => row.id === existing?.departureId && row.status === "open");
+        if (existing && !stillOpen) {
+          await rememberActiveXlDeparture(AsyncStorage, null);
+          setActiveId(null);
+          return;
+        }
+        const openSegments = rows.filter(
+          (row) => row.status === "open" && row.segment_run === true && (row.stops?.length ?? 0) >= 2,
+        );
+        if (!existing && openSegments.length === 1) {
+          const session = await supabase.auth.getSession();
+          const driverId = session.data.session?.user?.id;
+          const stops = openSegments[0]?.stops;
+          if (driverId && stops) {
+            await rememberActiveXlDeparture(AsyncStorage, {
+              departureId: openSegments[0].id,
+              driverId,
+              stops,
+            });
+            setActiveId(openSegments[0].id);
+          }
+        }
       })
       .catch((cause: unknown) => setMessage(xlErrorMessage(cause, t)));
   }, [t]);
 
   useEffect(() => {
+    installXlGpsCapture(AsyncStorage, sendPending);
     load();
-  }, [load]);
+    void syncPending();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void syncPending();
+    });
+    return () => subscription.remove();
+  }, [load, sendPending, syncPending]);
+
+  useEffect(() => {
+    if (network.quality === "offline") {
+      wasOffline.current = true;
+      return;
+    }
+    if (wasOffline.current) {
+      wasOffline.current = false;
+      void syncPending();
+    }
+  }, [network.quality, syncPending]);
 
   const money = (value: number) => formatMoneyFromCents(value, "GNF");
+
+  async function follow(departure: Departure) {
+    const session = await supabase.auth.getSession();
+    const driverId = session.data.session?.user?.id;
+    if (!driverId || !departure.stops || departure.stops.length < 2) {
+      setMessage(t("taxiXl.requestFailed"));
+      return;
+    }
+    const active: XlActiveDeparture = { departureId: departure.id, driverId, stops: departure.stops };
+    await rememberActiveXlDeparture(AsyncStorage, active);
+    setActiveId(departure.id);
+    setMessage(t("taxiXl.followingDeparture"));
+  }
+
+  async function record(
+    departure: Departure,
+    kind: Exclude<XlProgressKind, "gps">,
+    placement: "start" | "next" | "current",
+  ) {
+    if (busy) return;
+    if (kind === "progress_reconciled" && !manualReason.trim()) {
+      setMessage(t("taxiXl.notGpsProof"));
+      return;
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const session = await supabase.auth.getSession();
+      const driverId = session.data.session?.user?.id;
+      if (!driverId || !departure.stops || departure.stops.length < 2) {
+        setMessage(t("taxiXl.requestFailed"));
+        return;
+      }
+      const active: XlActiveDeparture = { departureId: departure.id, driverId, stops: departure.stops };
+      await rememberActiveXlDeparture(AsyncStorage, active);
+      setActiveId(departure.id);
+      const saved = await recordXlDriverAction(AsyncStorage, {
+        departure: active,
+        kind,
+        placement,
+        capturedAtMs: Date.now(),
+        reason: kind === "progress_reconciled" ? manualReason.trim() : null,
+      });
+      if (saved.ok === false) {
+        setMessage(t(saved.error === "xl_progress_duplicate" ? "taxiXl.progressDuplicate" : "taxiXl.progressBlocked"));
+        return;
+      }
+      const event = saved.event;
+      const manual = kind === "progress_reconciled" ? ` ${t("taxiXl.notGpsProof")}` : "";
+      if (event.syncStatus === "rejected") setMessage(`${t("taxiXl.progressRejected")}${manual}`);
+      else if (event.receivedAtMs != null && event.applied) setMessage(`${t("taxiXl.progressAccepted")}${manual}`);
+      else if (event.receivedAtMs != null) setMessage(`${t("taxiXl.progressNotApplied")}${manual}`);
+      else setMessage(`${network.quality === "offline" ? t("taxiXl.progressOffline") : t("taxiXl.progressPending")}${manual}`);
+      await syncPending();
+    } catch (cause: unknown) {
+      setMessage(xlErrorMessage(cause, t));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function run(action: () => Promise<unknown>, success: string) {
     if (busy) return;
@@ -135,7 +272,59 @@ export default function DriverGuineaXlScreen() {
             </Text>
             <Text>
               {t("taxiXl.capacity")} {departure.passenger_capacity} · {xlStatusLabel(departure.status, t)}
+              {departure.segment_run ? ` · ${t("taxiXl.segmentDeparture")}` : ""}
             </Text>
+            {(departure.stops ?? []).length >= 2 ? (
+              <View style={{ gap: 4 }}>
+                <Text>{(departure.stops ?? []).join(" → ")}</Text>
+                {activeId === departure.id ? <Text>{t("taxiXl.followingDeparture")}</Text> : null}
+                <TouchableOpacity disabled={busy} onPress={() => void follow(departure)}>
+                  <Text>{t("taxiXl.followDeparture")}</Text>
+                </TouchableOpacity>
+                {departure.status === "open" ? (
+                  <View style={{ gap: 4 }}>
+                    <TouchableOpacity disabled={busy} onPress={() => void record(departure, "stop_reached", "start")}>
+                      <Text>{t("taxiXl.startRun")}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity disabled={busy} onPress={() => void record(departure, "stop_reached", "next")}>
+                      <Text>{t("taxiXl.arriveNext")}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity disabled={busy} onPress={() => void record(departure, "passenger_picked_up", "current")}>
+                      <Text>{t("taxiXl.pickUpPassenger")}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity disabled={busy} onPress={() => void record(departure, "passenger_dropped_off", "current")}>
+                      <Text>{t("taxiXl.dropOffPassenger")}</Text>
+                    </TouchableOpacity>
+                    <TextInput
+                      value={manualReason}
+                      onChangeText={setManualReason}
+                      placeholder={t("taxiXl.manualReason")}
+                    />
+                    <TouchableOpacity disabled={busy} onPress={() => void record(departure, "progress_reconciled", "next")}>
+                      <Text>{t("taxiXl.manualStop")}</Text>
+                    </TouchableOpacity>
+                    <Text>{t("taxiXl.notGpsProof")}</Text>
+                  </View>
+                ) : null}
+                {queued
+                  .filter((event) => event.departureId === departure.id)
+                  .map((event) => (
+                    <Text key={event.eventId}>
+                      {event.kind}
+                      {event.stopIndex == null ? "" : ` ${event.stopIndex}`}
+                      {" · "}
+                      {event.syncStatus === "rejected"
+                        ? `${t("taxiXl.progressRejected")}${event.rejection ? ` (${event.rejection})` : ""}`
+                        : event.receivedAtMs == null
+                          ? t("taxiXl.progressPending")
+                          : event.applied
+                            ? t("taxiXl.progressAccepted")
+                            : t("taxiXl.progressNotApplied")}
+                      {event.kind === "progress_reconciled" ? ` · ${t("taxiXl.notGpsProof")}` : ""}
+                    </Text>
+                  ))}
+              </View>
+            ) : null}
             <Text>
               {t("taxiXl.passengers")} {passengers}
             </Text>
