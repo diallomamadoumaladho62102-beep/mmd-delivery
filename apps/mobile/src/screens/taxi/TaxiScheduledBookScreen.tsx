@@ -69,6 +69,7 @@ export default function TaxiScheduledBookScreen() {
       const quoteRes = await quoteTaxiRide({
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
+        vehicleClass: "standard",
         countryCode,
       });
       if (!quoteRes?.ok) throw new Error(quoteRes?.error ?? "Quote failed");
@@ -76,6 +77,7 @@ export default function TaxiScheduledBookScreen() {
       const created = await createScheduledTaxiRide({
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
+        vehicleClass: "standard",
         scheduledPickupAt,
         countryCode,
       });

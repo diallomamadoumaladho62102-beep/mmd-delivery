@@ -117,6 +117,11 @@ function testCustomerTaxiSourcesDoNotHardcodeCategoryFallback() {
   assert.equal(home.includes("Aucun chauffeur"), false);
   assert.equal(api.includes('vehicleClass: input.vehicleClass ?? "standard"'), false);
   assert.equal(multi.includes('vehicleClass: "standard"'), false);
+  const scheduled = readFileSync(
+    join(process.cwd(), "src", "screens", "taxi", "TaxiScheduledBookScreen.tsx"),
+    "utf8",
+  );
+  assert.equal(scheduled.split('vehicleClass: "standard"').length - 1, 2);
   assert.equal(maxBookingStops("one_way"), 3);
   assert.equal(maxBookingStops("round_trip"), 2);
 }
