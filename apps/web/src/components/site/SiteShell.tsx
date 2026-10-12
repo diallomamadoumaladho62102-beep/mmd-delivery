@@ -48,6 +48,10 @@ export default function SiteShell({
   overlays = [],
 }: SiteShellProps) {
   const { t } = useAdminT();
+  const pathname = usePathname() ?? "/";
+  const returnPath =
+    pathname.startsWith("/auth") || pathname.startsWith("/signup") ? "/client" : pathname;
+  const accountQuery = `next=${encodeURIComponent(returnPath)}`;
   const brand = settings.brand_name || siteTheme.brandName;
   const logo = resolveSiteLogo(settings.logo_url);
   const slogan = settings.slogan || "We Deliver With Heart";
@@ -101,7 +105,6 @@ export default function SiteShell({
   );
 
   const year = new Date().getFullYear();
-  const pathname = usePathname() || "";
   const hideComingSoonBanner =
     pathname.startsWith("/legal") ||
     pathname === "/contact" ||
@@ -200,9 +203,21 @@ export default function SiteShell({
               </Link>
             ))}
             <Link
+              href={`/auth/sign-in?${accountQuery}`}
+              className="ml-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/5 hover:text-white"
+            >
+              {t("Sign in")}
+            </Link>
+            <Link
+              href={`/signup/client?${accountQuery}`}
+              className={`ml-1 ${sitePrimaryBtnClass}`}
+            >
+              {t("Create account")}
+            </Link>
+            <Link
               href="/download"
               data-site-event="nav_download"
-              className={`ml-2 ${sitePrimaryBtnClass}`}
+              className="ml-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/5 hover:text-white"
             >
               {t("Download")}
             </Link>
@@ -241,9 +256,23 @@ export default function SiteShell({
                 </Link>
               ))}
               <Link
+                href={`/auth/sign-in?${accountQuery}`}
+                className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/5"
+                onClick={() => setNavOpen(false)}
+              >
+                {t("Sign in")}
+              </Link>
+              <Link
+                href={`/signup/client?${accountQuery}`}
+                className={`${sitePrimaryBtnClass} mt-2`}
+                onClick={() => setNavOpen(false)}
+              >
+                {t("Create account")}
+              </Link>
+              <Link
                 href="/download"
                 data-site-event="nav_download"
-                className={`${sitePrimaryBtnClass} mt-2`}
+                className="mt-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/5"
                 onClick={() => setNavOpen(false)}
               >
                 {t("Download")}

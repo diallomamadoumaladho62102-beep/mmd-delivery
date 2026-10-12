@@ -18305,6 +18305,30 @@ export const ADMIN_UI_CATALOG: Record<string, AdminUiTranslation> = {
     "zh": "两次输入的密码不一致。",
     "ff": "Finndeeji ɗi njaɓaaki."
   },
+  "J’accepte les conditions d’utilisation.": {
+    "en": "I accept the terms of use.",
+    "fr": "J’accepte les conditions d’utilisation.",
+    "es": "Acepto las condiciones de uso.",
+    "ar": "أقبل شروط الاستخدام.",
+    "zh": "我接受使用条款。",
+    "ff": "Mi jaɓii sarɗiiji kuutoragol."
+  },
+  "Accepte les conditions pour créer un compte.": {
+    "en": "Accept the terms to create an account.",
+    "fr": "Accepte les conditions pour créer un compte.",
+    "es": "Acepta las condiciones para crear una cuenta.",
+    "ar": "اقبل الشروط لإنشاء حساب.",
+    "zh": "请接受条款以创建账户。",
+    "ff": "Jaɓ sarɗiiji ngam sosde konte."
+  },
+  "Conditions": {
+    "en": "Terms",
+    "fr": "Conditions",
+    "es": "Condiciones",
+    "ar": "الشروط",
+    "zh": "条款",
+    "ff": "Sarɗiiji"
+  },
   "Mot de passe mis à jour avec succès ✅": {
     "en": "Password updated successfully",
     "fr": "Mot de passe mis à jour avec succès ✅",

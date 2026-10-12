@@ -182,7 +182,9 @@ export default function WebTaxiPage() {
     const rideId = String(
       (result.body.ride as { id?: string } | undefined)?.id ?? result.body.id ?? "",
     );
-    setMessage(rideId ? `Reservation recorded: ${rideId}` : "The server accepted the request.");
+    setMessage(rideId
+      ? `Request recorded (${rideId}). No driver is assigned until dispatch accepts it.`
+      : "The server accepted the request. No driver is assigned until dispatch accepts it.");
     if (rideId) {
       setRides((current) => [{ id: rideId, status: "requested", pickup_address: pickup.label, dropoff_address: dropoff.label, total_cents: total, currency: quote.quote.currency }, ...current]);
     }
@@ -267,10 +269,13 @@ export default function WebTaxiPage() {
 
   return (
     <main className="mx-auto max-w-xl space-y-4 p-6 text-slate-100">
-      <h1 className="text-2xl font-bold">Book a taxi on the web</h1>
-      <p className="text-sm text-slate-300">
-        The server calculates the fare. This page does not set Taxi Standard or Taxi XL prices.
-      </p>
+      <h1 className="text-2xl font-bold">Request a taxi</h1>
+      <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-300">
+        <li>Create an account or sign in.</li>
+        <li>Choose a pickup and a destination. A quote is not a ride.</li>
+        <li>Confirm the server fare. Card markets open Stripe. Guinea cash records the request.</li>
+        <li>A driver is assigned only after dispatch accepts the request. Refresh the status to see that.</li>
+      </ol>
       <div className="block text-sm">
         Pickup
         <MapboxAddressField value={pickup.label} onChange={setPickup} placeholder="Search a pickup address" />
@@ -301,7 +306,7 @@ export default function WebTaxiPage() {
         </select>
       </label>
       <button type="button" className="rounded bg-orange-500 px-4 py-2 font-semibold text-slate-950" disabled={busy || !pickup.label.trim() || !dropoff.label.trim()} onClick={() => void requestQuote()}>
-        Get server quote
+        Get a fare quote
       </button>
       {shown ? (
         <section className="rounded border border-white/15 p-4 text-sm">
@@ -310,7 +315,7 @@ export default function WebTaxiPage() {
           <p>Duration: {durationLabel === "—" ? "—" : `${durationLabel} min`}</p>
           <p>Payment path: {shown.charge_path ?? "card checkout"}</p>
           <button type="button" className="mt-3 rounded bg-emerald-500 px-4 py-2 font-semibold text-slate-950" disabled={busy} onClick={() => void confirmQuote()}>
-            Confirm this server quote
+            Confirm this ride request
           </button>
         </section>
       ) : null}
@@ -368,6 +373,8 @@ export default function WebTaxiPage() {
         })}
       </section>
       <p className="text-sm">
+        <Link className="text-orange-300" href="/signup/client?next=%2Fclient%2Ftaxi">Create account</Link>
+        {" · "}
         <Link className="text-orange-300" href="/auth/sign-in?next=%2Fclient%2Ftaxi">Sign in</Link>
         {" · "}
         <Link className="text-orange-300" href="/client/taxi-xl">Taxi XL</Link>

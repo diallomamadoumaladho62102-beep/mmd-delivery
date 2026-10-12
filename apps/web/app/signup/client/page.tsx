@@ -4,6 +4,7 @@
 import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { sanitizeInternalRedirectPath } from "@/lib/authValidation";
 import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
 import { validatePassword } from "@/lib/authValidation";
 
@@ -98,6 +99,8 @@ export default function SignupClientPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [referralCode, setReferralCode] = useState("");
 
@@ -132,6 +135,12 @@ export default function SignupClientPage() {
     () => (mode === "login" ? t("Connexion client") : t("Créer un compte client")),
     [mode, t]
   );
+
+  function readReturnPath() {
+    if (typeof window === "undefined") return "/client";
+    const next = new URLSearchParams(window.location.search).get("next");
+    return sanitizeInternalRedirectPath(next, "/client");
+  }
 
   const subtitle = useMemo(
     () =>
@@ -301,7 +310,7 @@ export default function SignupClientPage() {
 
       await applyReferralIfAny();
       setMessage(t("Connexion réussie ✅"));
-      window.location.href = "/orders/new";
+      window.location.assign(readReturnPath());
     } catch (error) {
       console.error(error);
       setErr(error instanceof Error ? error.message : t("Connexion impossible."));
@@ -351,6 +360,14 @@ export default function SignupClientPage() {
     const passwordError = validatePassword(password);
     if (passwordError) {
       setErr(t("Le mot de passe doit contenir au moins 8 caractères."));
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setErr(t("Les mots de passe ne correspondent pas."));
+      return;
+    }
+    if (!acceptedTerms) {
+      setErr(t("Accepte les conditions pour créer un compte."));
       return;
     }
 
@@ -433,7 +450,7 @@ export default function SignupClientPage() {
       }
 
       setMessage(t("Compte client créé ✅"));
-      window.location.href = "/orders/new";
+      window.location.assign(readReturnPath());
     } catch (error) {
       console.error(error);
       setErr(error instanceof Error ? error.message : t("Inscription impossible."));
@@ -686,6 +703,36 @@ export default function SignupClientPage() {
                 </button>
               </div>
             </div>
+            {mode === "signup" ? (
+              <>
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-slate-200">{t("Confirmer le mot de passe")}</label>
+                  <input
+                    value={passwordConfirm}
+                    onChange={(event) => setPasswordConfirm(event.target.value)}
+                    placeholder={t("Confirmer le mot de passe")}
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    disabled={loading}
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500 disabled:opacity-70"
+                  />
+                </div>
+                <label className="flex items-start gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 shrink-0"
+                    checked={acceptedTerms}
+                    onChange={(event) => setAcceptedTerms(event.target.checked)}
+                  />
+                  <span>
+                    {t("J’accepte les conditions d’utilisation.")}{" "}
+                    <a className="text-blue-300 underline" href="/legal/terms">
+                      {t("Conditions")}
+                    </a>
+                  </span>
+                </label>
+              </>
+            ) : null}
           </div>
 
           {mode === "login" && (

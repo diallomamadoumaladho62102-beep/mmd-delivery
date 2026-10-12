@@ -608,6 +608,8 @@ export default function NewOrderPage() {
       {err === "Tu dois être connecté pour créer une commande." ||
       err === "Session expirée. Reconnecte-toi pour payer." ? (
         <p className="text-sm">
+          <a className="underline" href="/signup/client?next=%2Forders%2Fnew">Créer un compte</a>
+          {" · "}
           <a className="underline" href="/auth/sign-in?next=%2Forders%2Fnew">Se connecter</a>
         </p>
       ) : null}

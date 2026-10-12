@@ -169,6 +169,8 @@ export default function WebTaxiXlPage() {
         ))}
       </section>
       <p className="text-sm">
+        <Link className="text-orange-300" href="/signup/client?next=%2Fclient%2Ftaxi-xl">Create account</Link>
+        {" · "}
         <Link className="text-orange-300" href="/auth/sign-in?next=%2Fclient%2Ftaxi-xl">Sign in</Link>
         {" · "}
         <Link className="text-orange-300" href="/client/taxi">Taxi Standard</Link>

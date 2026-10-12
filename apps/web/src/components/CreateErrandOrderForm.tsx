@@ -49,6 +49,8 @@ export default function CreateErrandOrderForm() {
     <div className="space-y-3 p-4 border rounded">
       <h3 className="font-semibold text-lg">{t("Créer une course (Errand)")}</h3>
       <p className="text-sm">
+        <a className="underline" href="/signup/client?next=%2Forders%2Fcreate">{t("Créer un compte")}</a>
+        {" · "}
         <a className="underline" href="/auth/sign-in?next=%2Forders%2Fcreate">{t("Se connecter")}</a>
       </p>
       <input

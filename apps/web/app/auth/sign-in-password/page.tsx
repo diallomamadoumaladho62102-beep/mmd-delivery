@@ -77,7 +77,7 @@ export default function SignInPassword() {
       {err && <div className="text-red-600 text-sm">{err}</div>}
       <div className="text-sm text-gray-600">
         Pas de compte ?{" "}
-        <a className="underline" href="/auth/sign-up">
+        <a className="underline" href="/signup/client">
           {t("Créer un compte")}
         </a>
       </div>

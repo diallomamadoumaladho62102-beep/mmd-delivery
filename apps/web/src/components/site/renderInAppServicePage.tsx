@@ -42,8 +42,17 @@ export async function renderInAppServicePage(input: {
               <Link href={input.primaryHref ?? "/download"} className={sitePrimaryBtnClass}>
                 {input.primaryLabel ?? "Download"}
               </Link>
-              <Link href="/contact" className={siteSecondaryBtnClass}>
-                {t("Contact us")}
+              <Link
+                href={`/signup/client?next=${encodeURIComponent(input.primaryHref ?? "/client")}`}
+                className={siteSecondaryBtnClass}
+              >
+                {t("Create account")}
+              </Link>
+              <Link
+                href={`/auth/sign-in?next=${encodeURIComponent(input.primaryHref ?? "/client")}`}
+                className={siteSecondaryBtnClass}
+              >
+                {t("Sign in")}
               </Link>
             </div>
           </div>
