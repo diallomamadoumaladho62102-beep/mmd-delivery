@@ -199,6 +199,21 @@ export default function ClientHomePage() {
             {t("client.title")}
           </h1>
           <p className="text-sm text-slate-400">{t("public.subhero")}</p>
+          <p className="mt-3 text-sm">
+            {accessState === "allowed" ? (
+              <>
+                <Link className="text-orange-300" href="/account">{ui("Mon compte")}</Link>
+                {" · "}
+                <Link className="text-orange-300" href="/auth/sign-out">{ui("Se déconnecter")}</Link>
+              </>
+            ) : (
+              <>
+                <Link className="text-orange-300" href="/signup/client?next=%2Fclient">{ui("Créer un compte")}</Link>
+                {" · "}
+                <Link className="text-orange-300" href="/auth/sign-in?next=%2Fclient">{ui("Se connecter")}</Link>
+              </>
+            )}
+          </p>
         </header>
 
         {platformFeatures.maintenance_mode ? (

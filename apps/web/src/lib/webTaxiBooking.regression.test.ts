@@ -26,6 +26,8 @@ assert.match(taxi, /preview: true/);
 assert.match(session, /network_error/);
 assert.match(shell, /\/signup\/client\?/);
 assert.match(shell, /\/auth\/sign-in\?/);
+assert.match(shell, /\/account/);
+assert.match(shell, /\/auth\/sign-out/);
 assert.match(signup, /sanitizeInternalRedirectPath/);
 assert.match(signup, /assignInternalRedirect/);
 assert.match(signup, /passwordConfirm/);

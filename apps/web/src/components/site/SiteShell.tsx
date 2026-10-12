@@ -11,6 +11,7 @@ import MobileAppComingSoonBanner from "./MobileAppComingSoonBanner";
 import { OFFICIAL_APP_STORE_URL } from "./mobileAppComingSoonBannerContent";
 import WebLanguageSwitcher from "../WebLanguageSwitcher";
 import { useAdminT } from "@/i18n/useAdminT";
+import { supabase } from "@/lib/supabaseBrowser";
 import {
   resolveSiteLogo,
   siteContainerClass,
@@ -56,8 +57,23 @@ export default function SiteShell({
   const logo = resolveSiteLogo(settings.logo_url);
   const slogan = settings.slogan || "We Deliver With Heart";
   const [navOpen, setNavOpen] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
   const navId = useId();
   const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setSignedIn(Boolean(data.session));
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedIn(Boolean(session));
+    });
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -202,18 +218,31 @@ export default function SiteShell({
                 {item.label}
               </Link>
             ))}
-            <Link
-              href={`/auth/sign-in?${accountQuery}`}
-              className="ml-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/5 hover:text-white"
-            >
-              {t("Sign in")}
-            </Link>
-            <Link
-              href={`/signup/client?${accountQuery}`}
-              className={`ml-1 ${sitePrimaryBtnClass}`}
-            >
-              {t("Create account")}
-            </Link>
+            {signedIn ? (
+              <>
+                <Link href="/account" className="ml-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/5 hover:text-white">
+                  {t("Mon compte")}
+                </Link>
+                <Link href="/auth/sign-out" className={`ml-1 ${sitePrimaryBtnClass}`}>
+                  {t("Se déconnecter")}
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={`/auth/sign-in?${accountQuery}`}
+                  className="ml-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-200 hover:bg-white/5 hover:text-white"
+                >
+                  {t("Sign in")}
+                </Link>
+                <Link
+                  href={`/signup/client?${accountQuery}`}
+                  className={`ml-1 ${sitePrimaryBtnClass}`}
+                >
+                  {t("Create account")}
+                </Link>
+              </>
+            )}
             <Link
               href="/download"
               data-site-event="nav_download"
@@ -255,20 +284,33 @@ export default function SiteShell({
                   {item.label}
                 </Link>
               ))}
-              <Link
-                href={`/auth/sign-in?${accountQuery}`}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/5"
-                onClick={() => setNavOpen(false)}
-              >
-                {t("Sign in")}
-              </Link>
-              <Link
-                href={`/signup/client?${accountQuery}`}
-                className={`${sitePrimaryBtnClass} mt-2`}
-                onClick={() => setNavOpen(false)}
-              >
-                {t("Create account")}
-              </Link>
+              {signedIn ? (
+                <>
+                  <Link href="/account" className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/5" onClick={() => setNavOpen(false)}>
+                    {t("Mon compte")}
+                  </Link>
+                  <Link href="/auth/sign-out" className={`${sitePrimaryBtnClass} mt-2`} onClick={() => setNavOpen(false)}>
+                    {t("Se déconnecter")}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href={`/auth/sign-in?${accountQuery}`}
+                    className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-200 hover:bg-white/5"
+                    onClick={() => setNavOpen(false)}
+                  >
+                    {t("Sign in")}
+                  </Link>
+                  <Link
+                    href={`/signup/client?${accountQuery}`}
+                    className={`${sitePrimaryBtnClass} mt-2`}
+                    onClick={() => setNavOpen(false)}
+                  >
+                    {t("Create account")}
+                  </Link>
+                </>
+              )}
               <Link
                 href="/download"
                 data-site-event="nav_download"
