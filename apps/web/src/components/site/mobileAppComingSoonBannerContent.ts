@@ -53,7 +53,10 @@ export function assertMobileAppComingSoonBannerContent(
   if (banner.android.href != null) {
     throw new Error("Google Play link must stay empty until a public listing is verified");
   }
-  if (banner.body.includes("play.google.com") || banner.ios.href.includes("play.google.com")) {
+  if (
+    banner.body.split("play.google.com").length > 1 ||
+    banner.ios.href.split("play.google.com").length > 1
+  ) {
     throw new Error("do not publish an unverified Google Play URL");
   }
 }

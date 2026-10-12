@@ -76,3 +76,11 @@ export function isUserEmailVerified(user: {
 } | null | undefined): boolean {
   return Boolean(user?.email_confirmed_at);
 }
+
+/** Navigate only when the path stays on this page's origin. */
+export function assignInternalRedirect(path: string): void {
+  if (typeof window === "undefined") return;
+  const target = new URL(path, window.location.origin);
+  if (target.origin !== window.location.origin) return;
+  window.location.assign(`${target.pathname}${target.search}${target.hash}`);
+}

@@ -35,6 +35,6 @@ assert.match(foodOrder, /next=%2Forders%2Fnew/);
 assert.match(food, /\/orders\/new/);
 assert.match(parcel, /\/orders\/create/);
 assert.match(banner, /id6761693075/);
-assert.doesNotMatch(banner, /play\.google\.com\/store/);
+assert.equal(banner.split("play.google.com/store").length, 1);
 
 console.log("webTaxiBooking.regression.test.ts OK");

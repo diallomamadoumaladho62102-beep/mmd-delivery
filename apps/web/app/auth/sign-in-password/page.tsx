@@ -4,6 +4,7 @@ import { useAdminT } from "@/i18n/useAdminT";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import {
+  assignInternalRedirect,
   isEmailVerificationRequired,
   isUserEmailVerified,
   sanitizeInternalRedirectPath,
@@ -38,7 +39,7 @@ export default function SignInPassword() {
       setErr("Please verify your email before signing in.");
       return;
     }
-    location.href = readNextPath();
+    assignInternalRedirect(readNextPath());
   }
 
   return (

@@ -3,7 +3,7 @@
 import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
-import { sanitizeInternalRedirectPath } from "@/lib/authValidation";
+import { assignInternalRedirect, sanitizeInternalRedirectPath } from "@/lib/authValidation";
 
 function readNextPath(): string {
   if (typeof window === "undefined") return "/dashboard";
@@ -22,7 +22,7 @@ export default function SignInPage() {
     let mounted = true;
     void supabase.auth.getSession().then(({ data }) => {
       if (!mounted || !data.session) return;
-      window.location.assign(readNextPath());
+      assignInternalRedirect(readNextPath());
     });
     return () => {
       mounted = false;
