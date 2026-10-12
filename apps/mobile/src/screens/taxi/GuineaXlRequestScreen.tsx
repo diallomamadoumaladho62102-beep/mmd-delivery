@@ -210,7 +210,7 @@ export default function GuineaXlRequestScreen() {
   }
 
   async function requestSegmentBooking() {
-    if (busy || !segmentQuote) return;
+    if (busy || !segmentQuote || !segmentCommercial) return;
     setBusy(true);
     setError(null);
     setBookingId(null);
@@ -281,7 +281,7 @@ export default function GuineaXlRequestScreen() {
       ) : segmentDispatch?.error ? (
         <Text>{xlErrorMessage(new Error(segmentDispatch.error), t)}</Text>
       ) : null}
-      <TouchableOpacity onPress={() => void requestSegmentBooking()} disabled={busy || !segmentQuote}>
+      <TouchableOpacity onPress={() => void requestSegmentBooking()} disabled={busy || !segmentQuote || !segmentCommercial}>
         <Text>{t("taxiXl.confirm")}</Text>
       </TouchableOpacity>
       <Text>{t("taxiXl.subtitle")}</Text>

@@ -835,6 +835,12 @@ test("the pending segment migration does not change Standard, commission, or exi
   assert.match(http, /xl_segment_commercial_disabled/);
   assert.match(http, /bookingKind === "segment"/);
   assert.match(http, /segmentCommercialBookingEnabled\(\)/);
+  const mobileXl = fs.readFileSync(
+    path.join(root, "apps/mobile/src/screens/taxi/GuineaXlRequestScreen.tsx"),
+    "utf8",
+  );
+  assert.match(mobileXl, /if \(busy \|\| !segmentQuote \|\| !segmentCommercial\) return/);
+  assert.match(mobileXl, /disabled=\{busy \|\| !segmentQuote \|\| !segmentCommercial\}/);
   assert.equal(http.includes("guinea_xl_seat_segments"), false);
   assert.equal(http.includes("reserve_guinea_xl_segment_seat"), false);
   assert.equal(http.includes("quoteXlSegmentRoute"), false);
