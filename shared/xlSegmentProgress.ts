@@ -8,6 +8,18 @@
 export const XL_PROGRESS_CLOCK_AHEAD_MS = 2 * 60 * 1000;
 export const XL_PROGRESS_CLOCK_BEHIND_MS = 6 * 60 * 60 * 1000;
 
+/**
+ * A stored GPS receipt may be a little newer than the application clock.
+ * This does not refresh an old fix and does not apply to stop confirmation.
+ */
+export function xlServerGpsReceiptIsRecent(nowMs: number, receivedAtMs: number, maxAgeMs: number): boolean {
+  if (!Number.isSafeInteger(nowMs) || !Number.isSafeInteger(receivedAtMs) || !Number.isSafeInteger(maxAgeMs)) {
+    return false;
+  }
+  const ageMs = nowMs - receivedAtMs;
+  return ageMs <= maxAgeMs && ageMs >= -XL_PROGRESS_CLOCK_AHEAD_MS;
+}
+
 export type XlProgressKind =
   | "gps"
   | "stop_reached"
@@ -116,9 +128,7 @@ export function establishXlSegmentProgress(input: {
     );
   const fresh =
     serverGps != null &&
-    Number.isSafeInteger(input.maxLocationAgeMs) &&
-    input.nowMs - serverGps.receivedAtMs <= input.maxLocationAgeMs &&
-    input.nowMs >= serverGps.receivedAtMs;
+    xlServerGpsReceiptIsRecent(input.nowMs, serverGps.receivedAtMs, input.maxLocationAgeMs);
   const locationClass: XlProgressLocationClass = serverGps
     ? fresh
       ? "server_recent"
@@ -172,8 +182,8 @@ export function establishXlSegmentProgress(input: {
   if (index > pickupAt) {
     return { status: "after", passedSegmentCodes: passed, locationClass, serverGps };
   }
-  const confirmationFresh =
-    latestReliableReceipt != null && input.nowMs - latestReliableReceipt <= input.maxLocationAgeMs;
+  const confirmationAgeMs = latestReliableReceipt == null ? null : input.nowMs - latestReliableReceipt;
+  const confirmationFresh = confirmationAgeMs != null && confirmationAgeMs <= input.maxLocationAgeMs;
   if (!confirmationFresh) return empty("unverified");
   return {
     status: index === pickupAt ? "at" : "before",

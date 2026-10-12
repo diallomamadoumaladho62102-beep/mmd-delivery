@@ -131,6 +131,26 @@ test("a driver at the pickup is admissible and one who passed it is not", () => 
   assert.equal(selected.rejected[0]?.reason, "xl_pickup_passed");
 });
 
+test("a server GPS receipt slightly ahead of the app clock stays recent", () => {
+  const ahead = assess([gps("ahead", nowMs + 30_000, nowMs + 30_000)]);
+  assert.equal(ahead.locationClass, "server_recent");
+  const exactAhead = assess([gps("exact-ahead", nowMs + 2 * 60_000, nowMs + 2 * 60_000)]);
+  assert.equal(exactAhead.locationClass, "server_recent");
+  const justBeyondAhead = assess([gps("beyond-ahead", nowMs + 2 * 60_000 + 1, nowMs + 2 * 60_000 + 1)]);
+  assert.equal(justBeyondAhead.locationClass, "server_stale");
+  const exactAge = assess([gps("exact-age", nowMs - ageMs, nowMs - ageMs)]);
+  assert.equal(exactAge.locationClass, "server_recent");
+  const justTooOld = assess([gps("too-old", nowMs - ageMs - 1, nowMs - ageMs - 1)]);
+  assert.equal(justTooOld.locationClass, "server_stale");
+  const confirmed = assess([
+    stop("origin", 0, nowMs + 20_000),
+    stop("kindia", 1, nowMs + 20_000),
+  ]);
+  assert.equal(confirmed.status, "before");
+  const oldStop = assess([stop("origin", 0, nowMs - ageMs - 1)]);
+  assert.equal(oldStop.status, "unverified");
+});
+
 test("stale, missing, and local GPS do not become a server position", () => {
   const stale = assess([gps("old", nowMs - ageMs - 5_000, nowMs - ageMs - 1)]);
   assert.equal(stale.locationClass, "server_stale");
