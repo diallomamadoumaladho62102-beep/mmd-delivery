@@ -21,7 +21,7 @@ import {
 } from "@/lib/markets/guineaXlPricing";
 import { loadXlSegmentDispatchMatch, planXlSegmentDeparture } from "@/lib/markets/guineaXlSegmentDispatch";
 import { xlProgressHttpBodyFromRpc } from "../../../../../shared/xlProgressWire";
-import { guineaXlSegmentMarketAllowedWithDetection, segmentCommercialBookingEnabled, segmentFromRow } from "@/lib/markets/guineaXlSegments";
+import { guineaXlSegmentMarketAllowedWithDetection, segmentCommercialBookingEnabled, segmentFromRow, xlSegmentRouteBookingGate } from "@/lib/markets/guineaXlSegments";
 
 function schemaMissing(message: string): boolean {
   return /guinea_xl_|schema cache|does not exist/i.test(message);
@@ -150,7 +150,7 @@ export async function quoteGuineaXlSegment(supabaseAdmin: SupabaseClient, body: 
     ok: true,
     currency: "GNF",
     country_code: "GN",
-    commercial_booking: segmentCommercialBookingEnabled(),
+    commercial_booking: segmentCommercialBookingEnabled() && payload.definitive === true,
     quote: payload,
     dispatch,
   });
@@ -165,6 +165,20 @@ export async function persistGuineaXlSegmentBooking(
   if (!segmentCommercialBookingEnabled()) {
     return jsonError("xl_segment_commercial_disabled", 409);
   }
+  const segmentRows = await supabaseAdmin
+    .from("guinea_xl_segments")
+    .select("id,code,sequence,origin_label,destination_label,branch,distance_km,duration_minutes,active,confirmed,version,estimate_source")
+    .order("sequence");
+  if (segmentRows.error) {
+    if (schemaMissing(segmentRows.error.message)) return jsonError("xl_segment_schema_not_ready", 503);
+    return jsonError("xl_segment_not_priced", 400);
+  }
+  const routeGate = xlSegmentRouteBookingGate(
+    ((segmentRows.data ?? []) as Array<Record<string, unknown>>).map(segmentFromRow),
+    body.originLabel ?? body.origin_label,
+    body.destinationLabel ?? body.destination_label,
+  );
+  if (routeGate.ok === false) return jsonError(routeGate.error, 409);
   const excluded: string[] = [];
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const requestedPickup = Date.parse(String(body.requestedPickupAt ?? ""));

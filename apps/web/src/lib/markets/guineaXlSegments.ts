@@ -359,6 +359,27 @@ export function quoteXlSegmentRoute(input: {
   return { ok: true, definitive, totalGnf, rawTotalGnf, segments: lines };
 }
 
+/**
+ * A route is bookable only when every segment on the server path is active and confirmed.
+ * The caller supplies the server catalog. Client fields are not accepted here.
+ */
+export function xlSegmentRouteBookingGate(
+  segments: XlSegmentInput[],
+  originLabel: unknown,
+  destinationLabel: unknown,
+): { ok: true; codes: string[] } | XlSegmentFailure {
+  const path = findXlSegmentPath(segments, originLabel, destinationLabel);
+  if (path.ok === false) return path;
+  const codes: string[] = [];
+  for (const segment of path.segments) {
+    if (segment.active !== true) return fail("xl_segment_inactive");
+    if (segment.confirmed !== true) return fail("xl_segment_unconfirmed");
+    codes.push(segment.code);
+  }
+  if (codes.length === 0) return fail("xl_segment_path_invalid");
+  return { ok: true, codes };
+}
+
 export const XL_SEGMENT_ADMIN_ROUTES: Array<[string, string]> = [
   ["Conakry", "Kindia"],
   ["Kindia", "Mamou"],

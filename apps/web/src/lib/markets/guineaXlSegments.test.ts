@@ -18,6 +18,7 @@ import {
   quoteXlSegmentRoute,
   requestXlSegmentCommercialBooking,
   validateXlSegmentGraph,
+  xlSegmentRouteBookingGate,
   XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED,
   guineaXlSegmentMarketAllowed,
   guineaXlSegmentMarketAllowedWithDetection,
@@ -533,6 +534,43 @@ test("a segment commercial request stays disabled and does not multiply the fare
     platformShareBps: 1_000,
     baggageGnf: 0,
   }).ok, false);
+});
+
+test("the global switch cannot book an unconfirmed segment", () => {
+  for (const segment of XL_SEGMENT_LOCAL_ESTIMATES) {
+    const closed = xlSegmentRouteBookingGate(
+      XL_SEGMENT_LOCAL_ESTIMATES,
+      segment.originLabel,
+      segment.destinationLabel,
+    );
+    assert.equal(closed.ok, false);
+    if (closed.ok === false) assert.equal(closed.error, "xl_segment_unconfirmed");
+  }
+  const confirmedOnly = edge("1", "Conakry", "Kindia", 128, 102, 1, "trunk", true, true);
+  const open = xlSegmentRouteBookingGate([confirmedOnly], "Conakry", "Kindia");
+  assert.equal(open.ok, true);
+  if (open.ok === true) assert.deepEqual(open.codes, ["1"]);
+  const mixed = xlSegmentRouteBookingGate(
+    [
+      confirmedOnly,
+      edge("2", "Kindia", "Mamou", 134, 109, 2, "trunk", true, false),
+    ],
+    "Conakry",
+    "Mamou",
+  );
+  assert.equal(mixed.ok, false);
+  if (mixed.ok === false) assert.equal(mixed.error, "xl_segment_unconfirmed");
+  const http = fs.readFileSync(path.join(root, "apps/web/src/lib/markets/guineaXlHttp.ts"), "utf8");
+  const start = http.indexOf("export async function persistGuineaXlSegmentBooking");
+  const slice = http.slice(start, http.indexOf("async function saveMatchedSegmentBooking", start));
+  const kill = slice.indexOf("if (!segmentCommercialBookingEnabled())");
+  const gate = slice.indexOf("xlSegmentRouteBookingGate(");
+  assert.equal(kill >= 0 && gate > kill, true);
+  assert.equal(slice.includes("guinea_xl_segments"), true);
+  assert.equal(slice.includes("segmentFromRow"), true);
+  assert.equal(slice.includes("XL_SEGMENT_LOCAL_ESTIMATES"), false);
+  assert.equal(slice.includes("body.confirmed"), false);
+  assert.equal(slice.includes("confirmed: true"), false);
 });
 
 test("a Guinea segment booking stays inside Guinea and does not open another market", async () => {
