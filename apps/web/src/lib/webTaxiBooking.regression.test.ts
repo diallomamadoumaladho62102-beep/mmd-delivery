@@ -27,6 +27,7 @@ assert.match(session, /network_error/);
 assert.match(shell, /\/signup\/client\?/);
 assert.match(shell, /\/auth\/sign-in\?/);
 assert.match(signup, /sanitizeInternalRedirectPath/);
+assert.match(signup, /assignInternalRedirect/);
 assert.match(signup, /passwordConfirm/);
 assert.match(signup, /acceptedTerms/);
 assert.equal(signup.includes('window.location.href = "/orders/new"'), false);

@@ -4,7 +4,7 @@
 import { useAdminT } from "@/i18n/useAdminT";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
-import { sanitizeInternalRedirectPath } from "@/lib/authValidation";
+import { assignInternalRedirect, sanitizeInternalRedirectPath } from "@/lib/authValidation";
 import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
 import { validatePassword } from "@/lib/authValidation";
 
@@ -310,7 +310,7 @@ export default function SignupClientPage() {
 
       await applyReferralIfAny();
       setMessage(t("Connexion réussie ✅"));
-      window.location.assign(readReturnPath());
+      assignInternalRedirect(readReturnPath());
     } catch (error) {
       console.error(error);
       setErr(error instanceof Error ? error.message : t("Connexion impossible."));
@@ -450,7 +450,7 @@ export default function SignupClientPage() {
       }
 
       setMessage(t("Compte client créé ✅"));
-      window.location.assign(readReturnPath());
+      assignInternalRedirect(readReturnPath());
     } catch (error) {
       console.error(error);
       setErr(error instanceof Error ? error.message : t("Inscription impossible."));
