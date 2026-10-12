@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 
 const APP_STORE_URL =
   process.env.NEXT_PUBLIC_APP_STORE_URL?.trim() ||
-  "https://www.mmddelivery.com/download";
+  "https://apps.apple.com/us/app/mmd-delivery/id6761693075";
 const PLAY_STORE_URL =
   process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim() ||
   "https://www.mmddelivery.com/download";

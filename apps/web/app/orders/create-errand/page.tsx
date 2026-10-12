@@ -99,10 +99,10 @@ export default function CreateErrandPage() {
         <div className="p-3 border rounded-lg bg-yellow-50 text-sm">
           <div className="font-medium mb-1">{t("Non connecté")}</div>
           <div className="flex gap-4">
-            <a className="underline text-blue-700" href="/auth/sign-in-password">
+            <a className="underline text-blue-700" href="/auth/sign-in-password?next=%2Forders%2Fcreate-errand">
               {t("Se connecter (email + mot de passe)")}
             </a>
-            <a className="underline text-blue-700" href="/auth/sign-in">
+            <a className="underline text-blue-700" href="/auth/sign-in?next=%2Forders%2Fcreate-errand">
               {t("Autres méthodes")}
             </a>
           </div>

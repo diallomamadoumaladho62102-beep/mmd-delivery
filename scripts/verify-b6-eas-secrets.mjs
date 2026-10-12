@@ -199,7 +199,7 @@ async function main() {
     ios: {
       bundleId: "com.maladho2025.mmddelivery",
       ascAppId: easJson.submit?.production?.ios?.ascAppId ?? null,
-      associatedDomains: ["applinks:www.mmddelivery.com", "applinks:mmddelivery.com"],
+      associatedDomains: ["applinks:www.mmddelivery.com"],
     },
     android: {
       package: "com.maladho2025.mmddelivery",
@@ -233,7 +233,7 @@ async function main() {
     report.easMissing.length === 0 &&
     report.coherence.stripe_pk_live &&
     report.coherence.supabase_url_matches_prod &&
-    report.coherence.supabase_anon_matches_prod &&
+    report.coherence.supabase_publishable_prefix &&
     report.coherence.mapbox_token_set &&
     easVars.get("RNMAPBOX_MAPS_DOWNLOAD_TOKEN")?.present &&
     report.forbiddenInMobile.length === 0 &&

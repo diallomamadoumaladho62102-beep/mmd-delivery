@@ -2,8 +2,15 @@
 
 
 import { useAdminT } from "@/i18n/useAdminT";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { sanitizeInternalRedirectPath } from "@/lib/authValidation";
+
+function readNextPath(): string {
+  if (typeof window === "undefined") return "/dashboard";
+  const next = new URLSearchParams(window.location.search).get("next");
+  return sanitizeInternalRedirectPath(next, "/dashboard");
+}
 
 export default function SignIn() {
   const { t } = useAdminT();
@@ -12,13 +19,25 @@ export default function SignIn() {
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string|null>(null);
 
+  useEffect(() => {
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!mounted || !data.session) return;
+      window.location.assign(readNextPath());
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   async function sendLink() {
     setErr(null);
+    const nextPath = readNextPath();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback`
+          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
           : undefined,
       }
     });

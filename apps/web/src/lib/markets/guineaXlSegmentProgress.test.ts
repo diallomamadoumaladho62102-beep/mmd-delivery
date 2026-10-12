@@ -15,7 +15,6 @@ import { XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED } from "@/lib/markets/guineaXlSeg
 import {
   acknowledgeXlProgress,
   currentServerGps,
-  enqueueXlProgress,
   establishXlSegmentProgress,
   pendingXlProgress,
   planXlDriverEvent,

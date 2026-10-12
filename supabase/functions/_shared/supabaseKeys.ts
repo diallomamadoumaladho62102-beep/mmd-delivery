@@ -10,6 +10,20 @@
  *   JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')!)['default']
  */
 
+function edgeJwtRole(key: string): string {
+  if (!key.startsWith("eyJ")) return "";
+  const payload = key.split(".")[1] ?? "";
+  if (!payload) return "";
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const json = JSON.parse(atob(padded)) as { role?: unknown };
+    return String(json.role ?? "");
+  } catch {
+    return "";
+  }
+}
+
 function firstNonEmpty(...values: Array<string | undefined | null>): string {
   for (const value of values) {
     const trimmed = typeof value === "string" ? value.trim() : "";
@@ -93,7 +107,7 @@ export function getEdgePublishableKey(): string {
   if (!key) {
     throw new Error("Missing SUPABASE_PUBLISHABLE_KEY or SUPABASE_PUBLISHABLE_KEYS");
   }
-  if (key.startsWith("sb_secret_")) {
+  if (key.startsWith("sb_secret_") || edgeJwtRole(key) === "service_role") {
     throw new Error("Edge publishable key must not be a secret key");
   }
   return key;

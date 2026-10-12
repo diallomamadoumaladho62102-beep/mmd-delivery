@@ -6,16 +6,17 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Food Delivery — MMD Delivery",
   description:
-    "Order from approved restaurants in the MMD Delivery app. Menu, options, server quote, and checkout stay inside the official Food flow.",
+    "Order from restaurants on this website. Menus, quantities, delivery address, and the server total stay in the signed-in food flow.",
   robots: "index,follow",
 };
 
 export default async function Page() {
   return renderInAppServicePage({
+    eyebrow: "Order on the web",
     title: "Food delivery",
     description:
-      "Food ordering is available in the MMD Delivery app: browse an approved restaurant menu, choose options, see the official server total, then confirm before payment. Restaurant partners can also start on the Restaurants page.",
-    primaryHref: "/p/restaurants",
-    primaryLabel: "Restaurants",
+      "Sign in, choose a restaurant menu, set quantities and a delivery address, then review the server total before payment. The mobile app is optional.",
+    primaryHref: "/orders/new",
+    primaryLabel: "Order food on the web",
   });
 }

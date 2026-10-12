@@ -1,0 +1,40 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const root = join(import.meta.dirname, "../..");
+const taxi = readFileSync(join(root, "app/client/taxi/page.tsx"), "utf8");
+const xl = readFileSync(join(root, "app/client/taxi-xl/page.tsx"), "utf8");
+const food = readFileSync(join(root, "app/food-delivery/page.tsx"), "utf8");
+const parcel = readFileSync(join(root, "app/package-delivery/page.tsx"), "utf8");
+const banner = readFileSync(join(root, "src/components/site/mobileAppComingSoonBannerContent.ts"), "utf8");
+const signIn = readFileSync(join(root, "app/auth/sign-in/page.tsx"), "utf8");
+const passwordSignIn = readFileSync(join(root, "app/auth/sign-in-password/page.tsx"), "utf8");
+const errandForm = readFileSync(join(root, "src/components/CreateErrandOrderForm.tsx"), "utf8");
+const foodOrder = readFileSync(join(root, "app/orders/new/page.tsx"), "utf8");
+
+assert.match(taxi, /\/api\/taxi\/rides\/quote/);
+assert.match(taxi, /\/api\/taxi\/rides\/create/);
+assert.match(taxi, /\/api\/taxi\/rides\/mine/);
+assert.match(taxi, /create-taxi-quote-checkout-session/);
+assert.match(taxi, /next=%2Fclient%2Ftaxi/);
+assert.doesNotMatch(taxi, /2000|1500|5000/);
+assert.match(xl, /bookingKind: "segment"/);
+assert.match(xl, /commercial_booking !== true/);
+assert.match(xl, /\/api\/taxi\/xl\/bookings/);
+assert.match(xl, /Dougountounny/);
+assert.match(xl, /Mali Centre/);
+assert.match(xl, /Yembering", "Dougountounny"/);
+assert.match(xl, /Yembering", "Mali Centre"/);
+assert.match(signIn, /sanitizeInternalRedirectPath/);
+assert.match(signIn, /auth\/callback\?next=/);
+assert.match(passwordSignIn, /sanitizeInternalRedirectPath/);
+assert.match(passwordSignIn, /readNextPath\(\)/);
+assert.match(errandForm, /next=%2Forders%2Fcreate/);
+assert.match(foodOrder, /next=%2Forders%2Fnew/);
+assert.match(food, /\/orders\/new/);
+assert.match(parcel, /\/orders\/create/);
+assert.match(banner, /id6761693075/);
+assert.doesNotMatch(banner, /play\.google\.com\/store/);
+
+console.log("webTaxiBooking.regression.test.ts OK");

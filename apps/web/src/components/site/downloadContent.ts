@@ -1,4 +1,5 @@
 import type { SiteBlockRow } from "@/lib/siteCms";
+import { OFFICIAL_APP_STORE_URL } from "./mobileAppComingSoonBannerContent";
 
 export const DOWNLOAD_SEO = {
   title: "Download — MMD Delivery",
@@ -9,7 +10,7 @@ export const DOWNLOAD_SEO = {
 export const DOWNLOAD_START_STEPS = [
   {
     "title": "Download the app",
-    "body": "Install MMD Delivery from the App Store or Google Play when available in your region."
+    "body": "Install MMD Delivery from the App Store. Google Play has no verified public listing yet. You can also order food and packages on this website."
   },
   {
     "title": "Create your account",
@@ -49,8 +50,8 @@ export function buildDownloadFallbackBlocks(): SiteBlockRow[] {
         showcase: "image",
         image_url: "/brand/mmd-logo-transparent-v2.png",
         benefits: ["iOS & Android","Live GPS tracking","Secure Stripe checkout"],
-        primary_ctas: [{"label":"Download on the App Store","href":"/download#ios","event":"cta_ios"}],
-        secondary_ctas: [{"label":"Get it on Google Play","href":"/download#android","event":"cta_android"}],
+        primary_ctas: [{"label":"Download on the App Store","href":OFFICIAL_APP_STORE_URL,"event":"cta_ios"}],
+        secondary_ctas: [{"label":"Order on the web","href":"/client","event":"cta_web_order"}],
       },
     },
     {
@@ -81,7 +82,7 @@ export function buildDownloadFallbackBlocks(): SiteBlockRow[] {
       sort_order: 40,
       payload: {
         title: "Store links",
-        body_md: "Store buttons on this page use the official configured App Store and Play Store URLs when set, and otherwise keep you on mmddelivery.com/download.\n\n[Contact support](/contact)",
+        body_md: "The App Store button opens the official MMD Delivery listing. Google Play is not linked because no public listing was found for the Android package. Ordering food and packages on the website does not require the app.\n\n[Order on the web](/client)\n\n[Contact support](/contact)",
       },
     },
     {

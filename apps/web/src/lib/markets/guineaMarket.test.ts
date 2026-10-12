@@ -510,7 +510,7 @@ pending.push(test("Guinea modules do not hardcode Orange credentials", () => {
     const source = fs.readFileSync(path.join(root, file), "utf8");
     assert.equal(/client_secret\s*[:=]\s*["'][^"']+["']/.test(source), false, file);
     assert.equal(/sk_live_/.test(source), false, file);
-    assert.equal(/https:\/\/api\.orange\.com/.test(source), false, file);
+    assert.equal(source.includes("https://api.orange.com"), false, file);
   }
 }));
 

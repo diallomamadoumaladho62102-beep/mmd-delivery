@@ -187,6 +187,36 @@ test("privileged server does not depend on a legacy service key", () => {
   }
 });
 
+function fakeJwt(role: string): string {
+  const encode = (value: object) =>
+    Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "none", typ: "JWT" })}.${encode({ role })}.sig`;
+}
+
+test("a service_role JWT is rejected in the publishable slot", () => {
+  const saved = snapshotEnv();
+  try {
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = fakeJwt("service_role");
+    assert.throws(
+      () => getSupabasePublishableKey(),
+      /must not be a secret key/
+    );
+  } finally {
+    restoreEnv(saved);
+  }
+});
+
+test("an anon JWT is not treated as a service_role client key", () => {
+  const saved = snapshotEnv();
+  try {
+    const anon = fakeJwt("anon");
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = anon;
+    assert.equal(getSupabasePublishableKey(), anon);
+  } finally {
+    restoreEnv(saved);
+  }
+});
+
 test("a secret key is rejected in the publishable slot", () => {
   const saved = snapshotEnv();
   try {

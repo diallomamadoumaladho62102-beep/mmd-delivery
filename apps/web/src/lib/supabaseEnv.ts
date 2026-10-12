@@ -6,8 +6,9 @@
  * Legacy JWT key names are not read. They stay enabled in Supabase until
  * the published mobile binary no longer needs the legacy anon key.
  *
- * Never put sb_secret_* in NEXT_PUBLIC_* variables.
+ * Never put sb_secret_* or a service_role JWT in NEXT_PUBLIC_* variables.
  */
+import { isPrivilegedSupabaseClientKey } from "../../../../shared/supabaseClientKeyGuard";
 
 function firstNonEmpty(...values: Array<string | undefined | null>): string {
   for (const value of values) {
@@ -38,7 +39,7 @@ export function getSupabasePublishableKey(): string {
   if (!key) {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
   }
-  if (isSecretApiKey(key)) {
+  if (isSecretApiKey(key) || isPrivilegedSupabaseClientKey(key)) {
     throw new Error(
       "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY must not be a secret key"
     );

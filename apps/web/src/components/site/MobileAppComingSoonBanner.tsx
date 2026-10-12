@@ -1,11 +1,9 @@
 import { siteContainerClass } from "./siteTheme";
 import { MOBILE_APP_COMING_SOON_BANNER } from "./mobileAppComingSoonBannerContent";
 
-const { title: TITLE, body: BODY, storeBadges } = MOBILE_APP_COMING_SOON_BANNER;
+const { title: TITLE, body: BODY, ios, android } = MOBILE_APP_COMING_SOON_BANNER;
 
-/**
- * Static marketing banner — apps are not live yet; badges are non-links until store URLs exist.
- */
+/** Public banner. iOS links to the verified App Store listing. Android stays unlabeled as a store until Play is public. */
 export default function MobileAppComingSoonBanner() {
   return (
     <div
@@ -24,25 +22,24 @@ export default function MobileAppComingSoonBanner() {
               {BODY}
             </p>
           </div>
-          <div
-            className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-2.5"
-            aria-label="App Store and Google Play listing status"
-          >
-            <span
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-slate-200 sm:text-sm"
-              title="App Store listing pending publication"
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-2.5">
+            <a
+              href={ios.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-site-event="store_click_ios"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-white hover:border-orange-300/60 hover:text-orange-100 sm:text-sm"
             >
-              <span aria-hidden="true">{storeBadges[0].icon}</span>
-              <span>{storeBadges[0].platform}</span>
-              <span className="text-slate-400">— {storeBadges[0].suffix}</span>
-            </span>
+              <span aria-hidden="true"></span>
+              <span>{ios.label}</span>
+            </a>
             <span
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-slate-200 sm:text-sm"
-              title="Google Play listing pending publication"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-white/15 bg-slate-900/50 px-3 py-1.5 text-xs font-medium text-slate-300 sm:text-sm"
+              title="Google Play package has no public listing"
             >
-              <span aria-hidden="true">{storeBadges[1].icon}</span>
-              <span>{storeBadges[1].platform}</span>
-              <span className="text-slate-400">— {storeBadges[1].suffix}</span>
+              <span aria-hidden="true">▶</span>
+              <span>{android.platform}</span>
+              <span className="text-slate-400">— {android.note}</span>
             </span>
           </div>
         </div>

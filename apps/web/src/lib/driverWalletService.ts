@@ -396,8 +396,9 @@ export async function buildDriverWalletSummary(
   const lastCashoutAt = dayLimit.lastCashoutAt;
   const rateLimit = { limited: dayLimit.blocked, lastCashoutAt: dayLimit.lastCashoutAt };
 
-  const defaultMethod =
+  const _defaultMethod =
     payoutMethods.find((method) => method.available) ?? payoutMethods[0] ?? null;
+  void _defaultMethod;
   const minimumPayoutCents = 0;
 
   const stripeAccountId = profile?.stripe_account_id

@@ -3,6 +3,7 @@ import "react-native-url-polyfill/auto";
 import { createClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 import { createSecureAuthStorage } from "./secureAuthStorage";
+import { isPrivilegedSupabaseClientKey } from "../../../shared/supabaseClientKeyGuard";
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, unknown>;
 
@@ -10,11 +11,18 @@ const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL ||
   String(extra.EXPO_PUBLIC_SUPABASE_URL ?? extra.supabaseUrl ?? "").trim();
 
-const supabasePublishableKey = String(
+const configuredPublishableKey = String(
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     extra.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     ""
 ).trim();
+const supabasePublishableKey = isPrivilegedSupabaseClientKey(configuredPublishableKey)
+  ? ""
+  : configuredPublishableKey;
+
+if (configuredPublishableKey && !supabasePublishableKey) {
+  console.error("[MMD-BOOT] Refusing a privileged Supabase key in the client slot");
+}
 
 if (!supabaseUrl || !supabasePublishableKey) {
   console.error(

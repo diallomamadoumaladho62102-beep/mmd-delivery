@@ -210,12 +210,24 @@ export default function ClientHomePage() {
 
         {/* BOUTON 1 : NOUVELLE COMMANDE PICKUP / DROPOFF */}
         <div className="flex flex-col gap-3 mb-6">
+          <Link
+            href="/client/taxi"
+            className="inline-flex w-full items-center justify-center rounded-full bg-orange-500 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-orange-400 transition"
+          >
+            {ui("Réserver un taxi sur le web")}
+          </Link>
+          <Link
+            href="/client/taxi-xl"
+            className="inline-flex w-full items-center justify-center rounded-full bg-orange-700 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-600 transition"
+          >
+            Taxi XL Guinée
+          </Link>
           {platformFeatures.delivery_available !== false ? (
             <Link
-              href="/orders/new"
+              href="/orders/create"
               className="inline-flex w-full items-center justify-center rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 transition"
             >
-              + Nouvelle commande pickup / dropoff
+              + Envoyer un colis
             </Link>
           ) : (
             <div className="inline-flex w-full items-center justify-center rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-400">

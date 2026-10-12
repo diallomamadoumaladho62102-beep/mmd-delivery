@@ -17,6 +17,7 @@ export async function renderInAppServicePage(input: {
   description: string;
   primaryHref?: string;
   primaryLabel?: string;
+  eyebrow?: string;
 }) {
   const locale = await getAdminWebLocale();
   const t = (source: string) => adminT(source, locale);
@@ -33,7 +34,7 @@ export async function renderInAppServicePage(input: {
         <section className="border-b border-white/5">
           <div className={`${siteContainerClass} py-16 sm:py-24`}>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-orange-300">
-              {t("Available in the MMD Delivery app")}
+              {input.eyebrow ?? t("Available in the MMD Delivery app")}
             </p>
             <h1 className={siteHeadingClass}>{input.title}</h1>
             <p className={siteSubheadingClass}>{input.description}</p>

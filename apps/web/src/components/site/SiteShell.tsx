@@ -8,6 +8,7 @@ import NewsletterForm from "./NewsletterForm";
 import SiteImage from "./SiteImage";
 import SocialLinks from "./SocialLinks";
 import MobileAppComingSoonBanner from "./MobileAppComingSoonBanner";
+import { OFFICIAL_APP_STORE_URL } from "./mobileAppComingSoonBannerContent";
 import WebLanguageSwitcher from "../WebLanguageSwitcher";
 import { useAdminT } from "@/i18n/useAdminT";
 import {
@@ -272,6 +273,15 @@ export default function SiteShell({
                   <span className="text-xs text-slate-400">{slogan}</span>
                 </div>
               </div>
+              <a
+                href={OFFICIAL_APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-site-event="store_click_ios_footer"
+                className="mt-4 inline-flex text-sm font-medium text-orange-200 hover:text-orange-100"
+              >
+                {t("Download on the App Store")}
+              </a>
               <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
                 {settings.footer_blurb ||
                   settings.tagline ||

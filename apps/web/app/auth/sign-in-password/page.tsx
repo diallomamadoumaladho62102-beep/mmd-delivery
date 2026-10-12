@@ -6,7 +6,14 @@ import { supabase } from "@/lib/supabaseBrowser";
 import {
   isEmailVerificationRequired,
   isUserEmailVerified,
+  sanitizeInternalRedirectPath,
 } from "@/lib/authValidation";
+
+function readNextPath(): string {
+  if (typeof window === "undefined") return "/auth/whoami";
+  const next = new URLSearchParams(window.location.search).get("next");
+  return sanitizeInternalRedirectPath(next, "/auth/whoami");
+}
 
 export default function SignInPassword() {
   const { t } = useAdminT();
@@ -31,7 +38,7 @@ export default function SignInPassword() {
       setErr("Please verify your email before signing in.");
       return;
     }
-    location.href = "/auth/whoami";
+    location.href = readNextPath();
   }
 
   return (

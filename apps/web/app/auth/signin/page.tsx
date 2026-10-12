@@ -1,8 +1,15 @@
 "use client";
 
 import { useAdminT } from "@/i18n/useAdminT";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { sanitizeInternalRedirectPath } from "@/lib/authValidation";
+
+function readNextPath(): string {
+  if (typeof window === "undefined") return "/dashboard";
+  const next = new URLSearchParams(window.location.search).get("next");
+  return sanitizeInternalRedirectPath(next, "/dashboard");
+}
 
 export default function SignInPage() {
   const { t } = useAdminT();
@@ -11,11 +18,23 @@ export default function SignInPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!mounted || !data.session) return;
+      window.location.assign(readNextPath());
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault(); setMsg(null); setLoading(true);
+    const nextPath = readNextPath();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}` },
     });
     setLoading(false);
     setMsg(error ? `❌ ${error.message}` : "📩 Lien magique envoyé. Vérifie tes emails.");

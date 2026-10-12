@@ -48,6 +48,9 @@ export default function CreateErrandOrderForm() {
   return (
     <div className="space-y-3 p-4 border rounded">
       <h3 className="font-semibold text-lg">{t("Créer une course (Errand)")}</h3>
+      <p className="text-sm">
+        <a className="underline" href="/auth/sign-in?next=%2Forders%2Fcreate">{t("Se connecter")}</a>
+      </p>
       <input
         className="border rounded px-3 py-2 w-full"
         placeholder={t("Adresse de prise")}

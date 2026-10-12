@@ -605,6 +605,12 @@ export default function NewOrderPage() {
       )}
 
       {err && <p className="text-sm text-red-600">Erreur : {err}</p>}
+      {err === "Tu dois être connecté pour créer une commande." ||
+      err === "Session expirée. Reconnecte-toi pour payer." ? (
+        <p className="text-sm">
+          <a className="underline" href="/auth/sign-in?next=%2Forders%2Fnew">Se connecter</a>
+        </p>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
         <section className="space-y-3">
