@@ -298,7 +298,7 @@ test("local progress syncs once and keeps the newer capture", async () => {
   const acked = acknowledgeXlProgress(queued, [{ eventId: "gps-old", receivedAtMs: nowMs, applied: true }]);
   assert.equal(currentServerGps(acked)?.lat, 11);
   assert.equal(pendingXlProgress(acked).length, 0);
-  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, false);
+  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, true);
 });
 
 test("dispatch limits are authorized, validated, reread, and applied", () => {

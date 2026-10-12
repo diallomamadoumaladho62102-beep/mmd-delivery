@@ -18,6 +18,7 @@ import {
   quoteXlSegmentRoute,
   requestXlSegmentCommercialBooking,
   validateXlSegmentGraph,
+  xlCommercialBookingDecision,
   xlSegmentRouteBookingGate,
   XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED,
   guineaXlSegmentMarketAllowed,
@@ -206,7 +207,7 @@ test("branches stay separate and unknown segments have no definitive price", () 
 test("the eight local estimates calculate without becoming a confirmed fare", () => {
   assert.equal(XL_SEGMENT_LOCAL_ESTIMATES.length, 8);
   assert.equal(XL_SEGMENT_LOCAL_ESTIMATES.every((segment) => segment.active && segment.confirmed === false), true);
-  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, false);
+  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, true);
   const yembering = priceXlSegment({ distanceKm: 70, durationMinutes: 120, tariff: TARIFF });
   const dougoun = priceXlSegment({ distanceKm: 40, durationMinutes: 61, tariff: TARIFF });
   const maliSegment = priceXlSegment({ distanceKm: 40, durationMinutes: 180, tariff: TARIFF });
@@ -322,8 +323,12 @@ test("the eight local estimates calculate without becoming a confirmed fare", ()
     platformShareBps: 1_000,
     baggageGnf: 0,
   });
-  assert.equal(commercial.ok, false);
-  if (commercial.ok === false) assert.equal(commercial.error, "xl_segment_unconfirmed");
+  assert.equal(commercial.ok, true);
+  if (commercial.ok) {
+    assert.equal(commercial.plan.commercialBooking, true);
+    assert.equal(commercial.plan.fare.definitive, false);
+    assert.equal(commercial.plan.snapshot.transportGnf, 251_800);
+  }
   const view = buildXlSegmentAdminView(XL_SEGMENT_LOCAL_ESTIMATES, TARIFF);
   assert.equal(view.segments.length, 8);
   assert.equal(view.segments.every((segment) => segment.priceable && segment.confirmed === false), true);
@@ -489,11 +494,12 @@ test("each passenger pays the full route price and seat role adds nothing", () =
   assert.equal(second.snapshot.commercialBooking, false);
 });
 
-test("a segment commercial request stays disabled and does not multiply the fare", () => {
-  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, false);
-  const refused = requestXlSegmentCommercialBooking();
+test("a closed switch refuses the request and an open route keeps the fare", () => {
+  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, true);
+  const refused = requestXlSegmentCommercialBooking(false);
   assert.equal(refused.ok, false);
   if (refused.ok === false) assert.equal(refused.error, "xl_segment_commercial_disabled");
+  assert.equal(requestXlSegmentCommercialBooking().ok, true);
   const segments = openedNetwork();
   const one = planXlSegmentCommercialBooking({
     idempotencyKey: "passenger-1",
@@ -516,8 +522,8 @@ test("a segment commercial request stays disabled and does not multiply the fare
     baggageGnf: 0,
   });
   if (one.ok === false || two.ok === false) throw new Error("plan");
-  assert.equal(one.plan.commercialBooking, false);
-  assert.equal(two.plan.commercialBooking, false);
+  assert.equal(one.plan.commercialBooking, true);
+  assert.equal(two.plan.commercialBooking, true);
   assert.equal(one.plan.snapshot.transportGnf, 251_800);
   assert.equal(two.plan.snapshot.transportGnf, 251_800);
   assert.equal(one.plan.snapshot.platformFeeGnf, 25_180);
@@ -536,41 +542,63 @@ test("a segment commercial request stays disabled and does not multiply the fare
   }).ok, false);
 });
 
-test("the global switch cannot book an unconfirmed segment", () => {
+test("an inactive segment stays closed and an estimate can still be booked", () => {
   for (const segment of XL_SEGMENT_LOCAL_ESTIMATES) {
-    const closed = xlSegmentRouteBookingGate(
+    const open = xlSegmentRouteBookingGate(
       XL_SEGMENT_LOCAL_ESTIMATES,
       segment.originLabel,
       segment.destinationLabel,
     );
-    assert.equal(closed.ok, false);
-    if (closed.ok === false) assert.equal(closed.error, "xl_segment_unconfirmed");
+    assert.equal(open.ok, true, segment.code);
+    assert.equal(segment.confirmed, false);
   }
-  const confirmedOnly = edge("1", "Conakry", "Kindia", 128, 102, 1, "trunk", true, true);
-  const open = xlSegmentRouteBookingGate([confirmedOnly], "Conakry", "Kindia");
-  assert.equal(open.ok, true);
-  if (open.ok === true) assert.deepEqual(open.codes, ["1"]);
-  const mixed = xlSegmentRouteBookingGate(
-    [
-      confirmedOnly,
-      edge("2", "Kindia", "Mamou", 134, 109, 2, "trunk", true, false),
-    ],
+  const closedSwitch = xlCommercialBookingDecision({
+    commercialBookingEnabled: false,
+    segments: XL_SEGMENT_LOCAL_ESTIMATES,
+    originLabel: "Conakry",
+    destinationLabel: "Kindia",
+  });
+  assert.equal(closedSwitch.ok, false);
+  if (closedSwitch.ok === false) assert.equal(closedSwitch.error, "xl_segment_commercial_disabled");
+  const inactive = xlSegmentRouteBookingGate(
+    [edge("1", "Conakry", "Kindia", 128, 102, 1, "trunk", false, false)],
     "Conakry",
-    "Mamou",
+    "Kindia",
   );
+  assert.equal(inactive.ok, false);
+  if (inactive.ok === false) assert.equal(inactive.error, "xl_segment_inactive");
+  const mixed = xlCommercialBookingDecision({
+    commercialBookingEnabled: true,
+    segments: [
+      edge("1", "Conakry", "Kindia", 128, 102, 1, "trunk", true, false),
+      edge("2", "Kindia", "Mamou", 134, 109, 2, "trunk", false, false),
+    ],
+    originLabel: "Conakry",
+    destinationLabel: "Mamou",
+  });
   assert.equal(mixed.ok, false);
-  if (mixed.ok === false) assert.equal(mixed.error, "xl_segment_unconfirmed");
+  if (mixed.ok === false) assert.equal(mixed.error, "xl_segment_inactive");
   const http = fs.readFileSync(path.join(root, "apps/web/src/lib/markets/guineaXlHttp.ts"), "utf8");
   const start = http.indexOf("export async function persistGuineaXlSegmentBooking");
   const slice = http.slice(start, http.indexOf("async function saveMatchedSegmentBooking", start));
-  const kill = slice.indexOf("if (!segmentCommercialBookingEnabled())");
-  const gate = slice.indexOf("xlSegmentRouteBookingGate(");
-  assert.equal(kill >= 0 && gate > kill, true);
+  assert.equal(slice.includes("readXlCommercialBookingEnabled("), true);
+  assert.equal(http.includes("commercial_booking_enabled"), true);
+  assert.equal(slice.includes("xlCommercialBookingDecision("), true);
   assert.equal(slice.includes("guinea_xl_segments"), true);
   assert.equal(slice.includes("segmentFromRow"), true);
   assert.equal(slice.includes("XL_SEGMENT_LOCAL_ESTIMATES"), false);
   assert.equal(slice.includes("body.confirmed"), false);
   assert.equal(slice.includes("confirmed: true"), false);
+  const prices = [75_200, 78_900, 35_500, 32_200, 30_000, 48_000, 30_000, 39_000];
+  XL_SEGMENT_LOCAL_ESTIMATES.forEach((segment, index) => {
+    const priced = priceXlSegment({
+      distanceKm: segment.distanceKm,
+      durationMinutes: segment.durationMinutes,
+      tariff: TARIFF,
+    });
+    assert.equal(priced.ok, true);
+    if (priced.ok) assert.equal(priced.finalGnf, prices[index]);
+  });
 });
 
 test("a Guinea segment booking stays inside Guinea and does not open another market", async () => {
@@ -613,7 +641,28 @@ test("a Guinea segment booking stays inside Guinea and does not open another mar
     const bookBody = (await booked.json()) as { error?: string };
     assert.equal(bookBody.error, "xl_market_unavailable");
   }
-  const guinea = await persistGuineaXlSegmentBooking(untouched as never, "client", {
+  const missingSchema = {
+    from() {
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                maybeSingle: async () => ({
+                  data: null,
+                  error: { message: "column commercial_booking_enabled of guinea_xl_settings does not exist" },
+                }),
+              };
+            },
+          };
+        },
+      };
+    },
+    rpc() {
+      throw new Error("booking reached the database without the settings column");
+    },
+  };
+  const guinea = await persistGuineaXlSegmentBooking(missingSchema as never, "client", {
     bookingKind: "segment",
     countryCode: "GN",
     currency: "GNF",
@@ -621,7 +670,7 @@ test("a Guinea segment booking stays inside Guinea and does not open another mar
     destinationLabel: "Kindia",
   });
   const guineaBody = (await guinea.json()) as { error?: string };
-  assert.equal(guineaBody.error, "xl_segment_commercial_disabled");
+  assert.equal(guineaBody.error, "xl_segment_schema_not_ready");
   const httpSource = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "guineaXlHttp.ts"), "utf8");
   const quoteAt = httpSource.indexOf("export async function quoteGuineaXlSegment");
   const gateAt = httpSource.indexOf("segmentMarketClosed", quoteAt);
@@ -852,6 +901,9 @@ test("the pending segment migration does not change Standard, commission, or exi
   assert.equal(/create or replace function public\.create_guinea_xl_booking\s*\(/i.test(sql), false);
   assert.match(sql, /create or replace function public\.create_guinea_xl_segment_booking/);
   assert.match(sql, /quote_guinea_xl_segments/);
+  assert.match(sql, /commercial_booking_enabled boolean not null default true/);
+  assert.match(sql, /information_confirmed/);
+  assert.equal(/if v_segment\.confirmed is not true then\s*return/i.test(sql), false);
   assert.equal(/alter table public\.guinea_xl_bookings[\s\S]{0,180}payment_status/i.test(sql), false);
   assert.equal(/update public\.guinea_xl_settings/i.test(sql), false);
   assert.equal(/insert into public\.guinea_xl_settings/i.test(sql), false);
@@ -872,7 +924,8 @@ test("the pending segment migration does not change Standard, commission, or exi
   assert.match(http, /quote_guinea_xl_segments/);
   assert.match(http, /xl_segment_commercial_disabled/);
   assert.match(http, /bookingKind === "segment"/);
-  assert.match(http, /segmentCommercialBookingEnabled\(\)/);
+  assert.match(http, /commercial_booking_enabled/);
+  assert.match(http, /xlCommercialBookingDecision\(/);
   const mobileXl = fs.readFileSync(
     path.join(root, "apps/mobile/src/screens/taxi/GuineaXlRequestScreen.tsx"),
     "utf8",

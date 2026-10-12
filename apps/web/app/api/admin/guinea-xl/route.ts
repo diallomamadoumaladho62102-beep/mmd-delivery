@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
     if (error) return json({ ok: false, error: "xl_catalog_failed" }, 500);
     const segments = await readSegments(supabase);
     const dispatch = await readDispatchLimits(supabase);
+    const commercial = await readCommercialBooking(supabase);
     return json({
       ok: true,
       axes: axisRows.data ?? [],
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
       versions: versions.data ?? [],
       ...segments,
       ...dispatch,
+      ...commercial,
     });
   } catch (error: unknown) {
     if (error instanceof AdminAccessError) return json({ ok: false, error: error.message }, error.status);
@@ -200,6 +202,51 @@ export async function POST(request: NextRequest) {
       return json({ ok: true, settings: updated.data });
     }
 
+    if (action === "set_xl_commercial_booking") {
+      const enabled = body.enabled === true;
+      const current = await supabase
+        .from("guinea_xl_settings")
+        .select("commercial_booking_enabled")
+        .eq("id", "GN")
+        .maybeSingle();
+      if (current.error && /commercial_booking_enabled|schema cache|does not exist/i.test(current.error.message)) {
+        return json({ ok: false, error: "xl_segment_schema_not_ready" }, 503);
+      }
+      const updated = await supabase
+        .from("guinea_xl_settings")
+        .update({
+          commercial_booking_enabled: enabled,
+          updated_by: staff.userId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", "GN")
+        .select("commercial_booking_enabled,updated_at")
+        .maybeSingle();
+      if (updated.error || !updated.data) {
+        if (updated.error && /commercial_booking_enabled|schema cache|does not exist/i.test(updated.error.message)) {
+          return json({ ok: false, error: "xl_segment_schema_not_ready" }, 503);
+        }
+        return json({ ok: false, error: "xl_catalog_failed" }, 500);
+      }
+      await supabase.from("guinea_xl_audit").insert({
+        actor_id: staff.userId,
+        action: "commercial_booking_changed",
+        old_value: current.data,
+        new_value: updated.data,
+      });
+      await writeAdminAuditServer({
+        supabaseAdmin: supabase,
+        adminUserId: staff.userId,
+        action: "guinea_xl_commercial_booking",
+        targetType: "guinea_xl_settings",
+        targetId: "GN",
+        oldValues: current.data,
+        newValues: updated.data,
+        request,
+      });
+      return json({ ok: true, settings: updated.data });
+    }
+
     if (action === "save_band") {
       const minKg = integerGnf(body.minKg);
       const maxKg = integerGnf(body.maxKg);
@@ -248,6 +295,22 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function readCommercialBooking(supabase: ReturnType<typeof buildSupabaseAdminClient>) {
+  const row = await supabase
+    .from("guinea_xl_settings")
+    .select("commercial_booking_enabled,updated_at")
+    .eq("id", "GN")
+    .maybeSingle();
+  if (row.error || !row.data || !("commercial_booking_enabled" in row.data)) {
+    return { commercialBookingSchemaReady: false, commercialBookingEnabled: null, commercialBookingUpdatedAt: null };
+  }
+  return {
+    commercialBookingSchemaReady: true,
+    commercialBookingEnabled: row.data.commercial_booking_enabled === true,
+    commercialBookingUpdatedAt: row.data.updated_at ?? null,
+  };
+}
+
 async function readDispatchLimits(supabase: ReturnType<typeof buildSupabaseAdminClient>) {
   const row = await supabase
     .from("guinea_xl_segment_tariff")
@@ -276,7 +339,7 @@ async function readSegments(supabase: ReturnType<typeof buildSupabaseAdminClient
       .maybeSingle(),
     supabase
       .from("guinea_xl_segments")
-      .select("id,code,sequence,origin_label,destination_label,branch,distance_km,duration_minutes,active,confirmed,version,estimate_source")
+      .select("id,code,sequence,origin_label,destination_label,branch,distance_km,duration_minutes,active,confirmed,version,estimate_source,updated_at")
       .order("sequence"),
   ]);
   const error = tariffRow.error ?? segmentRows.error;
@@ -427,7 +490,7 @@ async function saveSegmentAdmin(
     }
     const catalog = await supabase
       .from("guinea_xl_segments")
-      .select("id,code,sequence,origin_label,destination_label,branch,distance_km,duration_minutes,active,confirmed,version,estimate_source");
+      .select("id,code,sequence,origin_label,destination_label,branch,distance_km,duration_minutes,active,confirmed,version,estimate_source,updated_at");
     if (catalog.error) {
       if (segmentSchemaMissing(catalog.error.message)) return json({ ok: false, error: "xl_segment_schema_not_ready" }, 503);
       return json({ ok: false, error: "xl_catalog_failed" }, 500);

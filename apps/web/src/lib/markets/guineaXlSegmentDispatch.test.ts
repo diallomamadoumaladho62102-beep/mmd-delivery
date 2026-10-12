@@ -252,7 +252,7 @@ test("the same request returns the same driver and does not change the fare", ()
     mode: "local",
   });
   assert.equal(fare.ok && fare.totalGnf, 32_200);
-  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, false);
+  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, true);
 });
 
 test("a segment departure follows the stored path and does not invent an axis", () => {
@@ -290,13 +290,15 @@ test("dispatch does not replace taxi, standard, or food dispatch", () => {
   assert.match(route, /assertStaffPermission\("taxi_pricing.read"/);
   assert.match(route, /assertCanWriteTaxiPricing/);
   assert.match(route, /save_segment_dispatch/);
+  assert.match(route, /set_xl_commercial_booking/);
   const http = fs.readFileSync(path.join(root, "apps/web/src/lib/markets/guineaXlHttp.ts"), "utf8");
   assert.match(http, /segment_run: true/);
   assert.match(http, /axisId: null/);
   assert.match(http, /axis_id: String\(body\.axisId/);
   assert.match(http, /loadXlSegmentDispatchMatch/);
   assert.match(http, /getDrivingLeg/);
-  assert.match(http, /segmentCommercialBookingEnabled\(\)/);
+  assert.match(http, /xlCommercialBookingDecision\(/);
+  assert.match(http, /commercial_booking_enabled/);
   assert.match(http, /open_guinea_xl_segment_departure/);
   assert.match(dispatch, /establishXlSegmentProgress/);
   assert.equal(dispatch.includes("passedSegmentCodes: []"), false);

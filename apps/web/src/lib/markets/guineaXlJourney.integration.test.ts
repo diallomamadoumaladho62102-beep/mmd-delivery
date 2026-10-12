@@ -460,6 +460,7 @@ async function runJourney() {
         : `mapbox selection: ${measured.ok === false ? measured.error : "unknown"}`,
     );
 
+    await psql("update public.guinea_xl_settings set commercial_booking_enabled = false where id = 'GN'");
     const callsBeforeBook = rpcCalls.length;
     const refused = await fetch(url, {
       method: "POST",
@@ -479,21 +480,8 @@ async function runJourney() {
     assert.equal(refused.status, 409);
     assert.equal(refusedBody.error, "xl_segment_commercial_disabled");
     assert.equal(rpcCalls.length, callsBeforeBook);
+    await psql("update public.guinea_xl_settings set commercial_booking_enabled = true where id = 'GN'");
 
-    const unconfirmed = await database.rpc("create_guinea_xl_segment_booking", {
-      p_booking_id: "e3434343-4343-4434-8434-343434343434",
-      p_idempotency_key: "journey-unconfirmed",
-      p_client_user_id: clientId,
-      p_departure_id: departureId,
-      p_seat_index: selected.seatIndex,
-      p_origin_key: "dalaba",
-      p_destination_key: "pita",
-      p_baggage_kg: [],
-      p_claimed_total_gnf: null,
-    });
-    assert.equal((unconfirmed.data as { error?: string }).error, "xl_segment_unconfirmed");
-
-    await psql("update public.guinea_xl_segments set confirmed = true where code in ('4', '5')");
     const booked = await database.rpc("create_guinea_xl_segment_booking", {
       p_booking_id: "e4545454-4545-4454-8454-454545454545",
       p_idempotency_key: "journey-dalaba-pita",
@@ -549,7 +537,7 @@ async function runJourney() {
       ),
     ) as { holds: number };
     assert.equal(holds.holds >= 2, true);
-    assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, false);
+    assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, true);
     console.log(`journey booking ${booking.booking_id} total ${booking.total_gnf}`);
     console.log("guineaXlJourney.integration.test.ts passed");
   } finally {

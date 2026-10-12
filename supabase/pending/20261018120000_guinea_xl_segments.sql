@@ -4,7 +4,8 @@
 -- All eight distances are unconfirmed estimates.
 -- They are active for local calculation and confirmed = false.
 -- Segments 6, 7 and 8 were checked on 2026-10-10 from road sources, not an official survey.
--- Commercial segment booking stays disabled in the application.
+-- Commercial availability defaults on. confirmed stays false: these are estimates, not a survey.
+-- An administrator can turn the whole service or one segment off without a code change.
 -- This does not change Taxi Standard, the XL commission, or other services.
 -- Existing seat locks on guinea_xl_seats stay in place.
 -- A future passenger snapshot stores the route total once.
@@ -31,6 +32,9 @@ insert into public.guinea_xl_segment_tariff (
 )
 values ('GN', 'GN', 'GNF', 1000, 500, 100, 30000)
 on conflict (id) do nothing;
+
+alter table public.guinea_xl_settings
+  add column if not exists commercial_booking_enabled boolean not null default true;
 
 create table if not exists public.guinea_xl_segments (
   id uuid primary key default gen_random_uuid(),
@@ -322,6 +326,8 @@ declare
   v_raw_total integer := 0;
   v_total integer := 0;
   v_definitive boolean := true;
+  v_information boolean := true;
+  v_booking boolean;
   v_lines jsonb := '[]'::jsonb;
 begin
   if p_origin_key is null or p_destination_key is null or p_origin_key = p_destination_key then
@@ -376,6 +382,7 @@ begin
     end if;
     if v_segment.confirmed is not true then
       v_definitive := false;
+      v_information := false;
     end if;
     v_raw := v_tariff.base_gnf + v_segment.distance_km * v_tariff.per_km_gnf + v_segment.duration_minutes * v_tariff.per_minute_gnf;
     v_final := greatest(v_tariff.minimum_gnf, v_raw);
@@ -388,10 +395,15 @@ begin
     ));
   end loop;
 
+  select commercial_booking_enabled into v_booking
+  from public.guinea_xl_settings
+  where id = 'GN';
+
   return jsonb_build_object(
     'ok', true,
     'definitive', v_definitive,
-    'commercial_booking', false,
+    'information_confirmed', v_information,
+    'commercial_booking', coalesce(v_booking, false),
     'total_gnf', v_total,
     'raw_total_gnf', v_raw_total,
     'segment_codes', to_jsonb(v_codes),
@@ -420,6 +432,7 @@ declare
   v_departure public.guinea_xl_departures%rowtype;
   v_tariff public.guinea_xl_segment_tariff%rowtype;
   v_bps integer;
+  v_booking boolean;
   v_ids uuid[];
   v_codes text[];
   v_paths integer;
@@ -477,9 +490,13 @@ begin
   if not found then
     return jsonb_build_object('ok', false, 'error', 'xl_segment_not_priced');
   end if;
-  select platform_share_bps into v_bps from public.guinea_xl_settings where id = 'GN';
+  select platform_share_bps, commercial_booking_enabled into v_bps, v_booking
+  from public.guinea_xl_settings where id = 'GN';
   if not found or v_bps is null then
     return jsonb_build_object('ok', false, 'error', 'xl_commission_not_configured');
+  end if;
+  if v_booking is not true then
+    return jsonb_build_object('ok', false, 'error', 'xl_segment_commercial_disabled');
   end if;
 
   with recursive walk as (
@@ -522,11 +539,11 @@ begin
 
   foreach v_segment_id in array v_ids loop
     select * into v_segment from public.guinea_xl_segments where id = v_segment_id;
-    if v_segment.distance_km is null or v_segment.duration_minutes is null or v_segment.active is not true then
+    if v_segment.distance_km is null or v_segment.duration_minutes is null then
       return jsonb_build_object('ok', false, 'error', 'xl_segment_not_priced');
     end if;
-    if v_segment.confirmed is not true then
-      return jsonb_build_object('ok', false, 'error', 'xl_segment_unconfirmed');
+    if v_segment.active is not true then
+      return jsonb_build_object('ok', false, 'error', 'xl_segment_inactive');
     end if;
     v_position := v_position + 1;
     v_raw := v_tariff.base_gnf + v_segment.distance_km * v_tariff.per_km_gnf + v_segment.duration_minutes * v_tariff.per_minute_gnf;

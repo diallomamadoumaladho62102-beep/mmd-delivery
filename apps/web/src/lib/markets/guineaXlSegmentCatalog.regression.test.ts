@@ -25,7 +25,7 @@ const expected = [
   ["8", "Yembering", "Mali Centre", "mali", 40, 180, 39_000],
 ] as const;
 
-assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, false);
+  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, true);
 assert.equal(XL_SEGMENT_LOCAL_ESTIMATES.length, 8);
 assert.equal(XL_SEGMENT_LOCAL_ESTIMATES.filter((segment) => segment.confirmed).length, 0);
 

@@ -58,6 +58,7 @@ type SegmentRow = {
   finalGnf: number | null;
   priceable: boolean;
   estimateSource?: string;
+  updatedAt?: string | null;
 };
 
 type SegmentRoute = {
@@ -107,6 +108,9 @@ export default function GuineaXlPricingPage() {
     maxPickupDelayMinutes: number;
     maxLocationAgeMs: number;
   } | null>(null);
+  const [commercialBookingEnabled, setCommercialBookingEnabled] = useState<boolean | null>(null);
+  const [commercialBookingSchemaReady, setCommercialBookingSchemaReady] = useState(false);
+  const [commercialBookingUpdatedAt, setCommercialBookingUpdatedAt] = useState<string | null>(null);
   const [segments, setSegments] = useState<SegmentRow[]>([]);
   const [segmentRoutes, setSegmentRoutes] = useState<SegmentRoute[]>([]);
   const [origin, setOrigin] = useState("");
@@ -136,6 +140,9 @@ export default function GuineaXlPricingPage() {
         maxPickupDelayMinutes: number;
         maxLocationAgeMs: number;
       } | null;
+      commercialBookingSchemaReady?: boolean;
+      commercialBookingEnabled?: boolean | null;
+      commercialBookingUpdatedAt?: string | null;
       segments?: SegmentRow[];
       segmentRoutes?: SegmentRoute[];
       segmentError?: string;
@@ -154,6 +161,9 @@ export default function GuineaXlPricingPage() {
     setDispatchReady(body.dispatchReady === true);
     setDispatchLimits(body.dispatchLimits ?? null);
     setSegments(body.segments ?? []);
+    setCommercialBookingSchemaReady(body.commercialBookingSchemaReady === true);
+    setCommercialBookingEnabled(body.commercialBookingEnabled === true);
+    setCommercialBookingUpdatedAt(body.commercialBookingUpdatedAt ?? null);
     setSegmentRoutes(body.segmentRoutes ?? []);
     setCommissionBps(String(body.settings?.platform_share_bps ?? ""));
     setCurrency(body.settings?.currency ?? "GNF");
@@ -379,7 +389,28 @@ export default function GuineaXlPricingPage() {
 
         <section className="space-y-3 rounded border p-4">
           <h2 className="font-semibold">{t("XL segments")}</h2>
-          <p className="text-sm">{t("Segment bookings are not open")}</p>
+          <p className="text-sm">
+            {t("Status")}{" "}
+            {commercialBookingSchemaReady
+              ? commercialBookingEnabled
+                ? t("Active")
+                : t("Inactive")
+              : t("XL segments are not ready")}
+            {commercialBookingUpdatedAt ? ` · ${t("Updated")} ${commercialBookingUpdatedAt}` : ""}
+          </p>
+          <button
+            className="rounded border px-3 py-1 disabled:opacity-40"
+            disabled={!canEdit || !commercialBookingSchemaReady}
+            type="button"
+            onClick={() => {
+              void post({
+                action: "set_xl_commercial_booking",
+                enabled: commercialBookingEnabled !== true,
+              });
+            }}
+          >
+            {commercialBookingEnabled ? t("Deactivate") : t("Activate")}
+          </button>
           {segmentSchemaReady ? null : <p className="text-sm">{t("XL segments are not ready")}</p>}
           {segmentSchemaReady && !segmentTariff ? <p className="text-sm">{t("This segment is not priced")}</p> : null}
           {segmentSchemaReady && segmentTariff ? (
@@ -442,9 +473,12 @@ export default function GuineaXlPricingPage() {
                 <p>
                   {segment.sequence}. {segment.originLabel} → {segment.destinationLabel} · {segment.branch === "dougountounny" ? t("Dougountounny branch") : segment.branch === "mali" ? t("Mali Centre branch") : t("Main line")}
                   {" · "}
+                  {segment.distanceKm ?? "—"} km · {segment.durationMinutes ?? "—"} min
+                  {" · "}
                   {segment.confirmed ? t("Validated segment") : t("Unconfirmed estimate")}
                   {" · "}
-                  {segment.active ? t("Active") : t("Inactive")}
+                  {t("Status")} {segment.active ? t("Active") : t("Inactive")}
+                  {segment.updatedAt ? ` · ${t("Updated")} ${segment.updatedAt}` : ""}
                 </p>
                 <p>
                   {segment.priceable

@@ -410,7 +410,7 @@ async function runIntegration() {
   assert.equal(hidden.ok, false);
   if (hidden.ok) return;
   assert.equal(hidden.error, "xl_dispatch_no_verified_driver");
-  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, false);
+  assert.equal(XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED, true);
   console.log("guineaXlOfflineDispatch.integration.test.ts passed");
 }
 

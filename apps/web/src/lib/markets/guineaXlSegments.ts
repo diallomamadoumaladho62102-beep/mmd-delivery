@@ -9,8 +9,11 @@
 import { splitTransportCommission } from "@/lib/markets/guineaXlPricing";
 import { localityKey } from "@/lib/markets/guineaXlPricing";
 
-/** Commercial segment bookings stay off until the migration is applied and distances are confirmed. */
-export const XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED = false;
+/**
+ * Default for a new settings row. The live switch is guinea_xl_settings.commercial_booking_enabled.
+ * confirmed stays a separate fact: an estimate can be bookable before anyone verifies the stop.
+ */
+export const XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED = true;
 
 export function segmentCommercialBookingEnabled(): boolean {
   return XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED;
@@ -105,7 +108,9 @@ export function tariffFromRow(row: Record<string, unknown> | null): XlSegmentTar
   return isXlSegmentTariff(tariff) ? tariff : null;
 }
 
-export function segmentFromRow(row: Record<string, unknown>): XlSegmentInput & { id: string; version: number } {
+export function segmentFromRow(
+  row: Record<string, unknown>,
+): XlSegmentInput & { id: string; version: number; updatedAt: string | null } {
   const branch = row.branch === "dougountounny" || row.branch === "mali" ? row.branch : "trunk";
   return {
     id: String(row.id),
@@ -120,6 +125,7 @@ export function segmentFromRow(row: Record<string, unknown>): XlSegmentInput & {
     sequence: Number(row.sequence),
     branch,
     estimateSource: typeof row.estimate_source === "string" ? row.estimate_source : "",
+    updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
   };
 }
 
@@ -360,8 +366,8 @@ export function quoteXlSegmentRoute(input: {
 }
 
 /**
- * A route is bookable only when every segment on the server path is active and confirmed.
- * The caller supplies the server catalog. Client fields are not accepted here.
+ * A route is bookable when every server segment on the path is commercially active.
+ * confirmed is not required. The caller supplies server rows. Client fields are ignored.
  */
 export function xlSegmentRouteBookingGate(
   segments: XlSegmentInput[],
@@ -373,11 +379,21 @@ export function xlSegmentRouteBookingGate(
   const codes: string[] = [];
   for (const segment of path.segments) {
     if (segment.active !== true) return fail("xl_segment_inactive");
-    if (segment.confirmed !== true) return fail("xl_segment_unconfirmed");
     codes.push(segment.code);
   }
   if (codes.length === 0) return fail("xl_segment_path_invalid");
   return { ok: true, codes };
+}
+
+/** Global switch first, then each segment. A closed switch blocks every active segment. */
+export function xlCommercialBookingDecision(input: {
+  commercialBookingEnabled: boolean;
+  segments: XlSegmentInput[];
+  originLabel: unknown;
+  destinationLabel: unknown;
+}): { ok: true; codes: string[] } | XlSegmentFailure {
+  if (input.commercialBookingEnabled !== true) return fail("xl_segment_commercial_disabled");
+  return xlSegmentRouteBookingGate(input.segments, input.originLabel, input.destinationLabel);
 }
 
 export const XL_SEGMENT_ADMIN_ROUTES: Array<[string, string]> = [
@@ -547,7 +563,7 @@ export type XlSegmentSnapshot = {
   seatRole: "front" | "other";
   seatSupplementGnf: 0;
   passengerCount: 1;
-  commercialBooking: false;
+  commercialBooking: boolean;
   tariffVersion: number;
   baseGnf: number;
   perKmGnf: number;
@@ -569,6 +585,7 @@ export function buildXlSegmentPriceSnapshot(input: {
   tariff: XlSegmentTariff;
   platformShareBps: unknown;
   baggageGnf: unknown;
+  commercialBooking?: boolean;
 }): { ok: true; snapshot: XlSegmentSnapshot } | XlSegmentFailure {
   if (input.fare.passengerCount !== 1 || input.fare.transportGnf !== input.fare.routeTransportGnf) {
     return fail("xl_one_passenger_per_reservation");
@@ -590,7 +607,7 @@ export function buildXlSegmentPriceSnapshot(input: {
       seatRole: input.fare.seatRole,
       seatSupplementGnf: 0,
       passengerCount: 1,
-      commercialBooking: false,
+      commercialBooking: input.commercialBooking === true,
       tariffVersion: input.tariff.version,
       baseGnf: input.tariff.baseGnf,
       perKmGnf: input.tariff.perKmGnf,
@@ -631,7 +648,7 @@ export function segmentCodesOverlap(left: string[], right: string[]): boolean {
 }
 
 export type XlSegmentCommercialPlan = {
-  commercialBooking: false;
+  commercialBooking: boolean;
   idempotencyKey: string;
   seatIndex: number;
   fare: XlPassengerFare;
@@ -666,19 +683,27 @@ export function planXlSegmentCommercialBooking(input: {
     passengerCount: input.passengerCount ?? 1,
     seatCount: input.seatCount ?? 1,
     claimedTransportGnf: input.claimedTransportGnf,
+    mode: "local",
   });
   if (fare.ok === false) return fare;
+  const decision = xlCommercialBookingDecision({
+    commercialBookingEnabled: true,
+    segments: input.segments,
+    originLabel: input.originLabel,
+    destinationLabel: input.destinationLabel,
+  });
   const snapshot = buildXlSegmentPriceSnapshot({
     fare: fare.fare,
     tariff: input.tariff,
     platformShareBps: input.platformShareBps,
     baggageGnf: input.baggageGnf,
+    commercialBooking: decision.ok === true,
   });
   if (snapshot.ok === false) return snapshot;
   return {
     ok: true,
     plan: {
-      commercialBooking: false,
+      commercialBooking: decision.ok === true,
       idempotencyKey,
       seatIndex: fare.fare.seatIndex,
       fare: fare.fare,
@@ -687,11 +712,14 @@ export function planXlSegmentCommercialBooking(input: {
   };
 }
 
-/** Refuses every commercial segment booking. A valid plan is not a reservation. */
-export function requestXlSegmentCommercialBooking(): { ok: false; error: "xl_segment_commercial_disabled" } {
-  const error = "xl_segment_commercial_disabled" as const;
-  if (XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED) return { ok: false, error };
-  return { ok: false, error };
+/** The live switch is the settings row. This only reports the supplied value. */
+export function requestXlSegmentCommercialBooking(
+  commercialBookingEnabled = XL_SEGMENT_COMMERCIAL_BOOKING_ENABLED,
+): { ok: true } | { ok: false; error: "xl_segment_commercial_disabled" } {
+  if (commercialBookingEnabled !== true) {
+    return { ok: false, error: "xl_segment_commercial_disabled" };
+  }
+  return { ok: true };
 }
 
 /**

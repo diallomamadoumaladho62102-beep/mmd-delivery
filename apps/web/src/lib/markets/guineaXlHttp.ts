@@ -21,7 +21,7 @@ import {
 } from "@/lib/markets/guineaXlPricing";
 import { loadXlSegmentDispatchMatch, planXlSegmentDeparture } from "@/lib/markets/guineaXlSegmentDispatch";
 import { xlProgressHttpBodyFromRpc } from "../../../../../shared/xlProgressWire";
-import { guineaXlSegmentMarketAllowedWithDetection, segmentCommercialBookingEnabled, segmentFromRow, xlSegmentRouteBookingGate } from "@/lib/markets/guineaXlSegments";
+import { guineaXlSegmentMarketAllowedWithDetection, segmentFromRow, xlCommercialBookingDecision } from "@/lib/markets/guineaXlSegments";
 
 function schemaMissing(message: string): boolean {
   return /guinea_xl_|schema cache|does not exist/i.test(message);
@@ -100,6 +100,16 @@ function seatIndexes(value: unknown): number[] {
   return value.map((item) => Number(item)).filter((item) => Number.isInteger(item));
 }
 
+async function readXlCommercialBookingEnabled(supabaseAdmin: SupabaseClient): Promise<boolean | "missing"> {
+  const row = await supabaseAdmin
+    .from("guinea_xl_settings")
+    .select("commercial_booking_enabled")
+    .eq("id", "GN")
+    .maybeSingle();
+  if (row.error || !row.data) return "missing";
+  return row.data.commercial_booking_enabled === true;
+}
+
 function baggageItems(value: unknown): Array<{ weightKg: unknown }> {
   if (!Array.isArray(value)) return [];
   return value.map((item) => ({
@@ -128,7 +138,13 @@ export async function quoteGuineaXlSegment(supabaseAdmin: SupabaseClient, body: 
     if (schemaMissing(quoted.error.message)) return jsonError("xl_segment_schema_not_ready", 503);
     return jsonError("xl_segment_not_priced", 400);
   }
-  const payload = quoted.data as { ok?: boolean; error?: string; definitive?: boolean; total_gnf?: number };
+  const payload = quoted.data as {
+    ok?: boolean;
+    error?: string;
+    definitive?: boolean;
+    commercial_booking?: boolean;
+    total_gnf?: number;
+  };
   if (payload?.ok === false) return jsonError(String(payload.error ?? "xl_segment_not_priced"), 400);
   const requestedPickup = Date.parse(String(body.requestedPickupAt ?? ""));
   const dispatch = await loadXlSegmentDispatchMatch(supabaseAdmin, {
@@ -150,7 +166,7 @@ export async function quoteGuineaXlSegment(supabaseAdmin: SupabaseClient, body: 
     ok: true,
     currency: "GNF",
     country_code: "GN",
-    commercial_booking: segmentCommercialBookingEnabled() && payload.definitive === true,
+    commercial_booking: payload.commercial_booking === true,
     quote: payload,
     dispatch,
   });
@@ -162,9 +178,9 @@ export async function persistGuineaXlSegmentBooking(
   body: Record<string, unknown>,
 ) {
   if (await segmentMarketClosed(body)) return jsonError("xl_market_unavailable", 409);
-  if (!segmentCommercialBookingEnabled()) {
-    return jsonError("xl_segment_commercial_disabled", 409);
-  }
+  const commercialBookingEnabled = await readXlCommercialBookingEnabled(supabaseAdmin);
+  if (commercialBookingEnabled === "missing") return jsonError("xl_segment_schema_not_ready", 503);
+  if (commercialBookingEnabled !== true) return jsonError("xl_segment_commercial_disabled", 409);
   const segmentRows = await supabaseAdmin
     .from("guinea_xl_segments")
     .select("id,code,sequence,origin_label,destination_label,branch,distance_km,duration_minutes,active,confirmed,version,estimate_source")
@@ -173,11 +189,12 @@ export async function persistGuineaXlSegmentBooking(
     if (schemaMissing(segmentRows.error.message)) return jsonError("xl_segment_schema_not_ready", 503);
     return jsonError("xl_segment_not_priced", 400);
   }
-  const routeGate = xlSegmentRouteBookingGate(
-    ((segmentRows.data ?? []) as Array<Record<string, unknown>>).map(segmentFromRow),
-    body.originLabel ?? body.origin_label,
-    body.destinationLabel ?? body.destination_label,
-  );
+  const routeGate = xlCommercialBookingDecision({
+    commercialBookingEnabled,
+    segments: ((segmentRows.data ?? []) as Array<Record<string, unknown>>).map(segmentFromRow),
+    originLabel: body.originLabel ?? body.origin_label,
+    destinationLabel: body.destinationLabel ?? body.destination_label,
+  });
   if (routeGate.ok === false) return jsonError(routeGate.error, 409);
   const excluded: string[] = [];
   for (let attempt = 0; attempt < 3; attempt += 1) {
