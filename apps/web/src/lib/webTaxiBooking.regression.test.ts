@@ -12,10 +12,16 @@ const signIn = readFileSync(join(root, "app/auth/sign-in/page.tsx"), "utf8");
 const passwordSignIn = readFileSync(join(root, "app/auth/sign-in-password/page.tsx"), "utf8");
 const errandForm = readFileSync(join(root, "src/components/CreateErrandOrderForm.tsx"), "utf8");
 const foodOrder = readFileSync(join(root, "app/orders/new/page.tsx"), "utf8");
+const session = readFileSync(join(root, "src/lib/webTaxiSession.ts"), "utf8");
 
 assert.match(taxi, /\/api\/taxi\/rides\/quote/);
 assert.match(taxi, /\/api\/taxi\/rides\/create/);
 assert.match(taxi, /\/api\/taxi\/rides\/mine/);
+assert.match(taxi, /\/api\/taxi\/rides\/cancel/);
+assert.match(taxi, /\/api\/mapbox\/reverse/);
+assert.match(taxi, /MapboxAddressField/);
+assert.match(taxi, /preview: true/);
+assert.match(session, /network_error/);
 assert.match(taxi, /create-taxi-quote-checkout-session/);
 assert.match(taxi, /next=%2Fclient%2Ftaxi/);
 assert.doesNotMatch(taxi, /2000|1500|5000/);

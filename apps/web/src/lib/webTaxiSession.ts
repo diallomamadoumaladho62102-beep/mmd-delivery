@@ -11,7 +11,11 @@ export async function webTaxiFetch(path: string, init?: RequestInit) {
   const headers = new Headers(init?.headers);
   headers.set("content-type", "application/json");
   headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(path, { ...init, headers });
-  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-  return { ok: response.ok && body.ok !== false, status: response.status, body };
+  try {
+    const response = await fetch(path, { ...init, headers });
+    const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    return { ok: response.ok && body.ok !== false, status: response.status, body };
+  } catch {
+    return { ok: false as const, status: 0, body: { error: "network_error" } };
+  }
 }
