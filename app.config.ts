@@ -243,6 +243,7 @@ export default ({ config }) => {
 
     ios: {
       ...existingIos,
+      version: "1.0.1",
       bundleIdentifier: IOS_BUNDLE_ID,
       icon: "./apps/mobile/assets/ios-marketing-icon.png",
       supportsTablet: true,

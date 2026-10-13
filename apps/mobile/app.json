@@ -149,6 +149,7 @@
       ]
     },
     "ios": {
+      "version": "1.0.1",
       "bundleIdentifier": "com.maladho2025.mmddelivery",
       "icon": "./assets/ios-marketing-icon.png",
       "supportsTablet": true,
