@@ -460,13 +460,23 @@ export function DriverHomePremiumSheet({
         {jobsBlock}
 
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.primaryAction} activeOpacity={0.9} onPress={onGoBusyArea}>
+          <TouchableOpacity
+            style={styles.primaryAction}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            onPress={onGoBusyArea}
+          >
             <View style={styles.actionTextCol}>
               <Text style={styles.primaryActionTitle}>{t("driver.home.premium.goBusyArea")}</Text>
               <Text style={styles.primaryActionSub}>{t("driver.home.premium.goBusyAreaSub")}</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryAction} activeOpacity={0.9} onPress={onGoOffline}>
+          <TouchableOpacity
+            style={styles.secondaryAction}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            onPress={onGoOffline}
+          >
             <View style={styles.actionTextCol}>
               <Text style={styles.secondaryActionTitle}>{t("driver.home.premium.goOffline")}</Text>
               <Text style={styles.secondaryActionSub}>{t("driver.home.premium.goOfflineSub")}</Text>
@@ -904,28 +914,38 @@ const styles = StyleSheet.create({
   jobAmount: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
   jobMeta: { color: "#94A3B8", fontSize: 11, fontWeight: "600", marginTop: 2 },
 
-  actionsRow: { flexDirection: "column", gap: 8, marginTop: 4, marginBottom: 6 },
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 6,
+  },
   primaryAction: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: C.actionNavy,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: MMD_STROKE,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 12,
   },
   secondaryAction: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: MMD_BLUE,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: MMD_STROKE,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 12,
   },
-  actionTextCol: { flex: 1 },
+  actionTextCol: { flex: 1, minWidth: 0 },
   primaryActionTitle: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
   primaryActionSub: {
     color: "#DCFCE7",

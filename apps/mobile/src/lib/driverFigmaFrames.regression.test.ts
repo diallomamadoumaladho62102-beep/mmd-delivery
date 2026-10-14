@@ -89,5 +89,9 @@ assert.match(sheet, /coursePhase === "searching"/);
 assert.match(sheet, /coursePhase === "locating"/);
 assert.doesNotMatch(sheet, /onPress=\{_onViewHotspots\}/);
 assert.doesNotMatch(sheet, /onPress=\{onViewHotspots\}/);
+assert.match(sheet, /actionsRow:\s*\{[^}]*flexDirection:\s*"row"/);
+assert.match(sheet, /primaryAction:\s*\{[^}]*flex:\s*1/);
+assert.match(sheet, /minWidth:\s*0/);
+assert.doesNotMatch(sheet, /actionsRow:\s*\{[^}]*flexDirection:\s*"column"/);
 
 console.log("driverFigmaFrames.regression.test.ts OK");
