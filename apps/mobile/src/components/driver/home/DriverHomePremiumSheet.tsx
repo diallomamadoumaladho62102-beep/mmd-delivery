@@ -131,10 +131,11 @@ function jobVisual(kind: PremiumJobKind): {
   return { icon: "cube", bg: "rgba(170,190,230,0.16)", fg: C.textMuted };
 }
 
-const RADAR_TURN_MS = 2000;
+const RADAR_TURN_MS = 5000;
+const RADAR_ARC_DELAYS_MS = [0, 1700, 3400] as const;
 
-/** Concentric red / yellow / green radar. One clockwise turn every 2 seconds. */
-function NextCourseRadar({ spinning }: { spinning: boolean }) {
+/** One clockwise turn every 5 seconds. Each arc has its own clock and start offset. */
+function useRadarArcRotation(spinning: boolean, startDelayMs: number) {
   const spin = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -143,35 +144,74 @@ function NextCourseRadar({ spinning }: { spinning: boolean }) {
       spin.setValue(0);
       return;
     }
-    const anim = Animated.loop(
-      Animated.timing(spin, {
-        toValue: 1,
-        duration: RADAR_TURN_MS,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-    anim.start();
+
+    let loop: Animated.CompositeAnimation | null = null;
+    const timer = setTimeout(() => {
+      loop = Animated.loop(
+        Animated.timing(spin, {
+          toValue: 1,
+          duration: RADAR_TURN_MS,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      );
+      loop.start();
+    }, startDelayMs);
+
     return () => {
-      anim.stop();
+      clearTimeout(timer);
+      loop?.stop();
       spin.stopAnimation();
     };
-  }, [spin, spinning]);
+  }, [spin, spinning, startDelayMs]);
 
-  const rotate = spin.interpolate({
+  return spin.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
   });
+}
+
+function RadarArc({
+  size,
+  color,
+  borderWidth,
+  rotate,
+}: {
+  size: number;
+  color: string;
+  borderWidth: number;
+  rotate: Animated.AnimatedInterpolation<string>;
+}) {
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth,
+        borderColor: "transparent",
+        borderTopColor: color,
+        borderRightColor: color,
+        transform: [{ rotate }],
+      }}
+    />
+  );
+}
+
+/** Partial red, yellow, and green arcs. The center dot stays fixed. */
+function NextCourseRadar({ spinning }: { spinning: boolean }) {
+  const rotateRed = useRadarArcRotation(spinning, RADAR_ARC_DELAYS_MS[0]);
+  const rotateYellow = useRadarArcRotation(spinning, RADAR_ARC_DELAYS_MS[1]);
+  const rotateGreen = useRadarArcRotation(spinning, RADAR_ARC_DELAYS_MS[2]);
 
   return (
     <View style={styles.radarBox} accessibilityRole="image">
-      <View style={styles.radarRingRed} />
-      <View style={styles.radarRingYellow} />
+      <RadarArc size={68} color="#EF4444" borderWidth={5} rotate={rotateRed} />
+      <RadarArc size={48} color="#FACC15" borderWidth={5} rotate={rotateYellow} />
+      <RadarArc size={30} color="#22C55E" borderWidth={4} rotate={rotateGreen} />
       <View style={styles.radarCore} />
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.radarSweep, { transform: [{ rotate }] }]}
-      />
     </View>
   );
 }
@@ -481,36 +521,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  radarRingRed: {
-    position: "absolute",
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 3,
-    borderColor: "#EF4444",
-  },
-  radarRingYellow: {
-    position: "absolute",
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 3,
-    borderColor: "#FACC15",
-  },
   radarCore: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "#22C55E",
-  },
-  radarSweep: {
-    position: "absolute",
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 3,
-    borderColor: "transparent",
-    borderTopColor: "#EF4444",
   },
   earningsValueRow: {
     flexDirection: "row",
