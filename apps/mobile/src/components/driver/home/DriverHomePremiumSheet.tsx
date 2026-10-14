@@ -9,6 +9,7 @@ import {
   ScrollView,
   Animated,
   Easing,
+  useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -24,6 +25,7 @@ import {
   MMD_WHITE,
 } from "../../../theme/mmdUi";
 import { formatHiddenEarningsLabel } from "../../../lib/driverActiveJobs";
+import { onlineSheetMaxHeightPx } from "../../../lib/driverScreenSafeArea";
 import { useTranslation } from "react-i18next";
 
 /** Figma Driver Home PremiumSheet — MMD_BLUE chrome (file m1YPra9RLUz38tGTPmYczj). */
@@ -199,6 +201,7 @@ export function DriverHomePremiumSheet({
   bottomPadding,
 }: Props) {
   const { t } = useTranslation();
+  const { height: windowHeight } = useWindowDimensions();
   const progressPct = Math.round(Math.max(0, Math.min(1, stats.levelProgress)) * 100);
   const jobsTitle = t("driver.home.premium.activeJobs", { count: jobs.length });
 
@@ -382,7 +385,15 @@ export function DriverHomePremiumSheet({
       : t("driver.home.offline", "OFFLINE");
 
   return (
-    <View style={[styles.sheet, styles.sheetOnline, { paddingBottom: Math.max(bottomPadding, 12) }]}>
+    <View
+      style={[
+        styles.sheet,
+        {
+          maxHeight: onlineSheetMaxHeightPx(windowHeight),
+          paddingBottom: Math.max(bottomPadding, 12),
+        },
+      ]}
+    >
       <View style={styles.handle} />
 
       <ScrollView
@@ -434,9 +445,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingTop: 6,
     maxHeight: "100%",
-  },
-  sheetOnline: {
-    maxHeight: "58%",
   },
   nextCourseCard: {
     minHeight: 118,

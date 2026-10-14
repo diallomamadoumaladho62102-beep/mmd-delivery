@@ -15,6 +15,7 @@ import {
   NAV_VISUAL_CALIB,
 } from "./driverNavigationVisual";
 import { routeLineWidthExpression, routeLineWidthPx } from "./driverNavigationRouteStyle";
+import { onlineSheetMaxHeightPx } from "./driverScreenSafeArea";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const home = fs.readFileSync(path.join(here, "../screens/DriverHomeScreen.tsx"), "utf8");
@@ -62,6 +63,13 @@ assert.match(home, /backgroundColor: "#F97316"/);
 assert.match(home, /backgroundColor: MMD_BLUE/);
 assert.match(camera, /closeMapZoom\(16\)/);
 
+assert.equal(onlineSheetMaxHeightPx(844), Math.round(844 * 0.58));
+assert.equal(onlineSheetMaxHeightPx(390), 226);
+assert.equal(onlineSheetMaxHeightPx(0), 0);
+assert.match(sheet, /onlineSheetMaxHeightPx\(windowHeight\)/);
+assert.doesNotMatch(sheet, /maxHeight:\s*"58%"/);
+assert.ok(Math.abs(closeMapZoom(13) - (13 + Math.log2(3.5))) < 1e-9);
+assert.ok(Math.abs(NAV_CAMERA.zoom - (19.32 - 1.85 + Math.log2(3.5))) < 1e-9);
 assert.match(sheet, /#082F49/);
 assert.match(sheet, /#0F172A/);
 assert.doesNotMatch(sheet, /MMD Smart Dispatch/);

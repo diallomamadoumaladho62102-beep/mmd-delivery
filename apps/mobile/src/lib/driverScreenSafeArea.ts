@@ -15,6 +15,18 @@ function clampInset(value: number): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+/**
+ * Online Driver Home sheet cap.
+ * `bottomArea` is absolutely positioned and has no height, and `sheetHost` only
+ * sets width, so a percentage `maxHeight` does not resolve. Use window pixels.
+ */
+export const ONLINE_SHEET_MAX_HEIGHT_RATIO = 0.58;
+
+export function onlineSheetMaxHeightPx(windowHeight: number): number {
+  if (!Number.isFinite(windowHeight) || windowHeight <= 0) return 0;
+  return Math.round(windowHeight * ONLINE_SHEET_MAX_HEIGHT_RATIO);
+}
+
 /** Bottom padding for Driver Home sheet / offer cards above the tab bar. */
 export function resolveDriverTabBottomPadding(params: {
   tabClearance: number;
