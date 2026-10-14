@@ -20,6 +20,7 @@ import {
   StyleSheet,
   Vibration,
   Dimensions,
+  I18nManager,
   type AppStateStatus,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,6 +33,7 @@ import {
   type DriverServiceModeKey,
 } from "../components/driver/home/DriverHomeServiceModes";
 import { MmdDriverLocationMarker } from "../components/driver/home/MmdDriverLocationMarker";
+import { closeMapZoom } from "../lib/driverNavigationVisual";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -373,9 +375,9 @@ const SHEET_MIN_TRANSLATE_Y = 0;
 const SHEET_MID_TRANSLATE_Y = Math.round(SHEET_SCREEN_H * 0.30);
 /**
  * Higher translateY = sheet lower = more Mapbox visible.
- * ONLINE peek locked low (~30% sheet) so Mapbox stays the hero — matches validated capture.
+ * Online rest stays near the bottom so the compact Figma panel does not cover the map.
  */
-const SHEET_MAX_ONLINE_Y = Math.round(SHEET_SCREEN_H * 0.7);
+const SHEET_MAX_ONLINE_Y = Math.round(SHEET_SCREEN_H * 0.08);
 const SHEET_MAX_OFFLINE_Y = Math.round(SHEET_SCREEN_H * 0.42);
 const SHEET_MAX_TRANSLATE_Y = SHEET_MAX_ONLINE_Y;
 
@@ -2853,7 +2855,7 @@ export function DriverHomeScreen() {
     setRegion((prev) => ({ ...prev, latitude, longitude, latitudeDelta: 0.035, longitudeDelta: 0.035 }));
     cameraRef.current?.setCamera({
       centerCoordinate: [Number(longitude), Number(latitude)],
-      zoomLevel: 16,
+      zoomLevel: closeMapZoom(16),
       animationMode: "flyTo",
       animationDuration: 650,
     });
@@ -2870,7 +2872,7 @@ export function DriverHomeScreen() {
     if (best) {
       cameraRef.current?.setCamera({
         centerCoordinate: [best.lng, best.lat],
-        zoomLevel: 14.5,
+        zoomLevel: closeMapZoom(13),
         animationMode: "flyTo",
         animationDuration: 700,
       });
@@ -2907,7 +2909,7 @@ export function DriverHomeScreen() {
       (withPickup as any).pickup_longitude;
     cameraRef.current?.setCamera({
       centerCoordinate: [Number(lng), Number(withPickup.pickup_lat)],
-      zoomLevel: 14.5,
+      zoomLevel: closeMapZoom(13),
       animationMode: "flyTo",
       animationDuration: 700,
     });
@@ -2975,21 +2977,6 @@ export function DriverHomeScreen() {
   const liveDriversNearby = areaIntel?.drivers_nearby ?? 0;
   const liveRequestsNearby =
     areaIntel?.requests_nearby ?? availableOrders.length;
-  const offerPickupLng =
-    activeOffer?.pickup_lng ??
-    (activeOffer as any)?.pickup_lon ??
-    (activeOffer as any)?.pickup_long ??
-    (activeOffer as any)?.pickup_longitude ??
-    null;
-  const offerDropoffLng =
-    activeOffer?.dropoff_lng ??
-    (activeOffer as any)?.dropoff_lon ??
-    (activeOffer as any)?.dropoff_long ??
-    (activeOffer as any)?.dropoff_longitude ??
-    null;
-  const hasOfferPickup = activeOffer?.pickup_lat != null && offerPickupLng != null;
-  const hasOfferDropoff = activeOffer?.dropoff_lat != null && offerDropoffLng != null;
-
   const searchPulseScale = searchingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.02, 1] });
   const radarInnerScale = searchingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.08, 1] });
   const topHudTranslateY = topHudAnim.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] });
@@ -3013,7 +3000,7 @@ export function DriverHomeScreen() {
           <Mapbox.UserLocation visible={false} />
           <Mapbox.Camera
             ref={cameraRef}
-            zoomLevel={13}
+            zoomLevel={closeMapZoom(13)}
             centerCoordinate={[Number(region.longitude), Number(region.latitude)]}
             animationMode="flyTo"
             animationDuration={800}
@@ -3034,18 +3021,6 @@ export function DriverHomeScreen() {
               />
             </Mapbox.MarkerView>
           ) : null}
-
-          {activeOffer && hasOfferPickup && (
-            <Mapbox.PointAnnotation id="pickup-location" coordinate={[offerPickupLng as number, activeOffer.pickup_lat as number]}>
-              <View style={styles.pickupPin}><Text style={styles.pinText}>{t("driver.home.map.pickupTitle")}</Text></View>
-            </Mapbox.PointAnnotation>
-          )}
-
-          {activeOffer && hasOfferDropoff && (
-            <Mapbox.PointAnnotation id="dropoff-location" coordinate={[offerDropoffLng as number, activeOffer.dropoff_lat as number]}>
-              <View style={styles.dropoffPin}><Text style={styles.pinText}>{t("driver.home.map.dropoffTitle")}</Text></View>
-            </Mapbox.PointAnnotation>
-          )}
 
           {isOnline && areaIntel?.hotspots?.length ? (
             <Mapbox.ShapeSource
@@ -3231,9 +3206,9 @@ export function DriverHomeScreen() {
         </View>
 
         {gpsLoading && (
-          <View style={styles.loadingOverlay}>
+          <View pointerEvents="none" style={styles.gpsStatusChip}>
             <ActivityIndicator color="#0F172A" />
-            <Text style={[styles.loadingText, { color: "#0F172A" }]}>
+            <Text style={styles.gpsStatusText}>
               {t("driver.home.gps.locating", "Locating driver…")}
             </Text>
           </View>
@@ -3263,6 +3238,7 @@ export function DriverHomeScreen() {
               <DriverHomePremiumSheet
                 isOnline={isOnline}
                 searchingSubtitle={searchMessages[searchMessageIndex]}
+                coursePhase={!isOnline ? "offline" : gpsLoading ? "locating" : "searching"}
                 smartDispatch={
                   areaIntel?.smart_dispatch ?? {
                     status: isOnline ? "quiet" : "offline",
@@ -3526,21 +3502,25 @@ function OfferCard({
     <View style={[styles.offerWrap, { paddingBottom: bottomPadding }]}>
       <View style={styles.offerCard}>
         <View style={styles.offerHeader}>
-          <Text style={styles.offerTitle}>{t("driver.home.offer.title", "New delivery available")}</Text>
-          <Text style={styles.countdown}>{countdown}s</Text>
+          <Text style={styles.offerTitle}>New delivery available</Text>
+          <View style={styles.countdownPill}>
+            <Text style={styles.countdown}>{countdown}s</Text>
+          </View>
         </View>
-        <Text style={styles.orderKind}>{formatKind(offer.kind, offer.restaurant_name)}</Text>
-        <Text style={styles.offerAddress}>{t("driver.home.offer.pickup")} <Text style={styles.offerAddressStrong}>{offer.pickup_address ?? "—"}</Text></Text>
-        <Text style={styles.offerAddress}>{t("driver.home.offer.dropoff")} <Text style={styles.offerAddressStrong}>{offer.dropoff_address ?? "—"}</Text></Text>
+        <Text style={styles.offerKind}>{formatKind(offer.kind, offer.restaurant_name)}</Text>
+        <Text style={[styles.offerAddress, { textAlign: I18nManager.isRTL ? "right" : "left" }]}>Pickup: {offer.pickup_address ?? "—"}</Text>
+        <Text style={[styles.offerAddress, { textAlign: I18nManager.isRTL ? "right" : "left" }]}>Dropoff: {offer.dropoff_address ?? "—"}</Text>
         <View style={styles.offerStats}>
-          <Text style={styles.offerStat}>{t("driver.home.offer.distance")}: <Text style={styles.offerStatStrong}>{offer.distance_miles != null ? `${offer.distance_miles.toFixed(2)} mi` : "—"}</Text></Text>
+          <Text style={[styles.offerAddress, { textAlign: I18nManager.isRTL ? "right" : "left", flex: 1 }]}>
+            Distance: {offer.distance_miles != null ? `${offer.distance_miles.toFixed(2)} mi` : "—"}
+          </Text>
           <Text style={styles.offerMoney}>{money(amount)}</Text>
         </View>
         <Text style={styles.orderTime}>{formatDate(offer.created_at)}</Text>
         <View style={styles.offerActions}>
-          <TouchableOpacity onPress={onDecline} style={styles.declineButton}><Text style={styles.actionText}>{t("driver.home.ignore")}</Text></TouchableOpacity>
+          <TouchableOpacity onPress={onDecline} style={styles.declineButton}><Text style={styles.actionText}>Ignore</Text></TouchableOpacity>
           <TouchableOpacity onPress={onAccept} disabled={accepting} style={[styles.acceptButton, accepting && { opacity: 0.6 }]}>
-            <Text style={styles.acceptText}>{accepting ? t("driver.home.accepting") : t("driver.home.offer.accept")}</Text>
+            <Text style={styles.acceptText}>{accepting ? t("driver.home.accepting") : "Accept"}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -3755,18 +3735,20 @@ const styles = StyleSheet.create({
   demandFloatingIcon: { color: "#C4B5FD", fontSize: 16, fontWeight: "900", marginRight: 10 },
   demandFloatingTitle: { color: "#F8FAFC", fontSize: 13, fontWeight: "900" },
   demandFloatingSub: { color: "#94A3B8", fontSize: 11, fontWeight: "800", marginTop: 2 },
-  loadingOverlay: {
+  gpsStatusChip: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: "46%",
+    alignSelf: "center",
+    zIndex: 60,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,51,153,0.45)",
-    zIndex: 70,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.92)",
   },
-  loadingText: { color: MMD_TEXT, marginTop: 8, fontWeight: "700", fontSize: 20 },
+  gpsStatusText: { color: "#0F172A", fontWeight: "700", fontSize: 13 },
   pickupPin: { backgroundColor: "#F97316", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
   dropoffPin: { backgroundColor: "#3B82F6", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
   pinText: { color: "white", fontWeight: "800", fontSize: 11 },
@@ -3909,6 +3891,7 @@ const styles = StyleSheet.create({
   orderTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
   orderId: { color: "#F8FAFC", fontSize: 15, fontWeight: "900" },
   orderKind: { color: "#93C5FD", fontSize: 12, marginTop: 3 },
+  offerKind: { color: "#93C5FD", fontSize: 20, fontWeight: "600" },
   orderTime: { color: "#64748B", fontSize: 11, marginTop: 3 },
   orderStatus: { color: "#A78BFA", fontSize: 12, fontWeight: "800" },
   orderAmount: { color: "#FFFFFF", fontSize: 20, fontWeight: "900", marginTop: 8 },
@@ -3920,42 +3903,44 @@ const styles = StyleSheet.create({
   offerWrap: { paddingHorizontal: 16 },
   offerCard: {
     borderRadius: 24,
-    padding: 16,
+    padding: 20,
+    minHeight: 366,
     backgroundColor: MMD_BLUE,
     borderWidth: 1.5,
     borderColor: MMD_STROKE,
-    gap: 8,
+    gap: 12,
   },
-  offerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  offerTitle: { color: MMD_WHITE, fontSize: 18, fontWeight: "800" },
-  countdown: { color: "#F97316", fontSize: 24, fontWeight: "800" },
-  offerAddress: { color: "#94A3B8", fontSize: 12 },
-  offerAddressStrong: { color: "#94A3B8", fontWeight: "600" },
-  offerStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  offerStat: { color: "#94A3B8", fontSize: 12, fontWeight: "600" },
-  offerStatStrong: { color: "#94A3B8", fontWeight: "600" },
-  offerMoney: { color: "#4ADE80", fontSize: 22, fontWeight: "800" },
-  offerActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  offerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+  offerTitle: { color: "#F8FAFC", fontSize: 28, fontWeight: "800", flex: 1 },
+  countdownPill: {
+    backgroundColor: "#F97316",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countdown: { color: "#FFFFFF", fontSize: 20, fontWeight: "800" },
+  offerAddress: { color: "#FFFFFF", fontSize: 22, fontWeight: "700", textAlign: "left" },
+  offerStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
+  offerMoney: { color: "#4ADE80", fontSize: 28, fontWeight: "800" },
+  offerActions: { flexDirection: "row", gap: 10, marginTop: 8 },
   declineButton: {
     flex: 1,
-    height: 44,
-    borderRadius: 999,
-    backgroundColor: "#EF4444",
-    borderWidth: 1.5,
-    borderColor: MMD_STROKE,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "#DC2626",
     alignItems: "center",
     justifyContent: "center",
   },
   acceptButton: {
     flex: 1,
-    height: 44,
-    borderRadius: 999,
+    height: 56,
+    borderRadius: 16,
     backgroundColor: GREEN,
-    borderWidth: 1.5,
-    borderColor: MMD_STROKE,
     alignItems: "center",
     justifyContent: "center",
   },
-  actionText: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
-  acceptText: { color: MMD_WHITE, fontSize: 14, fontWeight: "800" },
+  actionText: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },
+  acceptText: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },
 });

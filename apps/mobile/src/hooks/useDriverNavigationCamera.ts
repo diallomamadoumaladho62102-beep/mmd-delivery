@@ -3,7 +3,11 @@ import type Mapbox from "@rnmapbox/maps";
 import { smoothHeading } from "../lib/navigationService";
 import type { CoordinatePoint } from "../lib/coordinates";
 import type { NavigationCameraMode } from "../lib/driverNavigation/types";
-import { NAV_CAMERA, NAV_CAMERA_LOOK_AHEAD_METERS } from "../lib/driverNavigationVisual";
+import {
+  closeMapZoom,
+  NAV_CAMERA,
+  NAV_CAMERA_LOOK_AHEAD_METERS,
+} from "../lib/driverNavigationVisual";
 import {
   computeAdaptiveCameraSettings,
   pointOffsetByBearing,
@@ -86,7 +90,7 @@ export function useDriverNavigationCamera(
       try {
         cameraRef.current.setCamera({
           centerCoordinate: [center.longitude, center.latitude],
-          zoomLevel: navigationActive ? lastZoomRef.current : 16,
+          zoomLevel: navigationActive ? lastZoomRef.current : closeMapZoom(16),
           heading: navigationActive ? smoothedHeadingRef.current : 0,
           pitch: navigationActive ? lastPitchRef.current : 0,
           padding: navigationActive

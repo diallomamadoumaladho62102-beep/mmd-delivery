@@ -5,6 +5,7 @@ import {
   NAV_ARROW_TIP_AHEAD_METERS,
   NAV_ROUTE_ICON_LEAD_METERS,
   junctionRouteMetersFromTraveled,
+  NAV_ROUTE_LINE_WIDTH_PX,
   ROUTE_GLOW_WIDTH_RATIO,
   ROUTE_LINE_WIDTH_RATIO,
 } from "./driverNavigationVisual";
@@ -310,7 +311,9 @@ export function routeLineWidthPx(
   screenWidth: number,
   widthRatio: number,
 ): number {
-  return Math.max(7, Math.round(screenWidth * widthRatio));
+  void screenWidth;
+  void widthRatio;
+  return NAV_ROUTE_LINE_WIDTH_PX;
 }
 
 export type MapboxZoomLineWidth = readonly (string | number | readonly string[])[];
@@ -325,7 +328,7 @@ export function routeLineWidthExpression(
     ["linear"],
     ["zoom"],
     15,
-    base * 0.88,
+    base,
     16,
     base,
     17,

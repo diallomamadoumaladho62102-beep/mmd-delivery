@@ -220,13 +220,24 @@ export const REF_NAV_MEASURE = {
   altRouteWidthPx: 26,
 } as const;
 
-/**
- * Calibrage visuel progressif — dimensions écran uniquement.
- * N'affecte pas GPS, recalcul, split vert/cyan, ETA, instructions, HUD.
- */
+/** Cadrage rapproché final des cartes chauffeur (Figma, facteur linéaire). */
+export const MAP_CLOSE_FRAMING = 3.5;
+/** +1 niveau Mapbox double l'échelle. 3,5× = log2(3,5). */
+export const MAP_CLOSE_ZOOM_DELTA = Math.log2(MAP_CLOSE_FRAMING);
+
+export function closeMapZoom(baseZoom: number): number {
+  return baseZoom + MAP_CLOSE_ZOOM_DELTA;
+}
+
+/** Épaisseur écran de la ligne d'itinéraire (Figma Route 286:6054, 14 px). */
+export const NAV_ROUTE_LINE_WIDTH_PX = 14;
+
 export const NAV_VISUAL_CALIB = {
-  /** Décalage zoom caméra (négatif = plus de carte Mapbox visible). */
-  zoomOffset: -1.85,
+  /**
+   * Le décalage -1,85 éloignait la caméra d'environ 3,6×.
+   * Le cadrage final le rapproche de 3,5× sans changer le cap ni le pitch.
+   */
+  zoomOffset: -1.85 + MAP_CLOSE_ZOOM_DELTA,
   /** Multiplicateur largeur route vert + cyan (px écran). */
   routeWidthScale: 0.58,
   /** Multiplicateur largeur glow route (px écran). */
@@ -281,8 +292,8 @@ export function computeNavigationScreenLayout(
   return {
     width,
     height,
-    routeFutureWidth: width * ROUTE_LINE_WIDTH_RATIO,
-    routeTraveledWidth: width * ROUTE_LINE_WIDTH_RATIO,
+    routeFutureWidth: NAV_ROUTE_LINE_WIDTH_PX,
+    routeTraveledWidth: NAV_ROUTE_LINE_WIDTH_PX,
     cameraPaddingTop: Math.max(topInset, paddingTop) + safeTop,
     cameraPaddingBottom,
     cameraPaddingLeft: HORIZONTAL_INSET + safeLeft,

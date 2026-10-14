@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   ActivityIndicator,
   ScrollView,
   Animated,
+  Easing,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import {
   MMD_BLUE,
@@ -87,9 +89,13 @@ export type PremiumSmartDispatch = {
   status: "live" | "offline" | "quiet";
 };
 
+export type DriverCoursePhase = "offline" | "locating" | "searching";
+
 type Props = {
   isOnline: boolean;
   searchingSubtitle: string;
+  /** Real availability. Searching copy is shown only while offers are actually polled. */
+  coursePhase?: DriverCoursePhase;
   smartDispatch?: PremiumSmartDispatch | null;
   zone: PremiumZoneInfo;
   stats: PremiumSheetStats;
@@ -123,50 +129,47 @@ function jobVisual(kind: PremiumJobKind): {
   return { icon: "cube", bg: "rgba(170,190,230,0.16)", fg: C.textMuted };
 }
 
-/** Mockup-style luminous multi-layer backdrop + full-width pulse wave. */
-function SmartDispatchBackdrop({ live }: { live: boolean }) {
+const RADAR_TURN_MS = 2000;
+
+/** Concentric red / yellow / green radar. One clockwise turn every 2 seconds. */
+function NextCourseRadar({ spinning }: { spinning: boolean }) {
+  const spin = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!spinning) {
+      spin.stopAnimation();
+      spin.setValue(0);
+      return;
+    }
+    const anim = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: RADAR_TURN_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    anim.start();
+    return () => {
+      anim.stop();
+      spin.stopAnimation();
+    };
+  }, [spin, spinning]);
+
+  const rotate = spin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <View style={styles.smartBase} />
-      <View style={styles.smartGradientTop} />
-      <View style={styles.smartGradientBottom} />
-      <View style={[styles.smartGlowCyan, live ? styles.smartGlowLive : null]} />
-      <View style={[styles.smartGlowPurple, live ? styles.smartGlowLive : null]} />
-      <View style={styles.smartGlowBlueMid} />
-      <Image
-        source={require("../../../../assets/brand/smart-dispatch-wave.png")}
-        style={styles.smartWaveImage}
-        resizeMode="cover"
+    <View style={styles.radarBox} accessibilityRole="image">
+      <View style={styles.radarRingRed} />
+      <View style={styles.radarRingYellow} />
+      <View style={styles.radarCore} />
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.radarSweep, { transform: [{ rotate }] }]}
       />
-      <Image
-        source={require("../../../../assets/brand/smart-dispatch-wave.png")}
-        style={styles.smartWaveImageSoft}
-        resizeMode="cover"
-      />
-      <View style={styles.smartWaveRibbonHost}>
-        {[
-          { x: 0.08, y: 22, c: "#67E8F9", s: "#22D3EE" },
-          { x: 0.2, y: 34, c: "#A5B4FC", s: "#818CF8" },
-          { x: 0.34, y: 14, c: "#C084FC", s: "#A855F7" },
-          { x: 0.48, y: 30, c: "#67E8F9", s: "#22D3EE" },
-          { x: 0.62, y: 18, c: "#E879F9", s: "#D946EF" },
-          { x: 0.76, y: 32, c: "#67E8F9", s: "#22D3EE" },
-          { x: 0.9, y: 16, c: "#C084FC", s: "#A855F7" },
-        ].map((n, i) => (
-          <View
-            key={`node-${i}`}
-            style={[
-              styles.smartWaveNode,
-              {
-                left: `${n.x * 100}%`,
-                bottom: n.y,
-                backgroundColor: n.c,
-                shadowColor: n.s,
-              },
-            ]}
-          />
-        ))}
-      </View>
     </View>
   );
 }
@@ -174,13 +177,14 @@ function SmartDispatchBackdrop({ live }: { live: boolean }) {
 export function DriverHomePremiumSheet({
   isOnline,
   searchingSubtitle: _searchingSubtitle,
+  coursePhase = "searching",
   smartDispatch: _smartDispatch,
-  zone,
+  zone: _zone,
   stats,
   earningsHidden,
   onToggleEarningsHidden,
   onOpenEarnings,
-  onViewHotspots,
+  onViewHotspots: _onViewHotspots,
   onViewAllJobs,
   onGoBusyArea,
   onGoOffline,
@@ -190,8 +194,8 @@ export function DriverHomePremiumSheet({
   jobs,
   jobsLoading,
   jobsError,
-  searchPulseStyle,
-  radarPulseStyle,
+  searchPulseStyle: _searchPulseStyle,
+  radarPulseStyle: _radarPulseStyle,
   bottomPadding,
 }: Props) {
   const { t } = useTranslation();
@@ -210,21 +214,33 @@ export function DriverHomePremiumSheet({
 
       <View style={styles.summaryStats}>
         <View style={styles.statCol}>
-          <Text style={styles.statValue} numberOfLines={1}>
-            {formatHiddenEarningsLabel(earningsHidden, stats.todayEarningsLabel)}
-          </Text>
+          <View style={styles.earningsValueRow}>
+            <Text style={[styles.statValue, styles.earningsValue]} numberOfLines={1}>
+              {formatHiddenEarningsLabel(earningsHidden, stats.todayEarningsLabel)}
+            </Text>
+            <TouchableOpacity
+              onPress={onToggleEarningsHidden}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t("driver.home.premium.earnings")}
+            >
+              <Ionicons name={earningsHidden ? "eye-off" : "eye"} size={16} color={C.textMuted} />
+            </TouchableOpacity>
+          </View>
           <Text style={styles.statLabel}>{t("driver.home.premium.earnings")}</Text>
         </View>
         <View style={styles.statCol}>
-          <Text style={styles.statValue}>{stats.tripsToday}</Text>
+          <Text style={[styles.statValue, styles.summaryValue]}>{stats.tripsToday}</Text>
           <Text style={styles.statLabel}>{t("driver.home.premium.trips")}</Text>
         </View>
         <View style={styles.statCol}>
-          <Text style={styles.statValue}>{Math.round(stats.points).toLocaleString()}</Text>
+          <Text style={[styles.statValue, styles.summaryValue]}>
+            {Math.round(stats.points).toLocaleString()}
+          </Text>
           <Text style={styles.statLabel}>{t("driver.home.premium.points")}</Text>
         </View>
         <View style={styles.statCol}>
-          <Text style={styles.statValue} numberOfLines={1}>
+          <Text style={[styles.statValue, styles.summaryValue]} numberOfLines={1}>
             {stats.level}
           </Text>
           <Text style={styles.statLabel}>{t("driver.home.premium.level")}</Text>
@@ -233,9 +249,6 @@ export function DriverHomePremiumSheet({
 
       <View style={styles.progressHeader}>
         <Text style={styles.progressPts}>{stats.pointsProgressLabel}</Text>
-        <TouchableOpacity onPress={onToggleEarningsHidden} hitSlop={8}>
-          <Ionicons name={earningsHidden ? "eye-off" : "eye"} size={15} color={C.textMuted} />
-        </TouchableOpacity>
       </View>
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
@@ -257,26 +270,27 @@ export function DriverHomePremiumSheet({
     <View style={styles.jobsBlock}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{jobsTitle}</Text>
-        <TouchableOpacity
-          onPress={jobs.length > 0 ? onViewAllJobs : onRefreshJobs}
-          style={styles.linkRow}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.linkText}>
-            {jobs.length > 0 ? t("driver.home.premium.viewAll") : t("driver.home.premium.refresh")}
-          </Text>
-          <Ionicons name="chevron-forward" size={13} color={C.link} />
-        </TouchableOpacity>
+        {jobs.length === 0 && !jobsLoading ? (
+          <Text style={styles.emptyTitle}>{t("driver.home.premium.noMission")}</Text>
+        ) : (
+          <TouchableOpacity
+            onPress={jobs.length > 0 ? onViewAllJobs : onRefreshJobs}
+            style={styles.linkRow}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.linkText}>
+              {jobs.length > 0 ? t("driver.home.premium.viewAll") : t("driver.home.premium.refresh")}
+            </Text>
+            <Ionicons name="chevron-forward" size={13} color={C.link} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {jobsLoading ? <ActivityIndicator color={C.green} style={{ marginVertical: 10 }} /> : null}
+      {jobsLoading ? <ActivityIndicator color={C.green} style={{ marginVertical: 4 }} /> : null}
       {jobsError ? <Text style={styles.errorText}>{jobsError}</Text> : null}
 
       {jobs.length === 0 && !jobsLoading ? (
-        <View style={styles.emptyBox}>
-          <Text style={styles.emptyTitle}>{t("driver.home.premium.noMission")}</Text>
-          <Text style={styles.emptySub}>{t("driver.home.premium.noMissionBody")}</Text>
-        </View>
+        <Text style={styles.emptySub}>{t("driver.home.premium.noMissionBody")}</Text>
       ) : (
         jobs.map((item) => {
           const visual = jobVisual(item.kind);
@@ -353,8 +367,22 @@ export function DriverHomePremiumSheet({
     );
   }
 
+  const searching = coursePhase === "searching";
+  const locating = coursePhase === "locating";
+  const courseTitle = t("driver.home.premium.nextCourseTitle");
+  const courseBody = searching
+    ? t("driver.home.premium.nextCourseSearching")
+    : locating
+      ? t("driver.home.premium.nextCourseLocating")
+      : t("driver.home.premium.offlineBody");
+  const courseStatus = searching
+    ? t("driver.home.premium.nextCourseStatus")
+    : locating
+      ? t("driver.home.premium.nextCourseLocatingStatus")
+      : t("driver.home.offline", "OFFLINE");
+
   return (
-    <View style={[styles.sheet, { paddingBottom: Math.max(bottomPadding, 12) }]}>
+    <View style={[styles.sheet, styles.sheetOnline, { paddingBottom: Math.max(bottomPadding, 12) }]}>
       <View style={styles.handle} />
 
       <ScrollView
@@ -363,94 +391,19 @@ export function DriverHomePremiumSheet({
         nestedScrollEnabled
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Smart Dispatch — brand card only; live metrics live in intel strip */}
-        <Animated.View style={[styles.smartCard, searchPulseStyle]}>
-          <SmartDispatchBackdrop live />
-          <View style={styles.smartContent}>
-            <View style={styles.smartTop}>
-              <Animated.View style={[styles.logoBox, radarPulseStyle]}>
-                <Image
-                  source={require("../../../../assets/brand/mmd-logo-ui.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              </Animated.View>
-              <View style={styles.smartMid}>
-                <View style={styles.smartTitleRow}>
-                  <Text style={styles.smartTitle} numberOfLines={1}>
-                    MMD Smart Dispatch
-                  </Text>
-                  <View style={styles.livePill}>
-                    <Text style={styles.liveText}>{t("driver.home.premium.live")}</Text>
-                  </View>
-                </View>
-                <Text style={styles.smartSubtitle} numberOfLines={2}>
-                  {t("driver.home.premium.smartSubtitle")}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={onViewHotspots}
-                activeOpacity={0.88}
-                style={styles.hotspotsBtn}
-              >
-                <Text style={styles.hotspotsText}>{t("driver.home.premium.viewHotspots")}</Text>
-                <Ionicons name="chevron-forward" size={12} color="#F8FAFC" />
-              </TouchableOpacity>
-            </View>
+        <LinearGradient
+          colors={["#082F49", "#0F172A"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.nextCourseCard}
+        >
+          <View style={styles.nextCourseCopy}>
+            <Text style={styles.nextCourseTitle}>{courseTitle}</Text>
+            <Text style={styles.nextCourseBody}>{courseBody}</Text>
+            <Text style={styles.nextCourseStatus}>{courseStatus}</Text>
           </View>
-        </Animated.View>
-
-        <View style={styles.intelStrip}>
-          <View style={styles.intelCell}>
-            <Ionicons name="cellular" size={13} color={C.red} />
-            <Text style={styles.intelLabel}>{t("driver.home.premium.highDemand")}</Text>
-            <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.activityLabel}
-            </Text>
-            <Text style={styles.intelDetail} numberOfLines={1}>
-              {zone.activityDetail}
-            </Text>
-          </View>
-          <View style={styles.intelDivider} />
-          <View style={styles.intelCell}>
-            <Ionicons name="person" size={13} color={C.green} />
-            <Text style={styles.intelLabel}>{t("driver.home.premium.driversNearby")}</Text>
-            <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.driversNearby}{" "}
-              {zone.driversNearby === 1
-                ? t("driver.home.premium.driverOne")
-                : t("driver.home.premium.driverMany")}
-            </Text>
-            <Text style={styles.intelDetail} numberOfLines={1}>
-              {zone.driversDetail}
-            </Text>
-          </View>
-          <View style={styles.intelDivider} />
-          <View style={styles.intelCell}>
-            <Ionicons name="time" size={13} color={C.purple} />
-            <Text style={styles.intelLabel}>{t("driver.home.premium.estWait")}</Text>
-            <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.waitRangeLabel}
-            </Text>
-            <Text style={styles.intelDetail} numberOfLines={1}>
-              {zone.waitDetail}
-            </Text>
-          </View>
-          <View style={styles.intelDivider} />
-          <View style={styles.intelCell}>
-            <Ionicons name="chatbubble" size={13} color={C.blue} />
-            <Text style={styles.intelLabel}>{t("driver.home.premium.requestsNearby")}</Text>
-            <Text style={styles.intelValue} numberOfLines={2}>
-              {zone.requestsNearby}{" "}
-              {zone.requestsNearby === 1
-                ? t("driver.home.premium.requestOne")
-                : t("driver.home.premium.requestMany")}
-            </Text>
-            <Text style={styles.intelDetail} numberOfLines={1}>
-              {zone.areaLabel}
-            </Text>
-          </View>
-        </View>
+          <NextCourseRadar spinning={searching || locating} />
+        </LinearGradient>
 
         {summaryBlock}
         {jobsBlock}
@@ -482,6 +435,83 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     maxHeight: "100%",
   },
+  sheetOnline: {
+    maxHeight: "58%",
+  },
+  nextCourseCard: {
+    minHeight: 118,
+    borderRadius: 18,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  nextCourseCopy: { flex: 1, minWidth: 0, gap: 4 },
+  nextCourseTitle: {
+    color: "#F8FAFC",
+    fontSize: 17,
+    fontWeight: "800",
+    lineHeight: 21,
+  },
+  nextCourseBody: {
+    color: "#AABEEC",
+    fontSize: 11,
+    fontWeight: "600",
+    lineHeight: 15,
+  },
+  nextCourseStatus: {
+    color: "#A78BFA",
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
+  radarBox: {
+    width: 72,
+    height: 72,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radarRingRed: {
+    position: "absolute",
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 3,
+    borderColor: "#EF4444",
+  },
+  radarRingYellow: {
+    position: "absolute",
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 3,
+    borderColor: "#FACC15",
+  },
+  radarCore: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#22C55E",
+  },
+  radarSweep: {
+    position: "absolute",
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 3,
+    borderColor: "transparent",
+    borderTopColor: "#EF4444",
+  },
+  earningsValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  earningsValue: { fontSize: 19 },
+  summaryValue: { fontSize: 16 },
   handle: {
     alignSelf: "flex-start",
     marginLeft: 14,
