@@ -497,11 +497,11 @@ const styles = StyleSheet.create({
     maxHeight: "100%",
   },
   nextCourseCard: {
-    minHeight: 118,
+    minHeight: 96,
     borderRadius: 18,
-    marginBottom: 12,
+    marginBottom: 8,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
@@ -552,11 +552,11 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 999,
     backgroundColor: MMD_BLUE,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
 
   smartCard: {
@@ -821,17 +821,17 @@ const styles = StyleSheet.create({
     minHeight: 88,
   },
 
-  summaryBlock: { marginBottom: 14 },
+  summaryBlock: { marginBottom: 8 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   sectionTitle: { color: MMD_WHITE, fontSize: 15, fontWeight: "800" },
   linkRow: { flexDirection: "row", alignItems: "center", gap: 1 },
   linkText: { color: C.link, fontSize: 12, fontWeight: "700" },
-  summaryStats: { flexDirection: "row", marginBottom: 12, gap: 8 },
+  summaryStats: { flexDirection: "row", marginBottom: 8, gap: 8 },
   statCol: { flex: 1, alignItems: "center", gap: 4 },
   statCircle: {
     width: 36,
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(148,163,184,0.28)",
     overflow: "hidden",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   progressFill: {
     height: "100%",
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
     borderColor: MMD_STROKE,
     borderRadius: 12,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 8,
     backgroundColor: MMD_BLUE,
     flexDirection: "row",
     alignItems: "center",
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
   nextRewardEyebrow: { color: MMD_TEXT_MUTED_BLUE, fontSize: 12, fontWeight: "500" },
   nextRewardValue: { color: C.link, fontSize: 13, fontWeight: "800" },
 
-  jobsBlock: { marginBottom: 14 },
+  jobsBlock: { marginBottom: 8 },
   errorText: { color: C.red, fontSize: 12, marginBottom: 6 },
   emptyBox: {
     borderWidth: 1.5,

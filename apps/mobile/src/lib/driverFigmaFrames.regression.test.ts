@@ -63,8 +63,12 @@ assert.match(home, /backgroundColor: "#F97316"/);
 assert.match(home, /backgroundColor: MMD_BLUE/);
 assert.match(camera, /closeMapZoom\(16\)/);
 
-assert.equal(onlineSheetMaxHeightPx(844), Math.round(844 * 0.58));
-assert.equal(onlineSheetMaxHeightPx(390), 226);
+const legacy844 = Math.round(844 * 0.58);
+const phoneSheet = onlineSheetMaxHeightPx(844);
+assert.ok(phoneSheet < legacy844, "online sheet must sit below the old 58% cap");
+assert.ok(legacy844 - phoneSheet >= 60 && legacy844 - phoneSheet <= 80);
+assert.equal(onlineSheetMaxHeightPx(915) < Math.round(915 * 0.58), true);
+assert.ok(onlineSheetMaxHeightPx(390) >= Math.round(390 * 0.48));
 assert.equal(onlineSheetMaxHeightPx(0), 0);
 assert.match(sheet, /onlineSheetMaxHeightPx\(windowHeight\)/);
 assert.doesNotMatch(sheet, /maxHeight:\s*"58%"/);

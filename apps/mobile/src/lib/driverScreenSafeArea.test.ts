@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  onlineSheetMaxHeightPx,
   resolveDriverStackActionBottom,
   resolveDriverStackScrollBottomPadding,
   resolveDriverTabBottomPadding,
@@ -46,5 +47,13 @@ assert.equal(
   100 + 16 + 34,
   "scroll clears action bar + gap + inset",
 );
+
+const legacyPhone = Math.round(844 * 0.58);
+const phoneDrop = legacyPhone - onlineSheetMaxHeightPx(844);
+assert.ok(phoneDrop >= 60 && phoneDrop <= 80, "844pt phone reveals 60–80px more map");
+assert.ok(onlineSheetMaxHeightPx(915) < Math.round(915 * 0.58));
+assert.ok(onlineSheetMaxHeightPx(390) >= Math.round(390 * 0.48));
+assert.equal(onlineSheetMaxHeightPx(0), 0);
+assert.equal(onlineSheetMaxHeightPx(Number.NaN), 0);
 
 console.log("driverScreenSafeArea.test.ts OK");

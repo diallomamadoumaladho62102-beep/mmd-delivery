@@ -19,12 +19,24 @@ function clampInset(value: number): number {
  * Online Driver Home sheet cap.
  * `bottomArea` is absolutely positioned and has no height, and `sheetHost` only
  * sets width, so a percentage `maxHeight` does not resolve. Use window pixels.
+ *
+ * The legacy 58% cap filled a phone and hid the map. The top edge now drops by
+ * {@link ONLINE_SHEET_REFERENCE_REVEAL_PX} on an 844pt window, scaled with the
+ * real height. A floor keeps the action row inside the sheet on short windows.
  */
 export const ONLINE_SHEET_MAX_HEIGHT_RATIO = 0.58;
+export const ONLINE_SHEET_REFERENCE_HEIGHT = 844;
+export const ONLINE_SHEET_REFERENCE_REVEAL_PX = 72;
+export const ONLINE_SHEET_MIN_HEIGHT_RATIO = 0.48;
 
 export function onlineSheetMaxHeightPx(windowHeight: number): number {
   if (!Number.isFinite(windowHeight) || windowHeight <= 0) return 0;
-  return Math.round(windowHeight * ONLINE_SHEET_MAX_HEIGHT_RATIO);
+  const legacy = Math.round(windowHeight * ONLINE_SHEET_MAX_HEIGHT_RATIO);
+  const reveal = Math.round(
+    (windowHeight / ONLINE_SHEET_REFERENCE_HEIGHT) * ONLINE_SHEET_REFERENCE_REVEAL_PX,
+  );
+  const floor = Math.round(windowHeight * ONLINE_SHEET_MIN_HEIGHT_RATIO);
+  return Math.max(floor, legacy - reveal);
 }
 
 /** Bottom padding for Driver Home sheet / offer cards above the tab bar. */
