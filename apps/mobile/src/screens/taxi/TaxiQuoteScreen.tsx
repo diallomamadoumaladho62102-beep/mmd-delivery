@@ -47,6 +47,7 @@ import {
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
 import { rowDirection, textAlignEnd, textAlignStart } from "../../i18n/rtl";
+import { buildOrderedRideAddresses } from "../../lib/taxiBookingFlow";
 import { useSafeBackNavigation } from "../../navigation/navigationBack";
 import { ClientServiceBottomNav } from "../../components/navigation/ClientServiceBottomNav";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
@@ -635,7 +636,12 @@ export default function TaxiQuoteScreen() {
     }
   }
 
-  const detailRows: { icon: ImageSourcePropType; label: string; value: string }[] = [];
+  const detailRows: {
+    icon: ImageSourcePropType;
+    label: string;
+    value: string;
+    wrap?: boolean;
+  }[] = [];
   if (vehicleLabel) {
     detailRows.push({
       icon: ICON.car,
@@ -664,18 +670,22 @@ export default function TaxiQuoteScreen() {
       value: formatTripDurationFromSeconds(durationSeconds),
     });
   }
-  if (pickupLabel) {
+  for (const point of buildOrderedRideAddresses({
+    pickupAddress: pickupLabel,
+    dropoffAddress: dropoffLabel,
+    stops: rideStops,
+  })) {
+    const label =
+      point.role === "pickup"
+        ? t("taxi.quote.pickup", "Pickup")
+        : point.role === "dropoff"
+          ? t("taxi.quote.dropoff", "Dropoff")
+          : t("taxi.quote.stop", "Stop {{n}}", { n: point.order });
     detailRows.push({
-      icon: ICON.pinPickup,
-      label: t("taxi.quote.pickup", "Pickup"),
-      value: pickupLabel,
-    });
-  }
-  if (dropoffLabel) {
-    detailRows.push({
-      icon: ICON.pinDropoff,
-      label: t("taxi.quote.dropoff", "Dropoff"),
-      value: dropoffLabel,
+      icon: point.role === "dropoff" ? ICON.pinDropoff : ICON.pinPickup,
+      label,
+      value: point.address,
+      wrap: true,
     });
   }
 
@@ -699,7 +709,7 @@ export default function TaxiQuoteScreen() {
             {detailRows.map((row, index) => (
               <React.Fragment key={`${row.label}-${index}`}>
                 {index > 0 ? <View style={styles.rowDivider} /> : null}
-                <DetailRow icon={row.icon} label={row.label} value={row.value} />
+                <DetailRow icon={row.icon} label={row.label} value={row.value} wrap={row.wrap} />
               </React.Fragment>
             ))}
           </View>
@@ -786,14 +796,23 @@ export default function TaxiQuoteScreen() {
             <>
               {String(quoteState.market ?? "") === "GN" ? (
                 <>
-                  <PriceRow
-                    label={t("taxiGuinea.pickup", "Pickup")}
-                    value={pickupLabel || "—"}
-                  />
-                  <PriceRow
-                    label={t("taxiGuinea.destination", "Destination")}
-                    value={dropoffLabel || "—"}
-                  />
+                  {buildOrderedRideAddresses({
+                    pickupAddress: pickupLabel,
+                    dropoffAddress: dropoffLabel,
+                    stops: rideStops,
+                  }).map((point) => (
+                    <PriceRow
+                      key={`${point.role}-${point.order}`}
+                      label={
+                        point.role === "pickup"
+                          ? t("taxiGuinea.pickup", "Pickup")
+                          : point.role === "dropoff"
+                            ? t("taxiGuinea.destination", "Destination")
+                            : t("taxi.quote.stop", "Stop {{n}}", { n: point.order })
+                      }
+                      value={point.address}
+                    />
+                  ))}
                   <PriceRow
                     label={t("taxiGuinea.distance", "Distance")}
                     value={t("taxiGuinea.kilometers", "{{value}} km", {
@@ -1141,18 +1160,26 @@ function DetailRow({
   icon,
   label,
   value,
+  wrap,
 }: {
   icon: ImageSourcePropType;
   label: string;
   value: string;
+  wrap?: boolean;
 }) {
   return (
-    <View style={[styles.detailRow, { flexDirection: rowDirection() }]}>
+    <View
+      style={[
+        styles.detailRow,
+        { flexDirection: rowDirection() },
+        wrap ? { alignItems: "flex-start" } : null,
+      ]}
+    >
       <View style={[styles.detailLabelWrap, { flexDirection: rowDirection() }]}>
         <QuoteIcon source={icon} size={20} />
         <Text style={styles.detailLabel}>{label}</Text>
       </View>
-      <Text style={[styles.detailValue, { textAlign: textAlignEnd() }]} numberOfLines={2}>
+      <Text style={[styles.detailValue, { textAlign: textAlignEnd() }]} numberOfLines={wrap ? undefined : 2}>
         {value}
       </Text>
     </View>

@@ -36,7 +36,9 @@ export type MultiStopQuoteNavParams = {
 /**
  * Preserve stop order as entered (filter empties only).
  */
-export function normalizeOrderedStops(stops: Array<string | TaxiStopInput>): TaxiStopInput[] {
+export function normalizeOrderedStops(
+  stops: Array<string | { address?: string | null; lat?: number; lng?: number }>,
+): TaxiStopInput[] {
   return stops
     .map((stop) => {
       if (typeof stop === "string") {
@@ -108,4 +110,52 @@ export function buildMultiStopQuoteNavigationParams(input: {
  */
 export function shouldCreateRideBeforePayment(): boolean {
   return false;
+}
+
+export type RideAddressRole = "pickup" | "stop" | "dropoff";
+
+export type OrderedRideAddress = {
+  role: RideAddressRole;
+  /** 1-based index for intermediate stops. Pickup is 0. Dropoff follows the last stop. */
+  order: number;
+  address: string;
+};
+
+/**
+ * Pickup, then each intermediate stop, then the final dropoff.
+ * Empty addresses are omitted. Stop order is the order the rider entered.
+ */
+export function buildOrderedRideAddresses(input: {
+  pickupAddress?: string;
+  dropoffAddress?: string;
+  stops?: Array<string | { address?: string | null; lat?: number; lng?: number }>;
+}): OrderedRideAddress[] {
+  const rows: OrderedRideAddress[] = [];
+  const pickup = String(input.pickupAddress ?? "").trim();
+  if (pickup) rows.push({ role: "pickup", order: 0, address: pickup });
+  const stops = normalizeOrderedStops(input.stops ?? []);
+  stops.forEach((stop, index) => {
+    rows.push({ role: "stop", order: index + 1, address: stop.address });
+  });
+  const dropoff = String(input.dropoffAddress ?? "").trim();
+  if (dropoff) {
+    rows.push({ role: "dropoff", order: stops.length + 1, address: dropoff });
+  }
+  return rows;
+}
+
+/** Driver card order: pickup, stored stops by stop_order, then final dropoff. */
+export function buildDriverRouteAddresses(input: {
+  pickupAddress?: string;
+  dropoffAddress?: string;
+  stops?: Array<{ stop_order?: number; address?: string | null }>;
+}): OrderedRideAddress[] {
+  const stops = [...(input.stops ?? [])].sort(
+    (a, b) => Number(a.stop_order ?? 0) - Number(b.stop_order ?? 0),
+  );
+  return buildOrderedRideAddresses({
+    pickupAddress: input.pickupAddress,
+    dropoffAddress: input.dropoffAddress,
+    stops: stops.map((stop) => String(stop.address ?? "")),
+  });
 }

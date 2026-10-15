@@ -779,10 +779,19 @@ export function DriverTaxiPanel({
                         {passenger.dropoff_address}
                       </Text>
                     ))}
-                  <Text style={styles.meta} numberOfLines={elevated ? 3 : 2}>
+                  <Text style={styles.meta}>
                     {ride?.pickup_address ?? t("driver.taxiPanel.pickup", "Pickup")}
                   </Text>
-                  <Text style={styles.meta} numberOfLines={elevated ? 3 : 2}>
+                  {(ride?.taxi_ride_stops ?? [])
+                    .slice()
+                    .sort((a, b) => a.stop_order - b.stop_order)
+                    .map((stop) => (
+                      <Text key={stop.stop_order} style={styles.meta}>
+                        {t("taxi.quote.stop", "Stop {{n}}", { n: stop.stop_order })}:{" "}
+                        {stop.address ?? ""}
+                      </Text>
+                    ))}
+                  <Text style={styles.meta}>
                     → {ride?.dropoff_address ?? t("driver.taxiPanel.dropoff", "Dropoff")}
                   </Text>
                   {offer.expires_at ? (

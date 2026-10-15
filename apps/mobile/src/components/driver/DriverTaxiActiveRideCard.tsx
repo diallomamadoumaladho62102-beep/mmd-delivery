@@ -18,6 +18,7 @@ import { SafetyAudioCard } from "../tracking/SafetyAudioCard";
 import { OtpDigitInput } from "../shared/OtpDigitInput";
 import { formatDriverPayout } from "../../lib/taxiDriverApi";
 import { clientDisplayInitials } from "../../lib/driverTaxiClientDisplay";
+import { buildDriverRouteAddresses } from "../../lib/taxiBookingFlow";
 
 type Props = {
   rideId: string;
@@ -256,38 +257,42 @@ export function DriverTaxiActiveRideCard({
               <View style={[styles.dot, styles.dotDrop]} />
             </View>
             <View style={styles.routeBody}>
-              <View style={styles.addrRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.addrLabel}>
-                    {t("taxi.driver.activeRide.pickup", "Pickup")}
-                  </Text>
-                  <Text style={styles.addrText} numberOfLines={2}>
-                    {pickupAddress || "—"}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.roundBtn, styles.roundPickup]}
-                  onPress={() => onNavigate("pickup")}
+              {buildDriverRouteAddresses({
+                pickupAddress: pickupAddress || "—",
+                dropoffAddress: dropoffAddress || "—",
+                stops,
+              }).map((point, index) => (
+                <View
+                  key={`${point.role}-${point.order}`}
+                  style={[styles.addrRow, index > 0 ? { marginTop: 14 } : null]}
                 >
-                  <Ionicons name="navigate" size={16} color="#86EFAC" />
-                </TouchableOpacity>
-              </View>
-              <View style={[styles.addrRow, { marginTop: 14 }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.addrLabel}>
-                    {t("taxi.driver.activeRide.dropoff", "Drop-off")}
-                  </Text>
-                  <Text style={styles.addrText} numberOfLines={2}>
-                    {dropoffAddress || "—"}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.addrLabel}>
+                      {point.role === "pickup"
+                        ? t("taxi.driver.activeRide.pickup", "Pickup")
+                        : point.role === "dropoff"
+                          ? t("taxi.driver.activeRide.dropoff", "Drop-off")
+                          : t("taxi.quote.stop", "Stop {{n}}", { n: point.order })}
+                    </Text>
+                    <Text style={styles.addrText}>{point.address || "—"}</Text>
+                  </View>
+                  {point.role === "stop" ? null : (
+                    <TouchableOpacity
+                      style={[
+                        styles.roundBtn,
+                        point.role === "pickup" ? styles.roundPickup : styles.roundDrop,
+                      ]}
+                      onPress={() => onNavigate(point.role === "pickup" ? "pickup" : "dropoff")}
+                    >
+                      <Ionicons
+                        name={point.role === "pickup" ? "navigate" : "location"}
+                        size={16}
+                        color={point.role === "pickup" ? "#86EFAC" : "#FCA5A5"}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
-                <TouchableOpacity
-                  style={[styles.roundBtn, styles.roundDrop]}
-                  onPress={() => onNavigate("dropoff")}
-                >
-                  <Ionicons name="location" size={16} color="#FCA5A5" />
-                </TouchableOpacity>
-              </View>
+              ))}
             </View>
           </View>
         </View>
@@ -349,7 +354,7 @@ export function DriverTaxiActiveRideCard({
               .sort((a, b) => a.stop_order - b.stop_order)
               .map((stop) => (
                 <View key={stop.stop_order} style={styles.stopRow}>
-                  <Text style={styles.stopText} numberOfLines={1}>
+                  <Text style={styles.stopText}>
                     {t("taxi.driver.activeRide.stopLine", {
                       order: stop.stop_order,
                       address: stop.address ?? "",

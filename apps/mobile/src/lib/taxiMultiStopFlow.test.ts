@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  buildDriverRouteAddresses,
   buildMultiStopQuoteNavigationParams,
+  buildOrderedRideAddresses,
   maxBookingStops,
   MAX_TAXI_STOPS,
   normalizeOrderedStops,
@@ -126,6 +128,99 @@ function testCustomerTaxiSourcesDoNotHardcodeCategoryFallback() {
   assert.equal(maxBookingStops("round_trip"), 2);
 }
 
+function testEstimateAddresses() {
+  const direct = buildOrderedRideAddresses({
+    pickupAddress: "686 Vermont Street, Brooklyn, New York",
+    dropoffAddress: "1112 Pennsylvania Avenue, Brooklyn, New York",
+  });
+  assert.deepEqual(
+    direct.map((row) => row.role),
+    ["pickup", "dropoff"],
+  );
+
+  const oneStop = buildOrderedRideAddresses({
+    pickupAddress: "Pickup",
+    dropoffAddress: "Dropoff",
+    stops: ["1112 Flatbush Avenue, Brooklyn, New York"],
+  });
+  assert.deepEqual(
+    oneStop.map((row) => `${row.role}:${row.order}:${row.address}`),
+    ["pickup:0:Pickup", "stop:1:1112 Flatbush Avenue, Brooklyn, New York", "dropoff:2:Dropoff"],
+  );
+
+  const longStop = "A".repeat(180) + " Brooklyn, New York";
+  const twoStops = buildOrderedRideAddresses({
+    pickupAddress: "Pickup",
+    dropoffAddress: "Dropoff",
+    stops: [longStop, "Second stop"],
+  });
+  assert.equal(twoStops.length, 4);
+  assert.equal(twoStops[1].address, longStop);
+  assert.equal(twoStops[2].order, 2);
+  assert.equal(twoStops[3].role, "dropoff");
+  assert.equal(twoStops[1].role === "dropoff", false);
+}
+
+function testDriverReceivesEveryStop() {
+  const rows = buildDriverRouteAddresses({
+    pickupAddress: "Pickup",
+    dropoffAddress: "Final",
+    stops: [
+      { stop_order: 2, address: "Second" },
+      { stop_order: 1, address: "First" },
+    ],
+  });
+  assert.deepEqual(
+    rows.map((row) => row.address),
+    ["Pickup", "First", "Second", "Final"],
+  );
+}
+
+function testEstimateAndDriverSourcesKeepStops() {
+  const quote = readFileSync(join(process.cwd(), "src", "screens", "taxi", "TaxiQuoteScreen.tsx"), "utf8");
+  const api = readFileSync(join(process.cwd(), "src", "lib", "taxiClientApi.ts"), "utf8");
+  const driver = readFileSync(
+    join(process.cwd(), "src", "components", "driver", "DriverTaxiActiveRideCard.tsx"),
+    "utf8",
+  );
+  const home = readFileSync(join(process.cwd(), "src", "screens", "taxi", "TaxiHomeScreen.tsx"), "utf8");
+  assert.match(quote, /buildOrderedRideAddresses\(/);
+  assert.match(quote, /wrap: true/);
+  assert.match(api, /stops: input\.stops/);
+  assert.match(driver, /buildDriverRouteAddresses\(/);
+  const panel = readFileSync(
+    join(process.cwd(), "src", "components", "driver", "DriverTaxiPanel.tsx"),
+    "utf8",
+  );
+  assert.match(panel, /taxi_ride_stops/);
+  assert.match(panel, /stop_order - b\.stop_order/);
+  assert.match(home, /preferencesOpen/);
+  assert.match(home, /useState\(false\)/);
+  assert.match(home, /taxi\.home\.ridePreferences/);
+  assert.match(home, /accessibilityState=\{\{ expanded: preferencesOpen \}\}/);
+  for (const key of [
+    "non_smoking_driver",
+    "child_seat_required",
+    "pets_allowed",
+    "large_luggage",
+    "air_conditioning_required",
+    "phone_charger_requested",
+    "prefer_quiet_vehicle",
+    "ambiancePreference",
+    "preferElectricOrHybrid",
+  ]) {
+    assert.match(home, new RegExp(key));
+  }
+  const langs = ["en", "fr", "es", "ar", "zh", "ff"] as const;
+  for (const lang of langs) {
+    const bundle = JSON.parse(
+      readFileSync(join(process.cwd(), "src", "i18n", "locales", lang, "extras.json"), "utf8"),
+    );
+    assert.equal(typeof bundle.taxi.home.ridePreferences, "string");
+    assert.match(bundle.taxi.quote.stop, /\{\{n\}\}/);
+  }
+}
+
 testStopsOrderPreserved();
 testMaxStopsCapped();
 testReorderStops();
@@ -133,5 +228,8 @@ testQuoteBeforeCreateInvariant();
 testBuildNavParams();
 testCategoryMessagesAreOneLocaleEach();
 testCustomerTaxiSourcesDoNotHardcodeCategoryFallback();
+testEstimateAddresses();
+testDriverReceivesEveryStop();
+testEstimateAndDriverSourcesKeepStops();
 
 console.log("taxiMultiStopFlow.test.ts OK");

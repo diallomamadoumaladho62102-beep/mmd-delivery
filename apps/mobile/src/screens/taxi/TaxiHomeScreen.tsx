@@ -11,6 +11,7 @@ import {
   Switch,
   Image,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -37,7 +38,7 @@ import {
   applyMmdLocationSelection,
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
-import { rowDirection } from "../../i18n/rtl";
+import { rowDirection, textAlignStart } from "../../i18n/rtl";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchTaxiCategoryAvailability,
@@ -131,6 +132,7 @@ export default function TaxiHomeScreen() {
   const [ambiancePreference, setAmbiancePreference] = useState<
     "none" | "quiet" | "music" | "conversation"
   >("none");
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
   const [countryCode, setCountryCode] = useState(market.countryCode);
   const [currencyCode, setCurrencyCode] = useState(market.currencyCode);
   const [loading, setLoading] = useState(false);
@@ -850,8 +852,47 @@ export default function TaxiHomeScreen() {
           </View>
         </View>
 
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityState={{ expanded: preferencesOpen }}
+          accessibilityLabel={t("taxi.home.ridePreferences", "Ride preferences")}
+          onPress={() => setPreferencesOpen((open) => !open)}
+          style={{
+            flexDirection: rowDirection(),
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: 14,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: "#334155",
+            backgroundColor: "rgba(15,23,42,0.8)",
+            gap: 8,
+          }}
+        >
+          <View style={{ flexDirection: rowDirection(), alignItems: "center", gap: 8, flex: 1 }}>
+            <Ionicons name="options-outline" size={18} color="#E2E8F0" />
+            <Text
+              style={{
+                color: "#E2E8F0",
+                fontWeight: "700",
+                flex: 1,
+                textAlign: textAlignStart(),
+              }}
+            >
+              {t("taxi.home.ridePreferences", "Ride preferences")}
+            </Text>
+          </View>
+          <Ionicons
+            name={preferencesOpen ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#94A3B8"
+          />
+        </TouchableOpacity>
+
+        {preferencesOpen ? (
+        <>
         <View style={{ gap: 10 }}>
-          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600", textAlign: textAlignStart() }}>
             {t("taxi.home.optionalPreferences", "Optional preferences")}
           </Text>
           {(
@@ -871,7 +912,7 @@ export default function TaxiHomeScreen() {
             <View
               key={key}
               style={{
-                flexDirection: "row",
+                flexDirection: rowDirection(),
                 alignItems: "center",
                 justifyContent: "space-between",
                 paddingVertical: 8,
@@ -890,7 +931,7 @@ export default function TaxiHomeScreen() {
         </View>
 
         <View style={{ gap: 8 }}>
-          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600", textAlign: textAlignStart() }}>
             {t("taxi.home.ambiance", "Ride atmosphere")}
           </Text>
           {(
@@ -922,7 +963,7 @@ export default function TaxiHomeScreen() {
 
         <View
           style={{
-            flexDirection: "row",
+            flexDirection: rowDirection(),
             alignItems: "center",
             justifyContent: "space-between",
             padding: 14,
@@ -949,6 +990,8 @@ export default function TaxiHomeScreen() {
             trackColor={{ false: "#334155", true: "#22C55E" }}
           />
         </View>
+        </>
+        ) : null}
 
         <TouchableOpacity
           onPress={() => {
