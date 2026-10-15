@@ -442,6 +442,24 @@ export function DriverTaxiPanel({
     }
   }
 
+  async function runLockedRideAction(rideId: string, action: () => Promise<unknown>) {
+    if (!rideId || actionLockRef.current) return;
+    actionLockRef.current = true;
+    setActionId(rideId);
+    try {
+      await action();
+      await refresh();
+    } catch (e: unknown) {
+      Alert.alert(
+        t("driver.taxiPanel.title", "Taxi"),
+        toUserFacingError(e, t("driver.taxiPanel.genericFailed", "Failed")),
+      );
+    } finally {
+      actionLockRef.current = false;
+      setActionId(null);
+    }
+  }
+
   async function callClient() {
     const rideId = String(activeRide?.id ?? "");
     if (!rideId) return;
@@ -618,24 +636,10 @@ export function DriverTaxiPanel({
           onComplete={() => void lifecycle("complete")}
           onCancel={() => void handleDriverCancel()}
           onArriveStop={(stopOrder) =>
-            void arriveTaxiStop(rideId, stopOrder)
-              .then(refresh)
-              .catch((e: unknown) =>
-                Alert.alert(
-                  t("driver.taxiPanel.title", "Taxi"),
-                  toUserFacingError(e, t("driver.taxiPanel.genericFailed", "Failed")),
-                ),
-              )
+            void runLockedRideAction(rideId, () => arriveTaxiStop(rideId, stopOrder))
           }
           onCompleteStop={(stopOrder) =>
-            void completeTaxiStop(rideId, stopOrder)
-              .then(refresh)
-              .catch((e: unknown) =>
-                Alert.alert(
-                  t("driver.taxiPanel.title", "Taxi"),
-                  toUserFacingError(e, t("driver.taxiPanel.genericFailed", "Failed")),
-                ),
-              )
+            void runLockedRideAction(rideId, () => completeTaxiStop(rideId, stopOrder))
           }
           onNoShowCanceled={() => void refresh()}
         />

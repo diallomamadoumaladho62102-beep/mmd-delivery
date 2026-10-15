@@ -39,7 +39,7 @@ export function taxiPaymentAllowsDispatch(
   const method = norm(paymentMethod);
   const countryKnown = countryCode != null && String(countryCode).trim() !== "";
   if (method === "cash") {
-    if (!countryKnown) return status === "pending_cash";
+    if (!countryKnown) return false;
     return (
       status === "pending_cash" &&
       String(countryCode).trim().toUpperCase() === "GN" &&

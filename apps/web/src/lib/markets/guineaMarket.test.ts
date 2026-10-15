@@ -312,11 +312,12 @@ pending.push(test("cash rides never enter the Stripe transfer path", () => {
   assert.equal(taxiCashSkipsStripe("unpaid"), false);
 }));
 
-pending.push(test("USD dispatch still requires paid, cash pending can dispatch once", () => {
+pending.push(test("USD dispatch still requires paid, and cash needs Guinea and GNF", () => {
   assert.equal(taxiPaymentAllowsDispatch("paid", null), true);
   assert.equal(taxiPaymentAllowsDispatch("paid", "card"), true);
   assert.equal(taxiPaymentAllowsDispatch("unpaid", "card"), false);
-  assert.equal(taxiPaymentAllowsDispatch("pending_cash", "cash"), true);
+  assert.equal(taxiPaymentAllowsDispatch("pending_cash", "cash"), false);
+  assert.equal(taxiPaymentAllowsDispatch("pending_cash", "cash", "GN"), false);
   assert.equal(taxiPaymentAllowsDispatch("pending_cash", "card"), false);
   assert.equal(taxiPaymentAllowsDispatch("cash_collected", "cash"), false);
   assert.equal(taxiPaymentAllowsDispatch("pending_cash", "cash", "GN", "GNF"), true);
@@ -674,6 +675,13 @@ pending.push(test("US cash is refused and Guinea cash is not taken from a client
   assert.match(sql, /v_distance > 150/);
   assert.match(sql, /country_code, ''\)\) = 'GN'/);
   assert.match(sql, /currency, ''\)\) = 'GNF'/);
+  const dropLoose = fs.readFileSync(
+    path.join(root, "supabase/migrations/20261222120000_drop_loose_taxi_cash_gate.sql"),
+    "utf8",
+  );
+  assert.match(dropLoose, /drop function if exists public\.taxi_ride_payment_allows_dispatch\(text, text\)/);
+  assert.match(dropLoose, /revoke all on function public\.taxi_ride_payment_allows_dispatch\(text, text, text, text\) from public, anon/);
+  assert.equal(/alter table public\.taxi_rides/i.test(dropLoose), false);
   const quote = fs.readFileSync(
     path.join(root, "apps/web/app/api/taxi/rides/quote/route.ts"),
     "utf8",

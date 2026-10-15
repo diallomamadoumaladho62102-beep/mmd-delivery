@@ -386,6 +386,7 @@ export function DriverTaxiActiveRideCard({
                     {showArrive ? (
                     <TouchableOpacity
                       style={styles.secondaryBtn}
+                      disabled={busy}
                       onPress={() => onArriveStop(stop.stop_order)}
                     >
                       <Text style={styles.secondaryText}>{t("taxi.driver.activeRide.arriveStop")}</Text>
@@ -394,6 +395,7 @@ export function DriverTaxiActiveRideCard({
                     {showComplete ? (
                     <TouchableOpacity
                       style={styles.secondaryBtn}
+                      disabled={busy}
                       onPress={() => onCompleteStop(stop.stop_order)}
                     >
                       <Text style={styles.secondaryText}>{t("taxi.driver.activeRide.completeStop")}</Text>
