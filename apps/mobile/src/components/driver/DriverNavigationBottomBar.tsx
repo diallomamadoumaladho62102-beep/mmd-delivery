@@ -189,7 +189,7 @@ export function DriverNavigationBottomBar({
         >
           <Text
             style={{
-              color: "#0B1F3A",
+              color: MMD_WHITE,
               fontSize: 15,
               fontFamily: MMD_FONT.extrabold,
               fontWeight: "800",

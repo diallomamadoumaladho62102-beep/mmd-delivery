@@ -111,6 +111,16 @@ assert.match(
   /resolveBottomBarPadding/,
   "bottom bar content must use shared safe-area bottom padding helper",
 );
+assert.match(
+  bottomSrc,
+  /backgroundColor: "#DC2626"[\s\S]{0,280}color: MMD_WHITE/,
+  "End Navigation label must be white on the red button",
+);
+assert.equal(
+  (bottomSrc.match(/color: "#0B1F3A"/g) || []).length,
+  1,
+  "navy remains only on the posted speed badge, not on End Navigation",
+);
 
 const bubblePath = path.join(
   here,
