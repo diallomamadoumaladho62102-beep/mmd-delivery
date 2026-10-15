@@ -650,8 +650,9 @@ pending.push(test("US cash is refused and Guinea cash is not taken from a client
     dropoffLng: NYC.lng,
     vehicleClass: "standard",
   });
+  const usIsGuinea = us.kind === "guinea";
   assert.equal(us.kind, "us");
-  assert.equal(taxiCashMarketGate({ requestedMethod: "cash", guineaMarket: us.kind === "guinea" }), "reject_cash");
+  assert.equal(taxiCashMarketGate({ requestedMethod: "cash", guineaMarket: usIsGuinea }), "reject_cash");
   const conakry = resolveGuineaTaxiMarket({
     enabled: true,
     claimedCountryCode: "US",
