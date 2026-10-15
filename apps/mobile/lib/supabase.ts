@@ -24,19 +24,24 @@ if (configuredPublishableKey && !supabasePublishableKey) {
   console.error("[MMD-BOOT] Refusing a privileged Supabase key in the client slot");
 }
 
+export const SUPABASE_MISSING_CONFIG_MESSAGE =
+  "Supabase is not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY, then restart Metro.";
+
 if (!supabaseUrl || !supabasePublishableKey) {
-  console.error(
-    "[MMD-BOOT] Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-  );
+  console.error(`[MMD-BOOT] ${SUPABASE_MISSING_CONFIG_MESSAGE}`);
 }
 
 // Never throw at module import — supabase-js throws if url/key are empty.
-const resolvedSupabaseUrl =
-  supabaseUrl || "https://invalid.supabase.co";
-const resolvedSupabasePublishableKey =
-  supabasePublishableKey || "missing-supabase-publishable-key";
+// The placeholder is not an API key and is never sent: requests fail locally
+// with SUPABASE_MISSING_CONFIG_MESSAGE instead of "Invalid API key".
+const resolvedSupabaseUrl = supabaseUrl || "https://invalid.supabase.co";
+const resolvedSupabasePublishableKey = supabasePublishableKey || "unconfigured";
 
 export const supabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
+
+function rejectUnconfiguredSupabaseRequest(): Promise<Response> {
+  return Promise.reject(new Error(SUPABASE_MISSING_CONFIG_MESSAGE));
+}
 
 export const supabase = createClient(
   resolvedSupabaseUrl,
@@ -48,5 +53,8 @@ export const supabase = createClient(
       autoRefreshToken: true,
       detectSessionInUrl: false, // mobile => pas d’URL callback
     },
+    ...(supabaseConfigured
+      ? {}
+      : { global: { fetch: rejectUnconfiguredSupabaseRequest } }),
   }
 );
