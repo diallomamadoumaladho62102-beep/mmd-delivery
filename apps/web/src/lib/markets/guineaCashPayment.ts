@@ -32,10 +32,33 @@ export function taxiCashSkipsStripe(paymentStatus: unknown): boolean {
 export function taxiPaymentAllowsDispatch(
   paymentStatus: unknown,
   paymentMethod: unknown,
+  countryCode?: unknown,
+  currency?: unknown,
 ): boolean {
   const status = norm(paymentStatus);
-  if (status === "paid") return true;
-  return norm(paymentMethod) === "cash" && status === "pending_cash";
+  const method = norm(paymentMethod);
+  const countryKnown = countryCode != null && String(countryCode).trim() !== "";
+  if (method === "cash") {
+    if (!countryKnown) return status === "pending_cash";
+    return (
+      status === "pending_cash" &&
+      String(countryCode).trim().toUpperCase() === "GN" &&
+      String(currency ?? "").trim().toUpperCase() === "GNF"
+    );
+  }
+  return status === "paid";
+}
+
+/**
+ * Cash is refused when the coordinate market is not Guinea.
+ * A client country string is not an input. Card quotes continue.
+ */
+export function taxiCashMarketGate(input: {
+  requestedMethod: unknown;
+  guineaMarket: boolean;
+}): "continue" | "reject_cash" {
+  if (norm(input.requestedMethod) !== "cash") return "continue";
+  return input.guineaMarket ? "continue" : "reject_cash";
 }
 
 export function evaluateCashCollection(

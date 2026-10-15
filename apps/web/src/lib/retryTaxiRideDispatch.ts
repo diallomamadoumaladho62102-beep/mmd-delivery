@@ -30,7 +30,7 @@ export async function findTaxiRidesNeedingDispatchRetry(
 
   const paidColumns =
     "id, status, dispatch_wave, updated_at, payment_status, driver_id, favorite_dispatch_expires_at, preferred_driver_id, is_shared_ride, shared_ride_id, is_scheduled";
-  const cashColumns = `${paidColumns}, payment_method`;
+  const cashColumns = `${paidColumns}, payment_method, country_code, currency`;
   type RetryRideRow = {
     id: unknown;
     status: unknown;
@@ -38,6 +38,8 @@ export async function findTaxiRidesNeedingDispatchRetry(
     updated_at: unknown;
     payment_status: unknown;
     payment_method?: unknown;
+    country_code?: unknown;
+    currency?: unknown;
     driver_id: unknown;
     favorite_dispatch_expires_at: unknown;
     preferred_driver_id: unknown;
@@ -76,7 +78,12 @@ export async function findTaxiRidesNeedingDispatchRetry(
   const candidates = (rides ?? []).filter((ride) => {
     const status = normalize(ride.status);
     if (status !== "paid" && status !== "dispatching") return false;
-    return taxiPaymentAllowsDispatch(ride.payment_status, ride.payment_method);
+    return taxiPaymentAllowsDispatch(
+      ride.payment_status,
+      ride.payment_method,
+      ride.country_code,
+      ride.currency,
+    );
   });
 
   if (candidates.length === 0) {

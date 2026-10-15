@@ -33,6 +33,7 @@ import {
   quoteRideFinalSot,
 } from "@/lib/pricingEngine";
 import { maybeQuoteGuineaTaxi } from "@/lib/markets/guineaTaxiHttp";
+import { taxiCashMarketGate } from "@/lib/markets/guineaCashPayment";
 import { isGuineaMotorcycleClass } from "@/lib/markets/guineaStandard";
 
 export const runtime = "nodejs";
@@ -62,6 +63,8 @@ type Body = {
   trip_mode?: string;
   returnMode?: string;
   return_mode?: string;
+  paymentMethod?: string;
+  payment_method?: string;
   returnWaitMinutes?: number;
   return_wait_minutes?: number;
   returnScheduledAt?: string;
@@ -147,6 +150,14 @@ export async function POST(req: NextRequest) {
       supabaseAdmin: auth.supabaseAdmin,
     });
     if (guineaQuote) return guineaQuote;
+    if (
+      taxiCashMarketGate({
+        requestedMethod: body.paymentMethod ?? body.payment_method,
+        guineaMarket: false,
+      }) === "reject_cash"
+    ) {
+      return taxiJson({ ok: false, error: "cash_not_available" }, 403);
+    }
     if (guineaMotorcycle) {
       return taxiJson({ ok: false, error: "vehicle_class_unsupported" }, 400);
     }

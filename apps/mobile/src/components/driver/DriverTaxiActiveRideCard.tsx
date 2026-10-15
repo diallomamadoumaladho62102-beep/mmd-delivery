@@ -19,6 +19,7 @@ import { OtpDigitInput } from "../shared/OtpDigitInput";
 import { formatDriverPayout } from "../../lib/taxiDriverApi";
 import { clientDisplayInitials } from "../../lib/driverTaxiClientDisplay";
 import { buildDriverRouteAddresses } from "../../lib/taxiBookingFlow";
+import { evaluateTaxiRideCompletion, evaluateTaxiStopAction } from "../../lib/taxiDriverProgress";
 
 type Props = {
   rideId: string;
@@ -352,7 +353,26 @@ export function DriverTaxiActiveRideCard({
           ? stops
               ?.slice()
               .sort((a, b) => a.stop_order - b.stop_order)
-              .map((stop) => (
+              .map((stop) => {
+                const progressStops = (stops ?? []).map((item) => ({
+                  stopOrder: item.stop_order,
+                  status: item.status,
+                }));
+                const arrive = evaluateTaxiStopAction({
+                  rideStatus: status,
+                  stops: progressStops,
+                  stopOrder: stop.stop_order,
+                  action: "arrive",
+                });
+                const complete = evaluateTaxiStopAction({
+                  rideStatus: status,
+                  stops: progressStops,
+                  stopOrder: stop.stop_order,
+                  action: "complete",
+                });
+                const showArrive = arrive.ok && !arrive.idempotent;
+                const showComplete = complete.ok && !complete.idempotent;
+                return (
                 <View key={stop.stop_order} style={styles.stopRow}>
                   <Text style={styles.stopText}>
                     {t("taxi.driver.activeRide.stopLine", {
@@ -361,22 +381,29 @@ export function DriverTaxiActiveRideCard({
                       status: stop.status ?? "",
                     })}
                   </Text>
+                  {showArrive || showComplete ? (
                   <View style={styles.row}>
+                    {showArrive ? (
                     <TouchableOpacity
                       style={styles.secondaryBtn}
                       onPress={() => onArriveStop(stop.stop_order)}
                     >
                       <Text style={styles.secondaryText}>{t("taxi.driver.activeRide.arriveStop")}</Text>
                     </TouchableOpacity>
+                    ) : null}
+                    {showComplete ? (
                     <TouchableOpacity
                       style={styles.secondaryBtn}
                       onPress={() => onCompleteStop(stop.stop_order)}
                     >
                       <Text style={styles.secondaryText}>{t("taxi.driver.activeRide.completeStop")}</Text>
                     </TouchableOpacity>
+                    ) : null}
                   </View>
+                  ) : null}
                 </View>
-              ))
+                );
+              })
           : null}
 
         {status === "accepted" ? (
@@ -419,7 +446,11 @@ export function DriverTaxiActiveRideCard({
           </TouchableOpacity>
         ) : null}
 
-        {status === "in_progress" ? (
+        {status === "in_progress" &&
+        evaluateTaxiRideCompletion({
+          rideStatus: status,
+          stops: (stops ?? []).map((stop) => ({ status: stop.status })),
+        }).ok ? (
           <TouchableOpacity
             style={[styles.primaryBtn, { marginTop: 12 }]}
             disabled={busy}

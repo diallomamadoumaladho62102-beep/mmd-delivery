@@ -9,12 +9,13 @@ import { SafeAreaView, View, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
 import Mapbox from "@rnmapbox/maps";
-import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "../lib/supabase";
+import { resolveTaxiNavigationPlan } from "../lib/taxiDriverProgress";
 import {
   DRIVER_NAV_FETCH_TIMEOUT_MS,
   withTimeout,
@@ -199,7 +200,7 @@ function buildTripFromRow(params: {
     | null;
   const seller = Array.isArray(sellers) ? sellers[0] : sellers;
 
-  return {
+  const base = {
     orderId: String(row.id ?? ""),
     sourceTable,
     restaurantName:
@@ -240,6 +241,51 @@ function buildTripFromRow(params: {
     dropoffLocationId: row.dropoff_location_id
       ? String(row.dropoff_location_id)
       : null,
+  };
+
+  if (sourceTable !== "taxi_rides") return base;
+
+  const rawStops = Array.isArray(row.taxi_ride_stops) ? row.taxi_ride_stops : [];
+  const plan = resolveTaxiNavigationPlan({
+    rideStatus: String(row.status ?? ""),
+    pickup: base.pickup
+      ? {
+          latitude: base.pickup.latitude,
+          longitude: base.pickup.longitude,
+          address: base.pickupAddress,
+        }
+      : null,
+    dropoff: base.dropoff
+      ? {
+          latitude: base.dropoff.latitude,
+          longitude: base.dropoff.longitude,
+          address: base.dropoffAddress,
+        }
+      : null,
+    stops: rawStops.map((stop) => {
+      const rowStop = stop as {
+        stop_order?: unknown;
+        address?: unknown;
+        lat?: unknown;
+        lng?: unknown;
+        status?: unknown;
+      };
+      return {
+        stopOrder: Number(rowStop.stop_order),
+        status: rowStop.status == null ? null : String(rowStop.status),
+        address: rowStop.address == null ? null : String(rowStop.address),
+        latitude: numberOrNull(rowStop.lat),
+        longitude: numberOrNull(rowStop.lng),
+      };
+    }),
+  });
+
+  return {
+    ...base,
+    stage: plan.stage,
+    routeWaypoints: plan.waypoints,
+    activeStepAddress: plan.activeAddress,
+    holdStageArrival: plan.holdStageArrival,
   };
 }
 
@@ -346,8 +392,13 @@ export default function DriverMapScreen() {
 
   const activeDestination = useMemo(() => {
     if (!trip) return null;
+    if (trip.sourceTable === "taxi_rides" && trip.holdStageArrival) return trip.dropoff;
     return trip.stage === "dropoff" ? trip.dropoff : trip.pickup;
   }, [trip]);
+  const routeWaypoints = useMemo(
+    () => trip?.routeWaypoints ?? [],
+    [trip?.routeWaypoints],
+  );
 
   const voiceLanguage = resolveNavigationVoiceLanguage(i18n.language);
 
@@ -369,6 +420,7 @@ export default function DriverMapScreen() {
     allowReroute: !navigationPaused && !previewMode,
     driverPoint: liveLocation.point ?? trip?.pickup ?? null,
     destination: activeDestination,
+    waypoints: routeWaypoints,
     stage: trip?.stage ?? "pickup",
     language: navLocale,
     alternatives: true,
@@ -669,6 +721,7 @@ export default function DriverMapScreen() {
   const destinationArrived = useMemo(() => {
     if (previewMode && previewQa.arrival) return true;
     if (!trip || navigationPaused) return false;
+    if (trip.holdStageArrival) return false;
     return trip.stage === "pickup" ? arrival.pickupArrived : arrival.dropoffArrived;
   }, [
     arrival.dropoffArrived,
@@ -860,7 +913,7 @@ export default function DriverMapScreen() {
             return supabase
               .from("taxi_rides")
               .select(
-                "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code,pickup_location_id,dropoff_location_id",
+                "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code,pickup_location_id,dropoff_location_id,taxi_ride_stops(stop_order,address,lat,lng,status)",
               )
               .eq("id", routeOrderId)
               .maybeSingle();
@@ -929,9 +982,11 @@ export default function DriverMapScreen() {
     }
   }, [previewMode, routeOrderId, routeSourceTable, routeStage, t]);
 
-  useEffect(() => {
-    void loadTrip();
-  }, [loadTrip]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadTrip();
+    }, [loadTrip]),
+  );
 
   useEffect(() => {
     if (previewMode || navigationPaused || !driverId || !location.point) {
@@ -1291,7 +1346,8 @@ export default function DriverMapScreen() {
             visible
             stage={trip.stage}
             address={
-              trip.stage === "pickup" ? trip.pickupAddress : trip.dropoffAddress
+              trip.activeStepAddress ||
+              (trip.stage === "pickup" ? trip.pickupAddress : trip.dropoffAddress)
             }
             remainingMeters={displayRemainingMeters}
             onOpenOrderDetails={handleOpenOrderDetails}

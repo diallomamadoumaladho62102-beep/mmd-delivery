@@ -21,6 +21,7 @@ type UseDriverNavigationRouteParams = {
   allowReroute?: boolean;
   driverPoint: CoordinatePoint | null;
   destination: CoordinatePoint | null;
+  waypoints?: CoordinatePoint[];
   stage: NavigationStage;
   language?: string;
   alternatives?: boolean;
@@ -48,6 +49,7 @@ export function useDriverNavigationRoute(
     allowReroute = true,
     driverPoint,
     destination,
+    waypoints = [],
     stage,
     language = "en",
     alternatives = false,
@@ -121,7 +123,7 @@ export function useDriverNavigationRoute(
         const nextRoutes = await fetchNavigationRoutes(
           origin,
           destination,
-          [],
+          waypoints,
           controller.signal,
           { language, alternatives },
         );
@@ -163,6 +165,7 @@ export function useDriverNavigationRoute(
       alternatives,
       applyRoute,
       destination,
+      waypoints,
       language,
       onNetworkFailure,
       onNetworkSuccess,

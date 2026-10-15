@@ -32,6 +32,7 @@ import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
 import type { TaxiAmbiancePreference, TaxiClientPreferences } from "@/lib/taxiClientPreferences";
 import { validateRouteClaimsServer } from "@/lib/geoTrust";
 import { maybeCreateGuineaCashTaxi } from "@/lib/markets/guineaTaxiHttp";
+import { taxiCashMarketGate } from "@/lib/markets/guineaCashPayment";
 import { isGuineaMotorcycleClass } from "@/lib/markets/guineaStandard";
 import {
   buildRoundTripRouteInput,
@@ -262,6 +263,14 @@ export async function POST(req: NextRequest) {
       clientNotes: body.clientNotes ?? body.client_notes,
     });
     if (guineaCreate) return guineaCreate;
+    if (
+      taxiCashMarketGate({
+        requestedMethod: body.paymentMethod ?? body.payment_method,
+        guineaMarket: false,
+      }) === "reject_cash"
+    ) {
+      return taxiJson({ ok: false, error: "cash_not_available" }, 403);
+    }
     if (guineaMotorcycle) {
       return taxiJson({ ok: false, error: "vehicle_class_unsupported" }, 400);
     }

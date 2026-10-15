@@ -12,6 +12,7 @@ import { formatRideMoney } from "@/lib/adminTaxiRideDisplay";
 import {
   buildCashCollectionLedgerRow,
   evaluateCashCollection,
+  taxiCashMarketGate,
   taxiCashSkipsStripe,
   taxiPaymentAllowsDispatch,
   type CashRideSnapshot,
@@ -318,6 +319,14 @@ pending.push(test("USD dispatch still requires paid, cash pending can dispatch o
   assert.equal(taxiPaymentAllowsDispatch("pending_cash", "cash"), true);
   assert.equal(taxiPaymentAllowsDispatch("pending_cash", "card"), false);
   assert.equal(taxiPaymentAllowsDispatch("cash_collected", "cash"), false);
+  assert.equal(taxiPaymentAllowsDispatch("pending_cash", "cash", "GN", "GNF"), true);
+  assert.equal(taxiPaymentAllowsDispatch("pending_cash", "cash", "US", "USD"), false);
+  assert.equal(taxiPaymentAllowsDispatch("paid", "card", "US", "USD"), true);
+  assert.equal(taxiPaymentAllowsDispatch("paid", "cash", "US", "USD"), false);
+  assert.equal(taxiCashMarketGate({ requestedMethod: "cash", guineaMarket: false }), "reject_cash");
+  assert.equal(taxiCashMarketGate({ requestedMethod: "cash", guineaMarket: true }), "continue");
+  assert.equal(taxiCashMarketGate({ requestedMethod: "card", guineaMarket: false }), "continue");
+  assert.equal(taxiCashMarketGate({ requestedMethod: null, guineaMarket: false }), "continue");
 }));
 
 pending.push(test("only the assigned driver can collect cash, and a second time is idempotent", () => {
@@ -619,6 +628,93 @@ pending.push(test("missing geocoder country is not treated as Guinea and the tes
   assert.equal(bamako, true);
   assert.equal(guineaCountryEvidenceAllowsMarket(["SL", "SL"]), false);
   assert.equal(guineaCountryEvidenceAllowsMarket(["ML", "ML"]), false);
+}));
+
+pending.push(test("US cash is refused and Guinea cash is not taken from a client country string", () => {
+  const nyc = resolveGuineaTaxiMarket({
+    enabled: true,
+    claimedCountryCode: "GN",
+    pickupLat: NYC.lat,
+    pickupLng: NYC.lng,
+    dropoffLat: NYC.lat,
+    dropoffLng: NYC.lng,
+    vehicleClass: "standard",
+  });
+  assert.equal(nyc.kind, "reject");
+  const us = resolveGuineaTaxiMarket({
+    enabled: true,
+    claimedCountryCode: "US",
+    pickupLat: NYC.lat,
+    pickupLng: NYC.lng,
+    dropoffLat: NYC.lat,
+    dropoffLng: NYC.lng,
+    vehicleClass: "standard",
+  });
+  assert.equal(us.kind, "us");
+  assert.equal(taxiCashMarketGate({ requestedMethod: "cash", guineaMarket: us.kind === "guinea" }), "reject_cash");
+  const conakry = resolveGuineaTaxiMarket({
+    enabled: true,
+    claimedCountryCode: "US",
+    pickupLat: CONAKRY.lat,
+    pickupLng: CONAKRY.lng,
+    dropoffLat: CONAKRY.lat,
+    dropoffLng: CONAKRY.lng,
+    vehicleClass: "standard",
+  });
+  assert.equal(conakry.kind, "guinea");
+  const sql = fs.readFileSync(
+    path.join(root, "supabase/migrations/20261221120000_taxi_stop_sequence.sql"),
+    "utf8",
+  );
+  assert.match(sql, /stop_out_of_order/);
+  assert.match(sql, /stops_incomplete/);
+  assert.match(sql, /stop_not_arrived/);
+  assert.match(sql, /for update/);
+  assert.match(sql, /v_distance > 150/);
+  assert.match(sql, /country_code, ''\)\) = 'GN'/);
+  assert.match(sql, /currency, ''\)\) = 'GNF'/);
+  const quote = fs.readFileSync(
+    path.join(root, "apps/web/app/api/taxi/rides/quote/route.ts"),
+    "utf8",
+  );
+  const create = fs.readFileSync(
+    path.join(root, "apps/web/app/api/taxi/rides/create/route.ts"),
+    "utf8",
+  );
+  assert.match(quote, /cash_not_available/);
+  assert.match(create, /cash_not_available/);
+  const collected = evaluateCashCollection(
+    {
+      id: "ride",
+      clientUserId: "client",
+      driverId: "driver",
+      status: "completed",
+      paymentMethod: "cash",
+      paymentStatus: "pending_cash",
+      currency: "GNF",
+      countryCode: "US",
+      totalCents: 1200,
+    },
+    "driver",
+  );
+  assert.equal(collected.ok, false);
+  if (!collected.ok) assert.equal(collected.error, "market_mismatch");
+  const repeat = evaluateCashCollection(
+    {
+      id: "ride",
+      clientUserId: "client",
+      driverId: "driver",
+      status: "completed",
+      paymentMethod: "cash",
+      paymentStatus: "cash_collected",
+      currency: "GNF",
+      countryCode: "GN",
+      totalCents: 50000,
+    },
+    "driver",
+  );
+  assert.equal(repeat.ok, true);
+  if (repeat.ok) assert.equal(repeat.idempotent, true);
 }));
 
 async function main() {

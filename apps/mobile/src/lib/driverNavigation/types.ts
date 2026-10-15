@@ -32,6 +32,12 @@ export type NavigationTrip = {
   etaMinutes: number;
   /** ISO country code when present on the loaded order row. */
   orderCountryCode?: string | null;
+  /** Remaining taxi stops, in order, before the final dropoff. */
+  routeWaypoints?: CoordinatePoint[];
+  /** Next authorized step label. Pickup and dropoff addresses stay on the trip. */
+  activeStepAddress?: string | null;
+  /** Intermediate stop is next, so dropoff arrival chrome stays off. */
+  holdStageArrival?: boolean;
   pickupLocationId?: string | null;
   dropoffLocationId?: string | null;
 };
