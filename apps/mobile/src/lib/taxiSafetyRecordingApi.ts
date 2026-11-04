@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./apiBase";
+import { getLocalFileByteLength } from "./readLocalFileBytes";
 import { supabase } from "./supabase";
 import { uploadFile } from "./uploadFile";
 
@@ -129,13 +130,13 @@ export async function uploadSafetyRecordingFile(params: {
     contentType: params.mimeType,
   });
 
-  const response = await fetch(params.uri);
-  const blob = await response.blob();
+  // Size via expo-file-system getInfoAsync — avoids RCTFileReaderModule.
+  const fileSizeBytes = await getLocalFileByteLength(params.uri);
 
   return completeSafetyRecordingUpload({
     recordingId: params.recordingId,
     storagePath: path,
-    fileSizeBytes: blob.size,
+    fileSizeBytes,
     mimeType: params.mimeType,
     extension: params.extension,
   });

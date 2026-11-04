@@ -3,7 +3,6 @@
  * Logic/APIs preserved (profile load, docs, stripe, edit save).
  */
 import React, { useCallback, useMemo, useState } from "react";
-import { decode } from "base64-arraybuffer";
 import {
   View,
   Text,
@@ -22,7 +21,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system/legacy";
+import {
+  ReadLocalFileBytesError,
+  readLocalFileBytes,
+} from "../lib/readLocalFileBytes";
 import { supabase } from "../lib/supabase";
 import {
   CLIENT_SCREEN_FETCH_TIMEOUT_MS,
@@ -36,7 +38,10 @@ import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingStat
 import { changeDriverTransportMode } from "../lib/driverServicePreferencesApi";
 import { readSelectedMarket } from "../lib/selectedMarketStore";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
-import { isAllowedDriverDocUpload } from "../lib/driverDocUpload";
+import {
+  DRIVER_DOC_MAX_BYTES,
+  isAllowedDriverDocUpload,
+} from "../lib/driverDocUpload";
 import {
   MMD_ACTION_NAVY,
   MMD_BLUE,
@@ -1373,10 +1378,12 @@ export function DriverProfileScreen() {
       if (!picked) return;
 
       const storagePath = avatarStoragePath(uid);
-      const base64 = await FileSystem.readAsStringAsync(picked.uri, {
-        encoding: "base64" as any,
+      const { bytes } = await readLocalFileBytes({
+        uri: picked.uri,
+        mime: picked.mime,
+        allowedMimes: ["image/jpeg", "image/jpg", "image/png"],
+        maxBytes: 10 * 1024 * 1024,
       });
-      const bytes = decode(base64);
 
       const { error: upErr } = await supabase.storage.from(AVATARS_BUCKET).upload(storagePath, bytes, {
         contentType: "image/jpeg",
@@ -1543,10 +1550,42 @@ export function DriverProfileScreen() {
 
       const filePath = buildDriverDocPath(uid, docType, picked.name, picked.mime);
 
-      const base64 = await FileSystem.readAsStringAsync(picked.uri, {
-        encoding: "base64" as any,
-      });
-      const bytes = decode(base64);
+      let bytes: Uint8Array;
+      try {
+        const read = await readLocalFileBytes({
+          uri: picked.uri,
+          mime: picked.mime,
+          allowedMimes: ["image/jpeg", "image/jpg", "image/png", "application/pdf"],
+          maxBytes: DRIVER_DOC_MAX_BYTES,
+        });
+        bytes = read.bytes;
+      } catch (e: unknown) {
+        const reason =
+          e instanceof ReadLocalFileBytesError
+            ? e.reason === "bad_mime"
+              ? "bad_type"
+              : e.reason === "empty" || e.reason === "too_large"
+                ? e.reason
+                : null
+            : null;
+        if (reason) {
+          const msg =
+            reason === "empty"
+              ? t("common.profile.docEmpty", {
+                  defaultValue: "This file is empty. Choose a photo or PDF.",
+                })
+              : reason === "too_large"
+                ? t("common.profile.docTooLarge", {
+                    defaultValue: "File is too large (max 10 MB).",
+                  })
+                : t("common.profile.docBadType", {
+                    defaultValue: "Use JPEG, PNG, or PDF only.",
+                  });
+          Alert.alert(t("client.auth.errorTitle", { defaultValue: "Error" }), msg);
+          return;
+        }
+        throw e;
+      }
       const guard = isAllowedDriverDocUpload({
         byteLength: bytes.byteLength,
         mime: picked.mime,
