@@ -174,6 +174,23 @@ export function normalizeDriverStatus(value: string | null | undefined): DriverR
   return "pending";
 }
 
+/** US-style state/ZIP required unless market is Guinea (+224 / country_code=GN). */
+export function driverRequiresUsStyleRegion(input: {
+  phone?: string | null;
+  country_code?: string | null;
+}): boolean {
+  const cc = String(input.country_code ?? "")
+    .trim()
+    .toUpperCase();
+  if (cc === "GN") return false;
+  if (cc && cc !== "US") return false;
+  const phone = String(input.phone ?? "").trim();
+  const digits = phone.replace(/\D/g, "");
+  const looksGuinea = digits.startsWith("224") || phone.startsWith("+224");
+  if (looksGuinea && !cc) return false;
+  return true;
+}
+
 export function computeMissingRequirementsForRow(input: {
   transport_mode: VehicleType;
   full_name: string | null;
@@ -192,17 +209,22 @@ export function computeMissingRequirementsForRow(input: {
   license_number: string | null;
   license_expiry: string | null;
   documents: Array<{ doc_type: string }>;
+  country_code?: string | null;
 }): string[] {
   const missing: string[] = [];
   const docTypes = new Set(input.documents.map((doc) => doc.doc_type));
+  const requireUsRegion = driverRequiresUsStyleRegion({
+    phone: input.phone,
+    country_code: input.country_code,
+  });
 
   if (!input.full_name) missing.push("full name");
   if (!input.phone) missing.push("phone number");
   if (!input.emergency_phone) missing.push("emergency phone number");
   if (!input.address) missing.push("address");
   if (!input.city) missing.push("city");
-  if (!input.state) missing.push("state");
-  if (!input.zip_code) missing.push("zip code");
+  if (requireUsRegion && !input.state) missing.push("state");
+  if (requireUsRegion && !input.zip_code) missing.push("zip code");
   if (!input.date_of_birth) missing.push("date of birth");
 
   if (!docTypes.has("profile_photo")) missing.push("profile photo");

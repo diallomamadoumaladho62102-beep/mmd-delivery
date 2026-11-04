@@ -63,6 +63,7 @@ export function AppRootShell({
 
     void (async () => {
       logStartupProbe("shell-import-start");
+      const shellImportBudgetMs = __DEV__ ? 45_000 : BOOT_SHELL_TIMEOUT_MS;
 
       try {
         ensureMapboxTokenApplied();
@@ -89,7 +90,7 @@ export function AppRootShell({
 
         const StripeGate = await withTimeout(
           bootImport,
-          BOOT_SHELL_TIMEOUT_MS,
+          shellImportBudgetMs,
           "shell_import",
         );
 
@@ -104,7 +105,7 @@ export function AppRootShell({
         try {
           const StripeGate = await withTimeout(
             loadNavigatorOnly(),
-            BOOT_SHELL_TIMEOUT_MS,
+            shellImportBudgetMs,
             "shell_navigator_fallback",
           );
           if (!alive) return;

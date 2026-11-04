@@ -10,6 +10,7 @@ import {
   type PlatformFeaturesResponse,
 } from "../lib/platformFeaturesApi";
 import { clearManualClientScope, readManualClientScope } from "../lib/clientScopeStorage";
+import { readSelectedMarket } from "../lib/selectedMarketStore";
 import { supabase } from "../lib/supabase";
 
 type UseClientPlatformFeaturesOptions = {
@@ -97,14 +98,29 @@ export function useClientPlatformFeatures(options: UseClientPlatformFeaturesOpti
         await clearManualClientScope();
       }
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id ?? null;
+
+      // CountryWelcome / Settings → Pays: explicit market must not be overridden by
+      // emulator/device GPS that still reports another country.
+      const selectedMarket = refreshOptions.forceGps
+        ? null
+        : await readSelectedMarket();
+      if (selectedMarket) {
+        const next = await fetchClientPlatformFeatures({
+          manualCountry: selectedMarket,
+        });
+        setFeatures(next.ok ? next : defaultPlatformFeatures());
+        return;
+      }
+
       const { lat, lng } = await readDeviceCoordinates(Boolean(refreshOptions.forceGps));
 
       let manualCountry: string | undefined;
       let manualState: string | undefined;
 
       if (!lat || !lng) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const manual = await readManualClientScope(sessionData.session?.user?.id ?? null);
+        const manual = await readManualClientScope(userId);
         if (manual) {
           manualCountry = manual.countryCode;
           manualState = manual.stateCode ?? undefined;

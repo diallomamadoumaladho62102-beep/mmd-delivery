@@ -22,6 +22,7 @@ import {
   formatMarketplaceMoney,
   runMarketplaceCheckout,
   runMarketplaceLiveCheckout,
+  runMarketplaceLocalCheckout,
   confirmMarketplaceCheckoutPaid,
   saveMarketplaceDraft,
   type MarketplaceOrderDraft,
@@ -297,12 +298,51 @@ export default function MarketplaceCartScreen({ route }: Props) {
     }
   }
 
+  async function handleLocalCashCheckout() {
+    if (!draft?.id) return;
+    try {
+      setCheckingOut(true);
+      const refreshed = dropoffLocationId
+        ? await persistDraftWithLocations(dropoffLocationId)
+        : draft;
+      const body = await runMarketplaceLocalCheckout(
+        refreshed?.id ?? draft.id,
+        "cash",
+        marketplaceScope
+      );
+      if (body.order) setPaidOrder(body.order);
+      Alert.alert(
+        t("marketplace.cart.cashPlacedTitle", "Order confirmed"),
+        t(
+          "marketplace.cart.cashPlacedBody",
+          "Your order is confirmed. Pay in cash on delivery. The seller has been notified."
+        )
+      );
+    } catch (e) {
+      Alert.alert(
+        t("marketplace.cart.errorTitle", "Cart error"),
+        toUserFacingError(e, t("common.unknownError", "Unknown error."))
+      );
+    } finally {
+      setCheckingOut(false);
+    }
+  }
+
   const checkoutEnabled = Boolean(draft?.checkout_shadow?.checkout_enabled);
+  // Guinea uses local checkout (cash); Stripe live path stays for every other market.
+  const isGuineaOrder =
+    [draft?.country_code, sellerCountryCode, dropoffLocationCountry].some(
+      (code) => String(code ?? "").trim().toUpperCase() === "GN"
+    ) || String(draft?.currency ?? "").trim().toUpperCase() === "GNF";
   const orderIsPaid =
     paidOrder?.payment_status === "paid" ||
     paidOrder?.status === "paid" ||
     draft?.payment_status === "paid" ||
     draft?.status === "paid";
+  const cashOrderPlaced = [paidOrder, draft].some(
+    (order) => order?.status === "confirmed" && order?.payment_status === "pending_cash"
+  );
+  const orderIsSettled = orderIsPaid || cashOrderPlaced;
   const statusOrder = paidOrder ?? draft;
 
   return (
@@ -450,10 +490,12 @@ export default function MarketplaceCartScreen({ route }: Props) {
               </View>
             ) : null}
 
-            {orderIsPaid && statusOrder ? (
+            {orderIsSettled && statusOrder ? (
               <View style={styles.paidCard}>
                 <Text style={styles.paidTitle}>
-                  {t("marketplace.cart.orderPaidTitle", "Order paid")}
+                  {cashOrderPlaced && !orderIsPaid
+                    ? t("marketplace.cart.cashPlacedTitle", "Order confirmed")
+                    : t("marketplace.cart.orderPaidTitle", "Order paid")}
                 </Text>
                 <Text style={styles.paidMeta}>
                   {t("marketplace.cart.orderStatus", "Status")}: {statusOrder.status}
@@ -472,7 +514,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
               </View>
             ) : null}
 
-            {liveCheckoutEnabled !== true ? (
+            {liveCheckoutEnabled !== true && !isGuineaOrder ? (
               <Text style={styles.comingSoonNote}>
                 {t(
                   "marketplace.cart.checkoutStillComingSoon",
@@ -481,7 +523,27 @@ export default function MarketplaceCartScreen({ route }: Props) {
               </Text>
             ) : null}
 
-            {liveCheckoutEnabled === true && !orderIsPaid ? (
+            {isGuineaOrder && !orderIsSettled ? (
+              <TouchableOpacity
+                disabled={checkingOut}
+                onPress={() => void handleLocalCashCheckout()}
+                style={[
+                  styles.checkoutBtn,
+                  {
+                    backgroundColor: MMD_GREEN,
+                    opacity: checkingOut ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text style={styles.checkoutBtnText}>
+                  {checkingOut
+                    ? t("marketplace.cart.processing", "Processing…")
+                    : t("marketplace.cart.confirmCash", "Confirm order (cash)")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {liveCheckoutEnabled === true && !isGuineaOrder && !orderIsSettled ? (
               <TouchableOpacity
                 disabled={checkingOut}
                 onPress={() => void handleLiveCheckout()}
@@ -501,7 +563,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
               </TouchableOpacity>
             ) : null}
 
-            {!orderIsPaid ? (
+            {!orderIsSettled && !isGuineaOrder ? (
               <TouchableOpacity
                 disabled={checkingOut}
                 onPress={() => void handleCheckoutShadow()}

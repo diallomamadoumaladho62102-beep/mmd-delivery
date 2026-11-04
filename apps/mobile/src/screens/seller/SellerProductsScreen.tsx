@@ -84,6 +84,13 @@ export default function SellerProductsScreen({ navigation }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState<ProductDraft>(EMPTY_DRAFT);
   const [saving, setSaving] = useState(false);
+  const [sellerCountry, setSellerCountry] = useState<string>("US");
+  const [sellerStatus, setSellerStatus] = useState<string>("pending");
+
+  const defaultProductCurrency = useMemo(
+    () => (sellerCountry === "GN" ? "GNF" : "USD"),
+    [sellerCountry]
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -93,14 +100,10 @@ export default function SellerProductsScreen({ navigation }: Props) {
         navigation.replace("SellerOnboarding");
         return;
       }
-      if (seller.status !== "approved") {
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          t("seller.products.notApproved", "Your seller account must be approved first.")
-        );
-        navigation.goBack();
-        return;
-      }
+      // Pending sellers may prepare catalog (owner RLS); public browse stays approved-only.
+      const country = String(seller.country_code ?? "US").trim().toUpperCase() || "US";
+      setSellerCountry(country);
+      setSellerStatus(String(seller.status ?? "pending"));
       setSellerId(seller.id);
       setProducts(await loadSellerProducts(seller.id));
     } catch (e: any) {
@@ -131,7 +134,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
   }, [products, query]);
 
   const openCreate = () => {
-    setDraft(EMPTY_DRAFT);
+    setDraft({ ...EMPTY_DRAFT, currency: defaultProductCurrency });
     setModalOpen(true);
   };
 
@@ -142,16 +145,22 @@ export default function SellerProductsScreen({ navigation }: Props) {
     const variants = Array.isArray(product.variants_json)
       ? (product.variants_json as unknown[]).map(String).join("\n")
       : "";
+    const code = String(product.currency ?? defaultProductCurrency).toUpperCase();
+    const wholeFrancs = code === "GNF" || code === "XOF";
     setDraft({
       id: product.id,
       title: product.title,
       description: product.description,
-      price: String((product.price_cents / 100).toFixed(2)),
+      price: wholeFrancs
+        ? String(Math.round(product.price_cents))
+        : String((product.price_cents / 100).toFixed(2)),
       promoPrice:
         product.promo_price_cents == null
           ? ""
-          : String((product.promo_price_cents / 100).toFixed(2)),
-      currency: product.currency,
+          : wholeFrancs
+            ? String(Math.round(product.promo_price_cents))
+            : String((product.promo_price_cents / 100).toFixed(2)),
+      currency: product.currency || defaultProductCurrency,
       category: product.category,
       imageUrl: product.image_paths?.[0] ?? "",
       stockQty: product.stock_qty == null ? "" : String(product.stock_qty),
@@ -164,7 +173,13 @@ export default function SellerProductsScreen({ navigation }: Props) {
 
   const save = async () => {
     if (!sellerId) return;
-    const priceCents = Math.round(Number(draft.price) * 100);
+    const code = String(draft.currency || defaultProductCurrency)
+      .trim()
+      .toUpperCase();
+    const wholeFrancs = code === "GNF" || code === "XOF";
+    const priceCents = wholeFrancs
+      ? Math.round(Number(draft.price))
+      : Math.round(Number(draft.price) * 100);
     if (!draft.title.trim() || !Number.isFinite(priceCents) || priceCents <= 0) {
       Alert.alert(
         t("common.errorTitle", "Error"),
@@ -175,7 +190,11 @@ export default function SellerProductsScreen({ navigation }: Props) {
 
     const promoRaw = draft.promoPrice.trim();
     const promoPriceCents =
-      promoRaw === "" ? null : Math.round(Number(promoRaw) * 100);
+      promoRaw === ""
+        ? null
+        : wholeFrancs
+          ? Math.round(Number(promoRaw))
+          : Math.round(Number(promoRaw) * 100);
     if (promoRaw !== "" && (!Number.isFinite(promoPriceCents) || (promoPriceCents ?? 0) < 0)) {
       Alert.alert(
         t("common.errorTitle", "Error"),
@@ -211,7 +230,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
         description: draft.description,
         price_cents: priceCents,
         promo_price_cents: promoPriceCents,
-        currency: draft.currency,
+        currency: draft.currency?.trim() || defaultProductCurrency,
         category: draft.category,
         image_paths: draft.imageUrl.trim() ? [draft.imageUrl.trim()] : [],
         active: draft.active,
@@ -285,6 +304,20 @@ export default function SellerProductsScreen({ navigation }: Props) {
         showBack
         fallbackRoute="SellerDashboard"
       />
+
+      {sellerStatus !== "approved" ? (
+        <SellerFeedbackCard
+          icon="⏳"
+          title={t(
+            "seller.products.pendingReviewTitle",
+            "Pending admin approval"
+          )}
+          message={t(
+            "seller.products.pendingReviewBody",
+            "You can prepare products now. Customers will see them after your store is approved."
+          )}
+        />
+      ) : null}
 
       {loading ? (
         <SellerFeedbackCard

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { mmdLocationJson } from "@/lib/mmdLocationCore";
 import { requireMarketplaceClientAuth } from "@/lib/marketplaceApiAuth";
+import { GUINEA_TEST_LIVE_OPERATION_BLOCKED } from "@/lib/guineaTestIsolation";
 import {
   getClientDraftOrder,
   upsertMarketplaceDraftOrder,
@@ -57,9 +58,10 @@ export async function POST(req: NextRequest) {
 
     return mmdLocationJson({ ok: true, order });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Server error";
     return mmdLocationJson(
-      { ok: false, error: error instanceof Error ? error.message : "Server error" },
-      400
+      { ok: false, error: message },
+      message === GUINEA_TEST_LIVE_OPERATION_BLOCKED ? 403 : 400
     );
   }
 }

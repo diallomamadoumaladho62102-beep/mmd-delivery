@@ -92,3 +92,11 @@ export function confirmDeliveryRequestDelivered(params: {
     proof_photo_url: params.proofPhotoUrl,
   });
 }
+
+/** Guinea cash: driver confirms physical cash after delivery. */
+export function collectDeliveryRequestCash(deliveryRequestId: string) {
+  return postDeliveryRequestApi("/api/delivery-requests/cash-collected", {
+    request_id: deliveryRequestId,
+    delivery_request_id: deliveryRequestId,
+  });
+}

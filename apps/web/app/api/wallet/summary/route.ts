@@ -83,7 +83,8 @@ export async function GET(req: NextRequest) {
 
     if (accountType === "client") {
       const userId = data.user.id;
-      const [balanceCents, availableRes, ledgerRes] = await Promise.all([
+      const [balanceCents, availableRes, ledgerRes, creditWalletRes, loyaltySettingsRes] =
+        await Promise.all([
         getWalletBalance(supabaseAdmin, "client", userId, currency),
         supabaseAdmin.rpc("mmd_credit_available_cents", { p_user_id: userId }),
         supabaseAdmin
@@ -91,7 +92,18 @@ export async function GET(req: NextRequest) {
           .select("direction, amount_cents, reference_type")
           .eq("account_type", "client")
           .eq("account_user_id", userId)
+          .eq("currency", currency.toLowerCase())
           .limit(500),
+        supabaseAdmin
+          .from("mmd_credit_wallets")
+          .select("currency")
+          .eq("user_id", userId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("loyalty_settings")
+          .select("currency")
+          .eq("singleton", true)
+          .maybeSingle(),
       ]);
 
       if (availableRes.error) {
@@ -122,11 +134,20 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      const walletCurrency = String(creditWalletRes.data?.currency ?? "")
+        .trim()
+        .toUpperCase();
+      const settingsCurrency = String(loyaltySettingsRes.data?.currency ?? "")
+        .trim()
+        .toUpperCase();
+      const creditCurrency = walletCurrency || settingsCurrency || null;
+
       return mmdLocationJson({
         ok: true,
         account_type: "client",
         country_code: countryCode,
         currency,
+        credit_currency: creditCurrency,
         balance_cents: balanceCents,
         available_cents: availableCents,
         refunded_cents: refundedCents,

@@ -4,6 +4,7 @@ import { findLinkedPackageMirrorOrder } from "@/lib/deliveryRequestDriver";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 import { roundPlatformMoney } from "@/lib/platformCurrency";
 import { quotePackageSot } from "@/lib/pricingEngine";
+import { assertNoGuineaIsolatedLiveWrite } from "@/lib/guineaTestIsolation";
 
 function toFiniteNumber(value: unknown, fallback = 0) {
   const num = Number(value);
@@ -37,6 +38,11 @@ export type CreateDeliveryRequestInput = {
   } | null;
   /** Phase 5F — freeze PE quote on materialize. */
   frozenPricing?: DeliveryRequestPricingResult | null;
+  /**
+   * Guinea local cash only (countryCode=GN, GNF, not settlePaid): stores
+   * payment_status=pending_cash + payment_method=cash. Never marks paid.
+   */
+  paymentMethod?: "cash" | null;
 };
 
 export type CreateDeliveryRequestResult = DeliveryRequestPricingResult & {
@@ -46,6 +52,7 @@ export type CreateDeliveryRequestResult = DeliveryRequestPricingResult & {
 export async function createDeliveryRequestServerSide(
   input: CreateDeliveryRequestInput
 ): Promise<CreateDeliveryRequestResult> {
+  await assertNoGuineaIsolatedLiveWrite(input.supabaseAdmin, [input.clientId]);
   // Phase 5F — PE SoT for package and ride-type DR (same package fee engine).
   const pricing =
     input.frozenPricing ??
@@ -71,13 +78,24 @@ export async function createDeliveryRequestServerSide(
   const settlePaid = input.settlePaid ?? null;
   const paidNow = settlePaid ? new Date().toISOString() : null;
 
+  const guineaCash = input.paymentMethod === "cash" && !settlePaid;
+  if (guineaCash) {
+    if (
+      String(input.countryCode ?? "").trim().toUpperCase() !== "GN" ||
+      String(pricing.currency ?? "").trim().toUpperCase() !== "GNF"
+    ) {
+      throw new Error("cash_not_available");
+    }
+  }
+
   const { data, error } = await input.supabaseAdmin
     .from("delivery_requests")
     .insert({
       created_by: input.clientId,
       client_user_id: input.clientId,
       status: "pending",
-      payment_status: settlePaid ? "paid" : "unpaid",
+      payment_status: settlePaid ? "paid" : guineaCash ? "pending_cash" : "unpaid",
+      ...(guineaCash ? { payment_method: "cash" } : {}),
       paid_at: paidNow,
       stripe_session_id: settlePaid?.stripeSessionId ?? null,
       stripe_payment_intent_id: settlePaid?.stripePaymentIntentId ?? null,
@@ -117,6 +135,9 @@ export async function createDeliveryRequestServerSide(
     .single();
 
   if (error) {
+    if (guineaCash && /payment_method|payment_status|check constraint|schema cache/i.test(error.message)) {
+      throw new Error("guinea_delivery_cash_schema_not_ready");
+    }
     throw new Error(error.message);
   }
 

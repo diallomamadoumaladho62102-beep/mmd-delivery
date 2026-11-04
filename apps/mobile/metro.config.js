@@ -11,7 +11,14 @@ if (config.watcher && "unstable_workerThreads" in config.watcher) {
   delete config.watcher.unstable_workerThreads;
 }
 
-config.watchFolders = [...(config.watchFolders ?? []), workspaceRoot];
+// Watch the shared sources and hoisted modules only. Watching the whole
+// monorepo also watches apps/web/.next, which exhausts Windows file handles
+// (EMFILE) inside Metro's HMR handler.
+config.watchFolders = [
+  ...(config.watchFolders ?? []),
+  path.resolve(workspaceRoot, "shared"),
+  path.resolve(workspaceRoot, "node_modules"),
+];
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(workspaceRoot, "node_modules"),
@@ -30,10 +37,15 @@ config.resolver.extraNodeModules = {
   ),
 };
 
+// FileStore.get also opens many cache files at once. One Metro process, no --clear.
+config.maxWorkers = 2;
 config.resolver.blockList = [
   ...(config.resolver.blockList ?? []),
   /.*\/Backups_Terminal\/.*/,
   /.*\\Backups_Terminal\\.*/,
+  /[/\\]\.next[/\\]/,
+  /[/\\]android[/\\]build[/\\]/,
+  /[/\\]ios[/\\]Pods[/\\]/,
 ];
 
 module.exports = config;

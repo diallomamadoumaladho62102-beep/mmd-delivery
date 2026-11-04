@@ -100,15 +100,25 @@ async function run() {
     assert.equal(scope.scope_source, "gps");
   });
 
-  await test("GPS Conakry resolves GN zone", async () => {
+  await test("GPS in Guinea stays country-level until zones have coordinates", async () => {
     const supabase = createMockSupabase({ savedCountry: "US", profileCountry: "US" });
-    const scope = await resolveClientPlatformScope(supabase, "user-1", {
+    const conakry = await resolveClientPlatformScope(supabase, "user-1", {
       lat: conakryLat,
       lng: conakryLng,
     });
-    assert.equal(scope.country_code, "GN");
-    assert.equal(scope.zone_code, "gn_conakry");
-    assert.equal(scope.scope_source, "gps");
+    assert.equal(conakry.country_code, "GN");
+    assert.equal(conakry.zone_code, null);
+    assert.equal(conakry.scope_level, "country");
+    assert.equal(conakry.scope_source, "gps");
+
+    const labe = await resolveClientPlatformScope(supabase, "user-1", {
+      lat: 11.3181,
+      lng: -12.2832,
+    });
+    assert.equal(labe.country_code, "GN");
+    assert.equal(labe.zone_code, null);
+    assert.equal(labe.scope_level, "country");
+    assert.equal(labe.scope_source, "gps");
   });
 
   await test("saved GN address used when GPS absent", async () => {

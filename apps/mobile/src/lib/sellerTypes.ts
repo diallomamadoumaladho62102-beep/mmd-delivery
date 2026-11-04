@@ -49,6 +49,7 @@ export type SellerOrderRow = {
   seller_id: string;
   client_user_id: string | null;
   status: string;
+  payment_status?: string | null;
   currency: string;
   total_cents: number;
   country_code: string | null;
@@ -87,7 +88,13 @@ export function sellerStatusLabel(
   }
 }
 
+/** `price_cents` is USD cents; for GNF/XOF it stores whole francs (no ÷100). */
 export function formatMoney(cents: number, currency = "USD"): string {
-  const amount = (Number(cents) || 0) / 100;
-  return `${amount.toFixed(2)} ${currency}`;
+  const code = String(currency ?? "USD").trim().toUpperCase() || "USD";
+  const raw = Number(cents) || 0;
+  if (code === "GNF" || code === "XOF") {
+    const whole = Math.round(raw);
+    return `${whole.toLocaleString("fr-FR")} ${code}`;
+  }
+  return `${(raw / 100).toFixed(2)} ${code}`;
 }

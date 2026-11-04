@@ -5,7 +5,8 @@ import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { canReviewDrivers, canViewDrivers } from "@/lib/adminAccess";
-import { adminFetch } from "@/lib/adminBrowserAuth";
+import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
+import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import {
   DEFAULT_DRIVER_FILTERS,
   computeMissingRequirementsForRow,
@@ -68,6 +69,7 @@ export default function AdminDriversManager() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [staffRole, setStaffRole] = useState<string | null>(null);
+  const [isFounder, setIsFounder] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [allowed, setAllowed] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -86,7 +88,10 @@ export default function AdminDriversManager() {
     [searchParams]
   );
 
-  const canManage = canReviewDrivers(normalizeUserRole(staffRole));
+  const canManage = sessionHasPermission(
+    { role: normalizeUserRole(staffRole) ?? "client", isFounder },
+    "users.drivers.manage"
+  );
 
   const syncFilters = useCallback(
     (next: typeof filters) => {
@@ -133,24 +138,24 @@ export default function AdminDriversManager() {
         if (mode === "initial") setLoading(true);
         else setRefreshing(true);
         setError(null);
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
+        const staff = await resolveBrowserStaffSession();
+        if (!staff) {
           setAuthChecked(true);
           setAllowed(false);
           router.push("/admin/login");
           return;
         }
-        const { data: me } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
-        const role = me?.role ?? null;
-        setStaffRole(role);
+        setStaffRole(staff.role);
+        setIsFounder(staff.isFounder);
         setAuthChecked(true);
-        if (!canViewDrivers(normalizeUserRole(role))) {
+        const canView = sessionHasPermission(
+          { role: staff.role, isFounder: staff.isFounder },
+          "users.drivers.read"
+        ) || sessionHasPermission(
+          { role: staff.role, isFounder: staff.isFounder },
+          "users.drivers.manage"
+        );
+        if (!canView && !canViewDrivers(staff.role)) {
           setAllowed(false);
           setError("Accès réservé aux administrateurs.");
           return;

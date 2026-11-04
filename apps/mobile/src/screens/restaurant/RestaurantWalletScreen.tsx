@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
 import { supabase } from "../../lib/supabase";
+import { readSelectedMarket } from "../../lib/selectedMarketStore";
 import {
   CLIENT_SCREEN_FETCH_TIMEOUT_MS,
   withTimeout,
@@ -83,7 +84,7 @@ export default function RestaurantWalletScreen() {
         Promise.all([
           fetchWalletSummary(token, {
             accountType: "restaurant",
-            countryCode: "US",
+            countryCode: (await readSelectedMarket()) ?? "US",
           }),
           fetchWalletHistory(token, {
             accountType: "restaurant",

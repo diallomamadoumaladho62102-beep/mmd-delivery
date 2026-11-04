@@ -18,8 +18,10 @@ import {
   BOOT_AUTH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
+import { collectFoodOrderCash } from "../lib/foodOrderApi";
 import { requestOrderPrint } from "../lib/restaurantOrderAutomationApi";
 import { supabase } from "../lib/supabase";
+import { toUserFacingError } from "../lib/userFacingError";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -230,13 +232,17 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
           t("order.errors.notAllowed", "You do not have access to this order.")
         );
       }
-      if (String(row?.payment_status || "").toLowerCase() !== "paid") {
-        throw new Error(
-          t(
-            "order.errors.awaitingPayment",
-            "This order is not paid yet and is not visible."
-          )
-        );
+      {
+        const ps = String(row?.payment_status || "").toLowerCase();
+        // Stripe: paid. Guinea cash: pending_cash until physical collection, then cash_collected.
+        if (!["paid", "pending_cash", "cash_collected"].includes(ps)) {
+          throw new Error(
+            t(
+              "order.errors.awaitingPayment",
+              "This order is not paid yet and is not visible."
+            )
+          );
+        }
       }
       if (String(row?.kind || "").toLowerCase() !== "food") {
         throw new Error(
@@ -363,6 +369,32 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
     },
     [fetchOrder, order, restaurantUserId, t, updating]
   );
+
+  const collectCash = useCallback(async () => {
+    if (!order || updating) return;
+    setUpdating(true);
+    try {
+      await collectFoodOrderCash(order.id);
+      Alert.alert(
+        t("restaurant.orders.cashCollectedTitle", "Cash collected"),
+        t(
+          "restaurant.orders.cashCollectedBody",
+          "Payment marked as cash collected."
+        )
+      );
+      await fetchOrder(true);
+    } catch (error: unknown) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        toUserFacingError(
+          error,
+          t("restaurant.orders.cashCollectFailed", "Unable to confirm cash collection.")
+        )
+      );
+    } finally {
+      setUpdating(false);
+    }
+  }, [fetchOrder, order, t, updating]);
 
   const cancelOrder = useCallback(async () => {
     if (!order || updating || !canRestaurantCancel(order.status)) return;
@@ -605,6 +637,19 @@ export function RestaurantOrderDetailsScreen({ route }: any) {
         ) : null}
 
         <View style={styles.workflow}>
+          {String(order.payment_status ?? "").toLowerCase() === "pending_cash" ? (
+            <WorkflowButton
+              label={t("restaurant.orders.collectCash", "Confirm cash received")}
+              tone="yellow"
+              onPress={() => void collectCash()}
+              disabled={updating}
+            />
+          ) : null}
+          {String(order.payment_status ?? "").toLowerCase() === "cash_collected" ? (
+            <Text style={{ color: "#22C55E", fontFamily: MMD_FONT.extrabold, marginBottom: 8 }}>
+              {t("restaurant.orders.cashCollectedBadge", "Cash collected")}
+            </Text>
+          ) : null}
           {order.status === "pending" ? (
             <WorkflowButton
               label={t("restaurant.orders.accept", "Accept")}

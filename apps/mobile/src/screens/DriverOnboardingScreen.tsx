@@ -33,6 +33,8 @@ import {
   BOOT_AUTH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
+import { confirmSignOutToRoleSelect } from "../lib/confirmSignOutToRoleSelect";
+import { driverSignOutLabels } from "../lib/signOutToRoleSelect";
 import { isApprovedDriverStatus } from "../lib/signupNavigation";
 import {
   notifyDriverApplicationPending,
@@ -372,6 +374,19 @@ export function DriverOnboardingScreen() {
               : t("driver.onboarding.continue", "Continue to Home")}
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() =>
+            confirmSignOutToRoleSelect({
+              navigation,
+              labels: driverSignOutLabels(t),
+            })
+          }
+          style={styles.signOutBtn}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.signOutText}>{t("common.logout", "Log out")}</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -466,6 +481,20 @@ const styles = StyleSheet.create({
     fontFamily: MMD_FONT.semibold,
     fontWeight: "600",
     fontSize: 12,
+  },
+  signOutBtn: {
+    marginTop: 4,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+  },
+  signOutText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 15,
   },
   cta: {
     backgroundColor: CTA_GREEN,

@@ -296,6 +296,30 @@ export async function runMarketplaceLiveCheckout(
   );
 }
 
+export type MarketplaceLocalPaymentMethod = "cash" | "orange_money";
+
+/** Guinea / local-money checkout (no Stripe). Cash confirms the order; Orange Money prepares it. */
+export async function runMarketplaceLocalCheckout(
+  orderId: string,
+  paymentMethod: MarketplaceLocalPaymentMethod,
+  scope?: MarketplaceScopeInput
+): Promise<{
+  ok?: boolean;
+  charge_path: "cash" | "orange_money";
+  next?: "payments_initiate";
+  order?: MarketplaceOrderDraft;
+}> {
+  const path = await buildMarketplacePath("/api/marketplace/checkout/local", {}, scope);
+  return marketplaceFetch(
+    path,
+    {
+      method: "POST",
+      body: JSON.stringify({ order_id: orderId, payment_method: paymentMethod }),
+    },
+    scope
+  );
+}
+
 export async function confirmMarketplaceCheckoutPaid(
   orderId: string,
   sessionId?: string | null,
@@ -413,6 +437,23 @@ export async function updateMarketplaceSellerOrderStatus(input: {
   });
 }
 
+export async function collectMarketplaceOrderCash(orderId: string): Promise<{
+  ok?: boolean;
+  payment_status?: string;
+  error?: string;
+}> {
+  const path = await buildMarketplacePath("/api/marketplace/orders/cash-collected", {});
+  return marketplaceFetch(path, {
+    method: "POST",
+    body: JSON.stringify({ order_id: orderId }),
+  });
+}
+
 export function formatMarketplaceMoney(cents: number, currency = "USD"): string {
-  return `${(Number(cents || 0) / 100).toFixed(2)} ${currency}`;
+  const code = String(currency ?? "USD").trim().toUpperCase() || "USD";
+  const raw = Number(cents || 0);
+  if (code === "GNF" || code === "XOF") {
+    return `${Math.round(raw).toLocaleString("fr-FR")} ${code}`;
+  }
+  return `${(raw / 100).toFixed(2)} ${code}`;
 }

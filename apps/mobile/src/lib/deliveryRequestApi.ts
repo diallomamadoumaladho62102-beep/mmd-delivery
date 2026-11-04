@@ -51,6 +51,8 @@ export type CreateDeliveryRequestPayload = {
   dropoff_location_id?: string | null;
   promo_code?: string | null;
   leave_at_door?: boolean;
+  /** Guinea cash: creates pending_cash — not paid until driver confirms collection. */
+  payment_method?: "cash" | null;
 };
 
 async function getAccessToken(): Promise<string | null> {

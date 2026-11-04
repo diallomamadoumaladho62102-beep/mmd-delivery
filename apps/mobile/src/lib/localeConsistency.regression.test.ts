@@ -77,6 +77,14 @@ const REQUIRED: Array<{ file: "common" | "extras"; key: string }> = [
   { file: "extras", key: "payments.stripeConnect.status.ready_for_payouts" },
   { file: "common", key: "client.home.tabs.orders" },
   { file: "common", key: "client.delivery.tabs.track" },
+  { file: "extras", key: "guineaMarket.welcomeTitle" },
+  { file: "extras", key: "guineaMarket.authContinue" },
+  { file: "extras", key: "guineaMarket.whereTo" },
+  { file: "extras", key: "guineaMarket.tabsParcels" },
+  { file: "extras", key: "guineaMarket.authPhoneInvalid" },
+  { file: "extras", key: "taxiGuinea.searchingDrivers" },
+  { file: "extras", key: "locationPicker.hintPinConfirmLocal" },
+  { file: "extras", key: "locationPicker.useGpsCurrent" },
 ];
 
 for (const lang of ["en", "fr", "es", "ar", "zh", "ff"]) {
@@ -167,6 +175,16 @@ for (const lang of ["fr", "es", "ar", "zh", "ff"] as const) {
     String(get(load(lang, "extras"), "clientRestaurantMenu.addresses.pickupLabel") ?? ""),
     "Pickup address (restaurant / start point)",
     `${lang} restaurant pickupLabel must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "guineaMarket.welcomeTitle") ?? ""),
+    "Welcome to MMD",
+    `${lang} guineaMarket.welcomeTitle must be translated`,
+  );
+  assert.notEqual(
+    String(get(load(lang, "extras"), "guineaMarket.whereTo") ?? ""),
+    "Where are you going?",
+    `${lang} guineaMarket.whereTo must be translated`,
   );
 }
 

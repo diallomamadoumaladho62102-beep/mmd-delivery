@@ -5,7 +5,8 @@ import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { canReviewRestaurants, canViewRestaurants } from "@/lib/adminAccess";
-import { adminFetch } from "@/lib/adminBrowserAuth";
+import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
+import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type RestaurantDocStatus =
@@ -138,7 +139,17 @@ function isImagePath(path: string): boolean {
 }
 
 function normalizeRestaurantStatus(value: string | null | undefined): RestaurantDocStatus {
-  return value === "approved" || value === "rejected" ? value : "pending";
+  const s = String(value ?? "").trim().toLowerCase();
+  if (
+    s === "approved" ||
+    s === "rejected" ||
+    s === "suspended" ||
+    s === "disabled" ||
+    s === "pending"
+  ) {
+    return s;
+  }
+  return "pending";
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -186,6 +197,10 @@ function badgeClassForStatus(status: RestaurantDocStatus): string {
       return "border-green-200 bg-green-100 text-green-800";
     case "rejected":
       return "border-red-200 bg-red-100 text-red-800";
+    case "suspended":
+      return "border-orange-200 bg-orange-100 text-orange-900";
+    case "disabled":
+      return "border-slate-300 bg-slate-200 text-slate-800";
     case "pending":
     default:
       return "border-yellow-200 bg-yellow-100 text-yellow-800";
@@ -198,6 +213,10 @@ function statusLabel(status: RestaurantDocStatus, t: (source: string) => string)
       return "Approuvé";
     case "rejected":
       return "Refusé";
+    case "suspended":
+      return t("Suspendu");
+    case "disabled":
+      return t("Désactivé");
     case "pending":
     default:
       return t("En attente");
@@ -315,7 +334,9 @@ function getPriorityScore(row: RestaurantAdminRow): number {
   }
   if (status === "pending") return 2;
   if (status === "rejected") return 3;
-  return 4;
+  if (status === "suspended") return 4;
+  if (status === "disabled") return 5;
+  return 6;
 }
 
 function getActionCardClass(status: RestaurantDocStatus): string {
@@ -368,7 +389,9 @@ export default function AdminRestaurantsPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [staffRole, setStaffRole] = useState<string | null>(null);
-  const canManageRestaurants = isReviewRestaurantRole(staffRole);
+  const [isFounder, setIsFounder] = useState(false);
+  const canManageRestaurants =
+    isFounder || isReviewRestaurantRole(staffRole);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
   const loadPage = useCallback(
@@ -397,19 +420,19 @@ export default function AdminRestaurantsPage() {
           return;
         }
 
-        const { data: me, error: meError } = await supabase
-          .from("profiles")
-          .select("id, role")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (meError) {
-          throw new Error(meError.message);
-        }
-
-        const meRow = me as AdminRoleRow | null;
-
-        if (!meRow || !canAccessRestaurantsPage(meRow.role)) {
+        const staff = await resolveBrowserStaffSession();
+        if (
+          !staff ||
+          (!sessionHasPermission(
+            { role: staff.role, isFounder: staff.isFounder },
+            "users.restaurants.read"
+          ) &&
+            !sessionHasPermission(
+              { role: staff.role, isFounder: staff.isFounder },
+              "users.restaurants.manage"
+            ) &&
+            !canAccessRestaurantsPage(staff.role))
+        ) {
           if (!cancelledRef?.cancelled) {
             setAuthChecked(true);
             setIsAdmin(false);
@@ -421,7 +444,8 @@ export default function AdminRestaurantsPage() {
         if (!cancelledRef?.cancelled) {
           setAuthChecked(true);
           setIsAdmin(true);
-          setStaffRole(meRow.role);
+          setStaffRole(staff.role);
+          setIsFounder(staff.isFounder);
         }
 
         const { data: restaurantProfiles, error: rpError } = await supabase
@@ -642,14 +666,17 @@ export default function AdminRestaurantsPage() {
             ? {
                 ...r,
                 status: newStatus,
-                documents: sortDocuments(
-                  r.documents.map((d) => ({
-                    ...d,
-                    status: newStatus,
-                    reviewed_at: reviewedAt,
-                    review_notes: normalizedReviewNotes,
-                  }))
-                ),
+                documents:
+                  newStatus === "approved" || newStatus === "rejected"
+                    ? sortDocuments(
+                        r.documents.map((d) => ({
+                          ...d,
+                          status: newStatus,
+                          reviewed_at: reviewedAt,
+                          review_notes: normalizedReviewNotes,
+                        }))
+                      )
+                    : r.documents,
               }
             : r
         )
@@ -875,6 +902,10 @@ export default function AdminRestaurantsPage() {
 
                           {canManageRestaurants ? (
                           <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+                            {(r.status === "pending" ||
+                              r.status === "rejected" ||
+                              r.status === "suspended" ||
+                              r.status === "disabled") && (
                             <button
                               type="button"
                               disabled={updatingUserId === r.user_id}
@@ -898,9 +929,13 @@ export default function AdminRestaurantsPage() {
                             >
                               {updatingUserId === r.user_id
                                 ? "Validation..."
-                                : t("Approuver")}
+                                : r.status === "suspended" || r.status === "disabled"
+                                  ? t("Reactivate")
+                                  : t("Approve")}
                             </button>
+                            )}
 
+                            {(r.status === "pending" || r.status === "approved") && (
                             <button
                               type="button"
                               disabled={updatingUserId === r.user_id}
@@ -924,9 +959,11 @@ export default function AdminRestaurantsPage() {
                             >
                               {updatingUserId === r.user_id
                                 ? "Traitement..."
-                                : t("Refuser")}
+                                : t("Reject")}
                             </button>
+                            )}
 
+                            {r.status === "approved" && (
                             <button
                               type="button"
                               disabled={updatingUserId === r.user_id}
@@ -944,9 +981,11 @@ export default function AdminRestaurantsPage() {
                                 fontWeight: 700,
                               }}
                             >
-                              {t("Suspendre")}
+                              {t("Suspend")}
                             </button>
+                            )}
 
+                            {(r.status === "approved" || r.status === "suspended") && (
                             <button
                               type="button"
                               disabled={updatingUserId === r.user_id}
@@ -964,8 +1003,9 @@ export default function AdminRestaurantsPage() {
                                 fontWeight: 700,
                               }}
                             >
-                              {t("Désactiver")}
+                              Disable
                             </button>
+                            )}
                           </div>
                           ) : (
                             <p className="text-xs text-slate-500">

@@ -5,6 +5,12 @@
  * - payout: driver_profiles.stripe_onboarded (after check_connect_status)
  */
 
+export const DRIVER_REQUIRED_IDENTITY_DOCS = [
+  "profile_photo",
+  "id_card_front",
+  "id_card_back",
+] as const;
+
 export const DRIVER_REQUIRED_MOTOR_DOCS = [
   "license_front",
   "license_back",
@@ -43,6 +49,15 @@ export function isApprovedDriverDocStatus(status: unknown): boolean {
     .toLowerCase();
   // Missing status is NOT approved — avoids false readiness.
   return s === "approved" || s === "verified" || s === "valid";
+}
+
+/** A submitted identity document counts until it is rejected or expired. */
+export function isSubmittedDriverDocStatus(status: unknown): boolean {
+  const s = String(status ?? "")
+    .trim()
+    .toLowerCase();
+  if (!s) return true;
+  return s !== "rejected" && s !== "missing" && s !== "expired";
 }
 
 export function isBikeTransportMode(mode: DriverTransportMode): boolean {
@@ -95,6 +110,21 @@ export function countApprovedMotorDocs(docs: DriverSetupDocRow[]): {
   return { docsDone, docsTotal };
 }
 
+export function countSubmittedIdentityDocs(docs: DriverSetupDocRow[]): {
+  docsDone: number;
+  docsTotal: number;
+} {
+  const present = new Set(
+    (docs ?? [])
+      .filter((row) => isSubmittedDriverDocStatus(row.status))
+      .map((row) => normalizeDriverDocType(row.doc_type))
+      .filter(Boolean),
+  );
+  const docsTotal = DRIVER_REQUIRED_IDENTITY_DOCS.length;
+  const docsDone = DRIVER_REQUIRED_IDENTITY_DOCS.filter((doc) => present.has(doc)).length;
+  return { docsDone, docsTotal };
+}
+
 export type DriverSetupProgress = {
   progress: number;
   vehicleOk: boolean;
@@ -108,7 +138,8 @@ export type DriverSetupProgress = {
 /**
  * Unified Account / WorkAccount progress:
  * vehicle 25 + docs 50 + payout 25.
- * Bike: docs treated as complete (50 pts).
+ * Identity documents are required for every transport mode.
+ * Motor documents are additional for car and moto.
  */
 export function computeDriverSetupProgress(input: {
   profile: DriverSetupProfileInput;
@@ -119,16 +150,12 @@ export function computeDriverSetupProgress(input: {
   const vehicleOk = isVehicleSetupOk(input.profile);
   const payoutOk = isPayoutSetupOk(input.profile);
 
-  let docsDone = 0;
-  let docsTotal = 0;
-  if (isBike) {
-    docsDone = 1;
-    docsTotal = 1;
-  } else {
-    const counted = countApprovedMotorDocs(input.docs);
-    docsDone = counted.docsDone;
-    docsTotal = counted.docsTotal;
-  }
+  const identity = countSubmittedIdentityDocs(input.docs);
+  const motor = isBike
+    ? { docsDone: 0, docsTotal: 0 }
+    : countApprovedMotorDocs(input.docs);
+  const docsDone = identity.docsDone + motor.docsDone;
+  const docsTotal = identity.docsTotal + motor.docsTotal;
 
   const docsScore = docsTotal > 0 ? Math.round((docsDone / docsTotal) * 50) : 0;
   const progress = Math.max(
@@ -151,7 +178,7 @@ export function nextDriverSetupStep(
   progress: Pick<DriverSetupProgress, "vehicleOk" | "docsDone" | "docsTotal" | "payoutOk" | "isBike">,
 ): "addVehicle" | "addDocs" | "setupPayment" | "ready" {
   if (!progress.vehicleOk) return "addVehicle";
-  if (!progress.isBike && progress.docsDone < progress.docsTotal) return "addDocs";
+  if (progress.docsDone < progress.docsTotal) return "addDocs";
   if (!progress.payoutOk) return "setupPayment";
   return "ready";
 }

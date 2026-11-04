@@ -3,6 +3,8 @@ import {
   assertMapboxGeocodingUrl,
   evaluateLocationClaim,
   evaluateServerRoute,
+  forwardGeocodeEvidence,
+  reverseGeocodeEvidence,
   type GeoEvidence,
 } from "./geoTrust";
 
@@ -219,4 +221,49 @@ assert.throws(
   /invalid_url/
 );
 
-console.log("geoTrust tests passed");
+async function assertReverseAllowsCountryEvidence() {
+  const previousToken = process.env.MAPBOX_ACCESS_TOKEN;
+  const previousFetch = global.fetch;
+  process.env.MAPBOX_ACCESS_TOKEN = "pk.test-not-a-secret";
+  const capturedUrls: string[] = [];
+  global.fetch = (async (input: RequestInfo | URL) => {
+    capturedUrls.push(String(input));
+    return new Response(JSON.stringify({ features: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+
+  try {
+    await reverseGeocodeEvidence({ lat: 11.34, lng: -12.27 });
+    await forwardGeocodeEvidence("350 5th Avenue, New York", "US");
+    const reverseUrl = new URL(capturedUrls[0] ?? "");
+    const forwardUrl = new URL(capturedUrls[1] ?? "");
+    assert.equal(
+      reverseUrl.searchParams.get("types"),
+      "address,poi,place,locality,neighborhood,region,country",
+    );
+    assert.equal(
+      forwardUrl.searchParams.get("types"),
+      "address,poi,place,locality,neighborhood",
+    );
+    assert.equal(reverseUrl.searchParams.get("country"), null);
+    assert.equal(forwardUrl.searchParams.get("country"), "us");
+    assert.equal(reverseUrl.pathname, "/geocoding/v5/mapbox.places/-12.27,11.34.json");
+    assert.equal(reverseUrl.pathname.includes("%2C"), false);
+    assert.equal(forwardUrl.pathname.includes("%20"), true);
+  } finally {
+    global.fetch = previousFetch;
+    if (previousToken == null) delete process.env.MAPBOX_ACCESS_TOKEN;
+    else process.env.MAPBOX_ACCESS_TOKEN = previousToken;
+  }
+}
+
+assertReverseAllowsCountryEvidence()
+  .then(() => {
+    console.log("geoTrust tests passed");
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

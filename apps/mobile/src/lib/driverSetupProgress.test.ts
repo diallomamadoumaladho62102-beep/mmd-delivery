@@ -40,8 +40,26 @@ const payoutOnlyMissing = computeDriverSetupProgress({
   docs: [],
 });
 assert.equal(payoutOnlyMissing.vehicleOk, true);
-assert.equal(payoutOnlyMissing.progress, 75);
-assert.equal(nextDriverSetupStep(payoutOnlyMissing), "setupPayment");
+assert.equal(payoutOnlyMissing.docsDone, 0);
+assert.equal(payoutOnlyMissing.docsTotal, 3);
+assert.equal(payoutOnlyMissing.progress, 25);
+assert.equal(nextDriverSetupStep(payoutOnlyMissing), "addDocs");
+
+const bikeIdentityDone = computeDriverSetupProgress({
+  profile: {
+    transport_mode: "bike",
+    active_vehicle_id: null,
+    stripe_onboarded: false,
+  },
+  docs: [
+    { doc_type: "profile_photo", status: "pending" },
+    { doc_type: "id_card_front", status: "pending" },
+    { doc_type: "id_card_back", status: "rejected" },
+  ],
+});
+assert.equal(bikeIdentityDone.docsDone, 2);
+assert.equal(bikeIdentityDone.docsTotal, 3);
+assert.equal(nextDriverSetupStep(bikeIdentityDone), "addDocs");
 
 const ready = computeDriverSetupProgress({
   profile: {
@@ -50,6 +68,9 @@ const ready = computeDriverSetupProgress({
     stripe_onboarded: true,
   },
   docs: [
+    { doc_type: "profile_photo", status: "pending" },
+    { doc_type: "id_card_front", status: "pending" },
+    { doc_type: "id_card_back", status: "pending" },
     { doc_type: "license_front", status: "approved" },
     { doc_type: "license_back", status: "approved" },
     { doc_type: "insurance", status: "approved" },

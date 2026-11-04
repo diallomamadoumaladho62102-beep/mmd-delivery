@@ -27,6 +27,11 @@ const ALLOWED_FROM: Record<MarketplaceSellerStatusTransition, string[]> = {
   out_for_delivery: ["ready"],
 };
 
+/**
+ * Guinea local cash orders are `status=confirmed` + `payment_status=pending_cash`.
+ * They stay actionable for the seller (accept/refuse) because `confirmed` is a
+ * paid-like status, even though money is not collected until delivery.
+ */
 export function isMarketplaceOrderPaidLike(order: {
   status?: string | null;
   payment_status?: string | null;

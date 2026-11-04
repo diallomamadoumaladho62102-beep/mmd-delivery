@@ -52,7 +52,7 @@ async function geocodeAddress(address: string) {
   const json = await res.json();
   const feature = json.features?.[0];
   if (!feature || !feature.center) {
-    throw new Error("Aucun résultat de géocodage pour: " + address);
+    return null;
   }
 
   const [lng, lat] = feature.center as [number, number];
@@ -152,6 +152,12 @@ export async function POST(req: NextRequest) {
 
       const pickupGeo = await geocodeAddress(pickupAddress);
       const dropoffGeo = await geocodeAddress(dropoffAddress);
+      if (!pickupGeo || !dropoffGeo) {
+        return NextResponse.json(
+          { ok: false, error: "geocode_no_result" },
+          { status: 400 }
+        );
+      }
 
       pickupLat = pickupGeo.lat;
       pickupLng = pickupGeo.lng;
@@ -270,12 +276,29 @@ export async function POST(req: NextRequest) {
       delivery_fee: deliveryPrice,
       delivery_fee_usd: deliveryPrice,
     });
-  } catch {
-    console.error("API /mapbox/compute-distance error");
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "Aucune route trouvée entre ces points") {
+      return NextResponse.json(
+        { ok: false, error: "route_not_found" },
+        { status: 400 }
+      );
+    }
+    if (message === "MAPBOX_ACCESS_TOKEN missing") {
+      console.error("API /mapbox/compute-distance missing map token");
+      return NextResponse.json(
+        { ok: false, error: "estimate_unavailable" },
+        { status: 503 }
+      );
+    }
+    console.error(
+      "API /mapbox/compute-distance error",
+      error instanceof Error ? error.name : "unknown"
+    );
     return NextResponse.json(
       {
         ok: false,
-        error: "Erreur interne serveur",
+        error: "estimate_failed",
       },
       { status: 500 }
     );

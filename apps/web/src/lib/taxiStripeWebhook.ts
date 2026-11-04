@@ -13,6 +13,7 @@ import {
   assertSettlementMatchesExpectation,
 } from "@/lib/requirePaymentIntentSucceeded";
 import { captureEntityCredit, releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
+import { isIsolatedFromLiveDispatch } from "@/lib/guineaTestIsolation";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -133,7 +134,7 @@ export async function handleTaxiStripePayment(params: {
   const { data: ride, error: rideError } = await supabaseAdmin
     .from("taxi_rides")
     .select(
-      "id,payment_status,status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,client_user_id,preferred_driver_id,is_scheduled,country_code,created_by"
+      "id,payment_status,status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,client_user_id,driver_id,preferred_driver_id,is_scheduled,country_code,created_by,is_test,archived_at,hidden_from_user"
     )
     .eq("id", taxiRideId)
     .maybeSingle();
@@ -144,6 +145,10 @@ export async function handleTaxiStripePayment(params: {
 
   if (!ride) {
     return { ok: false, error: "taxi_ride_not_found" };
+  }
+
+  if (isIsolatedFromLiveDispatch(ride)) {
+    return { ok: false, error: "guinea_test_live_operation_blocked" };
   }
 
   const row = ride as TaxiRidePaymentRow;

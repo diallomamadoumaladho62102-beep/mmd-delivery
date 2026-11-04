@@ -34,7 +34,9 @@ import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import DriverBrandLoadingState from "../components/driver/DriverBrandLoadingState";
 import { changeDriverTransportMode } from "../lib/driverServicePreferencesApi";
+import { readSelectedMarket } from "../lib/selectedMarketStore";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
+import { isAllowedDriverDocUpload } from "../lib/driverDocUpload";
 import {
   MMD_ACTION_NAVY,
   MMD_BLUE,
@@ -537,9 +539,15 @@ export function DriverProfileScreen() {
     return profile?.phone?.trim() || driver?.phone?.trim() || "—";
   }, [profile?.phone, driver?.phone]);
 
-  const docTypeSet = useMemo(() => {
-    return new Set(driverDocuments.map((doc) => String(doc.doc_type)));
+  const docsByType = useMemo(() => {
+    const map = new Map<string, DriverDocumentRow>();
+    for (const doc of driverDocuments) {
+      map.set(String(doc.doc_type), doc);
+    }
+    return map;
   }, [driverDocuments]);
+
+  const docTypeSet = useMemo(() => new Set(docsByType.keys()), [docsByType]);
 
   const hasProfilePhoto = docTypeSet.has("profile_photo");
   const hasIdFront = docTypeSet.has("id_card_front");
@@ -549,6 +557,13 @@ export function DriverProfileScreen() {
   const hasInsurance = docTypeSet.has("insurance");
   const hasRegistration = docTypeSet.has("registration");
   const hasLicense = hasLicenseFront && hasLicenseBack;
+
+  const complementaryDocRequests = useMemo(() => {
+    return driverDocuments.filter((doc) => {
+      const status = String(doc.status ?? "").toLowerCase();
+      return status === "incomplete" || status === "rejected";
+    });
+  }, [driverDocuments]);
 
   const isBaseComplete = useMemo(() => {
     return (
@@ -1532,6 +1547,27 @@ export function DriverProfileScreen() {
         encoding: "base64" as any,
       });
       const bytes = decode(base64);
+      const guard = isAllowedDriverDocUpload({
+        byteLength: bytes.byteLength,
+        mime: picked.mime,
+      });
+      if (guard.ok === false) {
+        const reason = guard.reason;
+        const msg =
+          reason === "empty"
+            ? t("common.profile.docEmpty", {
+                defaultValue: "This file is empty. Choose a photo or PDF.",
+              })
+            : reason === "too_large"
+              ? t("common.profile.docTooLarge", {
+                  defaultValue: "File is too large (max 10 MB).",
+                })
+              : t("common.profile.docBadType", {
+                  defaultValue: "Use JPEG, PNG, or PDF only.",
+                });
+        Alert.alert(t("client.auth.errorTitle", { defaultValue: "Error" }), msg);
+        return;
+      }
 
       const { error: upErr } = await supabase.storage.from(DRIVER_DOCS_BUCKET).upload(filePath, bytes, {
         contentType: picked.mime,
@@ -1555,7 +1591,8 @@ export function DriverProfileScreen() {
         extra.state = trimOrNull(driver?.state ?? null ? String(driver?.state) : "") ?? null;
         extra.doc_number = trimOrNull(driver?.license_number ?? "");
         extra.expires_at = trimOrNull(driver?.license_expiry ?? "");
-        extra.country = "US";
+        const market = await readSelectedMarket();
+        extra.country = market === "GN" || market === "US" ? market : null;
       }
 
       const { data: driverRow } = await supabase
@@ -1676,10 +1713,32 @@ export function DriverProfileScreen() {
 
   const okColor = MMD_TAXI_GREEN;
   const missingColor = "#EF4444";
-  const docStatus = (ok: boolean) =>
-    ok
-      ? t("common.ok", { defaultValue: "OK" })
-      : t("driver.profile.missing", { defaultValue: "Missing" });
+  const warnColor = "#F59E0B";
+  const docStatusForType = (docType: string, present: boolean) => {
+    const row = docsByType.get(docType);
+    const status = String(row?.status ?? "").toLowerCase();
+    if (status === "incomplete") {
+      return t("driver.profile.docIncomplete", { defaultValue: "To update" });
+    }
+    if (status === "rejected") {
+      return t("driver.profile.docRejected", { defaultValue: "Rejected" });
+    }
+    if (status === "approved") {
+      return t("common.ok", { defaultValue: "OK" });
+    }
+    if (present) {
+      return status === "pending"
+        ? t("driver.profile.docPendingReview", { defaultValue: "Pending review" })
+        : t("common.ok", { defaultValue: "OK" });
+    }
+    return t("driver.profile.missing", { defaultValue: "Missing" });
+  };
+  const docValueColorForType = (docType: string, present: boolean) => {
+    const status = String(docsByType.get(docType)?.status ?? "").toLowerCase();
+    if (status === "incomplete" || status === "rejected") return warnColor;
+    if (!present) return missingColor;
+    return okColor;
+  };
 
   const initials = useMemo(() => {
     const parts = String(headerName || "")
@@ -1956,25 +2015,54 @@ export function DriverProfileScreen() {
             <SectionTitle>
               {t("common.profile.documentsSection", { defaultValue: "Documents" })}
             </SectionTitle>
+            {complementaryDocRequests.length > 0 ? (
+              <Card>
+                <Text
+                  style={{
+                    color: warnColor,
+                    fontFamily: MMD_FONT.extrabold,
+                    fontWeight: "800",
+                    marginBottom: 8,
+                  }}
+                >
+                  {t("driver.profile.docsRequestedTitle", {
+                    defaultValue: "Additional documents requested",
+                  })}
+                </Text>
+                {complementaryDocRequests.map((doc) => (
+                  <View key={`${doc.doc_type}-${doc.id ?? "row"}`} style={{ marginBottom: 8 }}>
+                    <Text style={ui.rowLabel}>
+                      {driverDocumentLabel(String(doc.doc_type) as DriverDocumentType)}
+                    </Text>
+                    <Text style={[ui.rowValue, { color: warnColor }]}>
+                      {String(doc.review_notes ?? "").trim() ||
+                        t("driver.profile.docsRequestedFallback", {
+                          defaultValue: "Please re-upload this document.",
+                        })}
+                    </Text>
+                  </View>
+                ))}
+              </Card>
+            ) : null}
             <Row
               icon="📸"
               label={driverDocumentLabel("profile_photo")}
-              value={docStatus(hasProfilePhoto)}
-              valueColor={hasProfilePhoto ? okColor : missingColor}
+              value={docStatusForType("profile_photo", hasProfilePhoto)}
+              valueColor={docValueColorForType("profile_photo", hasProfilePhoto)}
               onPress={openAvatarMenu}
             />
             <Row
               icon="🪪"
               label={driverDocumentLabel("id_card_front")}
-              value={docStatus(hasIdFront)}
-              valueColor={hasIdFront ? okColor : missingColor}
+              value={docStatusForType("id_card_front", hasIdFront)}
+              valueColor={docValueColorForType("id_card_front", hasIdFront)}
               onPress={() => openDocMenu("id_card_front")}
             />
             <Row
               icon="🪪"
               label={driverDocumentLabel("id_card_back")}
-              value={docStatus(hasIdBack)}
-              valueColor={hasIdBack ? okColor : missingColor}
+              value={docStatusForType("id_card_back", hasIdBack)}
+              valueColor={docValueColorForType("id_card_back", hasIdBack)}
               onPress={() => openDocMenu("id_card_back")}
             />
             {!isBike ? (
@@ -1982,29 +2070,29 @@ export function DriverProfileScreen() {
                 <Row
                   icon="📄"
                   label={driverDocumentLabel("license_front")}
-                  value={docStatus(hasLicenseFront)}
-                  valueColor={hasLicenseFront ? okColor : missingColor}
+                  value={docStatusForType("license_front", hasLicenseFront)}
+                  valueColor={docValueColorForType("license_front", hasLicenseFront)}
                   onPress={() => openDocMenu("license_front")}
                 />
                 <Row
                   icon="📄"
                   label={driverDocumentLabel("license_back")}
-                  value={docStatus(hasLicenseBack)}
-                  valueColor={hasLicenseBack ? okColor : missingColor}
+                  value={docStatusForType("license_back", hasLicenseBack)}
+                  valueColor={docValueColorForType("license_back", hasLicenseBack)}
                   onPress={() => openDocMenu("license_back")}
                 />
                 <Row
                   icon="🛡️"
                   label={driverDocumentLabel("insurance")}
-                  value={docStatus(hasInsurance)}
-                  valueColor={hasInsurance ? okColor : missingColor}
+                  value={docStatusForType("insurance", hasInsurance)}
+                  valueColor={docValueColorForType("insurance", hasInsurance)}
                   onPress={() => openDocMenu("insurance")}
                 />
                 <Row
                   icon="📋"
                   label={driverDocumentLabel("registration")}
-                  value={docStatus(hasRegistration)}
-                  valueColor={hasRegistration ? okColor : missingColor}
+                  value={docStatusForType("registration", hasRegistration)}
+                  valueColor={docValueColorForType("registration", hasRegistration)}
                   onPress={() => openDocMenu("registration")}
                 />
               </>

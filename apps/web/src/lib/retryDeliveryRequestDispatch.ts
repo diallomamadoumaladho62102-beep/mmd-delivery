@@ -1,27 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { runDeliveryRequestDispatch } from "@/lib/runDeliveryRequestDispatch";
+import {
+  isDispatchableDeliveryRequest,
+  runDeliveryRequestDispatch,
+} from "@/lib/runDeliveryRequestDispatch";
+import { isIsolatedFromLiveDispatch } from "@/lib/guineaTestIsolation";
+import { withOptionalPaymentMethod } from "@/lib/markets/guineaLocalCashCollect";
+import { inferPlatformCountryCode } from "@/lib/platformCountryInference";
 
 const AUTO_RETRY_DELAY_MS = 20_000;
-
-function normalize(value: unknown) {
-  return String(value ?? "").trim().toLowerCase();
-}
-
-function isDispatchableDeliveryRequest(request: {
-  payment_status?: unknown;
-  status?: unknown;
-  driver_id?: unknown;
-}) {
-  if (request.driver_id) return false;
-  if (normalize(request.payment_status) !== "paid") return false;
-
-  const status = normalize(request.status);
-  return (
-    status === "pending" ||
-    status === "paid_pending" ||
-    status === "processing_pending"
-  );
-}
 
 export async function findDeliveryRequestsNeedingDispatchRetry(
   supabase: SupabaseClient,
@@ -35,18 +21,30 @@ export async function findDeliveryRequestsNeedingDispatchRetry(
 > {
   const cutoffIso = new Date(Date.now() - AUTO_RETRY_DELAY_MS).toISOString();
 
-  const { data: requests, error } = await supabase
-    .from("delivery_requests")
-    .select("id,payment_status,status,driver_id,dispatch_wave_1_started_at,updated_at")
-    .is("driver_id", null)
-    .eq("payment_status", "paid")
-    .in("status", ["pending", "paid_pending", "processing_pending"])
-    .order("updated_at", { ascending: true })
-    .limit(Math.max(limit * 3, 25));
+  // Paid (Stripe) or Guinea cash candidates. The per-row gate below keeps
+  // pending_cash limited to payment_method=cash + GNF + GN. If payment_method
+  // is not deployed, retry paid-only (US behaviour is unchanged).
+  const { data: loaded, error } = await withOptionalPaymentMethod((includePaymentMethod) => {
+    const base = supabase
+      .from("delivery_requests")
+      .select(
+        `id,payment_status,${includePaymentMethod ? "payment_method," : ""}currency,status,driver_id,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,dispatch_wave_1_started_at,updated_at,client_user_id,created_by,is_test,archived_at,hidden_from_user`,
+      )
+      .is("driver_id", null);
+    const filtered = includePaymentMethod
+      ? base.in("payment_status", ["paid", "pending_cash"])
+      : base.eq("payment_status", "paid");
+    return filtered
+      .in("status", ["pending", "paid_pending", "processing_pending"])
+      .order("updated_at", { ascending: true })
+      .limit(Math.max(limit * 3, 25));
+  });
 
   if (error) {
     throw new Error(error.message);
   }
+
+  const requests = (loaded ?? []) as unknown as Array<Record<string, unknown>>;
 
   const results: Array<{
     id: string;
@@ -54,8 +52,17 @@ export async function findDeliveryRequestsNeedingDispatchRetry(
     lastWaveAt: string | null;
   }> = [];
 
-  for (const request of requests ?? []) {
-    if (!isDispatchableDeliveryRequest(request)) continue;
+  for (const request of requests) {
+    const withCountry = {
+      ...request,
+      country_code: inferPlatformCountryCode({
+        currency: request.currency,
+        lat: request.dropoff_lat ?? request.pickup_lat,
+        lng: request.dropoff_lng ?? request.pickup_lng,
+      }),
+    };
+    if (!isDispatchableDeliveryRequest(withCountry)) continue;
+    if (isIsolatedFromLiveDispatch(request)) continue;
 
     const requestId = String(request.id);
     const { data: offers, error: offersError } = await supabase
@@ -78,7 +85,10 @@ export async function findDeliveryRequestsNeedingDispatchRetry(
     const lastWave =
       offerWave > 0 ? offerWave : wave1StartedAt ? 1 : 0;
     const lastWaveAt =
-      offers?.[0]?.created_at ?? wave1StartedAt ?? request.updated_at ?? null;
+      offers?.[0]?.created_at ??
+      wave1StartedAt ??
+      (request.updated_at as string | null | undefined) ??
+      null;
 
     if (lastWave >= 3) continue;
     if (!lastWaveAt || lastWaveAt > cutoffIso) continue;

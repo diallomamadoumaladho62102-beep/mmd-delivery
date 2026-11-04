@@ -3,6 +3,7 @@ import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 import { resolveTaxiDispatchRetryDecision } from "@/lib/taxiSharedRideDispatch";
 import { taxiPaymentAllowsDispatch } from "@/lib/markets/guineaCashPayment";
+import { isIsolatedFromLiveDispatch } from "@/lib/guineaTestIsolation";
 
 export type TaxiOrphanRide = {
   id: string;
@@ -29,7 +30,7 @@ export async function findTaxiRidesNeedingDispatchRetry(
   const nowIso = new Date().toISOString();
 
   const paidColumns =
-    "id, status, dispatch_wave, updated_at, payment_status, driver_id, favorite_dispatch_expires_at, preferred_driver_id, is_shared_ride, shared_ride_id, is_scheduled";
+    "id, status, dispatch_wave, updated_at, payment_status, driver_id, favorite_dispatch_expires_at, preferred_driver_id, is_shared_ride, shared_ride_id, is_scheduled, client_user_id, is_test, archived_at, hidden_from_user";
   const cashColumns = `${paidColumns}, payment_method, country_code, currency`;
   type RetryRideRow = {
     id: unknown;
@@ -46,6 +47,10 @@ export async function findTaxiRidesNeedingDispatchRetry(
     is_shared_ride: unknown;
     shared_ride_id: unknown;
     is_scheduled: unknown;
+    client_user_id?: unknown;
+    is_test?: unknown;
+    archived_at?: unknown;
+    hidden_from_user?: unknown;
   };
   const first = await supabase
     .from("taxi_rides")
@@ -78,6 +83,7 @@ export async function findTaxiRidesNeedingDispatchRetry(
   const candidates = (rides ?? []).filter((ride) => {
     const status = normalize(ride.status);
     if (status !== "paid" && status !== "dispatching") return false;
+    if (isIsolatedFromLiveDispatch(ride)) return false;
     return taxiPaymentAllowsDispatch(
       ride.payment_status,
       ride.payment_method,
@@ -211,7 +217,9 @@ export async function findTaxiRidesNeedingFavoriteFallback(
 
   const { data, error } = await supabase
     .from("taxi_rides")
-    .select("id, status, dispatch_wave, updated_at, favorite_dispatch_expires_at")
+    .select(
+      "id, status, dispatch_wave, updated_at, favorite_dispatch_expires_at, client_user_id, preferred_driver_id, is_test, archived_at, hidden_from_user",
+    )
     .eq("status", "dispatching")
     .eq("dispatch_wave", 0)
     .is("driver_id", null)
@@ -223,7 +231,9 @@ export async function findTaxiRidesNeedingFavoriteFallback(
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((ride) => ({
+  return (data ?? [])
+    .filter((ride) => !isIsolatedFromLiveDispatch(ride))
+    .map((ride) => ({
     id: String(ride.id),
     status: ride.status as string | null,
     dispatch_wave: Number(ride.dispatch_wave ?? 0),

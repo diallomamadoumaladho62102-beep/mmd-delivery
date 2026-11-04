@@ -124,30 +124,38 @@ export default function AdminSellersPage() {
 
                   {canEdit ? (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={savingId === row.id}
-                        onClick={() => void reviewSeller(row.id, "approved")}
-                        className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                      >
-                        {t("Approve")}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={savingId === row.id}
-                        onClick={() => void reviewSeller(row.id, "rejected")}
-                        className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                      >
-                        {t("Reject")}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={savingId === row.id}
-                        onClick={() => void reviewSeller(row.id, "suspended")}
-                        className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                      >
-                        {t("Suspend")}
-                      </button>
+                      {(row.status === "pending" ||
+                        row.status === "rejected" ||
+                        row.status === "suspended") && (
+                        <button
+                          type="button"
+                          disabled={savingId === row.id}
+                          onClick={() => void reviewSeller(row.id, "approved")}
+                          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                          {row.status === "suspended" ? t("Reactivate") : t("Approve")}
+                        </button>
+                      )}
+                      {(row.status === "pending" || row.status === "approved") && (
+                        <button
+                          type="button"
+                          disabled={savingId === row.id}
+                          onClick={() => void reviewSeller(row.id, "rejected")}
+                          className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                          {t("Reject")}
+                        </button>
+                      )}
+                      {row.status === "approved" && (
+                        <button
+                          type="button"
+                          disabled={savingId === row.id}
+                          onClick={() => void reviewSeller(row.id, "suspended")}
+                          className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                          {t("Suspend")}
+                        </button>
+                      )}
                     </div>
                   ) : null}
                 </div>

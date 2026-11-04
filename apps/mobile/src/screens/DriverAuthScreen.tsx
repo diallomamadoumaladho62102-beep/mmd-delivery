@@ -21,6 +21,12 @@ import { useTranslation } from "react-i18next";
 import { rowDirection, textAlignStart } from "../i18n/rtl";
 import * as Linking from "expo-linking";
 import { supabase } from "../lib/supabase";
+import {
+  isPlausibleGuineaPhone,
+  normalizeGuineaPhone,
+  type MarketCountry,
+} from "../lib/selectedMarket";
+import { readSelectedMarket } from "../lib/selectedMarketStore";
 import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
 import { buildDriverProfileFromSignupMetadata } from "../lib/signupNavigation";
@@ -337,6 +343,16 @@ export function DriverAuthScreen() {
   const [city, setCity] = useState("New York");
   const [stateValue, setStateValue] = useState("NY");
   const [zipCode, setZipCode] = useState("");
+  const [marketCountry, setMarketCountry] = useState<MarketCountry>("US");
+
+  useEffect(() => {
+    void readSelectedMarket().then((market) => {
+      if (market !== "GN") return;
+      setMarketCountry("GN");
+      setCity((current) => (current === "New York" ? "" : current));
+      setStateValue((current) => (current === "NY" ? "" : current));
+    });
+  }, []);
   const [dateOfBirth, setDateOfBirth] = useState("");
 
   const [transportMode, setTransportMode] = useState<TransportMode>("car");
@@ -363,10 +379,17 @@ export function DriverAuthScreen() {
     if (mode === "signup") {
       if (!fullName.trim()) return false;
       if (!phone.trim()) return false;
-      if (!emergencyPhone.trim()) return false;
+      if (marketCountry === "GN") {
+        if (
+          emergencyPhone.trim() &&
+          !isPlausibleGuineaPhone(normalizeGuineaPhone(emergencyPhone))
+        ) {
+          return false;
+        }
+      } else if (!emergencyPhone.trim()) return false;
       if (!address.trim()) return false;
       if (!city.trim()) return false;
-      if (!zipCode.trim()) return false;
+      if (marketCountry !== "GN" && !zipCode.trim()) return false;
       if (!dateOfBirth.trim()) return false;
       if (!isValidDateYYYYMMDD(dateOfBirth)) return false;
 
@@ -391,6 +414,7 @@ export function DriverAuthScreen() {
     address,
     city,
     zipCode,
+    marketCountry,
     dateOfBirth,
     vehicleBrand,
     vehicleModel,
@@ -849,15 +873,50 @@ export function DriverAuthScreen() {
       const cleanedEmail = email.trim().toLowerCase();
       const cleanedPassword = password.trim();
       const cleanedFullName = fullName.trim();
-      const cleanedPhone = normalizeUsPhoneForTwilio(phone);
-      const cleanedEmergencyPhone = normalizeUsPhoneForTwilio(emergencyPhone);
+      const cleanedPhone =
+        marketCountry === "GN"
+          ? normalizeGuineaPhone(phone)
+          : normalizeUsPhoneForTwilio(phone);
+      const cleanedEmergencyPhone =
+        marketCountry === "GN"
+          ? normalizeGuineaPhone(emergencyPhone)
+          : normalizeUsPhoneForTwilio(emergencyPhone);
       const cleanedAddress = address.trim();
       const cleanedCity = city.trim();
       const cleanedState = stateValue.trim().toUpperCase() || null;
-      const cleanedZipCode = zipCode.trim();
+      const cleanedZipCode =
+        marketCountry === "GN"
+          ? !zipCode.trim() || zipCode.trim() === "+224" || zipCode.trim() === "224"
+            ? null
+            : zipCode.trim()
+          : zipCode.trim();
       const cleanedDateOfBirth = dateOfBirth.trim();
 
-      if (!isValidTwilioPhone(cleanedPhone)) {
+      if (marketCountry === "GN") {
+        if (!isPlausibleGuineaPhone(cleanedPhone)) {
+          Alert.alert(
+            t("driver.auth.alert.invalidPhoneTitle", "Invalid phone"),
+            t(
+              "guineaMarket.authPhoneInvalid",
+              "Enter a valid Guinean number, for example +224 620 00 00 00.",
+            ),
+          );
+          return;
+        }
+        if (
+          cleanedEmergencyPhone &&
+          !isPlausibleGuineaPhone(cleanedEmergencyPhone)
+        ) {
+          Alert.alert(
+            t("driver.auth.alert.invalidEmergencyPhoneTitle", "Invalid emergency phone"),
+            t(
+              "guineaMarket.authEmergencyInvalid",
+              "Emergency phone must be a valid Guinean number, or left empty.",
+            ),
+          );
+          return;
+        }
+      } else if (!isValidTwilioPhone(cleanedPhone)) {
         Alert.alert(
           t("driver.auth.alert.invalidPhoneTitle", "Invalid phone"),
           t(
@@ -866,9 +925,7 @@ export function DriverAuthScreen() {
           ),
         );
         return;
-      }
-
-      if (!isValidTwilioPhone(cleanedEmergencyPhone)) {
+      } else if (!isValidTwilioPhone(cleanedEmergencyPhone)) {
         Alert.alert(
           t("driver.auth.alert.invalidEmergencyPhoneTitle", "Invalid emergency phone"),
           t(
@@ -901,7 +958,13 @@ export function DriverAuthScreen() {
               zip_code: cleanedZipCode,
               date_of_birth: cleanedDateOfBirth,
               transport_mode: transportMode,
+              // Non-bike must satisfy driver_profiles_vehicle_fields_check on restore.
               license_number: isBike ? null : cleanedLicenseNumber,
+              vehicle_brand: isBike ? null : cleanedVehicleBrand,
+              vehicle_model: isBike ? null : cleanedVehicleModel,
+              vehicle_year: isBike ? null : vehicleYear.trim() || null,
+              vehicle_color: isBike ? null : cleanedVehicleColor,
+              plate_number: isBike ? null : cleanedPlateNumber,
               referral_code: referralCode.trim().toUpperCase() || null,
             },
           },
@@ -977,13 +1040,15 @@ export function DriverAuthScreen() {
         is_online: false,
 
         vehicle_type: transportMode,
+        // Non-bike rows must satisfy driver_profiles_vehicle_fields_check
+        // (brand+model+plate+license). Fleet details can still be refined later
+        // on driver_vehicles during onboarding.
         license_number: isBike ? null : cleanedLicenseNumber,
-        // Fleet fields live on driver_vehicles — never write legacy columns at signup.
-        vehicle_brand: null,
-        vehicle_model: null,
-        vehicle_year: null,
-        vehicle_color: null,
-        plate_number: null,
+        vehicle_brand: isBike ? null : cleanedVehicleBrand,
+        vehicle_model: isBike ? null : cleanedVehicleModel,
+        vehicle_year: isBike ? null : yearNum,
+        vehicle_color: isBike ? null : cleanedVehicleColor,
+        plate_number: isBike ? null : cleanedPlateNumber,
       };
 
       const { error: dErr } = await supabase
@@ -1024,6 +1089,7 @@ export function DriverAuthScreen() {
     city,
     stateValue,
     zipCode,
+    marketCountry,
     dateOfBirth,
     transportMode,
     vehicleBrand,
@@ -1221,56 +1287,90 @@ export function DriverAuthScreen() {
                   label={t("driver.auth.fields.phone")}
                   value={phone}
                   onChangeText={setPhone}
-                  placeholder={t("driver.auth.fields.phonePlaceholder")}
+                  placeholder={
+                    marketCountry === "GN"
+                      ? t("guineaMarket.authPhonePlaceholder", "+224 6XX XX XX XX")
+                      : t("driver.auth.fields.phonePlaceholder")
+                  }
                   autoCapitalize="none"
                   keyboardType="phone-pad"
                 />
 
                 <Input
-                  label={t("driver.auth.fields.emergencyPhone", "Emergency phone")}
+                  label={
+                    marketCountry === "GN"
+                      ? t("guineaMarket.authEmergencyPhone", "Emergency phone (optional)")
+                      : t("driver.auth.fields.emergencyPhone", "Emergency phone")
+                  }
                   value={emergencyPhone}
                   onChangeText={setEmergencyPhone}
-                  placeholder={t(
-                    "driver.auth.fields.emergencyPhonePlaceholder",
-                    "Ex: 9297408722",
-                  )}
+                  placeholder={
+                    marketCountry === "GN"
+                      ? t("guineaMarket.authPhonePlaceholder", "+224 6XX XX XX XX")
+                      : t(
+                          "driver.auth.fields.emergencyPhonePlaceholder",
+                          "Ex: 9297408722",
+                        )
+                  }
                   autoCapitalize="none"
                   keyboardType="phone-pad"
                 />
 
                 <Input
-                  label={t("driver.auth.fields.address", "Address")}
+                  label={
+                    marketCountry === "GN"
+                      ? t("guineaMarket.authAddressLabel", "Neighborhood or landmark")
+                      : t("driver.auth.fields.address", "Address")
+                  }
                   value={address}
                   onChangeText={setAddress}
-                  placeholder={t(
-                    "driver.auth.fields.addressPlaceholder",
-                    "Ex: 1112 Flatbush Ave",
-                  )}
+                  placeholder={
+                    marketCountry === "GN"
+                      ? t(
+                          "guineaMarket.authLandmarkPlaceholder",
+                          "Neighborhood, market, school or landmark",
+                        )
+                      : t(
+                          "driver.auth.fields.addressPlaceholder",
+                          "Ex: 1112 Flatbush Ave",
+                        )
+                  }
                   autoCapitalize="words"
                 />
 
-                <View style={{ flexDirection: rowDirection(), gap: 10 }}>
-                  <View style={{ flex: 1 }}>
+                <View
+                  style={{
+                    flexDirection: marketCountry === "GN" ? "column" : rowDirection(),
+                    gap: 10,
+                  }}
+                >
+                  <View style={{ flex: marketCountry === "GN" ? undefined : 1 }}>
                     <Input
                       label={t("driver.auth.fields.city", "City")}
                       value={city}
                       onChangeText={setCity}
-                      placeholder={t(
-                        "driver.auth.fields.cityPlaceholder",
-                        "New York",
-                      )}
+                      placeholder={
+                        marketCountry === "GN"
+                          ? t("guineaMarket.authCityPlaceholder", "City or commune")
+                          : t("driver.auth.fields.cityPlaceholder", "New York")
+                      }
                       autoCapitalize="words"
                     />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: marketCountry === "GN" ? undefined : 1 }}>
                     <Input
-                      label={t("driver.auth.fields.state", "State")}
+                      label={
+                        marketCountry === "GN"
+                          ? t("guineaMarket.authRegionPlaceholder", "Prefecture")
+                          : t("driver.auth.fields.state", "State")
+                      }
                       value={stateValue}
                       onChangeText={setStateValue}
-                      placeholder={t(
-                        "driver.auth.fields.statePlaceholder",
-                        "NY",
-                      )}
+                      placeholder={
+                        marketCountry === "GN"
+                          ? t("guineaMarket.authRegionPlaceholder", "Prefecture")
+                          : t("driver.auth.fields.statePlaceholder", "NY")
+                      }
                       autoCapitalize="characters"
                     />
                   </View>
@@ -1279,13 +1379,18 @@ export function DriverAuthScreen() {
                 <View style={{ flexDirection: rowDirection(), gap: 10 }}>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label={t("driver.auth.fields.zipCode", "Zip code")}
+                      label={
+                        marketCountry === "GN"
+                          ? t("guineaMarket.authZipLabel", "Postal code (optional)")
+                          : t("driver.auth.fields.zipCode", "Zip code")
+                      }
                       value={zipCode}
                       onChangeText={setZipCode}
-                      placeholder={t(
-                        "driver.auth.fields.zipPlaceholder",
-                        "11226",
-                      )}
+                      placeholder={
+                        marketCountry === "GN"
+                          ? t("guineaMarket.authZipPlaceholder", "Optional")
+                          : t("driver.auth.fields.zipPlaceholder", "11226")
+                      }
                       autoCapitalize="none"
                       keyboardType="number-pad"
                     />

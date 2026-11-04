@@ -19,7 +19,7 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
-import { applyLiveTripFilters } from "../lib/tripVisibility";
+import { applyOwnerHistoryTripFilters } from "../lib/tripVisibility";
 import {
   CLIENT_SCREEN_FETCH_TIMEOUT_MS,
   withTimeout,
@@ -34,6 +34,11 @@ import {
   isVisibleClientTrip,
   type ClientTripKind,
 } from "../lib/clientOrderDisplay";
+import {
+  formatMoney,
+  priceCentsToMajor,
+} from "../i18n/formatters";
+import i18n from "../i18n";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -51,10 +56,16 @@ type HistoryItem = {
   pickup_address: string | null;
   dropoff_address: string | null;
   total: number | null;
+  currency: string;
   is_test?: boolean | null;
   hidden_from_user?: boolean | null;
   archived_at?: string | null;
 };
+
+function rowCurrency(value: unknown, fallback = "USD"): string {
+  const code = String(value ?? "").trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : fallback;
+}
 
 function titleFor(item: HistoryItem, t: Tr): string {
   if (item.kind === "taxi_ride") {
@@ -156,11 +167,11 @@ export default function ClientOrderHistoryScreen() {
 
       const [ordersRes, drRes, taxiRes] = await withTimeout(
         Promise.all([
-        applyLiveTripFilters(
+        applyOwnerHistoryTripFilters(
           supabase
             .from("orders")
             .select(
-              "id,status,payment_status,created_at,pickup_address,dropoff_address,total,kind,is_test,hidden_from_user,archived_at",
+              "id,status,payment_status,created_at,pickup_address,dropoff_address,total,currency,kind,is_test,hidden_from_user,archived_at",
             ),
         )
           .or(
@@ -168,21 +179,21 @@ export default function ClientOrderHistoryScreen() {
           )
           .order("created_at", { ascending: false })
           .limit(100),
-        applyLiveTripFilters(
+        applyOwnerHistoryTripFilters(
           supabase
             .from("delivery_requests")
             .select(
-              "id,status,payment_status,created_at,pickup_address,dropoff_address,total,is_test,hidden_from_user,archived_at",
+              "id,status,payment_status,created_at,pickup_address,dropoff_address,total,currency,is_test,hidden_from_user,archived_at",
             ),
         )
           .or(`client_user_id.eq.${userId},created_by.eq.${userId}`)
           .order("created_at", { ascending: false })
           .limit(100),
-        applyLiveTripFilters(
+        applyOwnerHistoryTripFilters(
           supabase
             .from("taxi_rides")
             .select(
-              "id,status,payment_status,created_at,pickup_address,dropoff_address,total_cents,is_test,hidden_from_user,archived_at",
+              "id,status,payment_status,created_at,pickup_address,dropoff_address,total_cents,currency,is_test,hidden_from_user,archived_at",
             ),
         )
           .eq("client_user_id", userId)
@@ -197,6 +208,7 @@ export default function ClientOrderHistoryScreen() {
 
       for (const row of ordersRes.data ?? []) {
         if (String(row.kind ?? "").toLowerCase() === "pickup_dropoff") continue;
+        const currency = rowCurrency(row.currency);
         merged.push({
           id: String(row.id),
           kind: "restaurant_order",
@@ -206,6 +218,7 @@ export default function ClientOrderHistoryScreen() {
           pickup_address: row.pickup_address ?? null,
           dropoff_address: row.dropoff_address ?? null,
           total: typeof row.total === "number" ? row.total : null,
+          currency,
           is_test: row.is_test,
           hidden_from_user: row.hidden_from_user,
           archived_at: row.archived_at,
@@ -213,6 +226,7 @@ export default function ClientOrderHistoryScreen() {
       }
 
       for (const row of drRes.data ?? []) {
+        const currency = rowCurrency(row.currency);
         merged.push({
           id: String(row.id),
           kind: "delivery_request",
@@ -222,6 +236,7 @@ export default function ClientOrderHistoryScreen() {
           pickup_address: row.pickup_address ?? null,
           dropoff_address: row.dropoff_address ?? null,
           total: typeof row.total === "number" ? row.total : null,
+          currency,
           is_test: row.is_test,
           hidden_from_user: row.hidden_from_user,
           archived_at: row.archived_at,
@@ -229,6 +244,9 @@ export default function ClientOrderHistoryScreen() {
       }
 
       for (const row of taxiRes.data ?? []) {
+        const currency = rowCurrency(row.currency);
+        const cents =
+          typeof row.total_cents === "number" ? row.total_cents : null;
         merged.push({
           id: String(row.id),
           kind: "taxi_ride",
@@ -237,8 +255,8 @@ export default function ClientOrderHistoryScreen() {
           created_at: row.created_at ?? null,
           pickup_address: row.pickup_address ?? null,
           dropoff_address: row.dropoff_address ?? null,
-          total:
-            typeof row.total_cents === "number" ? row.total_cents / 100 : null,
+          total: cents != null ? priceCentsToMajor(cents, currency) : null,
+          currency,
           is_test: row.is_test,
           hidden_from_user: row.hidden_from_user,
           archived_at: row.archived_at,
@@ -356,7 +374,7 @@ export default function ClientOrderHistoryScreen() {
             const status = statusLabel(item, tr, noValue);
             const amount =
               typeof item.total === "number"
-                ? `$${item.total.toFixed(2)}`
+                ? formatMoney(item.total, item.currency, i18n.language)
                 : noValue;
             return (
               <Pressable style={styles.row} onPress={() => openItem(item)}>

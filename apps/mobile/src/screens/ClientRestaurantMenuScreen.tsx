@@ -54,6 +54,8 @@ import {
   MMD_NAVY,
   MMD_WHITE,
 } from "../theme/mmdUi";
+import { priceCentsToMajor } from "../i18n/formatters";
+import { isGuineaMarket, useSelectedMarket } from "../lib/useSelectedMarket";
 
 const SECTION_BG = "#002673";
 const CARD_BORDER = "rgba(255,215,0,0.25)";
@@ -176,8 +178,13 @@ function computeDeliveryPricing({
   return Math.max(MIN_FARE, rounded);
 }
 
-function money(n: number) {
-  if (!Number.isFinite(n)) return "0.00";
+function money(n: number, currencyCode?: string) {
+  if (!Number.isFinite(n)) {
+    return String(currencyCode ?? "").toUpperCase() === "GNF" ? "0" : "0.00";
+  }
+  if (String(currencyCode ?? "").toUpperCase() === "GNF") {
+    return String(Math.round(n));
+  }
   return n.toFixed(2);
 }
 
@@ -189,8 +196,9 @@ function normalizeAddress(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
-function isAddressReady(value: string) {
+function isAddressReady(value: string, guineaUi = false) {
   const v = normalizeAddress(value);
+  if (guineaUi) return v.length >= 8;
   return v.length >= 10 && /\d/.test(v) && v.includes(" ");
 }
 
@@ -240,7 +248,8 @@ function normalizeRestaurantItem(row: any): RestaurantItem | null {
 
 function getFriendlyEstimateError(
   message: string | undefined,
-  tr: (key: string, fallback: string, options?: Record<string, unknown>) => string
+  tr: (key: string, fallback: string, options?: Record<string, unknown>) => string,
+  guineaUi = false,
 ) {
   const raw = String(message || "").trim();
 
@@ -252,7 +261,12 @@ function getFriendlyEstimateError(
   const lower = raw.toLowerCase();
 
   if (lower.includes("route exceeds maximum distance limitation")) {
-    return tr("clientRestaurantMenu.estimate.errors.tooFarOrImprecise", "Destination is too far or the address is not precise enough. Check the street, ZIP, city, and state."
+    return guineaUi
+      ? tr(
+          "guineaMarket.incompleteAddress",
+          "Enter a more complete address with a neighborhood or landmark.",
+        )
+      : tr("clientRestaurantMenu.estimate.errors.tooFarOrImprecise", "Destination is too far or the address is not precise enough. Check the street, ZIP, city, and state."
     );
   }
 
@@ -271,6 +285,8 @@ function getFriendlyEstimateError(
 
 export function ClientRestaurantMenuScreen() {
   const { t } = useTranslation();
+  const selectedMarket = useSelectedMarket();
+  const guineaUi = isGuineaMarket(selectedMarket);
 
   const tr = useCallback(
     (key: string, fallback: string, options?: Record<string, unknown>) =>
@@ -349,8 +365,11 @@ export function ClientRestaurantMenuScreen() {
 
   function getItemPrice(item: RestaurantItem, options?: FoodMenuOption[]): number {
     const cents = Number(item.price_cents ?? 0);
-    const base = Number.isFinite(cents) && cents > 0 ? cents / 100 : 0;
-    return roundMoney(base + extrasCentsFromOptions(options) / 100);
+    const base = Number.isFinite(cents) && cents > 0 ? priceCentsToMajor(cents, currency) : 0;
+    const extras = priceCentsToMajor(extrasCentsFromOptions(options), currency);
+    return String(currency).toUpperCase() === "GNF"
+      ? Math.round(base + extras)
+      : roundMoney(base + extras);
   }
 
   useEffect(() => {
@@ -669,11 +688,16 @@ export function ClientRestaurantMenuScreen() {
       return false;
     }
 
-    if (!isAddressReady(pickupValue) || !isAddressReady(dropoffValue)) {
+    if (!isAddressReady(pickupValue, guineaUi) || !isAddressReady(dropoffValue, guineaUi)) {
       if (!silent) {
         Alert.alert(
           tr("clientRestaurantMenu.incompleteAddressTitle", "Incomplete address"),
-          tr("clientRestaurantMenu.incompleteAddressBody", "Enter a more complete address before calculating delivery."
+          guineaUi
+            ? tr(
+                "guineaMarket.incompleteAddress",
+                "Enter a more complete address with a neighborhood or landmark.",
+              )
+            : tr("clientRestaurantMenu.incompleteAddressBody", "Enter a more complete address before calculating delivery."
           )
         );
       }
@@ -726,7 +750,7 @@ export function ClientRestaurantMenuScreen() {
         return false;
       }
 
-      const apiErrorMessage = getFriendlyEstimateError(json?.error || rawText, tr);
+      const apiErrorMessage = getFriendlyEstimateError(json?.error || rawText, tr, guineaUi);
 
       if (!res.ok || json?.ok === false) {
         resetEstimateState();
@@ -793,7 +817,13 @@ export function ClientRestaurantMenuScreen() {
       if (dMiles > BLOCK_MILES) {
         resetEstimateState();
         setEstimateError(
-          tr(
+          guineaUi
+            ? tr(
+                "guineaMarket.distanceTooFar",
+                "This delivery is too far ({{miles}}). Check the landmark, town, and map pin.",
+                { miles: dMiles.toFixed(2) },
+              )
+            : tr(
             "clientRestaurantMenu.estimate.errors.distanceTooLarge",
             "Distance is too far ({{miles}} mi). Check the ZIP, city, and state.",
             { miles: dMiles.toFixed(2) }
@@ -803,7 +833,13 @@ export function ClientRestaurantMenuScreen() {
         if (!silent) {
           Alert.alert(
             tr("clientRestaurantMenu.orderBlockedTitle", "Order blocked"),
-            tr(
+            guineaUi
+              ? tr(
+                  "guineaMarket.distanceTooFar",
+                  "This delivery is too far ({{miles}}). Check the landmark, town, and map pin.",
+                  { miles: dMiles.toFixed(2) },
+                )
+              : tr(
               "clientRestaurantMenu.orderBlockedBody",
               "Distance is too far ({{miles}} mi).\n\nFix the address (ZIP / city / state).",
               { miles: dMiles.toFixed(2) }
@@ -840,20 +876,37 @@ export function ClientRestaurantMenuScreen() {
         json.delivery_fee?.deliveryFee ??
         null;
 
-      const feeLocal = computeDeliveryPricing({
-        distanceMiles: dMiles,
-        durationMinutes: tMinutes,
-      });
+      const feeLocal = guineaUi
+        ? null
+        : computeDeliveryPricing({
+            distanceMiles: dMiles,
+            durationMinutes: tMinutes,
+          });
 
       const finalFee =
-        typeof feeFromApi === "number" && !Number.isNaN(feeFromApi) ? feeFromApi : feeLocal;
+        typeof feeFromApi === "number" && !Number.isNaN(feeFromApi)
+          ? feeFromApi
+          : feeLocal;
 
       setDistanceMiles(dMiles);
       setEtaMinutes(tMinutes);
-      setDeliveryFee(roundMoney(finalFee));
+      if (typeof finalFee === "number" && Number.isFinite(finalFee)) {
+        setDeliveryFee(roundMoney(finalFee));
+        setEstimateError(null);
+      } else if (guineaUi) {
+        setDeliveryFee(null);
+        setEstimateError(
+          tr(
+            "guineaMarket.deliveryPricingUnavailable",
+            "Guinea delivery pricing is not configured yet. No estimated fee is shown.",
+          ),
+        );
+      } else {
+        setDeliveryFee(null);
+        setEstimateError(null);
+      }
       setPickupCoords(pickupOk ? { lat: pLat!, lng: pLng! } : null);
       setDropoffCoords(dropoffOk ? { lat: dLat!, lng: dLng! } : null);
-      setEstimateError(null);
 
       if (pickupOk && dropoffOk && cart.length > 0) {
         void refreshServerQuote(
@@ -870,7 +923,13 @@ export function ClientRestaurantMenuScreen() {
       if (dMiles > WARN_MILES && !silent) {
         Alert.alert(
           tr("clientRestaurantMenu.verifyAddressTitle", "Address to verify"),
-          tr(
+          guineaUi
+            ? tr(
+                "guineaMarket.distanceTooFar",
+                "This delivery is too far ({{miles}}). Check the landmark, town, and map pin.",
+                { miles: dMiles.toFixed(2) },
+              )
+            : tr(
             "clientRestaurantMenu.verifyAddressBody",
             "Very long distance: {{miles}} mi.\n\nCheck the ZIP, city, and state.\nEx: \"Brooklyn NY 11226\".",
             { miles: dMiles.toFixed(2) }
@@ -897,7 +956,8 @@ export function ClientRestaurantMenuScreen() {
             err?.message ??
               tr("clientRestaurantMenu.estimateError", "Unable to calculate the delivery estimate right now."
               ),
-            tr
+            tr,
+            guineaUi,
           );
 
       resetEstimateState();
@@ -926,8 +986,8 @@ export function ClientRestaurantMenuScreen() {
     const canEstimate =
       !creating &&
       cart.length > 0 &&
-      isAddressReady(pickupValue) &&
-      isAddressReady(dropoffValue);
+      isAddressReady(pickupValue, guineaUi) &&
+      isAddressReady(dropoffValue, guineaUi);
 
     if (!canEstimate) {
       return;
@@ -951,7 +1011,7 @@ export function ClientRestaurantMenuScreen() {
         clearTimeout(autoEstimateTimerRef.current);
       }
     };
-  }, [pickup, dropoff, cart.length, creating]);
+  }, [pickup, dropoff, cart.length, creating, guineaUi]);
 
   useEffect(() => {
     return () => {
@@ -988,10 +1048,15 @@ export function ClientRestaurantMenuScreen() {
       return;
     }
 
-    if (!isAddressReady(pickup) || !isAddressReady(dropoff)) {
+    if (!isAddressReady(pickup, guineaUi) || !isAddressReady(dropoff, guineaUi)) {
       Alert.alert(
         tr("clientRestaurantMenu.incompleteAddressTitle", "Incomplete address"),
-        tr("clientRestaurantMenu.incompleteAddressBody", "Enter a more complete address before calculating delivery."
+        guineaUi
+          ? tr(
+              "guineaMarket.incompleteAddress",
+              "Enter a more complete address with a neighborhood or landmark.",
+            )
+          : tr("clientRestaurantMenu.incompleteAddressBody", "Enter a more complete address before calculating delivery."
         )
       );
       return;
@@ -1065,9 +1130,16 @@ export function ClientRestaurantMenuScreen() {
         ? Math.round(Number(serverPricing?.total_cents))
         : undefined;
 
-      // Local mobile money still needs an entity id today.
+      // Guinea / local markets: cash first (no Orange Money required).
       if (market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)) {
-        const { orderId, pricing } = await createFoodOrder(orderPayload, scope);
+        const useCash = String(market.countryCode).toUpperCase() === "GN";
+        const { orderId, pricing } = await createFoodOrder(
+          {
+            ...orderPayload,
+            ...(useCash ? { payment_method: "cash" as const } : {}),
+          },
+          scope
+        );
         setServerPricing(pricing);
         navigation.reset({
           index: 0,
@@ -1424,7 +1496,7 @@ export function ClientRestaurantMenuScreen() {
                         fontFamily: MMD_FONT.bold,
                       }}
                     >
-                      {money(price)} {currency}
+                      {money(price, currency)} {currency}
                     </Text>
 
                     <TouchableOpacity
@@ -1492,7 +1564,10 @@ export function ClientRestaurantMenuScreen() {
               value={pickup}
               onChangeText={setPickup}
               editable={!pickupLocked}
-              placeholder={tr("clientRestaurantMenu.addresses.pickupPlaceholder", "Ex: 686 Vermont St Brooklyn NY 11207"
+              placeholder={
+                guineaUi
+                  ? tr("guineaMarket.pickupLandmark", "Neighborhood, market or landmark")
+                  : tr("clientRestaurantMenu.addresses.pickupPlaceholder", "Ex: 686 Vermont St Brooklyn NY 11207"
               )}
               placeholderTextColor={MMD_MUTED}
               style={{
@@ -1526,7 +1601,10 @@ export function ClientRestaurantMenuScreen() {
             <TextInput
               value={dropoff}
               onChangeText={setDropoff}
-              placeholder={tr("clientRestaurantMenu.addresses.dropoffPlaceholder", "Ex: 1112 Flatbush Ave Brooklyn NY 11226"
+              placeholder={
+                guineaUi
+                  ? tr("guineaMarket.restaurantDropoffPlaceholder", "Neighborhood, market or landmark")
+                  : tr("clientRestaurantMenu.addresses.dropoffPlaceholder", "Ex: 1112 Flatbush Ave Brooklyn NY 11226"
               )}
               placeholderTextColor={MMD_MUTED}
               autoCapitalize="words"
@@ -1637,7 +1715,7 @@ export function ClientRestaurantMenuScreen() {
                 <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 4 }}>
                   {tr("clientRestaurantMenu.summary.fee", "Delivery fee")} :{" "}
                   <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                    {displayDeliveryFee != null ? `${money(displayDeliveryFee)} ${currency}` : "—"}
+                    {displayDeliveryFee != null ? `${money(displayDeliveryFee, currency)} ${currency}` : "—"}
                   </Text>
                 </Text>
 
@@ -1716,7 +1794,11 @@ export function ClientRestaurantMenuScreen() {
                       {selected ? "✓ " : ""}
                       {option.name}
                       {option.price_cents > 0
-                        ? ` (+${(option.price_cents / 100).toFixed(2)})`
+                        ? ` (+${
+                            String(currency).toUpperCase() === "GNF"
+                              ? Math.round(priceCentsToMajor(option.price_cents, currency))
+                              : priceCentsToMajor(option.price_cents, currency).toFixed(2)
+                          })`
                         : ""}
                     </Text>
                   </TouchableOpacity>
@@ -1811,7 +1893,7 @@ export function ClientRestaurantMenuScreen() {
                     ) : null}
 
                     <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 4 }}>
-                      {money(item.unit_price)} {currency}{" "}
+                      {money(item.unit_price, currency)} {currency}{" "}
                       {tr("clientRestaurantMenu.cart.perUnit", "/ each")}
                     </Text>
                   </View>
@@ -1863,7 +1945,7 @@ export function ClientRestaurantMenuScreen() {
 
                   <View style={{ marginLeft: 12, alignItems: "flex-end" }}>
                     <Text style={{ color: "#F9FAFB", fontSize: 13, fontWeight: "900" }}>
-                      {money(item.unit_price * item.quantity)} {currency}
+                      {money(item.unit_price * item.quantity, currency)} {currency}
                     </Text>
 
                     <TouchableOpacity onPress={() => removeFromCart(item.lineKey)} style={{ marginTop: 4 }}>
@@ -1881,7 +1963,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.totals.subtotal", "Subtotal")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
-                    {money(displaySubtotal)} {currency}
+                    {money(displaySubtotal, currency)} {currency}
                   </Text>
                 </View>
 
@@ -1890,7 +1972,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.totals.taxLabel", "Tax")} ({displayTaxRatePct.toFixed(2)}%)
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
-                    {money(displayTax)} {currency}
+                    {money(displayTax, currency)} {currency}
                   </Text>
                 </View>
 
@@ -1899,7 +1981,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.totals.totalNoDelivery", "Total (before delivery)")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
-                    {money(roundMoney(displaySubtotal + displayTax))} {currency}
+                    {money(roundMoney(displaySubtotal + displayTax), currency)} {currency}
                   </Text>
                 </View>
 
@@ -1908,7 +1990,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.summary.fee", "Delivery fee")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
-                    {displayDeliveryFee != null ? `${money(displayDeliveryFee)} ${currency}` : "—"}
+                    {displayDeliveryFee != null ? `${money(displayDeliveryFee, currency)} ${currency}` : "—"}
                   </Text>
                 </View>
 
@@ -1917,7 +1999,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.totals.serviceFee", "Service fee")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
-                    {money(displayServiceFee)} {currency}
+                    {money(displayServiceFee, currency)} {currency}
                   </Text>
                 </View>
 
@@ -1926,7 +2008,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.totals.finalTotal", "Final total")}
                   </Text>
                   <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>
-                    {money(displayGrandTotal)} {currency}
+                    {money(displayGrandTotal, currency)} {currency}
                   </Text>
                 </View>
               </View>

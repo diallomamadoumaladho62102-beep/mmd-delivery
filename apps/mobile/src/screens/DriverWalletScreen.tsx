@@ -26,6 +26,7 @@ import {
   CLIENT_SCREEN_FETCH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
+import { readSelectedMarket } from "../lib/selectedMarketStore";
 import {
   fetchDriverWalletSnapshot,
   formatWalletAmount,
@@ -240,19 +241,17 @@ export function DriverWalletScreen() {
   }, [cashoutBlockReason, minimumPayoutCents, fmtMoney, t, stripeStatusMessage]);
 
   const applyStripeStatus = useCallback(
-    (codeRaw: unknown, label?: string | null, message?: string | null) => {
+    (codeRaw: unknown, _label?: string | null, _message?: string | null) => {
       const code = normalizeStripeConnectStatus(codeRaw);
       setStripeStatus(code);
       setStripeStatusLabel(
-        label?.trim() ||
-          t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
+        t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
       );
       setStripeStatusMessage(
-        message?.trim() ||
-          t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),
+        t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),
       );
     },
-    [],
+    [t],
   );
 
   const fetchWallet = useCallback(
@@ -317,7 +316,9 @@ export function DriverWalletScreen() {
         }
 
         const snapshot = await withTimeout(
-          fetchDriverWalletSnapshot(session.access_token),
+          fetchDriverWalletSnapshot(session.access_token, {
+            countryCode: (await readSelectedMarket()) ?? "US",
+          }),
           CLIENT_SCREEN_FETCH_TIMEOUT_MS,
           "driver_wallet_snapshot",
         );

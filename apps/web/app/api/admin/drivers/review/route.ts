@@ -11,6 +11,7 @@ import {
   sanitizeDriverDecisionNote,
   type DriverReviewTarget,
 } from "@/lib/driverReviewTransition";
+import { driverRequiresUsStyleRegion } from "@/lib/adminDriverDisplay";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -134,13 +135,15 @@ function computeMissingRequirements(params: {
     }
   }
 
+  const requireUsRegion = driverRequiresUsStyleRegion({ phone: profile.phone });
+
   if (!hasText(profile.full_name)) missing.push("full name");
   if (!hasText(profile.phone)) missing.push("phone number");
   if (!hasText(profile.emergency_phone)) missing.push("emergency phone number");
   if (!hasText(profile.address)) missing.push("address");
   if (!hasText(profile.city)) missing.push("city");
-  if (!hasText(profile.state)) missing.push("state");
-  if (!hasText(profile.zip_code)) missing.push("zip code");
+  if (requireUsRegion && !hasText(profile.state)) missing.push("state");
+  if (requireUsRegion && !hasText(profile.zip_code)) missing.push("zip code");
   if (!hasText(profile.date_of_birth)) missing.push("date of birth");
   if (!hasText(profile.transport_mode)) missing.push("transport mode");
 

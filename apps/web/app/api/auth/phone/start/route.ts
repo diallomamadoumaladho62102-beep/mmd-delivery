@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         503,
       );
     }
+    // isTwilioVerifyConfigured() is also true in PHONE_OTP_SIMULATE lab mode (no SMS).
 
     const user = await resolveRequestUser(request);
     if (!user) return json({ ok: false, error: "Unauthorized" }, 401);

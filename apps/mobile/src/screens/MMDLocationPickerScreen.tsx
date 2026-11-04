@@ -27,7 +27,18 @@ export default function MMDLocationPickerScreen() {
     submitLabel,
     returnTo,
     pickerContext,
+    requireVerifiedGps: requireVerifiedGpsParam,
   } = route.params;
+
+  const pickupContexts = new Set([
+    "taxi_pickup",
+    "taxi_quote_pickup",
+    "delivery_pickup",
+  ]);
+  const requireVerifiedGps =
+    requireVerifiedGpsParam === true ||
+    (requireVerifiedGpsParam !== false &&
+      pickupContexts.has(String(pickerContext ?? "")));
 
   const resolvedCountryCode = String(routeCountryCode ?? "").trim().toUpperCase();
   if (!resolvedCountryCode) {
@@ -84,6 +95,7 @@ export default function MMDLocationPickerScreen() {
         countryCode={resolvedCountryCode}
         title={resolvedTitle}
         submitLabel={resolvedSubmitLabel}
+        requireVerifiedGps={requireVerifiedGps}
         onSave={handleSave}
         onCancel={safeBack}
       />

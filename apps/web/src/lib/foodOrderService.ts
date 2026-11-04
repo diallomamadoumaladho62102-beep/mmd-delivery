@@ -9,6 +9,7 @@ import {
 } from "@/lib/foodOrderServerPricing";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 import { quoteFoodSot } from "@/lib/pricingEngine";
+import { assertNoGuineaIsolatedLiveWrite } from "@/lib/guineaTestIsolation";
 
 export type CreateFoodOrderInput = {
   supabaseAdmin: SupabaseClient;
@@ -34,6 +35,11 @@ export type CreateFoodOrderInput = {
    * Phase 5F — freeze checkout quote (no re-price). Used by pay-then-create materialize.
    */
   frozenPricing?: FoodOrderPricingResult | null;
+  /**
+   * Guinea local cash only (countryCode=GN, GNF, not settlePaid): stores
+   * payment_status=pending_cash + payment_method=cash. Never marks paid.
+   */
+  paymentMethod?: "cash" | null;
 };
 
 export type CreateFoodOrderResult = FoodOrderPricingResult & {
@@ -72,6 +78,7 @@ export async function createFoodOrderServerSide(
     promoCode,
   } = input;
 
+  await assertNoGuineaIsolatedLiveWrite(supabaseAdmin, [clientId, restaurantUserId]);
   if (!clientId) throw new Error("clientId manquant");
   if (!restaurantUserId) throw new Error("restaurantUserId manquant");
   if (!restaurantName?.trim()) throw new Error("restaurantName manquant");
@@ -104,6 +111,16 @@ export async function createFoodOrderServerSide(
   const dropoffCode = Math.floor(100000 + Math.random() * 900000).toString();
   const settlePaid = input.settlePaid ?? null;
   const paidNow = settlePaid ? new Date().toISOString() : null;
+
+  const guineaCash = input.paymentMethod === "cash" && !settlePaid;
+  if (guineaCash) {
+    if (
+      String(countryCode ?? "").trim().toUpperCase() !== "GN" ||
+      String(pricing.currency ?? "").trim().toUpperCase() !== "GNF"
+    ) {
+      throw new Error("cash_not_available");
+    }
+  }
 
   const { data, error } = await supabaseAdmin
     .from("orders")
@@ -152,7 +169,8 @@ export async function createFoodOrderServerSide(
       promo_discount_amount: pricing.promoDiscountAmount,
       delivery_discount_amount: pricing.deliveryDiscountAmount,
       status: "pending",
-      payment_status: settlePaid ? "paid" : "unpaid",
+      payment_status: settlePaid ? "paid" : guineaCash ? "pending_cash" : "unpaid",
+      ...(guineaCash ? { payment_method: "cash" } : {}),
       paid_at: paidNow,
       stripe_session_id: settlePaid?.stripeSessionId ?? null,
       stripe_payment_intent_id: settlePaid?.stripePaymentIntentId ?? null,
@@ -170,6 +188,9 @@ export async function createFoodOrderServerSide(
     .single();
 
   if (error) {
+    if (guineaCash && /payment_method|payment_status|check constraint|schema cache/i.test(error.message)) {
+      throw new Error("guinea_food_cash_schema_not_ready");
+    }
     throw new Error(error.message);
   }
 

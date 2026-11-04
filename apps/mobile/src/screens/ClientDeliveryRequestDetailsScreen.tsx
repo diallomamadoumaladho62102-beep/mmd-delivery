@@ -105,6 +105,7 @@ type DeliveryRequestRecord = {
   distance_miles: number | null;
   total: number | null;
   delivery_fee: number | null;
+  currency: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   driver_id: string | null;
@@ -127,10 +128,9 @@ type OrderRecord = {
   distance_miles: number | null;
   total: number | null;
   delivery_fee: number | null;
+  currency: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
-  pickup_code: string | null;
-  dropoff_code: string | null;
   picked_up_at: string | null;
   delivered_confirmed_at: string | null;
   pickup_photo_url: string | null;
@@ -139,6 +139,36 @@ type OrderRecord = {
   external_ref_id: string | null;
   external_ref_type: string | null;
 };
+
+/** Non-secret order columns only — pickup_code/dropoff_code require RPC. */
+const ORDER_SELECT_SAFE = `
+            id,
+            kind,
+            status,
+            payment_status,
+            created_at,
+            updated_at,
+            paid_at,
+            pickup_address,
+            dropoff_address,
+            pickup_lat,
+            pickup_lng,
+            dropoff_lat,
+            dropoff_lng,
+            distance_miles,
+            total,
+            delivery_fee,
+            currency,
+            stripe_session_id,
+            stripe_payment_intent_id,
+            picked_up_at,
+            delivered_confirmed_at,
+            pickup_photo_url,
+            dropoff_photo_url,
+            driver_id,
+            external_ref_id,
+            external_ref_type
+          `;
 
 type ScreenData = {
   source: "order" | "delivery_request" | "linked_order_and_request";
@@ -159,6 +189,7 @@ type ScreenData = {
   distance_miles: number | null;
   total: number | null;
   delivery_fee: number | null;
+  currency: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   pickup_code: string | null;
@@ -188,6 +219,36 @@ function toSafeNumber(value: unknown): number | null {
     : typeof value === "string" && value.trim() && !Number.isNaN(Number(value))
     ? Number(value)
     : null;
+}
+
+function isOrdersPrivilegeError(error: unknown): boolean {
+  const err = error as { code?: string; message?: string } | null;
+  const code = String(err?.code ?? "");
+  const msg = String(err?.message ?? error ?? "").toLowerCase();
+  return (
+    code === "42501" ||
+    msg.includes("permission denied") ||
+    msg.includes("row-level security")
+  );
+}
+
+async function fetchAuthorizedVerificationCodes(params: {
+  entityType: "order" | "delivery_request";
+  entityId: string;
+}): Promise<{ pickup_code: string | null; dropoff_code: string | null }> {
+  const { data, error } = await supabase.rpc("get_authorized_verification_codes", {
+    p_entity_type: params.entityType,
+    p_entity_id: params.entityId,
+  });
+  if (error) {
+    console.log("get_authorized_verification_codes error:", error.message);
+    return { pickup_code: null, dropoff_code: null };
+  }
+  const row = (data ?? {}) as Record<string, unknown>;
+  return {
+    pickup_code: toSafeString(row.pickup_code),
+    dropoff_code: toSafeString(row.dropoff_code),
+  };
 }
 
 function shortRef(value: string | null | undefined) {
@@ -347,6 +408,7 @@ function mapDeliveryRequestToScreenData(
     distance_miles: request.distance_miles,
     total: request.total,
     delivery_fee: request.delivery_fee,
+    currency: request.currency,
     stripe_session_id: request.stripe_session_id,
     stripe_payment_intent_id: request.stripe_payment_intent_id,
     pickup_code: null,
@@ -361,6 +423,7 @@ function mapDeliveryRequestToScreenData(
 
 function mapOrderToScreenData(
   order: OrderRecord,
+  codes: { pickup_code: string | null; dropoff_code: string | null },
   requestIdFallback?: string | null
 ): ScreenData {
   return {
@@ -382,10 +445,11 @@ function mapOrderToScreenData(
     distance_miles: order.distance_miles,
     total: order.total,
     delivery_fee: order.delivery_fee,
+    currency: order.currency,
     stripe_session_id: order.stripe_session_id,
     stripe_payment_intent_id: order.stripe_payment_intent_id,
-    pickup_code: order.pickup_code,
-    dropoff_code: order.dropoff_code,
+    pickup_code: codes.pickup_code,
+    dropoff_code: codes.dropoff_code,
     picked_up_at: order.picked_up_at,
     delivered_confirmed_at: order.delivered_confirmed_at,
     pickup_photo_url: order.pickup_photo_url,
@@ -404,9 +468,10 @@ export function ClientDeliveryRequestDetailsScreen() {
   const dash = t("common.dash", "—");
 
   const formatCurrency = useCallback(
-    (amount: number | null | undefined) => {
+    (amount: number | null | undefined, currency?: string | null) => {
       if (typeof amount !== "number" || Number.isNaN(amount)) return dash;
-      return formatMoney(amount, "USD", i18n.language);
+      const code = String(currency ?? "USD").trim().toUpperCase() || "USD";
+      return formatMoney(amount, code, i18n.language);
     },
     [dash, i18n.language]
   );
@@ -462,80 +527,59 @@ export function ClientDeliveryRequestDetailsScreen() {
           (async () => {
             const { data: directOrder, error: directOrderError } = await supabase
               .from("orders")
-              .select(
-                `
-            id,
-            kind,
-            status,
-            payment_status,
-            created_at,
-            updated_at,
-            paid_at,
-            pickup_address,
-            dropoff_address,
-            pickup_lat,
-            pickup_lng,
-            dropoff_lat,
-            dropoff_lng,
-            distance_miles,
-            total,
-            delivery_fee,
-            stripe_session_id,
-            stripe_payment_intent_id,
-            pickup_code,
-            dropoff_code,
-            picked_up_at,
-            delivered_confirmed_at,
-            pickup_photo_url,
-            dropoff_photo_url,
-            driver_id,
-            external_ref_id,
-            external_ref_type
-          `
-              )
+              .select(ORDER_SELECT_SAFE)
               .eq("id", requestId)
               .maybeSingle();
 
-            if (directOrderError) throw directOrderError;
+            if (directOrderError && !isOrdersPrivilegeError(directOrderError)) {
+              throw directOrderError;
+            }
             if (!alive) return;
 
             if (directOrder) {
               const kind = normalizeKind(directOrder.kind);
               if (kind === "pickup_dropoff") {
+                const codes = await fetchAuthorizedVerificationCodes({
+                  entityType: "order",
+                  entityId: String(directOrder.id),
+                });
+                if (!alive) return;
                 setData(
-                  mapOrderToScreenData({
-                    id: String(directOrder.id),
-                    kind: toSafeString(directOrder.kind),
-                    status: toSafeString(directOrder.status),
-                    payment_status: toSafeString(directOrder.payment_status),
-                    created_at: toSafeString(directOrder.created_at),
-                    updated_at: toSafeString(directOrder.updated_at),
-                    paid_at: toSafeString(directOrder.paid_at),
-                    pickup_address: toSafeString(directOrder.pickup_address),
-                    dropoff_address: toSafeString(directOrder.dropoff_address),
-                    pickup_lat: toSafeNumber(directOrder.pickup_lat),
-                    pickup_lng: toSafeNumber(directOrder.pickup_lng),
-                    dropoff_lat: toSafeNumber(directOrder.dropoff_lat),
-                    dropoff_lng: toSafeNumber(directOrder.dropoff_lng),
-                    distance_miles: toSafeNumber(directOrder.distance_miles),
-                    total: toSafeNumber(directOrder.total),
-                    delivery_fee: toSafeNumber(directOrder.delivery_fee),
-                    stripe_session_id: toSafeString(directOrder.stripe_session_id),
-                    stripe_payment_intent_id: toSafeString(
-                      directOrder.stripe_payment_intent_id
-                    ),
-                    pickup_code: toSafeString(directOrder.pickup_code),
-                    dropoff_code: toSafeString(directOrder.dropoff_code),
-                    picked_up_at: toSafeString(directOrder.picked_up_at),
-                    delivered_confirmed_at: toSafeString(
-                      directOrder.delivered_confirmed_at
-                    ),
-                    pickup_photo_url: toSafeString(directOrder.pickup_photo_url),
-                    dropoff_photo_url: toSafeString(directOrder.dropoff_photo_url),
-                    driver_id: toSafeString(directOrder.driver_id),
-                    external_ref_id: toSafeString(directOrder.external_ref_id),
-                    external_ref_type: toSafeString(directOrder.external_ref_type),
-                  })
+                  mapOrderToScreenData(
+                    {
+                      id: String(directOrder.id),
+                      kind: toSafeString(directOrder.kind),
+                      status: toSafeString(directOrder.status),
+                      payment_status: toSafeString(directOrder.payment_status),
+                      created_at: toSafeString(directOrder.created_at),
+                      updated_at: toSafeString(directOrder.updated_at),
+                      paid_at: toSafeString(directOrder.paid_at),
+                      pickup_address: toSafeString(directOrder.pickup_address),
+                      dropoff_address: toSafeString(directOrder.dropoff_address),
+                      pickup_lat: toSafeNumber(directOrder.pickup_lat),
+                      pickup_lng: toSafeNumber(directOrder.pickup_lng),
+                      dropoff_lat: toSafeNumber(directOrder.dropoff_lat),
+                      dropoff_lng: toSafeNumber(directOrder.dropoff_lng),
+                      distance_miles: toSafeNumber(directOrder.distance_miles),
+                      total: toSafeNumber(directOrder.total),
+                      delivery_fee: toSafeNumber(directOrder.delivery_fee),
+                      currency: toSafeString(directOrder.currency),
+                      stripe_session_id: toSafeString(directOrder.stripe_session_id),
+                      stripe_payment_intent_id: toSafeString(
+                        directOrder.stripe_payment_intent_id
+                      ),
+                      picked_up_at: toSafeString(directOrder.picked_up_at),
+                      delivered_confirmed_at: toSafeString(
+                        directOrder.delivered_confirmed_at
+                      ),
+                      pickup_photo_url: toSafeString(directOrder.pickup_photo_url),
+                      dropoff_photo_url: toSafeString(directOrder.dropoff_photo_url),
+                      driver_id: toSafeString(directOrder.driver_id),
+                      external_ref_id: toSafeString(directOrder.external_ref_id),
+                      external_ref_type: toSafeString(directOrder.external_ref_type),
+                    },
+                    codes
+                  )
                 );
                 return;
               }
@@ -560,6 +604,7 @@ export function ClientDeliveryRequestDetailsScreen() {
             distance_miles,
             total,
             delivery_fee,
+            currency,
             stripe_session_id,
             stripe_payment_intent_id,
             driver_id
@@ -593,6 +638,7 @@ export function ClientDeliveryRequestDetailsScreen() {
               distance_miles: toSafeNumber(requestData.distance_miles),
               total: toSafeNumber(requestData.total),
               delivery_fee: toSafeNumber(requestData.delivery_fee),
+              currency: toSafeString(requestData.currency),
               stripe_session_id: toSafeString(requestData.stripe_session_id),
               stripe_payment_intent_id: toSafeString(
                 requestData.stripe_payment_intent_id
@@ -602,44 +648,21 @@ export function ClientDeliveryRequestDetailsScreen() {
 
             const { data: linkedOrder, error: linkedOrderError } = await supabase
               .from("orders")
-              .select(
-                `
-            id,
-            kind,
-            status,
-            payment_status,
-            created_at,
-            updated_at,
-            paid_at,
-            pickup_address,
-            dropoff_address,
-            pickup_lat,
-            pickup_lng,
-            dropoff_lat,
-            dropoff_lng,
-            distance_miles,
-            total,
-            delivery_fee,
-            stripe_session_id,
-            stripe_payment_intent_id,
-            pickup_code,
-            dropoff_code,
-            picked_up_at,
-            delivered_confirmed_at,
-            pickup_photo_url,
-            dropoff_photo_url,
-            driver_id,
-            external_ref_id,
-            external_ref_type
-          `
-              )
+              .select(ORDER_SELECT_SAFE)
               .eq("external_ref_id", requestId)
               .maybeSingle();
 
-            if (linkedOrderError) throw linkedOrderError;
+            if (linkedOrderError && !isOrdersPrivilegeError(linkedOrderError)) {
+              throw linkedOrderError;
+            }
             if (!alive) return;
 
             if (linkedOrder && normalizeKind(linkedOrder.kind) === "pickup_dropoff") {
+              const codes = await fetchAuthorizedVerificationCodes({
+                entityType: "order",
+                entityId: String(linkedOrder.id),
+              });
+              if (!alive) return;
               setData(
                 mapOrderToScreenData(
                   {
@@ -659,12 +682,13 @@ export function ClientDeliveryRequestDetailsScreen() {
                     distance_miles: toSafeNumber(linkedOrder.distance_miles),
                     total: toSafeNumber(linkedOrder.total),
                     delivery_fee: toSafeNumber(linkedOrder.delivery_fee),
+                    currency:
+                      toSafeString(linkedOrder.currency) ??
+                      normalizedRequest.currency,
                     stripe_session_id: toSafeString(linkedOrder.stripe_session_id),
                     stripe_payment_intent_id: toSafeString(
                       linkedOrder.stripe_payment_intent_id
                     ),
-                    pickup_code: toSafeString(linkedOrder.pickup_code),
-                    dropoff_code: toSafeString(linkedOrder.dropoff_code),
                     picked_up_at: toSafeString(linkedOrder.picked_up_at),
                     delivered_confirmed_at: toSafeString(
                       linkedOrder.delivered_confirmed_at
@@ -675,13 +699,23 @@ export function ClientDeliveryRequestDetailsScreen() {
                     external_ref_id: toSafeString(linkedOrder.external_ref_id),
                     external_ref_type: toSafeString(linkedOrder.external_ref_type),
                   },
+                  codes,
                   normalizedRequest.id
                 )
               );
               return;
             }
 
-            setData(mapDeliveryRequestToScreenData(normalizedRequest));
+            const requestCodes = await fetchAuthorizedVerificationCodes({
+              entityType: "delivery_request",
+              entityId: normalizedRequest.id,
+            });
+            if (!alive) return;
+            setData({
+              ...mapDeliveryRequestToScreenData(normalizedRequest),
+              pickup_code: requestCodes.pickup_code,
+              dropoff_code: requestCodes.dropoff_code,
+            });
           })(),
           CLIENT_SCREEN_FETCH_TIMEOUT_MS,
           "client_delivery_request_details_load",
@@ -1806,7 +1840,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                   {t("client.deliveryRequest.total", "Total")}
                 </Text>
                 <Text style={{ color: MMD_WHITE, fontFamily: MMD_FONT.extrabold, fontWeight: "800" }}>
-                  {formatCurrency(data.total)}
+                  {formatCurrency(data.total, data.currency)}
                 </Text>
               </View>
             </View>
@@ -1833,7 +1867,7 @@ export function ClientDeliveryRequestDetailsScreen() {
           ) : null}
 
           {!["delivered", "completed"].includes(statusNorm) ? (
-          <InfoCard label={t("client.deliveryRequest.total", "Total")} value={formatCurrency(data.total)} />
+          <InfoCard label={t("client.deliveryRequest.total", "Total")} value={formatCurrency(data.total, data.currency)} />
           ) : null}
           {data.created_at ? (
           <InfoCard label={t("client.deliveryRequest.createdAt", "Created at")} value={formatDateTime(data.created_at)} />

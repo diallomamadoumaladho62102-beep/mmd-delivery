@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { SafeLinearGradient as LinearGradient } from "../SafeLinearGradient";
 import Mapbox from "@rnmapbox/maps";
-import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import {
@@ -31,6 +30,11 @@ import {
 } from "../../lib/mmdLocationApi";
 import { defaultTaxiAddressConfig } from "../../lib/taxiAddressConfig";
 import {
+  getVerifiedClientGps,
+  isGuineaMapCameraDefault,
+  verifiedGpsUserMessage,
+} from "../../lib/verifiedClientGps";
+import {
   MMD_BLUE,
   MMD_CARD_BORDER,
   MMD_FONT,
@@ -42,6 +46,7 @@ import {
 } from "../../theme/mmdUi";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
 
+/** Map camera only — never a client pickup coordinate. */
 const DEFAULT_GN_CENTER = {
   latitude: 9.6412,
   longitude: -13.5784,
@@ -67,6 +72,11 @@ type Props = {
   countryCode?: string;
   title?: string;
   submitLabel?: string;
+  /**
+   * Pickup/collecte: require a verified device GPS fix before save.
+   * Map city centers are camera-only and cannot be saved as pickup.
+   */
+  requireVerifiedGps?: boolean;
   onSave: (value: MMDLocationPickerValue) => void | Promise<void>;
   onCancel?: () => void;
 };
@@ -117,6 +127,7 @@ export default function MMDLocationPicker({
   countryCode,
   title,
   submitLabel,
+  requireVerifiedGps = false,
   onSave,
   onCancel,
 }: Props) {
@@ -147,11 +158,11 @@ export default function MMDLocationPicker({
   const structuredMode = addressConfig.structured_address_mode;
   const requireLandmark = addressConfig.landmark_prompt_required;
   const requirePinConfirm = addressConfig.manual_pin_confirmation_required;
-  const initialCenter = defaultCenterForCountry(scopedCountryCode);
+  const cameraCenter = defaultCenterForCountry(scopedCountryCode);
 
-  const [regionName, setRegionName] = useState("Conakry");
-  const [prefectureName, setPrefectureName] = useState("Conakry");
-  const [cityName, setCityName] = useState(structuredMode ? "" : "Conakry");
+  const [regionName, setRegionName] = useState("");
+  const [prefectureName, setPrefectureName] = useState("");
+  const [cityName, setCityName] = useState("");
   const [communeName, setCommuneName] = useState("");
   const [quartierName, setQuartierName] = useState("");
   const [streetNumber, setStreetNumber] = useState("");
@@ -163,12 +174,15 @@ export default function MMDLocationPicker({
   const [landmarks, setLandmarks] = useState<MmdLandmark[]>([]);
   const [zones, setZones] = useState<MmdZone[]>([]);
   const [selectedLandmark, setSelectedLandmark] = useState<MmdLandmark | null>(null);
-  const [pinLat, setPinLat] = useState(initialCenter.latitude);
-  const [pinLng, setPinLng] = useState(initialCenter.longitude);
+  /** null until GPS or user places a pin — never pre-filled with city center. */
+  const [pinLat, setPinLat] = useState<number | null>(null);
+  const [pinLng, setPinLng] = useState<number | null>(null);
   const [gpsLat, setGpsLat] = useState<number | null>(null);
   const [gpsLng, setGpsLng] = useState<number | null>(null);
+  const [gpsVerified, setGpsVerified] = useState(false);
   const [accuracyM, setAccuracyM] = useState<number | null>(null);
   const [locationSource, setLocationSource] = useState<"gps" | "pin" | "landmark">("pin");
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoMime, setPhotoMime] = useState<string | undefined>(undefined);
   const [loadingGps, setLoadingGps] = useState(false);
@@ -183,17 +197,32 @@ export default function MMDLocationPicker({
       (!addressConfig.street_number_required || Boolean(streetNumber.trim())) &&
       (!addressConfig.postal_code_required || Boolean(postalCode.trim())));
   const landmarkValid = !requireLandmark || Boolean(selectedLandmark) || directionsValid;
-  const canSave =
+  const pinReady =
+    pinLat != null &&
+    pinLng != null &&
     Number.isFinite(pinLat) &&
     Number.isFinite(pinLng) &&
+    !(
+      scopedCountryCode === "GN" &&
+      isGuineaMapCameraDefault(pinLat, pinLng) &&
+      locationSource !== "gps"
+    );
+  const gpsGateOk = !requireVerifiedGps || gpsVerified;
+  const canSave =
+    pinReady &&
+    gpsGateOk &&
     structuredValid &&
     landmarkValid &&
     (!requirePinConfirm || pinConfirmed) &&
     (structuredMode ? true : directionsValid);
 
   const mapCenter = useMemo(
-    () => [pinLng, pinLat] as [number, number],
-    [pinLat, pinLng]
+    () =>
+      [
+        pinLng ?? cameraCenter.longitude,
+        pinLat ?? cameraCenter.latitude,
+      ] as [number, number],
+    [pinLat, pinLng, cameraCenter.latitude, cameraCenter.longitude]
   );
 
   const loadZones = useCallback(async () => {
@@ -237,37 +266,48 @@ export default function MMDLocationPicker({
 
   async function handleUseGps() {
     setLoadingGps(true);
+    setGpsError(null);
     try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert(
-          t("locationPicker.permissionTitle", "Permission required"),
-          t("locationPicker.gpsPermissionBody", "Allow location access to use GPS."),
-        );
+      const result = await getVerifiedClientGps({
+        maxAccuracyM: addressConfig.minimum_location_accuracy_meters,
+      });
+      if (result.ok === false) {
+        setGpsVerified(false);
+        const msg = verifiedGpsUserMessage(result);
+        const text = t(msg.key, msg.defaultValue);
+        setGpsError(text);
+        Alert.alert(t("locationPicker.gpsErrorTitle", "GPS error"), text);
         return;
       }
-
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      setGpsLat(lat);
-      setGpsLng(lng);
-      setPinLat(lat);
-      setPinLng(lng);
-      setAccuracyM(pos.coords.accuracy ?? null);
+      setGpsLat(result.latitude);
+      setGpsLng(result.longitude);
+      setPinLat(result.latitude);
+      setPinLng(result.longitude);
+      setAccuracyM(result.accuracyM);
       setLocationSource("gps");
+      setGpsVerified(true);
+      if (requirePinConfirm) setPinConfirmed(true);
     } catch (e: unknown) {
-      Alert.alert(
-        t("locationPicker.gpsErrorTitle", "GPS error"),
-        toUserFacingError(e, t("locationPicker.gpsErrorBody", "Unable to read GPS")),
+      setGpsVerified(false);
+      const text = toUserFacingError(
+        e,
+        t(
+          "gps.unavailable",
+          "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+        )
       );
+      setGpsError(text);
+      Alert.alert(t("locationPicker.gpsErrorTitle", "GPS error"), text);
     } finally {
       setLoadingGps(false);
     }
   }
+
+  useEffect(() => {
+    if (!requireVerifiedGps) return;
+    void handleUseGps();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on open for pickup
+  }, [requireVerifiedGps]);
 
   function handleSelectZone(zone: MmdZone) {
     setRegionName(zone.region_name ?? regionName);
@@ -278,6 +318,16 @@ export default function MMDLocationPicker({
   }
 
   function handleSelectLandmark(landmark: MmdLandmark) {
+    if (requireVerifiedGps && !gpsVerified) {
+      Alert.alert(
+        t("locationPicker.gpsErrorTitle", "GPS error"),
+        t(
+          "gps.unavailable",
+          "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+        )
+      );
+      return;
+    }
     setSelectedLandmark(landmark);
     setLandmarkQuery(landmark.name);
     setRegionName(landmark.region_name ?? regionName);
@@ -293,8 +343,19 @@ export default function MMDLocationPicker({
   function handleMapPress(event: { geometry?: { coordinates?: number[] } }) {
     const coords = event?.geometry?.coordinates;
     if (!coords || coords.length < 2) return;
+    if (requireVerifiedGps && !gpsVerified) {
+      Alert.alert(
+        t("locationPicker.gpsErrorTitle", "GPS error"),
+        t(
+          "gps.mustVerifyBeforePin",
+          "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+        )
+      );
+      return;
+    }
     setPinLng(coords[0]);
     setPinLat(coords[1]);
+    // Manual adjustment after a GPS fix is recorded as pin, not device GPS.
     setLocationSource("pin");
     if (requirePinConfirm) setPinConfirmed(false);
   }
@@ -327,6 +388,27 @@ export default function MMDLocationPicker({
   }
 
   async function handleSave() {
+    if (requireVerifiedGps && !gpsVerified) {
+      Alert.alert(
+        t("locationPicker.gpsErrorTitle", "GPS error"),
+        gpsError ??
+          t(
+            "gps.unavailable",
+            "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+          )
+      );
+      return;
+    }
+    if (!pinReady || pinLat == null || pinLng == null) {
+      Alert.alert(
+        t("locationPicker.missingInfoTitle", "Missing information"),
+        t(
+          "locationPicker.missingPinBody",
+          "Obtain your GPS position (or place the pin) before saving."
+        )
+      );
+      return;
+    }
     if (!canSave) {
       Alert.alert(
         t("locationPicker.missingInfoTitle", "Missing information"),
@@ -455,7 +537,9 @@ export default function MMDLocationPicker({
             )
           : requirePinConfirm
             ? t(
-                "locationPicker.hintPinConfirm",
+                scopedCountryCode === "GN"
+                  ? "locationPicker.hintPinConfirmLocal"
+                  : "locationPicker.hintPinConfirm",
                 "Tap the map to place your pin, confirm it, and add a landmark or directions so the driver can find you.",
               )
             : t(
@@ -494,21 +578,39 @@ export default function MMDLocationPicker({
               animationMode="flyTo"
               animationDuration={300}
             />
-            <Mapbox.PointAnnotation id="mmd-location-pin" coordinate={mapCenter}>
-              <View
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  backgroundColor: MMD_GOLD_BRIGHT,
-                  borderWidth: 2,
-                  borderColor: MMD_WHITE,
-                }}
-              />
-            </Mapbox.PointAnnotation>
+            {pinLat != null && pinLng != null ? (
+              <Mapbox.PointAnnotation
+                id="mmd-location-pin"
+                coordinate={[pinLng, pinLat]}
+              >
+                <View
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: MMD_GOLD_BRIGHT,
+                    borderWidth: 2,
+                    borderColor: MMD_WHITE,
+                  }}
+                />
+              </Mapbox.PointAnnotation>
+            ) : null}
           </Mapbox.MapView>
         )}
       </View>
+
+      {gpsError ? (
+        <Text
+          style={{
+            color: "#FCA5A5",
+            fontSize: 14,
+            fontFamily: MMD_FONT.semibold,
+            textAlign: textAlignStart(),
+          }}
+        >
+          {gpsError}
+        </Text>
+      ) : null}
 
       <TouchableOpacity
         onPress={() => void handleUseGps()}
@@ -535,28 +637,41 @@ export default function MMDLocationPicker({
               fontSize: 15,
             }}
           >
-            {t("locationPicker.useGps", "Use my current GPS")}
+            {gpsVerified
+              ? t("locationPicker.retryGps", "Refresh my GPS position")
+              : scopedCountryCode === "GN"
+                ? t("locationPicker.useGpsCurrent", "My current location")
+                : t("locationPicker.useGps", "Use my current GPS")}
           </Text>
         )}
       </TouchableOpacity>
 
-      {accuracyM != null ? (
-        <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-          {t("locationPicker.gpsAccuracy", {
-            defaultValue: "GPS accuracy: ~{{meters}} m · Pin: {{lat}}, {{lng}}",
-            meters: Math.round(accuracyM),
-            lat: pinLat.toFixed(5),
-            lng: pinLng.toFixed(5),
-          })}
-        </Text>
+      {pinLat != null && pinLng != null ? (
+        accuracyM != null ? (
+          <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
+            {t("locationPicker.gpsAccuracy", {
+              defaultValue: "GPS accuracy: ~{{meters}} m · Pin: {{lat}}, {{lng}}",
+              meters: Math.round(accuracyM),
+              lat: pinLat.toFixed(5),
+              lng: pinLng.toFixed(5),
+            })}
+          </Text>
+        ) : (
+          <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
+            {t("locationPicker.pinSource", {
+              defaultValue: "Pin: {{lat}}, {{lng}} · source: {{source}}",
+              lat: pinLat.toFixed(5),
+              lng: pinLng.toFixed(5),
+              source: locationSource,
+            })}
+          </Text>
+        )
       ) : (
         <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-          {t("locationPicker.pinSource", {
-            defaultValue: "Pin: {{lat}}, {{lng}} · source: {{source}}",
-            lat: pinLat.toFixed(5),
-            lng: pinLng.toFixed(5),
-            source: locationSource,
-          })}
+          {t(
+            "locationPicker.awaitingGps",
+            "No client position yet. The map center is only a preview — not your pickup."
+          )}
         </Text>
       )}
 
@@ -584,6 +699,27 @@ export default function MMDLocationPicker({
               : t("locationPicker.confirmPin", "Confirm pin location")}
           </Text>
         </TouchableOpacity>
+      ) : null}
+
+      {!structuredMode ? (
+        <View style={{ flexDirection: rowDirection(), gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <FieldLabel>{t("locationPicker.region", "Region")}</FieldLabel>
+            <FieldInput
+              value={regionName}
+              onChangeText={setRegionName}
+              placeholder={t("locationPicker.regionPlaceholder", "Region")}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <FieldLabel>{t("locationPicker.prefecture", "Prefecture")}</FieldLabel>
+            <FieldInput
+              value={prefectureName}
+              onChangeText={setPrefectureName}
+              placeholder={t("locationPicker.prefecturePlaceholder", "Prefecture")}
+            />
+          </View>
+        </View>
       ) : null}
 
       {zones.length > 0 && !structuredMode ? (
@@ -679,19 +815,22 @@ export default function MMDLocationPicker({
         <>
       <View style={{ flexDirection: rowDirection(), gap: 10 }}>
         <View style={{ flex: 1 }}>
-          <FieldLabel>{t("locationPicker.commune", "Commune")}</FieldLabel>
+          <FieldLabel>{t("locationPicker.communeTown", "Town / commune")}</FieldLabel>
           <FieldInput
             value={communeName}
             onChangeText={setCommuneName}
-            placeholder={t("locationPicker.communePlaceholder", "Matoto")}
+            placeholder={t("locationPicker.communeTownPlaceholder", "Town or commune")}
           />
         </View>
         <View style={{ flex: 1 }}>
-          <FieldLabel>{t("locationPicker.quartier", "Quartier")}</FieldLabel>
+          <FieldLabel>{t("locationPicker.quartierSector", "Neighborhood / sector")}</FieldLabel>
           <FieldInput
             value={quartierName}
             onChangeText={setQuartierName}
-            placeholder={t("locationPicker.quartierPlaceholder", "Lambanyi")}
+            placeholder={t(
+              "locationPicker.quartierSectorPlaceholder",
+              "Neighborhood or sector",
+            )}
           />
         </View>
       </View>
@@ -709,7 +848,9 @@ export default function MMDLocationPicker({
             setSelectedLandmark(null);
           }}
           placeholder={t(
-            "locationPicker.landmarkPlaceholder",
+            scopedCountryCode === "GN"
+              ? "locationPicker.landmarkPlaceholderLocal"
+              : "locationPicker.landmarkPlaceholder",
             "Station Total, mosque, market...",
           )}
         />

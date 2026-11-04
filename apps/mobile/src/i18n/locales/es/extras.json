@@ -96,6 +96,9 @@
       "checkout": "Preparar el pago",
       "comingSoonCta": "Pago marketplace bientôt",
       "payLive": "Pagar el pedido de Marketplace",
+      "confirmCash": "Confirmar pedido (efectivo)",
+      "cashPlacedTitle": "Pedido confirmado",
+      "cashPlacedBody": "Tu pedido está confirmado. Paga en efectivo a la entrega. Se avisó al vendedor.",
       "missingCheckoutUrl": "Falta la URL de pago",
       "backToMarketplace": "Volver al marketplace",
       "checkoutStillComingSoon": "Pago bientôt — paiement marketplace non actif.",
@@ -301,7 +304,9 @@
       "viewOrders": "Ver pedidos"
     },
     "signOut": {
-      "title": "Cerrar sesión"
+      "title": "Cerrar sesión",
+      "body": "¿Cerrar sesión en este dispositivo? Tu cuenta de vendedor y tus productos permanecen intactos.",
+      "error": "No se puede cerrar sesión ahora."
     }
   },
   "taxi": {
@@ -314,6 +319,7 @@
       "platformFee": "Tarifa de la plataforma",
       "total": "Importe total",
       "detectedCountry": "Detectado desde el punto de recogida",
+      "paid": "Pagado",
       "estimatesIn": "Estimaciones en"
     },
     "common": {
@@ -946,6 +952,16 @@
       },
       "v4": {
         "comingSoon": "Próximamente",
+        "rewards": {
+          "creditUnknown": "Crédito no disponible",
+          "progress": "{{current}} / {{target}} pts hasta el nivel {{tier}}"
+        },
+        "tier": {
+          "bronze": "Bronce",
+          "gold": "Oro",
+          "next": "siguiente",
+          "silver": "Plata"
+        },
         "language": {
           "subtitle": "Elige tu idioma preferido para MMD."
         },
@@ -1522,6 +1538,7 @@
       "danger": "Peligro",
       "language": "Idioma",
       "notifications": "Notificaciones",
+      "country": "País",
       "platform": "Plataforma",
       "privacy": "Privacidad",
       "profile": "Perfil",
@@ -1851,6 +1868,10 @@
       "missing": "Falta",
       "missingRequirements": "Requisitos faltantes",
       "placeholderLicenseNumber": "Número de licencia"
+    },
+    "signOut": {
+      "title": "Cerrar sesión",
+      "body": "¿Cerrar sesión en este dispositivo? Tu cuenta de conductor y tus datos permanecen intactos."
     },
     "account": {
       "createProfileFailed": "No se puede crear el perfil del conductor ahora.",
@@ -2330,6 +2351,10 @@
           "value": "Datos, permisos"
         },
         "title": "Legal y ayuda"
+      },
+      "country": {
+        "label": "País",
+        "value": "Guinea o Estados Unidos"
       },
       "next": {
         "addDocs": "Añadir documentos",
@@ -3678,7 +3703,18 @@
     "directionsMin": "Se requieren mínimo 8 caracteres.",
     "photoLabel": "Foto del lugar (recomendado)",
     "retakePhoto": "Volver a tomar la foto",
-    "addPhoto": "Añadir foto de la puerta, tienda o edificio"
+    "addPhoto": "Añadir foto de la puerta, tienda o edificio",
+    "useGpsCurrent": "Mi ubicación actual",
+    "region": "Región",
+    "regionPlaceholder": "Región",
+    "prefecture": "Prefectura",
+    "prefecturePlaceholder": "Prefectura",
+    "communeTown": "Ciudad / comuna",
+    "communeTownPlaceholder": "Ciudad o comuna",
+    "quartierSector": "Barrio / sector",
+    "quartierSectorPlaceholder": "Barrio o sector",
+    "landmarkPlaceholderLocal": "Mercado, escuela, mezquita, hospital o tienda",
+    "hintPinConfirmLocal": "Usa el GPS, mueve el mapa y añade un barrio o un punto de referencia. El código postal no es obligatorio."
   },
   "maskedCall": {
     "errorTitle": "Error de llamada"
@@ -3916,7 +3952,9 @@
       "loading": "Cargando precios…",
       "calculating": "Calculando estimación…",
       "ready": "Estimación lista",
-      "emptyHint": "Calcula el precio para ver la estimación."
+      "emptyHint": "Calcula el precio para ver la estimación.",
+      "pickupGps": "GPS de recogida",
+      "dropoffGps": "GPS de destino"
     },
     "header": {
       "title": "Solicitar una entrega",
@@ -3970,6 +4008,8 @@
     },
     "errors": {
       "estimateGeneric": "No se pudo calcular la estimación de entrega ahora.",
+      "addressNotFound": "No hay coincidencia en el mapa para estas direcciones. Precisa el lugar o marca los puntos en el mapa.",
+      "routeNotFound": "No se encontró una ruta en coche entre estos puntos.",
       "networkEstimate": "Error de red al calcular la estimación.",
       "estimateTimeout": "La estimación tardó demasiado. Inténtalo de nuevo.",
       "distanceTooLarge": "La distancia es demasiado grande. Revisa ambas direcciones.",
@@ -4306,7 +4346,9 @@
     "schemaNotReady": "Los viajes en efectivo aún no están listos en el servidor. El viaje no se creó.",
     "motorcycleNotReady": "Los viajes en moto aún no están listos en el servidor.",
     "vehicleUnsupported": "Este vehículo no está disponible para este viaje.",
-    "tripNotSupported": "Este tipo de trayecto no está disponible."
+    "tripNotSupported": "Este tipo de trayecto no está disponible.",
+    "searchingDrivers": "Buscando conductores cercanos…",
+    "detailsPreview": "Vista previa del trayecto"
   },
   "taxiXl": {
     "open": "XL interregional",
@@ -4392,5 +4434,66 @@
     "segmentDeparture": "Salida por tramo",
     "noGpsFix": "No se capturó ninguna posición GPS.",
     "marketUnavailable": "Este viaje interurbano está disponible solo en Guinea."
+  },
+  "guineaMarket": {
+    "welcomeTitle": "Bienvenido a MMD",
+    "welcomeSubtitle": "Elige tu país para continuar",
+    "countryOption": "{{name}} — {{dial}} · {{currency}}",
+    "guineaName": "Guinea",
+    "guineaCoverage": "Toda Guinea",
+    "usName": "Estados Unidos",
+    "usCoverage": "Estados Unidos",
+    "tabsTaxi": "Taxi",
+    "tabsRestaurants": "Restaurantes",
+    "tabsParcels": "Paquetes",
+    "taxiHomeTitle": "Inicio Taxi",
+    "taxiHomeSubtitle": "Transporte de personas",
+    "whereTo": "¿Adónde vas?",
+    "pickup": "Punto de salida",
+    "destination": "Destino",
+    "chooseOnMap": "Elegir en el mapa",
+    "seePrice": "Ver el precio",
+    "xlLink": "Taxi XL interregional",
+    "restaurantsTitle": "Restaurantes",
+    "restaurantsSubtitle": "Descubre los mejores restaurantes cerca de ti.",
+    "restaurantsSearch": "Buscar un restaurante...",
+    "viewMenu": "Ver menú →",
+    "restaurantsEmptyTitle": "No hay restaurantes disponibles",
+    "restaurantsEmptyBody": "Ningún restaurante registrado coincide con esta búsqueda. No se muestran establecimientos ficticios.",
+    "parcelsTitle": "Entrega de paquetes",
+    "parcelsSubtitle": "Envía un paquete rápidamente.",
+    "parcelType": "Tipo de paquete",
+    "pickupPoint": "Punto de recogida",
+    "pickupLandmark": "Barrio, mercado o punto de referencia",
+    "recipient": "Destinatario",
+    "pickupPinned": "Recogida indicada",
+    "destinationPinned": "Destino indicado",
+    "confirmDelivery": "Confirmar la entrega",
+    "authPersonalTitle": "Información personal",
+    "authPersonalSubtitle": "Nombre, teléfono {{dial}} y foto opcional.",
+    "authPhotoOptional": "Añadir una foto (opcional)",
+    "authEmergencyPhone": "Teléfono de emergencia (opcional)",
+    "authDateOfBirth": "Fecha de nacimiento (opcional)",
+    "authDobPlaceholder": "AAAA-MM-DD",
+    "authCreatedTitle": "Cuenta creada con éxito",
+    "authCreatedBody": "Tu cuenta MMD está lista. Puedes pedir un taxi, una comida o un paquete en Guinea.",
+    "authStart": "Empezar",
+    "authContinue": "Continuar",
+    "authLandmarkPlaceholder": "Barrio, mercado, escuela o punto de referencia",
+    "authCityPlaceholder": "Ciudad o comuna",
+    "authRegionPlaceholder": "Prefectura",
+    "authPostalPlaceholder": "Código postal opcional",
+    "authAddressHint": "Un barrio o un punto de referencia basta. El código postal no es obligatorio.",
+    "authPhoneInvalid": "Introduce un número guineano válido, por ejemplo +224 620 00 00 00.",
+    "authPhonePlaceholder": "+224 6XX XX XX XX",
+    "authAddressLabel": "Barrio o punto de referencia",
+    "authEmergencyInvalid": "El teléfono de emergencia debe ser un número guineano válido, o dejarse vacío.",
+    "authZipLabel": "Código postal (opcional)",
+    "authZipPlaceholder": "Opcional",
+    "restaurantDropoffPlaceholder": "Barrio, mercado o punto de referencia",
+    "incompleteAddress": "Introduce una dirección más completa con un barrio o un punto de referencia.",
+    "distanceTooFar": "Esta entrega está demasiado lejos ({{miles}}). Comprueba el punto de referencia, la ciudad y el pin del mapa.",
+    "deliveryPricingUnavailable": "Las tarifas de entrega de Guinea aún no están configuradas. No se muestra ningún coste estimado.",
+    "restaurantSetupRequired": "Indica el nombre, un teléfono +224 válido, un punto de referencia, la ciudad, la prefectura y el tipo de cocina."
   }
 }

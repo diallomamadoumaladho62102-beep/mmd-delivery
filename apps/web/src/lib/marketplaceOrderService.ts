@@ -11,6 +11,7 @@ import {
   userHasActiveMmdPlus,
 } from "@/lib/marketing/marketingEngine";
 import { quoteMarketplaceSot } from "@/lib/pricingEngine";
+import { assertNoGuineaIsolatedLiveWrite } from "@/lib/guineaTestIsolation";
 
 export type MarketplaceDraftItemInput = {
   product_id: string;
@@ -338,6 +339,7 @@ export async function upsertMarketplaceDraftOrder(
     replace_items?: boolean;
   }
 ): Promise<MarketplaceOrderRow> {
+  await assertNoGuineaIsolatedLiveWrite(supabaseAdmin, [params.clientUserId]);
   if (params.items.length === 0 && !params.replace_items) {
     throw new Error("Cart is empty");
   }

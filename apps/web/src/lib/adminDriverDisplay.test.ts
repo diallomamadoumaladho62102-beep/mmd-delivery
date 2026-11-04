@@ -96,6 +96,33 @@ test("computeMissingRequirementsForRow bike does not require motor docs", () => 
   assert.equal(missing.length, 0);
 });
 
+test("Guinea phone does not require US state/ZIP for driver approval completeness", () => {
+  const missing = computeMissingRequirementsForRow({
+    transport_mode: "bike",
+    full_name: "A",
+    phone: "+224620000101",
+    emergency_phone: "+224620000102",
+    address: "Almamya",
+    city: "Conakry",
+    state: null,
+    zip_code: null,
+    date_of_birth: "1990-01-01",
+    vehicle_brand: null,
+    vehicle_model: null,
+    vehicle_year: null,
+    vehicle_color: null,
+    plate_number: null,
+    license_number: null,
+    license_expiry: null,
+    documents: [
+      { doc_type: "profile_photo" },
+      { doc_type: "id_card_front" },
+      { doc_type: "id_card_back" },
+    ],
+  });
+  assert.equal(missing.length, 0);
+});
+
 test("ops priority: pending before missing before rejected before suspended", () => {
   const pending = sample({ status: "pending", computed_missing_requirements: [] });
   const missing = sample({

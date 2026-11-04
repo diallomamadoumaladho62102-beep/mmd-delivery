@@ -131,8 +131,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                 const code = normalizeStripeConnectStatus(connect.status);
                 setStripeStatus(code);
                 setStripeLabel(
-                  String(connect.status_label ?? "") ||
-                    t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
+                  t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
                 );
                 setStripeMessage(
                   t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),

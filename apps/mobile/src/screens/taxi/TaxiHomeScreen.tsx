@@ -40,6 +40,8 @@ import {
 } from "../../lib/useMmdLocationPickerResult";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { GuineaTaxiHub } from "../../components/guinea/GuineaTaxiHub";
+import { isGuineaMarket, useSelectedMarket } from "../../lib/useSelectedMarket";
 import {
   fetchTaxiCategoryAvailability,
   type TaxiCategoryAvailability,
@@ -74,7 +76,9 @@ export default function TaxiHomeScreen() {
   const { features, loading: scopeLoading, refreshWithCurrentLocation } =
     useClientPlatformFeatures();
   const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
+  const selectedMarket = useSelectedMarket();
   const showDevCountryPicker = isDevCountryPickerEnabled();
+  const guineaUi = isGuineaMarket(selectedMarket);
 
   useEffect(() => {
     void refreshWithCurrentLocation();
@@ -185,10 +189,10 @@ export default function TaxiHomeScreen() {
 
       const { latitude, longitude } = pos;
       setProximity({ lat: latitude, lng: longitude });
-      const geo = await reverseGeocode(latitude, longitude);
-      setPickup(geo.fullAddress);
       setPickupLocationId("");
       setPickupCoords({ lat: latitude, lng: longitude });
+      const geo = await reverseGeocode(latitude, longitude);
+      if (geo.fullAddress?.trim()) setPickup(geo.fullAddress);
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.home.gpsErrorTitle", "GPS"),
@@ -213,13 +217,11 @@ export default function TaxiHomeScreen() {
           setProximity({ lat: pos.latitude, lng: pos.longitude });
           setPickup((current) => {
             if (current.trim()) return current;
+            setPickupCoords({ lat: pos.latitude, lng: pos.longitude });
             void reverseGeocode(pos.latitude, pos.longitude).then((geo) => {
               if (cancelled) return;
-              setPickup((still) => {
-                if (still.trim()) return still;
-                setPickupCoords({ lat: pos.latitude, lng: pos.longitude });
-                return geo.fullAddress;
-              });
+              if (!geo.fullAddress?.trim()) return;
+              setPickup((still) => (still.trim() ? still : geo.fullAddress));
               setPickupLocationId((id) => (id.trim() ? id : ""));
             });
             return current;
@@ -411,6 +413,10 @@ export default function TaxiHomeScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (guineaUi) {
+    return <GuineaTaxiHub />;
   }
 
   return (

@@ -96,6 +96,9 @@
       "checkout": "تحضير الدفع",
       "comingSoonCta": "الدفع في Marketplace قريبًا",
       "payLive": "ادفع طلب Marketplace",
+      "confirmCash": "تأكيد الطلب (نقدًا)",
+      "cashPlacedTitle": "تم تأكيد الطلب",
+      "cashPlacedBody": "تم تأكيد طلبك. ادفع نقدًا عند التسليم. تم إشعار البائع.",
       "missingCheckoutUrl": "رابط الدفع مفقود",
       "backToMarketplace": "العودة إلى السوق",
       "checkoutStillComingSoon": "الدفع قريبًا — لا يوجد دفع فعلي في Marketplace بعد.",
@@ -301,7 +304,9 @@
       "viewOrders": "عرض الطلبات"
     },
     "signOut": {
-      "title": "تسجيل الخروج"
+      "title": "تسجيل الخروج",
+      "body": "هل تريد تسجيل الخروج من هذا الجهاز؟ حساب البائع ومنتجاتك تبقى محفوظة.",
+      "error": "تعذر تسجيل الخروج الآن."
     }
   },
   "taxi": {
@@ -314,6 +319,7 @@
       "platformFee": "رسوم المنصة",
       "total": "الإجمالي",
       "detectedCountry": "مُكتشف من نقطة الانطلاق",
+      "paid": "مدفوع",
       "estimatesIn": "التقديرات بـ"
     },
     "common": {
@@ -946,6 +952,16 @@
       },
       "v4": {
         "comingSoon": "قريباً",
+        "rewards": {
+          "creditUnknown": "الرصيد غير متاح",
+          "progress": "{{current}} / {{target}} نقطة حتى مستوى {{tier}}"
+        },
+        "tier": {
+          "bronze": "برونزي",
+          "gold": "ذهبي",
+          "next": "التالي",
+          "silver": "فضي"
+        },
         "language": {
           "subtitle": "اختر لغتك المفضلة لـ MMD."
         },
@@ -1522,6 +1538,7 @@
       "danger": "خطر",
       "language": "اللغة",
       "notifications": "الإشعارات",
+      "country": "البلد",
       "platform": "المنصة",
       "privacy": "الخصوصية",
       "profile": "الملف",
@@ -1851,6 +1868,10 @@
       "missing": "ناقص",
       "missingRequirements": "متطلبات ناقصة",
       "placeholderLicenseNumber": "رقم الرخصة"
+    },
+    "signOut": {
+      "title": "تسجيل الخروج",
+      "body": "هل تريد تسجيل الخروج من هذا الجهاز؟ حساب السائق وبياناتك تبقى محفوظة."
     },
     "account": {
       "createProfileFailed": "تعذّر إنشاء ملف السائق الآن.",
@@ -2330,6 +2351,10 @@
           "value": "البيانات والأذونات"
         },
         "title": "قانوني ومساعدة"
+      },
+      "country": {
+        "label": "البلد",
+        "value": "غينيا أو الولايات المتحدة"
       },
       "next": {
         "addDocs": "إضافة مستندات",
@@ -3678,7 +3703,18 @@
     "directionsMin": "يلزم 8 أحرف على الأقل.",
     "photoLabel": "صورة المكان (موصى بها)",
     "retakePhoto": "إعادة التقاط صورة الموقع",
-    "addPhoto": "أضف صورة للبوابة أو المتجر أو المبنى"
+    "addPhoto": "أضف صورة للبوابة أو المتجر أو المبنى",
+    "useGpsCurrent": "موقعي الحالي",
+    "region": "المنطقة",
+    "regionPlaceholder": "المنطقة",
+    "prefecture": "المحافظة",
+    "prefecturePlaceholder": "المحافظة",
+    "communeTown": "المدينة / البلدية",
+    "communeTownPlaceholder": "مدينة أو بلدية",
+    "quartierSector": "الحي / القطاع",
+    "quartierSectorPlaceholder": "حي أو قطاع",
+    "landmarkPlaceholderLocal": "سوق أو مدرسة أو مسجد أو مستشفى أو متجر",
+    "hintPinConfirmLocal": "استخدم GPS أو حرّك الخريطة ثم أضف حيًا أو معلمًا. الرمز البريدي غير مطلوب."
   },
   "maskedCall": {
     "errorTitle": "خطأ في الاتصال"
@@ -3916,7 +3952,9 @@
       "loading": "جارٍ تحميل الأسعار…",
       "calculating": "جارٍ حساب التقدير…",
       "ready": "التقدير جاهز",
-      "emptyHint": "احسب السعر لعرض التقدير."
+      "emptyHint": "احسب السعر لعرض التقدير.",
+      "pickupGps": "إحداثيات الاستلام",
+      "dropoffGps": "إحداثيات الوجهة"
     },
     "header": {
       "title": "طلب توصيل",
@@ -3970,6 +4008,8 @@
     },
     "errors": {
       "estimateGeneric": "تعذر حساب تقدير التوصيل حاليًا.",
+      "addressNotFound": "لا يوجد تطابق على الخريطة لهذه العناوين. وضّح المكان أو ثبّت النقاط على الخريطة.",
+      "routeNotFound": "لم يُعثر على مسار قيادة بين هاتين النقطتين.",
       "networkEstimate": "خطأ في الشبكة أثناء حساب التقدير.",
       "estimateTimeout": "استغرق طلب التقدير وقتًا طويلًا. أعد المحاولة.",
       "distanceTooLarge": "المسافة كبيرة جدًا. تحقق من العنوانين.",
@@ -4306,7 +4346,9 @@
     "schemaNotReady": "رحلات النقد ليست جاهزة على الخادم بعد. لم يتم إنشاء الرحلة.",
     "motorcycleNotReady": "رحلات الدراجة النارية ليست جاهزة على الخادم بعد.",
     "vehicleUnsupported": "هذه المركبة غير متاحة لهذه الرحلة.",
-    "tripNotSupported": "هذا النوع من الرحلات غير متاح."
+    "tripNotSupported": "هذا النوع من الرحلات غير متاح.",
+    "searchingDrivers": "جارٍ البحث عن سائقين قريبين…",
+    "detailsPreview": "معاينة الرحلة"
   },
   "taxiXl": {
     "open": "XL بين المناطق",
@@ -4392,5 +4434,66 @@
     "segmentDeparture": "انطلاق بالمقاطع",
     "noGpsFix": "لم يُلتقط موقع GPS.",
     "marketUnavailable": "هذه الرحلة بين المدن متاحة في غينيا فقط."
+  },
+  "guineaMarket": {
+    "welcomeTitle": "مرحبًا بك في MMD",
+    "welcomeSubtitle": "اختر بلدك للمتابعة",
+    "countryOption": "{{name}} — {{dial}} · {{currency}}",
+    "guineaName": "غينيا",
+    "guineaCoverage": "غينيا بالكامل",
+    "usName": "الولايات المتحدة",
+    "usCoverage": "الولايات المتحدة",
+    "tabsTaxi": "سيارة أجرة",
+    "tabsRestaurants": "مطاعم",
+    "tabsParcels": "طرود",
+    "taxiHomeTitle": "الصفحة الرئيسية للتاكسي",
+    "taxiHomeSubtitle": "نقل الأشخاص",
+    "whereTo": "إلى أين تذهب؟",
+    "pickup": "نقطة الانطلاق",
+    "destination": "الوجهة",
+    "chooseOnMap": "الاختيار على الخريطة",
+    "seePrice": "عرض السعر",
+    "xlLink": "تاكسي XL بين المناطق",
+    "restaurantsTitle": "المطاعم",
+    "restaurantsSubtitle": "اكتشف أفضل المطاعم بالقرب منك.",
+    "restaurantsSearch": "ابحث عن مطعم...",
+    "viewMenu": "عرض القائمة ←",
+    "restaurantsEmptyTitle": "لا توجد مطاعم متاحة",
+    "restaurantsEmptyBody": "لا يوجد مطعم مسجّل يطابق هذا البحث. لا تُعرض أي بيانات وهمية.",
+    "parcelsTitle": "توصيل الطرود",
+    "parcelsSubtitle": "أرسل طردًا بسرعة.",
+    "parcelType": "نوع الطرد",
+    "pickupPoint": "نقطة الاستلام",
+    "pickupLandmark": "حي أو سوق أو معلم",
+    "recipient": "المستلم",
+    "pickupPinned": "تم تحديد الاستلام",
+    "destinationPinned": "تم تحديد الوجهة",
+    "confirmDelivery": "تأكيد التوصيل",
+    "authPersonalTitle": "المعلومات الشخصية",
+    "authPersonalSubtitle": "الاسم ورقم {{dial}} وصورة اختيارية.",
+    "authPhotoOptional": "إضافة صورة (اختياري)",
+    "authEmergencyPhone": "هاتف الطوارئ (اختياري)",
+    "authDateOfBirth": "تاريخ الميلاد (اختياري)",
+    "authDobPlaceholder": "سنة-شهر-يوم",
+    "authCreatedTitle": "تم إنشاء الحساب بنجاح",
+    "authCreatedBody": "حساب MMD جاهز. يمكنك طلب تاكسي أو وجبة أو طرد في غينيا.",
+    "authStart": "ابدأ",
+    "authContinue": "متابعة",
+    "authLandmarkPlaceholder": "حي أو سوق أو مدرسة أو معلم",
+    "authCityPlaceholder": "مدينة أو بلدية",
+    "authRegionPlaceholder": "المحافظة",
+    "authPostalPlaceholder": "الرمز البريدي اختياري",
+    "authAddressHint": "يكفي حي أو معلم معروف. الرمز البريدي غير مطلوب.",
+    "authPhoneInvalid": "أدخل رقمًا غينيًا صالحًا، مثل ‎+224 620 00 00 00.",
+    "authPhonePlaceholder": "+224 6XX XX XX XX",
+    "authAddressLabel": "حي أو معلم",
+    "authEmergencyInvalid": "يجب أن يكون هاتف الطوارئ رقمًا غينيًا صالحًا، أو يُترك فارغًا.",
+    "authZipLabel": "الرمز البريدي (اختياري)",
+    "authZipPlaceholder": "اختياري",
+    "restaurantDropoffPlaceholder": "حي أو سوق أو معلم",
+    "incompleteAddress": "أدخل عنوانًا أوضح مع حي أو معلم معروف.",
+    "distanceTooFar": "هذا التوصيل بعيد جدًا ({{miles}}). تحقق من المعلم والمدينة ودبوس الخريطة.",
+    "deliveryPricingUnavailable": "أسعار التوصيل في غينيا غير مهيأة بعد. لا تُعرض أي رسوم تقديرية.",
+    "restaurantSetupRequired": "أدخل الاسم ورقمًا صالحًا يبدأ بـ ‎+224 ومعلمًا والمدينة والمحافظة ونوع المطبخ."
   }
 }

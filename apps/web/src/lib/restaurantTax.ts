@@ -213,7 +213,8 @@ function getDateRange(params: {
 }
 
 export function buildRestaurantTaxProfile(
-  row: RestaurantProfileRow | null | undefined
+  row: RestaurantProfileRow | null | undefined,
+  options?: { countryCode?: string | null }
 ): RestaurantTaxProfile {
   const restaurantName = asString(row?.restaurant_name);
   const email = asString(row?.email);
@@ -222,6 +223,18 @@ export function buildRestaurantTaxProfile(
   const city = asString(row?.city);
   const postalCode = asString(row?.postal_code);
   const phone = asString(row?.phone);
+  const phoneDigits = String(phone ?? "").replace(/\D/g, "");
+  const looksGuineaPhone =
+    phoneDigits.startsWith("224") || String(phone ?? "").trim().startsWith("+224");
+  const countryCode = String(
+    options?.countryCode ??
+      (row as { country_code?: string | null } | null | undefined)?.country_code ??
+      ""
+  )
+    .trim()
+    .toUpperCase();
+  // restaurant_profiles may lack country_code until activation SQL; +224 is the GN signal.
+  const postalRequired = countryCode === "GN" ? false : countryCode ? true : !looksGuineaPhone;
 
   const missingFields: string[] = [];
 
@@ -230,7 +243,7 @@ export function buildRestaurantTaxProfile(
   if (!taxId) missingFields.push("tax_id");
   if (!address) missingFields.push("address");
   if (!city) missingFields.push("city");
-  if (!postalCode) missingFields.push("postal_code");
+  if (postalRequired && !postalCode) missingFields.push("postal_code");
 
   return {
     restaurantName,

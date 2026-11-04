@@ -50,6 +50,8 @@ import {
   type DeliveryRequestPricingPayload,
 } from "../lib/deliveryRequestApi";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { GuineaServiceTabs } from "../components/guinea/GuineaServiceTabs";
+import { isGuineaMarket, useSelectedMarket } from "../lib/useSelectedMarket";
 import { ClientServiceBottomNav } from "../components/navigation/ClientServiceBottomNav";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
 import {
@@ -189,6 +191,9 @@ function toSafeMoney(value: number | null | undefined) {
 
 function money(value: number | null, currency = "USD") {
   if (value == null || !Number.isFinite(value)) return "—";
+  if (String(currency).toUpperCase() === "GNF") {
+    return `${Math.round(value)} GNF`;
+  }
   return `${value.toFixed(2)} ${currency}`;
 }
 
@@ -210,6 +215,39 @@ function getFriendlyEstimateError(message: string | undefined, tr: (key: string,
 
   if (lower.includes("timeout") || lower.includes("aborted")) {
     return tr("deliveryRequest.errors.estimateTimeout", "The estimate request took too long. Try again.");
+  }
+
+  if (
+    lower.includes("geocode_no_result") ||
+    lower.includes("aucun résultat de géocodage") ||
+    lower.includes("address not found")
+  ) {
+    return tr(
+      "deliveryRequest.errors.addressNotFound",
+      "No map match for these addresses. Use a clearer place, or pin the points on the map."
+    );
+  }
+
+  if (lower.includes("route_not_found") || lower.includes("aucune route")) {
+    return tr(
+      "deliveryRequest.errors.routeNotFound",
+      "No driving route was found between these points."
+    );
+  }
+
+  if (lower.includes("geographic_validation_unavailable")) {
+    return tr(
+      "deliveryRequest.errors.addressNotFound",
+      "No map match for these addresses. Use a clearer place, or pin the points on the map."
+    );
+  }
+
+  if (
+    lower.includes("erreur interne serveur") ||
+    lower === "estimate_failed" ||
+    lower === "estimate_unavailable"
+  ) {
+    return tr("deliveryRequest.errors.estimateGeneric", "Unable to calculate the delivery estimate right now.");
   }
 
   if (lower.includes("distance too far")) {
@@ -258,6 +296,8 @@ export function DeliveryRequestScreen() {
     () => resolveMarketScopeFromFeatures(platformFeatures),
     [platformFeatures]
   );
+  const selectedMarket = useSelectedMarket();
+  const guineaUi = isGuineaMarket(selectedMarket);
 
   const [requestType, setRequestType] = useState<RequestType>("package");
   const [pickupAddress, setPickupAddress] = useState("");
@@ -356,11 +396,12 @@ export function DeliveryRequestScreen() {
     setDistanceMiles(null);
     setEtaMinutes(null);
     setDeliveryFee(null);
-    setPickupCoords(null);
-    setDropoffCoords(null);
     setEstimateError(null);
     setServerPricing(null);
-  }, []);
+    // A failed geocode must not drop a point the user already pinned on the map.
+    if (!pickupLocationId) setPickupCoords(null);
+    if (!dropoffLocationId) setDropoffCoords(null);
+  }, [pickupLocationId, dropoffLocationId]);
 
   const loadPricingConfig = useCallback(async () => {
     try {
@@ -458,6 +499,7 @@ export function DeliveryRequestScreen() {
       submitLabel: tr("deliveryRequest.fields.usePickupLocation", "Use pickup location"),
       returnTo: "DeliveryRequest",
       pickerContext: "delivery_pickup",
+      requireVerifiedGps: true,
     });
   }
 
@@ -917,10 +959,29 @@ export function DeliveryRequestScreen() {
         leave_at_door: requestType === "package" ? leaveAtDoor : false,
       } as const;
 
-      // Local mobile money still needs an entity id today.
+      // Never submit Conakry map-camera default as a real pickup.
+      if (
+        String(market.countryCode ?? "").toUpperCase() === "GN" &&
+        Math.abs(pickupCoords.lat - 9.6412) < 0.0003 &&
+        Math.abs(pickupCoords.lng - -13.5784) < 0.0003 &&
+        !pickupLocationId
+      ) {
+        throw new Error(
+          tr(
+            "gps.unavailable",
+            "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+          )
+        );
+      }
+
+      // Guinea / local markets: cash first (no Orange Money required).
       if (market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)) {
+        const useCash = String(market.countryCode).toUpperCase() === "GN";
         const { deliveryRequestId, pricing } = await createDeliveryRequest(
-          requestPayload,
+          {
+            ...requestPayload,
+            ...(useCash ? { payment_method: "cash" as const } : {}),
+          },
           scope
         );
 
@@ -931,7 +992,15 @@ export function DeliveryRequestScreen() {
 
         Alert.alert(
           tr("deliveryRequest.alerts.createdTitle", "Request created"),
-          tr("deliveryRequest.alerts.createdBody", "Delivery request created. Tap Pay now to complete payment.")
+          useCash
+            ? tr(
+                "deliveryRequest.alerts.createdCashBody",
+                "Delivery request created with cash payment. Pay the driver in cash; they will confirm collection."
+              )
+            : tr(
+                "deliveryRequest.alerts.createdBody",
+                "Delivery request created. Tap Pay now to complete payment."
+              )
         );
 
         console.log("delivery_requests created:", deliveryRequestId);
@@ -1288,14 +1357,27 @@ export function DeliveryRequestScreen() {
       <StatusBar barStyle="light-content" />
 
       <ScreenHeader
-        title={tr("deliveryRequest.header.title", "Request a delivery")}
-        subtitle={tr(
-          "deliveryRequest.header.subtitle",
-          "Create a package delivery or a private ride without going through a restaurant.",
-        )}
+        title={
+          guineaUi
+            ? tr("guineaMarket.parcelsTitle", "Package delivery")
+            : tr("deliveryRequest.header.title", "Request a delivery")
+        }
+        subtitle={
+          guineaUi
+            ? tr("guineaMarket.parcelsSubtitle", "Send a package quickly.")
+            : tr(
+                "deliveryRequest.header.subtitle",
+                "Create a package delivery or a private ride without going through a restaurant.",
+              )
+        }
         fallbackRoute="ClientHome"
         variant="brand"
       />
+      {guineaUi ? (
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+          <GuineaServiceTabs active="colis" />
+        </View>
+      ) : null}
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -1333,7 +1415,9 @@ export function DeliveryRequestScreen() {
 
           <View>
             <Text style={sectionTitleStyle}>
-              {tr("deliveryRequest.type.title", "Request type")}
+              {guineaUi
+                ? tr("guineaMarket.parcelType", "Package type")
+                : tr("deliveryRequest.type.title", "Request type")}
             </Text>
 
             <View
@@ -1418,6 +1502,7 @@ export function DeliveryRequestScreen() {
             <TextInput
               value={title}
               onChangeText={setTitle}
+              accessibilityLabel={tr("deliveryRequest.fields.title", "Title")}
               placeholder={
                 requestType === "ride"
                   ? tr("deliveryRequest.fields.titleRidePlaceholder", "Example: airport ride")
@@ -1430,15 +1515,26 @@ export function DeliveryRequestScreen() {
 
             <View>
             <Text style={fieldLabelStyle}>
-                {tr("deliveryRequest.fields.pickupAddress", "Pickup address")}
+                {guineaUi
+                  ? tr("guineaMarket.pickupPoint", "Pickup point")
+                  : tr("deliveryRequest.fields.pickupAddress", "Pickup address")}
               </Text>
             <TextInput
               value={pickupAddress}
+              accessibilityLabel={
+                guineaUi
+                  ? tr("guineaMarket.pickupPoint", "Pickup point")
+                  : tr("deliveryRequest.fields.pickupAddress", "Pickup address")
+              }
               onChangeText={(value) => {
                 setPickupAddress(value);
                 lastEstimateKeyRef.current = "";
               }}
-              placeholder={tr("deliveryRequest.fields.pickupPlaceholder", "Enter pickup address")}
+              placeholder={
+                guineaUi
+                  ? tr("guineaMarket.pickupLandmark", "Neighborhood, market or landmark")
+                  : tr("deliveryRequest.fields.pickupPlaceholder", "Enter pickup address")
+              }
               placeholderTextColor={MMD_MUTED_70}
               style={inputStyle}
             />
@@ -1446,15 +1542,26 @@ export function DeliveryRequestScreen() {
 
             <View>
             <Text style={fieldLabelStyle}>
-                {tr("deliveryRequest.fields.dropoffAddress", "Dropoff address")}
+                {guineaUi
+                  ? tr("guineaMarket.recipient", "Recipient")
+                  : tr("deliveryRequest.fields.dropoffAddress", "Dropoff address")}
               </Text>
             <TextInput
               value={dropoffAddress}
+              accessibilityLabel={
+                guineaUi
+                  ? tr("guineaMarket.recipient", "Recipient")
+                  : tr("deliveryRequest.fields.dropoffAddress", "Dropoff address")
+              }
               onChangeText={(value) => {
                 setDropoffAddress(value);
                 lastEstimateKeyRef.current = "";
               }}
-              placeholder={tr("deliveryRequest.fields.dropoffPlaceholder", "Enter dropoff address")}
+              placeholder={
+                guineaUi
+                  ? tr("guineaMarket.pickupLandmark", "Neighborhood, market or landmark")
+                  : tr("deliveryRequest.fields.dropoffPlaceholder", "Enter dropoff address")
+              }
               placeholderTextColor={MMD_MUTED_70}
               style={inputStyle}
             />
@@ -1480,8 +1587,12 @@ export function DeliveryRequestScreen() {
               <Image source={PIN_BUTTON_ICON} style={{ width: 18, height: 18 }} resizeMode="contain" />
               <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold, fontSize: 14, textAlign: "center" }}>
                 {pickupLocationId
-                  ? tr("deliveryRequest.fields.pickupPinned", "Pickup pinned")
-                  : tr("deliveryRequest.fields.pinPickup", "Pin pickup")}
+                  ? guineaUi
+                    ? tr("guineaMarket.pickupPinned", "Pickup marked")
+                    : tr("deliveryRequest.fields.pickupPinned", "Pickup pinned")
+                  : guineaUi
+                    ? tr("guineaMarket.chooseOnMap", "Choose on the map")
+                    : tr("deliveryRequest.fields.pinPickup", "Pin pickup")}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1504,8 +1615,12 @@ export function DeliveryRequestScreen() {
               <Image source={PIN_BUTTON_ICON} style={{ width: 18, height: 18 }} resizeMode="contain" />
               <Text style={{ color: MMD_WHITE, fontWeight: "800", fontFamily: MMD_FONT.extrabold, fontSize: 14, textAlign: "center" }}>
                 {dropoffLocationId
-                  ? tr("deliveryRequest.fields.dropoffPinned", "Dropoff pinned on map")
-                  : tr("deliveryRequest.fields.pinDropoff", "Pin exact dropoff on map")}
+                  ? guineaUi
+                    ? tr("guineaMarket.destinationPinned", "Destination marked")
+                    : tr("deliveryRequest.fields.dropoffPinned", "Dropoff pinned on map")
+                  : guineaUi
+                    ? tr("guineaMarket.chooseOnMap", "Choose on the map")
+                    : tr("deliveryRequest.fields.pinDropoff", "Pin exact dropoff on map")}
               </Text>
             </TouchableOpacity>
             </View>
@@ -1537,6 +1652,7 @@ export function DeliveryRequestScreen() {
                 <Switch
                   value={leaveAtDoor}
                   onValueChange={setLeaveAtDoor}
+                  accessibilityLabel={tr("deliveryRequest.leaveAtDoor.title", "Leave at the door")}
                   trackColor={{ false: "#475569", true: "#166534" }}
                   thumbColor={leaveAtDoor ? MMD_GREEN : "#CBD5E1"}
                 />
@@ -1648,9 +1764,25 @@ export function DeliveryRequestScreen() {
                 {tr("deliveryRequest.pricing.calculating", "Calculating estimate…")}
               </Text>
             ) : estimateError ? (
-              <Text style={{ color: "#FCA5A5", fontSize: 14, lineHeight: 21, fontFamily: MMD_FONT.regular }}>
-                {estimateError}
-              </Text>
+              <>
+                <Text style={{ color: "#FCA5A5", fontSize: 14, lineHeight: 21, fontFamily: MMD_FONT.regular }}>
+                  {estimateError}
+                </Text>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 13, marginTop: 12, fontFamily: MMD_FONT.regular }}>
+                  {tr("deliveryRequest.pricing.pickupGps", "Pickup GPS")}
+                  {": "}
+                  {pickupCoords
+                    ? `${pickupCoords.lat.toFixed(5)}, ${pickupCoords.lng.toFixed(5)}`
+                    : "—"}
+                </Text>
+                <Text style={{ color: MMD_MUTED_70, fontSize: 13, marginTop: 8, fontFamily: MMD_FONT.regular }}>
+                  {tr("deliveryRequest.pricing.dropoffGps", "Dropoff GPS")}
+                  {": "}
+                  {dropoffCoords
+                    ? `${dropoffCoords.lat.toFixed(5)}, ${dropoffCoords.lng.toFixed(5)}`
+                    : "—"}
+                </Text>
+              </>
             ) : estimateReady ? (
               <>
                 <View
@@ -1723,14 +1855,16 @@ export function DeliveryRequestScreen() {
                 <View style={{ height: 1, backgroundColor: "rgba(255,255,255,0.1)", marginVertical: 12 }} />
 
                 <Text style={{ color: MMD_MUTED_70, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-                  Pickup GPS:{" "}
+                  {tr("deliveryRequest.pricing.pickupGps", "Pickup GPS")}
+                  {": "}
                   {pickupCoords
                     ? `${pickupCoords.lat.toFixed(5)}, ${pickupCoords.lng.toFixed(5)}`
                     : "—"}
                 </Text>
 
                 <Text style={{ color: MMD_MUTED_70, fontSize: 13, marginTop: 8, fontFamily: MMD_FONT.regular }}>
-                  Dropoff GPS:{" "}
+                  {tr("deliveryRequest.pricing.dropoffGps", "Dropoff GPS")}
+                  {": "}
                   {dropoffCoords
                     ? `${dropoffCoords.lat.toFixed(5)}, ${dropoffCoords.lng.toFixed(5)}`
                     : "—"}
@@ -1804,7 +1938,9 @@ export function DeliveryRequestScreen() {
                   fontFamily: MMD_FONT.bold,
                 }}
               >
-                {tr("deliveryRequest.actions.calculate", "Calculate delivery price")}
+                {guineaUi
+                  ? tr("guineaMarket.seePrice", "See the price")
+                  : tr("deliveryRequest.actions.calculate", "Calculate delivery price")}
               </Text>
             )}
           </TouchableOpacity>
@@ -1842,7 +1978,9 @@ export function DeliveryRequestScreen() {
                   fontFamily: MMD_FONT.bold,
                 }}
               >
-                {tr("deliveryRequest.actions.create", "Create delivery request")}
+                {guineaUi
+                  ? tr("guineaMarket.confirmDelivery", "Confirm delivery")
+                  : tr("deliveryRequest.actions.create", "Create delivery request")}
               </Text>
             )}
           </TouchableOpacity>

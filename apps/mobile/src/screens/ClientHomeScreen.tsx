@@ -15,7 +15,7 @@ import {
   CLIENT_HOME_FETCH_TIMEOUT_MS,
   withTimeout,
 } from "../lib/bootFailOpen";
-import { applyLiveTripFilters } from "../lib/tripVisibility";
+import { applyOwnerHistoryTripFilters } from "../lib/tripVisibility";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -25,7 +25,11 @@ import { useTranslation } from "react-i18next";
 import { setLocaleForRoleAndApply } from "../i18n";
 import type { AppLanguageCode } from "../i18n/languageOptions";
 import i18n from "../i18n";
-import { formatMoney as formatMoneyLocale } from "../i18n/formatters";
+import {
+  formatMoney as formatMoneyLocale,
+  formatMoneyFromCents,
+  priceCentsToMajor,
+} from "../i18n/formatters";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { ClientHomeV4View, resolveClientAdAction } from "../components/client/home/ClientHomeV4View";
@@ -244,6 +248,7 @@ type ClientItem = {
   distance_miles: number | null;
   total: number | null;
   delivery_fee: number | null;
+  currency: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   is_test?: boolean | null;
@@ -268,6 +273,7 @@ type OrderRowDb = {
   stripe_payment_intent_id?: unknown;
   client_user_id?: unknown;
   created_by?: unknown;
+  currency?: unknown;
   is_test?: unknown;
   hidden_from_user?: unknown;
   archived_at?: unknown;
@@ -285,6 +291,7 @@ type DeliveryRequestRowDb = {
   distance_miles?: unknown;
   total?: unknown;
   delivery_fee?: unknown;
+  currency?: unknown;
   stripe_session_id?: unknown;
   stripe_payment_intent_id?: unknown;
   client_user_id?: unknown;
@@ -304,6 +311,7 @@ type TaxiRideRowDb = {
   dropoff_address?: unknown;
   distance_miles?: unknown;
   total_cents?: unknown;
+  currency?: unknown;
   is_test?: unknown;
   hidden_from_user?: unknown;
   archived_at?: unknown;
@@ -409,7 +417,12 @@ function formatCurrency(
   currencyCode: string
 ) {
   if (typeof amount !== "number" || Number.isNaN(amount)) return "—";
-  return formatMoneyLocale(amount, currencyCode, i18n.language);
+  return formatMoneyLocale(amount, currencyCode || "USD", i18n.language);
+}
+
+function rowCurrency(value: unknown, fallback = "USD"): string {
+  const code = String(value ?? "").trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : fallback;
 }
 
 function formatCompactDateTime(iso: string | null) {
@@ -493,6 +506,7 @@ function normalizeOrderRows(rows: OrderRowDb[] | null | undefined): ClientItem[]
       distance_miles: toSafeNumber(row.distance_miles),
       total: toSafeNumber(row.total),
       delivery_fee: toSafeNumber(row.delivery_fee),
+      currency: rowCurrency(row.currency),
       stripe_session_id: toSafeString(row.stripe_session_id),
       stripe_payment_intent_id: toSafeString(row.stripe_payment_intent_id),
       is_test: row.is_test === true,
@@ -529,6 +543,7 @@ function normalizeDeliveryRequestRows(
       distance_miles: toSafeNumber(row.distance_miles),
       total: toSafeNumber(row.total),
       delivery_fee: toSafeNumber(row.delivery_fee),
+      currency: rowCurrency(row.currency),
       stripe_session_id: toSafeString(row.stripe_session_id),
       stripe_payment_intent_id: toSafeString(row.stripe_payment_intent_id),
       is_test: row.is_test === true,
@@ -550,6 +565,7 @@ function normalizeTaxiRideRows(
     if (typeof row.id !== "string" || !row.id.trim()) continue;
     if (!isValidOrderStatus(row.status)) continue;
     const cents = toSafeNumber(row.total_cents);
+    const currency = rowCurrency(row.currency);
     result.push({
       id: row.id,
       kind: "taxi_ride",
@@ -561,8 +577,9 @@ function normalizeTaxiRideRows(
       pickup_address: toSafeString(row.pickup_address),
       dropoff_address: toSafeString(row.dropoff_address),
       distance_miles: toSafeNumber(row.distance_miles),
-      total: cents != null ? cents / 100 : null,
+      total: cents != null ? priceCentsToMajor(cents, currency) : null,
       delivery_fee: null,
+      currency,
       stripe_session_id: null,
       stripe_payment_intent_id: null,
       is_test: row.is_test === true,
@@ -779,6 +796,7 @@ export function ClientHomeScreen() {
             distance_miles,
             total,
             delivery_fee,
+            currency,
             stripe_session_id,
             stripe_payment_intent_id,
             client_user_id,
@@ -798,6 +816,7 @@ export function ClientHomeScreen() {
             distance_miles,
             total,
             delivery_fee,
+            currency,
             stripe_session_id,
             stripe_payment_intent_id,
             client_user_id,
@@ -809,24 +828,24 @@ export function ClientHomeScreen() {
 
     const [ordersRes, requestsClientRes, requestsCreatedRes, taxiRes] =
       await Promise.all([
-      applyLiveTripFilters(supabase.from("orders").select(orderSelect))
+      applyOwnerHistoryTripFilters(supabase.from("orders").select(orderSelect))
         .or(
           `client_user_id.eq.${userId},client_id.eq.${userId},created_by.eq.${userId},user_id.eq.${userId}`
         )
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
 
-      applyLiveTripFilters(supabase.from("delivery_requests").select(drSelect))
+      applyOwnerHistoryTripFilters(supabase.from("delivery_requests").select(drSelect))
         .eq("client_user_id", userId)
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
 
-      applyLiveTripFilters(supabase.from("delivery_requests").select(drSelect))
+      applyOwnerHistoryTripFilters(supabase.from("delivery_requests").select(drSelect))
         .eq("created_by", userId)
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
 
-      applyLiveTripFilters(
+      applyOwnerHistoryTripFilters(
         supabase.from("taxi_rides").select(
           `
             id,
@@ -838,6 +857,7 @@ export function ClientHomeScreen() {
             dropoff_address,
             distance_miles,
             total_cents,
+            currency,
             is_test,
             hidden_from_user,
             archived_at
@@ -1160,15 +1180,27 @@ export function ClientHomeScreen() {
       loyaltySummary?.next_tier?.min_lifetime_points ??
       Math.max(lifetime + (loyaltySummary?.points_to_next_tier ?? 0), 1);
     const pointsToNext = loyaltySummary?.points_to_next_tier ?? 0;
+    const creditCurrency = String(loyaltySummary?.currency ?? "")
+      .trim()
+      .toUpperCase();
     const conversionLabel =
-      loyaltySummary != null
-        ? `${loyaltySummary.settings.conversion_points} pts = $${(
-            loyaltySummary.settings.conversion_credit_cents / 100
-          ).toFixed(2)}`
+      loyaltySummary != null && creditCurrency
+        ? `${loyaltySummary.settings.conversion_points} pts = ${formatMoneyFromCents(
+            loyaltySummary.settings.conversion_credit_cents,
+            creditCurrency,
+            i18n.language,
+          )}`
         : "—";
+    // Loyalty ledger stays in its own currency (often USD). On GN with a zero
+    // balance, show 0 in the selected market currency so the home header matches GNF.
+    const creditCents = Math.max(0, loyaltySummary?.available_credit_cents ?? 0);
+    const creditDisplayCurrency =
+      creditCents === 0 && market.currencyCode
+        ? market.currencyCode
+        : creditCurrency || market.currencyCode || "USD";
     const creditLabel =
       loyaltySummary != null
-        ? `$${(Math.max(0, loyaltySummary.available_credit_cents) / 100).toFixed(2)}`
+        ? formatMoneyFromCents(creditCents, creditDisplayCurrency, i18n.language)
         : undefined;
 
     const last7dDelivered = items.filter((o) => {
@@ -1198,7 +1230,7 @@ export function ClientHomeScreen() {
       lifetimePoints: lifetime,
       tierProgressPct: loyaltySummary?.tier_progress_pct ?? 0,
     };
-  }, [items, loyaltySummary]);
+  }, [items, loyaltySummary, i18n.language, market.currencyCode]);
 
   const homeDisplayItems = useMemo(() => {
     return selectClientHomeDisplayItems(items).displayItems;
@@ -1332,8 +1364,8 @@ export function ClientHomeScreen() {
         : null;
 
   const formatCurrencyForView = useCallback(
-    (amount: number | null | undefined) =>
-      formatCurrency(amount, market.currencyCode || "USD"),
+    (amount: number | null | undefined, currency?: string | null) =>
+      formatCurrency(amount, currency || market.currencyCode || "USD"),
     [market.currencyCode]
   );
 

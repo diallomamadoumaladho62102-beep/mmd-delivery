@@ -7,6 +7,8 @@ export type WalletSummaryResponse = {
   account_type?: WalletAccountType;
   country_code?: string;
   currency?: string;
+  /** Currency of mmd_credit_wallets, not the country ledger. */
+  credit_currency?: string | null;
   balance_cents?: number;
   /** Cashable now (Stripe Instant-eligible amount when Instant dest exists). */
   available_cents?: number;

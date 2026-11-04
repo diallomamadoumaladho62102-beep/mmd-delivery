@@ -429,10 +429,10 @@ export function RestaurantOrdersScreen({ navigation }: any) {
             await supabase
               .from("orders")
               .select(
-                "id,kind,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at,items_json"
+                "id,kind,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at,items_json,payment_status"
               )
               .eq("kind", "food")
-              .eq("payment_status", "paid")
+              .in("payment_status", ["paid", "pending_cash", "cash_collected"])
               .or(
                 `restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`
               )
@@ -507,11 +507,11 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         const { data: current, error: ce } = await supabase
           .from("orders")
           .select(
-            "id,kind,status,created_at,restaurant_accept_expires_at,restaurant_user_id,restaurant_id"
+            "id,kind,status,created_at,restaurant_accept_expires_at,restaurant_user_id,restaurant_id,payment_status"
           )
           .eq("id", orderId)
           .eq("kind", "food")
-          .eq("payment_status", "paid")
+          .in("payment_status", ["paid", "pending_cash", "cash_collected"])
           .or(
             `restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`
           )

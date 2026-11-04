@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-900">MMD Delivery</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-500" suppressHydrationWarning>
             © {year} MMD Delivery. All rights reserved.
           </p>
         </div>

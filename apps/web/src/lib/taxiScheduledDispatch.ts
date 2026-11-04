@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { triggerTaxiRideDispatch } from "@/lib/scheduleTaxiRideDispatch";
 import { resolveInitialTaxiDispatchWave } from "@/lib/taxiPremiumDispatch";
+import { isIsolatedFromLiveDispatch } from "@/lib/guineaTestIsolation";
 
 export const TAXI_SCHEDULED_DISPATCH_LEAD_MINUTES = Math.min(
   Math.max(Number(process.env.TAXI_SCHEDULED_DISPATCH_LEAD_MINUTES ?? 15), 5),
@@ -22,7 +23,9 @@ export async function findDueTaxiScheduledRides(
 
   const { data, error } = await supabase
     .from("taxi_scheduled_rides")
-    .select("id, taxi_ride_id, scheduled_pickup_at, taxi_rides!inner(payment_status, driver_id, status)")
+    .select(
+      "id, taxi_ride_id, scheduled_pickup_at, taxi_rides!inner(payment_status, driver_id, status, client_user_id, preferred_driver_id, is_test, archived_at, hidden_from_user)",
+    )
     .eq("status", "scheduled")
     .lte("scheduled_pickup_at", dispatchBefore)
     .order("scheduled_pickup_at", { ascending: true })
@@ -38,7 +41,13 @@ export async function findDueTaxiScheduledRides(
         payment_status?: string | null;
         driver_id?: string | null;
         status?: string | null;
+        client_user_id?: string | null;
+        preferred_driver_id?: string | null;
+        is_test?: boolean | null;
+        archived_at?: string | null;
+        hidden_from_user?: boolean | null;
       } | null;
+      if (!ride || isIsolatedFromLiveDispatch(ride)) return false;
       return (
         String(ride?.payment_status ?? "").toLowerCase() === "paid" &&
         !ride?.driver_id &&

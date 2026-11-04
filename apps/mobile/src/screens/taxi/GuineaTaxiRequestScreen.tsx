@@ -12,7 +12,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
-import * as Location from "expo-location";
 import Mapbox from "@rnmapbox/maps";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { formatMoneyFromCents } from "../../i18n/formatters";
@@ -27,6 +26,10 @@ import {
   type MapboxPlaceSuggestion,
 } from "../../lib/mapboxPlaces";
 import {
+  getVerifiedClientGps,
+  verifiedGpsUserMessage,
+} from "../../lib/verifiedClientGps";
+import {
   MMD_BLUE,
   MMD_FONT,
   MMD_GOLD,
@@ -36,6 +39,7 @@ import {
 } from "../../theme/mmdUi";
 
 const LOGO = require("../../../assets/brand/mmd-logo-ui.png");
+/** Camera preview only — never used as client pickup coordinates. */
 const GUINEA_CAMERA = { latitude: 10.2, longitude: -11.0 };
 
 type Step = "pickup" | "destination" | "confirm";
@@ -44,6 +48,8 @@ type PlacePoint = {
   latitude: number;
   longitude: number;
   label: string | null;
+  source?: "gps" | "pin" | "search";
+  accuracyM?: number | null;
 };
 
 type QuoteView = {
@@ -144,23 +150,28 @@ export default function GuineaTaxiRequestScreen() {
     [t],
   );
 
+  const [pickupGpsVerified, setPickupGpsVerified] = useState(false);
+
   const useCurrentLocation = useCallback(async () => {
     setError(null);
     setMode("gps");
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (permission.status !== "granted") {
-      setError(t("taxiGuinea.locationDenied", "Location permission is required for this option."));
+    const result = await getVerifiedClientGps({ maxAccuracyM: 100 });
+    if (result.ok === false) {
+      setPickupGpsVerified(false);
+      const msg = verifiedGpsUserMessage(result);
+      setError(t(msg.key, msg.defaultValue));
+      setDraft(null);
       return;
     }
-    const position = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-    const point = {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
+    const point: PlacePoint = {
+      latitude: result.latitude,
+      longitude: result.longitude,
       label: null,
+      source: "gps",
+      accuracyM: result.accuracyM,
     };
     setDraft(point);
+    setPickupGpsVerified(true);
     setCamera({ latitude: point.latitude, longitude: point.longitude });
   }, [t]);
 
@@ -181,7 +192,7 @@ export default function GuineaTaxiRequestScreen() {
         country: "GN",
         proximity: draft
           ? { lat: draft.latitude, lng: draft.longitude }
-          : { lat: camera.latitude, lng: camera.longitude },
+          : undefined,
         signal: controller.signal,
       })
         .then((places) => setResults(places))
@@ -192,7 +203,7 @@ export default function GuineaTaxiRequestScreen() {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [camera.latitude, camera.longitude, draft, mode, query]);
+  }, [draft, mode, query]);
 
   const line = useMemo(() => {
     if (!quote?.geometry || quote.geometry.coordinates.length < 2) return null;
@@ -246,6 +257,15 @@ export default function GuineaTaxiRequestScreen() {
   function confirmPoint() {
     if (!draft) return;
     if (step === "pickup") {
+      if (!pickupGpsVerified) {
+        setError(
+          t(
+            "gps.unavailable",
+            "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+          )
+        );
+        return;
+      }
       setPickup(draft);
       setDestination(null);
       setQuote(null);
@@ -254,7 +274,7 @@ export default function GuineaTaxiRequestScreen() {
       return;
     }
     if (!pickup) return;
-    setDestination(draft);
+    setDestination({ ...draft, source: draft.source ?? "pin" });
     void loadQuote(pickup, draft);
   }
 
@@ -338,12 +358,15 @@ export default function GuineaTaxiRequestScreen() {
             styleURL={MAP_STYLE_STREETS}
             onCameraChanged={(event) => {
               if (step === "confirm" || mode !== "map") return;
+              // Pickup: never invent a pin from camera pan without a verified GPS first.
+              if (step === "pickup" && !pickupGpsVerified) return;
               const center = event.properties?.center;
               if (!center) return;
               setDraft({
                 latitude: center[1],
                 longitude: center[0],
                 label: null,
+                source: step === "pickup" ? "pin" : "pin",
               });
             }}
           >
@@ -586,7 +609,15 @@ export default function GuineaTaxiRequestScreen() {
               }}
             >
               {busy ? (
-                <ActivityIndicator color={MMD_NAVY} />
+                <View style={{ alignItems: "center", gap: 8 }}>
+                  <ActivityIndicator color={MMD_NAVY} />
+                  <Text style={{ color: MMD_NAVY, fontFamily: MMD_FONT.semibold }}>
+                    {t(
+                      "taxiGuinea.searchingDrivers",
+                      "Searching for nearby drivers…",
+                    )}
+                  </Text>
+                </View>
               ) : (
                 <Text style={{ color: MMD_NAVY, fontFamily: MMD_FONT.extrabold, fontSize: 16 }}>
                   {t("taxiGuinea.confirmRequest", "Confirm the request")}

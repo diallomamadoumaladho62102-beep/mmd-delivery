@@ -1063,9 +1063,13 @@ async function resolveGuineaZoneFromCoordinates(
   lat: number,
   lng: number
 ): Promise<MmdZoneMatch | null> {
+  void supabase;
   void lat;
   void lng;
-  return resolveGuineaCommercialZoneByCode(supabase, "gn_conakry");
+  // public.mmd_zones has names only: no latitude, longitude, or boundary.
+  // A GPS fix must not be labeled Conakry, Labé, or any other city until a
+  // stored geometry can select the zone.
+  return null;
 }
 
 export async function assertPlatformScopeFeature(

@@ -19,6 +19,7 @@ import ScreenHeader from "../components/navigation/ScreenHeader";
 import { WalletHistoryRow } from "../components/wallet/WalletPrimitives";
 import { financialStatusColor } from "../components/wallet/walletStatusColor";
 import { supabase } from "../lib/supabase";
+import { readSelectedMarket } from "../lib/selectedMarketStore";
 import {
   fetchWalletHistory,
   fetchWalletSummary,
@@ -62,6 +63,7 @@ export default function ClientWalletScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currency, setCurrency] = useState("USD");
+  const [creditCurrency, setCreditCurrency] = useState<string | null>(null);
   const [availableCents, setAvailableCents] = useState(0);
   const [balanceCents, setBalanceCents] = useState(0);
   const [refundedCents, setRefundedCents] = useState(0);
@@ -91,7 +93,7 @@ export default function ClientWalletScreen() {
         Promise.all([
           fetchWalletSummary(token, {
             accountType: "client",
-            countryCode: "US",
+            countryCode: (await readSelectedMarket()) ?? "US",
           }),
           fetchWalletHistory(token, {
             accountType: "client",
@@ -103,6 +105,10 @@ export default function ClientWalletScreen() {
       );
 
       setCurrency(String(summary.currency ?? "USD"));
+      const nextCreditCurrency = String(summary.credit_currency ?? "")
+        .trim()
+        .toUpperCase();
+      setCreditCurrency(nextCreditCurrency || null);
       setAvailableCents(Number(summary.available_cents ?? 0));
       setBalanceCents(Number(summary.balance_cents ?? 0));
       setRefundedCents(Number(summary.refunded_cents ?? 0));
@@ -254,7 +260,11 @@ export default function ClientWalletScreen() {
           <Text style={styles.summaryLabel}>
             {t("client.wallet.available", "Available credit")}
           </Text>
-          <Text style={styles.summaryAmount}>{fmt(availableCents)}</Text>
+          <Text style={styles.summaryAmount}>
+            {creditCurrency
+              ? formatWalletAmount(availableCents, creditCurrency)
+              : t("client.home.v4.rewards.creditUnknown", "Credit unavailable")}
+          </Text>
           {note ? <Text style={styles.footnote}>{note}</Text> : null}
           <View style={styles.stats}>
             <Text style={styles.stat}>
@@ -306,7 +316,10 @@ export default function ClientWalletScreen() {
                 key={item.id}
                 title={item.description || item.reference_type}
                 meta={formatDateTime(item.created_at, i18n.language)}
-                amount={`${item.direction === "debit" ? "−" : "+"}${fmt(item.amount_cents)}`}
+                amount={`${item.direction === "debit" ? "−" : "+"}${formatWalletAmount(
+                  item.amount_cents,
+                  item.currency || currency,
+                )}`}
                 amountColor={financialStatusColor(
                   item.direction === "debit" ? "pending" : "paid"
                 )}

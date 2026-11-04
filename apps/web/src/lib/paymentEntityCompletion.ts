@@ -14,6 +14,10 @@ import { captureEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import type { PaymentEntityType, PaymentTransactionRow } from "@/lib/paymentTypes";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 import { initializeTaxiRidePreferenceDispatch } from "@/lib/taxiPreferenceDispatch";
+import {
+  GUINEA_TEST_LIVE_OPERATION_BLOCKED,
+  isIsolatedFromLiveDispatch,
+} from "@/lib/guineaTestIsolation";
 
 export async function completePaidEntityFromTransaction(
   supabaseAdmin: SupabaseClient,
@@ -45,6 +49,9 @@ async function completeOrderPayment(
     .maybeSingle();
 
   if (!order) return { ok: false, error: "order_not_found" };
+  if (isIsolatedFromLiveDispatch({ ...order, user_id: transaction.user_id })) {
+    return { ok: false, error: GUINEA_TEST_LIVE_OPERATION_BLOCKED };
+  }
 
   if (String(order.payment_status ?? "").toLowerCase() !== "paid") {
     const { error } = await supabaseAdmin.rpc("mark_order_paid", {
@@ -82,11 +89,14 @@ async function completeDeliveryRequestPayment(
 
   const { data: delivery } = await supabaseAdmin
     .from("delivery_requests")
-    .select("id,payment_status,client_user_id,created_by")
+    .select("id,payment_status,client_user_id,created_by,is_test,archived_at,hidden_from_user")
     .eq("id", deliveryRequestId)
     .maybeSingle();
 
   if (!delivery) return { ok: false, error: "delivery_request_not_found" };
+  if (isIsolatedFromLiveDispatch({ ...delivery, user_id: transaction.user_id })) {
+    return { ok: false, error: GUINEA_TEST_LIVE_OPERATION_BLOCKED };
+  }
 
   if (String(delivery.payment_status ?? "").toLowerCase() !== "paid") {
     const { error } = await supabaseAdmin
@@ -158,6 +168,14 @@ async function completeTaxiRidePayment(
   transaction: PaymentTransactionRow
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const rideId = transaction.entity_id;
+  const { data: existingRide } = await supabaseAdmin
+    .from("taxi_rides")
+    .select("client_user_id,driver_id,preferred_driver_id,is_test,archived_at,hidden_from_user")
+    .eq("id", rideId)
+    .maybeSingle();
+  if (existingRide && isIsolatedFromLiveDispatch({ ...existingRide, user_id: transaction.user_id })) {
+    return { ok: false, error: GUINEA_TEST_LIVE_OPERATION_BLOCKED };
+  }
 
   const { error } = await supabaseAdmin.rpc("mark_taxi_ride_paid", {
     p_ride_id: rideId,
@@ -208,11 +226,14 @@ async function completeSellerOrderPayment(
 
   const { data: order } = await supabaseAdmin
     .from("seller_orders")
-    .select("id,payment_status,status")
+    .select("id,payment_status,status,client_user_id")
     .eq("id", orderId)
     .maybeSingle();
 
   if (!order) return { ok: false, error: "seller_order_not_found" };
+  if (isIsolatedFromLiveDispatch({ ...order, user_id: transaction.user_id })) {
+    return { ok: false, error: GUINEA_TEST_LIVE_OPERATION_BLOCKED };
+  }
 
   if (order.payment_status !== "paid" && order.status !== "paid") {
     const { error } = await supabaseAdmin

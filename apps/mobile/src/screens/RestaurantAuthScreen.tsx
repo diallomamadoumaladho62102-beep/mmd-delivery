@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { isGuineaMarket, useSelectedMarket } from "../lib/useSelectedMarket";
 import { validatePassword } from "../lib/authValidation";
 
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
@@ -104,6 +105,7 @@ async function geocodeRestaurantAddress(address: string): Promise<GeocodedAddres
 
 export function RestaurantAuthScreen() {
   const { t } = useTranslation();
+  const guineaUi = isGuineaMarket(useSelectedMarket());
 
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -585,10 +587,17 @@ export function RestaurantAuthScreen() {
                   <TextInput
                     value={restaurantAddress}
                     onChangeText={setRestaurantAddress}
-                    placeholder={t(
-                      "restaurant.auth.placeholders.restaurantAddress",
-                      "Example: 123 Main St, New York, NY 10001",
-                    )}
+                    placeholder={
+                      guineaUi
+                        ? t(
+                            "guineaMarket.authLandmarkPlaceholder",
+                            "Neighborhood, market, school or landmark",
+                          )
+                        : t(
+                            "restaurant.auth.placeholders.restaurantAddress",
+                            "Example: 123 Main St, New York, NY 10001",
+                          )
+                    }
                     placeholderTextColor="rgba(255,255,255,0.55)"
                     autoCorrect={false}
                     style={styles.field}

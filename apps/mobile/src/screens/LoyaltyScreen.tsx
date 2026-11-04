@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { textAlignStart } from "../i18n/rtl";
+import { formatMoneyFromCents } from "../i18n/formatters";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { toUserFacingError } from "../lib/userFacingError";
 import {
@@ -61,7 +62,9 @@ const COLORS = {
 };
 
 function formatCredit(cents: number, currency: string): string {
-  return `${(Math.max(0, cents) / 100).toFixed(2)} ${currency}`;
+  const code = String(currency ?? "").trim().toUpperCase();
+  if (!code) return "—";
+  return formatMoneyFromCents(Math.max(0, cents), code);
 }
 
 export default function LoyaltyScreen() {

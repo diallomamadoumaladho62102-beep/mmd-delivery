@@ -4,10 +4,8 @@
 import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
-import { adminFetch } from "@/lib/adminBrowserAuth";
-import { hasPermission } from "@/lib/adminRbac";
-import { supabase } from "@/lib/supabaseBrowser";
-import { normalizeUserRole } from "@/lib/roles";
+import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
+import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import {
   AdminEmptyState,
   AdminErrorState,
@@ -217,15 +215,16 @@ export default function AdminClientsManager() {
 
   useEffect(() => {
     void (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", auth.user.id)
-        .maybeSingle();
+      const session = await resolveBrowserStaffSession();
+      if (!session) {
+        setCanManage(false);
+        return;
+      }
       setCanManage(
-        hasPermission(normalizeUserRole(profile?.role), "users.clients.manage"),
+        sessionHasPermission(
+          { role: session.role, isFounder: session.isFounder },
+          "users.clients.manage",
+        ),
       );
     })();
   }, []);
