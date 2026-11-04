@@ -27,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { RestaurantBrandLoadingState } from "../../components/restaurant/RestaurantBrandLoadingState";
 import { toUserFacingError } from "../../lib/userFacingError";
+import { readLocalFileBytes } from "../../lib/readLocalFileBytes";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -199,13 +200,21 @@ function storagePathFromPublicUrl(publicUrl: string, bucket: string) {
 }
 
 async function fileUriToUint8Array(fileUri: string): Promise<Uint8Array> {
-  const response = await fetch(fileUri);
-  if (!response.ok) {
-    throw new Error(`Unable to read local file: ${response.status}`);
-  }
+  // expo-file-system only — avoids RCTFileReaderModule (iOS EXC_BAD_ACCESS).
+  const { bytes } = await readLocalFileBytes({
+    uri: fileUri,
+    maxBytes: 10 * 1024 * 1024,
+    allowedMimes: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+    mime: guessMenuImageMime(fileUri),
+  });
+  return bytes;
+}
 
-  const arrayBuffer = await response.arrayBuffer();
-  return new Uint8Array(arrayBuffer);
+function guessMenuImageMime(fileUri: string): string {
+  const u = String(fileUri || "").toLowerCase();
+  if (u.endsWith(".png")) return "image/png";
+  if (u.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
 }
 
 export default function RestaurantMenuScreen({ navigation }: Props) {

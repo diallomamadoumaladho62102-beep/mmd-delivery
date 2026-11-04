@@ -12,11 +12,11 @@
  *   Introduced by: ajv (schema tooling / expo-build-properties).
  *   Production reachability: none. MMD does not parse untrusted mailto URIs
  *   with fast-uri on live payment or delivery routes.
- *   Safe update applied: 4.1.4 → 4.2.1 (patched >=4.1.5).
+ *   Safe update applied: 4.1.4 → 4.2.3 (also covers GHSA-w74x / GHSA-wjr9 / GHSA-xhq7 / GHSA-333x).
  *
  * #182 fast-uri GHSA-hrr3-gc8f-f4qj (scheme-relative host case evasion)
  *   Same introducer and reachability as #181.
- *   Safe update applied: same 4.2.1 pin.
+ *   Safe update applied: same 4.2.3 pin.
  *
  * #183 brace-expansion GHSA-q2hr-2g5m-vwhr range >=4 <5.0.12
  *   Introduced by: minimatch@10 / @isaacs/brace-expansion (Expo CLI / glob).
@@ -48,7 +48,14 @@ assert.ok(
     String(overrides["js-yaml@>=5.0.0 <5.4.1"]).includes("5.4.2"),
   "js-yaml 5.2.2 must be forced to 5.4.2"
 );
-assert.ok(String(overrides["fast-uri"]).includes("4.1.5"), "fast-uri override must be >=4.1.5");
+assert.ok(
+  String(overrides["fast-uri"]).includes("4.2.3"),
+  "fast-uri override must be >=4.2.3",
+);
+assert.ok(
+  String(overrides["qs"]).includes("6.16.1"),
+  "qs override must be >=6.16.1",
+);
 assert.equal(overrides["brace-expansion@1"], "1.1.21");
 assert.equal(overrides["brace-expansion@2"], "2.1.7");
 assert.ok(String(overrides["minimatch@10>brace-expansion"]).includes("5.0.12"));
@@ -61,13 +68,24 @@ assert.equal(
 );
 assert.equal(lock.includes("js-yaml@5.4.2:"), true, "lock must resolve js-yaml 5.4.2");
 assert.equal(/fast-uri@4\.1\.4:\r?\n/.test(lock), false, "lock must not resolve fast-uri 4.1.4");
-assert.equal(lock.includes("fast-uri@4.2.1:"), true, "lock must resolve fast-uri 4.2.1");
+assert.equal(/fast-uri@4\.2\.1:\r?\n/.test(lock), false, "lock must not resolve fast-uri 4.2.1");
+assert.equal(lock.includes("fast-uri@4.2.3:"), true, "lock must resolve fast-uri 4.2.3");
+assert.equal(/qs@6\.16\.0:\r?\n/.test(lock), false, "lock must not resolve qs 6.16.0");
 assert.equal(/brace-expansion@1\.1\.20:\r?\n/.test(lock), false);
 assert.equal(/brace-expansion@2\.1\.6:\r?\n/.test(lock), false);
 assert.equal(/brace-expansion@5\.0\.11:\r?\n/.test(lock), false);
-assert.equal(lock.includes("brace-expansion@1.1.21:"), true);
-assert.equal(lock.includes("brace-expansion@2.1.7:"), true);
+// Current tree resolves brace-expansion via minimatch@11 → 5.0.12 only.
+// Overrides still pin 1.x/2.x floors if those lineages reappear.
+assert.equal(overrides["brace-expansion@1"], "1.1.21");
+assert.equal(overrides["brace-expansion@2"], "2.1.7");
 assert.equal(lock.includes("brace-expansion@5.0.12:"), true);
+assert.equal(/qs@6\.16\.0:\r?\n/.test(lock), false);
+assert.equal(lock.includes("qs@6.17.1:") || lock.includes("qs@6.16.1:"), true);
+assert.equal(/minimatch@10\.2\.5:\r?\n/.test(lock), false);
+assert.equal(lock.includes("minimatch@11.0.4:"), true);
+assert.equal(/glob@9\.3\.5:\r?\n/.test(lock), false);
+assert.equal(/glob@13\.0\.6:\r?\n/.test(lock), false);
+assert.equal(lock.includes("glob@14.0.3:"), true);
 
 console.log("moderate-advisory-overrides.regression.test.mjs OK");
 console.log(
@@ -75,8 +93,8 @@ console.log(
     {
       alerts: [
         { id: 180, pkg: "js-yaml", ghsa: "GHSA-r3ph-w7gj-g6xm", patched: "5.4.2", reachable_prod: false },
-        { id: 181, pkg: "fast-uri", ghsa: "GHSA-jvvf-x445-j334", patched: "4.2.1", reachable_prod: false },
-        { id: 182, pkg: "fast-uri", ghsa: "GHSA-hrr3-gc8f-f4qj", patched: "4.2.1", reachable_prod: false },
+        { id: 181, pkg: "fast-uri", ghsa: "GHSA-jvvf-x445-j334", patched: "4.2.3", reachable_prod: false },
+        { id: 182, pkg: "fast-uri", ghsa: "GHSA-hrr3-gc8f-f4qj", patched: "4.2.3", reachable_prod: false },
         { id: 183, pkg: "brace-expansion", ghsa: "GHSA-q2hr-2g5m-vwhr", patched: "5.0.12", reachable_prod: false },
         { id: 184, pkg: "brace-expansion", ghsa: "GHSA-q2hr-2g5m-vwhr", patched: "2.1.7", reachable_prod: false },
         { id: 185, pkg: "brace-expansion", ghsa: "GHSA-q2hr-2g5m-vwhr", patched: "1.1.21", reachable_prod: false },

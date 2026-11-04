@@ -1,43 +1,5 @@
-import * as FileSystem from "expo-file-system/legacy";
+import { readLocalFileBytes } from "./readLocalFileBytes";
 import { supabase } from "./supabase";
-
-// ✅ Base64 → Uint8Array (sans Buffer, compatible RN)
-function base64ToUint8Array(base64: string) {
-  const clean = (base64 || "").replace(/\s/g, "");
-
-  // atob peut ne pas exister selon l'environnement → fallback pur JS
-  const atobSafe =
-    typeof globalThis.atob === "function"
-      ? globalThis.atob.bind(globalThis)
-      : (b64: string) => {
-          const chars =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-          let str = "";
-          let i = 0;
-
-          while (i < b64.length) {
-            const enc1 = chars.indexOf(b64.charAt(i++));
-            const enc2 = chars.indexOf(b64.charAt(i++));
-            const enc3 = chars.indexOf(b64.charAt(i++));
-            const enc4 = chars.indexOf(b64.charAt(i++));
-
-            const chr1 = (enc1 << 2) | (enc2 >> 4);
-            const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-            const chr3 = ((enc3 & 3) << 6) | enc4;
-
-            str += String.fromCharCode(chr1);
-            if (enc3 !== 64) str += String.fromCharCode(chr2);
-            if (enc4 !== 64) str += String.fromCharCode(chr3);
-          }
-          return str;
-        };
-
-  const binary = atobSafe(clean);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
 
 function guessContentType(uri: string) {
   const u = (uri || "").toLowerCase();
@@ -55,6 +17,8 @@ export async function uploadFile(params: {
   path: string;
   uri: string;
   contentType?: string;
+  maxBytes?: number;
+  signal?: AbortSignal;
 }) {
   const { bucket, path, uri } = params;
   const contentType = params.contentType || guessContentType(uri);
@@ -65,26 +29,21 @@ export async function uploadFile(params: {
     );
   }
 
-  // ✅ lecture base64 depuis le téléphone
-  let base64: string;
+  // expo-file-system only — avoids RCTFileReaderModule native crashes.
+  let bytes: Uint8Array;
   try {
-    base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
+    const read = await readLocalFileBytes({
+      uri,
+      mime: contentType,
+      maxBytes: params.maxBytes ?? 10 * 1024 * 1024,
+      signal: params.signal,
     });
+    bytes = read.bytes;
   } catch (e: any) {
-    console.log("[uploadFile] readAsStringAsync failed", { uri, e });
+    console.log("[uploadFile] readLocalFileBytes failed", { uri, e });
     throw new Error(
       `[uploadFile] impossible de lire le fichier local. uri=${uri}`
     );
-  }
-
-  // ✅ bytes
-  let bytes: Uint8Array;
-  try {
-    bytes = base64ToUint8Array(base64);
-  } catch (e: any) {
-    console.log("[uploadFile] base64ToUint8Array failed", { uri, e });
-    throw new Error("[uploadFile] conversion base64 -> bytes échouée");
   }
 
   // ✅ retry 3 fois (réseau mobile / timeouts)
