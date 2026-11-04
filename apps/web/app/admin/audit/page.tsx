@@ -4,8 +4,8 @@
 import { useAdminT } from "@/i18n/useAdminT";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { canAccessAuditLogs } from "@/lib/adminAccess";
-import { normalizeUserRole } from "@/lib/roles";
+import { resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
+import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type AuditAction =
@@ -33,15 +33,6 @@ type AuditRow = {
   created_at: string;
 };
 
-type AdminProfile = {
-  id: string;
-  role: string | null;
-};
-
-function canAccessAuditPage(role: string | null | undefined) {
-  return canAccessAuditLogs(normalizeUserRole(role ?? null));
-}
-
 function formatDate(value: string | null | undefined) {
   if (!value) return "—";
 
@@ -58,30 +49,6 @@ function truncateMiddle(value: string | null | undefined, start = 10, end = 8) {
   if (!value) return "—";
   if (value.length <= start + end + 3) return value;
   return `${value.slice(0, start)}...${value.slice(-end)}`;
-}
-
-function actionBadgeClass(action: string) {
-  if (action.includes("approved")) {
-    return "border-green-200 bg-green-100 text-green-800";
-  }
-
-  if (action.includes("rejected")) {
-    return "border-red-200 bg-red-100 text-red-800";
-  }
-
-  if (action.includes("retry")) {
-    return "border-blue-200 bg-blue-100 text-blue-800";
-  }
-
-  if (action.includes("resolved")) {
-    return "border-emerald-200 bg-emerald-100 text-emerald-800";
-  }
-
-  if (action.includes("reviewed")) {
-    return "border-amber-200 bg-amber-100 text-amber-800";
-  }
-
-  return "border-slate-200 bg-slate-100 text-slate-700";
 }
 
 function targetBadgeClass(targetType: string) {
@@ -105,10 +72,45 @@ function labelForAction(action: string) {
       return "Driver approved";
     case "driver_rejected":
       return "Driver rejected";
+    case "driver_suspended":
+      return "Driver suspended";
+    case "driver_disabled":
+      return "Driver disabled";
+    case "driver_reactivated":
+    case "driver_enabled":
+      return "Driver reactivated";
+    case "driver_documents_requested":
+      return "Driver documents requested";
+    case "driver_document_updated":
+      return "Driver document updated";
+    case "driver_document_deleted":
+      return "Driver document deleted";
+    case "driver_resubmitted":
+      return "Driver resubmitted";
     case "restaurant_approved":
       return "Restaurant approved";
     case "restaurant_rejected":
       return "Restaurant rejected";
+    case "restaurant_suspended":
+      return "Restaurant suspended";
+    case "restaurant_disabled":
+      return "Restaurant disabled";
+    case "restaurant_reactivated":
+    case "restaurant_enabled":
+      return "Restaurant reactivated";
+    case "seller_approved":
+      return "Seller approved";
+    case "seller_rejected":
+      return "Seller rejected";
+    case "seller_suspended":
+      return "Seller suspended";
+    case "seller_reactivated":
+      return "Seller reactivated";
+    case "client_suspended":
+      return "Client suspended";
+    case "client_unsuspended":
+    case "client_reactivated":
+      return "Client reactivated";
     case "payout_retry":
       return "Payout retry";
     case "payout_resolved":
@@ -118,6 +120,39 @@ function labelForAction(action: string) {
     default:
       return action;
   }
+}
+
+function actionBadgeClass(action: string) {
+  if (
+    action.includes("approved") ||
+    action.includes("reactivated") ||
+    action.includes("enabled") ||
+    action.includes("unsuspended")
+  ) {
+    return "border-green-200 bg-green-100 text-green-800";
+  }
+
+  if (action.includes("rejected") || action.includes("disabled")) {
+    return "border-red-200 bg-red-100 text-red-800";
+  }
+
+  if (action.includes("suspended") || action.includes("documents_requested")) {
+    return "border-amber-200 bg-amber-100 text-amber-800";
+  }
+
+  if (action.includes("retry")) {
+    return "border-blue-200 bg-blue-100 text-blue-800";
+  }
+
+  if (action.includes("resolved")) {
+    return "border-emerald-200 bg-emerald-100 text-emerald-800";
+  }
+
+  if (action.includes("reviewed") || action.includes("document")) {
+    return "border-amber-200 bg-amber-100 text-amber-800";
+  }
+
+  return "border-slate-200 bg-slate-100 text-slate-700";
 }
 
 function safeJsonPreview(value: Record<string, unknown> | null | undefined) {
@@ -158,35 +193,16 @@ export default function AdminAuditPage() {
 
         setErr(null);
 
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError) {
-          throw new Error(userError.message);
-        }
-
-        if (!user) {
+        const session = await resolveBrowserStaffSession();
+        if (!session) {
           setAuthChecked(true);
           setIsAdmin(false);
           router.push("/admin/login");
           return;
         }
 
-        const { data: me, error: meError } = await supabase
-          .from("profiles")
-          .select("id, role")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (meError) {
-          throw new Error(meError.message);
-        }
-
-        const profile = (me as AdminProfile | null) ?? null;
-
-        if (!profile || !canAccessAuditPage(profile.role)) {
+        // audit.read: super_admin (+ Founder absolute). Ops write audits but do not read this page.
+        if (!sessionHasPermission(session, "audit.read")) {
           setAuthChecked(true);
           setIsAdmin(false);
           setErr("Accès réservé aux administrateurs.");

@@ -96,6 +96,9 @@
       "checkout": "准备结账",
       "comingSoonCta": "Marketplace 结账即将推出",
       "payLive": "支付 Marketplace 订单",
+      "confirmCash": "确认订单（现金）",
+      "cashPlacedTitle": "订单已确认",
+      "cashPlacedBody": "您的订单已确认。请在送达时用现金支付。已通知卖家。",
       "missingCheckoutUrl": "缺少结账链接",
       "backToMarketplace": "返回商城",
       "checkoutStillComingSoon": "结账即将推出 — Marketplace 暂无真实支付。",
@@ -301,7 +304,9 @@
       "viewOrders": "查看订单"
     },
     "signOut": {
-      "title": "退出登录"
+      "title": "退出登录",
+      "body": "要退出此设备上的登录吗？你的卖家账户和商品会保留。",
+      "error": "暂时无法退出登录。"
     }
   },
   "taxi": {
@@ -314,6 +319,7 @@
       "platformFee": "平台费",
       "total": "合计",
       "detectedCountry": "根据上车点自动识别",
+      "paid": "已支付",
       "estimatesIn": "估算币种"
     },
     "common": {
@@ -946,6 +952,16 @@
       },
       "v4": {
         "comingSoon": "即将上线",
+        "rewards": {
+          "creditUnknown": "积分余额暂不可用",
+          "progress": "{{current}} / {{target}} 分，距离{{tier}}等级"
+        },
+        "tier": {
+          "bronze": "铜级",
+          "gold": "金级",
+          "next": "下一级",
+          "silver": "银级"
+        },
         "language": {
           "subtitle": "为 MMD 选择你偏好的语言。"
         },
@@ -1522,6 +1538,7 @@
       "danger": "危险",
       "language": "语言",
       "notifications": "通知",
+      "country": "国家",
       "platform": "平台",
       "privacy": "隐私",
       "profile": "资料",
@@ -1851,6 +1868,10 @@
       "missing": "缺少",
       "missingRequirements": "缺少所需项",
       "placeholderLicenseNumber": "驾照号码"
+    },
+    "signOut": {
+      "title": "退出登录",
+      "body": "要退出此设备上的登录吗？你的司机账户和数据会保留。"
     },
     "account": {
       "createProfileFailed": "暂时无法创建司机资料。",
@@ -2532,6 +2553,10 @@
           "value": "数据与权限"
         },
         "title": "法律与帮助"
+      },
+      "country": {
+        "label": "国家",
+        "value": "几内亚或美国"
       },
       "next": {
         "addDocs": "添加文件",
@@ -3849,7 +3874,18 @@
     "directionsMin": "至少需要 8 个字符。",
     "photoLabel": "地点照片（推荐）",
     "retakePhoto": "重新拍摄位置照片",
-    "addPhoto": "添加大门、商店或建筑照片"
+    "addPhoto": "添加大门、商店或建筑照片",
+    "useGpsCurrent": "我的当前位置",
+    "region": "地区",
+    "regionPlaceholder": "地区",
+    "prefecture": "省 / 专区",
+    "prefecturePlaceholder": "省 / 专区",
+    "communeTown": "城市 / 乡镇",
+    "communeTownPlaceholder": "城市或乡镇",
+    "quartierSector": "街区 / 片区",
+    "quartierSectorPlaceholder": "街区或片区",
+    "landmarkPlaceholderLocal": "市场、学校、清真寺、医院或商店",
+    "hintPinConfirmLocal": "使用 GPS 或移动地图，然后添加街区或地标。邮政编码不是必填项。"
   },
   "maskedCall": {
     "errorTitle": "呼叫错误"
@@ -4087,7 +4123,9 @@
       "loading": "正在加载价格…",
       "calculating": "正在计算估价…",
       "ready": "估价已就绪",
-      "emptyHint": "计算价格以查看估价。"
+      "emptyHint": "计算价格以查看估价。",
+      "pickupGps": "取件 GPS",
+      "dropoffGps": "送达 GPS"
     },
     "header": {
       "title": "请求配送",
@@ -4141,6 +4179,8 @@
     },
     "errors": {
       "estimateGeneric": "暂时无法计算配送估价。",
+      "addressNotFound": "这些地址在地图上没有匹配。请写得更具体，或在地图上标出位置。",
+      "routeNotFound": "这两点之间没有找到驾车路线。",
       "networkEstimate": "计算估价时出现网络错误。",
       "estimateTimeout": "估价请求超时。请重试。",
       "distanceTooLarge": "距离过大。请检查两个地址。",
@@ -4477,7 +4517,9 @@
     "schemaNotReady": "服务器尚未准备好现金行程。行程未创建。",
     "motorcycleNotReady": "服务器尚未准备好摩托车行程。",
     "vehicleUnsupported": "此车辆不适用于本次行程。",
-    "tripNotSupported": "不支持此行程类型。"
+    "tripNotSupported": "不支持此行程类型。",
+    "searchingDrivers": "正在搜索附近司机…",
+    "detailsPreview": "行程预览"
   },
   "taxiXl": {
     "open": "XL 跨区",
@@ -4563,5 +4605,66 @@
     "segmentDeparture": "分段发车",
     "noGpsFix": "没有采集到 GPS 位置。",
     "marketUnavailable": "这种城际行程仅在几内亚提供。"
+  },
+  "guineaMarket": {
+    "welcomeTitle": "欢迎使用 MMD",
+    "welcomeSubtitle": "请选择国家以继续",
+    "countryOption": "{{name}} — {{dial}} · {{currency}}",
+    "guineaName": "几内亚",
+    "guineaCoverage": "几内亚全国",
+    "usName": "美国",
+    "usCoverage": "美国",
+    "tabsTaxi": "出租车",
+    "tabsRestaurants": "餐厅",
+    "tabsParcels": "包裹",
+    "taxiHomeTitle": "出租车首页",
+    "taxiHomeSubtitle": "载客出行",
+    "whereTo": "您要去哪里？",
+    "pickup": "上车点",
+    "destination": "目的地",
+    "chooseOnMap": "在地图上选择",
+    "seePrice": "查看价格",
+    "xlLink": "跨区 XL 出租车",
+    "restaurantsTitle": "餐厅",
+    "restaurantsSubtitle": "发现附近的优质餐厅。",
+    "restaurantsSearch": "搜索餐厅...",
+    "viewMenu": "查看菜单 →",
+    "restaurantsEmptyTitle": "暂无餐厅",
+    "restaurantsEmptyBody": "没有已注册餐厅符合此次搜索。不会显示虚构店铺。",
+    "parcelsTitle": "包裹配送",
+    "parcelsSubtitle": "快速寄送包裹。",
+    "parcelType": "包裹类型",
+    "pickupPoint": "取件地点",
+    "pickupLandmark": "街区、市场或地标",
+    "recipient": "收件人",
+    "pickupPinned": "已标记取件点",
+    "destinationPinned": "已标记目的地",
+    "confirmDelivery": "确认配送",
+    "authPersonalTitle": "个人信息",
+    "authPersonalSubtitle": "姓名、{{dial}} 电话和可选照片。",
+    "authPhotoOptional": "添加照片（可选）",
+    "authEmergencyPhone": "紧急电话（可选）",
+    "authDateOfBirth": "出生日期（可选）",
+    "authDobPlaceholder": "年-月-日",
+    "authCreatedTitle": "账户创建成功",
+    "authCreatedBody": "您的 MMD 账户已就绪。您可以在几内亚叫车、点餐或寄包裹。",
+    "authStart": "开始",
+    "authContinue": "继续",
+    "authLandmarkPlaceholder": "街区、市场、学校或地标",
+    "authCityPlaceholder": "城市或乡镇",
+    "authRegionPlaceholder": "专区",
+    "authPostalPlaceholder": "邮政编码（可选）",
+    "authAddressHint": "填写街区或地标即可。邮政编码不是必填项。",
+    "authPhoneInvalid": "请输入有效的几内亚号码，例如 +224 620 00 00 00。",
+    "authPhonePlaceholder": "+224 6XX XX XX XX",
+    "authAddressLabel": "街区或地标",
+    "authEmergencyInvalid": "紧急电话必须是有效的几内亚号码，或留空。",
+    "authZipLabel": "邮政编码（可选）",
+    "authZipPlaceholder": "可选",
+    "restaurantDropoffPlaceholder": "街区、市场或地标",
+    "incompleteAddress": "请填写更完整的地址，包含街区或地标。",
+    "distanceTooFar": "配送距离过远（{{miles}}）。请核对地标、城镇和地图图钉。",
+    "deliveryPricingUnavailable": "几内亚配送价格尚未配置。暂不显示预估费用。",
+    "restaurantSetupRequired": "请填写名称、有效的 +224 电话、地标、城镇、专区和菜系。"
   }
 }

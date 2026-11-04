@@ -13,6 +13,11 @@ import { filterTaxiCandidatesByCapacity } from "@/lib/driverMissionCapacity";
 import { pushText } from "@/lib/pushCopy";
 import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
 import { taxiPaymentAllowsDispatch } from "@/lib/markets/guineaCashPayment";
+import {
+  GUINEA_TEST_LIVE_OPERATION_BLOCKED,
+  guineaIsolatedTestUserInvolved,
+  isIsolatedFromLiveDispatch,
+} from "@/lib/guineaTestIsolation";
 
 const MAX_DISPATCH_MILES = 15;
 
@@ -189,7 +194,7 @@ export async function runTaxiRideDispatch(params: {
   const maxMiles = waveConfig.maxMiles;
 
   const rideSelect =
-    "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,pickup_city,dropoff_address,driver_payout_cents,total_cents,vehicle_class,dispatch_wave,client_user_id,preferred_driver_id,favorite_dispatch_expires_at,premium_driver_only,is_shared_ride,shared_ride_id,prefer_electric_or_hybrid,electric_search_until,electric_search_expired,country_code,currency,preferences_stage_until,preferences_dispatch_stage,client_preferences,ambiance_preference";
+    "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,pickup_city,dropoff_address,driver_payout_cents,total_cents,vehicle_class,dispatch_wave,client_user_id,preferred_driver_id,favorite_dispatch_expires_at,premium_driver_only,is_shared_ride,shared_ride_id,prefer_electric_or_hybrid,electric_search_until,electric_search_expired,country_code,currency,preferences_stage_until,preferences_dispatch_stage,client_preferences,ambiance_preference,is_test,archived_at,hidden_from_user";
   let { data: ride, error: rideError } = await supabase
     .from("taxi_rides")
     .select(`${rideSelect},payment_method`)
@@ -236,6 +241,24 @@ export async function runTaxiRideDispatch(params: {
       notified: 0,
       candidates: 0,
       message: "Taxi ride is not dispatchable",
+    };
+  }
+
+  if (
+    isIsolatedFromLiveDispatch(ride) ||
+    (await guineaIsolatedTestUserInvolved(supabase, [
+      ride.client_user_id,
+      ride.driver_id,
+      ride.preferred_driver_id,
+    ]))
+  ) {
+    return {
+      ok: true,
+      taxiRideId,
+      wave,
+      notified: 0,
+      candidates: 0,
+      message: GUINEA_TEST_LIVE_OPERATION_BLOCKED,
     };
   }
 

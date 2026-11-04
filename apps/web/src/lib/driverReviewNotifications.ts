@@ -3,12 +3,15 @@ import { isAccountActive } from "./accountStatus";
 import { notifyDriverAccountDecisionPush } from "./driverPushNotifications";
 import {
   DRIVER_HOME_URL,
+  driverComplementaryDocumentsEmail,
+  driverComplementaryDocumentsPush,
   driverDecisionPush,
   driverDisabledEmail,
   driverRejectedEmail,
   driverReviewRequestedEmail,
   driverSuspendedEmail,
 } from "./driverReviewCopy";
+import { resolvePushSound } from "./mmdPushSounds";
 import {
   PENDING_SIGNUP_ALERT_KEY,
   decisionEventKey,
@@ -242,4 +245,99 @@ export async function notifyReviewersOfResubmit(params: {
 export function decisionPushDoesNotOpenHome(status: DriverReviewTarget): boolean {
   const copy = driverDecisionPush(status, "en");
   return copy.title.length > 0 && !copy.body.includes("DriverTabs");
+}
+
+/**
+ * Admin asked for complementary / corrected onboarding documents.
+ * Notifies the driver (email + push when tokens exist). Idempotent per event key.
+ */
+export async function notifyDriverComplementaryDocuments(params: {
+  supabaseAdmin: SupabaseClient;
+  userId: string;
+  documentType: string;
+  note: string | null;
+  documentId: string;
+  reviewedAt: string;
+}): Promise<{ notified: boolean }> {
+  const eventKey = `docs:request:${params.documentId}:${params.reviewedAt}`;
+  const claimed = await claimDriverReviewAlert(
+    params.supabaseAdmin,
+    params.userId,
+    eventKey,
+  );
+  if (claimed !== "claimed") return { notified: false };
+
+  try {
+    const locale = await loadPreferredLocale(params.supabaseAdmin, params.userId);
+    const template = driverComplementaryDocumentsEmail({
+      locale,
+      documentType: params.documentType,
+      note: params.note,
+    });
+    await notifyUserTransactional({
+      supabaseAdmin: params.supabaseAdmin,
+      recipient: { userId: params.userId },
+      subject: template.subject,
+      body: renderTransactionalEmailText(template),
+      html: renderTransactionalEmailHtml(template),
+      idempotencyKey: eventKey,
+    });
+
+    const { data: tokenRows } = await params.supabaseAdmin
+      .from("user_push_tokens")
+      .select("expo_push_token, push_token, token, locale, disabled, is_active")
+      .eq("user_id", params.userId);
+    const messages: Array<Record<string, unknown>> = [];
+    const seen = new Set<string>();
+    for (const row of tokenRows ?? []) {
+      if ((row as { disabled?: boolean }).disabled === true) continue;
+      if ((row as { is_active?: boolean | null }).is_active === false) continue;
+      const token = String(
+        (row as { expo_push_token?: string | null }).expo_push_token ??
+          (row as { push_token?: string | null }).push_token ??
+          (row as { token?: string | null }).token ??
+          "",
+      ).trim();
+      if (!token.startsWith("ExponentPushToken[") && !token.startsWith("ExpoPushToken[")) {
+        continue;
+      }
+      if (seen.has(token)) continue;
+      seen.add(token);
+      const copy = driverComplementaryDocumentsPush(
+        (row as { locale?: string | null }).locale ?? locale,
+        params.documentType,
+        params.note,
+      );
+      messages.push({
+        to: token,
+        sound: resolvePushSound("driver_account_decision"),
+        title: copy.title,
+        body: copy.body,
+        priority: "high",
+        channelId: "driver-alerts",
+        data: {
+          type: "driver_documents_requested",
+          document_type: params.documentType,
+        },
+      });
+    }
+    if (messages.length > 0) {
+      await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messages),
+      }).catch(() => undefined);
+    }
+  } catch (error) {
+    console.error(
+      "[driverReview] complementary docs notify failed",
+      error instanceof Error ? error.message : "error",
+    );
+    return { notified: false };
+  }
+
+  return { notified: true };
 }

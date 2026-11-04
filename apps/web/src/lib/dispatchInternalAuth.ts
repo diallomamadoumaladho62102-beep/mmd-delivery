@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
 import { normalizeUserRole, type UserRole } from "@/lib/roles";
+import { localCashAllowsDispatch } from "@/lib/markets/guineaLocalCashCollect";
 
 function timingSafeEqual(a: string, b: string): boolean {
   const aBytes = new TextEncoder().encode(a);
@@ -169,6 +170,8 @@ export function assertUserMayDispatchOrder(params: {
     restaurant_id?: unknown;
     kind?: unknown;
     payment_status?: unknown;
+    payment_method?: unknown;
+    currency?: unknown;
   };
 }): DispatchAuthFailure | { ok: true } {
   if (params.access.mode === "internal") {
@@ -205,7 +208,11 @@ export function assertUserMayDispatchOrder(params: {
 
     if (
       normalize(params.order.kind) === "food" &&
-      normalize(params.order.payment_status) !== "paid"
+      !localCashAllowsDispatch({
+        paymentStatus: params.order.payment_status,
+        paymentMethod: params.order.payment_method,
+        currency: params.order.currency,
+      })
     ) {
       return { ok: false, status: 403, error: "Forbidden" };
     }

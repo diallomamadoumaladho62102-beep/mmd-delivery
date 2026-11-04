@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { formatMoneyFromCents, majorToPriceCents, priceCentsToMajor } from "../../i18n/formatters";
+import { marketCurrency } from "../../lib/selectedMarket";
+import { isGuineaMarket, useSelectedMarket } from "../../lib/useSelectedMarket";
 import {
   View,
   Text,
@@ -90,24 +93,26 @@ function isValidCategoryId(categoryId: string | null | undefined, categories: Ca
   return categories.some((category) => category.id === categoryId);
 }
 
-function moneyToCents(v: string) {
+function moneyToCents(v: string, currency = "USD") {
   const normalized = String(v ?? "").trim().replace(",", ".");
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return 0;
+  const whole = String(currency).toUpperCase() === "GNF";
+  if (whole ? !/^\d+$/.test(normalized) : !/^\d+(\.\d{1,2})?$/.test(normalized)) return 0;
 
   const n = Number(normalized);
   if (!Number.isFinite(n) || n <= 0) return 0;
 
-  return Math.round(n * 100);
+  return majorToPriceCents(n, currency);
 }
 
-function moneyToCentsAllowZero(v: string) {
+function moneyToCentsAllowZero(v: string, currency = "USD") {
   const normalized = String(v ?? "").trim().replace(",", ".");
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return Number.NaN;
+  const whole = String(currency).toUpperCase() === "GNF";
+  if (whole ? !/^\d+$/.test(normalized) : !/^\d+(\.\d{1,2})?$/.test(normalized)) return Number.NaN;
 
   const n = Number(normalized);
   if (!Number.isFinite(n) || n < 0) return Number.NaN;
 
-  return Math.round(n * 100);
+  return majorToPriceCents(n, currency);
 }
 
 function parseStockQty(raw: string): number | null {
@@ -117,8 +122,9 @@ function parseStockQty(raw: string): number | null {
   return Number(trimmed);
 }
 
-function serializeOptionsText(raw: unknown): string {
+function serializeOptionsText(raw: unknown, currency = "USD"): string {
   if (!Array.isArray(raw) || raw.length === 0) return "";
+  const whole = String(currency).toUpperCase() === "GNF";
   return raw
     .map((entry) => {
       if (!entry || typeof entry !== "object") return "";
@@ -126,13 +132,14 @@ function serializeOptionsText(raw: unknown): string {
       const name = String(row.name ?? "").trim();
       const cents = Number(row.price_cents ?? 0);
       if (!name || !Number.isFinite(cents)) return "";
-      return `${name}:${(cents / 100).toFixed(2)}`;
+      const major = priceCentsToMajor(cents, currency);
+      return `${name}:${whole ? String(Math.round(major)) : major.toFixed(2)}`;
     })
     .filter(Boolean)
     .join("\n");
 }
 
-function parseOptionsText(raw: string): Array<{ id: string; name: string; price_cents: number }> {
+function parseOptionsText(raw: string, currency = "USD"): Array<{ id: string; name: string; price_cents: number }> {
   const lines = String(raw ?? "")
     .split("\n")
     .map((line) => line.trim())
@@ -141,7 +148,7 @@ function parseOptionsText(raw: string): Array<{ id: string; name: string; price_
   return lines.map((line) => {
     const [namePart, pricePart] = line.split(":").map((part) => part.trim());
     const name = cleanText(namePart || "", 80);
-    const priceCents = moneyToCentsAllowZero(pricePart || "0");
+    const priceCents = moneyToCentsAllowZero(pricePart || "0", currency);
     if (!name || Number.isNaN(priceCents)) {
       throw new Error(`Option invalide: ${line}`);
     }
@@ -153,10 +160,14 @@ function parseOptionsText(raw: string): Array<{ id: string; name: string; price_
   });
 }
 
-function centsToMoneyString(cents: number | null | undefined) {
-  const n = Number(cents ?? 0);
-  if (!Number.isFinite(n)) return "0.00";
-  return (n / 100).toFixed(2);
+function centsToMoneyString(cents: number | null | undefined, currency = "USD") {
+  const major = priceCentsToMajor(Number(cents ?? 0), currency);
+  if (!Number.isFinite(major)) return String(currency).toUpperCase() === "GNF" ? "0" : "0.00";
+  return String(currency).toUpperCase() === "GNF" ? String(Math.round(major)) : major.toFixed(2);
+}
+
+function maxStoredPrice(currency: string) {
+  return String(currency).toUpperCase() === "GNF" ? 20_000_000 : MAX_PRICE_CENTS;
 }
 
 function getExtFromMimeOrUri(uri?: string | null, mime?: string | null) {
@@ -199,6 +210,8 @@ async function fileUriToUint8Array(fileUri: string): Promise<Uint8Array> {
 
 export default function RestaurantMenuScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const selectedMarket = useSelectedMarket();
+  const defaultCurrency = isGuineaMarket(selectedMarket) ? marketCurrency("GN") : "USD";
 
   const [loading, setLoading] = useState(true);
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
@@ -213,13 +226,22 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     name: "",
     description: "",
     price: "0.00",
-    currency: "USD",
+    currency: defaultCurrency as string,
     image_url: "",
     is_available: true,
     stock_qty: "",
     options_text: "",
     position: "",
   });
+
+  useEffect(() => {
+    if (!isGuineaMarket(selectedMarket)) return;
+    setNewItem((prev) =>
+      prev.currency === "USD" && prev.name === "" && prev.price === "0.00"
+        ? { ...prev, currency: marketCurrency("GN"), price: "0" }
+        : prev,
+    );
+  }, [selectedMarket]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -229,7 +251,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     name: "",
     description: "",
     price: "0.00",
-    currency: "USD",
+    currency: defaultCurrency as string,
     image_url: "",
     is_available: true,
     stock_qty: "",
@@ -596,8 +618,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       );
     }
 
-    const priceCents = moneyToCents(newItem.price);
-    if (!priceCents || priceCents <= 0 || priceCents > MAX_PRICE_CENTS) {
+    const priceCents = moneyToCents(newItem.price, newItem.currency);
+    if (!priceCents || priceCents <= 0 || priceCents > maxStoredPrice(newItem.currency)) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.items.invalidPrice", "Prix invalide")
@@ -626,7 +648,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     let optionsJson: Array<{ id: string; name: string; price_cents: number }> = [];
     try {
-      optionsJson = parseOptionsText(newItem.options_text);
+      optionsJson = parseOptionsText(newItem.options_text, newItem.currency);
     } catch (error: any) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Error"),
@@ -759,12 +781,12 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       category_id: it.category_id ?? "",
       name: it.name ?? "",
       description: it.description ?? "",
-      price: centsToMoneyString(it.price_cents),
+      price: centsToMoneyString(it.price_cents, it.currency ?? "USD"),
       currency: it.currency ?? "USD",
       image_url: it.image_url ?? "",
       is_available: Boolean(it.is_available),
       stock_qty: it.stock_qty != null ? String(it.stock_qty) : "",
-      options_text: serializeOptionsText(it.options_json),
+      options_text: serializeOptionsText(it.options_json, it.currency ?? "USD"),
       position: it.position != null ? String(it.position) : "",
     });
     setEditOpen(true);
@@ -788,8 +810,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       );
     }
 
-    const priceCents = moneyToCents(editForm.price);
-    if (!priceCents || priceCents <= 0 || priceCents > MAX_PRICE_CENTS) {
+    const priceCents = moneyToCents(editForm.price, editForm.currency);
+    if (!priceCents || priceCents <= 0 || priceCents > maxStoredPrice(editForm.currency)) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Error"),
         t("restaurant.menu.items.invalidPrice", "Prix invalide")
@@ -817,7 +839,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     let optionsJson: Array<{ id: string; name: string; price_cents: number }> = [];
     try {
-      optionsJson = parseOptionsText(editForm.options_text);
+      optionsJson = parseOptionsText(editForm.options_text, editForm.currency);
     } catch (error: any) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Error"),
@@ -877,7 +899,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   }, [activeCategoryId, items]);
 
   const formatPrice = (it: Item) =>
-    `$${(Number(it.price_cents || 0) / 100).toFixed(2)}`;
+    formatMoneyFromCents(Number(it.price_cents || 0), it.currency || "USD");
 
   if (loading) {
     return (

@@ -55,9 +55,14 @@ export type ClientTripLike = {
 };
 
 export function isVisibleClientTrip(item: ClientTripLike): boolean {
-  if (item.is_test === true) return false;
-  if (item.hidden_from_user === true) return false;
   if (item.archived_at) return false;
+  // Owner-scoped lists: show completed Guinea rehearsal rows so the account
+  // can review closed journeys. Keep active is_test rows out of the home
+  // in-progress strip. Live Map still uses isLiveVisibleTrip.
+  if (item.is_test === true) {
+    return isClientCompletedStatus(item.status);
+  }
+  if (item.hidden_from_user === true) return false;
   return true;
 }
 

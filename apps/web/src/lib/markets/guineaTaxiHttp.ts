@@ -5,6 +5,8 @@ import { validateRouteClaimsServer } from "@/lib/geoTrust";
 import { detectTaxiCountryFromCoords } from "@/lib/taxiCountryDetection";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
+import { isGuineaIsolatedTestUserId } from "@/lib/guineaTestIsolation";
+import { isolatedGuineaTaxiCreateFields } from "@/lib/guineaIsolatedTaxiJourney";
 import {
   GUINEA_COUNTRY_CODE,
   GUINEA_CURRENCY,
@@ -401,6 +403,8 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     return taxiJson({ ok: false, error: "guinea_options_not_supported" }, 400);
   }
 
+  const isolatedClient = isGuineaIsolatedTestUserId(input.userId);
+
   const platform = await assertPlatformFeature(
     input.supabaseAdmin,
     GUINEA_COUNTRY_CODE,
@@ -496,10 +500,14 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     route.dropoffLng,
   );
 
+  const isolatedFields = isolatedClient
+    ? isolatedGuineaTaxiCreateFields(input.userId)
+    : null;
+
   const row = {
     client_user_id: input.userId,
     vehicle_class: decision.vehicle === "motorcycle" ? "motorcycle" : "standard",
-    status: "dispatching",
+    status: isolatedFields?.status ?? "dispatching",
     pickup_address: pickupAddress,
     pickup_lat: route.pickupLat,
     pickup_lng: route.pickupLng,
@@ -526,19 +534,31 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     stripe_payment_intent_id: null,
     trip_mode: "one_way",
     client_notes: driverNote(input.clientNotes),
+    ...(isolatedFields
+      ? {
+          preferred_driver_id: isolatedFields.preferred_driver_id,
+          driver_id: isolatedFields.driver_id,
+          is_test: true,
+          hidden_from_user: true,
+          dispatch_wave: 0,
+        }
+      : {}),
     fare_components: {
       ...snapshot,
       locality: pickupLocality,
       destination_locality: dropoffLocality,
       region: evidence.pickup.region,
       payment_method: "cash",
+      ...(isolatedFields ? { guinea_isolated_rehearsal: true } : {}),
     },
   };
 
   let inserted = await input.supabaseAdmin
     .from("taxi_rides")
     .insert(row)
-    .select("id,status,payment_status,payment_method,currency,total_cents,country_code,pickup_city")
+    .select(
+      "id,status,payment_status,payment_method,currency,total_cents,country_code,pickup_city,driver_id,is_test,pickup_verification_code",
+    )
     .single();
 
   if (
@@ -550,8 +570,19 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     inserted = await input.supabaseAdmin
       .from("taxi_rides")
       .insert(withoutComponents)
-      .select("id,status,payment_status,payment_method,currency,total_cents,country_code,pickup_city")
+      .select(
+        "id,status,payment_status,payment_method,currency,total_cents,country_code,pickup_city,driver_id,is_test,pickup_verification_code",
+      )
       .single();
+  }
+
+  if (
+    inserted.error &&
+    isolatedFields &&
+    /is_test|hidden_from_user|column/i.test(String(inserted.error.message ?? ""))
+  ) {
+    // Schema without isolation columns must not leave an open live dispatch row.
+    return taxiJson({ ok: false, error: "guinea_isolated_schema_not_ready" }, 503);
   }
 
   if (inserted.error || !inserted.data) {
@@ -566,10 +597,27 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
   }
 
   const rideId = String(inserted.data.id);
-  const dispatch = await runTaxiRideDispatch({
-    supabase: input.supabaseAdmin,
-    taxiRideId: rideId,
-  });
+  let dispatch = {
+    ok: true,
+    notified: 0,
+    candidates: 0,
+    message: isolatedFields
+      ? "guinea_isolated_assigned_no_live_dispatch"
+      : undefined as string | undefined,
+  };
+
+  if (!isolatedFields) {
+    const live = await runTaxiRideDispatch({
+      supabase: input.supabaseAdmin,
+      taxiRideId: rideId,
+    });
+    dispatch = {
+      ok: live.ok,
+      notified: live.notified,
+      candidates: live.candidates,
+      message: live.message,
+    };
+  }
 
   return taxiJson({
     ok: true,
@@ -580,6 +628,7 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
     currency: GUINEA_CURRENCY,
     payment_method: "cash",
     payment_status: "pending_cash",
+    isolated_rehearsal: Boolean(isolatedFields),
     pooling: chooseGuineaPoolProposal({
       sharedRide: input.sharedRide === true,
       vehicle: decision.vehicle,
@@ -593,6 +642,7 @@ export async function maybeCreateGuineaCashTaxi(input: PointInput & {
       ok: dispatch.ok,
       notified: dispatch.notified,
       candidates: dispatch.candidates,
+      message: dispatch.message ?? null,
     },
   });
 }

@@ -26,6 +26,7 @@ import { isClientProfileComplete as scoreClientProfileComplete } from "../lib/pr
 import { withTimeout, BOOT_AUTH_TIMEOUT_MS } from "../lib/bootFailOpen";
 
 import { RoleSelectScreen } from "../screens/RoleSelectScreen";
+import { CountryWelcomeScreen } from "../screens/CountryWelcomeScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import { ClientAuthScreen } from "../screens/ClientAuthScreen";
 import { DriverAuthScreen } from "../screens/DriverAuthScreen";
@@ -66,6 +67,9 @@ import { RestaurantOrderAlertBanner } from "../components/RestaurantOrderAlertBa
 import IncomingMaskedCallHost from "../components/calls/IncomingMaskedCallHost";
 
 export type RootStackParamList = {
+  CountryWelcome:
+    | { returnTo?: "ClientSettings" | "DriverWorkAccount" }
+    | undefined;
   RoleSelect: undefined;
   ResetPassword: undefined;
 
@@ -91,6 +95,8 @@ export type RootStackParamList = {
     countryCode?: string;
     title?: string;
     submitLabel?: string;
+    /** Pickup/collecte: force verified device GPS (no city-center fallback). */
+    requireVerifiedGps?: boolean;
     returnTo: "TaxiHome" | "TaxiQuote" | "DeliveryRequest" | "MarketplaceCart";
     pickerContext:
       | "taxi_pickup"
@@ -924,6 +930,8 @@ export function AppNavigator({
         return;
       }
 
+      if (cur === "CountryWelcome") return;
+
       const { data } = await withTimeout(
         supabase.auth.getSession(),
         BOOT_AUTH_TIMEOUT_MS,
@@ -1293,6 +1301,7 @@ export function AppNavigator({
         initialRouteName={initialRouteName}
         screenOptions={{ headerShown: false }}
       >
+        <Stack.Screen name="CountryWelcome" component={CountryWelcomeScreen} />
         <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
 

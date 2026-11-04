@@ -10,6 +10,45 @@ export function isPhoneOtpEnabled(): boolean {
   return truthyEnv("PHONE_OTP_ENABLED");
 }
 
+/** True on Vercel production or NODE_ENV=production (local prod builds). */
+export function isPhoneOtpProductionRuntime(): boolean {
+  return (
+    String(process.env.VERCEL_ENV ?? "").trim() === "production" ||
+    String(process.env.NODE_ENV ?? "").trim() === "production"
+  );
+}
+
+/**
+ * Lab-only OTP path: never calls Twilio / never sends SMS.
+ * Requires PHONE_OTP_ENABLED + PHONE_OTP_SIMULATE.
+ * Hard-disabled in production runtimes even if the env flag is set.
+ * Only accepts isolated test numbers (US +1555… / GN +22462… audit ranges).
+ */
+export function isPhoneOtpSimulate(): boolean {
+  if (isPhoneOtpProductionRuntime()) return false;
+  return isPhoneOtpEnabled() && truthyEnv("PHONE_OTP_SIMULATE");
+}
+
+/** Fixed lab code for simulate mode (never used with real Twilio). */
+export const PHONE_OTP_SIMULATE_CODE = "246810";
+
+const simulateLedger = new Map<
+  string,
+  { startedAt: number; attempts: number; consumed: boolean }
+>();
+
+export function isIsolatedOtpTestPhone(phoneE164: string): boolean {
+  // US lab NANP 555 exchange + Guinea audit prefixes used by mmd-reg-audit probes.
+  return (
+    /^\+1555\d{7}$/.test(phoneE164) ||
+    /^\+22462\d{6,8}$/.test(phoneE164)
+  );
+}
+
+export function resetPhoneOtpSimulateLedgerForTests(): void {
+  simulateLedger.clear();
+}
+
 function getTwilioVerifyConfig(): {
   sid: string;
   token: string;
@@ -23,7 +62,7 @@ function getTwilioVerifyConfig(): {
 }
 
 export function isTwilioVerifyConfigured(): boolean {
-  return getTwilioVerifyConfig() != null;
+  return getTwilioVerifyConfig() != null || isPhoneOtpSimulate();
 }
 
 async function twilioVerifyFetch(
@@ -57,13 +96,28 @@ async function twilioVerifyFetch(
 export async function startPhoneVerification(params: {
   phone: string;
   channel?: "sms" | "call";
-}): Promise<{ ok: boolean; error?: string; phoneE164?: string }> {
+}): Promise<{ ok: boolean; error?: string; phoneE164?: string; simulated?: boolean }> {
   if (!isPhoneOtpEnabled()) {
     return { ok: false, error: "Phone verification is temporarily unavailable." };
   }
   const phoneE164 = normalizePhoneE164(params.phone);
   if (!phoneE164) {
     return { ok: false, error: "Invalid phone number" };
+  }
+
+  if (isPhoneOtpSimulate()) {
+    if (!isIsolatedOtpTestPhone(phoneE164)) {
+      return {
+        ok: false,
+        error: "Simulate mode only accepts isolated lab phone numbers.",
+      };
+    }
+    simulateLedger.set(phoneE164, {
+      startedAt: Date.now(),
+      attempts: 0,
+      consumed: false,
+    });
+    return { ok: true, phoneE164, simulated: true };
   }
 
   const body = new URLSearchParams();
@@ -80,7 +134,7 @@ export async function startPhoneVerification(params: {
 export async function checkPhoneVerification(params: {
   phone: string;
   code: string;
-}): Promise<{ ok: boolean; error?: string; phoneE164?: string }> {
+}): Promise<{ ok: boolean; error?: string; phoneE164?: string; simulated?: boolean }> {
   if (!isPhoneOtpEnabled()) {
     return { ok: false, error: "Phone verification is temporarily unavailable." };
   }
@@ -89,6 +143,35 @@ export async function checkPhoneVerification(params: {
   if (!phoneE164) return { ok: false, error: "Invalid phone number" };
   if (!/^\d{4,10}$/.test(code)) {
     return { ok: false, error: "Invalid verification code" };
+  }
+
+  if (isPhoneOtpSimulate()) {
+    if (!isIsolatedOtpTestPhone(phoneE164)) {
+      return {
+        ok: false,
+        error: "Simulate mode only accepts isolated lab phone numbers.",
+      };
+    }
+    const row = simulateLedger.get(phoneE164);
+    if (!row) {
+      return { ok: false, error: "Invalid or expired verification code." };
+    }
+    row.attempts += 1;
+    if (row.consumed) {
+      return { ok: false, error: "Invalid or expired verification code." };
+    }
+    // Lab "expired": special code or >10 minutes.
+    if (code === "000000" || Date.now() - row.startedAt > 10 * 60_000) {
+      return { ok: false, error: "Invalid or expired verification code." };
+    }
+    if (row.attempts > 5) {
+      return { ok: false, error: "Too many attempts. Try again later." };
+    }
+    if (code !== PHONE_OTP_SIMULATE_CODE) {
+      return { ok: false, error: "Invalid or expired verification code." };
+    }
+    row.consumed = true;
+    return { ok: true, phoneE164, simulated: true };
   }
 
   const body = new URLSearchParams();

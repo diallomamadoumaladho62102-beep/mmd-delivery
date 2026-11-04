@@ -86,6 +86,7 @@ type Order = {
   id: string;
   kind: "pickup_dropoff" | "food" | "delivery" | string;
   status: OrderStatus;
+  payment_status?: string | null;
   created_at: string | null;
   restaurant_name: string | null;
   pickup_address: string | null;
@@ -576,6 +577,7 @@ function mapTaxiRideToOrder(row: any): Order {
     id: String(row?.id ?? ""),
     kind: "taxi",
     status: String(row?.status ?? "pending") as OrderStatus,
+    payment_status: row?.payment_status ?? null,
     created_at: row?.created_at ?? null,
     restaurant_name: "MMD Taxi",
     pickup_address: row?.pickup_address ?? null,
@@ -604,6 +606,7 @@ function mapDeliveryRequestToOrder(row: any): Order {
     id: String(row?.id ?? ""),
     kind: "delivery",
     status: String(row?.status ?? "pending") as OrderStatus,
+    payment_status: row?.payment_status ?? null,
     created_at: row?.created_at ?? null,
     restaurant_name: null,
     pickup_address: row?.pickup_address ?? null,
@@ -1114,6 +1117,7 @@ export function DriverOrderDetailsScreen() {
             id,
             kind,
             status,
+            payment_status,
             created_at,
             restaurant_name,
             pickup_address,
@@ -3305,6 +3309,83 @@ export function DriverOrderDetailsScreen() {
             </Text>
           </View>
         </View>
+
+        {String(order.payment_status ?? "").toLowerCase() === "pending_cash" &&
+        ["delivered", "completed"].includes(String(order.status ?? "").toLowerCase()) &&
+        (isDeliveryRequest || String(order.kind ?? "").toLowerCase() === "food") ? (
+          <TouchableOpacity
+            disabled={accepting}
+            onPress={() => {
+              void (async () => {
+                try {
+                  setAccepting(true);
+                  if (isDeliveryRequest) {
+                    const { collectDeliveryRequestCash } = await import(
+                      "../lib/deliveryRequestDriverApi"
+                    );
+                    await collectDeliveryRequestCash(order.id);
+                  } else {
+                    const { collectFoodOrderCash } = await import("../lib/foodOrderApi");
+                    await collectFoodOrderCash(order.id);
+                  }
+                  Alert.alert(
+                    t("driver.cash.collectedTitle", "Cash collected"),
+                    t(
+                      "driver.cash.collectedBody",
+                      "Payment marked as cash collected."
+                    )
+                  );
+                  await fetchOrder();
+                } catch (e: unknown) {
+                  Alert.alert(
+                    t("common.error", "Error"),
+                    e instanceof Error
+                      ? e.message
+                      : t("driver.cash.collectFailed", "Unable to confirm cash collection.")
+                  );
+                } finally {
+                  setAccepting(false);
+                }
+              })();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("driver.cash.collect", "Confirm cash received")}
+            activeOpacity={0.85}
+            style={{
+              borderRadius: 16,
+              paddingVertical: 14,
+              alignItems: "center",
+              backgroundColor: MMD_GOLD_CLASSIC,
+              opacity: accepting ? 0.6 : 1,
+              marginBottom: 10,
+            }}
+          >
+            <Text
+              style={{
+                color: MMD_BLUE,
+                fontSize: 15,
+                fontFamily: MMD_FONT.extrabold,
+                fontWeight: "800",
+              }}
+            >
+              {t("driver.cash.collect", "Confirm cash received")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {String(order.payment_status ?? "").toLowerCase() === "cash_collected" ? (
+          <Text
+            style={{
+              color: "#22C55E",
+              fontSize: 13,
+              fontFamily: MMD_FONT.extrabold,
+              fontWeight: "800",
+              marginBottom: 8,
+            }}
+          >
+            {t("driver.cash.collectedBadge", "Cash collected")}
+          </Text>
+        ) : null}
 
         {["delivered", "completed"].includes(String(order.status ?? "").toLowerCase()) &&
         !isMarketplaceJob ? (

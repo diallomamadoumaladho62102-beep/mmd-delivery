@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : "Server error";
     const status =
       message === "marketplace_live_checkout_disabled" ||
-      message === "platform_checkout_disabled"
+      message === "platform_checkout_disabled" ||
+      message === "guinea_test_live_operation_blocked"
         ? 403
         : 400;
     return mmdLocationJson({ ok: false, error: message }, status);

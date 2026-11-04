@@ -445,6 +445,13 @@ export function RoleSelectScreen() {
         return;
       }
 
+      if (realRole === "seller" || selectedSellerAppliesToProfile(realRole)) {
+        if (selectedRole === "seller") {
+          navigation.navigate("SellerGate");
+          return;
+        }
+      }
+
       return;
     }
 
@@ -454,6 +461,11 @@ export function RoleSelectScreen() {
 
     if (roleToUse === "client") {
       navigation.navigate("ClientHome");
+      return;
+    }
+
+    if (roleToUse === "seller") {
+      navigation.navigate("SellerGate");
       return;
     }
 
@@ -545,6 +557,7 @@ export function RoleSelectScreen() {
           return;
         }
 
+        // Seller is a client overlay: shared ClientAuth, then SellerGate via selectedRole.
         navigation.navigate("ClientAuth");
         return;
       }

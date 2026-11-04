@@ -326,19 +326,9 @@ export function DriverWorkAccountScreen() {
 
           <Row
             chevron={chevron}
-            leftIcon={
-              state.isBike
-                ? "✅"
-                : state.docsDone >= state.docsTotal
-                  ? "✅"
-                  : "⏳"
-            }
+            leftIcon={state.docsDone >= state.docsTotal && state.docsTotal > 0 ? "✅" : "⏳"}
             label={t("driver.workAccount.rows.docs.label", "Documents")}
-            value={
-              state.isBike
-                ? t("driver.workAccount.rows.docs.notRequiredBike", "Not required (Bike)")
-                : `${state.docsDone}/${state.docsTotal}`
-            }
+            value={`${state.docsDone}/${state.docsTotal}`}
             onPress={() => go("DriverDocumentsScreen")}
           />
 
@@ -409,6 +399,15 @@ export function DriverWorkAccountScreen() {
             label={t("driver.workAccount.legal.about.label", "About")}
             value={t("driver.workAccount.legal.about.value", "Version, support")}
             onPress={() => go("DriverAboutScreen")}
+          />
+          <Row
+            chevron={chevron}
+            leftIcon="🌍"
+            label={t("driver.workAccount.country.label", "Country")}
+            value={t("driver.workAccount.country.value", "Guinea or United States")}
+            onPress={() =>
+              navigation.navigate("CountryWelcome", { returnTo: "DriverWorkAccount" })
+            }
           />
         </SectionCard>
 

@@ -29,7 +29,7 @@ const PRODUCT_SELECT =
   "id,seller_id,title,description,price_cents,currency,category,image_paths,active,stock_qty,options_json,variants_json,promo_price_cents,created_at,updated_at";
 
 const ORDER_SELECT =
-  "id,seller_id,client_user_id,status,currency,total_cents,country_code,region_code,notes,refund_status,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,dispatch_shadow,created_at";
+  "id,seller_id,client_user_id,status,payment_status,currency,total_cents,country_code,region_code,notes,refund_status,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,dispatch_shadow,created_at";
 
 export async function loadOwnSeller(): Promise<SellerRow | null> {
   const { data: session } = await withTimeout(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertCanReviewDrivers } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { notifyDriverComplementaryDocuments } from "@/lib/driverReviewNotifications";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,10 @@ function normalizeText(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const text = value.trim();
   return text.length > 0 ? text : null;
+}
+
+function isComplementaryRequest(status: DocumentStatus): boolean {
+  return status === "incomplete" || status === "rejected";
 }
 
 export async function POST(request: NextRequest) {
@@ -104,6 +109,12 @@ export async function POST(request: NextRequest) {
       return badRequest("status must be pending, approved, rejected or incomplete.");
     }
 
+    if (isComplementaryRequest(status) && !reviewNotes) {
+      return badRequest(
+        "reviewNotes is required when requesting complementary or rejected documents.",
+      );
+    }
+
     const patch = {
       status,
       reviewed_at: now,
@@ -122,24 +133,75 @@ export async function POST(request: NextRequest) {
     if (error) throw new Error(error.message);
     if (!data) return badRequest("Driver document not found after update.");
 
+    let profileMarkedIncomplete = false;
+    if (isComplementaryRequest(status)) {
+      const { data: driverRow } = await supabase
+        .from("driver_profiles")
+        .select("status")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const currentStatus = String(
+        (driverRow as { status?: string | null } | null)?.status ?? "",
+      ).toLowerCase();
+      if (currentStatus === "pending" || currentStatus === "incomplete") {
+        const { error: profileError } = await supabase
+          .from("driver_profiles")
+          .update({
+            status: "incomplete",
+            documents_required: true,
+            driver_decision_note: reviewNotes,
+            updated_at: now,
+          })
+          .eq("user_id", userId)
+          .in("status", ["pending", "incomplete"]);
+        profileMarkedIncomplete = !profileError;
+      }
+    }
+
     await writeAdminAuditServer({
       supabaseAdmin: supabase,
       adminUserId: admin.userId,
-      action: "driver_document_updated",
+      action: isComplementaryRequest(status)
+        ? "driver_documents_requested"
+        : "driver_document_updated",
       targetType: "driver",
       targetId: userId,
       oldValues: existing as Record<string, unknown>,
-      newValues: data as Record<string, unknown>,
-      metadata: { document_id: documentId },
+      newValues: {
+        ...(data as Record<string, unknown>),
+        profile_marked_incomplete: profileMarkedIncomplete,
+      },
+      metadata: {
+        document_id: documentId,
+        doc_type: (data as { doc_type?: string }).doc_type ?? null,
+        review_notes: reviewNotes,
+      },
       request,
     });
+
+    let notified = false;
+    if (isComplementaryRequest(status)) {
+      const notice = await notifyDriverComplementaryDocuments({
+        supabaseAdmin: supabase,
+        userId,
+        documentType: String((data as { doc_type?: string }).doc_type ?? "document"),
+        note: reviewNotes,
+        documentId,
+        reviewedAt: now,
+      });
+      notified = notice.notified;
+    }
 
     return NextResponse.json({
       ok: true,
       userId,
       documentId,
       document: data,
-      message: "Driver document updated successfully.",
+      profileMarkedIncomplete,
+      notified,
+      message: isComplementaryRequest(status)
+        ? "Complementary documents requested."
+        : "Driver document updated successfully.",
     });
   } catch (error) {
     const message =

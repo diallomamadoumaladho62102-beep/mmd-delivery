@@ -1,4 +1,4 @@
-import { ensureAppLocale } from "./deviceLocale";
+import { ensureAppLocale } from "./appLocale";
 export {
   formatDurationMinutes,
   formatTripDurationFromSeconds,
@@ -27,14 +27,37 @@ export function formatMoney(
   const value = Number(amount);
   if (!Number.isFinite(value)) return `${currency} 0`;
 
+  const code = String(currency || "USD").trim().toUpperCase() || "USD";
   try {
+    if (code === "GNF") {
+      const formatted = new Intl.NumberFormat(intlLocaleTag(language), {
+        maximumFractionDigits: 0,
+      }).format(Math.round(value));
+      return `${formatted} GNF`;
+    }
     return new Intl.NumberFormat(intlLocaleTag(language), {
       style: "currency",
-      currency: String(currency || "USD").toUpperCase(),
+      currency: code,
     }).format(value);
   } catch {
-    return `${value.toFixed(2)} ${currency}`;
+    return code === "GNF"
+      ? `${Math.round(value)} GNF`
+      : `${value.toFixed(2)} ${code}`;
   }
+}
+
+/** GNF is stored as whole francs. Other currencies keep minor units (cents). */
+export function priceCentsToMajor(cents: number, currency = "USD"): number {
+  const code = String(currency || "USD").trim().toUpperCase();
+  const minor = Number(cents || 0);
+  if (!Number.isFinite(minor)) return 0;
+  return code === "GNF" ? minor : minor / 100;
+}
+
+export function majorToPriceCents(major: number, currency = "USD"): number {
+  const code = String(currency || "USD").trim().toUpperCase();
+  if (!Number.isFinite(major)) return 0;
+  return code === "GNF" ? Math.round(major) : Math.round(major * 100);
 }
 
 export function formatMoneyFromCents(
@@ -43,8 +66,7 @@ export function formatMoneyFromCents(
   language?: string | null
 ): string {
   const code = String(currency || "USD").trim().toUpperCase();
-  const minor = Number(cents || 0);
-  const major = code === "GNF" ? minor : minor / 100;
+  const major = priceCentsToMajor(cents, code);
   if (code === "GNF") {
     const formatted = new Intl.NumberFormat(intlLocaleTag(language), {
       maximumFractionDigits: 0,

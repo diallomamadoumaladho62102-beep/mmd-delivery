@@ -9,12 +9,22 @@ import {
   selectClientHomeDisplayItems,
 } from "./clientOrderDisplay";
 
-test("hides archived/test trips", () => {
+test("owner history shows completed is_test rehearsal but hides active test and archived", () => {
   assert.equal(
     isVisibleClientTrip({
       id: "1",
       kind: "restaurant_order",
       status: "delivered",
+      is_test: true,
+      hidden_from_user: true,
+    }),
+    true,
+  );
+  assert.equal(
+    isVisibleClientTrip({
+      id: "1b",
+      kind: "restaurant_order",
+      status: "dispatched",
       is_test: true,
     }),
     false,
@@ -106,9 +116,9 @@ test("stats exclude cancelled from active and count accurately", () => {
     },
   ]);
   assert.equal(stats.active, 1);
-  assert.equal(stats.completed, 1);
+  assert.equal(stats.completed, 2);
   assert.equal(stats.cancelled, 1);
-  assert.equal(stats.totalOrders, 3);
+  assert.equal(stats.totalOrders, 4);
 });
 
 test("test data not mixed into in-progress selection", () => {

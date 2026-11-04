@@ -111,6 +111,16 @@ export default function AdminTaxiDriversPage() {
             <p className="mt-1 text-sm text-slate-600">
               {t("Activation taxi, classes véhicule et éligibilité XL / premium.")}
             </p>
+            <p className="mt-2 text-sm text-slate-500">
+              {t("Approve, suspend or disable driver accounts on")}{" "}
+              <a
+                href="/admin/drivers"
+                className="font-semibold text-slate-900 underline"
+              >
+                {t("Drivers")}
+              </a>
+              . {t("This page only edits taxi vehicle features.")}
+            </p>
           </header>
 
           <div className="flex gap-3">

@@ -1,3 +1,5 @@
+import { confirmSignOutToRoleSelect } from "../../lib/confirmSignOutToRoleSelect";
+import { restaurantSignOutLabels } from "../../lib/signOutToRoleSelect";
 import { toUserFacingError } from "../../lib/userFacingError";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -16,6 +18,13 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
+import {
+  isPlausibleGuineaPhone,
+  marketPhonePrefix,
+  marketRequiresPostalCode,
+  normalizeGuineaPhone,
+} from "../../lib/selectedMarket";
+import { isGuineaMarket, useSelectedMarket } from "../../lib/useSelectedMarket";
 import { useTranslation } from "react-i18next";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -152,12 +161,15 @@ function getExt(name?: string, mimeType?: string) {
 
 export default function RestaurantSetupScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const selectedMarket = useSelectedMarket();
+  const guineaUi = isGuineaMarket(selectedMarket);
 
   const [restaurantName, setRestaurantName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
+  const [prefecture, setPrefecture] = useState("");
   const [cuisineType, setCuisineType] = useState("");
   const [description, setDescription] = useState("");
   const [logoLocalUri, setLogoLocalUri] = useState<string | null>(null);
@@ -471,25 +483,45 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     const restaurantAddress = cleanText(address);
     const restaurantCity = cleanText(city);
     const restaurantPostalCode = cleanText(postalCode);
+    const restaurantPrefecture = cleanText(prefecture);
     const restaurantCuisineType = cleanText(cuisineType);
-    const fullAddress = cleanText(
-      `${restaurantAddress}, ${restaurantCity}, NY ${restaurantPostalCode}`
-    );
+    const postalRequired = selectedMarket
+      ? marketRequiresPostalCode(selectedMarket)
+      : true;
+    const phoneForSave = guineaUi
+      ? normalizeGuineaPhone(restaurantPhone)
+      : restaurantPhone;
+    const fullAddress = guineaUi
+      ? cleanText(
+          [restaurantAddress, restaurantCity, restaurantPrefecture, "Guinea"]
+            .filter(Boolean)
+            .join(", "),
+        )
+      : cleanText(
+          `${restaurantAddress}, ${restaurantCity}, NY ${restaurantPostalCode}`,
+        );
 
     if (
       !name ||
-      !restaurantPhone ||
+      !phoneForSave ||
       !restaurantAddress ||
       !restaurantCity ||
-      !restaurantPostalCode ||
-      !restaurantCuisineType
+      (postalRequired && !restaurantPostalCode) ||
+      (guineaUi && !restaurantPrefecture) ||
+      !restaurantCuisineType ||
+      (guineaUi && !isPlausibleGuineaPhone(phoneForSave))
     ) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Error"),
-        t(
-          "restaurant.setup.alerts.requiredFields",
-          "Fill in the name, phone, address, city, ZIP, and cuisine type."
-        )
+        guineaUi
+          ? t(
+              "guineaMarket.restaurantSetupRequired",
+              "Fill in the name, a valid +224 phone, a landmark, the town, the prefecture, and the cuisine.",
+            )
+          : t(
+              "restaurant.setup.alerts.requiredFields",
+              "Fill in the name, phone, address, city, ZIP, and cuisine type.",
+            ),
       );
       return;
     }
@@ -530,7 +562,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         user_id: user.id,
         email: user.email,
         restaurant_name: name,
-        phone: restaurantPhone,
+        phone: phoneForSave,
         address: geocoded.formattedAddress,
         city: restaurantCity,
         postal_code: restaurantPostalCode,
@@ -596,7 +628,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
       const profileSyncPayload: Record<string, unknown> = {
         id: user.id,
         full_name: name,
-        phone: restaurantPhone,
+        phone: phoneForSave,
         avatar_url: finalLogoPath ?? null,
         updated_at: new Date().toISOString(),
       };
@@ -710,6 +742,17 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
           <Text style={styles.screenTitle}>
             {t("restaurant.setup.title", "Restaurant profile")}
           </Text>
+          <TouchableOpacity
+            onPress={() =>
+              confirmSignOutToRoleSelect({
+                navigation,
+                labels: restaurantSignOutLabels(t),
+              })
+            }
+            activeOpacity={0.85}
+          >
+            <Text style={styles.signOutText}>{t("common.logout", "Log out")}</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -802,30 +845,61 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
               t("restaurant.setup.fields.phone", "Phone"),
               phone,
               setPhone,
-              { keyboardType: "phone-pad", placeholder: "+1 212 555 0100" },
+              {
+                keyboardType: "phone-pad",
+                placeholder: guineaUi
+                  ? t("guineaMarket.authPhonePlaceholder", "+224 6XX XX XX XX")
+                  : "+1 212 555 0100",
+              },
             )}
             {iconField(
               "📍",
               t("restaurant.setup.fields.address", "Address"),
               address,
               setAddress,
-              { placeholder: "123 Main St" },
+              {
+                placeholder: guineaUi
+                  ? t(
+                      "guineaMarket.authLandmarkPlaceholder",
+                      "Neighborhood, market, school or landmark",
+                    )
+                  : "123 Main St",
+              },
             )}
             {iconField(
               "🏙️",
               t("restaurant.setup.fields.city", "City"),
               city,
               setCity,
-              { placeholder: "New York" },
+              {
+                placeholder: guineaUi
+                  ? t("guineaMarket.authCityPlaceholder", "City or commune")
+                  : "New York",
+              },
             )}
+            {guineaUi
+              ? iconField(
+                  "🗺️",
+                  t("guineaMarket.authRegionPlaceholder", "Prefecture"),
+                  prefecture,
+                  setPrefecture,
+                  {
+                    placeholder: t("guineaMarket.authRegionPlaceholder", "Prefecture"),
+                  },
+                )
+              : null}
             {iconField(
               "📮",
-              t("restaurant.setup.fields.postalCode", "Zip Code"),
+              guineaUi
+                ? t("guineaMarket.authZipLabel", "Postal code (optional)")
+                : t("restaurant.setup.fields.postalCode", "Zip Code"),
               postalCode,
               setPostalCode,
               {
                 keyboardType: "numbers-and-punctuation",
-                placeholder: "10001",
+                placeholder: guineaUi
+                  ? t("guineaMarket.authZipPlaceholder", "Optional")
+                  : "10001",
               },
             )}
             {iconField(
@@ -939,6 +1013,13 @@ const styles = StyleSheet.create({
     fontFamily: MMD_FONT.extrabold,
     fontWeight: "800",
     textAlign: "center",
+  },
+  signOutText: {
+    color: MMD_WHITE,
+    fontFamily: MMD_FONT.semibold,
+    fontWeight: "600",
+    fontSize: 15,
+    textDecorationLine: "underline",
   },
   screenTitle: {
     color: MMD_WHITE,

@@ -214,6 +214,106 @@ export function driverDisabledEmail(params: {
   );
 }
 
+export function driverComplementaryDocumentsEmail(params: {
+  locale?: AppLocale | string | null;
+  documentType?: string | null;
+  note?: string | null;
+}): TransactionalEmailTemplate {
+  const locale = normalizeAppLocale(params?.locale);
+  const docType = String(params.documentType ?? "document").trim() || "document";
+  const note = String(params.note ?? "").trim();
+  const noteHtml = note
+    ? `<p><strong>${escapeHtml(reasonLabel(locale))}</strong> ${escapeHtml(note)}</p>`
+    : "";
+  return email(
+    locale,
+    {
+      en: {
+        subject: "Additional driver documents requested",
+        preview: "MMD needs an updated document for your driver file.",
+        headline: "Documents requested",
+        body: `Please re-upload ${docType} from your driver profile. Driver Home stays limited until the file is complete.`,
+        cta: "Open driver account",
+      },
+      fr: {
+        subject: "Documents complémentaires demandés",
+        preview: "MMD a besoin d'un document mis à jour pour votre dossier chauffeur.",
+        headline: "Documents demandés",
+        body: `Veuillez recharger ${docType} depuis votre profil chauffeur. L'accueil chauffeur reste limité tant que le dossier n'est pas complet.`,
+        cta: "Ouvrir le compte chauffeur",
+      },
+      es: {
+        subject: "Documentos adicionales solicitados",
+        preview: "MMD necesita un documento actualizado para tu expediente.",
+        headline: "Documentos solicitados",
+        body: `Vuelve a subir ${docType} desde tu perfil de conductor. El inicio permanece limitado hasta completar el expediente.`,
+        cta: "Abrir cuenta de conductor",
+      },
+      ar: {
+        subject: "مطلوب مستندات إضافية",
+        preview: "تحتاج MMD إلى مستند محدّث لملف السائق.",
+        headline: "مستندات مطلوبة",
+        body: `يرجى إعادة رفع ${docType} من ملف السائق. تبقى الصفحة الرئيسية محدودة حتى اكتمال الملف.`,
+        cta: "فتح حساب السائق",
+      },
+      zh: {
+        subject: "需要补充司机文件",
+        preview: "MMD 需要您更新司机档案中的文件。",
+        headline: "需要补充文件",
+        body: `请在司机资料中重新上传 ${docType}。在档案完整前，司机首页功能将受限。`,
+        cta: "打开司机账户",
+      },
+      ff: {
+        subject: "Fiildeeji goɗɗi naamnaama",
+        preview: "MMD ina naamndii fiilde hesɗinaande e dossier driwer maa.",
+        headline: "Fiildeeji naamnaama",
+        body: `Hesɗin ${docType} e profil driwer maa. Jaɓɓorgo driwer ina udditaa haa dossier oo timma.`,
+        cta: "Uddit konte driwer",
+      },
+    },
+    noteHtml,
+  );
+}
+
+export function driverComplementaryDocumentsPush(
+  localeRaw: AppLocale | string | null | undefined,
+  documentType?: string | null,
+  note?: string | null,
+): { title: string; body: string } {
+  const locale = normalizeAppLocale(localeRaw);
+  const docType = String(documentType ?? "document").trim() || "document";
+  const clean = String(note ?? "").trim().slice(0, 120);
+  const base: Record<AppLocale, { title: string; body: string }> = {
+    en: {
+      title: "Documents requested",
+      body: `Please re-upload ${docType} in your driver profile.`,
+    },
+    fr: {
+      title: "Documents demandés",
+      body: `Veuillez recharger ${docType} dans votre profil chauffeur.`,
+    },
+    es: {
+      title: "Documentos solicitados",
+      body: `Vuelve a subir ${docType} en tu perfil de conductor.`,
+    },
+    ar: {
+      title: "مستندات مطلوبة",
+      body: `يرجى إعادة رفع ${docType} في ملف السائق.`,
+    },
+    zh: {
+      title: "需要补充文件",
+      body: `请在司机资料中重新上传 ${docType}。`,
+    },
+    ff: {
+      title: "Fiildeeji naamnaama",
+      body: `Hesɗin ${docType} e profil driwer maa.`,
+    },
+  };
+  const copy = base[locale];
+  if (!clean) return copy;
+  return { title: copy.title, body: `${copy.body} ${clean}` };
+}
+
 export function driverReviewRequestedEmail(params: {
   locale?: AppLocale | string | null;
   driverName?: string | null;

@@ -148,6 +148,9 @@
       "checkout": "Prepare checkout",
       "comingSoonCta": "Marketplace checkout coming soon",
       "payLive": "Pay Marketplace Order",
+      "confirmCash": "Confirm order (cash)",
+      "cashPlacedTitle": "Order confirmed",
+      "cashPlacedBody": "Your order is confirmed. Pay in cash on delivery. The seller has been notified.",
       "missingCheckoutUrl": "Missing checkout URL",
       "backToMarketplace": "Back to marketplace",
       "checkoutStillComingSoon": "Checkout still coming soon — no live marketplace payment.",
@@ -350,7 +353,9 @@
       "viewOrders": "View orders"
     },
     "signOut": {
-      "title": "Log out"
+      "title": "Log out",
+      "body": "Sign out of this device? Your seller account and products stay intact.",
+      "error": "Unable to sign out right now."
     }
   },
   "taxi": {
@@ -475,6 +480,7 @@
       "platformFee": "Platform fee",
       "total": "Total",
       "detectedCountry": "Detected from pickup",
+      "paid": "Paid",
       "estimatesIn": "Estimates in"
     },
     "common": {
@@ -1050,6 +1056,16 @@
       },
       "v4": {
         "comingSoon": "Launching soon",
+        "rewards": {
+          "creditUnknown": "Credit unavailable",
+          "progress": "{{current}} / {{target}} pts until {{tier}} tier"
+        },
+        "tier": {
+          "bronze": "Bronze",
+          "gold": "Gold",
+          "next": "next",
+          "silver": "Silver"
+        },
         "language": {
           "subtitle": "Choose your preferred language for MMD."
         },
@@ -1611,6 +1627,7 @@
       "danger": "Danger",
       "language": "Language",
       "notifications": "Notifications",
+      "country": "Country",
       "platform": "Platform",
       "privacy": "Privacy",
       "profile": "Profile",
@@ -2145,6 +2162,10 @@
         "other": "Other"
       }
     },
+    "signOut": {
+      "title": "Log out",
+      "body": "Sign out of this device? Your driver account and data stay intact."
+    },
     "account": {
       "createProfileFailed": "Unable to create the driver profile right now.",
       "loadProfileFailed": "Unable to load the driver profile right now.",
@@ -2419,6 +2440,10 @@
           "value": "Data, permissions"
         },
         "title": "Legal & Help"
+      },
+      "country": {
+        "label": "Country",
+        "value": "Guinea or United States"
       },
       "next": {
         "addDocs": "Add documents",
@@ -3668,7 +3693,7 @@
     "quartierPlaceholder": "Lambanyi",
     "landmarkSearch": "Landmark search",
     "landmarkSearchRequired": "Landmark search *",
-    "landmarkPlaceholder": "Station Total, mosquée, marché...",
+    "landmarkPlaceholder": "Station Total, mosque, market...",
     "formattedAddress": "Formatted address (optional)",
     "formattedAddressPlaceholder": "Street or place name if known",
     "directions": "Describe your exact location *",
@@ -3676,7 +3701,18 @@
     "directionsMin": "Minimum 8 characters required.",
     "photoLabel": "Photo of the place (recommended)",
     "retakePhoto": "Retake location photo",
-    "addPhoto": "Add photo of gate, shop, or building"
+    "addPhoto": "Add photo of gate, shop, or building",
+    "useGpsCurrent": "My current location",
+    "region": "Region",
+    "regionPlaceholder": "Region",
+    "prefecture": "Prefecture",
+    "prefecturePlaceholder": "Prefecture",
+    "communeTown": "Town / commune",
+    "communeTownPlaceholder": "Town or commune",
+    "quartierSector": "Neighborhood / sector",
+    "quartierSectorPlaceholder": "Neighborhood or sector",
+    "landmarkPlaceholderLocal": "Market, school, mosque, hospital or shop",
+    "hintPinConfirmLocal": "Use GPS, move the map, then add a neighborhood or landmark. Postal code is not required."
   },
   "maskedCall": {
     "errorTitle": "Call error"
@@ -3914,7 +3950,9 @@
       "loading": "Loading prices…",
       "calculating": "Calculating estimate…",
       "ready": "Estimate ready",
-      "emptyHint": "Calculate the price to see the estimate."
+      "emptyHint": "Calculate the price to see the estimate.",
+      "pickupGps": "Pickup GPS",
+      "dropoffGps": "Dropoff GPS"
     },
     "header": {
       "title": "Request a delivery",
@@ -3968,6 +4006,8 @@
     },
     "errors": {
       "estimateGeneric": "Unable to calculate the delivery estimate right now.",
+      "addressNotFound": "No map match for these addresses. Use a clearer place, or pin the points on the map.",
+      "routeNotFound": "No driving route was found between these points.",
       "networkEstimate": "Network error while calculating the estimate.",
       "estimateTimeout": "The estimate request took too long. Try again.",
       "distanceTooLarge": "Distance is too large. Check both addresses.",
@@ -4304,7 +4344,9 @@
     "schemaNotReady": "Cash rides are not ready on the server yet. The trip was not created.",
     "motorcycleNotReady": "Motorcycle rides are not ready on the server yet.",
     "vehicleUnsupported": "This vehicle is not available for this trip.",
-    "tripNotSupported": "This trip type is not available."
+    "tripNotSupported": "This trip type is not available.",
+    "searchingDrivers": "Searching for nearby drivers…",
+    "detailsPreview": "Trip preview"
   },
   "taxiXl": {
     "open": "XL interregional",
@@ -4390,5 +4432,66 @@
     "segmentDeparture": "Segment departure",
     "noGpsFix": "No GPS position was captured.",
     "marketUnavailable": "This intercity trip is available only in Guinea."
+  },
+  "guineaMarket": {
+    "welcomeTitle": "Welcome to MMD",
+    "welcomeSubtitle": "Choose your country to continue",
+    "countryOption": "{{name}} — {{dial}} · {{currency}}",
+    "guineaName": "Guinea",
+    "guineaCoverage": "Nationwide Guinea",
+    "usName": "United States",
+    "usCoverage": "United States",
+    "tabsTaxi": "Taxi",
+    "tabsRestaurants": "Restaurants",
+    "tabsParcels": "Packages",
+    "taxiHomeTitle": "Taxi home",
+    "taxiHomeSubtitle": "Passenger transport",
+    "whereTo": "Where are you going?",
+    "pickup": "Pickup",
+    "destination": "Destination",
+    "chooseOnMap": "Choose on the map",
+    "seePrice": "See the price",
+    "xlLink": "XL interregional taxi",
+    "restaurantsTitle": "Restaurants",
+    "restaurantsSubtitle": "Discover the best restaurants near you.",
+    "restaurantsSearch": "Search for a restaurant...",
+    "viewMenu": "View menu →",
+    "restaurantsEmptyTitle": "No restaurants available",
+    "restaurantsEmptyBody": "No registered restaurant matches this search. No placeholder venues are shown.",
+    "parcelsTitle": "Package delivery",
+    "parcelsSubtitle": "Send a package quickly.",
+    "parcelType": "Package type",
+    "pickupPoint": "Pickup point",
+    "pickupLandmark": "Neighborhood, market or landmark",
+    "recipient": "Recipient",
+    "pickupPinned": "Pickup marked",
+    "destinationPinned": "Destination marked",
+    "confirmDelivery": "Confirm delivery",
+    "authPersonalTitle": "Personal information",
+    "authPersonalSubtitle": "Name, {{dial}} phone number and optional photo.",
+    "authPhotoOptional": "Add a photo (optional)",
+    "authEmergencyPhone": "Emergency phone (optional)",
+    "authDateOfBirth": "Date of birth (optional)",
+    "authDobPlaceholder": "YYYY-MM-DD",
+    "authCreatedTitle": "Account created successfully",
+    "authCreatedBody": "Your MMD account is ready. You can request a taxi, a meal or a package in Guinea.",
+    "authStart": "Get started",
+    "authContinue": "Continue",
+    "authLandmarkPlaceholder": "Neighborhood, market, school or landmark",
+    "authCityPlaceholder": "City or commune",
+    "authRegionPlaceholder": "Prefecture",
+    "authPostalPlaceholder": "Postal code (optional)",
+    "authAddressHint": "A neighborhood or landmark is enough. Postal code is not required.",
+    "authPhoneInvalid": "Enter a valid Guinean number, for example +224 620 00 00 00.",
+    "authPhonePlaceholder": "+224 6XX XX XX XX",
+    "authAddressLabel": "Neighborhood or landmark",
+    "authEmergencyInvalid": "Emergency phone must be a valid Guinean number, or left empty.",
+    "authZipLabel": "Postal code (optional)",
+    "authZipPlaceholder": "Optional",
+    "restaurantDropoffPlaceholder": "Neighborhood, market or landmark",
+    "incompleteAddress": "Enter a more complete address with a neighborhood or landmark.",
+    "distanceTooFar": "This delivery is too far ({{miles}}). Check the landmark, town, and map pin.",
+    "deliveryPricingUnavailable": "Guinea delivery pricing is not configured yet. No estimated fee is shown.",
+    "restaurantSetupRequired": "Fill in the name, a valid +224 phone, a landmark, the town, the prefecture, and the cuisine."
   }
 }

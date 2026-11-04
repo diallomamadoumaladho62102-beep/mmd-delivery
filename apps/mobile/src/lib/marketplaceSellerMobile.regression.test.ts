@@ -41,6 +41,16 @@ assert(authRole.includes("SellerGate"), "seller post-auth route defined");
 const clientAuth = read("screens/ClientAuthScreen.tsx");
 assert(clientAuth.includes("resolvePostAuthRoute"), "client auth uses role-aware routing");
 
+const roleSelect = read("screens/RoleSelectScreen.tsx");
+assert(
+  /roleToUse === "seller"[\s\S]*SellerGate/.test(roleSelect),
+  "logged-in seller selection must route to SellerGate (not admin alert)",
+);
+assert(
+  roleSelect.includes('selectedRole === "seller"'),
+  "seller selection is recognized on RoleSelect",
+);
+
 const orders = read("screens/seller/SellerOrdersScreen.tsx");
 assert(orders.includes("highlightOrderId"), "seller orders reads push highlight param");
 

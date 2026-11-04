@@ -10,6 +10,10 @@ import { queueRestaurantPrintJobsForOrder } from "@/lib/restaurantPrintJobs";
 import { notifyClientOrderAccepted } from "@/lib/clientPushNotifications";
 import { notifyOrderAcceptedEmail } from "@/lib/transactionalEmails";
 import { notifyRestaurantNewPaidOrder } from "@/lib/restaurantPushNotifications";
+import {
+  foodPaymentAllowsFulfillment,
+  withOptionalPaymentMethod,
+} from "@/lib/markets/guineaLocalCashCollect";
 
 const AUTOMATION_SELECT =
   "user_id,restaurant_name,status,is_accepting_orders,opening_hours,auto_accept_orders_enabled,auto_accept_only_during_hours,default_prep_minutes,auto_pause_when_closed,auto_pause_when_busy,busy_order_threshold,auto_print_enabled,print_kitchen_ticket,print_customer_ticket,print_driver_ticket,print_copies,print_paper_width,print_show_qr_code,print_special_instructions";
@@ -175,6 +179,8 @@ export async function evaluateAutoAcceptEligibility(
       kind?: string | null;
       status?: string | null;
       payment_status?: string | null;
+      payment_method?: string | null;
+      currency?: string | null;
       items_json?: unknown;
     };
     now?: Date;
@@ -191,7 +197,14 @@ export async function evaluateAutoAcceptEligibility(
     return { ok: false, reason: "not_food_order" };
   }
 
-  if (String(input.order.payment_status ?? "").toLowerCase() !== "paid") {
+  // Paid (Stripe / settled) or Guinea cash (pending_cash + cash + GNF).
+  if (
+    !foodPaymentAllowsFulfillment({
+      paymentStatus: input.order.payment_status,
+      paymentMethod: input.order.payment_method,
+      currency: input.order.currency,
+    })
+  ) {
     return { ok: false, reason: "payment_not_confirmed" };
   }
 
@@ -261,13 +274,27 @@ export async function tryAutoAcceptPaidFoodOrder(
     dispatchOrigin?: string | null;
   },
 ): Promise<AutoAcceptResult> {
-  const { data: order, error } = await supabaseAdmin
-    .from("orders")
-    .select(
-      "id,kind,status,payment_status,restaurant_user_id,restaurant_id,items_json,client_user_id,created_by,total,grand_total,currency,pickup_code,dropoff_code,leave_at_door,items_json",
-    )
-    .eq("id", input.orderId)
-    .maybeSingle();
+  const { data: orderData, error } = await withOptionalPaymentMethod((includePaymentMethod) =>
+    supabaseAdmin
+      .from("orders")
+      .select(
+        `id,kind,status,payment_status,${includePaymentMethod ? "payment_method," : ""}restaurant_user_id,restaurant_id,items_json,client_user_id,created_by,total,grand_total,currency,pickup_code,dropoff_code,leave_at_door,items_json`,
+      )
+      .eq("id", input.orderId)
+      .maybeSingle(),
+  );
+  const order = orderData as unknown as {
+    kind?: string | null;
+    status?: string | null;
+    payment_status?: string | null;
+    payment_method?: string | null;
+    currency?: string | null;
+    items_json?: unknown;
+    restaurant_user_id?: string | null;
+    restaurant_id?: string | null;
+    client_user_id?: string | null;
+    created_by?: string | null;
+  } | null;
 
   if (error) return { ok: false, error: error.message };
   if (!order) return { ok: false, error: "order_not_found" };
@@ -352,7 +379,7 @@ async function ensureRestaurantAcceptWindow(
     .update({ restaurant_accept_expires_at: expiresAt })
     .eq("id", orderId)
     .eq("kind", "food")
-    .eq("payment_status", "paid")
+    .in("payment_status", ["paid", "pending_cash"])
     .is("restaurant_accept_expires_at", null);
 
   if (error) {
@@ -372,13 +399,36 @@ export async function runFoodOrderPaymentSideEffects(
     notifyRestaurant?: boolean;
   },
 ): Promise<void> {
-  const { data: order } = await supabaseAdmin
-    .from("orders")
-    .select("id,kind,client_user_id,created_by,restaurant_user_id,restaurant_id,payment_status")
-    .eq("id", input.orderId)
-    .maybeSingle();
+  const { data: orderData } = await withOptionalPaymentMethod((includePaymentMethod) =>
+    supabaseAdmin
+      .from("orders")
+      .select(
+        `id,kind,client_user_id,created_by,restaurant_user_id,restaurant_id,payment_status,currency${includePaymentMethod ? ",payment_method" : ""}`,
+      )
+      .eq("id", input.orderId)
+      .maybeSingle(),
+  );
+  const order = orderData as unknown as {
+    kind?: string | null;
+    client_user_id?: string | null;
+    created_by?: string | null;
+    restaurant_user_id?: string | null;
+    restaurant_id?: string | null;
+    payment_status?: string | null;
+    payment_method?: string | null;
+    currency?: string | null;
+  } | null;
 
-  if (!order || String(order.payment_status ?? "").toLowerCase() !== "paid") return;
+  if (
+    !order ||
+    !foodPaymentAllowsFulfillment({
+      paymentStatus: order.payment_status,
+      paymentMethod: order.payment_method,
+      currency: order.currency,
+    })
+  ) {
+    return;
+  }
 
   // Kitchen accept countdown must start at payment time, not checkout draft creation.
   if (String(order.kind ?? "").toLowerCase() === "food") {

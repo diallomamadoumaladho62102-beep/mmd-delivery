@@ -28,6 +28,8 @@ import {
 } from "../lib/marketScope";
 import { localizedCuisineType } from "../lib/localizeCuisineType";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { GuineaServiceTabs } from "../components/guinea/GuineaServiceTabs";
+import { isGuineaMarket, useSelectedMarket } from "../lib/useSelectedMarket";
 import {
   MMD_BLUE,
   MMD_FONT,
@@ -100,6 +102,8 @@ export function ClientRestaurantListScreen() {
     () => resolveMarketScopeFromFeatures(platformFeatures),
     [platformFeatures]
   );
+  const selectedMarket = useSelectedMarket();
+  const guineaUi = isGuineaMarket(selectedMarket);
 
   const cuisines = useMemo(() => {
     const unique = Array.from(
@@ -227,14 +231,27 @@ export function ClientRestaurantListScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: MMD_BLUE }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <ScreenHeader
-        title={t("client.restaurants.header.title", "Partner restaurants")}
-        subtitle={t(
-          "client.restaurants.header.subtitle",
-          "Choose a restaurant by category or search for your favorite dish.",
-        )}
+        title={
+          guineaUi
+            ? t("guineaMarket.restaurantsTitle")
+            : t("client.restaurants.header.title", "Partner restaurants")
+        }
+        subtitle={
+          guineaUi
+            ? t("guineaMarket.restaurantsSubtitle")
+            : t(
+                "client.restaurants.header.subtitle",
+                "Choose a restaurant by category or search for your favorite dish.",
+              )
+        }
         fallbackRoute="ClientHome"
         variant="brand"
       />
+      {guineaUi ? (
+        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 }}>
+          <GuineaServiceTabs active="restaurants" />
+        </View>
+      ) : null}
 
       <View
         style={{
@@ -249,10 +266,14 @@ export function ClientRestaurantListScreen() {
         <TextInput
           value={searchText}
           onChangeText={setSearchText}
-          placeholder={t(
-            "client.restaurants.search.placeholder",
-            "Search restaurant, address, or cuisine...",
-          )}
+          placeholder={
+            guineaUi
+              ? t("guineaMarket.restaurantsSearch")
+              : t(
+                  "client.restaurants.search.placeholder",
+                  "Search restaurant, address, or cuisine...",
+                )
+          }
           placeholderTextColor="#6B7280"
           autoCorrect={false}
           style={{
@@ -394,14 +415,18 @@ export function ClientRestaurantListScreen() {
                   marginBottom: 4,
                 }}
               >
-                {t("client.restaurants.empty.title", "No restaurants available")}
+                {guineaUi
+                  ? t("guineaMarket.restaurantsEmptyTitle")
+                  : t("client.restaurants.empty.title", "No restaurants available")}
               </Text>
 
               <Text style={{ color: MMD_MUTED, fontSize: 13, fontFamily: MMD_FONT.regular }}>
-                {t(
-                  "client.restaurants.empty.body",
-                  "No restaurants match this filter right now.",
-                )}
+                {guineaUi
+                  ? t("guineaMarket.restaurantsEmptyBody")
+                  : t(
+                      "client.restaurants.empty.body",
+                      "No restaurants match this filter right now.",
+                    )}
               </Text>
             </View>
           )}
@@ -484,7 +509,9 @@ export function ClientRestaurantListScreen() {
                     fontFamily: MMD_FONT.semibold,
                   }}
                 >
-                  {t("client.restaurants.viewMenu", "View menu →")}
+                  {guineaUi
+                    ? t("guineaMarket.viewMenu")
+                    : t("client.restaurants.viewMenu", "View menu →")}
                 </Text>
               </View>
             </TouchableOpacity>

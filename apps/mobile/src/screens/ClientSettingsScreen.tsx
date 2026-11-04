@@ -189,6 +189,12 @@ export function ClientSettingsScreen() {
           <Row
             label={t("client.settings.notifications", "Notifications")}
             onPress={() => navigation.navigate("ClientNotificationCenter")}
+          />
+          <Row
+            label={t("client.settings.country", "Country")}
+            onPress={() =>
+              navigation.navigate("CountryWelcome", { returnTo: "ClientSettings" })
+            }
             last
           />
         </Section>

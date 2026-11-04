@@ -163,8 +163,7 @@ export default function SellerWalletScreen() {
       if (!connectRes.error && connect) {
         const code = normalizeStripeConnectStatus(connect.status);
         setStripeLabel(
-          String(connect.status_label ?? "") ||
-            t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
+          t(stripeConnectStatusLabelKey(code), stripeConnectStatusLabel(code)),
         );
         setStripeMessage(
           t(stripeConnectUserMessageKey(code), stripeConnectUserMessage(code)),

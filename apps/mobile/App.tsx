@@ -16,6 +16,7 @@ import "./src/i18n";
 import { AppRootShell } from "./src/components/AppRootShell";
 import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
 import { supabase } from "./src/lib/supabase";
+import { resolveStartupMarket } from "./src/lib/selectedMarketStore";
 import { getSelectedRole } from "./src/lib/authRole";
 import { setupNotifications, registerUserPushToken } from "./src/lib/notifications";
 import { mmdAudio } from "./src/lib/mmdAudio";
@@ -98,6 +99,9 @@ function App(): React.JSX.Element {
 
   const [session, setSession] = useState<SessionLike>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [entryRoute, setEntryRoute] = useState<"RoleSelect" | "CountryWelcome" | null>(
+    null,
+  );
 
   const registerInFlightRef = useRef(false);
   const lastRoleRef = useRef<Role | null>(null);
@@ -268,9 +272,20 @@ function App(): React.JSX.Element {
     return () => clearTimeout(timer);
   }, [navPreviewActive]);
 
-  const initialRouteName: "RoleSelect" | "DriverMap" = navPreviewActive
-    ? "DriverMap"
-    : "RoleSelect";
+  useEffect(() => {
+    if (authLoading || navPreviewActive) return;
+    let cancelled = false;
+    void resolveStartupMarket(session?.user?.id).then((market) => {
+      if (cancelled) return;
+      setEntryRoute(market ? "RoleSelect" : "CountryWelcome");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, navPreviewActive, session?.user?.id]);
+
+  const initialRouteName: "RoleSelect" | "CountryWelcome" | "DriverMap" =
+    navPreviewActive ? "DriverMap" : entryRoute ?? "CountryWelcome";
 
   const navKey = session?.user?.id ? `authed-${session.user.id}` : "guest";
 
@@ -280,7 +295,7 @@ function App(): React.JSX.Element {
     fontTimedOut,
   });
 
-  if (authLoading || !fontsReady) {
+  if (authLoading || !fontsReady || (!navPreviewActive && !entryRoute)) {
     return <Splash />;
   }
 

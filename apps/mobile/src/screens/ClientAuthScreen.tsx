@@ -20,6 +20,13 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import {
+  isPlausibleGuineaPhone,
+  marketPhonePrefix,
+  normalizeGuineaPhone,
+  type MarketCountry,
+} from "../lib/selectedMarket";
+import { readSelectedMarket } from "../lib/selectedMarketStore";
 import { validatePassword } from "../lib/authValidation";
 import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
@@ -228,7 +235,10 @@ export function ClientAuthScreen() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const [guineaCreated, setGuineaCreated] = useState(false);
 
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
@@ -236,6 +246,25 @@ export function ClientAuthScreen() {
   const [stateRegion, setStateRegion] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("");
+  const [marketCountry, setMarketCountry] = useState<MarketCountry | null>(null);
+
+  useEffect(() => {
+    void readSelectedMarket().then((market) => {
+      setMarketCountry(market);
+      if (!market) return;
+      setCountry((current) => (current.trim() ? current : market));
+    });
+  }, []);
+
+  function phoneForAccount() {
+    return marketCountry === "GN" ? normalizeGuineaPhone(phone) : cleanPhone(phone);
+  }
+
+  function postalForAccount() {
+    const value = trimOrEmpty(postalCode);
+    if (marketCountry === "GN" && (value === "+224" || value === "224")) return "";
+    return value;
+  }
 
   const [avatar, setAvatar] = useState<{ uri: string; mime?: string } | null>(
     null
@@ -293,16 +322,22 @@ export function ClientAuthScreen() {
     () =>
       mode === "login"
         ? t("client.auth.titleLogin")
-        : t("client.auth.titleSignup"),
-    [mode, t]
+        : marketCountry === "GN"
+          ? t("guineaMarket.authPersonalTitle")
+          : t("client.auth.titleSignup"),
+    [mode, t, marketCountry]
   );
 
   const subtitle = useMemo(
     () =>
       mode === "login"
         ? t("client.auth.subtitleLogin")
-        : t("client.auth.subtitleSignup"),
-    [mode, t]
+        : marketCountry === "GN"
+          ? t("guineaMarket.authPersonalSubtitle", {
+              dial: marketPhonePrefix("GN"),
+            })
+          : t("client.auth.subtitleSignup"),
+    [mode, t, marketCountry]
   );
 
   async function handleLogin() {
@@ -435,13 +470,13 @@ export function ClientAuthScreen() {
           id: userId,
           role: "client",
           full_name: trimOrEmpty(fullName),
-          phone: cleanPhone(phone),
+          phone: phoneForAccount(),
           email,
           avatar_url: avatarUrl,
           client_address: trimOrEmpty(addressLine1) || null,
           client_city: trimOrEmpty(city) || null,
           client_state: trimOrEmpty(stateRegion) || null,
-          client_zip: trimOrEmpty(postalCode) || null,
+          client_zip: postalForAccount() || null,
         },
         { onConflict: "id" }
       );
@@ -459,12 +494,12 @@ export function ClientAuthScreen() {
           role: "client",
           email,
           full_name: trimOrEmpty(fullName),
-          phone: cleanPhone(phone),
+          phone: phoneForAccount(),
           address_line1: trimOrEmpty(addressLine1),
           address_line2: trimOrEmpty(addressLine2),
           city: trimOrEmpty(city),
           state: trimOrEmpty(stateRegion),
-          postal_code: trimOrEmpty(postalCode),
+          postal_code: postalForAccount(),
           country: signupCountry,
           avatar_url: avatarUrl,
         },
@@ -476,7 +511,7 @@ export function ClientAuthScreen() {
     const fullAddress = [
       trimOrEmpty(addressLine1),
       trimOrEmpty(addressLine2),
-      `${trimOrEmpty(city)} ${trimOrEmpty(stateRegion)} ${trimOrEmpty(postalCode)}`.trim(),
+      `${trimOrEmpty(city)} ${trimOrEmpty(stateRegion)} ${postalForAccount()}`.trim(),
       trimOrEmpty(signupCountry),
     ]
       .filter(Boolean)
@@ -485,13 +520,13 @@ export function ClientAuthScreen() {
     try {
       const payload = {
         user_id: userId,
-        phone: cleanPhone(phone),
+        phone: phoneForAccount(),
         default_address: fullAddress,
         full_name: trimOrEmpty(fullName),
         avatar_url: avatarUrl,
         city: trimOrEmpty(city),
         state: trimOrEmpty(stateRegion),
-        postal_code: trimOrEmpty(postalCode),
+        postal_code: postalForAccount(),
         country: signupCountry,
       };
 
@@ -525,7 +560,7 @@ export function ClientAuthScreen() {
             address_line2: trimOrEmpty(addressLine2),
             city: trimOrEmpty(city),
             state: trimOrEmpty(stateRegion),
-            postal_code: trimOrEmpty(postalCode),
+            postal_code: postalForAccount(),
             country: signupCountry || null,
             is_default: true,
           });
@@ -567,9 +602,14 @@ export function ClientAuthScreen() {
       return;
     }
 
-    const p = cleanPhone(phone);
-    if (!p) {
-      Alert.alert(t("client.auth.profileTitle"), t("client.auth.phoneRequired"));
+    const p = phoneForAccount();
+    if (!p || (marketCountry === "GN" && !isPlausibleGuineaPhone(p))) {
+      Alert.alert(
+        t("client.auth.profileTitle"),
+        marketCountry === "GN"
+          ? t("guineaMarket.authPhoneInvalid")
+          : t("client.auth.phoneRequired"),
+      );
       return;
     }
 
@@ -591,11 +631,14 @@ export function ClientAuthScreen() {
               role: "client",
               full_name: trimOrEmpty(fullName),
               phone: p,
+              emergency_phone:
+                marketCountry === "GN" ? normalizeGuineaPhone(emergencyPhone) : "",
+              date_of_birth: marketCountry === "GN" ? trimOrEmpty(dateOfBirth) : "",
               address_line1: trimOrEmpty(addressLine1),
               address_line2: trimOrEmpty(addressLine2),
               city: trimOrEmpty(city),
               state: trimOrEmpty(stateRegion),
-              postal_code: trimOrEmpty(postalCode),
+              postal_code: postalForAccount(),
               country: signupCountry,
               referral_code: normalizeReferralCode(referralCode),
             },
@@ -679,6 +722,11 @@ export function ClientAuthScreen() {
         return;
       }
 
+      if (marketCountry === "GN") {
+        setGuineaCreated(true);
+        return;
+      }
+
       navigation.reset({
         index: 0,
         routes: [{ name: await resolvePostAuthRoute() }],
@@ -697,7 +745,9 @@ export function ClientAuthScreen() {
   const primaryBtnLabel =
     mode === "login"
       ? t("client.auth.loginBtn")
-      : t("client.auth.signupBtn");
+      : marketCountry === "GN"
+        ? t("guineaMarket.authContinue")
+        : t("client.auth.signupBtn");
 
   const onPickAvatar = async () => {
     try {
@@ -715,6 +765,33 @@ export function ClientAuthScreen() {
   const logoSize = mmdLogoSize(width, height);
   const fieldStyle = styles.field;
   const labelStyle = styles.label;
+
+  if (guineaCreated) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <StatusBar barStyle="light-content" backgroundColor={MMD_BLUE} />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <Text style={{ fontSize: 42, marginBottom: 12 }}>✓</Text>
+          <Text style={[styles.title, { textAlign: "center" }]}>
+            {t("guineaMarket.authCreatedTitle")}
+          </Text>
+          <Text style={[styles.subtitle, { textAlign: "center" }]}>
+            {t("guineaMarket.authCreatedBody")}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              void resolvePostAuthRoute().then((route) => {
+                navigation.reset({ index: 0, routes: [{ name: route }] });
+              });
+            }}
+            style={[styles.ctaGradient, { marginTop: 24, alignSelf: "stretch", backgroundColor: "#F5C542" }]}
+          >
+            <Text style={styles.ctaText}>{t("guineaMarket.authStart")}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.root}>
@@ -746,7 +823,11 @@ export function ClientAuthScreen() {
 
             {mode === "signup" ? (
               <View style={{ marginBottom: 18 }}>
-                <Text style={labelStyle}>{t("client.auth.profilePhoto")}</Text>
+                <Text style={labelStyle}>
+                  {marketCountry === "GN"
+                    ? t("guineaMarket.authPhotoOptional")
+                    : t("client.auth.profilePhoto")}
+                </Text>
 
                 <View
                   style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
@@ -791,11 +872,38 @@ export function ClientAuthScreen() {
                 <TextInput
                   value={phone}
                   onChangeText={setPhone}
-                  placeholder={t("client.auth.phonePlaceholder")}
+                  placeholder={
+                    marketCountry === "GN"
+                      ? t("guineaMarket.authPhonePlaceholder", "+224 6XX XX XX XX")
+                      : t("client.auth.phonePlaceholder")
+                  }
                   placeholderTextColor="rgba(255,255,255,0.55)"
                   keyboardType="phone-pad"
                   style={[fieldStyle, { marginBottom: 16 }]}
                 />
+
+                {marketCountry === "GN" ? (
+                  <>
+                    <Text style={labelStyle}>{t("guineaMarket.authEmergencyPhone")}</Text>
+                    <TextInput
+                      value={emergencyPhone}
+                      onChangeText={setEmergencyPhone}
+                      placeholder={t("guineaMarket.authPhonePlaceholder", "+224 6XX XX XX XX")}
+                      placeholderTextColor="rgba(255,255,255,0.55)"
+                      keyboardType="phone-pad"
+                      style={[fieldStyle, { marginBottom: 16 }]}
+                    />
+                    <Text style={labelStyle}>{t("guineaMarket.authDateOfBirth")}</Text>
+                    <TextInput
+                      value={dateOfBirth}
+                      onChangeText={setDateOfBirth}
+                      placeholder={t("guineaMarket.authDobPlaceholder")}
+                      placeholderTextColor="rgba(255,255,255,0.55)"
+                      autoCapitalize="none"
+                      style={[fieldStyle, { marginBottom: 16 }]}
+                    />
+                  </>
+                ) : null}
 
                 <Text style={labelStyle}>
                   {t("client.auth.addressOptional", "Address (optional)")}
@@ -816,7 +924,11 @@ export function ClientAuthScreen() {
                 <TextInput
                   value={addressLine1}
                   onChangeText={setAddressLine1}
-                  placeholder={t("client.auth.address1Placeholder")}
+                  placeholder={
+                    marketCountry === "GN"
+                      ? t("guineaMarket.authLandmarkPlaceholder")
+                      : t("client.auth.address1Placeholder")
+                  }
                   placeholderTextColor="rgba(255,255,255,0.55)"
                   autoCapitalize="words"
                   style={[fieldStyle, { marginBottom: 10 }]}
@@ -830,23 +942,36 @@ export function ClientAuthScreen() {
                   style={[fieldStyle, { marginBottom: 10 }]}
                 />
 
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  <View style={{ flex: 1 }}>
+                <View
+                  style={{
+                    flexDirection: marketCountry === "GN" ? "column" : "row",
+                    gap: 10,
+                  }}
+                >
+                  <View style={marketCountry === "GN" ? undefined : { flex: 1 }}>
                     <TextInput
                       value={city}
                       onChangeText={setCity}
-                      placeholder={t("client.auth.cityPlaceholder")}
+                      placeholder={
+                        marketCountry === "GN"
+                          ? t("guineaMarket.authCityPlaceholder")
+                          : t("client.auth.cityPlaceholder")
+                      }
                       placeholderTextColor="rgba(255,255,255,0.55)"
                       autoCapitalize="words"
                       style={[fieldStyle, { marginBottom: 10 }]}
                     />
                   </View>
 
-                  <View style={{ width: 110 }}>
+                  <View style={marketCountry === "GN" ? undefined : { width: 110 }}>
                     <TextInput
                       value={stateRegion}
                       onChangeText={setStateRegion}
-                      placeholder={t("client.auth.statePlaceholder")}
+                      placeholder={
+                        marketCountry === "GN"
+                          ? t("guineaMarket.authRegionPlaceholder")
+                          : t("client.auth.statePlaceholder")
+                      }
                       placeholderTextColor="rgba(255,255,255,0.55)"
                       autoCapitalize="characters"
                       style={[fieldStyle, { marginBottom: 10 }]}
@@ -859,7 +984,11 @@ export function ClientAuthScreen() {
                     <TextInput
                       value={postalCode}
                       onChangeText={setPostalCode}
-                      placeholder={t("client.auth.postalPlaceholder")}
+                      placeholder={
+                        marketCountry === "GN"
+                          ? t("guineaMarket.authPostalPlaceholder")
+                          : t("client.auth.postalPlaceholder")
+                      }
                       placeholderTextColor="rgba(255,255,255,0.55)"
                       keyboardType="numbers-and-punctuation"
                       style={[fieldStyle, { marginBottom: 6 }]}
@@ -878,7 +1007,11 @@ export function ClientAuthScreen() {
                   </View>
                 </View>
 
-                <Text style={styles.hint}>{t("client.auth.tipStateCountry")}</Text>
+                <Text style={styles.hint}>
+                  {marketCountry === "GN"
+                    ? t("guineaMarket.authAddressHint")
+                    : t("client.auth.tipStateCountry")}
+                </Text>
 
                 <View style={{ height: 16 }} />
 

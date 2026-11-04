@@ -18,6 +18,7 @@ import {
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { toStripeAmount } from "@/lib/taxiStripeAmounts";
 import { createDeliveryRequestServerSide } from "@/lib/deliveryRequestService";
+import { assertNoGuineaIsolatedLiveWrite } from "@/lib/guineaTestIsolation";
 import type { DeliveryRequestPricingResult } from "@/lib/deliveryRequestServerPricing";
 import { triggerDeliveryRequestDispatch } from "@/lib/triggerDeliveryRequestDispatch";
 import { enqueuePaymentSucceeded } from "@/lib/finance/financeEvents";
@@ -78,6 +79,9 @@ export async function createDeliveryCheckoutIntent(params: {
   supabaseAdmin: SupabaseClient;
   snapshot: DeliveryCheckoutIntentSnapshot;
 }): Promise<{ ok: true; intentId: string } | { ok: false; error: string }> {
+  await assertNoGuineaIsolatedLiveWrite(params.supabaseAdmin, [
+    params.snapshot.client_user_id,
+  ]);
   const { data, error } = await params.supabaseAdmin
     .from("delivery_checkout_intents")
     .insert({

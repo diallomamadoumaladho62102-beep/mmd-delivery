@@ -3,6 +3,10 @@ import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveRestaurantPlatformCountry } from "@/lib/platformCountryResolver";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
+import {
+  foodPaymentAllowsFulfillment,
+  withOptionalPaymentMethod,
+} from "@/lib/markets/guineaLocalCashCollect";
 
 export type RestaurantStatusTransition = "accepted" | "prepared" | "ready";
 
@@ -59,20 +63,42 @@ export async function transitionRestaurantOrderStatus(
     markAutoAccepted = false,
   } = input;
 
-  const { data: order, error: readError } = await supabaseAdmin
-    .from("orders")
-    .select(
-      "id,kind,status,driver_id,restaurant_id,restaurant_user_id,payment_status,created_at",
-    )
-    .eq("id", orderId)
-    .eq("kind", "food")
-    .eq("payment_status", "paid")
-    .maybeSingle();
+  // Paid (Stripe) or Guinea cash (pending_cash + cash + GNF). US stays paid-only.
+  const { data: orderData, error: readError } = await withOptionalPaymentMethod(
+    (includePaymentMethod) =>
+      supabaseAdmin
+        .from("orders")
+        .select(
+          `id,kind,status,driver_id,restaurant_id,restaurant_user_id,payment_status,currency,created_at${includePaymentMethod ? ",payment_method" : ""}`,
+        )
+        .eq("id", orderId)
+        .eq("kind", "food")
+        .in("payment_status", ["paid", "pending_cash"])
+        .maybeSingle(),
+  );
+  const order = orderData as unknown as {
+    id: string;
+    kind: string | null;
+    status: string | null;
+    driver_id: string | null;
+    restaurant_id: string | null;
+    restaurant_user_id: string | null;
+    payment_status: string | null;
+    payment_method?: string | null;
+    currency?: string | null;
+  } | null;
 
   if (readError) {
     return { ok: false, error: readError.message, httpStatus: 500 };
   }
-  if (!order) {
+  if (
+    !order ||
+    !foodPaymentAllowsFulfillment({
+      paymentStatus: order.payment_status,
+      paymentMethod: order.payment_method,
+      currency: order.currency,
+    })
+  ) {
     return { ok: false, error: "Order not found", httpStatus: 404 };
   }
 
@@ -180,7 +206,7 @@ export async function transitionRestaurantOrderStatus(
       .update(payload)
       .eq("id", orderId)
       .eq("kind", "food")
-      .eq("payment_status", "paid")
+      .eq("payment_status", String(order.payment_status))
       .eq("status", order.status)
       .select(selectCols)
       .maybeSingle();

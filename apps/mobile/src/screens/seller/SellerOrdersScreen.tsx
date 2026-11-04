@@ -15,7 +15,10 @@ import { useFocusEffect, useRoute, type RouteProp } from "@react-navigation/nati
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { loadOwnSeller, loadSellerOrders } from "../../lib/sellerApi";
 import { formatMoney, type SellerOrderRow } from "../../lib/sellerTypes";
-import { updateMarketplaceSellerOrderStatus } from "../../lib/marketplaceApi";
+import {
+  collectMarketplaceOrderCash,
+  updateMarketplaceSellerOrderStatus,
+} from "../../lib/marketplaceApi";
 import {
   askCancellationReason,
   CancellationReasonHost,
@@ -174,6 +177,31 @@ export default function SellerOrdersScreen({ navigation }: Props) {
     []
   );
 
+  async function collectCash(order: SellerOrderRow) {
+    try {
+      setBusyId(order.id);
+      await collectMarketplaceOrderCash(order.id);
+      Alert.alert(
+        t("seller.orders.cashCollectedTitle", "Cash collected"),
+        t(
+          "seller.orders.cashCollectedBody",
+          "Payment marked as cash collected. The order is now paid in cash."
+        )
+      );
+      await refresh();
+    } catch (e) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        toUserFacingError(
+          e,
+          t("seller.orders.cashCollectFailed", "Unable to confirm cash collection.")
+        )
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function applyStatus(
     order: SellerOrderRow,
     status: "accepted" | "refused" | "preparing" | "ready" | "out_for_delivery"
@@ -329,6 +357,30 @@ export default function SellerOrdersScreen({ navigation }: Props) {
                   ) : null}
                   {item.notes ? (
                     <Text style={styles.notes}>{item.notes}</Text>
+                  ) : null}
+                  {String(item.payment_status ?? "").toLowerCase() === "pending_cash" ? (
+                    <TouchableOpacity
+                      disabled={busyId === item.id}
+                      onPress={() => void collectCash(item)}
+                      style={[
+                        styles.actionBtn,
+                        {
+                          backgroundColor: MMD_GOLD_CLASSIC,
+                          opacity: busyId === item.id ? 0.6 : 1,
+                          marginTop: 8,
+                          alignSelf: "flex-start",
+                        },
+                      ]}
+                    >
+                      <Text style={styles.actionLabel}>
+                        {t("seller.orders.collectCash", "Confirm cash received")}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {String(item.payment_status ?? "").toLowerCase() === "cash_collected" ? (
+                    <Text style={[styles.meta, { color: MMD_TAXI_GREEN, marginTop: 6 }]}>
+                      {t("seller.orders.cashCollectedBadge", "Cash collected")}
+                    </Text>
                   ) : null}
                   {actions.length > 0 ? (
                     <View style={{ flexDirection: rowDirection(), flexWrap: "wrap", gap: 8, marginTop: 8 }}>

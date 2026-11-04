@@ -96,6 +96,9 @@
       "checkout": "Hebbo yoɓgol",
       "comingSoonCta": "Yoɓgol Marketplace ina ara",
       "payLive": "Yoɓ odaare Marketplace",
+      "confirmCash": "Tabbitin odaare (ceede)",
+      "cashPlacedTitle": "Odaare tabbitinaama",
+      "cashPlacedBody": "Odaare ma tabbitinaama. Yoɓ ceede nde keɓataa. Sarwiyaado anndiraama.",
       "missingCheckoutUrl": "URL yoɓgol ustaaɗo",
       "backToMarketplace": "Rutto to luumo",
       "checkoutStillComingSoon": "Yoɓgol ina ara — yoɓgol goonga Marketplace ngalaa tawo.",
@@ -301,7 +304,9 @@
       "viewOrders": "Yiy odaaje"
     },
     "signOut": {
-      "title": "Seŋtude"
+      "title": "Seŋtude",
+      "body": "Yaltude e ndee kaɓirgol? Konte jeeyoowo maa e marse maa keddoto.",
+      "error": "Waawaa seŋtude jooni."
     }
   },
   "taxi": {
@@ -314,6 +319,7 @@
       "platformFee": "Frais plateforme",
       "total": "Total fuu",
       "detectedCountry": "Anndu ko pickup",
+      "paid": "Yoɓaama",
       "estimatesIn": "Estimation e"
     },
     "common": {
@@ -946,6 +952,16 @@
       },
       "v4": {
         "comingSoon": "Ina ara e njaaɗi",
+        "rewards": {
+          "creditUnknown": "Kredit alaa jooni",
+          "progress": "{{current}} / {{target}} toɓɓe haa darnde {{tier}}"
+        },
+        "tier": {
+          "bronze": "Njamndi",
+          "gold": "Kaŋŋe",
+          "next": "garoowo",
+          "silver": "Kaalis"
+        },
         "language": {
           "subtitle": "Suɓo ɗemngal maa ngam MMD."
         },
@@ -1573,6 +1589,7 @@
       "danger": "Kaaɗal",
       "language": "Ɗemngal",
       "notifications": "Jangirɗe",
+      "country": "Leydi",
       "platform": "Palatfoorm",
       "privacy": "Sutura",
       "profile": "Profil",
@@ -1902,6 +1919,10 @@
       "missing": "Ustaaɗo",
       "missingRequirements": "Wajibi ŋatniiɗi",
       "placeholderLicenseNumber": "Limngal licence"
+    },
+    "signOut": {
+      "title": "Yaltude",
+      "body": "Yaltude e ndee kaɓirgol? Konte chofe maa e keɓe maa keddoto."
     },
     "account": {
       "createProfileFailed": "Horiima sosde profil dooɓoowo jooni.",
@@ -2381,6 +2402,10 @@
           "value": "Keɓe, duŋagol"
         },
         "title": "Laawol e ballal"
+      },
+      "country": {
+        "label": "Leydi",
+        "value": "Gine walla Dowlaaji Dentuɗi"
       },
       "next": {
         "addDocs": "Ɓeydu dokimaaɗe",
@@ -3735,7 +3760,18 @@
     "directionsMin": "Fotde 8 characters ina poti.",
     "photoLabel": "Nata nokkuure (wasiyaama)",
     "retakePhoto": "Nattu nata nokkuure kadi",
-    "addPhoto": "Ɓeydu nata damal, shop walla galle"
+    "addPhoto": "Ɓeydu nata damal, shop walla galle",
+    "useGpsCurrent": "Nokku am jooni",
+    "region": "Diiwaan",
+    "regionPlaceholder": "Diiwaan",
+    "prefecture": "Prefektuur",
+    "prefecturePlaceholder": "Prefektuur",
+    "communeTown": "Wuro / komin",
+    "communeTownPlaceholder": "Wuro walla komin",
+    "quartierSector": "Fuunaange / sector",
+    "quartierSectorPlaceholder": "Fuunaange walla sector",
+    "landmarkPlaceholderLocal": "Luumo, duɗal, juulirde, opitaal walla jutte",
+    "hintPinConfirmLocal": "Huutoro GPS, dirtin kaarte, ɓeydu fuunaange walla maande. Kod postal waɗaaka doole."
   },
   "maskedCall": {
     "errorTitle": "Juumre noddugol"
@@ -3973,7 +4009,9 @@
       "loading": "Nana loowa njoɓdi…",
       "calculating": "Nana hiisa ƴeewndo…",
       "ready": "Ƴeewndo hebiima",
-      "emptyHint": "Hiis njoɓdi ngam yiyde ƴeewndo."
+      "emptyHint": "Hiis njoɓdi ngam yiyde ƴeewndo.",
+      "pickupGps": "GPS ƴettagol",
+      "dropoffGps": "GPS jokkorgal"
     },
     "header": {
       "title": "Ñaag neldol",
@@ -4027,6 +4065,8 @@
     },
     "errors": {
       "estimateGeneric": "Horiima hiisde ƴeewndo neldol jooni.",
+      "addressNotFound": "Nokku yiytaaka e kartal ngam ɗee njuɓɓudi. Lollin nokku walla ɓeydu toɓɓe e kartal.",
+      "routeNotFound": "Laawol otoo yiytaaka hakkunde ɗee toɓɓe.",
       "networkEstimate": "Juumre laylaytol e hiisde ƴeewndo.",
       "estimateTimeout": "Ñaagol ƴeewndo ƴettii waktu. Fuɗɗito.",
       "distanceTooLarge": "Woɗɗude ɓuri mawnude. Ƴeew ñiiɓirɗe ɗiɗi.",
@@ -4363,7 +4403,9 @@
     "schemaNotReady": "Yahdu ceede heɓaani tawo e sarworde. Yahdu ndu sosaaka.",
     "motorcycleNotReady": "Yahdu moto heɓaani tawo e sarworde.",
     "vehicleUnsupported": "Oo oto heɓaani ngam ndee yahdu.",
-    "tripNotSupported": "Ndee fannu yahdu heɓaani."
+    "tripNotSupported": "Ndee fannu yahdu heɓaani.",
+    "searchingDrivers": "Nana yiyloo doggowɓe ɓadiiɓe…",
+    "detailsPreview": "Jiytol yahdu"
   },
   "taxiXl": {
     "open": "XL hakkunde diiwanuuji",
@@ -4449,5 +4491,66 @@
     "segmentDeparture": "Yaltugol ceŋe",
     "noGpsFix": "Nokku GPS heɓaaka.",
     "marketUnavailable": "Ngol yahgol hakkunde gure ena woodi tan e Gine."
+  },
+  "guineaMarket": {
+    "welcomeTitle": "A jaɓɓaama e MMD",
+    "welcomeSubtitle": "Suɓo leydi maa ngam jokkude",
+    "countryOption": "{{name}} — {{dial}} · {{currency}}",
+    "guineaName": "Gine",
+    "guineaCoverage": "Gine fof",
+    "usName": "Dowlaaji Dentuɗi",
+    "usCoverage": "Dowlaaji Dentuɗi",
+    "tabsTaxi": "Taksi",
+    "tabsRestaurants": "Restoraaji",
+    "tabsParcels": "Pakke",
+    "taxiHomeTitle": "Jaɓɓorgo Taksi",
+    "taxiHomeSubtitle": "Yahdu yimɓe",
+    "whereTo": "Hol to njahataa?",
+    "pickup": "Nokku jipporde",
+    "destination": "Yottoonde",
+    "chooseOnMap": "Suɓo e kaarte",
+    "seePrice": "Yiy njobdi",
+    "xlLink": "Taksi XL hakkunde diiwanji",
+    "restaurantsTitle": "Restoraaji",
+    "restaurantsSubtitle": "Yiytu restoraaji ɓurɗi ɓadaade maa.",
+    "restaurantsSearch": "Yiylo restoraan...",
+    "viewMenu": "Yiy menu →",
+    "restaurantsEmptyTitle": "Alaa restoraan heɓaama",
+    "restaurantsEmptyBody": "Alaa restoraan binndaaɗo jahdi e ndee njiylaw. Alaa restoraan fenaande holliraa.",
+    "parcelsTitle": "Nelgol pakke",
+    "parcelsSubtitle": "Neldu pakke e yaawre.",
+    "parcelType": "Fannu pakke",
+    "pickupPoint": "Nokku ƴettugol",
+    "pickupLandmark": "Fuunaange, luumo walla maande",
+    "recipient": "Keɓoowo",
+    "pickupPinned": "Nokku ƴettugol hollitaama",
+    "destinationPinned": "Yottoonde hollitaama",
+    "confirmDelivery": "Teeŋtin nelgol",
+    "authPersonalTitle": "Humpito neɗɗo",
+    "authPersonalSubtitle": "Innde, telefon {{dial}} e nata cuɓaaɗo.",
+    "authPhotoOptional": "Ɓeydu nata (waɗaaka doole)",
+    "authEmergencyPhone": "Telefon kattanɗe (waɗaaka doole)",
+    "authDateOfBirth": "Ñalngu jibinannde (waɗaaka doole)",
+    "authDobPlaceholder": "HITAANDE-LEW-ÑAL",
+    "authCreatedTitle": "Konto sosaama e moƴƴere",
+    "authCreatedBody": "Konto maa MMD heɓii. A waawi ɗaɓɓude taksi, ñaamdu walla pakke e Gine.",
+    "authStart": "Fuɗɗo",
+    "authContinue": "Jokku",
+    "authLandmarkPlaceholder": "Fuunaange, luumo, duɗal walla maande",
+    "authCityPlaceholder": "Wuro walla komin",
+    "authRegionPlaceholder": "Prefektuur",
+    "authPostalPlaceholder": "Kod postal (waɗaaka doole)",
+    "authAddressHint": "Fuunaange walla maande ina haani. Kod postal waɗaaka doole.",
+    "authPhoneInvalid": "Naatnu limoore Gine moƴƴere, yeru +224 620 00 00 00.",
+    "authPhonePlaceholder": "+224 6XX XX XX XX",
+    "authAddressLabel": "Fuunaange walla maande",
+    "authEmergencyInvalid": "Telefon kattanɗe foti wonde limoore Gine moƴƴere, walla woppitee ɓolde.",
+    "authZipLabel": "Kod postal (waɗaaka doole)",
+    "authZipPlaceholder": "Waɗaaka doole",
+    "restaurantDropoffPlaceholder": "Fuunaange, luumo walla maande",
+    "incompleteAddress": "Naatnu ñiiɓirde ɓurnde timmude e fuunaange walla maande.",
+    "distanceTooFar": "Ndee nelgol woɗɗii no feewi ({{miles}}). Ƴeewto maande, wuro e pin kaarte.",
+    "deliveryPricingUnavailable": "Njoɓdi nelgol Gine heɓaani tawo. Alaa njoɓdi ƴeewndaande holliraa.",
+    "restaurantSetupRequired": "Naatnu innde, telefon +224 moƴƴo, maande, wuro, prefektuur e fannu ñaamdu."
   }
 }

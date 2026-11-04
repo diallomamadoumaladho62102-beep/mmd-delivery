@@ -18,6 +18,7 @@ import {
 } from "@/lib/foodCurrencyGuard";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { toStripeAmount } from "@/lib/taxiStripeAmounts";
+import { assertNoGuineaIsolatedLiveWrite } from "@/lib/guineaTestIsolation";
 import {
   createFoodOrderServerSide,
   type CreateFoodOrderInput,
@@ -78,6 +79,9 @@ export async function createFoodCheckoutIntent(params: {
   supabaseAdmin: SupabaseClient;
   snapshot: FoodCheckoutIntentSnapshot;
 }): Promise<{ ok: true; intentId: string } | { ok: false; error: string }> {
+  await assertNoGuineaIsolatedLiveWrite(params.supabaseAdmin, [
+    params.snapshot.client_user_id,
+  ]);
   const { data, error } = await params.supabaseAdmin
     .from("food_checkout_intents")
     .insert({

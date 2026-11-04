@@ -19,6 +19,13 @@ import { pushText } from "@/lib/pushCopy";
 import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
 import { mergeReassignmentExclusions } from "@/lib/driverIntegrity/reassignmentExclusions";
 import { isLiveVisibleTrip } from "@/lib/tripVisibility";
+import {
+  GUINEA_TEST_LIVE_OPERATION_BLOCKED,
+  guineaIsolatedTestUserInvolved,
+  isIsolatedFromLiveDispatch,
+} from "@/lib/guineaTestIsolation";
+import { localCashAllowsDispatch, withOptionalPaymentMethod } from "@/lib/markets/guineaLocalCashCollect";
+import { inferPlatformCountryCode } from "@/lib/platformCountryInference";
 
 const DISPATCH_WAVES = DELIVERY_REQUEST_DISPATCH_WAVES;
 
@@ -31,13 +38,26 @@ function normalize(value: unknown) {
   return String(value ?? "").trim().toLowerCase();
 }
 
-function isDispatchableDeliveryRequest(request: {
+export function isDispatchableDeliveryRequest(request: {
   payment_status?: unknown;
+  payment_method?: unknown;
+  currency?: unknown;
+  country_code?: unknown;
   status?: unknown;
   driver_id?: unknown;
 }) {
   if (request.driver_id) return false;
-  if (normalize(request.payment_status) !== "paid") return false;
+  // Paid (Stripe) or Guinea cash (pending_cash + cash + GNF + GN). US stays paid-only.
+  if (
+    !localCashAllowsDispatch({
+      paymentStatus: request.payment_status,
+      paymentMethod: request.payment_method,
+      currency: request.currency,
+      countryCode: request.country_code,
+    })
+  ) {
+    return false;
+  }
 
   const status = normalize(request.status);
   return (
@@ -125,13 +145,32 @@ export async function runDeliveryRequestDispatch(params: {
     maxMiles: DELIVERY_REQUEST_MAX_DISPATCH_MILES,
   };
 
-  const { data: request, error: requestError } = await supabase
-    .from("delivery_requests")
-    .select(
-      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,created_by,client_user_id,dispatch_wave_1_started_at,is_test,archived_at,hidden_from_user",
-    )
-    .eq("id", deliveryRequestId)
-    .maybeSingle();
+  // payment_method / currency are needed for the Guinea cash gate; retry without
+  // payment_method when that column is not deployed (US stays paid-only).
+  const { data: loadedRequest, error: requestError } = (await withOptionalPaymentMethod(
+    (includePaymentMethod) =>
+      supabase
+        .from("delivery_requests")
+        .select(
+          `id,payment_status,${includePaymentMethod ? "payment_method," : ""}currency,status,driver_id,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,created_by,client_user_id,dispatch_wave_1_started_at,is_test,archived_at,hidden_from_user`,
+        )
+        .eq("id", deliveryRequestId)
+        .maybeSingle(),
+  )) as {
+    // The caller client is `any`, so the row shape is intentionally untyped here.
+    data: any;
+    error: { message: string } | null;
+  };
+  const request = loadedRequest
+    ? {
+        ...loadedRequest,
+        country_code: inferPlatformCountryCode({
+          currency: loadedRequest.currency,
+          lat: loadedRequest.dropoff_lat ?? loadedRequest.pickup_lat,
+          lng: loadedRequest.dropoff_lng ?? loadedRequest.pickup_lng,
+        }),
+      }
+    : loadedRequest;
 
   if (requestError) {
     return {
@@ -161,6 +200,23 @@ export async function runDeliveryRequestDispatch(params: {
       candidates: 0,
       message: "Delivery request is not a live production trip",
       error: "test_or_archived_request",
+    };
+  }
+
+  if (
+    isIsolatedFromLiveDispatch(request) ||
+    (await guineaIsolatedTestUserInvolved(supabase, [
+      request.client_user_id,
+      request.created_by,
+      request.driver_id,
+    ]))
+  ) {
+    return {
+      ok: true,
+      ...baseResult,
+      notified: 0,
+      candidates: 0,
+      message: GUINEA_TEST_LIVE_OPERATION_BLOCKED,
     };
   }
 

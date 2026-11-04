@@ -34,6 +34,7 @@ export type ClientHomeItem = {
   dropoff_address: string | null;
   total: number | null;
   delivery_fee: number | null;
+  currency?: string | null;
 };
 
 type TsFn = (key: string, fallback: string, params?: Record<string, unknown>) => string;
@@ -96,7 +97,10 @@ export type ClientHomeV4ViewProps = {
   onNavigateWallet?: () => void;
   onOpenOrder: (item: ClientHomeItem) => void;
   onOpenChat: (orderId: string) => void;
-  formatCurrency: (amount: number | null | undefined) => string;
+  formatCurrency: (
+    amount: number | null | undefined,
+    currency?: string | null,
+  ) => string;
   formatCompactDateTime: (iso: string | null) => string;
   recentTitle: (item: ClientHomeItem) => string;
   statusLabel: (item: ClientHomeItem) => string;
@@ -233,12 +237,34 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
     [onAdViewable, props.advertisements.length],
   );
 
-  const creditLabel = props.stats.creditLabel ?? "$0.00";
+  const creditLabel =
+    props.stats.creditLabel ??
+    props.ts("client.home.v4.rewards.creditUnknown", "Credit unavailable");
   const pointsToNext = props.stats.pointsToNext ?? props.stats.nextLevelTarget;
-  const progressLabel = `${Math.round(props.stats.points).toLocaleString()} / ${Math.max(
-    1,
-    Math.round(props.stats.points + (pointsToNext || 0)),
-  ).toLocaleString()} pts until ${props.stats.level === "Bronze" ? "Silver" : "next"} tier`;
+  const nextTier =
+    props.stats.level === "Bronze"
+      ? props.ts("client.home.v4.tier.silver", "Silver")
+      : props.ts("client.home.v4.tier.next", "next");
+  const levelLabel =
+    props.stats.level === "Bronze"
+      ? props.ts("client.home.v4.tier.bronze", "Bronze")
+      : props.stats.level === "Silver"
+        ? props.ts("client.home.v4.tier.silver", "Silver")
+        : props.stats.level === "Gold"
+          ? props.ts("client.home.v4.tier.gold", "Gold")
+          : props.stats.level;
+  const progressLabel = props.ts(
+    "client.home.v4.rewards.progress",
+    "{{current}} / {{target}} pts until {{tier}} tier",
+    {
+      current: Math.round(props.stats.points).toLocaleString(),
+      target: Math.max(
+        1,
+        Math.round(props.stats.points + (pointsToNext || 0)),
+      ).toLocaleString(),
+      tier: nextTier,
+    },
+  );
 
   const services = useMemo(
     () => [
@@ -525,7 +551,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.rewardsLevel}>
-                {props.stats.level} {props.ts("client.home.rewards.member", "Member")}
+                {levelLabel} {props.ts("client.home.rewards.member", "Member")}
               </Text>
               <View style={styles.rewardsProgressRow}>
                 <Text style={styles.rewardsProgressText} numberOfLines={1}>
@@ -621,7 +647,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
                 </View>
                 <View style={styles.activityRight}>
                   <Text style={styles.activityPrice}>
-                    {props.formatCurrency(item.total)}
+                    {props.formatCurrency(item.total, item.currency)}
                   </Text>
                   <Text style={[styles.activityStatus, { color: statusTone(label) }]} numberOfLines={1}>
                     {label.replace(/^[^\w]+/, "").trim() || label}

@@ -37,7 +37,9 @@ export function pendingDriverMayStayOn(route: string | null | undefined): boolea
 /**
  * Fields saved on the Auth user at signup, including when email confirmation
  * delays the session. Restored into driver_profiles on the first login.
- * Fleet columns stay empty; vehicles are collected in onboarding.
+ *
+ * Non-bike modes must include brand/model/plate/license so the insert satisfies
+ * `driver_profiles_vehicle_fields_check`. Bike may leave vehicle columns null.
  */
 export function buildDriverProfileFromSignupMetadata(
   userId: string,
@@ -55,6 +57,20 @@ export function buildDriverProfileFromSignupMetadata(
     requestedMode === "car" || requestedMode === "moto" || requestedMode === "bike"
       ? requestedMode
       : "bike";
+  const isBike = transportMode === "bike";
+  const licenseNumber = String(meta?.license_number ?? "").trim() || null;
+  const vehicleBrand = String(meta?.vehicle_brand ?? "").trim() || null;
+  const vehicleModel = String(meta?.vehicle_model ?? "").trim() || null;
+  const plateNumber = String(meta?.plate_number ?? "").trim().toUpperCase() || null;
+  const vehicleColor = String(meta?.vehicle_color ?? "").trim() || null;
+  const yearRaw = String(meta?.vehicle_year ?? "").trim();
+  const vehicleYear = yearRaw && Number.isFinite(Number(yearRaw)) ? Number(yearRaw) : null;
+
+  // Prefer bike when car/moto metadata is incomplete — avoids CHECK failure on restore.
+  const safeMode =
+    isBike || (vehicleBrand && vehicleModel && plateNumber && licenseNumber)
+      ? transportMode
+      : "bike";
 
   return {
     id: userId,
@@ -67,18 +83,15 @@ export function buildDriverProfileFromSignupMetadata(
     state: String(meta?.state ?? "").trim().toUpperCase() || null,
     zip_code: String(meta?.zip_code ?? "").trim() || null,
     date_of_birth: String(meta?.date_of_birth ?? "").trim() || null,
-    transport_mode: transportMode,
+    transport_mode: safeMode,
     status: "pending",
     is_online: false,
-    vehicle_type: transportMode,
-    license_number:
-      transportMode === "bike"
-        ? null
-        : String(meta?.license_number ?? "").trim() || null,
-    vehicle_brand: null,
-    vehicle_model: null,
-    vehicle_year: null,
-    vehicle_color: null,
-    plate_number: null,
+    vehicle_type: safeMode,
+    license_number: safeMode === "bike" ? null : licenseNumber,
+    vehicle_brand: safeMode === "bike" ? null : vehicleBrand,
+    vehicle_model: safeMode === "bike" ? null : vehicleModel,
+    vehicle_year: safeMode === "bike" ? null : vehicleYear,
+    vehicle_color: safeMode === "bike" ? null : vehicleColor,
+    plate_number: safeMode === "bike" ? null : plateNumber,
   };
 }

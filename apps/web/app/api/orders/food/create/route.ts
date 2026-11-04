@@ -14,8 +14,10 @@ import {
 } from "@/lib/deliveryShareApiError";
 import { createFoodOrderServerSide } from "@/lib/foodOrderService";
 import { assertRestaurantCanAcceptOrders } from "@/lib/restaurantAcceptGate";
+import { runFoodOrderPaymentSideEffects } from "@/lib/restaurantOrderAutomation";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 import { usesLocalMobileMoney } from "@/lib/paymentProviderRouting";
+import { GUINEA_TEST_LIVE_OPERATION_BLOCKED } from "@/lib/guineaTestIsolation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +44,24 @@ export async function POST(req: NextRequest) {
       lat: fields.dropoffLat,
       lng: fields.dropoffLng,
     });
+
+    // Cash is Guinea-only (GNF). Never accepted for Stripe or other local markets.
+    const requestedPaymentMethod = String(
+      rawBody.payment_method ?? rawBody.paymentMethod ?? "",
+    )
+      .trim()
+      .toLowerCase();
+    const guineaCash = requestedPaymentMethod === "cash";
+    if (guineaCash && String(countryCode).trim().toUpperCase() !== "GN") {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: "cash_not_available",
+          message: "Cash payment is only available in Guinea.",
+        },
+        400,
+      );
+    }
 
     // Stripe markets: pay-then-create via food_checkout_intents.
     // Unpaid order rows are only allowed for local mobile-money markets.
@@ -90,11 +110,29 @@ export async function POST(req: NextRequest) {
       countryCode,
       promoCode: fields.promoCode,
       leaveAtDoor: fields.leaveAtDoor,
+      paymentMethod: guineaCash ? "cash" : null,
     });
+
+    // Cash orders are actionable by the restaurant immediately (pending_cash); fail-open.
+    if (guineaCash) {
+      try {
+        await runFoodOrderPaymentSideEffects(auth.supabaseAdmin, {
+          orderId: result.orderId,
+          notifyClientPaid: false,
+          notifyRestaurant: true,
+        });
+      } catch (sideEffectError) {
+        console.warn(
+          "[orders/food/create] cash side effects fail-open",
+          sideEffectError instanceof Error ? sideEffectError.message : sideEffectError,
+        );
+      }
+    }
 
     return mmdLocationJson({
       ok: true,
       order_id: result.orderId,
+      ...(guineaCash ? { payment_method: "cash", payment_status: "pending_cash" } : {}),
       pricing: buildFoodPricingResponse(result),
       commissions: result.commissions,
     });
@@ -109,6 +147,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return mmdLocationJson({ ok: false, error: message }, 400);
+    if (message === "guinea_food_cash_schema_not_ready") {
+      return mmdLocationJson({ ok: false, error: message }, 503);
+    }
+
+    return mmdLocationJson(
+      { ok: false, error: message },
+      message === GUINEA_TEST_LIVE_OPERATION_BLOCKED ? 403 : 400,
+    );
   }
 }

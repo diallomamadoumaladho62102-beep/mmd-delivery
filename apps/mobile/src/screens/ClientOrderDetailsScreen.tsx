@@ -161,6 +161,67 @@ type CancelOrderResponse = {
 
 type CommunicationTarget = "restaurant" | "driver" | "admin";
 
+/** Non-secret order columns only — dropoff_code requires RPC. */
+const ORDER_SELECT_SAFE = [
+  "id",
+  "status",
+  "created_at",
+  "pickup_address",
+  "dropoff_address",
+  "distance_miles",
+  "total",
+  "grand_total",
+  "delivery_fee",
+  "payment_status",
+  "currency",
+  "driver_id",
+  "restaurant_id",
+  "restaurant_user_id",
+  "restaurant_name",
+  "pickup_lat",
+  "pickup_lng",
+  "dropoff_lat",
+  "dropoff_lng",
+  "tip_cents",
+  "client_id",
+  "client_user_id",
+  "user_id",
+].join(",");
+
+function toSafeString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function isOrdersPrivilegeError(error: unknown): boolean {
+  const err = error as { code?: string; message?: string } | null;
+  const code = String(err?.code ?? "");
+  const msg = String(err?.message ?? error ?? "").toLowerCase();
+  return (
+    code === "42501" ||
+    msg.includes("permission denied") ||
+    msg.includes("row-level security")
+  );
+}
+
+async function fetchAuthorizedVerificationCodes(params: {
+  entityType: "order" | "delivery_request";
+  entityId: string;
+}): Promise<{ pickup_code: string | null; dropoff_code: string | null }> {
+  const { data, error } = await supabase.rpc("get_authorized_verification_codes", {
+    p_entity_type: params.entityType,
+    p_entity_id: params.entityId,
+  });
+  if (error) {
+    console.log("get_authorized_verification_codes error:", error.message);
+    return { pickup_code: null, dropoff_code: null };
+  }
+  const row = (data ?? {}) as Record<string, unknown>;
+  return {
+    pickup_code: toSafeString(row.pickup_code),
+    dropoff_code: toSafeString(row.dropoff_code),
+  };
+}
+
 const AVATARS_BUCKET = "avatars";
 
 type PublicProfile = {
@@ -575,45 +636,35 @@ export function ClientOrderDetailsScreen() {
 
           const { data, error } = await supabase
             .from("orders")
-            .select(
-              [
-                "id",
-                "status",
-                "created_at",
-                "pickup_address",
-                "dropoff_address",
-                "distance_miles",
-                "total",
-                "grand_total",
-                "delivery_fee",
-                "dropoff_code",
-                "payment_status",
-                "currency",
-                "driver_id",
-                "restaurant_id",
-                "restaurant_user_id",
-                "restaurant_name",
-                "pickup_lat",
-                "pickup_lng",
-                "dropoff_lat",
-                "dropoff_lng",
-                "tip_cents",
-                "client_id",
-                "client_user_id",
-                "user_id",
-              ].join(",")
-            )
+            .select(ORDER_SELECT_SAFE)
             .eq("id", orderId)
             .single();
 
-          if (error) throw error;
+          if (error) {
+            if (isOrdersPrivilegeError(error)) {
+              // Soft-fail: secret columns are loaded via RPC; do not hard-fail the screen
+              // on residual privilege noise from the safe select path.
+              console.log("orders select privilege error:", error.message);
+              if (isMountedRef.current) {
+                setErrorMsg(
+                  ts(
+                    "client.orderDetails.errors.loadOrder",
+                    "Unable to load the order."
+                  )
+                );
+                setOrder(null);
+              }
+              return;
+            }
+            throw error;
+          }
 
-          const nextOrder = data as unknown as Order;
+          const baseOrder = data as unknown as Order;
 
           const ownerIds = [
-            nextOrder.client_id,
-            nextOrder.client_user_id,
-            nextOrder.user_id,
+            baseOrder.client_id,
+            baseOrder.client_user_id,
+            baseOrder.user_id,
           ]
             .map((value) => String(value || "").trim())
             .filter(Boolean);
@@ -623,6 +674,16 @@ export function ClientOrderDetailsScreen() {
               ts("client.orderDetails.notOwnerError", "You are not logged in as the order owner.")
             );
           }
+
+          const codes = await fetchAuthorizedVerificationCodes({
+            entityType: "order",
+            entityId: String(baseOrder.id),
+          });
+
+          const nextOrder: Order = {
+            ...baseOrder,
+            dropoff_code: codes.dropoff_code,
+          };
 
           await loadParticipantProfiles(nextOrder);
 

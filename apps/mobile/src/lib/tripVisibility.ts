@@ -29,3 +29,12 @@ export function applyLiveTripFilters<T extends { eq: any; is: any; or: any }>(
 ): T {
   return query.eq("is_test", false).is("archived_at", null) as T;
 }
+
+/**
+ * Owner history only: include Guinea isolated rehearsal rows (is_test=true)
+ * that belong to the signed-in user. Still exclude hard-archived rows.
+ * Never use this for nearby/available mission queries.
+ */
+export function applyOwnerHistoryTripFilters<T extends { is: any }>(query: T): T {
+  return query.is("archived_at", null) as T;
+}

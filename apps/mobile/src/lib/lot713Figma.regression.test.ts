@@ -59,6 +59,7 @@ assert.match(biz, /ClientDeliveryRequestDetails/);
 assert.match(biz, /readOnly/);
 
 assert.match(driverWallet, /fetchDriverWalletSnapshot/);
+assert.match(driverWallet, /readSelectedMarket\(\)/);
 assert.match(driverWallet, /requestWalletCashOut/);
 assert.doesNotMatch(driverWallet, /ClientServiceBottomNav/);
 assert.match(driverWallet, /DriverOrderDetails/);

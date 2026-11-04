@@ -60,6 +60,8 @@ export type CreateFoodOrderPayload = {
   items: FoodOrderLinePayload[];
   promo_code?: string | null;
   leave_at_door?: boolean;
+  /** Guinea cash: creates pending_cash — not paid until cash is confirmed collected. */
+  payment_method?: "cash" | null;
 };
 
 async function getAccessToken(): Promise<string | null> {
@@ -178,5 +180,12 @@ export async function confirmFoodQuoteCheckoutPaid(
   return foodOrderFetch("/api/stripe/client/confirm-paid", {
     food_checkout_id: foodCheckoutId,
     ...(sessionId ? { session_id: sessionId } : {}),
+  });
+}
+
+/** Guinea cash: restaurant (or authorized actor) confirms physical cash after fulfillment. */
+export async function collectFoodOrderCash(orderId: string) {
+  return foodOrderFetch("/api/orders/food/cash-collected", {
+    order_id: orderId,
   });
 }

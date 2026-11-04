@@ -15,6 +15,11 @@ import { pushText } from "@/lib/pushCopy";
 import { loadDriverPushTokenRows, normalizeAppLocale } from "@/lib/userLocale";
 import { mergeReassignmentExclusions } from "@/lib/driverIntegrity/reassignmentExclusions";
 import { isLiveVisibleTrip } from "@/lib/tripVisibility";
+import { isIsolatedFromLiveDispatch } from "@/lib/guineaTestIsolation";
+import {
+  localCashAllowsDispatch,
+  withOptionalPaymentMethod,
+} from "@/lib/markets/guineaLocalCashCollect";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -205,17 +210,21 @@ export async function POST(req: NextRequest) {
       return json({ error: accessResult.error }, accessResult.status);
     }
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select(
-        "id,kind,status,driver_id,restaurant_id,payment_status,restaurant_name,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,currency,dropoff_lat,dropoff_lng,is_test,archived_at,hidden_from_user"
-      )
-      .eq("id", orderId)
-      .maybeSingle();
+    const { data: orderRow, error: orderError } = await withOptionalPaymentMethod(
+      (includePaymentMethod) =>
+        supabase
+          .from("orders")
+          .select(
+            `id,kind,status,driver_id,restaurant_id,payment_status,${includePaymentMethod ? "payment_method," : ""}restaurant_name,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,currency,dropoff_lat,dropoff_lng,is_test,archived_at,hidden_from_user,client_user_id,created_by,user_id`
+          )
+          .eq("id", orderId)
+          .maybeSingle()
+    );
+    const order = orderRow as any;
 
     if (orderError) return json({ error: orderError.message }, 500);
     if (!order) return json({ error: "Order not found" }, 404);
-    if (!isLiveVisibleTrip(order)) {
+    if (!isLiveVisibleTrip(order) || isIsolatedFromLiveDispatch(order)) {
       return json({ error: "test_or_archived_order" }, 404);
     }
 
@@ -255,7 +264,15 @@ export async function POST(req: NextRequest) {
     // becomes dispatchable until it is definitively paid. Restricting this to
     // food previously allowed unpaid errand / pickup_dropoff orders to be
     // dispatched to drivers.
-    if (paymentStatus !== "paid") {
+    // Guinea cash (pending_cash + cash + GNF) is dispatchable; everything else stays paid-only.
+    if (
+      !localCashAllowsDispatch({
+        paymentStatus,
+        paymentMethod: order.payment_method,
+        currency: order.currency,
+        countryCode: orderCountry,
+      })
+    ) {
       await recordDispatchAttempt({
         supabase,
         orderId: order.id,

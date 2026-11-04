@@ -14,6 +14,7 @@ import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { quoteMarketplaceSot } from "@/lib/pricingEngine";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
+import { assertNoGuineaIsolatedLiveWrite } from "@/lib/guineaTestIsolation";
 import { resolveMarketplaceUnitPriceCents } from "@/lib/marketplaceOrderService";
 import { applyMarketplaceCheckoutBenefits } from "@/lib/marketplaceCheckoutPricing";
 import {
@@ -297,6 +298,7 @@ export async function createMarketplaceLiveCheckoutSession(
   stripePaymentIntentId: string | null;
   totals: MarketplaceCheckoutShadow;
 }> {
+  await assertNoGuineaIsolatedLiveWrite(supabaseAdmin, [params.clientUserId]);
   const { order, totals, seller } = await prepareMarketplaceLiveCheckoutOrder(
     supabaseAdmin,
     params

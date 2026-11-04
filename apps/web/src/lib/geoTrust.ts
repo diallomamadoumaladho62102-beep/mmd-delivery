@@ -270,6 +270,14 @@ export function assertMapboxGeocodingUrl(url: string): string {
   return parsed.toString();
 }
 
+function mapboxPlacePathSegment(place: string): string {
+  // Reverse geocoding is longitude,latitude. Mapbox requires that comma to
+  // stay literal: encodeURIComponent turns it into %2C and the API answers
+  // HTTP 200 with an empty feature list.
+  if (/^-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/.test(place)) return place;
+  return encodeURIComponent(place);
+}
+
 async function mapboxEvidence(
   place: string,
   search: URLSearchParams,
@@ -277,7 +285,7 @@ async function mapboxEvidence(
 ): Promise<GeoEvidence | null> {
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const segment = encodeURIComponent(place);
+  const segment = mapboxPlacePathSegment(place);
   const endpoint = new URL(`/geocoding/v5/mapbox.places/${segment}.json`, "https://api.mapbox.com");
   if (endpoint.hostname !== "api.mapbox.com" || endpoint.protocol !== "https:") {
     throw new Error("geographic_validation_unavailable:invalid_url");
@@ -288,16 +296,18 @@ async function mapboxEvidence(
   if (!response.ok) throw new Error(`geographic_validation_unavailable:${response.status}`);
   const body = (await response.json().catch(() => null)) as { features?: MapboxFeature[] } | null;
   const value = featureEvidence(body?.features?.[0]);
-  cache.set(cacheKey, { expiresAt: Date.now() + 5 * 60_000, value });
+  if (value) cache.set(cacheKey, { expiresAt: Date.now() + 5 * 60_000, value });
   return value;
 }
 
 export async function reverseGeocodeEvidence(point: GeoPoint): Promise<GeoEvidence | null> {
   if (!isValidGeoPoint(point)) return null;
   const token = getServerMapboxToken();
-  const key = `r:${point.lat.toFixed(4)}:${point.lng.toFixed(4)}`;
+  const key = `r3:${point.lat.toFixed(4)}:${point.lng.toFixed(4)}`;
   const search = new URLSearchParams({
-    types: "address,poi,place,locality,neighborhood",
+    // Rural coordinates often have no street or POI. Country and region stay
+    // allowed so Mapbox can still prove the country without inventing a city.
+    types: "address,poi,place,locality,neighborhood,region,country",
     limit: "1",
     access_token: token,
   });

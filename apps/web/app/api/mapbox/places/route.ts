@@ -95,7 +95,11 @@ export async function POST(req: NextRequest) {
     Number.isFinite(lat) && Number.isFinite(lng)
       ? `${lat.toFixed(3)},${lng.toFixed(3)}`
       : "";
-  const cacheKey = `mapbox:places:v1:${query.toLowerCase()}:${country}:${limit}:${proximityKey}`;
+  const types =
+    country === "gn"
+      ? "address,poi,place,locality,neighborhood,region"
+      : "address,poi,place,locality,neighborhood";
+  const cacheKey = `mapbox:places:v2:${query.toLowerCase()}:${country}:${limit}:${proximityKey}:${types}`;
 
   try {
     const suggestions = await cacheWrap(cacheKey, 30_000, async () => {
@@ -103,7 +107,7 @@ export async function POST(req: NextRequest) {
       const params = new URLSearchParams({
         access_token: MAPBOX_TOKEN_INNER,
         autocomplete: "true",
-        types: "address,poi,place,locality,neighborhood",
+        types,
         limit: String(limit),
       });
 

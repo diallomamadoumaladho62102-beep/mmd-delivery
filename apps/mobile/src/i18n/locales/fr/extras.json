@@ -96,6 +96,9 @@
       "checkout": "Préparer le paiement",
       "comingSoonCta": "Paiement Marketplace bientôt disponible",
       "payLive": "Payer la commande marketplace",
+      "confirmCash": "Confirmer la commande (espèces)",
+      "cashPlacedTitle": "Commande confirmée",
+      "cashPlacedBody": "Votre commande est confirmée. Payez en espèces à la livraison. Le vendeur a été prévenu.",
       "missingCheckoutUrl": "URL de paiement manquante",
       "backToMarketplace": "Retour au marketplace",
       "checkoutStillComingSoon": "Le paiement arrive bientôt — aucun paiement Marketplace réel pour le moment.",
@@ -301,7 +304,9 @@
       "viewOrders": "Voir les commandes"
     },
     "signOut": {
-      "title": "Se déconnecter"
+      "title": "Se déconnecter",
+      "body": "Te déconnecter de cet appareil ? Ton compte vendeur et tes produits restent intacts.",
+      "error": "Impossible de se déconnecter pour le moment."
     }
   },
   "taxi": {
@@ -314,6 +319,7 @@
       "platformFee": "Frais plateforme",
       "total": "Montant total",
       "detectedCountry": "Détecté depuis le point de départ",
+      "paid": "Payé",
       "estimatesIn": "Estimation en"
     },
     "common": {
@@ -958,6 +964,16 @@
       },
       "v4": {
         "comingSoon": "Bientôt disponible",
+        "rewards": {
+          "creditUnknown": "Crédit indisponible",
+          "progress": "{{current}} / {{target}} pts avant le palier {{tier}}"
+        },
+        "tier": {
+          "bronze": "Bronze",
+          "gold": "Or",
+          "next": "suivant",
+          "silver": "Argent"
+        },
         "language": {
           "subtitle": "Choisis ta langue préférée pour MMD."
         },
@@ -1532,6 +1548,7 @@
       "danger": "Danger",
       "language": "Langue",
       "notifications": "Notifications",
+      "country": "Pays",
       "platform": "Plateforme",
       "privacy": "Confidentialité",
       "profile": "Profil",
@@ -1861,6 +1878,10 @@
       "missing": "Manquant",
       "missingRequirements": "Éléments manquants",
       "placeholderLicenseNumber": "Numéro de permis"
+    },
+    "signOut": {
+      "title": "Se déconnecter",
+      "body": "Te déconnecter de cet appareil ? Ton compte chauffeur et tes données restent intacts."
     },
     "account": {
       "createProfileFailed": "Impossible de créer le profil chauffeur pour le moment.",
@@ -2441,6 +2462,10 @@
           "value": "Données, permissions"
         },
         "title": "Mentions et aide"
+      },
+      "country": {
+        "label": "Pays",
+        "value": "Guinée ou États-Unis"
       },
       "next": {
         "addDocs": "Ajouter des documents",
@@ -3777,7 +3802,18 @@
     "directionsMin": "Minimum 8 caractères requis.",
     "photoLabel": "Photo du lieu (recommandé)",
     "retakePhoto": "Reprendre la photo du lieu",
-    "addPhoto": "Ajouter une photo du portail, magasin ou bâtiment"
+    "addPhoto": "Ajouter une photo du portail, magasin ou bâtiment",
+    "useGpsCurrent": "Ma position actuelle",
+    "region": "Région",
+    "regionPlaceholder": "Région",
+    "prefecture": "Préfecture",
+    "prefecturePlaceholder": "Préfecture",
+    "communeTown": "Ville / commune",
+    "communeTownPlaceholder": "Ville ou commune",
+    "quartierSector": "Quartier / secteur",
+    "quartierSectorPlaceholder": "Quartier ou secteur",
+    "landmarkPlaceholderLocal": "Marché, école, mosquée, hôpital ou boutique",
+    "hintPinConfirmLocal": "Utilisez le GPS, déplacez la carte, puis ajoutez un quartier ou un repère. Le code postal n’est pas obligatoire."
   },
   "maskedCall": {
     "errorTitle": "Erreur d'appel"
@@ -4068,7 +4104,9 @@
       "loading": "Chargement des prix…",
       "calculating": "Calcul de l’estimation…",
       "ready": "Estimation prête",
-      "emptyHint": "Calcule le prix pour voir l’estimation."
+      "emptyHint": "Calcule le prix pour voir l’estimation.",
+      "pickupGps": "GPS de prise en charge",
+      "dropoffGps": "GPS de destination"
     },
     "header": {
       "title": "Demander une livraison",
@@ -4122,6 +4160,8 @@
     },
     "errors": {
       "estimateGeneric": "Impossible de calculer l’estimation de livraison pour le moment.",
+      "addressNotFound": "Aucun lieu trouvé pour ces adresses. Précise le lieu, ou épingle les points sur la carte.",
+      "routeNotFound": "Aucun itinéraire routier n’a été trouvé entre ces points.",
       "networkEstimate": "Erreur réseau pendant le calcul de l’estimation.",
       "estimateTimeout": "La demande d’estimation a pris trop de temps. Réessaie.",
       "distanceTooLarge": "Distance trop grande. Vérifie les deux adresses.",
@@ -4458,7 +4498,9 @@
     "schemaNotReady": "Les courses en espèces ne sont pas encore prêtes sur le serveur. La course n'a pas été créée.",
     "motorcycleNotReady": "Les courses en moto ne sont pas encore prêtes sur le serveur.",
     "vehicleUnsupported": "Ce véhicule n'est pas disponible pour cette course.",
-    "tripNotSupported": "Ce type de trajet n'est pas disponible."
+    "tripNotSupported": "Ce type de trajet n'est pas disponible.",
+    "searchingDrivers": "Recherche de chauffeurs à proximité…",
+    "detailsPreview": "Aperçu du trajet"
   },
   "taxiXl": {
     "open": "XL interrégional",
@@ -4544,5 +4586,66 @@
     "segmentDeparture": "Départ par tronçon",
     "noGpsFix": "Aucune position GPS n'a été capturée.",
     "marketUnavailable": "Ce trajet interurbain est disponible uniquement en Guinée."
+  },
+  "guineaMarket": {
+    "welcomeTitle": "Bienvenue sur MMD",
+    "welcomeSubtitle": "Choisissez votre pays pour continuer",
+    "countryOption": "{{name}} — {{dial}} · {{currency}}",
+    "guineaName": "Guinée",
+    "guineaCoverage": "Toute la Guinée",
+    "usName": "États-Unis",
+    "usCoverage": "États-Unis",
+    "tabsTaxi": "Taxi",
+    "tabsRestaurants": "Restaurants",
+    "tabsParcels": "Colis",
+    "taxiHomeTitle": "Accueil Taxi",
+    "taxiHomeSubtitle": "Transport de personnes",
+    "whereTo": "Où allez-vous ?",
+    "pickup": "Point de départ",
+    "destination": "Destination",
+    "chooseOnMap": "Choisir sur la carte",
+    "seePrice": "Voir le prix",
+    "xlLink": "Taxi XL interrégional",
+    "restaurantsTitle": "Restaurants",
+    "restaurantsSubtitle": "Découvrez les meilleurs restaurants près de vous.",
+    "restaurantsSearch": "Rechercher un restaurant...",
+    "viewMenu": "Voir le menu →",
+    "restaurantsEmptyTitle": "Aucun restaurant disponible",
+    "restaurantsEmptyBody": "Aucun restaurant enregistré ne correspond à cette recherche. Aucun établissement fictif n’est affiché.",
+    "parcelsTitle": "Livraison de colis",
+    "parcelsSubtitle": "Envoyez un colis rapidement.",
+    "parcelType": "Type de colis",
+    "pickupPoint": "Point de prise en charge",
+    "pickupLandmark": "Quartier, marché ou repère",
+    "recipient": "Destinataire",
+    "pickupPinned": "Prise en charge indiquée",
+    "destinationPinned": "Destination indiquée",
+    "confirmDelivery": "Confirmer la livraison",
+    "authPersonalTitle": "Informations personnelles",
+    "authPersonalSubtitle": "Nom, numéro {{dial}} et photo facultative.",
+    "authPhotoOptional": "Ajouter une photo (facultatif)",
+    "authEmergencyPhone": "Téléphone d’urgence (facultatif)",
+    "authDateOfBirth": "Date de naissance (facultatif)",
+    "authDobPlaceholder": "AAAA-MM-JJ",
+    "authCreatedTitle": "Compte créé avec succès",
+    "authCreatedBody": "Votre compte MMD est prêt. Vous pouvez commander un taxi, un repas ou un colis en Guinée.",
+    "authStart": "Commencer",
+    "authContinue": "Continuer",
+    "authLandmarkPlaceholder": "Quartier, marché, école ou repère",
+    "authCityPlaceholder": "Ville ou commune",
+    "authRegionPlaceholder": "Préfecture",
+    "authPostalPlaceholder": "Code postal facultatif",
+    "authAddressHint": "Un quartier ou un repère suffit. Le code postal n’est pas obligatoire.",
+    "authPhoneInvalid": "Entrez un numéro guinéen valide, par exemple +224 620 00 00 00.",
+    "authPhonePlaceholder": "+224 6XX XX XX XX",
+    "authAddressLabel": "Quartier ou repère",
+    "authEmergencyInvalid": "Le téléphone d’urgence doit être un numéro guinéen valide, ou rester vide.",
+    "authZipLabel": "Code postal (facultatif)",
+    "authZipPlaceholder": "Facultatif",
+    "restaurantDropoffPlaceholder": "Quartier, marché ou repère",
+    "incompleteAddress": "Indiquez une adresse plus complète avec un quartier ou un repère.",
+    "distanceTooFar": "Cette livraison est trop loin ({{miles}}). Vérifiez le repère, la ville et l’épingle sur la carte.",
+    "deliveryPricingUnavailable": "Les tarifs de livraison guinéens ne sont pas encore configurés. Aucun frais estimé n’est affiché.",
+    "restaurantSetupRequired": "Indiquez le nom, un téléphone +224 valide, un repère, la ville, la préfecture et le type de cuisine."
   }
 }
