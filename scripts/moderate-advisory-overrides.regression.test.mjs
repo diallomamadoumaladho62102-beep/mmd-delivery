@@ -56,6 +56,7 @@ assert.ok(
   String(overrides["qs"]).includes("6.16.1"),
   "qs override must be >=6.16.1",
 );
+assert.equal(overrides["i18next"], "26.3.4", "i18next must be pinned to the patched 26.3.4");
 assert.equal(overrides["brace-expansion@1"], "1.1.21");
 assert.equal(overrides["brace-expansion@2"], "2.1.7");
 assert.ok(String(overrides["minimatch@10>brace-expansion"]).includes("5.0.12"));
@@ -81,6 +82,8 @@ assert.equal(overrides["brace-expansion@2"], "2.1.7");
 assert.equal(lock.includes("brace-expansion@5.0.12:"), true);
 assert.equal(/qs@6\.16\.0:\r?\n/.test(lock), false);
 assert.equal(lock.includes("qs@6.17.1:") || lock.includes("qs@6.16.1:"), true);
+assert.equal(/i18next@25\./.test(lock), false, "lock must not resolve i18next 25.x");
+assert.equal(lock.includes("i18next@26.3.4:"), true, "lock must resolve i18next 26.3.4");
 assert.equal(/minimatch@10\.2\.5:\r?\n/.test(lock), false);
 assert.equal(lock.includes("minimatch@11.0.4:"), true);
 assert.equal(/glob@9\.3\.5:\r?\n/.test(lock), false);
