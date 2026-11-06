@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import {
+  GPS_DEFAULTS,
   isGuineaMapCameraDefault,
   verifiedGpsUserMessage,
   type VerifiedGpsErr,
@@ -55,7 +56,7 @@ export async function getVerifiedClientGps(options?: {
       return err(
         "services_off",
         "gps.servicesOff",
-        "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+        GPS_DEFAULTS.servicesOff
       );
     }
 
@@ -71,7 +72,7 @@ export async function getVerifiedClientGps(options?: {
       return err(
         canAskAgain === false ? "permission_blocked" : "permission_denied",
         "gps.permissionRequired",
-        "Impossible de déterminer votre position exacte. Autorisez la localisation et réessayez."
+        GPS_DEFAULTS.permissionRequired
       );
     }
 
@@ -86,7 +87,7 @@ export async function getVerifiedClientGps(options?: {
       return err(
         "timeout",
         "gps.timeout",
-        "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+        GPS_DEFAULTS.timeout
       );
     }
 
@@ -97,16 +98,16 @@ export async function getVerifiedClientGps(options?: {
     const ageMs = Math.max(0, Date.now() - timestamp);
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return err("invalid", "gps.invalid", "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez.");
+      return err("invalid", "gps.invalid", GPS_DEFAULTS.invalid);
     }
     if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) {
-      return err("invalid", "gps.invalid", "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez.");
+      return err("invalid", "gps.invalid", GPS_DEFAULTS.invalid);
     }
     if (!Number.isFinite(accuracyM) || accuracyM == null || accuracyM <= 0) {
       return err(
         "weak_accuracy",
         "gps.weakAccuracy",
-        "Impossible de déterminer votre position exacte. Précision GPS insuffisante — réessayez.",
+        GPS_DEFAULTS.weakAccuracy,
         null,
         ageMs
       );
@@ -115,13 +116,13 @@ export async function getVerifiedClientGps(options?: {
       return err(
         "weak_accuracy",
         "gps.weakAccuracy",
-        "Impossible de déterminer votre position exacte. Précision GPS insuffisante — réessayez.",
+        GPS_DEFAULTS.weakAccuracy,
         accuracyM,
         ageMs
       );
     }
     if (ageMs > maxAgeMs) {
-      return err("stale", "gps.stale", "Impossible de déterminer votre position exacte. La position GPS est trop ancienne — réessayez.", accuracyM, ageMs);
+      return err("stale", "gps.stale", GPS_DEFAULTS.stale, accuracyM, ageMs);
     }
 
     return {
@@ -136,7 +137,7 @@ export async function getVerifiedClientGps(options?: {
     return err(
       "unavailable",
       "gps.unavailable",
-      "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+      GPS_DEFAULTS.unavailable
     );
   }
 }

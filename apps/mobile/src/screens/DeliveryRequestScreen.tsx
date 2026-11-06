@@ -1,4 +1,5 @@
 import { toUserFacingError } from "../lib/userFacingError";
+import { GPS_DEFAULTS } from "../lib/verifiedClientGpsPure";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -969,7 +970,7 @@ export function DeliveryRequestScreen() {
         throw new Error(
           tr(
             "gps.unavailable",
-            "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+            GPS_DEFAULTS.unavailable
           )
         );
       }

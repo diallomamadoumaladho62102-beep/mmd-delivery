@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toUserFacingError } from "../../lib/userFacingError";
+import { GPS_DEFAULTS } from "../../lib/verifiedClientGpsPure";
 import {
   ActivityIndicator,
   Alert,
@@ -293,7 +294,7 @@ export default function MMDLocationPicker({
         e,
         t(
           "gps.unavailable",
-          "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+          GPS_DEFAULTS.unavailable
         )
       );
       setGpsError(text);
@@ -323,7 +324,7 @@ export default function MMDLocationPicker({
         t("locationPicker.gpsErrorTitle", "GPS error"),
         t(
           "gps.unavailable",
-          "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+          GPS_DEFAULTS.unavailable
         )
       );
       return;
@@ -348,7 +349,7 @@ export default function MMDLocationPicker({
         t("locationPicker.gpsErrorTitle", "GPS error"),
         t(
           "gps.mustVerifyBeforePin",
-          "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+          GPS_DEFAULTS.mustVerifyBeforePin
         )
       );
       return;
@@ -394,7 +395,7 @@ export default function MMDLocationPicker({
         gpsError ??
           t(
             "gps.unavailable",
-            "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
+            GPS_DEFAULTS.unavailable
           )
       );
       return;
