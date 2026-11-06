@@ -190,3 +190,36 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// Guava 31.0.1-android and commons-io 2.6 are on releaseRuntimeClasspath.
+// Netty and protobuf-java are not: they exist only on AGP's internal
+// Unified Test Platform configuration.
+configurations.configureEach { configuration ->
+    def testPlatform = configuration.name.contains("unified-test-platform")
+    configuration.resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == "com.google.guava" && details.requested.name == "guava") {
+            details.useVersion("33.7.2-android")
+            details.because("CVE-2026-102554 / SNYK-JAVA-COMGOOGLEGUAVA-20825054")
+        }
+        if (details.requested.group == "commons-io" && details.requested.name == "commons-io") {
+            details.useVersion("2.18.0")
+            details.because("SNYK-JAVA-COMMONSIO-1277109 and SNYK-JAVA-COMMONSIO-8161190")
+        }
+        if (details.requested.group == "commons-codec" && details.requested.name == "commons-codec") {
+            details.useVersion("1.17.1")
+            details.because("SNYK-JAVA-COMMONSCODEC-561518 is on the release runtime classpath")
+        }
+        if (details.requested.group == "org.jetbrains.kotlin" && details.requested.name == "kotlin-stdlib") {
+            details.useVersion("2.1.20")
+            details.because("SNYK-JAVA-ORGJETBRAINSKOTLIN-2393744; same stdlib the app already resolves on release")
+        }
+        if (testPlatform && details.requested.group == "io.netty") {
+            details.useVersion("4.1.138.Final")
+            details.because("SNYK-JAVA-IONETTY-17254120 and SNYK-JAVA-IONETTY-19005879")
+        }
+        if (testPlatform && details.requested.group == "com.google.protobuf" && details.requested.name == "protobuf-java") {
+            details.useVersion("3.25.5")
+            details.because("SNYK-JAVA-COMGOOGLEPROTOBUF-8055227 on the test-platform classpath only")
+        }
+    }
+}
