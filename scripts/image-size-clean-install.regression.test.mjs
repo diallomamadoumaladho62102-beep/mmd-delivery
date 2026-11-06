@@ -119,7 +119,8 @@ test("Apple #121 Client Home fail-open is intact", () => {
 });
 
 test("inflight remains a glob@7 build-time leaf (no app import)", () => {
-  assert.match(lock, /inflight@1\.0\.6:/);
+  assert.doesNotMatch(lock, /inflight@1\.0\.6:/);
+  assert.match(lock, /inflight@file:vendor\/inflight/);
   assert.match(lock, /glob@7\.2\.3:/);
   const mmdAudio = readFileSync(
     join(ROOT, "apps", "mobile", "src", "lib", "mmdAudio.ts"),

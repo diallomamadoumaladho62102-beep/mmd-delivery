@@ -69,6 +69,15 @@ overrides:
   source-map-js: '>=1.2.2'
   decode-uri-component: file:vendor/decode-uri-component
   braces: file:vendor/braces
+  deepmerge: file:vendor/deepmerge
+  inflight: file:vendor/inflight
+  open@7.4.2: file:vendor/open
+  open@8.4.2: file:vendor/open
+
+patchedDependencies:
+  '@react-native/codegen@0.81.5':
+    hash: 87cf80d0905cb109c416f3539ea6d0094f1d76f628044a5249df424cd9ae38a1
+    path: patches/@react-native__codegen@0.81.5.patch
 
 importers:
 
@@ -3452,8 +3461,8 @@ packages:
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
 
-  deepmerge@4.3.1:
-    resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
+  deepmerge@file:vendor/deepmerge:
+    resolution: {directory: vendor/deepmerge, type: directory}
     engines: {node: '>=0.10.0'}
 
   defaults@1.0.4:
@@ -4265,9 +4274,8 @@ packages:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
     engines: {node: '>=0.8.19'}
 
-  inflight@1.0.6:
-    resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
-    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+  inflight@file:vendor/inflight:
+    resolution: {directory: vendor/inflight, type: directory}
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -4983,12 +4991,8 @@ packages:
     resolution: {integrity: sha512-oyyPpiMaKARvvcgip+JV+7zci5L8D1W9RZIz2l1o08AM3pfspitVWnPt3mzHcBPp12oYMTy0pqrFs/C+m3EwsQ==}
     engines: {node: '>=4'}
 
-  open@7.4.2:
-    resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
-    engines: {node: '>=8'}
-
-  open@8.4.2:
-    resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
+  open@file:vendor/open:
+    resolution: {directory: vendor/open, type: directory}
     engines: {node: '>=12'}
 
   openai@4.104.0:
@@ -7094,7 +7098,7 @@ snapshots:
       '@expo/config-plugins': 54.0.4
       '@expo/config-types': 54.0.10
       '@expo/json-file': 10.2.0
-      deepmerge: 4.3.1
+      deepmerge: file:vendor/deepmerge
       getenv: 2.0.0
       glob: 14.0.3
       require-from-string: 2.0.2
@@ -7112,7 +7116,7 @@ snapshots:
       '@expo/config-plugins': 54.0.5
       '@expo/config-types': 54.0.10
       '@expo/json-file': 10.2.0
-      deepmerge: 4.3.1
+      deepmerge: file:vendor/deepmerge
       getenv: 2.0.0
       glob: 14.0.3
       require-from-string: 2.0.2
@@ -7731,7 +7735,7 @@ snapshots:
   '@react-native/babel-plugin-codegen@0.81.5(@babel/core@7.29.7)':
     dependencies:
       '@babel/traverse': 7.29.7
-      '@react-native/codegen': 0.81.5(@babel/core@7.29.7)
+      '@react-native/codegen': 0.81.5(patch_hash=87cf80d0905cb109c416f3539ea6d0094f1d76f628044a5249df424cd9ae38a1)(@babel/core@7.29.7)
     transitivePeerDependencies:
       - '@babel/core'
       - supports-color
@@ -7786,7 +7790,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@react-native/codegen@0.81.5(@babel/core@7.29.7)':
+  '@react-native/codegen@0.81.5(patch_hash=87cf80d0905cb109c416f3539ea6d0094f1d76f628044a5249df424cd9ae38a1)(@babel/core@7.29.7)':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/parser': 7.29.7
@@ -7822,7 +7826,7 @@ snapshots:
       debug: 4.4.3
       invariant: 2.2.4
       nullthrows: 1.1.1
-      open: 7.4.2
+      open: file:vendor/open
       serve-static: 1.16.3
       ws: 8.21.0
     transitivePeerDependencies:
@@ -9294,7 +9298,7 @@ snapshots:
 
   better-opn@3.0.2:
     dependencies:
-      open: 8.4.2
+      open: file:vendor/open
 
   big-integer@1.6.52: {}
 
@@ -9581,7 +9585,7 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  deepmerge@4.3.1: {}
+  deepmerge@file:vendor/deepmerge: {}
 
   defaults@1.0.4:
     dependencies:
@@ -10325,7 +10329,7 @@ snapshots:
   glob@7.2.3:
     dependencies:
       fs.realpath: 1.0.0
-      inflight: 1.0.6
+      inflight: file:vendor/inflight
       inherits: 2.0.4
       minimatch: 11.0.4
       once: 1.4.0
@@ -10440,7 +10444,7 @@ snapshots:
 
   imurmurhash@0.1.4: {}
 
-  inflight@1.0.6:
+  inflight@file:vendor/inflight:
     dependencies:
       once: 1.4.0
       wrappy: 1.0.2
@@ -11211,12 +11215,7 @@ snapshots:
     dependencies:
       mimic-fn: 1.2.0
 
-  open@7.4.2:
-    dependencies:
-      is-docker: 2.2.1
-      is-wsl: 2.2.0
-
-  open@8.4.2:
+  open@file:vendor/open:
     dependencies:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
@@ -11539,7 +11538,7 @@ snapshots:
     dependencies:
       '@jest/create-cache-key-function': 29.7.0
       '@react-native/assets-registry': 0.81.5
-      '@react-native/codegen': 0.81.5(@babel/core@7.29.7)
+      '@react-native/codegen': 0.81.5(patch_hash=87cf80d0905cb109c416f3539ea6d0094f1d76f628044a5249df424cd9ae38a1)(@babel/core@7.29.7)
       '@react-native/community-cli-plugin': 0.81.5
       '@react-native/gradle-plugin': 0.81.5
       '@react-native/js-polyfills': 0.81.5

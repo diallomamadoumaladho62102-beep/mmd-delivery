@@ -1,0 +1,68 @@
+diff --git a/lib/cli/combine/combine-js-to-schema.js b/lib/cli/combine/combine-js-to-schema.js
+index 9c2fb5f4248f965b8d1c30540d35ad1549b3c937..1dd20f118099f69afbbdf7a21a9f6299215c5cb1 100644
+--- a/lib/cli/combine/combine-js-to-schema.js
++++ b/lib/cli/combine/combine-js-to-schema.js
+@@ -14,7 +14,6 @@ const {FlowParser} = require('../../parsers/flow/parser');
+ const {TypeScriptParser} = require('../../parsers/typescript/parser');
+ const {filterJSFile} = require('./combine-utils');
+ const fs = require('fs');
+-const glob = require('glob');
+ const path = require('path');
+ const flowParser = new FlowParser();
+ const typescriptParser = new TypeScriptParser();
+@@ -49,20 +48,47 @@ function combineSchemas(files, libraryName) {
+     modules: combined.modules,
+   };
+ }
++// glob@7.2.3 reads minimatch 3 fields (pattern._glob). The workspace override
++// resolves minimatch to 11.0.4, so glob.sync throws
++// "Cannot read properties of undefined (reading 'charAt')" on Windows.
++// The old pattern was **/*{,.fb}.{js,ts,tsx}. This walk keeps those extensions.
++const CODEGEN_SOURCE = /\.(?:fb\.)?(?:js|ts|tsx)$/;
++function collectCodegenSources(directory) {
++  const collected = [];
++  const pending = [directory];
++  while (pending.length > 0) {
++    const current = pending.pop();
++    const entries = fs.readdirSync(current, {withFileTypes: true});
++    for (const entry of entries) {
++      const fullPath = path.join(current, entry.name);
++      let isDirectory = entry.isDirectory();
++      let isFile = entry.isFile();
++      if (entry.isSymbolicLink()) {
++        try {
++          const stat = fs.statSync(fullPath);
++          isDirectory = stat.isDirectory();
++          isFile = stat.isFile();
++        } catch (error) {
++          continue;
++        }
++      }
++      if (isDirectory) {
++        pending.push(fullPath);
++      } else if (isFile && CODEGEN_SOURCE.test(entry.name)) {
++        collected.push(fullPath);
++      }
++    }
++  }
++  collected.sort();
++  return collected;
++}
+ function expandDirectoriesIntoFiles(fileList, platform, exclude) {
+   return fileList
+     .flatMap(file => {
+       if (!fs.lstatSync(file).isDirectory()) {
+         return [file];
+       }
+-      const filePattern = path.sep === '\\' ? file.replace(/\\/g, '/') : file;
+-      return glob.sync(`${filePattern}/**/*{,.fb}.{js,ts,tsx}`, {
+-        nodir: true,
+-        // TODO: This will remove the need of slash substitution above for Windows,
+-        // but it requires glob@v9+; with the package currenlty relying on
+-        // glob@7.1.1; and flow-typed repo not having definitions for glob@9+.
+-        // windowsPathsNoEscape: true,
+-      });
++      return collectCodegenSources(file);
+     })
+     .filter(element => filterJSFile(element, platform, exclude));
+ }

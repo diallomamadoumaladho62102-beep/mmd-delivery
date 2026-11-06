@@ -1,0 +1,16 @@
+{
+  "name": "inflight",
+  "version": "1.0.7",
+  "description": "MMD local patch of inflight 1.0.6. Same glob@7 API, but pending callbacks are released when the returned function is dropped (SNYK-JS-INFLIGHT-6095116). Not an npm release. Upstream 1.0.6 is still the only registry version.",
+  "main": "inflight.js",
+  "license": "ISC",
+  "dependencies": {
+    "once": "^1.3.0",
+    "wrappy": "1"
+  },
+  "files": [
+    "inflight.js",
+    "README.md",
+    "LICENSE"
+  ]
+}

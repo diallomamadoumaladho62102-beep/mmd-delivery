@@ -1,0 +1,23 @@
+{
+  "name": "open",
+  "version": "8.4.3",
+  "description": "MMD local patch of open 8.4.2. Single-quotes PowerShell arguments (CVE-2026-119025) and keeps the CommonJS app-object API. Replaces both open 7.4.2 and 8.4.2. Not an npm release.",
+  "license": "MIT",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "engines": {
+    "node": ">=12"
+  },
+  "dependencies": {
+    "define-lazy-prop": "^2.0.0",
+    "is-docker": "^2.0.0",
+    "is-wsl": "^2.1.1"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "license",
+    "xdg-open",
+    "README.md"
+  ]
+}

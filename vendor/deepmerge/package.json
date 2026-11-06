@@ -1,0 +1,18 @@
+{
+  "name": "deepmerge",
+  "version": "4.3.2",
+  "description": "MMD local patch of deepmerge 4.3.1. Refuses __proto__, constructor, and prototype keys (CVE-2026-93753). This version is not published on npm. Upstream 4.3.1 remains the latest registry release and has no official fix.",
+  "license": "MIT",
+  "main": "dist/cjs.js",
+  "types": "index.d.ts",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "files": [
+    "dist/cjs.js",
+    "index.d.ts",
+    "license.txt",
+    "README.md"
+  ]
+}
