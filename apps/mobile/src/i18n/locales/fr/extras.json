@@ -245,7 +245,12 @@
       "refundRetryBody": "Commande refusée. Le remboursement Stripe n’a pas abouti automatiquement et sera relancé.",
       "refundRetryTitle": "Remboursement en attente de nouvel essai",
       "refundStatus": "Remboursement",
-      "refuse": "Refuser"
+      "refuse": "Refuser",
+      "cashCollectedTitle": "Espèces encaissées",
+      "cashCollectedBody": "Paiement marqué comme espèces encaissées. La commande est maintenant payée en cash.",
+      "cashCollectFailed": "Impossible de confirmer l’encaissement.",
+      "collectCash": "Confirmer la réception des espèces",
+      "cashCollectedBadge": "Espèces encaissées"
     },
     "products": {
       "title": "Produits",
@@ -273,7 +278,9 @@
       "invalidStock": "Quantité de stock invalide",
       "loading": "Récupération de tes produits",
       "outOfStock": "Rupture de stock",
-      "search": "Rechercher des produits…"
+      "search": "Rechercher des produits…",
+      "pendingReviewTitle": "En attente d’approbation admin",
+      "pendingReviewBody": "Vous pouvez préparer les produits maintenant. Les clients les verront après l’approbation de votre boutique."
     },
     "wallet": {
       "stripeFailed": "Impossible d'ouvrir Stripe.",
@@ -1877,7 +1884,12 @@
       "manageFleet": "Gérer la flotte",
       "missing": "Manquant",
       "missingRequirements": "Éléments manquants",
-      "placeholderLicenseNumber": "Numéro de permis"
+      "placeholderLicenseNumber": "Numéro de permis",
+      "docIncomplete": "À mettre à jour",
+      "docRejected": "Refusé",
+      "docPendingReview": "En attente de revue",
+      "docsRequestedTitle": "Documents supplémentaires demandés",
+      "docsRequestedFallback": "Veuillez renvoyer ce document."
     },
     "signOut": {
       "title": "Se déconnecter",
@@ -2950,6 +2962,13 @@
       "title": "Chronomètre d’attente client",
       "tooFarBody": "Approche à moins de 50 m pour valider l’arrivée GPS et démarrer le chronomètre.",
       "tooFarTitle": "Trop loin du point"
+    },
+    "cash": {
+      "collectedTitle": "Espèces encaissées",
+      "collectedBody": "Paiement marqué comme espèces encaissées.",
+      "collectFailed": "Impossible de confirmer l’encaissement.",
+      "collect": "Confirmer la réception des espèces",
+      "collectedBadge": "Espèces encaissées"
     }
   },
   "restaurant": {
@@ -3263,7 +3282,12 @@
       "rejectConfirm": "Refuser cette commande ?",
       "rejectTitle": "Refuser la commande",
       "title": "Commandes",
-      "updateFailed": "Impossible de mettre à jour la commande."
+      "updateFailed": "Impossible de mettre à jour la commande.",
+      "cashCollectedTitle": "Espèces encaissées",
+      "cashCollectedBody": "Paiement marqué comme espèces encaissées.",
+      "cashCollectFailed": "Impossible de confirmer l’encaissement.",
+      "collectCash": "Confirmer la réception des espèces",
+      "cashCollectedBadge": "Espèces encaissées"
     },
     "connect": {
       "cta": {
@@ -3813,7 +3837,10 @@
     "quartierSector": "Quartier / secteur",
     "quartierSectorPlaceholder": "Quartier ou secteur",
     "landmarkPlaceholderLocal": "Marché, école, mosquée, hôpital ou boutique",
-    "hintPinConfirmLocal": "Utilisez le GPS, déplacez la carte, puis ajoutez un quartier ou un repère. Le code postal n’est pas obligatoire."
+    "hintPinConfirmLocal": "Utilisez le GPS, déplacez la carte, puis ajoutez un quartier ou un repère. Le code postal n’est pas obligatoire.",
+    "missingPinBody": "Obtenez votre position GPS (ou placez le repère) avant d’enregistrer.",
+    "retryGps": "Actualiser ma position GPS",
+    "awaitingGps": "Pas encore de position client. Le centre de la carte n’est qu’un aperçu — pas votre point de retrait."
   },
   "maskedCall": {
     "errorTitle": "Erreur d'appel"
@@ -4156,7 +4183,8 @@
       "estimateFailedTitle": "Estimation échouée",
       "createdTitle": "Demande créée",
       "createdBody": "Demande de livraison créée. Appuie sur Payer maintenant pour finaliser le paiement.",
-      "scopeBody": "Active la localisation pour choisir une adresse de livraison dans ton marché."
+      "scopeBody": "Active la localisation pour choisir une adresse de livraison dans ton marché.",
+      "createdCashBody": "Demande de livraison créée avec paiement en espèces. Payez le chauffeur en cash ; il confirmera l’encaissement."
     },
     "errors": {
       "estimateGeneric": "Impossible de calculer l’estimation de livraison pour le moment.",

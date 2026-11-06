@@ -245,7 +245,12 @@
       "refundRetryBody": "订单已拒绝。Stripe 退款未自动完成，将重试。",
       "refundRetryTitle": "退款待重试",
       "refundStatus": "退款",
-      "refuse": "拒绝"
+      "refuse": "拒绝",
+      "cashCollectedTitle": "现金已收取",
+      "cashCollectedBody": "付款已标记为现金已收取。订单现已用现金支付。",
+      "cashCollectFailed": "无法确认现金收款。",
+      "collectCash": "确认已收现金",
+      "cashCollectedBadge": "现金已收取"
     },
     "products": {
       "title": "商品",
@@ -273,7 +278,9 @@
       "loading": "正在获取商品",
       "outOfStock": "缺货",
       "search": "搜索商品…",
-      "inactive": "未启用"
+      "inactive": "未启用",
+      "pendingReviewTitle": "待管理员批准",
+      "pendingReviewBody": "你现在可以准备商品。店铺获批后，客户才能看到它们。"
     },
     "wallet": {
       "stripeFailed": "无法打开 Stripe。",
@@ -1867,7 +1874,12 @@
       "manageFleet": "管理车队",
       "missing": "缺少",
       "missingRequirements": "缺少所需项",
-      "placeholderLicenseNumber": "驾照号码"
+      "placeholderLicenseNumber": "驾照号码",
+      "docIncomplete": "待更新",
+      "docRejected": "已拒绝",
+      "docPendingReview": "待审核",
+      "docsRequestedTitle": "需要补充文件",
+      "docsRequestedFallback": "请重新上传此文件。"
     },
     "signOut": {
       "title": "退出登录",
@@ -3010,6 +3022,13 @@
       "leaveAtDoorDisabled": "客户未允许放在门口。",
       "depositCta": "拍照放置",
       "noShowCta": "取消且无罚金（未出现）"
+    },
+    "cash": {
+      "collectedTitle": "现金已收取",
+      "collectedBody": "付款已标记为现金已收取。",
+      "collectFailed": "无法确认现金收款。",
+      "collect": "确认已收现金",
+      "collectedBadge": "现金已收取"
     }
   },
   "restaurant": {
@@ -3323,7 +3342,12 @@
         "orderNotFound": "未找到此餐厅的订单。",
         "invalidTransition": "此订单状态已变更。请刷新列表。",
         "acceptExpired": "接单时限已过。你无法再接受此订单。"
-      }
+      },
+      "cashCollectedTitle": "现金已收取",
+      "cashCollectedBody": "付款已标记为现金已收取。",
+      "cashCollectFailed": "无法确认现金收款。",
+      "collectCash": "确认已收现金",
+      "cashCollectedBadge": "现金已收取"
     },
     "connect": {
       "cta": {
@@ -3885,7 +3909,10 @@
     "quartierSector": "街区 / 片区",
     "quartierSectorPlaceholder": "街区或片区",
     "landmarkPlaceholderLocal": "市场、学校、清真寺、医院或商店",
-    "hintPinConfirmLocal": "使用 GPS 或移动地图，然后添加街区或地标。邮政编码不是必填项。"
+    "hintPinConfirmLocal": "使用 GPS 或移动地图，然后添加街区或地标。邮政编码不是必填项。",
+    "missingPinBody": "保存前请获取 GPS 位置（或放置图钉）。",
+    "retryGps": "刷新我的 GPS 位置",
+    "awaitingGps": "还没有客户位置。地图中心只是预览，不是取件点。"
   },
   "maskedCall": {
     "errorTitle": "呼叫错误"
@@ -4175,7 +4202,8 @@
       "estimateFailedTitle": "估价失败",
       "createdTitle": "请求已创建",
       "createdBody": "配送请求已创建。点按立即支付以完成付款。",
-      "scopeBody": "开启定位以在你的市场选择配送地址。"
+      "scopeBody": "开启定位以在你的市场选择配送地址。",
+      "createdCashBody": "已创建现金支付的配送请求。请向司机支付现金，司机将确认收款。"
     },
     "errors": {
       "estimateGeneric": "暂时无法计算配送估价。",

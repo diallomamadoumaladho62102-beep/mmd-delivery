@@ -245,7 +245,12 @@
       "refundRetryBody": "رُفض الطلب. لم يكتمل استرداد Stripe تلقائياً وسيُعاد.",
       "refundRetryTitle": "الاسترداد بانتظار إعادة المحاولة",
       "refundStatus": "استرداد",
-      "refuse": "رفض"
+      "refuse": "رفض",
+      "cashCollectedTitle": "تم تحصيل النقد",
+      "cashCollectedBody": "تم تعليم الدفع كنقد محصّل. الطلب مدفوع نقداً الآن.",
+      "cashCollectFailed": "تعذر تأكيد تحصيل النقد.",
+      "collectCash": "تأكيد استلام النقد",
+      "cashCollectedBadge": "تم تحصيل النقد"
     },
     "products": {
       "title": "المنتجات",
@@ -273,7 +278,9 @@
       "loading": "جارٍ جلب منتجاتك",
       "outOfStock": "نفد المخزون",
       "search": "البحث عن منتجات…",
-      "inactive": "غير نشط"
+      "inactive": "غير نشط",
+      "pendingReviewTitle": "بانتظار موافقة المشرف",
+      "pendingReviewBody": "يمكنك تجهيز المنتجات الآن. سيراها العملاء بعد الموافقة على متجرك."
     },
     "wallet": {
       "stripeFailed": "تعذر فتح Stripe.",
@@ -1867,7 +1874,12 @@
       "manageFleet": "إدارة الأسطول",
       "missing": "ناقص",
       "missingRequirements": "متطلبات ناقصة",
-      "placeholderLicenseNumber": "رقم الرخصة"
+      "placeholderLicenseNumber": "رقم الرخصة",
+      "docIncomplete": "بحاجة إلى تحديث",
+      "docRejected": "مرفوض",
+      "docPendingReview": "بانتظار المراجعة",
+      "docsRequestedTitle": "طُلبت مستندات إضافية",
+      "docsRequestedFallback": "يرجى إعادة رفع هذا المستند."
     },
     "signOut": {
       "title": "تسجيل الخروج",
@@ -2839,6 +2851,13 @@
       "leaveAtDoorDisabled": "لم يسمح العميل بالترك عند الباب.",
       "depositCta": "تسليم مع صورة",
       "noShowCta": "إلغاء بلا غرامة (عدم الحضور)"
+    },
+    "cash": {
+      "collectedTitle": "تم تحصيل النقد",
+      "collectedBody": "تم تعليم الدفع كنقد محصّل.",
+      "collectFailed": "تعذر تأكيد تحصيل النقد.",
+      "collect": "تأكيد استلام النقد",
+      "collectedBadge": "تم تحصيل النقد"
     }
   },
   "restaurant": {
@@ -3152,7 +3171,12 @@
         "orderNotFound": "الطلب غير موجود لهذا المطعم.",
         "invalidTransition": "غيّر هذا الطلب حالته بالفعل. حدّث القائمة.",
         "acceptExpired": "انتهت نافذة القبول. لم يعد يمكنك قبول هذا الطلب."
-      }
+      },
+      "cashCollectedTitle": "تم تحصيل النقد",
+      "cashCollectedBody": "تم تعليم الدفع كنقد محصّل.",
+      "cashCollectFailed": "تعذر تأكيد تحصيل النقد.",
+      "collectCash": "تأكيد استلام النقد",
+      "cashCollectedBadge": "تم تحصيل النقد"
     },
     "connect": {
       "cta": {
@@ -3714,7 +3738,10 @@
     "quartierSector": "الحي / القطاع",
     "quartierSectorPlaceholder": "حي أو قطاع",
     "landmarkPlaceholderLocal": "سوق أو مدرسة أو مسجد أو مستشفى أو متجر",
-    "hintPinConfirmLocal": "استخدم GPS أو حرّك الخريطة ثم أضف حيًا أو معلمًا. الرمز البريدي غير مطلوب."
+    "hintPinConfirmLocal": "استخدم GPS أو حرّك الخريطة ثم أضف حيًا أو معلمًا. الرمز البريدي غير مطلوب.",
+    "missingPinBody": "احصل على موقع GPS (أو ضع الدبوس) قبل الحفظ.",
+    "retryGps": "تحديث موقع GPS",
+    "awaitingGps": "لا يوجد موقع للعميل بعد. مركز الخريطة مجرد معاينة — وليس نقطة الاستلام."
   },
   "maskedCall": {
     "errorTitle": "خطأ في الاتصال"
@@ -4004,7 +4031,8 @@
       "estimateFailedTitle": "فشل التقدير",
       "createdTitle": "تم إنشاء الطلب",
       "createdBody": "تم إنشاء طلب التوصيل. اضغط ادفع الآن لإكمال الدفع.",
-      "scopeBody": "فعّل الموقع لاختيار عنوان توصيل في سوقك."
+      "scopeBody": "فعّل الموقع لاختيار عنوان توصيل في سوقك.",
+      "createdCashBody": "تم إنشاء طلب التوصيل بالدفع نقداً. ادفع للسائق نقداً؛ وسيؤكد التحصيل."
     },
     "errors": {
       "estimateGeneric": "تعذر حساب تقدير التوصيل حاليًا.",

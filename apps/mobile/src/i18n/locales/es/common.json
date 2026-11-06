@@ -191,7 +191,10 @@
         "loginTitle": "Inicio de sesión",
         "loginBody": "Inicia sesión primero.",
         "bikeTitle": "Bicicleta"
-      }
+      },
+      "docEmpty": "Este archivo está vacío. Elige una foto o un PDF.",
+      "docTooLarge": "El archivo es demasiado grande (máx. 10 MB).",
+      "docBadType": "Usa solo JPEG, PNG o PDF."
     },
     "permission": {
       "title": "Permiso",
@@ -1696,6 +1699,16 @@
       "directionsPh": "Después de la estación Total, segunda calle a la derecha, casa amarilla con portón azul...",
       "directionsMin": "Se requieren al menos 8 caracteres."
     }
+  },
+  "gps": {
+    "unavailable": "No se puede determinar tu posición exacta. Activa el GPS e inténtalo de nuevo.",
+    "mustVerifyBeforePin": "No se puede determinar tu posición exacta. Activa el GPS antes de colocar el marcador.",
+    "servicesOff": "No se puede determinar tu posición exacta. Activa el GPS e inténtalo de nuevo.",
+    "permissionRequired": "No se puede determinar tu posición exacta. Permite el acceso a la ubicación e inténtalo de nuevo.",
+    "weakAccuracy": "No se puede determinar tu posición exacta. La precisión del GPS es insuficiente — inténtalo al aire libre o espera una mejor señal.",
+    "stale": "No se puede determinar tu posición exacta. La posición GPS es demasiado antigua — inténtalo de nuevo.",
+    "timeout": "No se puede determinar tu posición exacta. Activa el GPS e inténtalo de nuevo.",
+    "invalid": "No se puede determinar tu posición exacta. Activa el GPS e inténtalo de nuevo."
   },
   "boot": {
     "loadingMmd": "Cargando MMD…",

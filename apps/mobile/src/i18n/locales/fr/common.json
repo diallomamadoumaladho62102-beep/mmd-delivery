@@ -105,7 +105,10 @@
       "docSent": "{{doc}} envoyé.",
       "docUploadFailed": "Échec de l'envoi. Vérifiez les policies Storage (driver-docs).",
       "docDbFailed": "Fichier envoyé mais base de données non mise à jour (driver_documents).",
-      "docUnknownError": "Envoi du document : erreur inconnue."
+      "docUnknownError": "Envoi du document : erreur inconnue.",
+      "docEmpty": "Ce fichier est vide. Choisissez une photo ou un PDF.",
+      "docTooLarge": "Fichier trop volumineux (max 10 Mo).",
+      "docBadType": "Utilisez uniquement JPEG, PNG ou PDF."
     },
     "permission": {
       "title": "Permission",
@@ -1584,6 +1587,16 @@
       "directionsPh": "Après la station Total, 2e rue à droite, maison jaune avec portail bleu...",
       "directionsMin": "Minimum 8 caractères requis."
     }
+  },
+  "gps": {
+    "unavailable": "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez.",
+    "mustVerifyBeforePin": "Impossible de déterminer votre position exacte. Activez votre GPS avant de placer le repère.",
+    "servicesOff": "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez.",
+    "permissionRequired": "Impossible de déterminer votre position exacte. Autorisez la localisation et réessayez.",
+    "weakAccuracy": "Impossible de déterminer votre position exacte. Précision GPS insuffisante — réessayez à l’extérieur ou attendez un meilleur signal.",
+    "stale": "Impossible de déterminer votre position exacte. La position GPS est trop ancienne — réessayez.",
+    "timeout": "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez.",
+    "invalid": "Impossible de déterminer votre position exacte. Activez votre GPS et réessayez."
   },
   "boot": {
     "loadingMmd": "Chargement MMD…",

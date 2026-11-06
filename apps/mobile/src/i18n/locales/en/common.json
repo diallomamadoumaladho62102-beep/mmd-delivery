@@ -200,7 +200,10 @@
         "loginTitle": "Login",
         "loginBody": "Please log in first.",
         "bikeTitle": "Bike"
-      }
+      },
+      "docEmpty": "This file is empty. Choose a photo or PDF.",
+      "docTooLarge": "File is too large (max 10 MB).",
+      "docBadType": "Use JPEG, PNG, or PDF only."
     },
     "permission": {
       "title": "Permission",
@@ -1691,6 +1694,16 @@
       "directionsPh": "After Total station, second road on the right, yellow house with blue gate...",
       "directionsMin": "Minimum 8 characters required."
     }
+  },
+  "gps": {
+    "unavailable": "Unable to determine your exact position. Turn on GPS and try again.",
+    "mustVerifyBeforePin": "Unable to determine your exact position. Turn on GPS before placing the pin.",
+    "servicesOff": "Unable to determine your exact position. Turn on GPS and try again.",
+    "permissionRequired": "Unable to determine your exact position. Allow location access and try again.",
+    "weakAccuracy": "Unable to determine your exact position. GPS accuracy is too low — try again outdoors or wait for a better signal.",
+    "stale": "Unable to determine your exact position. The GPS position is too old — try again.",
+    "timeout": "Unable to determine your exact position. Turn on GPS and try again.",
+    "invalid": "Unable to determine your exact position. Turn on GPS and try again."
   },
   "boot": {
     "loadingMmd": "Loading MMD…",

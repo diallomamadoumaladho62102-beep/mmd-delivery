@@ -245,7 +245,12 @@
       "refundRetryBody": "Pedido rechazado. El reembolso de Stripe no se completó solo y se reintentará.",
       "refundRetryTitle": "Reembolso pendiente de reintento",
       "refundStatus": "Reembolso",
-      "refuse": "Rechazar"
+      "refuse": "Rechazar",
+      "cashCollectedTitle": "Efectivo cobrado",
+      "cashCollectedBody": "Pago marcado como efectivo cobrado. El pedido ya está pagado en efectivo.",
+      "cashCollectFailed": "No se puede confirmar el cobro en efectivo.",
+      "collectCash": "Confirmar efectivo recibido",
+      "cashCollectedBadge": "Efectivo cobrado"
     },
     "products": {
       "title": "Productos",
@@ -273,7 +278,9 @@
       "loading": "Obteniendo tus productos",
       "outOfStock": "Agotado",
       "search": "Buscar productos…",
-      "inactive": "Inactivo"
+      "inactive": "Inactivo",
+      "pendingReviewTitle": "Pendiente de aprobación del administrador",
+      "pendingReviewBody": "Puedes preparar los productos ahora. Los clientes los verán cuando se apruebe tu tienda."
     },
     "wallet": {
       "stripeFailed": "No se pudo abrir Stripe.",
@@ -1867,7 +1874,12 @@
       "manageFleet": "Gestionar flota",
       "missing": "Falta",
       "missingRequirements": "Requisitos faltantes",
-      "placeholderLicenseNumber": "Número de licencia"
+      "placeholderLicenseNumber": "Número de licencia",
+      "docIncomplete": "Por actualizar",
+      "docRejected": "Rechazado",
+      "docPendingReview": "Pendiente de revisión",
+      "docsRequestedTitle": "Se solicitan documentos adicionales",
+      "docsRequestedFallback": "Vuelve a subir este documento."
     },
     "signOut": {
       "title": "Cerrar sesión",
@@ -2839,6 +2851,13 @@
       "leaveAtDoorDisabled": "El cliente no autorizó dejarlo en la puerta.",
       "depositCta": "Entregar con foto",
       "noShowCta": "Cancelar sin penalización (no-show)"
+    },
+    "cash": {
+      "collectedTitle": "Efectivo cobrado",
+      "collectedBody": "Pago marcado como efectivo cobrado.",
+      "collectFailed": "No se puede confirmar el cobro en efectivo.",
+      "collect": "Confirmar efectivo recibido",
+      "collectedBadge": "Efectivo cobrado"
     }
   },
   "restaurant": {
@@ -3152,7 +3171,12 @@
         "orderNotFound": "Pedido no encontrado para este restaurante.",
         "invalidTransition": "Este pedido ya cambió de estado. Actualiza la lista.",
         "acceptExpired": "La ventana de aceptación caducó. Ya no puedes aceptar este pedido."
-      }
+      },
+      "cashCollectedTitle": "Efectivo cobrado",
+      "cashCollectedBody": "Pago marcado como efectivo cobrado.",
+      "cashCollectFailed": "No se puede confirmar el cobro en efectivo.",
+      "collectCash": "Confirmar efectivo recibido",
+      "cashCollectedBadge": "Efectivo cobrado"
     },
     "connect": {
       "cta": {
@@ -3714,7 +3738,10 @@
     "quartierSector": "Barrio / sector",
     "quartierSectorPlaceholder": "Barrio o sector",
     "landmarkPlaceholderLocal": "Mercado, escuela, mezquita, hospital o tienda",
-    "hintPinConfirmLocal": "Usa el GPS, mueve el mapa y añade un barrio o un punto de referencia. El código postal no es obligatorio."
+    "hintPinConfirmLocal": "Usa el GPS, mueve el mapa y añade un barrio o un punto de referencia. El código postal no es obligatorio.",
+    "missingPinBody": "Obtén tu posición GPS (o coloca el marcador) antes de guardar.",
+    "retryGps": "Actualizar mi posición GPS",
+    "awaitingGps": "Aún no hay posición del cliente. El centro del mapa es solo una vista previa, no tu punto de recogida."
   },
   "maskedCall": {
     "errorTitle": "Error de llamada"
@@ -4004,7 +4031,8 @@
       "estimateFailedTitle": "Estimación fallida",
       "createdTitle": "Solicitud creada",
       "createdBody": "Solicitud de entrega creada. Pulsa Pagar ahora para completar el pago.",
-      "scopeBody": "Activa la ubicación para elegir una dirección de entrega en tu mercado."
+      "scopeBody": "Activa la ubicación para elegir una dirección de entrega en tu mercado.",
+      "createdCashBody": "Solicitud de entrega creada con pago en efectivo. Paga al conductor en efectivo; él confirmará el cobro."
     },
     "errors": {
       "estimateGeneric": "No se pudo calcular la estimación de entrega ahora.",

@@ -294,7 +294,12 @@
       "refundRetryBody": "Order refused. Stripe refund did not complete automatically and will be retried.",
       "refundRetryTitle": "Refund pending retry",
       "refundStatus": "Refund",
-      "refuse": "Refuse"
+      "refuse": "Refuse",
+      "cashCollectedTitle": "Cash collected",
+      "cashCollectedBody": "Payment marked as cash collected. The order is now paid in cash.",
+      "cashCollectFailed": "Unable to confirm cash collection.",
+      "collectCash": "Confirm cash received",
+      "cashCollectedBadge": "Cash collected"
     },
     "products": {
       "title": "Products",
@@ -322,7 +327,9 @@
       "invalidStock": "Invalid stock quantity",
       "loading": "Fetching your products",
       "outOfStock": "Out of stock",
-      "search": "Search products..."
+      "search": "Search products...",
+      "pendingReviewTitle": "Pending admin approval",
+      "pendingReviewBody": "You can prepare products now. Customers will see them after your store is approved."
     },
     "wallet": {
       "stripeFailed": "Unable to open Stripe.",
@@ -1725,7 +1732,12 @@
       "manageFleet": "Manage fleet",
       "missing": "Missing",
       "missingRequirements": "Missing requirements",
-      "placeholderLicenseNumber": "License number"
+      "placeholderLicenseNumber": "License number",
+      "docIncomplete": "To update",
+      "docRejected": "Rejected",
+      "docPendingReview": "Pending review",
+      "docsRequestedTitle": "Additional documents requested",
+      "docsRequestedFallback": "Please re-upload this document."
     },
     "marketplace": {
       "status": {
@@ -2928,6 +2940,13 @@
       "title": "Customer wait timer",
       "tooFarBody": "Move within 50 m to confirm GPS arrival and start the timer.",
       "tooFarTitle": "Too far from the point"
+    },
+    "cash": {
+      "collectedTitle": "Cash collected",
+      "collectedBody": "Payment marked as cash collected.",
+      "collectFailed": "Unable to confirm cash collection.",
+      "collect": "Confirm cash received",
+      "collectedBadge": "Cash collected"
     }
   },
   "restaurant": {
@@ -3241,7 +3260,12 @@
       "rejectConfirm": "Reject this order?",
       "rejectTitle": "Reject order",
       "title": "Orders",
-      "updateFailed": "Unable to update order."
+      "updateFailed": "Unable to update order.",
+      "cashCollectedTitle": "Cash collected",
+      "cashCollectedBody": "Payment marked as cash collected.",
+      "cashCollectFailed": "Unable to confirm cash collection.",
+      "collectCash": "Confirm cash received",
+      "cashCollectedBadge": "Cash collected"
     },
     "connect": {
       "cta": {
@@ -3712,7 +3736,10 @@
     "quartierSector": "Neighborhood / sector",
     "quartierSectorPlaceholder": "Neighborhood or sector",
     "landmarkPlaceholderLocal": "Market, school, mosque, hospital or shop",
-    "hintPinConfirmLocal": "Use GPS, move the map, then add a neighborhood or landmark. Postal code is not required."
+    "hintPinConfirmLocal": "Use GPS, move the map, then add a neighborhood or landmark. Postal code is not required.",
+    "missingPinBody": "Obtain your GPS position (or place the pin) before saving.",
+    "retryGps": "Refresh my GPS position",
+    "awaitingGps": "No client position yet. The map center is only a preview — not your pickup."
   },
   "maskedCall": {
     "errorTitle": "Call error"
@@ -4002,7 +4029,8 @@
       "estimateFailedTitle": "Estimate failed",
       "createdTitle": "Request created",
       "createdBody": "Delivery request created. Tap Pay now to complete payment.",
-      "scopeBody": "Enable location to pick a delivery address in your market."
+      "scopeBody": "Enable location to pick a delivery address in your market.",
+      "createdCashBody": "Delivery request created with cash payment. Pay the driver in cash; they will confirm collection."
     },
     "errors": {
       "estimateGeneric": "Unable to calculate the delivery estimate right now.",

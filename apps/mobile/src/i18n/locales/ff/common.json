@@ -191,7 +191,10 @@
         "loginTitle": "Seŋaande",
         "loginBody": "Wota, seŋo ɗoo.",
         "bikeTitle": "Welo"
-      }
+      },
+      "docEmpty": "Ndee fiilde ko mehre. Suɓo foto walla PDF.",
+      "docTooLarge": "Fiilde ndee mawni (haa 10 MB).",
+      "docBadType": "Huutoro tan JPEG, PNG, walla PDF."
     },
     "permission": {
       "title": "Duŋagol",
@@ -1645,6 +1648,16 @@
       "directionsPh": "Caggal Station Total, laawol ɗiɗaɓol ñaamo, suudu mboɗeeri e damal buloori...",
       "directionsMin": "Haani ko famɗi 8 karakteer."
     }
+  },
+  "gps": {
+    "unavailable": "Nokku maa laaɓɗo anndaaka. Hurmin GPS, eto kadi.",
+    "mustVerifyBeforePin": "Nokku maa laaɓɗo anndaaka. Hurmin GPS hade nde a waɗata pin.",
+    "servicesOff": "Nokku maa laaɓɗo anndaaka. Hurmin GPS, eto kadi.",
+    "permissionRequired": "Nokku maa laaɓɗo anndaaka. Yamir nokkuure, eto kadi.",
+    "weakAccuracy": "Nokku maa laaɓɗo anndaaka. Laaɓal GPS yonaa — eto yaasi walla sabbo signal ɓurɗo moƴƴude.",
+    "stale": "Nokku maa laaɓɗo anndaaka. Nokku GPS ɗoo hiisiima — eto kadi.",
+    "timeout": "Nokku maa laaɓɗo anndaaka. Hurmin GPS, eto kadi.",
+    "invalid": "Nokku maa laaɓɗo anndaaka. Hurmin GPS, eto kadi."
   },
   "boot": {
     "loadingMmd": "Nana loowa MMD…",

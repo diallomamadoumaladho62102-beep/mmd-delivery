@@ -245,7 +245,12 @@
       "refundRetryBody": "Njamndi salaama. Ruttugol Stripe timmaani e hoore mum e etete kadi.",
       "refundRetryTitle": "Ruttugol nana etee",
       "refundStatus": "Remboursement",
-      "refuse": "Salaa"
+      "refuse": "Salaa",
+      "cashCollectedTitle": "Cash mooɓaama",
+      "cashCollectedBody": "Njoɓdi maantiniraama no cash mooɓaa. Order oo yoɓaama cash jooni.",
+      "cashCollectFailed": "Horiima teeŋtinde mooɓgol cash.",
+      "collectCash": "Teeŋtin cash heɓaa",
+      "cashCollectedBadge": "Cash mooɓaama"
     },
     "products": {
       "title": "Produits",
@@ -273,7 +278,9 @@
       "loading": "Nana aawtoo njeeygu maa",
       "outOfStock": "Stook gasii",
       "search": "Seet njeeygu…",
-      "inactive": "Hurminaaki"
+      "inactive": "Hurminaaki",
+      "pendingReviewTitle": "E sabbaade yamiroore admin",
+      "pendingReviewBody": "Aɗa waawi heblude geɗe jooni. Joom en njiyata ɗe so butik maa jaɓaa."
     },
     "wallet": {
       "stripeFailed": "Horiima udditde Stripe.",
@@ -1918,7 +1925,12 @@
       "manageFleet": "Yuɓɓu laanaaji",
       "missing": "Ustaaɗo",
       "missingRequirements": "Wajibi ŋatniiɗi",
-      "placeholderLicenseNumber": "Limngal licence"
+      "placeholderLicenseNumber": "Limngal licence",
+      "docIncomplete": "Haa hesɗitine",
+      "docRejected": "Saliima",
+      "docPendingReview": "E sabbaade ƴeewndo",
+      "docsRequestedTitle": "Dokke goɗɗe naamnaama",
+      "docsRequestedFallback": "Neldu ndee dokke kadi."
     },
     "signOut": {
       "title": "Yaltude",
@@ -2890,6 +2902,13 @@
       "leaveAtDoorDisabled": "Kiliyee yamiraani accude e damal.",
       "depositCta": "Jaɓor e nataal",
       "noShowCta": "Haɗtu tawa alaa tattee (artaaki)"
+    },
+    "cash": {
+      "collectedTitle": "Cash mooɓaama",
+      "collectedBody": "Njoɓdi maantiniraama no cash mooɓaa.",
+      "collectFailed": "Horiima teeŋtinde mooɓgol cash.",
+      "collect": "Teeŋtin cash heɓaa",
+      "collectedBadge": "Cash mooɓaama"
     }
   },
   "restaurant": {
@@ -3203,7 +3222,12 @@
         "orderNotFound": "Njamndi heɓaaka e ndee restoraa.",
         "invalidTransition": "Ndee njamndi waylii ngonka kisa. Hesɗitin doggol.",
         "acceptExpired": "Waktu jaɓgol gasii. A waawaa jaɓde ndee njamndi kadi."
-      }
+      },
+      "cashCollectedTitle": "Cash mooɓaama",
+      "cashCollectedBody": "Njoɓdi maantiniraama no cash mooɓaa.",
+      "cashCollectFailed": "Horiima teeŋtinde mooɓgol cash.",
+      "collectCash": "Teeŋtin cash heɓaa",
+      "cashCollectedBadge": "Cash mooɓaama"
     },
     "connect": {
       "cta": {
@@ -3771,7 +3795,10 @@
     "quartierSector": "Fuunaange / sector",
     "quartierSectorPlaceholder": "Fuunaange walla sector",
     "landmarkPlaceholderLocal": "Luumo, duɗal, juulirde, opitaal walla jutte",
-    "hintPinConfirmLocal": "Huutoro GPS, dirtin kaarte, ɓeydu fuunaange walla maande. Kod postal waɗaaka doole."
+    "hintPinConfirmLocal": "Huutoro GPS, dirtin kaarte, ɓeydu fuunaange walla maande. Kod postal waɗaaka doole.",
+    "missingPinBody": "Heɓu nokku GPS maa (walla waɗ pin) hade danndude.",
+    "retryGps": "Hesɗitin nokku GPS am",
+    "awaitingGps": "Nokku client alaa tawo. Hakkunde map ko yiyngo tan — wonaa nokku pickup maa."
   },
   "maskedCall": {
     "errorTitle": "Juumre noddugol"
@@ -4061,7 +4088,8 @@
       "estimateFailedTitle": "Ƴeewndo woorii",
       "createdTitle": "Ñaagol sosaama",
       "createdBody": "Ñaagol neldol sosaama. Ñoƴ Yoɓ jooni ngam timminde njoɓdi.",
-      "scopeBody": "Hurmin nokkuure ngam suɓaade ñiiɓirde neldol e luumo maa."
+      "scopeBody": "Hurmin nokkuure ngam suɓaade ñiiɓirde neldol e luumo maa.",
+      "createdCashBody": "Ɗaɓɓaande neldu e njoɓdi cash sosaama. Yoɓu driver cash; o teeŋtinay mooɓgol."
     },
     "errors": {
       "estimateGeneric": "Horiima hiisde ƴeewndo neldol jooni.",

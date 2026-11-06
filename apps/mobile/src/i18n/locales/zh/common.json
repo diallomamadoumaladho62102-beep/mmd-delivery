@@ -191,7 +191,10 @@
         "loginTitle": "登录",
         "loginBody": "请先登录。",
         "bikeTitle": "自行车"
-      }
+      },
+      "docEmpty": "此文件为空。请选择照片或 PDF。",
+      "docTooLarge": "文件过大（最大 10 MB）。",
+      "docBadType": "仅可使用 JPEG、PNG 或 PDF。"
     },
     "permission": {
       "title": "权限",
@@ -1511,6 +1514,16 @@
       "directionsPh": "过 Total 加油站后，右侧第二条路，黄房子蓝门…",
       "directionsMin": "至少需要 8 个字符。"
     }
+  },
+  "gps": {
+    "unavailable": "无法确定您的精确位置。请打开 GPS 后重试。",
+    "mustVerifyBeforePin": "无法确定您的精确位置。请先打开 GPS，再放置图钉。",
+    "servicesOff": "无法确定您的精确位置。请打开 GPS 后重试。",
+    "permissionRequired": "无法确定您的精确位置。请允许定位权限后重试。",
+    "weakAccuracy": "无法确定您的精确位置。GPS 精度不足——请到室外重试，或等待更好的信号。",
+    "stale": "无法确定您的精确位置。GPS 位置已过期——请重试。",
+    "timeout": "无法确定您的精确位置。请打开 GPS 后重试。",
+    "invalid": "无法确定您的精确位置。请打开 GPS 后重试。"
   },
   "boot": {
     "loadingMmd": "正在加载 MMD…",
