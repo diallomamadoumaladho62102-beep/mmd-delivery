@@ -5,8 +5,8 @@ Branche de travail : `fix/snyk-deepmerge-cve-2026-93753`.
 Base connue avant intégration : `b07da172095a455dfd49c14975566d8992e8b87f` (`origin/main`, inchangé depuis le merge de la PR #179).  
 Aucun `git reset --hard`, aucun `git clean`, aucun force push, aucun EAS, aucun OTA, aucun déploiement manuel.
 
-**Verdict provisoire avant push : ORANGE.**  
-Les corrections sont commitées et les contrôles locaux sont verts. Le push, GitHub CI, Vercel et Snyk Cloud sont vérifiés dans la section ajoutée après publication. Ce verdict est mis à jour à la fin du fichier une fois ces contrôles lus.
+**Verdict : ORANGE.**  
+Les corrections sont sur `main`, les tests et les workflows GitHub sont verts, les sept cibles Snyk CLI sont à zéro, et le déploiement Vercel Production de ce commit est réussi. Le verdict n'est pas VERT : Pixel 5, iOS, l'appareil physique et le relecture du dashboard Snyk Cloud n'ont pas été faits, l'APK local reste signé debug, et l'upload Sentry local n'a pas eu lieu.
 
 ## 1. Vulnérabilités identifiées
 
@@ -77,7 +77,7 @@ Le scan pnpm de cette passe a aussi vu des `package.json` générés sous `apps/
 
 ## 5. Snyk Cloud
 
-Les cinq projets GitHub officiels suivent `main` et ne voient pas les commits tant qu'ils ne sont pas poussés. Aucun nouveau projet n'est créé. L'état du dashboard après le push est ajouté en bas de ce fichier.
+Aucun nouveau projet Snyk n'a été créé et `snyk monitor` n'a pas été lancé, pour ne pas dupliquer les cibles GitHub. Aucun check Snyk n'est apparu sur le commit publié. Le dashboard Cloud n'a donc pas été relu après le push. Les projets officiels suivent `main` et prendront `8fe6fbcb` à leur prochain retest. Le message de push GitHub citait encore une alerte Dependabot low. L'API Dependabot indique que l'alerte 221, `deepmerge` / CVE-2026-93753, est à l'état `fixed`.
 
 ## 6. Tests automatisés
 
@@ -130,19 +130,26 @@ Le commit de documentation qui ajoute ce fichier suit ces quatre commits.
 
 ## 15. Push main
 
-Voir la section de clôture. `main` n'avait pas de protection de branche ni de ruleset au moment du contrôle (`Branch not protected`, rulesets `[]`).
+`main` n'avait pas de protection de branche ni de ruleset (`Branch not protected`, rulesets `[]`). Fast-forward local depuis `b07da172` vers `8fe6fbcb`, puis `git push origin main`. Pas de force push. `HEAD` et `origin/main` sont identiques.
 
 ## 16. Hash final de main
 
-Renseigné après le push.
+Commit vérifié par CI et par Vercel Production : `8fe6fbcb816ab840dca5b757625e346159d4882a`.
+
+Les quatre corrections le précèdent : `b141334c`, `cfdad049`, `1f00a67c`, `36376517`. La mise à jour de ce rapport, qui enregistre ces résultats, est le commit suivant sur `main`.
 
 ## 17. GitHub CI
 
-Renseigné après le push.
+Sur `8fe6fbcb`, tous terminés avec succès :
+
+- CI `verify` : run `42174861550`
+- CodeQL : run `42174861513`
+- Semgrep : run `42174861498`
+- OWASP ZAP : run `42174861490`
 
 ## 18. Vercel
 
-Renseigné après le push. Aucun déploiement manuel n'est lancé. Le push sur `main` peut déclencher la production, ce qui est autorisé.
+Déploiement GitHub `7593994786`, environnement Production, état `success`, créé le 2026-11-06T06:31:21Z. Aucun déploiement manuel. `https://www.mmddelivery.com` répond HTTP 200 via Vercel. L'URL brute du déploiement est protégée par l'authentification Vercel et n'a pas été utilisée comme preuve publique.
 
 ## 19. Problèmes restants
 
