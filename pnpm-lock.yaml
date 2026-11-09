@@ -78,6 +78,9 @@ patchedDependencies:
   '@react-native/codegen@0.81.5':
     hash: 87cf80d0905cb109c416f3539ea6d0094f1d76f628044a5249df424cd9ae38a1
     path: patches/@react-native__codegen@0.81.5.patch
+  babel-plugin-module-resolver@5.0.3:
+    hash: fcb607ef6507b8572aec79ba8608cbca94893eb05c2d9abf7e3db81553dcc409
+    path: patches/babel-plugin-module-resolver@5.0.3.patch
 
 importers:
 
@@ -393,7 +396,7 @@ importers:
         version: 8.60.0(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
       babel-plugin-module-resolver:
         specifier: ^5.0.2
-        version: 5.0.3
+        version: 5.0.3(patch_hash=fcb607ef6507b8572aec79ba8608cbca94893eb05c2d9abf7e3db81553dcc409)
       babel-preset-expo:
         specifier: ~54.0.10
         version: 54.0.10(@babel/core@7.29.7)(@babel/runtime@7.29.7)(expo@54.0.36(@babel/core@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3))(react-refresh@0.18.0)
@@ -9149,7 +9152,7 @@ snapshots:
       '@types/babel__core': 7.20.5
       '@types/babel__traverse': 7.28.0
 
-  babel-plugin-module-resolver@5.0.3:
+  babel-plugin-module-resolver@5.0.3(patch_hash=fcb607ef6507b8572aec79ba8608cbca94893eb05c2d9abf7e3db81553dcc409):
     dependencies:
       find-babel-config: 2.1.2
       glob: 14.0.3
