@@ -185,6 +185,12 @@
       "regionRestricted": "REGION RESTRICTED",
       "verifying": "Verifying your seller account"
     },
+    "auth": {
+      "titleLogin": "Seller sign in",
+      "subtitleLogin": "Sign in to open or manage your shop. It stays hidden until it is approved.",
+      "titleSignup": "Seller account",
+      "subtitleSignup": "This account opens the seller application. The shop stays hidden until it is approved."
+    },
     "dashboard": {
       "title": "Seller Dashboard",
       "approved": "Your seller account is approved. You can manage products.",

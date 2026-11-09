@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isGuineaIsolatedTestUserId } from "@/lib/guineaTestIsolation";
+import { quoteDeliveryRequestServerSide } from "./deliveryRequestService";
 import {
   GUINEA_ISOLATED_TEST_DRIVER_USER_ID,
-} from "@/lib/guineaIsolatedTaxiJourney";
-import { quoteDeliveryRequestServerSide } from "@/lib/deliveryRequestService";
+} from "./guineaIsolatedTaxiJourney";
+import { isGuineaIsolatedTestUserId } from "./guineaTestIsolation";
 
 export function isolatedGuineaDeliveryCreateFields(clientUserId: string) {
   if (!isGuineaIsolatedTestUserId(clientUserId)) {

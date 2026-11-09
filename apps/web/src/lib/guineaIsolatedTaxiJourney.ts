@@ -2,12 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   GUINEA_ISOLATED_TEST_USER_IDS,
   isGuineaIsolatedTestUserId,
-} from "@/lib/guineaTestIsolation";
+} from "./guineaTestIsolation";
 import {
   assertTaxiDropoffProximity,
   assertTaxiPickupProximity,
-} from "@/lib/taxiProximityGate";
-import { logTaxiEventServer } from "@/lib/taxiEvents";
+} from "./taxiProximityGate";
+import { logTaxiEventServer } from "./taxiEvents";
 
 /** Existing Guinea rehearsal driver — never approve publicly. */
 export const GUINEA_ISOLATED_TEST_DRIVER_USER_ID =

@@ -136,6 +136,12 @@
       "regionRestricted": "RÉGION RESTREINTE",
       "verifying": "Vérification de ton compte vendeur"
     },
+    "auth": {
+      "titleLogin": "Connexion vendeur",
+      "subtitleLogin": "Connecte-toi pour ouvrir ou gérer ta boutique. Elle reste invisible tant qu’elle n’est pas approuvée.",
+      "titleSignup": "Compte vendeur",
+      "subtitleSignup": "Ce compte ouvre la demande vendeur. La boutique reste cachée jusqu’à l’approbation."
+    },
     "dashboard": {
       "title": "Tableau de bord vendeur",
       "approved": "Votre compte vendeur est approuvé. Vous pouvez gérer vos produits.",

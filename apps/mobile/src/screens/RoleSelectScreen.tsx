@@ -557,8 +557,8 @@ export function RoleSelectScreen() {
           return;
         }
 
-        // Seller is a client overlay: shared ClientAuth, then SellerGate via selectedRole.
-        navigation.navigate("ClientAuth");
+        // Seller keeps the client account, then SellerGate. The screen must say so.
+        navigation.navigate("ClientAuth", { intent: "seller" });
         return;
       }
 

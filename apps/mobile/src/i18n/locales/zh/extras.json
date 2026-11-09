@@ -136,6 +136,12 @@
       "regionRestricted": "地区受限",
       "verifying": "正在验证卖家账户"
     },
+    "auth": {
+      "titleLogin": "卖家登录",
+      "subtitleLogin": "登录以开设或管理店铺。店铺在获批前保持隐藏。",
+      "titleSignup": "卖家账户",
+      "subtitleSignup": "此账户用于提交卖家申请。店铺在获批前保持隐藏。"
+    },
     "dashboard": {
       "title": "卖家面板",
       "approved": "卖家账户已批准，可管理商品。",

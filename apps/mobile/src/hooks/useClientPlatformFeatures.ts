@@ -7,6 +7,7 @@ import {
 import {
   defaultPlatformFeatures,
   fetchClientPlatformFeatures,
+  resolveSignedOutPlatformFeatures,
   type PlatformFeaturesResponse,
 } from "../lib/platformFeaturesApi";
 import { clearManualClientScope, readManualClientScope } from "../lib/clientScopeStorage";
@@ -106,6 +107,15 @@ export function useClientPlatformFeatures(options: UseClientPlatformFeaturesOpti
       const selectedMarket = refreshOptions.forceGps
         ? null
         : await readSelectedMarket();
+
+      // Guest catalog may use the stored country. It must not call the
+      // authenticated features API, and a missing session must not be reported
+      // as an unresolved GPS zone.
+      if (!userId) {
+        setFeatures(resolveSignedOutPlatformFeatures(selectedMarket));
+        return;
+      }
+
       if (selectedMarket) {
         const next = await fetchClientPlatformFeatures({
           manualCountry: selectedMarket,

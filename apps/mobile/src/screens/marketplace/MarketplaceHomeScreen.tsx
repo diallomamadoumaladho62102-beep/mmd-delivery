@@ -23,6 +23,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
+import { signedOutMarketCountry } from "../../lib/platformFeaturesApi";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
 import { MarketplaceBrandState } from "../../components/marketplace/MarketplaceBrandState";
 import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
@@ -77,15 +78,19 @@ export default function MarketplaceHomeScreen() {
         return;
       }
 
-      const items = await fetchMarketplaceSellers();
-      const scoped =
-        !guestBrowse && market.countryCode
-          ? items.filter(
-              (seller) =>
-                String(seller.country_code ?? "").trim().toUpperCase() ===
-                market.countryCode
-            )
-          : items;
+      const catalogCountry = guestBrowse
+        ? signedOutMarketCountry(features) ?? ""
+        : market.countryCode;
+      const items = await fetchMarketplaceSellers(
+        catalogCountry ? { manualCountryCode: catalogCountry } : undefined
+      );
+      const scoped = catalogCountry
+        ? items.filter(
+            (seller) =>
+              String(seller.country_code ?? "").trim().toUpperCase() ===
+              catalogCountry
+          )
+        : items;
       setSellers(sortSellers(scoped));
     } catch (e) {
       const message = toUserFacingError(
@@ -107,7 +112,7 @@ export default function MarketplaceHomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [guestBrowse, market.countryCode, marketplaceEnabled, t]);
+  }, [features, guestBrowse, market.countryCode, marketplaceEnabled, t]);
 
   useEffect(() => {
     void load();
@@ -134,12 +139,20 @@ export default function MarketplaceHomeScreen() {
   const listHeader = (
     <View style={styles.headerBlock}>
       {guestBrowse ? (
-        <Text style={styles.guestHint}>
-          {t(
-            "marketplace.home.guestBrowseHint",
-            "Browse shops and products freely. Sign in when you are ready to order.",
-          )}
-        </Text>
+        <View style={{ gap: 8 }}>
+          <Text style={styles.guestHint}>
+            {t(
+              "marketplace.home.guestBrowseHint",
+              "Browse shops and products freely. Sign in when you are ready to order.",
+            )}
+          </Text>
+          {market.countryCode ? (
+            <Text style={styles.guestHint}>
+              {t("marketplace.home.market", "Your market")}: {market.displayLabel} ·{" "}
+              {market.currencyCode}
+            </Text>
+          ) : null}
+        </View>
       ) : (
         <MarketScopeCard
           market={market}

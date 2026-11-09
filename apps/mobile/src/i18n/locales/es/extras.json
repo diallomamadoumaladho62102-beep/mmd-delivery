@@ -136,6 +136,12 @@
       "regionRestricted": "REGIÓN RESTRINGIDA",
       "verifying": "Verificando tu cuenta de vendedor"
     },
+    "auth": {
+      "titleLogin": "Acceso de vendedor",
+      "subtitleLogin": "Entra para abrir o gestionar tu tienda. Permanece oculta hasta que sea aprobada.",
+      "titleSignup": "Cuenta de vendedor",
+      "subtitleSignup": "Esta cuenta abre la solicitud de vendedor. La tienda permanece oculta hasta la aprobación."
+    },
     "dashboard": {
       "title": "Panel del vendedor",
       "approved": "Tu cuenta vendedor está aprobada. Puedes gestionar productos.",

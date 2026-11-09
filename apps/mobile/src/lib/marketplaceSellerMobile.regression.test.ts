@@ -50,6 +50,18 @@ assert(
   roleSelect.includes('selectedRole === "seller"'),
   "seller selection is recognized on RoleSelect",
 );
+assert(
+  roleSelect.includes('navigate("ClientAuth", { intent: "seller" })'),
+  "signed-out seller opens a seller-labeled auth screen, not silent client login",
+);
+assert(
+  clientAuth.includes('route.params?.intent === "seller"'),
+  "client auth recognizes the seller intent",
+);
+assert(
+  clientAuth.includes("seller.auth.titleLogin"),
+  "seller sign-in title is distinct from client sign-in",
+);
 
 const orders = read("screens/seller/SellerOrdersScreen.tsx");
 assert(orders.includes("highlightOrderId"), "seller orders reads push highlight param");

@@ -16,8 +16,9 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeLinearGradient as LinearGradient } from "../components/SafeLinearGradient";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RouteProp } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import {
@@ -49,6 +50,7 @@ import {
 } from "../theme/mmdUi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientAuth">;
+type AuthRoute = RouteProp<RootStackParamList, "ClientAuth">;
 
 const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
 
@@ -223,6 +225,8 @@ async function uploadAvatarToSupabase(params: {
 
 export function ClientAuthScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<AuthRoute>();
+  const sellerIntent = route.params?.intent === "seller";
   const { t } = useTranslation();
 
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -320,24 +324,38 @@ export function ClientAuthScreen() {
 
   const title = useMemo(
     () =>
-      mode === "login"
-        ? t("client.auth.titleLogin")
-        : marketCountry === "GN"
-          ? t("guineaMarket.authPersonalTitle")
-          : t("client.auth.titleSignup"),
-    [mode, t, marketCountry]
+      sellerIntent
+        ? mode === "login"
+          ? t("seller.auth.titleLogin", "Seller sign in")
+          : t("seller.auth.titleSignup", "Seller account")
+        : mode === "login"
+          ? t("client.auth.titleLogin")
+          : marketCountry === "GN"
+            ? t("guineaMarket.authPersonalTitle")
+            : t("client.auth.titleSignup"),
+    [mode, sellerIntent, t, marketCountry]
   );
 
   const subtitle = useMemo(
     () =>
-      mode === "login"
-        ? t("client.auth.subtitleLogin")
-        : marketCountry === "GN"
-          ? t("guineaMarket.authPersonalSubtitle", {
-              dial: marketPhonePrefix("GN"),
-            })
-          : t("client.auth.subtitleSignup"),
-    [mode, t, marketCountry]
+      sellerIntent
+        ? mode === "login"
+          ? t(
+              "seller.auth.subtitleLogin",
+              "Sign in to open or manage your shop. Approval is still required before it is visible.",
+            )
+          : t(
+              "seller.auth.subtitleSignup",
+              "This account opens the seller application. The shop stays hidden until it is approved.",
+            )
+        : mode === "login"
+          ? t("client.auth.subtitleLogin")
+          : marketCountry === "GN"
+            ? t("guineaMarket.authPersonalSubtitle", {
+                dial: marketPhonePrefix("GN"),
+              })
+            : t("client.auth.subtitleSignup"),
+    [mode, sellerIntent, t, marketCountry]
   );
 
   async function handleLogin() {

@@ -4,7 +4,13 @@ import {
   fetchWithTimeout,
   withTimeout,
 } from "./bootFailOpen";
+import {
+  resolveSignedOutPlatformFeatures,
+  signedOutMarketCountry,
+} from "./guestMarketFeatures";
 import { supabase } from "./supabase";
+
+export { resolveSignedOutPlatformFeatures, signedOutMarketCountry };
 
 export type PlatformScopeLevel = "country" | "region" | "zone" | "county";
 

@@ -80,7 +80,7 @@ export type RootStackParamList = {
       }
     | undefined;
 
-  ClientAuth: undefined;
+  ClientAuth: { intent?: "seller" } | undefined;
   DriverAuth: { ref?: string; code?: string } | undefined;
   RestaurantAuth: undefined;
 

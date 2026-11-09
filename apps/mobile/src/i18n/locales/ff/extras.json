@@ -136,6 +136,12 @@
       "regionRestricted": "DIIWAAN HAƊAAƊO",
       "verifying": "Nana ƴeewa konto jeeyoowo maa"
     },
+    "auth": {
+      "titleLogin": "Naatgol jeeyoowo",
+      "subtitleLogin": "Naat ngam udditaade walla toppitaade duka maa. Duka woni suuɗde haa nde jaɓee.",
+      "titleSignup": "Konto jeeyoowo",
+      "subtitleSignup": "Ndee konte uddita ɗaɓɓaande jeeyoowo. Duka woni suuɗde haa jaɓgol."
+    },
     "dashboard": {
       "title": "Dashboard jaɓɓo",
       "approved": "Account seller jaɓii. A waawi huutoraade produit.",
