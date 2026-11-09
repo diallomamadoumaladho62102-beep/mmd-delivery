@@ -7,7 +7,7 @@
     "dev": "cd apps/web && pnpm dev",
     "build": "cd apps/web && pnpm build",
     "start": "cd apps/web && pnpm start",
-    "test:ci": "node scripts/verify-migration-files.mjs && node scripts/verify-profiles-signup-role-guard.mjs && node scripts/evaluateCronHttpResult.test.mjs && node scripts/secret-scan.mjs && node scripts/image-size-clean-install.regression.test.mjs && node scripts/decode-uri-component-cjs.regression.test.mjs && node scripts/node-forge-ghsa-86w9.regression.test.mjs && node scripts/braces-cve-2026-93687.regression.test.mjs && node scripts/deepmerge-cve-2026-93753.regression.test.mjs && node scripts/inflight-memory-release.regression.test.mjs && node scripts/open-cve-2026-119025.regression.test.mjs && node scripts/codegen-minimatch-11.regression.test.mjs && node scripts/moderate-advisory-overrides.regression.test.mjs && node scripts/snyk-inflight-policy.regression.test.mjs && node apps/mobile/scripts/mobileClientTimeout.regression.test.mjs && pnpm exec tsx shared/socialLinks.test.ts && pnpm exec tsx shared/profileCompleteness.test.ts && pnpm exec tsx shared/phoneVerifyApi.test.ts && pnpm --dir apps/web test:ci && pnpm --dir apps/mobile test:navigation",
+    "test:ci": "node scripts/verify-migration-files.mjs && node scripts/verify-profiles-signup-role-guard.mjs && node scripts/evaluateCronHttpResult.test.mjs && node scripts/secret-scan.mjs && node scripts/image-size-clean-install.regression.test.mjs && node scripts/decode-uri-component-cjs.regression.test.mjs && node scripts/node-forge-ghsa-86w9.regression.test.mjs && node scripts/braces-cve-2026-93687.regression.test.mjs && node scripts/deepmerge-cve-2026-93753.regression.test.mjs && node scripts/inflight-memory-release.regression.test.mjs && node scripts/open-cve-2026-119025.regression.test.mjs && node scripts/codegen-minimatch-11.regression.test.mjs && node scripts/moderate-advisory-overrides.regression.test.mjs && node scripts/babel-module-resolver-glob14.regression.test.mjs && node scripts/snyk-inflight-policy.regression.test.mjs && node apps/mobile/scripts/mobileClientTimeout.regression.test.mjs && pnpm exec tsx shared/socialLinks.test.ts && pnpm exec tsx shared/profileCompleteness.test.ts && pnpm exec tsx shared/phoneVerifyApi.test.ts && pnpm --dir apps/web test:ci && pnpm --dir apps/mobile test:navigation",
     "test:security": "node scripts/secret-scan.mjs && pnpm --dir apps/web test:security",
     "test:performance": "pnpm --dir apps/web test:performance && node scripts/bundle-size-report.mjs",
     "test:ui": "pnpm --dir apps/mobile test:ui && pnpm --dir apps/web test:ui",
@@ -143,7 +143,8 @@
       "open@8.4.2": "file:vendor/open"
     },
     "patchedDependencies": {
-      "@react-native/codegen@0.81.5": "patches/@react-native__codegen@0.81.5.patch"
+      "@react-native/codegen@0.81.5": "patches/@react-native__codegen@0.81.5.patch",
+      "babel-plugin-module-resolver@5.0.3": "patches/babel-plugin-module-resolver@5.0.3.patch"
     }
   }
 }
