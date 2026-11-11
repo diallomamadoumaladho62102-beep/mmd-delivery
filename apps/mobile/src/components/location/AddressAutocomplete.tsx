@@ -128,7 +128,11 @@ export function AddressAutocomplete({
     abortRef.current?.abort();
     setSuggestions([]);
     setOpen(false);
-    onChangeText(place.fullAddress);
+    // Compatibility contract (App Store build 89 parents + HEAD):
+    // - Typing calls onChangeText (parents may clear lat/lng while editing).
+    // - Selection must call onSelect ONLY. Parents set address + coords in onSelect.
+    // - Calling onChangeText before onSelect races: setCoords(null) then setCoords(...)
+    //   and React can keep null — breaking taxi/delivery pickup/dropoff quotes.
     onSelect({
       fullAddress: place.fullAddress,
       name: place.name,
@@ -163,7 +167,6 @@ export function AddressAutocomplete({
       pickLockRef.current = true;
       setSuggestions([]);
       setOpen(false);
-      onChangeText(geo.fullAddress);
       onSelect({
         fullAddress: geo.fullAddress,
         name: geo.shortName,

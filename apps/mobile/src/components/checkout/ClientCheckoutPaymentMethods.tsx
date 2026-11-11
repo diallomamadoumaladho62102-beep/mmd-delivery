@@ -67,6 +67,7 @@ export function ClientCheckoutPaymentMethods({
       </Text>
 
       <TouchableOpacity
+        testID="checkout-pay-card"
         onPress={onPayWithCard}
         disabled={busy}
         accessibilityRole="button"

@@ -5,11 +5,13 @@ Do **not** mark iOS compile as PASS until the steps below succeed on a Mac.
 
 Reference app config (already verified on Windows):
 - Bundle ID: `com.maladho2025.mmddelivery`
-- Version: `1.0.1` (`apps/mobile/app.json`)
+- Version: `1.0.1` (`apps/mobile/app.json` `ios.version` — **ASC Ready for Distribution build 89**)
+- Store Git pin: `3152ebf28d4da7eb648827c64a7f0a6130dec8c3` (do not alter iOS config to “help” cert)
 - Locales: `en`, `fr`, `es`, `ar`, `zh`, `ff`
 - Associated domain: `applinks:www.mmddelivery.com`
 - Apple Pay merchant: `merchant.com.maladho2025.mmddelivery`
 - EAS profiles: `preview`, `ios-simulator`, `production`
+- **Forbidden without founder approval:** OTA on `runtimeVersion` 1.0.0, new store IPA, App Store submit
 
 ## 0. Prerequisites
 
