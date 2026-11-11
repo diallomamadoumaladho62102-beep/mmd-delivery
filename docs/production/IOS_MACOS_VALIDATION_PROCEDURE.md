@@ -1,37 +1,48 @@
 # iOS validation procedure (macOS required)
 
 Host used for pre-build certification: **Windows** — Xcode / iOS Simulator / `xcodebuild` are **not available**.  
-Do **not** mark iOS compile as PASS until the steps below succeed on a Mac.
+Do **not** mark iOS compile / Simulator / device as PASS until the steps below succeed on a Mac.
 
-Reference app config (already verified on Windows):
-- Bundle ID: `com.maladho2025.mmddelivery`
-- Version: `1.0.1` (`apps/mobile/app.json` `ios.version` — **ASC Ready for Distribution build 89**)
-- Store Git pin: `3152ebf28d4da7eb648827c64a7f0a6130dec8c3` (do not alter iOS config to “help” cert)
-- Locales: `en`, `fr`, `es`, `ar`, `zh`, `ff`
-- Associated domain: `applinks:www.mmddelivery.com`
-- Apple Pay merchant: `merchant.com.maladho2025.mmddelivery`
-- EAS profiles: `preview`, `ios-simulator`, `production`
-- **Forbidden without founder approval:** OTA on `runtimeVersion` 1.0.0, new store IPA, App Store submit
+## Reference (App Store protected)
 
-## 0. Prerequisites
+| Item | Value |
+|---|---|
+| ASC version / build | **1.0.1 / 89** Ready for Distribution |
+| Store Git pin | `3152ebf28d4da7eb648827c64a7f0a6130dec8c3` |
+| Current cert HEAD (example) | `a811101f`+ — **do not OTA onto 89** |
+| Bundle ID | `com.maladho2025.mmddelivery` |
+| `ios.version` (repo) | `1.0.1` |
+| Apple Pay merchant | `merchant.com.maladho2025.mmddelivery` |
+| Associated domain | `applinks:www.mmddelivery.com` |
+| Locales | `en`, `fr`, `es`, `ar`, `zh`, `ff` |
+| EAS profiles | `preview`, `ios-simulator`, `production` |
+
+**Forbidden without founder approval:** OTA (`runtimeVersion` 1.0.0), `eas build --profile production`, `eas submit`, App Store publish, changing `app.json` iOS entitlements/bundle.
+
+---
+
+## 0. Prerequisites (macOS)
 
 ```bash
-# On macOS only
 xcode-select -p
 xcodebuild -version
 node -v
 pnpm -v
 eas --version
+git -C /path/to/MMD-Delivery rev-parse --short HEAD
 ```
-
-Install Xcode + Command Line Tools, CocoaPods (via Expo prebuild), and sign in to Apple Developer / EAS.
 
 ```bash
-cd apps/mobile
+cd /path/to/MMD-Delivery
 pnpm install
+cd apps/mobile
+# Confirm test Stripe publishable key in local env (pk_test only for cert)
+grep -E '^EXPO_PUBLIC_STRIPE' .env | sed 's/=.*/=***/'
 ```
 
-## 1. Compile (simulator)
+---
+
+## 1. Simulator compile (allowed without store IPA)
 
 ```bash
 cd /path/to/MMD-Delivery
@@ -41,78 +52,79 @@ cd apps/mobile
 # Generate native ios/ (CNG — do not commit ios/)
 npx expo prebuild --platform ios --clean
 
-# Simulator build via EAS local or Expo
-eas build --platform ios --profile ios-simulator --local
-# OR
+# Preferred local simulator run
 npx expo run:ios
+# OR local EAS simulator artifact (still NOT store distribution)
+# eas build --platform ios --profile ios-simulator --local
 ```
 
-Success criteria: app launches on Simulator without redbox; boot reaches Country / Role select.
+**PASS when:** app boots on Simulator without redbox → Country / Role select.
 
-## 2. Device / TestFlight build
+**Record:** Xcode version, Simulator device name, commit SHA, screenshot boot.
+
+---
+
+## 2. Physical device (preview only — no App Store)
 
 ```bash
+# Internal distribution ONLY — ask founder before running
+cd /path/to/MMD-Delivery/apps/mobile
 eas build --platform ios --profile preview
-# or production profile when releasing
-eas build --platform ios --profile production
-eas submit --platform ios --latest   # only when intentionally submitting
+# Install via QR / internal link — NOT TestFlight App Store track unless approved
 ```
 
-Install via TestFlight on a physical iPhone.
-
-## 3. Permissions checklist (physical device)
-
-| Permission | How to verify |
-|---|---|
-| Location (When In Use) | Start Taxi / Delivery; accept prompt; map shows user |
-| Location (Always / background) | Background a live trip; location updates continue while locked |
-| Notifications (APNs) | Grant prompt; trigger a test push from backend to this install |
-| Camera | Driver/restaurant document upload |
-| Microphone | In-app call / voice features if enabled |
-| Photo library | Avatar / menu photo pickers |
-
-## 4. Essential journeys (device)
-
-1. Client login (US + GN accounts as required)
-2. Taxi quote → payment path (Stripe **test** keys only on non-prod builds)
-3. Delivery request create
-4. Language switch including Arabic RTL
-5. Logout / role switch
-
-## 5. Apple Pay (only if configured for the build)
+**Do not run** without approval:
 
 ```bash
-# Confirm merchant ID in Apple Developer + Stripe Dashboard
-# Merchant: merchant.com.maladho2025.mmddelivery
+# FORBIDDEN unless founder explicitly authorizes a new store binary
+# eas build --platform ios --profile production
+# eas submit --platform ios --latest
 ```
 
-On device with a Wallet card in **Sandbox/test**:
-1. Reach PaymentSheet / Platform Pay
-2. Complete Apple Pay sheet with a sandbox card
-3. Confirm order `payment_status=paid` and Stripe `livemode=false` for test builds
+---
 
-Skip Apple Pay sign-off if the build is Expo Go or merchant ID is not wired.
+## 3. Matrix to execute on Mac / device
 
-## 6. APNs
+| Area | Where | How | Result |
+|---|---|---|---|
+| GPS When In Use | Sim + device | Taxi / Delivery ; accept prompt ; map pin | |
+| GPS Always / background | **Device** | Live trip ; lock screen ; updates continue | |
+| APNs | **Device** | Grant notifications ; trigger test push | |
+| Deep links | Sim + device | `xcrun simctl openurl booted "https://www.mmddelivery.com/..."` / Universal Link | |
+| Stripe test card | Sim/device **pk_test** | Taxi quote → Card → PaymentSheet ; 4242 / decline / cancel | |
+| Apple Pay | **Device** Wallet sandbox | Platform Pay ; confirm `livemode=false` | |
+| Six languages | Sim | Switch en/fr/es/ar/zh/ff | |
+| RTL Arabic | Sim | Layout mirrors ; no clipped CTAs | |
 
-1. Confirm push entitlement on the installed build
-2. Register device token after login
-3. Send a test notification (order update / chat)
-4. Verify delivery on lock screen + in-app handling
+### Deep link helper (Simulator)
 
-## 7. GPS
+```bash
+xcrun simctl list devices booted
+xcrun simctl openurl booted "mmddelivery://"
+xcrun simctl openurl booted "https://www.mmddelivery.com/"
+```
 
-1. Grant location
-2. Taxi pickup/dropoff map
-3. Background location during an active trip (physical device)
+### Stripe test on iOS (pk_test build only)
 
-## 8. Record results
+Follow `docs/production/STRIPE_US_PAYMENTSHEET_MANUAL_UI.md` on the Simulator/device build — **not** on App Store 89.
 
-Update `docs/production/reports/MMD-FINAL-MISSION-COMPLETE-PREBUILD.md`:
+---
 
-- Compile: PASS / FAIL + Xcode version
-- Simulator smoke: PASS / FAIL
-- Device permissions: table above
-- APNs / Apple Pay / background GPS: PASS / FAIL / SKIPPED
+## 4. Windows-compatible checks (already done — do not redo without cause)
 
-Until this Mac procedure is executed, iOS remains **PARTIAL / BLOCKED** on Windows hosts.
+- Bundle / merchant / associated domains / locales present in `app.json`
+- `eas.json` production channel + `ascAppId` documented
+- No `app.json` / `eas.json` drift vs store commit for iOS identity
+
+---
+
+## 5. Record results
+
+Write into `docs/production/reports/` (local) or founder notes:
+
+- Compile: PASS / FAIL + Xcode version  
+- Simulator smoke: PASS / FAIL  
+- Device permissions / APNs / Apple Pay / GPS background: PASS / FAIL / SKIPPED  
+- Confirm: **no OTA**, **no store IPA**, **no ASC submit**
+
+Until Mac steps run, iOS Simulator / device / APNs / Apple Pay remain **BLOCKED** on Windows.
