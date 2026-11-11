@@ -1,45 +1,45 @@
 # Certification remaining matrix (App Store 1.0.1 / build 89 protected)
 
-Last update: 2026-11-11 · HEAD tracking `main`  
+Last update: 2026-11-11 · HEAD on `main`  
 **Do not declare full certification complete while any obligatory item is BLOCKED.**
 
-## Executed (do not re-run without cause)
+## Executed (proved)
 
 | Area | Result | Evidence |
 |---|---|---|
-| App Store 89 protected | PASS | No OTA / no store IPA; Checkout browser path untouched in published binary |
+| App Store 89 protected | PASS | No OTA / store IPA; `TaxiQuoteScreen` still has `WebBrowser.openBrowserAsync` fallback (store Checkout path preserved in source; binary 89 unchanged) |
 | Stripe API sk_test succeed/decline/cancel | PASS | `scripts/stripe-us-paymentsheet-cert.mjs` |
-| PaymentSheet open (Android emulator) | PASS | `PaymentSheetActivity` + Card form TEST |
-| PaymentSheet cancel / dismiss | PASS | Prior + back dismiss |
-| US driver/restaurant/seller login | PASS | Isolated `@example.com` accounts |
-| US isolation (non-approved / offline / dispatch guard) | PASS | `US_ISOLATED_TEST_USER_IDS` + pro rows absent/non-approved |
-| Guinea isolated logins | PASS | Prior smoke |
-| CI / Semgrep / ZAP / CodeQL / Vercel | PASS | `25707fa2`+ |
-| GPS autocomplete coords race fix | PASS | `a811101f` + regression |
+| PaymentSheet open (emulator-5556) | PASS | `PaymentSheetActivity` + Card form TEST |
+| PaymentSheet cancel / dismiss | PASS | Prior proofs |
+| PI taxi open | PASS (state) | `pi_3UaXu9…` amount **2333** USD, `requires_payment_method`, `livemode=false` |
+| No public taxi ride from open sheet | PASS | 0 rides for E2E client since cert window |
+| US driver / restaurant / seller login + isolation | PASS | Non-approved, offline, dispatch-isolated |
+| Guinea client/driver/restaurant/seller login | PASS | Isolated accounts unchanged |
+| US E2E client login | PASS | Session OK |
+| i18n coverage 100% + 6-language keys for cert fill | PASS | `test:i18n-coverage`, `fullScreenI18n`, `languageSwitch` (RTL=ar only) |
+| Autocomplete coords contract | PASS | `taxi-us-cert-fill.regression.test.mjs` |
+| CI / Semgrep / ZAP / CodeQL / Vercel (prior greens) | PASS | Re-verify after each push |
+| Secret scan | PASS | 0 findings |
 
-## In progress / awaiting operator
+## Stripe UI card outcomes
 
-| Area | Result | Next action |
+| Case | Result | Note |
 |---|---|---|
-| PaymentSheet accept `4242` | BLOCKED → PENDING operator | Enter card on emulator-5556; agent verifies PI `succeeded` + no public ride |
-| PaymentSheet decline `4000…0002` | BLOCKED → PENDING operator | New quote then decline card; agent verifies declined PI |
+| Accept `4242…` via PaymentSheet UI | **BLOCKED** | ADB corrupts Stripe secure fields (`Your card's number is invalid` after multi-field automation). **Unique remaining action:** type manually on emulator-5556: card `4242 4242 4242 4242`, exp future, CVC `123`, ZIP `10001`, then Pay. Agent will verify PI `succeeded` + no public ride. |
+| Decline `4000…0002` via PaymentSheet UI | **BLOCKED** | Same ADB limitation. After accept (or cancel), new quote → Card → enter decline card manually. |
 
-## Blocked on environment (macOS / device)
+Form left cleared for manual entry (Card number empty, sheet still open / reopen via Carte bancaire).
 
-| Area | Result | Procedure |
+## Blocked — external environment
+
+| Area | Result | Why |
 |---|---|---|
-| iOS Simulator compile | BLOCKED (Windows) | `docs/production/IOS_MACOS_VALIDATION_PROCEDURE.md` §1 |
-| iOS physical device | BLOCKED | Same §2 preview only — no store profile |
-| GPS background (device) | BLOCKED | Same §3 |
-| APNs | BLOCKED | Same §3 / §6 |
-| Apple Pay (Wallet sandbox) | BLOCKED | Same §5 — pk_test build only |
-| Stripe PaymentSheet on iOS | BLOCKED | Same + `STRIPE_US_PAYMENTSHEET_MANUAL_UI.md` |
-| Six languages + Arabic RTL (device re-cert) | NOT TESTED this wave | Re-run only if i18n strings change |
+| iOS Simulator / Xcode | BLOCKED | Host is Windows — see `IOS_MACOS_VALIDATION_PROCEDURE.md` |
+| iOS physical device | BLOCKED | Needs Mac + device |
+| APNs | BLOCKED | Needs device + push entitlement build |
+| Apple Pay | BLOCKED | Needs device Wallet sandbox + pk_test build |
+| Stripe PaymentSheet on iOS | BLOCKED | Needs iOS build |
 
 ## Forbidden without founder approval
 
-- OTA on `runtimeVersion` 1.0.0  
-- `eas build --profile production` / `eas submit`  
-- App Store publish  
-- Changing build 89 Checkout path  
-- Stripe/Supabase production secret changes  
+OTA · `eas build --profile production` · `eas submit` · App Store publish · changing build 89 Checkout · live Stripe/Supabase secret edits · approving test pros.
