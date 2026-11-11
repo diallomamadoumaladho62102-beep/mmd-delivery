@@ -31,11 +31,17 @@ Objectif : prouver accept / refus / annulation **dans la sheet native** (ADB ne 
 
 **Preuve agent 2026-11-11 (emulator-5556, pk_test) :** devis US **23,33 $US** · sheet ouverte · formulaire Card visible. Accept/refus = saisie manuelle (ADB insecure).
 
+**Preuve agent (suite, même jour) — annulation UI :**
+- Sheet ouverte sur `PaymentSheetActivity` pour PI `pi_3UaXu9ARYL6CPXX21fDw6p86` (`requires_payment_method`, **2333** USD, `livemode=false`).
+- Tap accessibilité **Close sheet** → retour `MainActivity`.
+- Relecture Stripe : PI toujours `requires_payment_method` ; **0** course créée depuis le début du cert.
+- **Cancel UI = PASS**. Accept `4242` / refus `4000…0002` restent **manuels** (champs sécurisés Stripe non fiables via ADB).
+
 ## Cas à valider (saisie **manuelle** dans la sheet)
 
 | # | Cas | Carte | Attendu | Preuve |
 |---|---|---|---|---|
-| 1 | Annulation | (aucune) | Fermer / Cancel avant Pay | Sheet fermée ; pas de PI `succeeded` |
+| 1 | Annulation | (aucune) | Fermer / Cancel avant Pay | Sheet fermée ; pas de PI `succeeded` — **PASS agent 2026-11-11** |
 | 2 | Acceptation | `4242 4242 4242 4242` · exp future · CVC · ZIP US | Succès ; confirm serveur ; course ou message « pending confirm » ; **`livemode=false`** | Capture + `pi_…` Dashboard **Test** |
 | 3 | Refus | `4000 0000 0000 0002` · mêmes infos | Refus carte ; **aucune** course payée | Capture erreur declined + PI non succeeded |
 
@@ -43,18 +49,18 @@ Ordre recommandé : **1 → 2 → 3** (cancel d’abord, puis nouveau devis pour
 
 ## Checklist opérateur (cocher)
 
-- [ ] Build = pk_test (pas App Store 89)
-- [ ] Marché US / USD
-- [ ] Coords pickup + dropoff présentes
-- [ ] Sheet ouverte
-- [ ] Cancel PASS
-- [ ] 4242 PASS (`livemode=false`)
-- [ ] 4000…0002 PASS (declined)
-- [ ] Aucun OTA pendant le test
+- [x] Build = pk_test (pas App Store 89)
+- [x] Marché US / USD
+- [x] Coords pickup + dropoff présentes
+- [x] Sheet ouverte
+- [x] Cancel PASS
+- [ ] 4242 PASS (`livemode=false`) — **manuel opérateur**
+- [ ] 4000…0002 PASS (declined) — **manuel opérateur**
+- [x] Aucun OTA pendant le test
 
 ## Preuves API déjà vertes (ne pas rejouer sans cause)
 
-`node scripts/stripe-us-paymentsheet-cert.mjs` — succeed / decline / cancel + Cash GN smoke (**PASS**, sk_test).
+`node scripts/stripe-us-paymentsheet-cert.mjs` — succeed / decline / cancel + Cash GN smoke (**PASS**, sk_test). Rejoué 2026-11-11 : `pi_3UaYur…` succeeded · `pi_3UaYus…` declined · `pi_3UaYut…` canceled.
 
 ## Interdits
 

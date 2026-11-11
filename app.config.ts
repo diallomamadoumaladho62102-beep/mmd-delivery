@@ -247,10 +247,13 @@ export default ({ config }) => {
       bundleIdentifier: IOS_BUNDLE_ID,
       icon: "./apps/mobile/assets/ios-marketing-icon.png",
       supportsTablet: true,
+      // App Store Ready-for-Distribution is 1.0.1 (89). Never reuse ≤89 locally.
+      // EAS production uses appVersionSource=remote + autoIncrement; this fallback
+      // only applies to local prebuild / missing IOS_BUILD_NUMBER.
       buildNumber: String(
         cleanEnv(env.IOS_BUILD_NUMBER) ||
           existingIos.buildNumber ||
-          "72",
+          "90",
       ),
       // Explicit Apple Pay entitlement so EAS/Xcode profiles must include the Merchant ID.
       // The Stripe plugin also sets merchantIdentifier; this makes the IPA entitlement non-optional.
