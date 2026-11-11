@@ -39,7 +39,10 @@ import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 import { ClientCheckoutPaymentMethods } from "../components/checkout/ClientCheckoutPaymentMethods";
 import { useApplePayAvailable } from "../hooks/useApplePayAvailable";
 import { parseServerPaymentIntentPayload } from "../lib/applePayCheckout";
-import { confirmApplePayPaymentIntent } from "../utils/stripe";
+import {
+  confirmApplePayPaymentIntent,
+  presentCardPaymentSheet,
+} from "../utils/stripe";
 import {
   extrasCentsFromOptions,
   foodCartLineKey,
@@ -1149,6 +1152,7 @@ export function ClientRestaurantMenuScreen() {
       }
 
       // Stripe pay-then-create: no orders row until payment is confirmed.
+      // Card uses native PaymentSheet (client_secret); Apple Pay uses Platform Pay.
       const checkout = await startFoodCheckoutFromQuote(
         {
           ...orderPayload,
@@ -1157,13 +1161,22 @@ export function ClientRestaurantMenuScreen() {
             : {}),
         },
         scope,
-        method === "apple_pay" ? { nativeWallet: "apple_pay" } : undefined
+        method === "apple_pay"
+          ? { nativeWallet: "apple_pay" }
+          : method === "card"
+            ? { nativeWallet: "payment_sheet" }
+            : undefined
       );
 
-      if (method === "apple_pay") {
+      if (method === "apple_pay" || method === "card") {
         const foodCheckoutId = String(checkout?.food_checkout_id ?? "").trim();
         const parsed = parseServerPaymentIntentPayload(checkout);
-        if (!checkout?.ok || !foodCheckoutId || !parsed.clientSecret || !parsed.stripeAmount) {
+        if (
+          !checkout?.ok ||
+          !foodCheckoutId ||
+          !parsed.clientSecret ||
+          (method === "apple_pay" && !parsed.stripeAmount)
+        ) {
           if (parsed.alreadyPaid) {
             const paidOrderId = String(checkout?.order_id ?? checkout?.orderId ?? "").trim();
             if (paidOrderId) {
@@ -1183,13 +1196,22 @@ export function ClientRestaurantMenuScreen() {
           );
         }
 
-        await confirmApplePayPaymentIntent({
-          clientSecret: parsed.clientSecret,
-          merchantCountryCode: parsed.merchantCountryCode,
-          currencyCode: parsed.currencyCode,
-          stripeAmount: parsed.stripeAmount,
-          logScope: "payments.foodApplePay",
-        });
+        if (method === "apple_pay") {
+          await confirmApplePayPaymentIntent({
+            clientSecret: parsed.clientSecret,
+            merchantCountryCode: parsed.merchantCountryCode,
+            currencyCode: parsed.currencyCode,
+            stripeAmount: parsed.stripeAmount as number,
+            logScope: "payments.foodApplePay",
+          });
+        } else {
+          await presentCardPaymentSheet({
+            clientSecret: parsed.clientSecret,
+            merchantCountryCode: parsed.merchantCountryCode,
+            logScope: "payments.foodCardPaymentSheet",
+            context: { foodCheckoutId, currency: parsed.currencyCode },
+          });
+        }
 
         let confirmResult: {
           ok?: boolean;

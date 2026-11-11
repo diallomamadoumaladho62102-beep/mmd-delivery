@@ -22,7 +22,10 @@ import * as WebBrowser from "expo-web-browser";
 import { ClientCheckoutPaymentMethods } from "../../components/checkout/ClientCheckoutPaymentMethods";
 import { useApplePayAvailable } from "../../hooks/useApplePayAvailable";
 import { parseServerPaymentIntentPayload } from "../../lib/applePayCheckout";
-import { confirmApplePayPaymentIntent } from "../../utils/stripe";
+import {
+  confirmApplePayPaymentIntent,
+  presentCardPaymentSheet,
+} from "../../utils/stripe";
 import {
   confirmTaxiQuoteCheckoutPaid,
   createTaxiRide,
@@ -522,23 +525,39 @@ export default function TaxiQuoteScreen() {
         returnMode: params.returnMode,
         returnWaitMinutes: params.returnWaitMinutes,
         returnScheduledAt: params.returnScheduledAt,
-        ...(method === "apple_pay" ? { nativeWallet: "apple_pay" as const } : {}),
+        ...(method === "apple_pay"
+          ? { nativeWallet: "apple_pay" as const }
+          : method === "card"
+            ? { nativeWallet: "payment_sheet" as const }
+            : {}),
       });
 
-      if (method === "apple_pay") {
+      if (method === "apple_pay" || method === "card") {
         const quoteCheckoutId = String(checkout?.quote_checkout_id ?? "").trim();
         const parsed = parseServerPaymentIntentPayload(checkout);
-        if (!checkout?.ok || !quoteCheckoutId || !parsed.clientSecret || !parsed.stripeAmount) {
+        if (!checkout?.ok || !quoteCheckoutId || !parsed.clientSecret) {
+          throw new Error(checkout?.error ?? t("taxi.quote.checkoutMissing", "Checkout is unavailable"));
+        }
+        if (method === "apple_pay" && !parsed.stripeAmount) {
           throw new Error(checkout?.error ?? t("taxi.quote.checkoutMissing", "Checkout is unavailable"));
         }
 
-        await confirmApplePayPaymentIntent({
-          clientSecret: parsed.clientSecret,
-          merchantCountryCode: parsed.merchantCountryCode,
-          currencyCode: parsed.currencyCode,
-          stripeAmount: parsed.stripeAmount,
-          logScope: "payments.taxiApplePay",
-        });
+        if (method === "apple_pay") {
+          await confirmApplePayPaymentIntent({
+            clientSecret: parsed.clientSecret,
+            merchantCountryCode: parsed.merchantCountryCode,
+            currencyCode: parsed.currencyCode,
+            stripeAmount: parsed.stripeAmount as number,
+            logScope: "payments.taxiApplePay",
+          });
+        } else {
+          await presentCardPaymentSheet({
+            clientSecret: parsed.clientSecret,
+            merchantCountryCode: parsed.merchantCountryCode,
+            logScope: "payments.taxiCardPaymentSheet",
+            context: { quoteCheckoutId, currency: parsed.currencyCode },
+          });
+        }
 
         let confirmResult: {
           ok?: boolean;

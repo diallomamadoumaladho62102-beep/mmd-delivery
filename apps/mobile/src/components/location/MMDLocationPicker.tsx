@@ -449,6 +449,25 @@ export default function MMDLocationPicker({
         .filter(Boolean)
         .join(", ");
 
+      // US structured mode hides the free-text directions field, but the locations
+      // API still requires directions_text (>= 8 chars). Derive a stable fallback
+      // from the structured address + pin so pickup save is not blocked.
+      const directionsForApi = (() => {
+        const typed = directionsText.trim();
+        if (typed.length >= 8) return typed;
+        if (!structuredMode) return typed;
+        const fallback = [
+          structuredFormatted,
+          formattedAddress.trim(),
+          pinLat != null && pinLng != null
+            ? `Pin ${pinLat.toFixed(5)}, ${pinLng.toFixed(5)}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        return fallback.length >= 8 ? fallback : "Map pin confirmed";
+      })();
+
       const location = await saveMmdLocationWithOptionalPhoto({
         input: {
           country_code: scopedCountryCode,
@@ -461,7 +480,7 @@ export default function MMDLocationPicker({
             formattedAddress.trim() ||
             (structuredMode ? structuredFormatted : undefined) ||
             undefined,
-          directions_text: directionsText.trim(),
+          directions_text: directionsForApi,
           geocoded_lat: gpsLat,
           geocoded_lng: gpsLng,
           pin_lat: pinLat,

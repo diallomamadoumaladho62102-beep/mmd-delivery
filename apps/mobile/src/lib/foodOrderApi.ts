@@ -150,7 +150,7 @@ export async function createFoodOrder(
 export function startFoodCheckoutFromQuote(
   payload: CreateFoodOrderPayload & { expectedQuoteTotalCents?: number },
   scope?: { countryCode?: string | null; lat?: number; lng?: number },
-  opts?: { nativeWallet?: "apple_pay" },
+  opts?: { nativeWallet?: "apple_pay" | "payment_sheet" },
 ) {
   return foodOrderFetch(
     "/api/stripe/client/create-food-quote-checkout-session",

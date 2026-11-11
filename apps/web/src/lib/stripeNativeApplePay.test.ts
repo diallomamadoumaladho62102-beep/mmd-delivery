@@ -28,6 +28,12 @@ test("native_wallet apple_pay is detected", () => {
   assert.equal(isNativeApplePayRequest({ payment_ui: "platform_pay" }), true);
 });
 
+test("payment_sheet requests open native PaymentIntent (client_secret)", () => {
+  assert.equal(isNativeApplePayRequest({ payment_ui: "payment_sheet" }), true);
+  assert.equal(isNativeApplePayRequest({ native_wallet: "payment_sheet" }), true);
+  assert.equal(isNativeApplePayRequest({ nativeWallet: "Payment Sheet" }), true);
+});
+
 test("merchant configuration is unchanged", () => {
   assert.equal(STRIPE_APPLE_PAY_MERCHANT_ID, "merchant.com.maladho2025.mmddelivery");
   assert.equal(STRIPE_APPLE_PAY_MERCHANT_COUNTRY_CODE, "US");

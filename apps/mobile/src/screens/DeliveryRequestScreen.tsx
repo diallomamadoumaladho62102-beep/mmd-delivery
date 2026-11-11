@@ -23,7 +23,11 @@ import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import * as WebBrowser from "expo-web-browser";
-import { startCheckoutForDeliveryRequest, confirmApplePayPaymentIntent } from "../utils/stripe";
+import {
+  startCheckoutForDeliveryRequest,
+  confirmApplePayPaymentIntent,
+  presentCardPaymentSheet,
+} from "../utils/stripe";
 import { ClientCheckoutPaymentMethods } from "../components/checkout/ClientCheckoutPaymentMethods";
 import { useApplePayAvailable } from "../hooks/useApplePayAvailable";
 import { parseServerPaymentIntentPayload } from "../lib/applePayCheckout";
@@ -1019,32 +1023,51 @@ export function DeliveryRequestScreen() {
       }
 
       // Stripe pay-then-create: no delivery_requests row until payment is confirmed.
+      // Card uses native PaymentSheet; Apple Pay uses Platform Pay.
       const checkout = await startDeliveryCheckoutFromQuote(
         {
           ...requestPayload,
           expectedQuoteTotalCents,
         },
         scope,
-        method === "apple_pay" ? { nativeWallet: "apple_pay" } : undefined
+        method === "apple_pay"
+          ? { nativeWallet: "apple_pay" }
+          : method === "card"
+            ? { nativeWallet: "payment_sheet" }
+            : undefined
       );
 
-      if (method === "apple_pay") {
+      if (method === "apple_pay" || method === "card") {
         const deliveryCheckoutId = String(checkout?.delivery_checkout_id ?? "").trim();
         const parsed = parseServerPaymentIntentPayload(checkout);
-        if (!checkout?.ok || !deliveryCheckoutId || !parsed.clientSecret || !parsed.stripeAmount) {
+        if (
+          !checkout?.ok ||
+          !deliveryCheckoutId ||
+          !parsed.clientSecret ||
+          (method === "apple_pay" && !parsed.stripeAmount)
+        ) {
           throw new Error(
             String(checkout?.error ?? checkout?.message ?? "").trim() ||
               tr("deliveryRequest.errors.createFailed", "Unable to create the request.")
           );
         }
 
-        await confirmApplePayPaymentIntent({
-          clientSecret: parsed.clientSecret,
-          merchantCountryCode: parsed.merchantCountryCode,
-          currencyCode: parsed.currencyCode,
-          stripeAmount: parsed.stripeAmount,
-          logScope: "payments.deliveryApplePay",
-        });
+        if (method === "apple_pay") {
+          await confirmApplePayPaymentIntent({
+            clientSecret: parsed.clientSecret,
+            merchantCountryCode: parsed.merchantCountryCode,
+            currencyCode: parsed.currencyCode,
+            stripeAmount: parsed.stripeAmount as number,
+            logScope: "payments.deliveryApplePay",
+          });
+        } else {
+          await presentCardPaymentSheet({
+            clientSecret: parsed.clientSecret,
+            merchantCountryCode: parsed.merchantCountryCode,
+            logScope: "payments.deliveryCardPaymentSheet",
+            context: { deliveryCheckoutId, currency: parsed.currencyCode },
+          });
+        }
 
         let confirmResult: {
           ok?: boolean;
@@ -1091,7 +1114,7 @@ export function DeliveryRequestScreen() {
         try {
           orderId = await createOrderFromPaidDeliveryRequest(deliveryRequestId, user.id);
         } catch (syncErr) {
-          console.warn("delivery sync-order after apple pay:", syncErr);
+          console.warn("delivery sync-order after payment sheet:", syncErr);
         }
 
         Alert.alert(

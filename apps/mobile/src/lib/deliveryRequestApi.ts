@@ -137,7 +137,7 @@ export async function createDeliveryRequest(
 export function startDeliveryCheckoutFromQuote(
   payload: CreateDeliveryRequestPayload & { expectedQuoteTotalCents?: number },
   scope?: { countryCode?: string | null; lat?: number; lng?: number },
-  opts?: { nativeWallet?: "apple_pay" },
+  opts?: { nativeWallet?: "apple_pay" | "payment_sheet" },
 ) {
   return deliveryRequestFetch(
     "/api/stripe/client/create-delivery-quote-checkout-session",

@@ -954,6 +954,89 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
 }
 
 /**
+ * Present Stripe PaymentSheet for a server-created PaymentIntent (card / Google Pay).
+ * Used by US taxi / food / delivery quote checkout when payment_ui=payment_sheet.
+ * Never treats sheet presentation as paid — callers must confirm with the server.
+ */
+export async function presentCardPaymentSheet(params: {
+  clientSecret: string;
+  merchantCountryCode: string;
+  logScope?: string;
+  context?: Record<string, unknown>;
+}): Promise<boolean> {
+  const logScope = params.logScope ?? "payments.cardPaymentSheet";
+  if (Platform.OS === "ios" && isExpoGo()) {
+    Alert.alert(
+      i18n.t(
+        "payment.stripe.paymentUnavailableExpoGoTitle",
+        "Payment unavailable on iPhone (Expo Go)",
+      ),
+      i18n.t(
+        "payment.stripe.paymentUnavailableExpoGoBody",
+        "Native Stripe payment requires a development build or a real iOS build. Expo Go is not enough for a real payment test.",
+      ),
+    );
+    return false;
+  }
+
+  const stripeNative = await import("@stripe/stripe-react-native");
+  const initPaymentSheet = stripeNative.initPaymentSheet;
+  const presentPaymentSheet = stripeNative.presentPaymentSheet;
+
+  const paymentSheetOptions: Record<string, unknown> = {
+    merchantDisplayName: "MMD Delivery",
+    paymentIntentClientSecret: params.clientSecret,
+    allowsDelayedPaymentMethods: false,
+  };
+
+  if (Platform.OS === "ios") {
+    try {
+      const supported =
+        typeof stripeNative.isPlatformPaySupported === "function"
+          ? await stripeNative.isPlatformPaySupported()
+          : true;
+      if (supported) {
+        paymentSheetOptions.applePay = {
+          merchantCountryCode: params.merchantCountryCode,
+        };
+      }
+    } catch {
+      // Card PaymentSheet remains available if Apple Pay probe fails.
+    }
+  } else if (Platform.OS === "android") {
+    paymentSheetOptions.googlePay = {
+      merchantCountryCode: params.merchantCountryCode,
+      testEnv: String(process.env.EXPO_PUBLIC_STRIPE_PK ?? "").startsWith(
+        "pk_test_"
+      ),
+    };
+  }
+
+  const init = await initPaymentSheet(paymentSheetOptions as any);
+  if (init.error) {
+    logTechnicalError(`${logScope}.initPaymentSheet`, init.error, params.context);
+    throw new Error(mapStripePaymentError(init.error));
+  }
+
+  const present = await presentPaymentSheet();
+  if (present.error) {
+    if (present.error.code === "Canceled") {
+      throw new Error(
+        i18n.t("payment.stripe.paymentCanceled", "Payment canceled."),
+      );
+    }
+    logTechnicalError(
+      `${logScope}.presentPaymentSheet`,
+      present.error,
+      params.context,
+    );
+    throw new Error(mapStripePaymentError(present.error));
+  }
+
+  return true;
+}
+
+/**
  * Confirm a server-created PaymentIntent with the native Apple Pay sheet.
  * Never treats sheet presentation as paid — Stripe PI status is required.
  */
