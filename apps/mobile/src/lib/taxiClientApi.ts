@@ -98,10 +98,16 @@ async function taxiPost(path: string, body: Record<string, unknown>) {
         : String((out as { error?: string; message?: string } | null)?.error
             ?? (out as { message?: string } | null)?.message
             ?? "request_failed"),
-    );
-    (err as Error & { code?: string }).code = expectedPending
+    ) as Error & {
+      code?: string;
+      payload?: Record<string, unknown> | null;
+      status?: number;
+    };
+    err.code = expectedPending
       ? "payment_not_confirmed"
       : String((out as { error?: string } | null)?.error ?? "");
+    err.payload = (out as Record<string, unknown> | null) ?? null;
+    err.status = res.status;
     throw err;
   }
   return out;

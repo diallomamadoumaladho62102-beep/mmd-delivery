@@ -41,7 +41,7 @@ import {
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { GuineaTaxiHub } from "../../components/guinea/GuineaTaxiHub";
-import { isGuineaMarket, useSelectedMarket } from "../../lib/useSelectedMarket";
+import { useSelectedMarket } from "../../lib/useSelectedMarket";
 import {
   fetchTaxiCategoryAvailability,
   type TaxiCategoryAvailability,
@@ -62,6 +62,16 @@ import {
 
 const MMD_LOGO = require("../../../assets/brand/mmd-logo-ui.png");
 
+/** Isolated US PaymentSheet certification route — no dispatch, no fake drivers. */
+const US_CERT_TAXI_ROUTE = {
+  pickupAddress: "1 World Trade Center, New York, NY 10007, United States",
+  dropoffAddress: "Empire State Building, 350 5th Ave, New York, NY 10118, United States",
+  pickupLat: 40.7128,
+  pickupLng: -74.006,
+  dropoffLat: 40.7484,
+  dropoffLng: -73.9857,
+} as const;
+
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 type TaxiHomeRoute = RouteProp<RootStackParamList, "TaxiHome">;
 
@@ -78,7 +88,16 @@ export default function TaxiHomeScreen() {
   const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
   const selectedMarket = useSelectedMarket();
   const showDevCountryPicker = isDevCountryPickerEnabled();
-  const guineaUi = isGuineaMarket(selectedMarket);
+  // Prefer live platform scope (same chip as ClientHome). selectedMarket can remain
+  // GN from CountryWelcome while the home scope already shows US.
+  // In __DEV__ the country picker is the source of truth for cert routes — never
+  // trap the screen inside GuineaTaxiHub or US PaymentSheet cannot be opened.
+  const scopeCountry = String(market.countryCode || selectedMarket || "")
+    .trim()
+    .toUpperCase();
+  // __DEV__ always exposes the standard taxi form (cert fill + country picker when
+  // enabled). Guinea hub remains the production path for GN selected markets.
+  const guineaUi = scopeCountry === "GN" && !__DEV__;
 
   useEffect(() => {
     void refreshWithCurrentLocation();
@@ -999,7 +1018,66 @@ export default function TaxiHomeScreen() {
         </>
         ) : null}
 
+        {__DEV__ ? (
+          <TouchableOpacity
+            testID="taxi-us-cert-fill"
+            accessibilityRole="button"
+            accessibilityLabel="Load US cert addresses"
+            onPress={() => {
+              setCountryCode("US");
+              setCurrencyCode("USD");
+              setPickup(US_CERT_TAXI_ROUTE.pickupAddress);
+              setDropoff(US_CERT_TAXI_ROUTE.dropoffAddress);
+              setPickupLocationId("");
+              setDropoffLocationId("");
+              setPickupCoords({
+                lat: US_CERT_TAXI_ROUTE.pickupLat,
+                lng: US_CERT_TAXI_ROUTE.pickupLng,
+              });
+              setDropoffCoords({
+                lat: US_CERT_TAXI_ROUTE.dropoffLat,
+                lng: US_CERT_TAXI_ROUTE.dropoffLng,
+              });
+              setProximity({
+                lat: US_CERT_TAXI_ROUTE.pickupLat,
+                lng: US_CERT_TAXI_ROUTE.pickupLng,
+              });
+              setVehicleClass("standard");
+              Alert.alert(
+                t("taxi.home.certFillTitle", "US cert route loaded"),
+                t(
+                  "taxi.home.certFillBody",
+                  "Pickup and dropoff are set for PaymentSheet certification. No drivers are required for the quote or card sheet.",
+                ),
+              );
+            }}
+            style={{
+              marginTop: 8,
+              backgroundColor: "rgba(56,189,248,0.18)",
+              borderWidth: 1.5,
+              borderColor: "#38BDF8",
+              paddingVertical: 12,
+              borderRadius: 14,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                color: "#E0F2FE",
+                fontWeight: "700",
+                fontFamily: MMD_FONT.bold,
+                fontSize: 14,
+              }}
+            >
+              {t("taxi.home.certFillCta", "Load US cert addresses")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
         <TouchableOpacity
+          testID="taxi-get-estimate"
+          accessibilityRole="button"
+          accessibilityLabel="Get estimate"
           onPress={() => {
             const activeCountry = String(
               showDevCountryPicker ? countryCode : market.countryCode ?? "",

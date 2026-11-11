@@ -108,7 +108,9 @@ export function resolveMarketScopeFromFeatures(
 }
 
 export function isDevCountryPickerEnabled(): boolean {
-  return __DEV__ && process.env.EXPO_PUBLIC_TAXI_DEV_COUNTRY_PICKER === "1";
+  // Default on in __DEV__ so US PaymentSheet certification can select United States
+  // without a separate env flag. Set EXPO_PUBLIC_TAXI_DEV_COUNTRY_PICKER=0 to disable.
+  return __DEV__ && process.env.EXPO_PUBLIC_TAXI_DEV_COUNTRY_PICKER !== "0";
 }
 
 export function requireScopedCountryCode(market: UnifiedMarketScope): string {

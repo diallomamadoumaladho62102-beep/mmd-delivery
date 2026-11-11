@@ -982,11 +982,26 @@ export async function presentCardPaymentSheet(params: {
   const stripeNative = await import("@stripe/stripe-react-native");
   const initPaymentSheet = stripeNative.initPaymentSheet;
   const presentPaymentSheet = stripeNative.presentPaymentSheet;
+  const linkNever =
+    (stripeNative as { PaymentSheet?: { LinkDisplay?: { Never?: string; NEVER?: string } } })
+      ?.PaymentSheet?.LinkDisplay?.Never ??
+    (stripeNative as { PaymentSheet?: { LinkDisplay?: { Never?: string; NEVER?: string } } })
+      ?.PaymentSheet?.LinkDisplay?.NEVER ??
+    "never";
 
   const paymentSheetOptions: Record<string, unknown> = {
     merchantDisplayName: "MMD Delivery",
     paymentIntentClientSecret: params.clientSecret,
     allowsDelayedPaymentMethods: false,
+    // Link's email field steals focus from card PAN on Android emulators (ADB).
+    link: { display: linkNever },
+    paymentMethodOrder: ["card"],
+    defaultBillingDetails: {
+      address: {
+        country: String(params.merchantCountryCode || "US").toUpperCase(),
+        postalCode: "10007",
+      },
+    },
   };
 
   if (Platform.OS === "ios") {

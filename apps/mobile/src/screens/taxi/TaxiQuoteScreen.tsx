@@ -498,7 +498,7 @@ export default function TaxiQuoteScreen() {
         return;
       }
 
-      const checkout = await startTaxiCheckoutFromQuote({
+      const checkoutBody = {
         pickupAddress,
         dropoffAddress,
         pickupLocationId: pickupLocationId || undefined,
@@ -530,7 +530,45 @@ export default function TaxiQuoteScreen() {
           : method === "card"
             ? { nativeWallet: "payment_sheet" as const }
             : {}),
-      });
+      };
+
+      let checkout: Awaited<ReturnType<typeof startTaxiCheckoutFromQuote>>;
+      try {
+        checkout = await startTaxiCheckoutFromQuote(checkoutBody);
+      } catch (checkoutErr) {
+        // Mapbox re-quote can drift by a few cents vs the Estimate screen.
+        // Retry once with the server's authoritative total so PaymentSheet can open.
+        const payload = (checkoutErr as { payload?: Record<string, unknown> } | null)
+          ?.payload;
+        const code = String(
+          (checkoutErr as { code?: string; message?: string } | null)?.code ??
+            (checkoutErr as Error)?.message ??
+            "",
+        );
+        const serverTotal = Math.round(
+          Number(payload?.current_total_cents ?? 0),
+        );
+        if (
+          code === "quote_price_changed" &&
+          Number.isFinite(serverTotal) &&
+          serverTotal > 0 &&
+          serverTotal !== netTotalCents
+        ) {
+          if (quoteState) {
+            setQuoteState({
+              ...quoteState,
+              total_cents: serverTotal,
+              gross_total_cents: serverTotal,
+            });
+          }
+          checkout = await startTaxiCheckoutFromQuote({
+            ...checkoutBody,
+            expectedQuoteTotalCents: serverTotal,
+          });
+        } else {
+          throw checkoutErr;
+        }
+      }
 
       if (method === "apple_pay" || method === "card") {
         const quoteCheckoutId = String(checkout?.quote_checkout_id ?? "").trim();
