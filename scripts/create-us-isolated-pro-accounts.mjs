@@ -117,7 +117,8 @@ report.protections.stripe_secret_is_test_or_absent =
   !skStripe || skStripe.startsWith("sk_test_");
 
 const url = env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL;
-const service = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || "";
+// Official privileged key name only (see supabaseKeyResolution.regression.test.ts).
+const service = String(env.SUPABASE_SECRET_KEY || "").trim();
 report.protections.supabase_admin_key_present = Boolean(url && service);
 
 for (const [k, v] of Object.entries(report.protections)) {
