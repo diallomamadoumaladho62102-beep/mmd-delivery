@@ -2,7 +2,8 @@
 
 Date: 2026-11-10  
 Reference commit at start of final closure: `d6a576c2`  
-Follow-up on main: auth show-password regression + this report (see latest `git log -1`)  
+Follow-up on main: `a1ebee8e` (auth show-password regression + this report)  
+
 Vercel on `d6a576c2`: success — https://vercel.com/diallomamadoumaladho62102-beeps-projects/mmd-delivery/2qebs9p1tpJcRM8RXEGYcRfCYtqT  
 
 Device under test: `emulator-5556` only (Pixel 5 primary not touched)  
