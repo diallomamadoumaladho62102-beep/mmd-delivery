@@ -60,10 +60,14 @@ const pk = String(
 const supabaseUrl = String(
   env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL || "",
 ).trim();
-const anon = String(
+// Official key names only (see apps/web/src/lib/supabaseEnv.ts + mobile publishable):
+// - user-scoped auth client → publishable key
+// - privileged read-only admin smoke → SUPABASE_SECRET_KEY
+// Legacy JWT env aliases are intentionally never read.
+const publishableKey = String(
   env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    env.SUPABASE_PUBLISHABLE_KEY ||
     env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    env.SUPABASE_PUBLISHABLE_KEY ||
     "",
 ).trim();
 const email = String(env.E2E_TEST_EMAIL || "").trim();
@@ -163,8 +167,8 @@ async function main() {
     writeReport();
     process.exit(2);
   }
-  if (!supabaseUrl || !anon) {
-    report.blockers.push("Supabase URL/anon missing");
+  if (!supabaseUrl || !publishableKey) {
+    report.blockers.push("Supabase URL/publishable key missing");
     writeReport();
     process.exit(2);
   }
@@ -176,7 +180,7 @@ async function main() {
     process.exit(2);
   }
 
-  const sb = createClient(supabaseUrl, anon, {
+  const sb = createClient(supabaseUrl, publishableKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     ...(WebSocketCtor ? { realtime: { transport: WebSocketCtor } } : {}),
   });
@@ -316,7 +320,7 @@ async function main() {
         method: "POST",
         headers: {
           Authorization: `Bearer ${authData.session.access_token}`,
-          apikey: anon,
+          apikey: publishableKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
