@@ -989,6 +989,9 @@ export async function presentCardPaymentSheet(params: {
       ?.PaymentSheet?.LinkDisplay?.NEVER ??
     "never";
 
+  const merchantCountry = String(params.merchantCountryCode || "US")
+    .trim()
+    .toUpperCase() || "US";
   const paymentSheetOptions: Record<string, unknown> = {
     merchantDisplayName: "MMD Delivery",
     paymentIntentClientSecret: params.clientSecret,
@@ -998,8 +1001,9 @@ export async function presentCardPaymentSheet(params: {
     paymentMethodOrder: ["card"],
     defaultBillingDetails: {
       address: {
-        country: String(params.merchantCountryCode || "US").toUpperCase(),
-        postalCode: "10007",
+        country: merchantCountry,
+        // US-only prefill for PaymentSheet ZIP; never force a US ZIP on GN/other markets.
+        ...(merchantCountry === "US" ? { postalCode: "10007" } : {}),
       },
     },
   };

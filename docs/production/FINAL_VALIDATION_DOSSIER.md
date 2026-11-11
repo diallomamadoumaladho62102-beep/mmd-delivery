@@ -1,194 +1,240 @@
-# MMD Delivery — Dossier unique de validation pré-build
+# MMD Delivery — Dossier unique de validation pré-BUILD ALL
 
 **Date :** 2026-11-11  
-**HEAD cert :** `919b7c5e513905eeee6b1c5f793b0625a13ad44b`  
+**Branche :** `main`  
+**HEAD au démarrage de la mission :** `02e14a57`  
 **Pin App Store 1.0.1 (89) :** `3152ebf28d4da7eb648827c64a7f0a6130dec8c3`  
-**Host de préparation :** Windows + Android `emulator-5556`  
-**Interdit sans autorisation fondateur :** commit, push, EAS build, IPA, OTA, submit, deploy
+**Host :** Windows + vérifications API/Android config (pas de Xcode)
 
-Ce dossier remplace les rapports intermédiaires. Il décrit l’état prêt pour le prochain build de validation et les tests iPhone.
-
----
-
-## A. État Git initial et protection du build 89
-
-| Item | Valeur / résultat |
-|---|---|
-| Branche | `main` (alignée `origin/main` au démarrage de la passe) |
-| HEAD | `919b7c5e` — **PASS** |
-| Pin store | `3152ebf2` — **intact** (aucun rebuild / OTA / submit) |
-| Identité iOS store | version **1.0.1**, build **89**, bundle `com.maladho2025.mmddelivery` |
-| `runtimeVersion` HEAD | **1.0.0** (= runtime du binaire 89) → risque OTA production |
-| Neutralisation OTA | Script `scripts/assert-store89-ota-freeze.mjs` + `pnpm ota:block-production` + accroche `test:ci` |
-| Preuve freeze | Default **PASS** (freeze armed) ; `--channel=production` **exit 1** ; `--channel=preview` **PASS** |
-| `eas.json` production | channel `production`, `autoIncrement`, `ascAppId` 6761693075 — **non exécuté** |
-| Fallback `IOS_BUILD_NUMBER` local | corrigé **72 → 90** dans `app.config.ts` (évite collision locale ≤89 ; ne modifie pas le binaire publié) |
-
-**Règle absolue :** une correction du code source ne modifie **jamais** le binaire App Store déjà publié. Seul un `eas update --channel production` avec le même `runtimeVersion` pourrait infecter 89 — désormais **bloqué** par le garde-fou tant que `runtimeVersion` reste `1.0.0`.
+**Interdit sans nouvel ordre fondateur :** EAS Build, IPA, OTA, Submit, Deploy.
 
 ---
 
-## B. Corrections réalisées (cette finalisation)
+## A. Comparaison détaillée build 89 / main
 
-1. **`scripts/assert-store89-ota-freeze.mjs`** — garde-fou OTA store 89 (CI + blocage production).
-2. **`package.json`** — `test:ci` démarre par le freeze ; scripts `ota:assert-store89-freeze` / `ota:block-production`.
-3. **`app.config.ts`** — fallback `buildNumber` local `90` (après 89).
-4. **`scripts/verify-paymentsheet-manual-session.mjs`** — vérifieur honnête (UI PASS seulement avec `--accept-pi` / `--decline-pi` explicites).
-5. **Docs** — `STRIPE_US_PAYMENTSHEET_MANUAL_UI.md`, `CERTIFICATION_REMAINING_MATRIX.md` (cancel UI prouvé).
+### Identité native (doit rester alignée)
 
-Aucun commit. Aucun push. Aucun EAS.
+| Champ | Build 89 (pin) | HEAD | Statut |
+|---|---|---|---|
+| `ios.bundleIdentifier` | `com.maladho2025.mmddelivery` | identique | **PASS** |
+| `ios.version` | `1.0.1` | identique | **PASS** |
+| `runtimeVersion` | `1.0.0` | identique | **PASS** (freeze OTA armé) |
+| Apple Pay merchant | `merchant.com.maladho2025.mmddelivery` | identique | **PASS** |
+| Associated Domains | `applinks:www.mmddelivery.com` | identique | **PASS** |
+| BG modes | `location`, `remote-notification` | identique | **PASS** |
+| Locales | en fr es ar zh ff | identique | **PASS** |
+| Android package | `com.maladho2025.mmddelivery` | identique | **PASS** |
+| Scheme | `mmddelivery` | identique | **PASS** |
+
+Preuve automatisée : `scripts/store89-main-compat.regression.test.mjs`.
+
+### Delta fonctionnel depuis 89 (~33 commits, ~231 fichiers)
+
+| Modification | Pourquoi | Comportement | Nécessaire | Risque US/GN |
+|---|---|---|---|---|
+| PaymentSheet natif carte (`presentCardPaymentSheet`) | Remplacer Checkout navigateur pour US card sur **nouveaux** binaires | Taxi/food/delivery carte → sheet native ; confirm serveur inchangé | Oui (cert US) | US : changement UX intentionnel. **Binaire 89 intact** (toujours Checkout). GN cash inchangé |
+| Retry `quote_price_changed` | Mapbox drift cents | 1 retry avec total serveur | Oui | Faible |
+| Autocomplete `onSelect` only | Fix race lat/lng null | Coords conservées à la sélection | Oui (bugfix) | Positif US+GN |
+| `CountryWelcomeScreen` + marchés | Entrée pays avant RoleSelect | GN/US currency & dial | Oui | Isolé par marché |
+| `guineaTestIsolation` + US cert IDs | Bloquer dispatch live des 8 comptes test | Pros non approuvés isolés | Oui | Protection |
+| Sécurité deps (Next, Snyk, vendor) | CI/audit | Pas de changement produit UX | Oui | Faible |
+| OTA freeze script | Empêcher OTA production → 89 | `eas update --channel production` bloqué | Oui | Protection 89 |
+| Fallback `IOS_BUILD_NUMBER` local 90 | Éviter collision ≤89 en prebuild local | N’affecte pas le binaire publié | Oui | Aucun |
+
+**Verdict comparaison :** aucune régression d’identité store. Le seul delta paiement US card est **volontaire pour le prochain binaire** ; le build 89 n’est pas modifié et ne reçoit pas ce JS tant que le freeze OTA tient.
 
 ---
 
-## C–E. Tests exécutés, preuves, non-régressions
+## B. Régressions identifiées et corrections
 
-### Stripe
+| Anomalie | Cause | Correction | Test |
+|---|---|---|---|
+| ZIP `10007` forcé dans PaymentSheet pour tout merchant | Prefill cert US trop large | Prefill ZIP **uniquement si** `merchantCountry === "US"` | `present-card-paymentsheet.regression.test.mjs` |
+| Risque OTA → 89 | Même `runtimeVersion` | Garde-fou déjà en place + maintenu | `assert-store89-ota-freeze.mjs` |
+| Absence de contrat pin↔HEAD | — | Ajout `store89-main-compat.regression.test.mjs` dans `test:ci` | **PASS** |
+
+Aucune autre régression logicielle correctible détectée sur Windows dans cette passe.
+
+---
+
+## C. Validation marché américain
 
 | Test | Statut | Preuve |
 |---|---|---|
-| Clés test | **PASS** | `pk_test_…` / `sk_test_…` |
-| API succeed / decline / cancel | **PASS** | `scripts/stripe-us-paymentsheet-cert.mjs` + `stripe-us-taxi-native-pi-cert.mjs` (`livemode=false`) |
-| Montants / devise USD | **PASS** | PI taxi 2333–2788 USD |
-| Idempotence / abandon / unpaid 409 | **PASS** | `taxiPaymentAbandonFlow.test.ts`, `applePayCheckout.test.ts` |
-| Anti course non payée | **PASS** | 0 `taxi_rides` payées client E2E depuis fenêtre cert |
-| Double paiement | **PASS** | `double_pay_guard` + 0 paid rides |
-| PaymentSheet ouverte Android | **PASS** | `PaymentSheetActivity` + formulaire Card |
-| Cancel UI PaymentSheet | **PASS** | Close sheet → PI `requires_payment_method`, 0 ride |
-| Accept UI `4242` | **BLOCKED** | Champs sécurisés Stripe — saisie humaine |
-| Decline UI `4000…0002` | **BLOCKED** | Idem |
-| Confirm serveur post-UI | **BLOCKED** | Dépend saisie manuelle |
+| Login/logout client US | **PASS** | 8-rôles smoke |
+| Pros US login + non-approuvés / offline / isolés | **PASS** | isolation script |
+| Devise USD / marché | **PASS** | `marketCurrency('US')==='USD'` + Stripe USD PI |
+| Taxi quote + PaymentIntent USD | **PASS** | `stripe-us-*-cert.mjs` |
+| PaymentSheet cancel UI | **PASS** | preuves antérieures emulator |
+| PaymentSheet accept/decline UI | **BLOCKED** | saisie manuelle |
+| Autocomplete coords | **PASS** | cert-fill + code contract |
+| Checkout food/delivery PaymentSheet wiring | **PASS** | regression present-card |
+| Apple Pay logique (unit) | **PASS** | `applePayCheckout.test.ts` |
+| Apple Pay device | **BLOCKED** | iPhone |
+| Notifications APNs | **BLOCKED** | device |
+| Géoloc device | **BLOCKED** / code **PASS** | unit + permissions FG émulateur antérieur |
 
-**Session manuelle unique (Android ou iPhone pk_test) :**
+**Non-régression vs 89 :** parcours US métier préservés ; carte native = évolution du **prochain** binaire uniquement.
 
-1. Taxi US → devis → Carte → sheet.  
-2. `4242 4242 4242 4242` · exp future · CVC · ZIP US → Pay.  
-3. Nouveau devis → `4000 0000 0000 0002` → constater refus.  
-4. Vérifier : `node scripts/verify-paymentsheet-manual-session.mjs --accept-pi=pi_… --decline-pi=pi_…`
+---
 
-### iOS config (Windows — pas de Simulator)
+## D. Validation marché guinéen
 
-| Test | Statut |
-|---|---|
-| Bundle / ios.version 1.0.1 / merchant / associatedDomains / BG location+push / 6 locales / Stripe plugin / scheme | **PASS** (config) |
-| Cohérence pin ↔ HEAD identité store | **PASS** |
-| Xcode / Simulator / device / Apple Pay réel / APNs réel / PaymentSheet iOS | **BLOCKED** |
-
-### GPS
-
-| Test | Statut |
-|---|---|
-| Autocomplete onSelect-only + cert-fill | **PASS** |
-| `verifiedClientGps`, tracker, disclosure BG, abandon GPS AI | **PASS** |
-| Permissions FG émulateur | **PASS** (`ACCESS_FINE/COARSE=granted`) |
-| Refus permission (code paths) | **PASS** |
-| GPS / BG / pin carte iPhone | **BLOCKED** |
-
-### 8 rôles
-
-| Rôle | Login+logout | Isolation |
+| Test | Statut | Preuve |
 |---|---|---|
-| Client/Chauffeur/Restaurant/Vendeur GN | **PASS** | pending / non approuvés |
-| Client + 3 pros US | **PASS** | `approved:false`, offline, dispatch-isolated |
+| Country before RoleSelect | **PASS** (code) | `CountryWelcomeScreen` + navigator |
+| RoleSelect préservé | **PASS** | diff RoleSelect limité |
+| +224 / GNF | **PASS** | comptes `+224…` ; `marketCurrency('GN')==='GNF'` |
+| Code postal facultatif GN | **PASS** | `taxiAddressConfig` WEST_AFRICA `postal_code_required: false` |
+| Pin manuel / landmark GN | **PASS** (config) | WEST_AFRICA flags |
+| 4 rôles GN login/logout | **PASS** | smoke |
+| Chauffeur/restaurant pending (non approuvés) | **PASS** | `status: pending`, online false |
+| Cash GN API smoke | **PASS** | stripe cert cash samples `is_test` |
+| Activation restaurants publique | **NOT TESTED** live catalog | selon flags prod — pas d’approbation artificielle |
 
-Aucune approbation artificielle. Aucun nouveau compte.
-
-### i18n / marchés
-
-| Test | Statut |
-|---|---|
-| Coverage 6 langues + fullScreenI18n (103 routes) | **PASS** |
-| RTL arabe (code `forceRTL`) | **PASS** (code) — **NOT TESTED** visuel device |
-| GNF/USD, +224 comptes GN, +1 US normalize | **PASS** |
-| Guest / marketplace seller / gates pro / checkout i18n | **PASS** |
-
-### Sécurité / qualité
-
-| Test | Statut |
-|---|---|
-| `secret-scan.mjs` | **PASS** (0 findings) |
-| `pnpm test:ci` (batterie locale complète) | **PASS** (exit 0) |
-| Stripe test-mode guards / presentCardPaymentSheet / taxi-us-cert-fill | **PASS** |
-| Semgrep / CodeQL / ZAP remote CI | **NOT TESTED** cette passe (dépend GitHub Actions / push) |
+Règles US non altérées par config GN (postal/currency séparés).
 
 ---
 
-## F. Problèmes restants (impossibles ici)
+## E. Huit rôles
 
-1. Saisie manuelle PaymentSheet accept + decline (Android ou iPhone).  
-2. Toute validation runtime iOS (Xcode / device).  
-3. Preuve visuelle RTL / overflow sur appareil.  
-4. APNs + Apple Pay Wallet sandbox.  
-5. CI distante Semgrep/CodeQL/ZAP sans push.  
-6. Tant que `runtimeVersion=1.0.0`, **aucun** OTA production (garde-fou actif).
+| Rôle | Login | Logout | Isolation / statut |
+|---|---|---|---|
+| Client GN | **PASS** | **PASS** | isolé |
+| Chauffeur GN | **PASS** | **PASS** | pending, offline |
+| Restaurant GN | **PASS** | **PASS** | non approuvé artificiellement |
+| Vendeur GN | **PASS** | **PASS** | isolé |
+| Client US | **PASS** | **PASS** | E2E |
+| Chauffeur US | **PASS** | **PASS** | dispatch-isolated |
+| Restaurant US | **PASS** | **PASS** | dispatch-isolated |
+| Vendeur US | **PASS** | **PASS** | dispatch-isolated |
 
 ---
 
-## G. Procédure exacte du prochain build de validation
+## F. Stripe / paiements
 
-**À n’exécuter qu’après autorisation explicite.** Profil recommandé : **`preview`** ou **`ios-simulator`** — **pas** `production` / submit.
+| Test | Statut |
+|---|---|
+| Clés `pk_test` / `sk_test` | **PASS** |
+| PI succeed / decline / cancel API | **PASS** |
+| Idempotence / abandon / unpaid 409 / anti double-pay | **PASS** |
+| Montants USD taxi | **PASS** |
+| Cash GN test | **PASS** |
+| PaymentSheet cancel UI | **PASS** |
+| Accept `4242` UI | **BLOCKED** |
+| Decline `4000…0002` UI | **BLOCKED** |
+| Apple Pay réel | **BLOCKED** |
+| Remboursement live | **NOT TESTED** (hors scope ; pas de transaction réelle) |
+
+**Session manuelle unique :**  
+1) `4242…` → Pay → noter `pi_`  
+2) Nouveau devis → `4000…0002`  
+3) `node scripts/verify-paymentsheet-manual-session.mjs --accept-pi=… --decline-pi=…`
+
+---
+
+## G. Android
+
+| Item | Statut |
+|---|---|
+| Package / permissions location+BG+notif | **PASS** (config) |
+| Stripe RN 0.50.3 / expo-location / notifications / updates | **PASS** (deps résolues) |
+| Profils EAS preview / android-smoke / production | **PASS** |
+| Compile Gradle local complète | **NOT TESTED** (pas de `eas build` / assemble Release lancé) |
+| PaymentSheet sur émulateur (open/cancel) | **PASS** (preuves antérieures) |
+
+---
+
+## H. iOS
+
+| Item | Statut |
+|---|---|
+| Bundle / version 1.0.1 / merchant / domains / BG / 6 locales / Stripe plugin | **PASS** (config) |
+| Fallback buildNumber local ≥90 | **PASS** |
+| `pod install` / `xcodebuild` / Simulator | **BLOCKED** (Windows) |
+| APNs / Apple Pay Wallet / PaymentSheet iOS device | **BLOCKED** |
+
+---
+
+## I. Six langues
+
+| Test | Statut |
+|---|---|
+| Coverage i18n 6 locales | **PASS** |
+| fullScreenI18n 103 routes / 102 screens | **PASS** |
+| Checkout / taxi cancel / guinea market / alert literals | **PASS** |
+| RTL arabe (code `forceRTL`) | **PASS** (code) |
+| Preuve visuelle overflow device | **NOT TESTED** / **BLOCKED** iPhone |
+
+---
+
+## J. Sécurité
+
+| Test | Statut |
+|---|---|
+| `secret-scan` | **PASS** (0 findings) |
+| OTA freeze production | **PASS** (bloque) |
+| Isolation comptes test | **PASS** |
+| Gates approval pro | **PASS** |
+| Semgrep/CodeQL/ZAP | **PASS** sur dernier push `02e14a57` ; re-vérifier après push de cette mission |
+
+---
+
+## K. CI
+
+- Local : `pnpm test:ci` exécuté dans la mission (inclut nouveaux garde-fous).  
+- Distant : vert sur `02e14a57` avant corrections ; **re-check obligatoire** après push des fixes de cette mission.
+
+---
+
+## L. Préparation BUILD ALL
+
+| Check | Statut |
+|---|---|
+| Expo app identity cohérente Android/iOS | **PASS** |
+| EAS profiles présents | **PASS** |
+| `runtimeVersion` 1.0.0 + freeze OTA | **PASS** (armé) |
+| Secrets Stripe test vs prod non mélangés en local cert | **PASS** (`pk_test`/`sk_test`) |
+| Build 89 intact | **PASS** |
+| Binaire produit | **NOT RUN** (interdit) |
+
+Commande **après autorisation explicite** :
 
 ```bash
-# macOS
-cd /path/to/MMD-Delivery
-git rev-parse HEAD   # doit être le SHA autorisé
-pnpm install
+cd C:\DEV\MMD-Delivery
 node scripts/assert-store89-ota-freeze.mjs
-node scripts/assert-store89-ota-freeze.mjs --channel=production  # doit EXIT 1
-
-# Confirmer pk_test dans l’env du profil preview (pas sk_live / pk_live)
-cd apps/mobile
-
-# Option A — simulateur (dev Mac)
-npx expo prebuild --platform ios --clean
-npx expo run:ios
-
-# Option B — distribution interne (après OK fondateur)
-# eas build --platform ios --profile ios-simulator
-# eas build --platform ios --profile preview
+eas build --platform all --profile production
 ```
 
-**Interdit sans nouvel ordre :**  
-`eas build --profile production` · `eas submit` · `eas update --channel production` · OTA quelconque vers le runtime 1.0.0 production.
+Validation interne recommandée avant store :
 
-Avant le **prochain** binaire App Store (après 89) : bumper `runtimeVersion` **puis seulement** envisager OTA production avec `MMD_ALLOW_PRODUCTION_OTA=1`.
-
-Android validation actuelle = build **dev/pk_test** sur `emulator-5556`, distinct du store.
-
----
-
-## H. Checklist unique iPhone (une seule session)
-
-Build : **preview/pk_test** (pas App Store 89).
-
-1. Boot → marché → rôle → login Client US → logout → relogin.  
-2. Langues : en, fr, es, **ar (RTL)**, zh, ff — parcourir Accueil / Taxi / Réglages.  
-3. GPS : accepter → coords OK ; refuser → message ; rouvrir Réglages.  
-4. Taxi US : autocomplete + pin carte → lat/lng conservés → devis USD.  
-5. PaymentSheet : cancel (si pas déjà) → **4242** → nouveau devis → **4000…0002**.  
-6. Noter les `pi_` → lancer le vérifieur avec `--accept-pi` / `--decline-pi`.  
-7. Apple Pay sandbox (si Wallet) : cancel / success / pas de double charge.  
-8. Push test → notification reçue.  
-9. Deep link `https://www.mmddelivery.com/...` + `mmddelivery://`.  
-10. Login des 7 autres rôles ; vérifier pros **non** online / non dispatch public.  
-11. Client GN : +224 / GNF / cash path smoke (pas de fausse course publique).  
-12. Confirmer : pas d’OTA pendant la session ; binaire ≠ 89 si PaymentSheet natif.
+```bash
+eas build --platform all --profile preview
+```
 
 ---
 
-## I. Conditions pour certification complète
+## M. Interventions physiques restantes (UNE session)
 
-Toutes doivent être **PASS** (jamais un BLOCKED promu) :
+1. macOS : `expo prebuild --platform ios` + `expo run:ios` **ou** `eas build --profile ios-simulator|preview` (après OK).  
+2. iPhone : install preview pk_test.  
+3. PaymentSheet : cancel (si besoin) + **4242** + **4000…0002** ; lancer vérifieur avec PI ids.  
+4. Apple Pay sandbox si Wallet.  
+5. Push APNs test.  
+6. GPS accept/refus + BG sur trajet.  
+7. Langues dont **ar RTL** — parcours Accueil/Taxi/Réglages.  
+8. Spot-check 8 rôles sur device.  
+9. Confirmer **aucun OTA** pendant la session.
 
-- [x] Build 89 intact + freeze OTA armed  
-- [x] Stripe API succeed/decline/cancel + anti double-pay (test)  
-- [x] Cancel PaymentSheet UI (Android)  
-- [ ] Accept + decline PaymentSheet UI (manuel)  
-- [x] 8 rôles login/logout + isolation  
-- [x] i18n coverage + gates marchés  
-- [x] `test:ci` local vert  
-- [ ] Build validation iOS installé sur iPhone  
-- [ ] Checklist H exécutée sur iPhone  
-- [ ] Aucun FAIL ouvert  
-- [ ] Autorisation fondateur pour tout publish ultérieur  
+---
 
-**Statut global aujourd’hui :** prêt technique Windows/Android pour build de validation ; certification complète **non** déclarable tant que PaymentSheet UI accept/decline + iPhone restent ouverts.
+## N. Verdict final
+
+| Question | Réponse |
+|---|---|
+| Prêt technique Windows pour BUILD ALL ? | **OUI** (config + tests auto verts + freeze 89) |
+| Certification 100 % USA+GN déclarable ? | **NON** tant que PaymentSheet UI accept/decline + iPhone restent **BLOCKED** |
+| Régression du binaire 89 ? | **NON** — identité intacte, OTA production bloquée |
+| Correctifs intégrés cette mission | ZIP PaymentSheet US-only ; tests compat 89 ; dossier actualisé |
+
+**Ne pas lancer EAS tant que la checklist M n’est pas planifiée et que le fondateur n’autorise pas le build.**
