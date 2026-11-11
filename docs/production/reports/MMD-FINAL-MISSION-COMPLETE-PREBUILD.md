@@ -3,7 +3,8 @@
 Date: 2026-11-10 / 2026-11-11  
 Reference commits:
 - Prior closure: `0deeb8e8`
-- This Stripe US + iOS procedure pass: _(see latest `git log -1` after push)_
+- Stripe US + iOS procedure: `d4b5b16a`
+- CI fix (legacy Supabase env aliases): `9dc3acf5`
 
 Device under test: `emulator-5556` only (Pixel 5 primary not touched)  
 Supabase project: shared production (`sjmszohmhudayxawfows`) — isolated Guinea paths unchanged  
