@@ -2,10 +2,16 @@ import assert from "node:assert/strict";
 import {
   GUINEA_ISOLATED_TEST_USER_IDS,
   GUINEA_TEST_LIVE_OPERATION_BLOCKED,
+  US_ISOLATED_TEST_EMAILS,
+  US_ISOLATED_TEST_USER_IDS,
+  US_TEST_LIVE_OPERATION_BLOCKED,
   guineaIsolatedTestUserInvolved,
   isGuineaIsolatedTestEmail,
   isGuineaIsolatedTestUserId,
+  isIsolatedCertTestEmail,
   isIsolatedFromLiveDispatch,
+  isUsIsolatedTestEmail,
+  isUsIsolatedTestUserId,
 } from "./guineaTestIsolation";
 
 assert.equal(isGuineaIsolatedTestEmail("guinea-client@example.com"), true);
@@ -15,7 +21,24 @@ assert.equal(isGuineaIsolatedTestEmail("guinea-seller@example.com"), true);
 assert.equal(isGuineaIsolatedTestEmail("client@example.com"), false);
 assert.equal(isGuineaIsolatedTestEmail("guinea-client@example.com.evil"), false);
 assert.equal(isGuineaIsolatedTestEmail(""), false);
+assert.equal(isUsIsolatedTestEmail("us-cert-driver@example.com"), true);
+assert.equal(isUsIsolatedTestEmail("us-cert-restaurant@example.com"), true);
+assert.equal(isUsIsolatedTestEmail("us-cert-seller@example.com"), true);
+assert.equal(isUsIsolatedTestEmail("us-cert-driver@example.com.evil"), false);
+assert.equal(isIsolatedCertTestEmail("us-cert-seller@example.com"), true);
+assert.equal(US_ISOLATED_TEST_EMAILS.length, 3);
+assert.equal(US_ISOLATED_TEST_USER_IDS.length, 3);
+assert.equal(isUsIsolatedTestUserId("78bfe637-6cb9-46de-8d59-17e4b7720436"), true);
+assert.equal(isUsIsolatedTestUserId("37004c8c-52c9-47de-91b6-86f26288ece6"), true);
+assert.equal(isUsIsolatedTestUserId("c0720d55-083d-4c61-a05d-e38700fc49cf"), true);
+assert.equal(
+  isIsolatedFromLiveDispatch({
+    client_user_id: "78bfe637-6cb9-46de-8d59-17e4b7720436",
+  }),
+  true,
+);
 assert.equal(GUINEA_TEST_LIVE_OPERATION_BLOCKED, "guinea_test_live_operation_blocked");
+assert.equal(US_TEST_LIVE_OPERATION_BLOCKED, "us_test_live_operation_blocked");
 assert.equal(GUINEA_ISOLATED_TEST_USER_IDS.length, 4);
 assert.equal(isGuineaIsolatedTestUserId("9e0b3fb4-b23a-407c-a781-9f63f9b3de50"), true);
 assert.equal(isGuineaIsolatedTestUserId("05c34009-b050-454c-a94d-c4c803b26815"), true);
@@ -72,6 +95,22 @@ assert.equal(
       },
     },
     ["11111111-1111-4111-8111-111111111111"],
+  ),
+  true,
+);
+assert.equal(
+  await guineaIsolatedTestUserInvolved(
+    {
+      auth: {
+        admin: {
+          getUserById: async () => ({
+            data: { user: { email: "us-cert-driver@example.com" } },
+            error: null,
+          }),
+        },
+      },
+    },
+    ["22222222-2222-4222-8222-222222222222"],
   ),
   true,
 );

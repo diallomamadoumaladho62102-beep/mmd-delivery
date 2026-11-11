@@ -12,7 +12,15 @@ export const GUINEA_ISOLATED_TEST_EMAILS = [
   "guinea-seller@example.com",
 ] as const;
 
+/** US certification pros — @example.com only; never approve / publish / go online. */
+export const US_ISOLATED_TEST_EMAILS = [
+  "us-cert-driver@example.com",
+  "us-cert-restaurant@example.com",
+  "us-cert-seller@example.com",
+] as const;
+
 export const GUINEA_TEST_LIVE_OPERATION_BLOCKED = "guinea_test_live_operation_blocked";
+export const US_TEST_LIVE_OPERATION_BLOCKED = "us_test_live_operation_blocked";
 
 /** Authenticated user ids of the four existing Guinea rehearsal accounts. */
 export const GUINEA_ISOLATED_TEST_USER_IDS = [
@@ -22,14 +30,42 @@ export const GUINEA_ISOLATED_TEST_USER_IDS = [
   "7f1e2105-4032-4d49-868d-a7e2dad710a1",
 ] as const;
 
+/**
+ * Filled after authorized create of US cert accounts.
+ * Empty until create script patches real ids — email allowlist still blocks live writes via admin lookup.
+ */
+export const US_ISOLATED_TEST_USER_IDS = [
+  "78bfe637-6cb9-46de-8d59-17e4b7720436",
+  "37004c8c-52c9-47de-91b6-86f26288ece6",
+  "c0720d55-083d-4c61-a05d-e38700fc49cf",
+] as const;
+
 export function isGuineaIsolatedTestUserId(userId: unknown): boolean {
   const value = String(userId ?? "").trim().toLowerCase();
   return (GUINEA_ISOLATED_TEST_USER_IDS as readonly string[]).includes(value);
 }
 
+export function isUsIsolatedTestUserId(userId: unknown): boolean {
+  const value = String(userId ?? "").trim().toLowerCase();
+  return (US_ISOLATED_TEST_USER_IDS as readonly string[]).includes(value);
+}
+
+export function isIsolatedCertTestUserId(userId: unknown): boolean {
+  return isGuineaIsolatedTestUserId(userId) || isUsIsolatedTestUserId(userId);
+}
+
 export function isGuineaIsolatedTestEmail(email: unknown): boolean {
   const value = String(email ?? "").trim().toLowerCase();
   return (GUINEA_ISOLATED_TEST_EMAILS as readonly string[]).includes(value);
+}
+
+export function isUsIsolatedTestEmail(email: unknown): boolean {
+  const value = String(email ?? "").trim().toLowerCase();
+  return (US_ISOLATED_TEST_EMAILS as readonly string[]).includes(value);
+}
+
+export function isIsolatedCertTestEmail(email: unknown): boolean {
+  return isGuineaIsolatedTestEmail(email) || isUsIsolatedTestEmail(email);
 }
 
 type AuthAdmin = {
@@ -52,11 +88,11 @@ export async function guineaIsolatedTestUserInvolved(
     const id = String(raw ?? "").trim();
     if (!id || seen.has(id)) continue;
     seen.add(id);
-    if (isGuineaIsolatedTestUserId(id)) return true;
+    if (isIsolatedCertTestUserId(id)) return true;
     try {
       const { data, error } = await admin.auth.admin.getUserById(id);
       if (error) continue;
-      if (isGuineaIsolatedTestEmail(data?.user?.email)) return true;
+      if (isIsolatedCertTestEmail(data?.user?.email)) return true;
     } catch {
       continue;
     }
@@ -87,7 +123,7 @@ export function isIsolatedFromLiveDispatch(row: {
     row.preferred_driver_id,
     row.restaurant_user_id,
     row.restaurant_id,
-  ].some((id) => isGuineaIsolatedTestUserId(id));
+  ].some((id) => isIsolatedCertTestUserId(id));
 }
 
 export async function assertNoGuineaIsolatedLiveWrite(
@@ -96,6 +132,13 @@ export async function assertNoGuineaIsolatedLiveWrite(
 ): Promise<void> {
   const blocked = await guineaIsolatedTestUserInvolved(admin, userIds);
   if (blocked) {
+    // Prefer US-specific code when the match is a US cert identity.
+    for (const raw of userIds) {
+      const id = String(raw ?? "").trim();
+      if (isUsIsolatedTestUserId(id)) {
+        throw new Error(US_TEST_LIVE_OPERATION_BLOCKED);
+      }
+    }
     throw new Error(GUINEA_TEST_LIVE_OPERATION_BLOCKED);
   }
 }

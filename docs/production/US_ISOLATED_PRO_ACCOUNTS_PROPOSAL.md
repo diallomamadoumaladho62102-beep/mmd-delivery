@@ -1,7 +1,8 @@
 # Proposition — comptes professionnels US isolés (certification)
 
-**Statut :** proposition uniquement — **aucune création exécutée**.  
-**Protection App Store :** build **1.0.1 / 89** (`3152ebf2`) — non concerné (comptes serveur uniquement).
+**Statut :** comptes créés (2026-11-11) — non approuvés, non publics, hors dispatch.  
+**Protection App Store :** build **1.0.1 / 89** (`3152ebf2`) — non concerné (comptes serveur uniquement).  
+**Isolation code :** `US_ISOLATED_TEST_EMAILS` + `US_ISOLATED_TEST_USER_IDS` dans `guineaTestIsolation.ts`.
 
 ## Inventaire final (2026-11-11)
 
