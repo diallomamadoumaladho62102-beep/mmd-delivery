@@ -63,7 +63,7 @@ const supabaseUrl = String(
 const anon = String(
   env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     env.SUPABASE_PUBLISHABLE_KEY ||
-    env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+    env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     "",
 ).trim();
 const email = String(env.E2E_TEST_EMAIL || "").trim();
@@ -269,9 +269,7 @@ async function main() {
   };
 
   // Cash GN non-regression smoke (read-only via service role when present)
-  const service = String(
-    env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY || "",
-  ).trim();
+  const service = String(env.SUPABASE_SECRET_KEY || "").trim();
   if (service) {
     const admin = createClient(supabaseUrl, service, {
       auth: { persistSession: false, autoRefreshToken: false },
