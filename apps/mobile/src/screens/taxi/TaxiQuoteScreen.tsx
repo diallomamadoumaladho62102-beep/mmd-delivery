@@ -519,7 +519,9 @@ export default function TaxiQuoteScreen() {
         ambiancePreference: params.ambiancePreference ?? "none",
         businessAccountId:
           businessRide && businessAccountId ? businessAccountId : undefined,
-        businessTripType: businessRide && businessAccountId ? "business" : "personal",
+        businessTripType: (businessRide && businessAccountId
+          ? "business"
+          : "personal") as "business" | "personal",
         stops: rideStops,
         tripMode: params.tripMode,
         returnMode: params.returnMode,
@@ -530,7 +532,7 @@ export default function TaxiQuoteScreen() {
           : method === "card"
             ? { nativeWallet: "payment_sheet" as const }
             : {}),
-      };
+      } as Parameters<typeof startTaxiCheckoutFromQuote>[0];
 
       let checkout: Awaited<ReturnType<typeof startTaxiCheckoutFromQuote>>;
       try {
